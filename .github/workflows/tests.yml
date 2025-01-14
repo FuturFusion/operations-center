@@ -1,0 +1,89 @@
+---
+
+name: Tests
+on:
+  push:
+    branches:
+      - main
+      - stable-*
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  code-tests:
+    name: Code
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        go:
+          - oldstable
+          - stable
+          # Disabled for now, since tip is not really important for us as of now.exclude:
+          # This saves us some minutes on CI.
+          # - tip
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Currently the repository is not yet setup for dependency review.
+      # Setup: Enable Dependency graph along with GitHub Advanced Security on
+      # private repositories, see https://github.com/FuturFusion/operations-center/settings/security_analysis
+      # - name: Dependency Review
+      #   uses: actions/dependency-review-action@v4
+      #   if: github.event_name == 'pull_request'
+
+      - name: Install Go (${{ matrix.go }})
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+        if: matrix.go != 'tip'
+
+      - name: Install Go (stable)
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+        if: matrix.go == 'tip'
+
+      - name: Install Go (tip)
+        run: |
+          go install golang.org/dl/gotip@latest
+          gotip download
+          ~/sdk/gotip/bin/go version
+          echo "PATH=$HOME/go/bin:$HOME/sdk/gotip/bin/:$PATH" >> $GITHUB_ENV
+        if: matrix.go == 'tip'
+
+      - name: Check compatible min Go version
+        run: |
+          go mod tidy
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+
+          sudo apt-get install --no-install-recommends -y \
+            make
+
+      - name: Download go dependencies
+        run: |
+          go mod download
+
+      - name: Run build
+        run: |
+          make build
+
+      - name: Run static analysis
+        env:
+          GITHUB_BEFORE: ${{ github.event.before }}
+        run: |
+          make static-analysis
+
+      - name: Unit tests (all)
+        run: |
+          make test
