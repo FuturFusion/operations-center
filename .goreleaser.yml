@@ -1,0 +1,35 @@
+---
+version: 2
+
+builds:
+  - main: ./cmd/operations-center
+    binary: operations-center
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+archives:
+  - format: binary
+    wrap_in_directory: false
+    strip_binary_directory: true
+    name_template: >-
+      {{- .Binary }}_
+      {{- .Version }}_
+      {{- if eq .Os "darwin" }}macos
+      {{- else }}{{ .Os }}{{ end }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "arm64" }}aarch64
+      {{- else }}{{ .Arch }}{{ end }}
+snapshot:
+  version_template: "{{ .Tag }}-next"
+changelog:
+  disable: true
+release:
+  github:
+    owner: FuturFusion
+    name: operations-center
