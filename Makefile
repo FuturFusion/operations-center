@@ -63,11 +63,11 @@ docker-build: build-dev-container
 
 .PHONY: docker-build-all-packages
 docker-build-all-packages: build-dev-container
-	${DOCKER_RUN} $(GO) make build-all-packages
+	${DOCKER_RUN} make build-all-packages
 
 .PHONY: docker-test
 docker-test: build-dev-container
-	${DOCKER_RUN} $(GO) test ./... -v -cover
+	${DOCKER_RUN} make test
 
 .PHONY: docker-static-analysis
 docker-static-analysis: build-dev-container
