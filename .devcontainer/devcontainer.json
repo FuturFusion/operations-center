@@ -1,0 +1,70 @@
+{
+  "name": "Operations Center",
+  "dockerFile": "Dockerfile",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "766b.go-outliner",
+        "ms-azuretools.vscode-docker",
+        "ms-vscode.makefile-tools",
+        "github.vscode-github-actions",
+        "davidanson.vscode-markdownlint",
+        "shardulm94.trailing-spaces",
+        "Gruntfuggly.todo-tree"
+      ],
+      "settings": {
+        "files.insertFinalNewline": true,
+        "go.goroot": "/usr/local/go",
+        "go.gopath": "/go",
+        "go.lintTool": "golangci-lint",
+        "go.lintOnSave": "package",
+        "go.lintFlags": [ "--fast" ],
+        "go.useLanguageServer": true,
+        "goOutliner.extendExplorerTab": true,
+        "gopls": {
+          "formatting.gofumpt": true,
+          "formatting.local": "github.com/FuturFusion/operations-center",
+          "ui.diagnostic.staticcheck": false
+        },
+        "[go]": {
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+          }
+        },
+        "[go.mod]": {
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+          }
+        },
+        "search.exclude": {
+          "**/.git": true,
+          "**/bin": true,
+          "**/dist": true
+        }
+      }
+    }
+  },
+
+  "postCreateCommand": "go mod download",
+
+  "mounts": [
+    "source=operations_center_devcontainer_cache,target=/home/vscode/.cache,type=volume",
+    "source=operations_center_devcontainer_goroot,target=/go,type=volume"
+  ],
+
+  "runArgs": [
+    "-u",
+    "vscode",
+    "--cap-add=SYS_PTRACE",
+    "--security-opt",
+    "seccomp=unconfined",
+    "-v", "${env:HOME}/.ssh:/home/vscode/.ssh:ro",
+    "--name", "${localEnv:USER}_operations_center_devcontainer"
+  ],
+
+  "remoteUser": "vscode"
+}
