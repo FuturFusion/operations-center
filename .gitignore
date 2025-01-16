@@ -31,3 +31,6 @@ go.work.sum
 
 # Goreleaser releases
 dist/
+
+.envrc
+/tmp
