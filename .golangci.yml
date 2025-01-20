@@ -15,6 +15,7 @@ linters:
     - prealloc
     - revive
     - rowserrcheck
+    - sloglint
     - sqlclosecheck
     - staticcheck
     - testifylint
@@ -141,3 +142,17 @@ linters-settings:
       # this has become an established standard in Incus and since we are building
       # on top of Incus, we inherit the same style of capitalized error messages.
       - "-ST1005"
+  sloglint:
+    # Enforce using attributes only (overrides no-mixed-args, incompatible with kv-only).
+    # https://github.com/go-simpler/sloglint?tab=readme-ov-file#attributes-only
+    # Default: false
+    attr-only: true
+    # Enforce using static values for log messages.
+    # https://github.com/go-simpler/sloglint?tab=readme-ov-file#static-messages
+    # Default: false
+    static-msg: true
+    # Enforce a single key naming convention.
+    # Values: snake, kebab, camel, pascal
+    # https://github.com/go-simpler/sloglint?tab=readme-ov-file#key-naming-convention
+    # Default: ""
+    key-naming-case: snake
