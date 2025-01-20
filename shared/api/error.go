@@ -2,8 +2,24 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 )
+
+// StatusErrorf returns a new StatusError containing the specified status and message.
+func StatusErrorf(status int, format string, a ...any) StatusError {
+	var msg string
+	if len(a) > 0 {
+		msg = fmt.Sprintf(format, a...)
+	} else {
+		msg = format
+	}
+
+	return StatusError{
+		status: status,
+		msg:    msg,
+	}
+}
 
 // StatusError error type that contains an HTTP status code and message.
 type StatusError struct {
