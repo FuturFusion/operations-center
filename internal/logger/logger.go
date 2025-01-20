@@ -19,7 +19,7 @@ type Logger interface {
 	With(args ...any) *slog.Logger
 }
 
-func InitLogger(filepath string, verbose bool, debug bool) error {
+func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) error {
 	level := slog.LevelWarn
 	if verbose {
 		level = slog.LevelInfo
@@ -28,8 +28,6 @@ func InitLogger(filepath string, verbose bool, debug bool) error {
 	if debug {
 		level = slog.LevelDebug
 	}
-
-	var writer io.Writer = os.Stderr
 
 	if filepath != "" {
 		f, err := os.OpenFile(filepath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)

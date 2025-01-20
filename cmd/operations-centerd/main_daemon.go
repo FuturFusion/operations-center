@@ -12,16 +12,21 @@ import (
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/api"
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/config"
-	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/logger"
 )
 
 const defaultRestServerPort = 7443
 
+type env interface {
+	LogDir() string
+	VarDir() string
+	GetUnixSocket() string
+}
+
 type cmdDaemon struct {
 	global *cmdGlobal
 
-	env environment.Environment
+	env env
 }
 
 func (c *cmdDaemon) Command() *cobra.Command {
@@ -40,7 +45,7 @@ func (c *cmdDaemon) Command() *cobra.Command {
 
 func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	if len(args) > 1 || (len(args) == 1 && args[0] != applicationName && args[0] != "") {
-		return fmt.Errorf(`unknown command "%s" for "%s"`, args[0], cmd.CommandPath())
+		return fmt.Errorf(`Unknown command "%s" for "%s"`, args[0], cmd.CommandPath())
 	}
 
 	cfg := &config.Config{
@@ -49,7 +54,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 
 	err := cfg.LoadConfig(c.env.VarDir())
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to load config from %q: %w", c.env.VarDir(), err)
 	}
 
 	rootCtx, stop := signal.NotifyContext(context.Background(),
@@ -62,7 +67,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 
 	d := api.NewDaemon(c.env, cfg)
 
-	err = d.Start(rootCtx)
+	err = d.Start()
 	if err != nil {
 		slog.Error("Failed to start daemon", logger.Err(err))
 		return fmt.Errorf("Failed to start daemon: %v", err)

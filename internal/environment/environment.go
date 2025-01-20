@@ -21,20 +21,16 @@ type Environment struct {
 	applicationEnvPrefix string
 }
 
-type EnvironmentGetter func() Environment
-
 // New returns an Environment initialized with sane default values.
 // The applicationName might be added to directory paths where reasonable.
 // The applicationNameEnvPrefix is used to form the names of environment
 // variables, that can be used to override the default paths.
 // For example with the applicationNameEnvPrefix "APP", the env var
 // APP_DIR is formed.
-func New(applicationName, applicationEnvPrefix string) EnvironmentGetter {
-	return func() Environment {
-		return Environment{
-			applicationName:      applicationName,
-			applicationEnvPrefix: applicationEnvPrefix,
-		}
+func New(applicationName, applicationEnvPrefix string) Environment {
+	return Environment{
+		applicationName:      applicationName,
+		applicationEnvPrefix: applicationEnvPrefix,
 	}
 }
 

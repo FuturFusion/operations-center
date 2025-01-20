@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -18,15 +19,14 @@ const (
 )
 
 func main() {
-	err := main0(environment.New(applicationName, applicationEnvPrefix))
+	err := main0(os.Args[1:], os.Stdout, os.Stderr, environment.New(applicationName, applicationEnvPrefix))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func main0(getEnvironement environment.EnvironmentGetter) error {
-	env := getEnvironement()
+func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
 	defaultLogFile := filepath.Join(env.LogDir(), applicationName+".log")
 
 	// daemon command (main)
@@ -35,6 +35,9 @@ func main0(getEnvironement environment.EnvironmentGetter) error {
 	}
 
 	app := daemonCmd.Command()
+	app.SetArgs(args)
+	app.SetOut(stdout)
+	app.SetErr(stderr)
 
 	app.SilenceUsage = true
 	app.CompletionOptions = cobra.CompletionOptions{DisableDefaultCmd: true}
@@ -73,7 +76,7 @@ type cmdGlobal struct {
 }
 
 func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
-	err := logger.InitLogger(c.flagLogFile, c.flagLogVerbose, c.flagLogDebug)
+	err := logger.InitLogger(cmd.ErrOrStderr(), c.flagLogFile, c.flagLogVerbose, c.flagLogDebug)
 	if err != nil {
 		return err
 	}

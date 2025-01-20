@@ -12,13 +12,16 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/config"
-	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/response"
 	"github.com/FuturFusion/operations-center/internal/version"
 )
 
+type environment interface {
+	GetUnixSocket() string
+}
+
 type Daemon struct {
-	env environment.Environment
+	env environment
 
 	config *config.Config
 
@@ -26,7 +29,7 @@ type Daemon struct {
 	errgroup *errgroup.Group
 }
 
-func NewDaemon(env environment.Environment, cfg *config.Config) *Daemon {
+func NewDaemon(env environment, cfg *config.Config) *Daemon {
 	d := &Daemon{
 		env:    env,
 		config: cfg,
@@ -35,7 +38,7 @@ func NewDaemon(env environment.Environment, cfg *config.Config) *Daemon {
 	return d
 }
 
-func (d *Daemon) Start(ctx context.Context) error {
+func (d *Daemon) Start() error {
 	slog.Info("Starting up", slog.String("version", version.Version))
 
 	// TODO: setup open sqlite DB
@@ -72,17 +75,18 @@ func (d *Daemon) Start(ctx context.Context) error {
 		Addr:        fmt.Sprintf("%s:%d", d.config.RestServerAddr, d.config.RestServerPort),
 	}
 
-	// TODO: Check if the socket file already exists. If it does, return an error,
-	// because this indicates, that an other instance of the operations-center
-	// is already running.
-	unixListener, err := net.Listen("unix", d.env.GetUnixSocket())
-	if err != nil {
-		return err
-	}
-
 	group, errgroupCtx := errgroup.WithContext(context.Background())
+	d.errgroup = group
 
 	group.Go(func() error {
+		// TODO: Check if the socket file already exists. If it does, return an error,
+		// because this indicates, that an other instance of the operations-center
+		// is already running.
+		unixListener, err := net.Listen("unix", d.env.GetUnixSocket())
+		if err != nil {
+			return err
+		}
+
 		slog.Info("Start unix socket listener", slog.Any("addr", unixListener.Addr()))
 
 		err = d.server.Serve(unixListener)
@@ -105,8 +109,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 		return err
 	})
-
-	d.errgroup = group
 
 	select {
 	case <-errgroupCtx.Done():
