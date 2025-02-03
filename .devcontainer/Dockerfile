@@ -11,7 +11,7 @@ ARG USER_GID=1000
 # Install necessary tools.
 RUN echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | tee /etc/apt/sources.list.d/goreleaser.list && \
     apt update && \
-    apt install -y vim sudo man less goreleaser
+    apt install -y vim sudo man less goreleaser jq fish zsh sqlite3
 
 # Add vscode user and add it to sudoers.
 RUN groupadd -g 1000 $USERNAME && \
