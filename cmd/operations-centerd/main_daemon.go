@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-centerd/api"
-	"github.com/FuturFusion/operations-center/cmd/operations-centerd/config"
+	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/api"
+	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
 	"github.com/FuturFusion/operations-center/internal/logger"
 )
 
