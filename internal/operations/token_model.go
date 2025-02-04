@@ -1,0 +1,33 @@
+package operations
+
+import (
+	"math"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+var ExpireAtInfinity = time.Date(9999, 12, 31, 23, 59, 59, 999999999, time.UTC)
+
+const UsesRemainingInfinity = math.MaxInt
+
+type Token struct {
+	UUID          uuid.UUID
+	UsesRemaining int
+	ExpireAt      time.Time
+	Description   string
+}
+
+func (t Token) Validate() error {
+	if t.UsesRemaining < 0 {
+		return NewValidationErrf(`Value for "uses remaining" can not be negative`)
+	}
+
+	if t.ExpireAt.Before(time.Now()) {
+		return NewValidationErrf(`Value for "expire at" can not be in the past`)
+	}
+
+	return nil
+}
+
+type Tokens []Token

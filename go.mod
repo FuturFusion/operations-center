@@ -9,7 +9,6 @@ require (
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
 	github.com/Masterminds/sprig/v3 v3.2.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -27,6 +26,7 @@ require (
 )
 
 require (
+	github.com/google/uuid v1.6.0
 	github.com/hexdigest/gowrap v1.4.1
 	github.com/matryer/moq v0.4.0
 	github.com/mattn/go-sqlite3 v1.14.24
