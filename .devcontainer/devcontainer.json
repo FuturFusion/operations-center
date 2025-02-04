@@ -44,6 +44,17 @@
           "**/.git": true,
           "**/bin": true,
           "**/dist": true
+        },
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+              "path": "/bin/bash"
+          },
+          "fish": {
+              "path": "/bin/fish"
+          },
+          "zsh": {
+              "path": "/bin/zsh"
+          }
         }
       }
     }

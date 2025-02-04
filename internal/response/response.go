@@ -43,6 +43,11 @@ func SyncResponseETag(success bool, metadata any, etag any) Response {
 	return &syncResponse{success: success, metadata: metadata, etag: etag}
 }
 
+// SyncResponseLocation returns a new syncResponse with a location.
+func SyncResponseLocation(success bool, metadata any, location string) Response {
+	return &syncResponse{success: success, metadata: metadata, location: location}
+}
+
 func (r *syncResponse) Render(w http.ResponseWriter) error {
 	// Set an appropriate ETag header
 	if r.etag != nil {

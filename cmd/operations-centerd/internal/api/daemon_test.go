@@ -107,6 +107,7 @@ func TestStartAndStop(t *testing.T) {
 			d := api.NewDaemon(
 				mockEnv{
 					unixSocket: tc.unixSocket,
+					varDir:     tmpDir,
 				},
 				&config.Config{
 					RestServerPort: tc.bindPort,

@@ -7,17 +7,25 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
+	"github.com/FuturFusion/operations-center/internal/dbschema"
+	"github.com/FuturFusion/operations-center/internal/operations"
+	"github.com/FuturFusion/operations-center/internal/operations/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/response"
+	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/internal/version"
 )
 
 type environment interface {
 	GetUnixSocket() string
+	VarDir() string
 }
 
 type Daemon struct {
@@ -41,7 +49,17 @@ func NewDaemon(env environment, cfg *config.Config) *Daemon {
 func (d *Daemon) Start() error {
 	slog.Info("Starting up", slog.String("version", version.Version))
 
-	// TODO: setup open sqlite DB
+	db, err := dbdriver.Open(d.env.VarDir())
+	if err != nil {
+		return fmt.Errorf("Failed to open sqlite database: %w", err)
+	}
+
+	_, err = dbschema.Ensure(context.TODO(), db, d.env.VarDir())
+	if err != nil {
+		return err
+	}
+
+	dbWithTransaction := transaction.Enable(db)
 
 	// TODO: setup certificates
 
@@ -50,23 +68,23 @@ func (d *Daemon) Start() error {
 	// TODO: setup OIDC
 
 	// Setup Services
+	tokenSvc := operations.NewTokenService(sqlite.NewToken(dbWithTransaction))
 
 	// Setup Routes
 	router := http.NewServeMux()
-	router.HandleFunc("GET /",
+	router.HandleFunc("GET /{$}",
 		response.With(
 			rootHandler,
 		),
 	)
 
-	api10router := http.NewServeMux()
-	router.Handle("GET /1.0", api10router)
+	api10router := newSubRouter(router, "/1.0")
+	registerAPI10Handler(api10router)
 
-	api10router.HandleFunc("GET /",
-		response.With(
-			api10Get,
-		),
-	)
+	provisioningRouter := newSubRouter(api10router, "/provisioning")
+
+	tokenRouter := newSubRouter(provisioningRouter, "/tokens")
+	registerTokenHandler(tokenRouter, tokenSvc)
 
 	// Setup web server
 	d.server = &http.Server{
@@ -129,4 +147,58 @@ func (d *Daemon) Stop(ctx context.Context) error {
 	errgroupWaitErr := d.errgroup.Wait()
 
 	return errors.Join(shutdownErr, errgroupWaitErr)
+}
+
+// newSubRouter returns a derived http.ServeMux for the given prefix.
+// The derived router is configured such that handlers can be defined as they
+// would on a regular root ServeMux.
+func newSubRouter(router *http.ServeMux, prefix string) *http.ServeMux {
+	if !strings.HasPrefix(prefix, "/") {
+		prefix = "/" + prefix
+	}
+
+	subrouter := http.NewServeMux()
+	router.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
+		http.StripPrefix(prefix, handleRootPath(subrouter, false)).ServeHTTP(w, r)
+	})
+	router.HandleFunc(prefix+"/", func(w http.ResponseWriter, r *http.Request) {
+		http.StripPrefix(prefix, handleRootPath(subrouter, false)).ServeHTTP(w, r)
+	})
+
+	return subrouter
+}
+
+// handleRootPath compensates for the handling of the root resource for a derived
+// sub router.
+// This allows to define routes on the sub router without knowledge of the prefix
+// from where these routes will be served.
+// If ignoreTrailingSlash is true, the root resource will be served for both,
+// "/prefix" and "/prefix/". If ignoreTrailingSlash is false, the root resource
+// is only served if the resource is requested without trailing slash ()"/prefix").
+func handleRootPath(h http.Handler, ignoreTrailingSlash bool) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "":
+			r2 := new(http.Request)
+			*r2 = *r
+			r2.URL = new(url.URL)
+			*r2.URL = *r.URL
+			r2.URL.Path = "/"
+			h.ServeHTTP(w, r2)
+			return
+
+		case "/":
+			if ignoreTrailingSlash {
+				h.ServeHTTP(w, r)
+				return
+			}
+
+			http.NotFound(w, r)
+			return
+
+		default:
+			h.ServeHTTP(w, r)
+			return
+		}
+	})
 }

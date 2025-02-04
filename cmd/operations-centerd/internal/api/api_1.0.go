@@ -7,6 +7,10 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+func registerAPI10Handler(router *http.ServeMux) {
+	router.HandleFunc("GET /{$}", response.With(api10Get))
+}
+
 // swagger:operation GET /1.0 server server_get_untrusted
 //
 //	Get the server environment
