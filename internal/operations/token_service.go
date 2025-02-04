@@ -43,3 +43,28 @@ func (s tokenService) Create(ctx context.Context, newToken Token) (Token, error)
 
 	return s.repo.Create(ctx, newToken)
 }
+
+func (s tokenService) GetAll(ctx context.Context) (Tokens, error) {
+	return s.repo.GetAll(ctx)
+}
+
+func (s tokenService) GetAllIDs(ctx context.Context) ([]string, error) {
+	return s.repo.GetAllIDs(ctx)
+}
+
+func (s tokenService) GetByID(ctx context.Context, id uuid.UUID) (Token, error) {
+	return s.repo.GetByID(ctx, id)
+}
+
+func (s tokenService) UpdateByID(ctx context.Context, newToken Token) (Token, error) {
+	err := newToken.Validate()
+	if err != nil {
+		return Token{}, err
+	}
+
+	return s.repo.UpdateByID(ctx, newToken)
+}
+
+func (s tokenService) DeleteByID(ctx context.Context, id uuid.UUID) error {
+	return s.repo.DeleteByID(ctx, id)
+}

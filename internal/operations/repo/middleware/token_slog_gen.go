@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceOperations "github.com/FuturFusion/operations-center/internal/operations"
+	"github.com/google/uuid"
 )
 
 // TokenRepoWithSlog implements _sourceOperations.TokenRepo that is instrumented with slog logger
@@ -43,4 +44,101 @@ func (_d TokenRepoWithSlog) Create(ctx context.Context, token _sourceOperations.
 		}
 	}()
 	return _d._base.Create(ctx, token)
+}
+
+// DeleteByID implements _sourceOperations.TokenRepo
+func (_d TokenRepoWithSlog) DeleteByID(ctx context.Context, id uuid.UUID) (err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Any("id", id),
+	).Debug("TokenRepoWithSlog: calling DeleteByID")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("TokenRepoWithSlog: method DeleteByID returned an error")
+		} else {
+			log.Debug("TokenRepoWithSlog: method DeleteByID finished")
+		}
+	}()
+	return _d._base.DeleteByID(ctx, id)
+}
+
+// GetAll implements _sourceOperations.TokenRepo
+func (_d TokenRepoWithSlog) GetAll(ctx context.Context) (t1 _sourceOperations.Tokens, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+	).Debug("TokenRepoWithSlog: calling GetAll")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("t1", t1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("TokenRepoWithSlog: method GetAll returned an error")
+		} else {
+			log.Debug("TokenRepoWithSlog: method GetAll finished")
+		}
+	}()
+	return _d._base.GetAll(ctx)
+}
+
+// GetAllIDs implements _sourceOperations.TokenRepo
+func (_d TokenRepoWithSlog) GetAllIDs(ctx context.Context) (sa1 []string, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+	).Debug("TokenRepoWithSlog: calling GetAllIDs")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("sa1", sa1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("TokenRepoWithSlog: method GetAllIDs returned an error")
+		} else {
+			log.Debug("TokenRepoWithSlog: method GetAllIDs finished")
+		}
+	}()
+	return _d._base.GetAllIDs(ctx)
+}
+
+// GetByID implements _sourceOperations.TokenRepo
+func (_d TokenRepoWithSlog) GetByID(ctx context.Context, id uuid.UUID) (t1 _sourceOperations.Token, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Any("id", id),
+	).Debug("TokenRepoWithSlog: calling GetByID")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("t1", t1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("TokenRepoWithSlog: method GetByID returned an error")
+		} else {
+			log.Debug("TokenRepoWithSlog: method GetByID finished")
+		}
+	}()
+	return _d._base.GetByID(ctx, id)
+}
+
+// UpdateByID implements _sourceOperations.TokenRepo
+func (_d TokenRepoWithSlog) UpdateByID(ctx context.Context, token _sourceOperations.Token) (t1 _sourceOperations.Token, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Any("token", token),
+	).Debug("TokenRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("t1", t1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("TokenRepoWithSlog: method UpdateByID returned an error")
+		} else {
+			log.Debug("TokenRepoWithSlog: method UpdateByID finished")
+		}
+	}()
+	return _d._base.UpdateByID(ctx, token)
 }

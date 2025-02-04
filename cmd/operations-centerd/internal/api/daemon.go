@@ -199,7 +199,6 @@ func handleRootPath(h http.Handler, ignoreTrailingSlash bool) http.Handler {
 		default:
 			h.ServeHTTP(w, r)
 			return
-
 		}
 	})
 }

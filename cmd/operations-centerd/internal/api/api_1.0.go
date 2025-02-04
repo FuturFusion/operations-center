@@ -8,11 +8,7 @@ import (
 )
 
 func registerAPI10Handler(router *http.ServeMux) {
-	router.HandleFunc("GET /{$}",
-		response.With(
-			api10Get,
-		),
-	)
+	router.HandleFunc("GET /{$}", response.With(api10Get))
 }
 
 // swagger:operation GET /1.0 server server_get_untrusted
