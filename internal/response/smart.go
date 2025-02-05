@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/FuturFusion/operations-center/internal/operations"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -22,12 +22,12 @@ func SmartError(err error) Response {
 		return EmptySyncResponse
 	}
 
-	var validationErr operations.ErrValidation
+	var validationErr domain.ErrValidation
 	if errors.As(err, &validationErr) {
 		return &errorResponse{http.StatusBadRequest, err.Error()}
 	}
 
-	if errors.Is(err, operations.ErrConstraintViolation) || errors.Is(err, operations.ErrNotFound) {
+	if errors.Is(err, domain.ErrConstraintViolation) || errors.Is(err, domain.ErrNotFound) {
 		return &errorResponse{http.StatusBadRequest, err.Error()}
 	}
 

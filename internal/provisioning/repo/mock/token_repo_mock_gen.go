@@ -7,62 +7,62 @@ import (
 	"context"
 	"sync"
 
-	"github.com/FuturFusion/operations-center/internal/operations"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/google/uuid"
 )
 
-// Ensure, that TokenRepoMock does implement operations.TokenRepo.
+// Ensure, that TokenRepoMock does implement provisioning.TokenRepo.
 // If this is not the case, regenerate this file with moq.
-var _ operations.TokenRepo = &TokenRepoMock{}
+var _ provisioning.TokenRepo = &TokenRepoMock{}
 
-// TokenRepoMock is a mock implementation of operations.TokenRepo.
+// TokenRepoMock is a mock implementation of provisioning.TokenRepo.
 //
 //	func TestSomethingThatUsesTokenRepo(t *testing.T) {
 //
-//		// make and configure a mocked operations.TokenRepo
+//		// make and configure a mocked provisioning.TokenRepo
 //		mockedTokenRepo := &TokenRepoMock{
-//			CreateFunc: func(ctx context.Context, token operations.Token) (operations.Token, error) {
+//			CreateFunc: func(ctx context.Context, token provisioning.Token) (provisioning.Token, error) {
 //				panic("mock out the Create method")
 //			},
 //			DeleteByIDFunc: func(ctx context.Context, id uuid.UUID) error {
 //				panic("mock out the DeleteByID method")
 //			},
-//			GetAllFunc: func(ctx context.Context) (operations.Tokens, error) {
+//			GetAllFunc: func(ctx context.Context) (provisioning.Tokens, error) {
 //				panic("mock out the GetAll method")
 //			},
 //			GetAllIDsFunc: func(ctx context.Context) ([]string, error) {
 //				panic("mock out the GetAllIDs method")
 //			},
-//			GetByIDFunc: func(ctx context.Context, id uuid.UUID) (operations.Token, error) {
+//			GetByIDFunc: func(ctx context.Context, id uuid.UUID) (provisioning.Token, error) {
 //				panic("mock out the GetByID method")
 //			},
-//			UpdateByIDFunc: func(ctx context.Context, token operations.Token) (operations.Token, error) {
+//			UpdateByIDFunc: func(ctx context.Context, token provisioning.Token) (provisioning.Token, error) {
 //				panic("mock out the UpdateByID method")
 //			},
 //		}
 //
-//		// use mockedTokenRepo in code that requires operations.TokenRepo
+//		// use mockedTokenRepo in code that requires provisioning.TokenRepo
 //		// and then make assertions.
 //
 //	}
 type TokenRepoMock struct {
 	// CreateFunc mocks the Create method.
-	CreateFunc func(ctx context.Context, token operations.Token) (operations.Token, error)
+	CreateFunc func(ctx context.Context, token provisioning.Token) (provisioning.Token, error)
 
 	// DeleteByIDFunc mocks the DeleteByID method.
 	DeleteByIDFunc func(ctx context.Context, id uuid.UUID) error
 
 	// GetAllFunc mocks the GetAll method.
-	GetAllFunc func(ctx context.Context) (operations.Tokens, error)
+	GetAllFunc func(ctx context.Context) (provisioning.Tokens, error)
 
 	// GetAllIDsFunc mocks the GetAllIDs method.
 	GetAllIDsFunc func(ctx context.Context) ([]string, error)
 
 	// GetByIDFunc mocks the GetByID method.
-	GetByIDFunc func(ctx context.Context, id uuid.UUID) (operations.Token, error)
+	GetByIDFunc func(ctx context.Context, id uuid.UUID) (provisioning.Token, error)
 
 	// UpdateByIDFunc mocks the UpdateByID method.
-	UpdateByIDFunc func(ctx context.Context, token operations.Token) (operations.Token, error)
+	UpdateByIDFunc func(ctx context.Context, token provisioning.Token) (provisioning.Token, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -71,7 +71,7 @@ type TokenRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Token is the token argument value.
-			Token operations.Token
+			Token provisioning.Token
 		}
 		// DeleteByID holds details about calls to the DeleteByID method.
 		DeleteByID []struct {
@@ -102,7 +102,7 @@ type TokenRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Token is the token argument value.
-			Token operations.Token
+			Token provisioning.Token
 		}
 	}
 	lockCreate     sync.RWMutex
@@ -114,13 +114,13 @@ type TokenRepoMock struct {
 }
 
 // Create calls CreateFunc.
-func (mock *TokenRepoMock) Create(ctx context.Context, token operations.Token) (operations.Token, error) {
+func (mock *TokenRepoMock) Create(ctx context.Context, token provisioning.Token) (provisioning.Token, error) {
 	if mock.CreateFunc == nil {
 		panic("TokenRepoMock.CreateFunc: method is nil but TokenRepo.Create was just called")
 	}
 	callInfo := struct {
 		Ctx   context.Context
-		Token operations.Token
+		Token provisioning.Token
 	}{
 		Ctx:   ctx,
 		Token: token,
@@ -137,11 +137,11 @@ func (mock *TokenRepoMock) Create(ctx context.Context, token operations.Token) (
 //	len(mockedTokenRepo.CreateCalls())
 func (mock *TokenRepoMock) CreateCalls() []struct {
 	Ctx   context.Context
-	Token operations.Token
+	Token provisioning.Token
 } {
 	var calls []struct {
 		Ctx   context.Context
-		Token operations.Token
+		Token provisioning.Token
 	}
 	mock.lockCreate.RLock()
 	calls = mock.calls.Create
@@ -186,7 +186,7 @@ func (mock *TokenRepoMock) DeleteByIDCalls() []struct {
 }
 
 // GetAll calls GetAllFunc.
-func (mock *TokenRepoMock) GetAll(ctx context.Context) (operations.Tokens, error) {
+func (mock *TokenRepoMock) GetAll(ctx context.Context) (provisioning.Tokens, error) {
 	if mock.GetAllFunc == nil {
 		panic("TokenRepoMock.GetAllFunc: method is nil but TokenRepo.GetAll was just called")
 	}
@@ -250,7 +250,7 @@ func (mock *TokenRepoMock) GetAllIDsCalls() []struct {
 }
 
 // GetByID calls GetByIDFunc.
-func (mock *TokenRepoMock) GetByID(ctx context.Context, id uuid.UUID) (operations.Token, error) {
+func (mock *TokenRepoMock) GetByID(ctx context.Context, id uuid.UUID) (provisioning.Token, error) {
 	if mock.GetByIDFunc == nil {
 		panic("TokenRepoMock.GetByIDFunc: method is nil but TokenRepo.GetByID was just called")
 	}
@@ -286,13 +286,13 @@ func (mock *TokenRepoMock) GetByIDCalls() []struct {
 }
 
 // UpdateByID calls UpdateByIDFunc.
-func (mock *TokenRepoMock) UpdateByID(ctx context.Context, token operations.Token) (operations.Token, error) {
+func (mock *TokenRepoMock) UpdateByID(ctx context.Context, token provisioning.Token) (provisioning.Token, error) {
 	if mock.UpdateByIDFunc == nil {
 		panic("TokenRepoMock.UpdateByIDFunc: method is nil but TokenRepo.UpdateByID was just called")
 	}
 	callInfo := struct {
 		Ctx   context.Context
-		Token operations.Token
+		Token provisioning.Token
 	}{
 		Ctx:   ctx,
 		Token: token,
@@ -309,11 +309,11 @@ func (mock *TokenRepoMock) UpdateByID(ctx context.Context, token operations.Toke
 //	len(mockedTokenRepo.UpdateByIDCalls())
 func (mock *TokenRepoMock) UpdateByIDCalls() []struct {
 	Ctx   context.Context
-	Token operations.Token
+	Token provisioning.Token
 } {
 	var calls []struct {
 		Ctx   context.Context
-		Token operations.Token
+		Token provisioning.Token
 	}
 	mock.lockUpdateByID.RLock()
 	calls = mock.calls.UpdateByID

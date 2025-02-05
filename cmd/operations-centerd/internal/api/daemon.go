@@ -15,8 +15,8 @@ import (
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
-	"github.com/FuturFusion/operations-center/internal/operations"
-	"github.com/FuturFusion/operations-center/internal/operations/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/response"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -68,7 +68,7 @@ func (d *Daemon) Start() error {
 	// TODO: setup OIDC
 
 	// Setup Services
-	tokenSvc := operations.NewTokenService(sqlite.NewToken(dbWithTransaction))
+	tokenSvc := provisioning.NewTokenService(sqlite.NewToken(dbWithTransaction))
 
 	// Setup Routes
 	router := http.NewServeMux()

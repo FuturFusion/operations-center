@@ -9,20 +9,20 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
-	"github.com/FuturFusion/operations-center/internal/operations"
-	"github.com/FuturFusion/operations-center/internal/operations/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 )
 
 func TestTokenDatabaseActions(t *testing.T) {
-	tokenA := operations.Token{
+	tokenA := provisioning.Token{
 		UUID:          uuid.Must(uuid.Parse(`8dae5ba3-2ad9-48a5-a7c4-188efb36fbb6`)),
 		UsesRemaining: 1,
 		ExpireAt:      time.Now().Add(1 * time.Minute),
 		Description:   "token A",
 	}
 
-	tokenB := operations.Token{
+	tokenB := provisioning.Token{
 		UUID:          uuid.Must(uuid.Parse(`e74417e0-e6d8-465a-b7bc-86d99a45ba49`)),
 		UsesRemaining: 10,
 		ExpireAt:      time.Now().Add(10 * time.Minute),

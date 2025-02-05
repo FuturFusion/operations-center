@@ -8,15 +8,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/mattn/go-sqlite3"
 
-	"github.com/FuturFusion/operations-center/internal/operations"
-	"github.com/FuturFusion/operations-center/internal/operations/repo"
+	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo"
 )
 
 type token struct {
 	db repo.DBTX
 }
 
-var _ operations.TokenRepo = &token{}
+var _ provisioning.TokenRepo = &token{}
 
 func NewToken(db repo.DBTX) *token {
 	return &token{
@@ -24,8 +25,8 @@ func NewToken(db repo.DBTX) *token {
 	}
 }
 
-func (t token) Create(ctx context.Context, in operations.Token) (operations.Token, error) {
-	const sqlInsert = `
+func (t token) Create(ctx context.Context, in provisioning.Token) (provisioning.Token, error) {
+	const sqlStmt = `
 INSERT INTO tokens (uuid, uses_remaining, expire_at, description)
 VALUES(:uuid, :uses_remaining, :expire_at, :description)
 RETURNING uuid, uses_remaining, expire_at, description;
@@ -33,33 +34,33 @@ RETURNING uuid, uses_remaining, expire_at, description;
 
 	marshalledExpireAt, err := in.ExpireAt.MarshalText()
 	if err != nil {
-		return operations.Token{}, err
+		return provisioning.Token{}, err
 	}
 
-	row := t.db.QueryRowContext(ctx, sqlInsert,
+	row := t.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("uuid", in.UUID),
 		sql.Named("uses_remaining", in.UsesRemaining),
 		sql.Named("expire_at", marshalledExpireAt),
 		sql.Named("description", in.Description),
 	)
 	if row.Err() != nil {
-		return operations.Token{}, row.Err()
+		return provisioning.Token{}, row.Err()
 	}
 
 	return scanToken(row)
 }
 
-func (t token) GetAll(ctx context.Context) (operations.Tokens, error) {
-	const sqlGetAll = `SELECT uuid, uses_remaining, expire_at, description FROM tokens;`
+func (t token) GetAll(ctx context.Context) (provisioning.Tokens, error) {
+	const sqlStmt = `SELECT uuid, uses_remaining, expire_at, description FROM tokens;`
 
-	rows, err := t.db.QueryContext(ctx, sqlGetAll)
+	rows, err := t.db.QueryContext(ctx, sqlStmt)
 	if err != nil {
 		return nil, err
 	}
 
 	defer func() { _ = rows.Close() }()
 
-	var tokens operations.Tokens
+	var tokens provisioning.Tokens
 	for rows.Next() {
 		token, err := scanToken(rows)
 		if err != nil {
@@ -77,9 +78,9 @@ func (t token) GetAll(ctx context.Context) (operations.Tokens, error) {
 }
 
 func (t token) GetAllIDs(ctx context.Context) ([]string, error) {
-	const sqlGetAllIDs = `SELECT uuid FROM tokens ORDER BY uuid`
+	const sqlStmt = `SELECT uuid FROM tokens ORDER BY uuid`
 
-	rows, err := t.db.QueryContext(ctx, sqlGetAllIDs)
+	rows, err := t.db.QueryContext(ctx, sqlStmt)
 	if err != nil {
 		return nil, err
 	}
@@ -104,19 +105,19 @@ func (t token) GetAllIDs(ctx context.Context) ([]string, error) {
 	return tokenIDs, nil
 }
 
-func (t token) GetByID(ctx context.Context, id uuid.UUID) (operations.Token, error) {
-	const sqlGetByID = `SELECT uuid, uses_remaining, expire_at, description FROM tokens WHERE uuid=:uuid;`
+func (t token) GetByID(ctx context.Context, id uuid.UUID) (provisioning.Token, error) {
+	const sqlStmt = `SELECT uuid, uses_remaining, expire_at, description FROM tokens WHERE uuid=:uuid;`
 
-	row := t.db.QueryRowContext(ctx, sqlGetByID, sql.Named("uuid", id))
+	row := t.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if row.Err() != nil {
-		return operations.Token{}, row.Err()
+		return provisioning.Token{}, row.Err()
 	}
 
 	return scanToken(row)
 }
 
-func (t token) UpdateByID(ctx context.Context, in operations.Token) (operations.Token, error) {
-	const sqlUpdate = `
+func (t token) UpdateByID(ctx context.Context, in provisioning.Token) (provisioning.Token, error) {
+	const sqlStmt = `
 UPDATE tokens SET uses_remaining=:uses_remaining, expire_at=:expire_at, description=:description
 WHERE uuid=:uuid
 RETURNING uuid, uses_remaining, expire_at, description;
@@ -124,26 +125,26 @@ RETURNING uuid, uses_remaining, expire_at, description;
 
 	marshalledExpireAt, err := in.ExpireAt.MarshalText()
 	if err != nil {
-		return operations.Token{}, err
+		return provisioning.Token{}, err
 	}
 
-	row := t.db.QueryRowContext(ctx, sqlUpdate,
+	row := t.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("uses_remaining", in.UsesRemaining),
 		sql.Named("expire_at", marshalledExpireAt),
 		sql.Named("description", in.Description),
 		sql.Named("uuid", in.UUID),
 	)
 	if row.Err() != nil {
-		return operations.Token{}, row.Err()
+		return provisioning.Token{}, row.Err()
 	}
 
 	return scanToken(row)
 }
 
 func (t token) DeleteByID(ctx context.Context, id uuid.UUID) error {
-	const sqlDelete = `DELETE FROM tokens WHERE uuid=:uuid;`
+	const sqlStmt = `DELETE FROM tokens WHERE uuid=:uuid;`
 
-	result, err := t.db.ExecContext(ctx, sqlDelete, sql.Named("uuid", id))
+	result, err := t.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if err != nil {
 		return err
 	}
@@ -154,14 +155,14 @@ func (t token) DeleteByID(ctx context.Context, id uuid.UUID) error {
 	}
 
 	if affectedRows == 0 {
-		return operations.ErrNotFound
+		return domain.ErrNotFound
 	}
 
 	return nil
 }
 
-func scanToken(row interface{ Scan(dest ...any) error }) (operations.Token, error) {
-	var token operations.Token
+func scanToken(row interface{ Scan(dest ...any) error }) (provisioning.Token, error) {
+	var token provisioning.Token
 	var marshalledExpireAt string
 	err := row.Scan(
 		&token.UUID,
@@ -171,22 +172,22 @@ func scanToken(row interface{ Scan(dest ...any) error }) (operations.Token, erro
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return operations.Token{}, operations.ErrNotFound
+			return provisioning.Token{}, domain.ErrNotFound
 		}
 
 		var sqliteErr sqlite3.Error
 		if errors.As(err, &sqliteErr) {
 			if sqliteErr.Code == sqlite3.ErrConstraint {
-				return operations.Token{}, operations.ErrConstraintViolation
+				return provisioning.Token{}, domain.ErrConstraintViolation
 			}
 		}
 
-		return operations.Token{}, err
+		return provisioning.Token{}, err
 	}
 
 	err = token.ExpireAt.UnmarshalText([]byte(marshalledExpireAt))
 	if err != nil {
-		return operations.Token{}, err
+		return provisioning.Token{}, err
 	}
 
 	return token, nil

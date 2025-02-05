@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/operations"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/response"
 )
 
@@ -19,8 +19,8 @@ func TestSmartError(t *testing.T) {
 		wantMessage string
 	}{
 		{
-			name: "operations validation error",
-			err:  operations.NewValidationErrf("foobar"),
+			name: "domain validation error",
+			err:  domain.NewValidationErrf("foobar"),
 
 			wantCode:    http.StatusBadRequest,
 			wantMessage: "foobar",
