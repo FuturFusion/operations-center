@@ -70,8 +70,8 @@ func TestTokenDatabaseActions(t *testing.T) {
 	// Test updating a token.
 	tokenB.UsesRemaining = 100
 	dbTokenB, err := token.UpdateByID(ctx, tokenB)
-	require.Equal(t, tokenB, dbTokenB)
 	require.NoError(t, err)
+	require.Equal(t, tokenB, dbTokenB)
 	dbTokenB, err = token.GetByID(ctx, tokenB.UUID)
 	require.NoError(t, err)
 	require.Equal(t, tokenB, dbTokenB)
