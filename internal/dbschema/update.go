@@ -20,6 +20,14 @@ CREATE TABLE clusters (
   UNIQUE (name)
 );
 
+CREATE TABLE servers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  hostname TEXT NOT NULL,
+  UNIQUE (hostname),
+  FOREIGN KEY(cluster_id) REFERENCES clusters(id)
+);
+
 INSERT INTO schema (version, updated_at) VALUES (2, strftime("%s"))
 `
 
@@ -67,6 +75,14 @@ CREATE TABLE clusters (
   name TEXT NOT NULL,
   server_hostnames TEXT NOT NULL,
   UNIQUE (name)
+);
+
+CREATE TABLE servers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  hostname TEXT NOT NULL,
+  UNIQUE (hostname),
+  FOREIGN KEY(cluster_id) REFERENCES clusters(id)
 );
 `
 	_, err := tx.Exec(stmt)
