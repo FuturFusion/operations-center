@@ -33,9 +33,9 @@ func TestToken_Validate(t *testing.T) {
 				ExpireAt:      time.Now().Add(1 * time.Minute),
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr)
+				require.ErrorAs(tt, err, &verr, a...)
 			},
 		},
 		{
@@ -45,9 +45,9 @@ func TestToken_Validate(t *testing.T) {
 				ExpireAt:      time.Now().Add(-1 * time.Minute),
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr)
+				require.ErrorAs(tt, err, &verr, a...)
 			},
 		},
 	}
