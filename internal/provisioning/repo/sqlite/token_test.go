@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
@@ -80,7 +81,7 @@ func TestTokenDatabaseActions(t *testing.T) {
 	err = token.DeleteByID(ctx, tokenA.UUID)
 	require.NoError(t, err)
 	_, err = token.GetByID(ctx, tokenA.UUID)
-	require.Error(t, err)
+	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have two tokens remaining.
 	tokens, err = token.GetAll(ctx)
@@ -89,9 +90,9 @@ func TestTokenDatabaseActions(t *testing.T) {
 
 	// Can't delete a token that doesn't exist.
 	err = token.DeleteByID(ctx, uuid.Must(uuid.Parse(`66307d51-c379-4fb3-be5d-5c4c24ba7b21`)))
-	require.Error(t, err)
+	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Can't update a token that doesn't exist.
 	_, err = token.UpdateByID(ctx, tokenA)
-	require.Error(t, err)
+	require.ErrorIs(t, err, domain.ErrNotFound)
 }
