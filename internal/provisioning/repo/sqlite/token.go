@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -30,15 +31,10 @@ VALUES(:uuid, :uses_remaining, :expire_at, :description)
 RETURNING uuid, uses_remaining, expire_at, description;
 `
 
-	marshalledExpireAt, err := in.ExpireAt.MarshalText()
-	if err != nil {
-		return provisioning.Token{}, err
-	}
-
 	row := t.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("uuid", in.UUID),
 		sql.Named("uses_remaining", in.UsesRemaining),
-		sql.Named("expire_at", marshalledExpireAt),
+		sql.Named("expire_at", datetime(in.ExpireAt)),
 		sql.Named("description", in.Description),
 	)
 	if row.Err() != nil {
@@ -121,14 +117,9 @@ WHERE uuid=:uuid
 RETURNING uuid, uses_remaining, expire_at, description;
 `
 
-	marshalledExpireAt, err := in.ExpireAt.MarshalText()
-	if err != nil {
-		return provisioning.Token{}, err
-	}
-
 	row := t.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("uses_remaining", in.UsesRemaining),
-		sql.Named("expire_at", marshalledExpireAt),
+		sql.Named("expire_at", datetime(in.ExpireAt)),
 		sql.Named("description", in.Description),
 		sql.Named("uuid", in.UUID),
 	)
@@ -161,21 +152,19 @@ func (t token) DeleteByID(ctx context.Context, id uuid.UUID) error {
 
 func scanToken(row interface{ Scan(dest ...any) error }) (provisioning.Token, error) {
 	var token provisioning.Token
-	var marshalledExpireAt string
+	var expireAt datetime
+
 	err := row.Scan(
 		&token.UUID,
 		&token.UsesRemaining,
-		&marshalledExpireAt,
+		&expireAt,
 		&token.Description,
 	)
 	if err != nil {
 		return provisioning.Token{}, mapErr(err)
 	}
 
-	err = token.ExpireAt.UnmarshalText([]byte(marshalledExpireAt))
-	if err != nil {
-		return provisioning.Token{}, err
-	}
+	token.ExpireAt = time.Time(expireAt)
 
 	return token, nil
 }
