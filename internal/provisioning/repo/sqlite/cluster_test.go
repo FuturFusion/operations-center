@@ -3,6 +3,7 @@ package sqlite_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -17,13 +18,17 @@ func TestClusterDatabaseActions(t *testing.T) {
 	clusterA := provisioning.Cluster{
 		ID:              1,
 		Name:            "one",
+		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"server1", "server2"},
+		LastUpdated:     time.Now(),
 	}
 
 	clusterB := provisioning.Cluster{
 		ID:              2,
 		Name:            "two",
+		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"server10", "server11"},
+		LastUpdated:     time.Now(),
 	}
 
 	ctx := context.Background()

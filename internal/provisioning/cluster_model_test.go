@@ -21,6 +21,7 @@ func TestCluster_Validate(t *testing.T) {
 			cluster: provisioning.Cluster{
 				Name:            "one",
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -30,6 +31,7 @@ func TestCluster_Validate(t *testing.T) {
 			cluster: provisioning.Cluster{
 				Name:            "", // invalid
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -42,6 +44,33 @@ func TestCluster_Validate(t *testing.T) {
 			cluster: provisioning.Cluster{
 				Name:            "one",
 				ServerHostnames: nil, // invalid
+				ConnectionURL:   "http://one/",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - connection URL empty",
+			cluster: provisioning.Cluster{
+				Name:            "one",
+				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "", // invalid
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - connection URL invalid",
+			cluster: provisioning.Cluster{
+				Name:            "one",
+				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   ":|\\", // invalid
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {

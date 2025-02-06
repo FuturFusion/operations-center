@@ -25,6 +25,7 @@ func TestClusterService_Create(t *testing.T) {
 			cluster: provisioning.Cluster{
 				Name:            "one",
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -34,6 +35,7 @@ func TestClusterService_Create(t *testing.T) {
 			cluster: provisioning.Cluster{
 				Name:            "", // invalid
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -46,6 +48,7 @@ func TestClusterService_Create(t *testing.T) {
 			cluster: provisioning.Cluster{
 				Name:            "one",
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 			repoCreateErr: boom.Error,
 
@@ -89,11 +92,13 @@ func TestClusterService_GetAll(t *testing.T) {
 					ID:              1,
 					Name:            "one",
 					ServerHostnames: []string{"server1", "server2"},
+					ConnectionURL:   "http://one/",
 				},
 				provisioning.Cluster{
 					ID:              2,
 					Name:            "one",
 					ServerHostnames: []string{"server1", "server2"},
+					ConnectionURL:   "http://one/",
 				},
 			},
 
@@ -193,6 +198,7 @@ func TestClusterService_GetByID(t *testing.T) {
 			repoGetByIDCluster: provisioning.Cluster{
 				Name:            "one",
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -242,6 +248,7 @@ func TestClusterService_GetByName(t *testing.T) {
 			repoGetByIDCluster: provisioning.Cluster{
 				Name:            "one",
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -303,16 +310,19 @@ func TestClusterService_UpdateByName(t *testing.T) {
 				ID:              1,
 				Name:            "one",
 				ServerHostnames: []string{"server1", "server3"},
+				ConnectionURL:   "http://one/",
 			},
 			repoGetByNameCluster: provisioning.Cluster{
 				ID:              1,
 				Name:            "one",
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 			repoUpdateCluster: provisioning.Cluster{
 				ID:              1,
 				Name:            "one",
 				ServerHostnames: []string{"server1", "server3"},
+				ConnectionURL:   "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -332,6 +342,7 @@ func TestClusterService_UpdateByName(t *testing.T) {
 				ID:              1,
 				Name:            "one",
 				ServerHostnames: nil, // invalid
+				ConnectionURL:   "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -346,6 +357,7 @@ func TestClusterService_UpdateByName(t *testing.T) {
 				ID:              1,
 				Name:            "one 1", // invalid missmatch
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -360,6 +372,7 @@ func TestClusterService_UpdateByName(t *testing.T) {
 				ID:              1,
 				Name:            "one",
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 			repoGetByNameErr: boom.Error,
 
@@ -372,11 +385,13 @@ func TestClusterService_UpdateByName(t *testing.T) {
 				ID:              1,
 				Name:            "one",
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 			repoGetByNameCluster: provisioning.Cluster{
 				ID:              1,
 				Name:            "one",
 				ServerHostnames: []string{"server1"},
+				ConnectionURL:   "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -390,11 +405,13 @@ func TestClusterService_UpdateByName(t *testing.T) {
 				ID:              1,
 				Name:            "one",
 				ServerHostnames: []string{"server1", "server3"},
+				ConnectionURL:   "http://one/",
 			},
 			repoGetByNameCluster: provisioning.Cluster{
 				ID:              1,
 				Name:            "one",
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 			repoUpdateErr: boom.Error,
 
@@ -445,16 +462,19 @@ func TestClusterService_RenameByName(t *testing.T) {
 				ID:              1,
 				Name:            "one new",
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 			repoGetByNameCluster: provisioning.Cluster{
 				ID:              1,
 				Name:            "one",
 				ServerHostnames: []string{"server1"},
+				ConnectionURL:   "http://one/",
 			},
 			repoUpdateCluster: provisioning.Cluster{
 				ID:              1,
 				Name:            "one new",
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -474,6 +494,7 @@ func TestClusterService_RenameByName(t *testing.T) {
 				ID:              1,
 				Name:            "", // invalid
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -488,6 +509,7 @@ func TestClusterService_RenameByName(t *testing.T) {
 				ID:              1,
 				Name:            "one",
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 			repoGetByNameErr: boom.Error,
 
@@ -500,11 +522,13 @@ func TestClusterService_RenameByName(t *testing.T) {
 				ID:              1,
 				Name:            "one",
 				ServerHostnames: []string{"server1", "server2"},
+				ConnectionURL:   "http://one/",
 			},
 			repoGetByNameCluster: provisioning.Cluster{
 				ID:              1,
 				Name:            "one",
 				ServerHostnames: []string{"server1"},
+				ConnectionURL:   "http://one/",
 			},
 			repoUpdateErr: boom.Error,
 
