@@ -23,8 +23,9 @@ func TestServerService_Create(t *testing.T) {
 		{
 			name: "success",
 			server: provisioning.Server{
-				Hostname:  "one",
-				ClusterID: 1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -32,8 +33,9 @@ func TestServerService_Create(t *testing.T) {
 		{
 			name: "error - validation",
 			server: provisioning.Server{
-				Hostname:  "", // invalid
-				ClusterID: 1,
+				Hostname:      "", // invalid
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -44,8 +46,9 @@ func TestServerService_Create(t *testing.T) {
 		{
 			name: "error - repo.Create",
 			server: provisioning.Server{
-				Hostname:  "one",
-				ClusterID: 1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 			repoCreateErr: boom.Error,
 
@@ -86,14 +89,16 @@ func TestServerService_GetAll(t *testing.T) {
 			name: "success",
 			repoGetAllServers: provisioning.Servers{
 				provisioning.Server{
-					ID:        1,
-					Hostname:  "one",
-					ClusterID: 1,
+					ID:            1,
+					Hostname:      "one",
+					ClusterID:     1,
+					ConnectionURL: "http://one/",
 				},
 				provisioning.Server{
-					ID:        2,
-					Hostname:  "one",
-					ClusterID: 1,
+					ID:            2,
+					Hostname:      "one",
+					ClusterID:     1,
+					ConnectionURL: "http://one/",
 				},
 			},
 
@@ -191,8 +196,9 @@ func TestServerService_GetByID(t *testing.T) {
 			name:  "success",
 			idArg: 1,
 			repoGetByIDServer: provisioning.Server{
-				Hostname:  "one",
-				ClusterID: 1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -240,8 +246,9 @@ func TestServerService_GetByHostname(t *testing.T) {
 			name:        "success",
 			hostnameArg: "one",
 			repoGetByIDServer: provisioning.Server{
-				Hostname:  "one",
-				ClusterID: 1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -300,19 +307,22 @@ func TestServerService_UpdateByHostname(t *testing.T) {
 			name:        "success",
 			hostnameArg: "one",
 			server: provisioning.Server{
-				ID:        1,
-				Hostname:  "one",
-				ClusterID: 1,
+				ID:            1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 			repoGetByHostnameServer: provisioning.Server{
-				ID:        1,
-				Hostname:  "one",
-				ClusterID: 1,
+				ID:            1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 			repoUpdateServer: provisioning.Server{
-				ID:        1,
-				Hostname:  "one",
-				ClusterID: 1,
+				ID:            1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -329,9 +339,10 @@ func TestServerService_UpdateByHostname(t *testing.T) {
 			name:        "error - validation",
 			hostnameArg: "one",
 			server: provisioning.Server{
-				ID:        1,
-				Hostname:  "", // invalid
-				ClusterID: 1,
+				ID:            1,
+				Hostname:      "", // invalid
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -343,9 +354,10 @@ func TestServerService_UpdateByHostname(t *testing.T) {
 			name:        "error - hostname mismatch",
 			hostnameArg: "one",
 			server: provisioning.Server{
-				ID:        1,
-				Hostname:  "one 1", // mismatch
-				ClusterID: 1,
+				ID:            1,
+				Hostname:      "one 1", // mismatch
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -357,9 +369,10 @@ func TestServerService_UpdateByHostname(t *testing.T) {
 			name:        "error - repo.GetByHostname",
 			hostnameArg: "one",
 			server: provisioning.Server{
-				ID:        1,
-				Hostname:  "one",
-				ClusterID: 1,
+				ID:            1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 			repoGetByHostnameErr: boom.Error,
 
@@ -369,14 +382,16 @@ func TestServerService_UpdateByHostname(t *testing.T) {
 			name:        "error - repo.UpdateByID",
 			hostnameArg: "one",
 			server: provisioning.Server{
-				ID:        1,
-				Hostname:  "one",
-				ClusterID: 1,
+				ID:            1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 			repoGetByHostnameServer: provisioning.Server{
-				ID:        1,
-				Hostname:  "one",
-				ClusterID: 1,
+				ID:            1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 			repoUpdateErr: boom.Error,
 
@@ -424,19 +439,22 @@ func TestServerService_RenameByHostname(t *testing.T) {
 			name:        "success",
 			hostnameArg: "one",
 			server: provisioning.Server{
-				ID:        1,
-				Hostname:  "one",
-				ClusterID: 1,
+				ID:            1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 			repoGetByHostnameServer: provisioning.Server{
-				ID:        1,
-				Hostname:  "one",
-				ClusterID: 1,
+				ID:            1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 			repoUpdateServer: provisioning.Server{
-				ID:        1,
-				Hostname:  "one",
-				ClusterID: 1,
+				ID:            1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -453,9 +471,10 @@ func TestServerService_RenameByHostname(t *testing.T) {
 			name:        "error - new hostname empty",
 			hostnameArg: "one",
 			server: provisioning.Server{
-				ID:        1,
-				Hostname:  "", // invalid
-				ClusterID: 1,
+				ID:            1,
+				Hostname:      "", // invalid
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -467,9 +486,10 @@ func TestServerService_RenameByHostname(t *testing.T) {
 			name:        "error - repo.GetByHostname",
 			hostnameArg: "one",
 			server: provisioning.Server{
-				ID:        1,
-				Hostname:  "one",
-				ClusterID: 1,
+				ID:            1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 			repoGetByHostnameErr: boom.Error,
 
@@ -479,14 +499,16 @@ func TestServerService_RenameByHostname(t *testing.T) {
 			name:        "error - repo.UpdateByID",
 			hostnameArg: "one",
 			server: provisioning.Server{
-				ID:        1,
-				Hostname:  "one",
-				ClusterID: 1,
+				ID:            1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 			repoGetByHostnameServer: provisioning.Server{
-				ID:        1,
-				Hostname:  "one",
-				ClusterID: 1,
+				ID:            1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 			repoUpdateErr: boom.Error,
 
@@ -533,9 +555,10 @@ func TestServerService_DeleteByHostname(t *testing.T) {
 			name:        "success",
 			hostnameArg: "one",
 			repoGetByHostnameServer: provisioning.Server{
-				ID:        1,
-				Hostname:  "one",
-				ClusterID: 1,
+				ID:            1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: require.NoError,

@@ -1,11 +1,25 @@
 package provisioning
 
-import "github.com/FuturFusion/operations-center/internal/domain"
+import (
+	"encoding/json"
+	"net/url"
+	"time"
+
+	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/shared/api"
+)
 
 type Server struct {
-	ID        int
-	ClusterID int
-	Hostname  string
+	ID            int
+	ClusterID     int
+	Hostname      string
+	Type          api.ServerType
+	ConnectionURL string
+	HardwareData  incusapi.Resources
+	VersionData   json.RawMessage // FIXME: it is not yet clear, how the structure of the version information will actually look like.
+	LastUpdated   time.Time
 }
 
 func (s Server) Validate() error {
@@ -15,6 +29,15 @@ func (s Server) Validate() error {
 
 	if s.ClusterID < 1 {
 		return domain.NewValidationErrf("Invalid server, cluster id can not be less than 1")
+	}
+
+	if s.ConnectionURL == "" {
+		return domain.NewValidationErrf("Invalid server, connection URL can not be empty")
+	}
+
+	_, err := url.Parse(s.ConnectionURL)
+	if err != nil {
+		return domain.NewValidationErrf("Invalid server, connection URL is not valid: %v", err)
 	}
 
 	return nil

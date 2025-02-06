@@ -16,7 +16,9 @@ CREATE TABLE tokens (
 CREATE TABLE clusters (
   id INTEGER PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
+  connection_url TEXT NOT NULL,
   server_hostnames TEXT NOT NULL,
+  last_updated TEXT NOT NULL,
   UNIQUE (name)
 );
 
@@ -24,6 +26,9 @@ CREATE TABLE servers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   hostname TEXT NOT NULL,
+  type TEXT NOT NULL,
+  connection_url TEXT NOT NULL,
+  last_updated TEXT NOT NULL,
   UNIQUE (hostname),
   FOREIGN KEY(cluster_id) REFERENCES clusters(id)
 );
@@ -73,7 +78,9 @@ CREATE TABLE tokens (
 CREATE TABLE clusters (
   id INTEGER PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
+  connection_url TEXT NOT NULL,
   server_hostnames TEXT NOT NULL,
+  last_updated TEXT NOT NULL,
   UNIQUE (name)
 );
 
@@ -81,6 +88,9 @@ CREATE TABLE servers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   hostname TEXT NOT NULL,
+  type TEXT NOT NULL,
+  connection_url TEXT NOT NULL,
+  last_updated TEXT NOT NULL,
   UNIQUE (hostname),
   FOREIGN KEY(cluster_id) REFERENCES clusters(id)
 );

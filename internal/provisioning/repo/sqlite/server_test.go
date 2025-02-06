@@ -2,8 +2,11 @@ package sqlite_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
+	"time"
 
+	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -11,31 +14,46 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestServerDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
 		ID:              1,
 		Name:            "one",
+		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
+		LastUpdated:     time.Now(),
 	}
 
 	testClusterB := provisioning.Cluster{
 		ID:              2,
 		Name:            "two",
+		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"one", "two"},
+		LastUpdated:     time.Now(),
 	}
 
 	serverA := provisioning.Server{
-		ID:        1,
-		ClusterID: 1,
-		Hostname:  "one",
+		ID:            1,
+		ClusterID:     1,
+		Hostname:      "one",
+		Type:          api.ServerTypeIncus,
+		ConnectionURL: "https://one/",
+		HardwareData:  incusapi.Resources{},
+		VersionData:   json.RawMessage(`{}`),
+		LastUpdated:   time.Now(),
 	}
 
 	serverB := provisioning.Server{
-		ID:        2,
-		ClusterID: 2,
-		Hostname:  "two",
+		ID:            2,
+		ClusterID:     2,
+		Hostname:      "two",
+		Type:          api.ServerTypeMigrationManager,
+		ConnectionURL: "https://two/",
+		HardwareData:  incusapi.Resources{},
+		VersionData:   json.RawMessage(`{}`),
+		LastUpdated:   time.Now(),
 	}
 
 	ctx := context.Background()

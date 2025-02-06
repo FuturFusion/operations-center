@@ -19,8 +19,9 @@ func TestServer_Validate(t *testing.T) {
 		{
 			name: "valid",
 			server: provisioning.Server{
-				Hostname:  "one",
-				ClusterID: 1,
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -28,8 +29,9 @@ func TestServer_Validate(t *testing.T) {
 		{
 			name: "error - name empty",
 			server: provisioning.Server{
-				Hostname:  "", // invalid
-				ClusterID: 1,
+				Hostname:      "", // invalid
+				ClusterID:     1,
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -38,10 +40,37 @@ func TestServer_Validate(t *testing.T) {
 			},
 		},
 		{
-			name: "error - server hostname list empty",
+			name: "error - server cluster ID invalid",
 			server: provisioning.Server{
-				Hostname:  "one",
-				ClusterID: 0, // invalid
+				Hostname:      "one",
+				ClusterID:     0, // invalid
+				ConnectionURL: "http://one/",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - connection URL empty",
+			server: provisioning.Server{
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: "", // invalid
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - connection URL invalid",
+			server: provisioning.Server{
+				Hostname:      "one",
+				ClusterID:     1,
+				ConnectionURL: ":|\\", // invalid
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
