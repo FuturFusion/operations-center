@@ -69,6 +69,8 @@ func (d *Daemon) Start() error {
 
 	// Setup Services
 	tokenSvc := provisioning.NewTokenService(sqlite.NewToken(dbWithTransaction))
+	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(dbWithTransaction))
+	serverSvc := provisioning.NewServerService(sqlite.NewServer(dbWithTransaction))
 
 	// Setup Routes
 	router := http.NewServeMux()
@@ -85,6 +87,12 @@ func (d *Daemon) Start() error {
 
 	tokenRouter := newSubRouter(provisioningRouter, "/tokens")
 	registerTokenHandler(tokenRouter, tokenSvc)
+
+	clusterRouter := newSubRouter(provisioningRouter, "/clusters")
+	registerClusterHandler(clusterRouter, clusterSvc)
+
+	serverRouter := newSubRouter(provisioningRouter, "/servers")
+	registerServerHandler(serverRouter, serverSvc)
 
 	// Setup web server
 	d.server = &http.Server{
