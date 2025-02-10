@@ -71,7 +71,7 @@ func TestStartAndStop(t *testing.T) {
 			assertFunc: func(t *testing.T) {
 				t.Helper()
 
-				resp, err := http.Get("http://localhost:17443")
+				resp, err := http.Get("http://localhost:17443/")
 				require.NoError(t, err)
 				defer resp.Body.Close()
 
@@ -79,6 +79,50 @@ func TestStartAndStop(t *testing.T) {
 				require.NoError(t, err)
 
 				wantBody := `{"type":"sync","status":"Success","status_code":200,"operation":"","error_code":0,"error":"","metadata":["/1.0"]}`
+				require.JSONEq(t, wantBody, string(body))
+			},
+		},
+		{
+			name:       "success - http request using subrouter",
+			unixSocket: filepath.Join(tmpDir, "unix.socket"),
+			bindPort:   17443,
+
+			assertStartErr: require.NoError,
+			assertStopErr:  require.NoError,
+			assertFunc: func(t *testing.T) {
+				t.Helper()
+
+				resp, err := http.Get("http://localhost:17443/1.0/provisioning/tokens")
+				require.NoError(t, err)
+				defer resp.Body.Close()
+
+				body, err := io.ReadAll(resp.Body)
+				require.NoError(t, err)
+
+				wantBody := `{"type":"sync","status":"Success","status_code":200,"operation":"","error_code":0,"error":"","metadata":[]}`
+				require.JSONEq(t, wantBody, string(body))
+			},
+		},
+		{
+			name:       "success - http request using subrouter with trailing slash - not found",
+			unixSocket: filepath.Join(tmpDir, "unix.socket"),
+			bindPort:   17443,
+
+			assertStartErr: require.NoError,
+			assertStopErr:  require.NoError,
+			assertFunc: func(t *testing.T) {
+				t.Helper()
+
+				resp, err := http.Get("http://localhost:17443/1.0/provisioning/tokens/")
+				require.NoError(t, err)
+				defer resp.Body.Close()
+
+				require.Equal(t, http.StatusNotFound, resp.StatusCode)
+
+				body, err := io.ReadAll(resp.Body)
+				require.NoError(t, err)
+
+				wantBody := `{"type":"error","status":"","status_code":0,"operation":"","error_code":404,"error":"Not Found","metadata":null}`
 				require.JSONEq(t, wantBody, string(body))
 			},
 		},

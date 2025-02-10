@@ -201,7 +201,7 @@ func handleRootPath(h http.Handler, ignoreTrailingSlash bool) http.Handler {
 				return
 			}
 
-			http.NotFound(w, r)
+			_ = response.NotFound(nil).Render(w)
 			return
 
 		default:
