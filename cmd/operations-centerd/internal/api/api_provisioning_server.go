@@ -29,7 +29,7 @@ func registerProvisioningServerHandler(router *http.ServeMux, service provisioni
 	router.HandleFunc("POST /{hostname}", response.With(handler.serverPost))
 }
 
-// swagger:operation GET /1.0/servers servers servers_get
+// swagger:operation GET /1.0/provisioning/servers servers servers_get
 //
 //	Get the servers
 //
@@ -64,15 +64,15 @@ func registerProvisioningServerHandler(router *http.ServeMux, service provisioni
 //                  type: string
 //                example: |-
 //                  [
-//                    "/1.0/servers/one",
-//                    "/1.0/servers/two"
+//                    "/1.0/provisioning/servers/one",
+//                    "/1.0/provisioning/servers/two"
 //                  ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/servers?recursion=1 servers servers_get_recursion
+// swagger:operation GET /1.0/provisioning/servers?recursion=1 servers servers_get_recursion
 //
 //	Get the servers
 //
@@ -152,7 +152,7 @@ func (t *serverHandler) serversGet(r *http.Request) response.Response {
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation POST /1.0/servers servers servers_post
+// swagger:operation POST /1.0/provisioning/servers servers servers_post
 //
 //	Add a server
 //
@@ -205,7 +205,7 @@ func (t *serverHandler) serversPost(r *http.Request) response.Response {
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/servers/"+server.Hostname)
 }
 
-// swagger:operation GET /1.0/servers/{hostname} servers server_get
+// swagger:operation GET /1.0/provisioning/servers/{hostname} servers server_get
 //
 //	Get the server
 //
@@ -263,7 +263,7 @@ func (t *serverHandler) serverGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation PUT /1.0/servers/{hostname} servers server_put
+// swagger:operation PUT /1.0/provisioning/servers/{hostname} servers server_put
 //
 //	Update the server
 //
@@ -343,7 +343,7 @@ func (t *serverHandler) serverPut(r *http.Request) response.Response {
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/servers/"+hostname)
 }
 
-// swagger:operation DELETE /1.0/servers/{hostname} servers server_delete
+// swagger:operation DELETE /1.0/provisioning/servers/{hostname} servers server_delete
 //
 //	Delete the server
 //
@@ -372,7 +372,7 @@ func (t *serverHandler) serverDelete(r *http.Request) response.Response {
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/servers/{hostname} servers server_post
+// swagger:operation POST /1.0/provisioning/servers/{hostname} servers server_post
 //
 //	Rename the server
 //

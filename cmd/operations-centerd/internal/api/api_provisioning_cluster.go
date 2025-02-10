@@ -29,7 +29,7 @@ func registerProvisioningClusterHandler(router *http.ServeMux, service provision
 	router.HandleFunc("POST /{name}", response.With(handler.clusterPost))
 }
 
-// swagger:operation GET /1.0/clusters clusters clusters_get
+// swagger:operation GET /1.0/provisioning/clusters clusters clusters_get
 //
 //	Get the clusters
 //
@@ -64,15 +64,15 @@ func registerProvisioningClusterHandler(router *http.ServeMux, service provision
 //                  type: string
 //                example: |-
 //                  [
-//                    "/1.0/clusters/one",
-//                    "/1.0/clusters/two"
+//                    "/1.0/provisioning/clusters/one",
+//                    "/1.0/provisioning/clusters/two"
 //                  ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/clusters?recursion=1 clusters clusters_get_recursion
+// swagger:operation GET /1.0/provisioning/clusters?recursion=1 clusters clusters_get_recursion
 //
 //	Get the clusters
 //
@@ -149,7 +149,7 @@ func (t *clusterHandler) clustersGet(r *http.Request) response.Response {
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation POST /1.0/clusters clusters clusters_post
+// swagger:operation POST /1.0/provisioning/clusters clusters clusters_post
 //
 //	Add a cluster
 //
@@ -199,7 +199,7 @@ func (t *clusterHandler) clustersPost(r *http.Request) response.Response {
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/clusters/"+cluster.Name)
 }
 
-// swagger:operation GET /1.0/clusters/{name} clusters cluster_get
+// swagger:operation GET /1.0/provisioning/clusters/{name} clusters cluster_get
 //
 //	Get the cluster
 //
@@ -254,7 +254,7 @@ func (t *clusterHandler) clusterGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation PUT /1.0/clusters/{name} clusters cluster_put
+// swagger:operation PUT /1.0/provisioning/clusters/{name} clusters cluster_put
 //
 //	Update the cluster
 //
@@ -331,7 +331,7 @@ func (t *clusterHandler) clusterPut(r *http.Request) response.Response {
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/clusters/"+name)
 }
 
-// swagger:operation DELETE /1.0/clusters/{name} clusters cluster_delete
+// swagger:operation DELETE /1.0/provisioning/clusters/{name} clusters cluster_delete
 //
 //	Delete the cluster
 //
@@ -360,7 +360,7 @@ func (t *clusterHandler) clusterDelete(r *http.Request) response.Response {
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/clusters/{name} clusters cluster_post
+// swagger:operation POST /1.0/provisioning/clusters/{name} clusters cluster_post
 //
 //	Rename the cluster
 //

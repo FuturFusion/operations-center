@@ -30,7 +30,7 @@ func registerProvisioningTokenHandler(router *http.ServeMux, service provisionin
 	router.HandleFunc("DELETE /{uuid}", response.With(handler.tokenDelete))
 }
 
-// swagger:operation GET /1.0/tokens tokens tokens_get
+// swagger:operation GET /1.0/provisioning/tokens tokens tokens_get
 //
 //	Get the tokens
 //
@@ -65,15 +65,15 @@ func registerProvisioningTokenHandler(router *http.ServeMux, service provisionin
 //                  type: string
 //                example: |-
 //                  [
-//                    "/1.0/tokens/b32d0079-c48b-4957-b1cb-bef54125c861",
-//                    "/1.0/tokens/464d229b-3069-4a82-bc59-b215a7c6ed1b"
+//                    "/1.0/provisioning/tokens/b32d0079-c48b-4957-b1cb-bef54125c861",
+//                    "/1.0/provisioning/tokens/464d229b-3069-4a82-bc59-b215a7c6ed1b"
 //                  ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/tokens?recursion=1 tokens tokens_get_recursion
+// swagger:operation GET /1.0/provisioning/tokens?recursion=1 tokens tokens_get_recursion
 //
 //	Get the tokens
 //
@@ -149,7 +149,7 @@ func (t *tokenHandler) tokensGet(r *http.Request) response.Response {
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation POST /1.0/tokens tokens tokens_post
+// swagger:operation POST /1.0/provisioning/tokens tokens tokens_post
 //
 //	Add a token
 //
@@ -197,7 +197,7 @@ func (t *tokenHandler) tokensPost(r *http.Request) response.Response {
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/tokens/"+token.UUID.String())
 }
 
-// swagger:operation GET /1.0/tokens/{uuid} tokens token_get
+// swagger:operation GET /1.0/provisioning/tokens/{uuid} tokens token_get
 //
 //	Get the token
 //
@@ -256,7 +256,7 @@ func (t *tokenHandler) tokenGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation PUT /1.0/tokens/{uuid} tokens token_put
+// swagger:operation PUT /1.0/provisioning/tokens/{uuid} tokens token_put
 //
 //	Update the token
 //
@@ -337,7 +337,7 @@ func (t *tokenHandler) tokenPut(r *http.Request) response.Response {
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/tokens/"+UUID.String())
 }
 
-// swagger:operation DELETE /1.0/tokens/{uuid} tokens token_delete
+// swagger:operation DELETE /1.0/provisioning/tokens/{uuid} tokens token_delete
 //
 //	Delete the token
 //
