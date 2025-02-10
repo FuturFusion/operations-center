@@ -16,7 +16,7 @@ type serverHandler struct {
 	service provisioning.ServerService
 }
 
-func registerServerHandler(router *http.ServeMux, service provisioning.ServerService) {
+func registerProvisioningServerHandler(router *http.ServeMux, service provisioning.ServerService) {
 	handler := &serverHandler{
 		service: service,
 	}

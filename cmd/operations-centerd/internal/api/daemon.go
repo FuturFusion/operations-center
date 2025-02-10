@@ -85,14 +85,14 @@ func (d *Daemon) Start() error {
 
 	provisioningRouter := newSubRouter(api10router, "/provisioning")
 
-	tokenRouter := newSubRouter(provisioningRouter, "/tokens")
-	registerTokenHandler(tokenRouter, tokenSvc)
+	provisioningTokenRouter := newSubRouter(provisioningRouter, "/tokens")
+	registerProvisioningTokenHandler(provisioningTokenRouter, tokenSvc)
 
-	clusterRouter := newSubRouter(provisioningRouter, "/clusters")
-	registerClusterHandler(clusterRouter, clusterSvc)
+	provisioningClusterRouter := newSubRouter(provisioningRouter, "/clusters")
+	registerProvisioningClusterHandler(provisioningClusterRouter, clusterSvc)
 
-	serverRouter := newSubRouter(provisioningRouter, "/servers")
-	registerServerHandler(serverRouter, serverSvc)
+	provisioningServerRouter := newSubRouter(provisioningRouter, "/servers")
+	registerProvisioningServerHandler(provisioningServerRouter, serverSvc)
 
 	// Setup web server
 	d.server = &http.Server{

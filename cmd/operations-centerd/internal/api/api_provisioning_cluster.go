@@ -16,7 +16,7 @@ type clusterHandler struct {
 	service provisioning.ClusterService
 }
 
-func registerClusterHandler(router *http.ServeMux, service provisioning.ClusterService) {
+func registerProvisioningClusterHandler(router *http.ServeMux, service provisioning.ClusterService) {
 	handler := &clusterHandler{
 		service: service,
 	}
