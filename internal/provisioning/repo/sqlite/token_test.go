@@ -9,20 +9,21 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
-	"github.com/FuturFusion/operations-center/internal/operations"
-	"github.com/FuturFusion/operations-center/internal/operations/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 )
 
 func TestTokenDatabaseActions(t *testing.T) {
-	tokenA := operations.Token{
+	tokenA := provisioning.Token{
 		UUID:          uuid.Must(uuid.Parse(`8dae5ba3-2ad9-48a5-a7c4-188efb36fbb6`)),
 		UsesRemaining: 1,
 		ExpireAt:      time.Now().Add(1 * time.Minute),
 		Description:   "token A",
 	}
 
-	tokenB := operations.Token{
+	tokenB := provisioning.Token{
 		UUID:          uuid.Must(uuid.Parse(`e74417e0-e6d8-465a-b7bc-86d99a45ba49`)),
 		UsesRemaining: 10,
 		ExpireAt:      time.Now().Add(10 * time.Minute),
@@ -70,8 +71,8 @@ func TestTokenDatabaseActions(t *testing.T) {
 	// Test updating a token.
 	tokenB.UsesRemaining = 100
 	dbTokenB, err := token.UpdateByID(ctx, tokenB)
-	require.Equal(t, tokenB, dbTokenB)
 	require.NoError(t, err)
+	require.Equal(t, tokenB, dbTokenB)
 	dbTokenB, err = token.GetByID(ctx, tokenB.UUID)
 	require.NoError(t, err)
 	require.Equal(t, tokenB, dbTokenB)
@@ -80,7 +81,7 @@ func TestTokenDatabaseActions(t *testing.T) {
 	err = token.DeleteByID(ctx, tokenA.UUID)
 	require.NoError(t, err)
 	_, err = token.GetByID(ctx, tokenA.UUID)
-	require.Error(t, err)
+	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have two tokens remaining.
 	tokens, err = token.GetAll(ctx)
@@ -89,9 +90,9 @@ func TestTokenDatabaseActions(t *testing.T) {
 
 	// Can't delete a token that doesn't exist.
 	err = token.DeleteByID(ctx, uuid.Must(uuid.Parse(`66307d51-c379-4fb3-be5d-5c4c24ba7b21`)))
-	require.Error(t, err)
+	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Can't update a token that doesn't exist.
 	_, err = token.UpdateByID(ctx, tokenA)
-	require.Error(t, err)
+	require.ErrorIs(t, err, domain.ErrNotFound)
 }

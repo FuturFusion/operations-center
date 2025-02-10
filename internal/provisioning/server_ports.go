@@ -1,0 +1,28 @@
+package provisioning
+
+import "context"
+
+type ServerService interface {
+	Create(ctx context.Context, server Server) (Server, error)
+	GetAll(ctx context.Context) (Servers, error)
+	GetAllHostnames(ctx context.Context) ([]string, error)
+	GetByID(ctx context.Context, id int) (Server, error)
+	GetByHostname(ctx context.Context, name string) (Server, error)
+	UpdateByHostname(ctx context.Context, name string, server Server) (Server, error)
+	RenameByHostname(ctx context.Context, name string, server Server) (Server, error)
+	DeleteByHostname(ctx context.Context, name string) error
+}
+
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/server_repo_mock_gen.go -rm . ServerRepo
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ServerRepo -t ../logger/slog.gotmpl -o ./repo/middleware/server_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ServerRepo -t prometheus -o ./repo/middleware/server_prometheus_gen.go
+
+type ServerRepo interface {
+	Create(ctx context.Context, server Server) (Server, error)
+	GetAll(ctx context.Context) (Servers, error)
+	GetAllHostnames(ctx context.Context) ([]string, error)
+	GetByID(ctx context.Context, id int) (Server, error)
+	GetByHostname(ctx context.Context, name string) (Server, error)
+	UpdateByID(ctx context.Context, server Server) (Server, error)
+	DeleteByID(ctx context.Context, id int) error
+}

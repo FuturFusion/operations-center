@@ -8,26 +8,26 @@ import (
 	"context"
 	"log/slog"
 
-	_sourceOperations "github.com/FuturFusion/operations-center/internal/operations"
+	_sourceProvisioning "github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/google/uuid"
 )
 
-// TokenRepoWithSlog implements _sourceOperations.TokenRepo that is instrumented with slog logger
+// TokenRepoWithSlog implements _sourceProvisioning.TokenRepo that is instrumented with slog logger
 type TokenRepoWithSlog struct {
 	_log  *slog.Logger
-	_base _sourceOperations.TokenRepo
+	_base _sourceProvisioning.TokenRepo
 }
 
-// NewTokenRepoWithSlog instruments an implementation of the _sourceOperations.TokenRepo with simple logging
-func NewTokenRepoWithSlog(base _sourceOperations.TokenRepo, log *slog.Logger) TokenRepoWithSlog {
+// NewTokenRepoWithSlog instruments an implementation of the _sourceProvisioning.TokenRepo with simple logging
+func NewTokenRepoWithSlog(base _sourceProvisioning.TokenRepo, log *slog.Logger) TokenRepoWithSlog {
 	return TokenRepoWithSlog{
 		_base: base,
 		_log:  log,
 	}
 }
 
-// Create implements _sourceOperations.TokenRepo
-func (_d TokenRepoWithSlog) Create(ctx context.Context, token _sourceOperations.Token) (t1 _sourceOperations.Token, err error) {
+// Create implements _sourceProvisioning.TokenRepo
+func (_d TokenRepoWithSlog) Create(ctx context.Context, token _sourceProvisioning.Token) (t1 _sourceProvisioning.Token, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.Any("token", token),
@@ -46,7 +46,7 @@ func (_d TokenRepoWithSlog) Create(ctx context.Context, token _sourceOperations.
 	return _d._base.Create(ctx, token)
 }
 
-// DeleteByID implements _sourceOperations.TokenRepo
+// DeleteByID implements _sourceProvisioning.TokenRepo
 func (_d TokenRepoWithSlog) DeleteByID(ctx context.Context, id uuid.UUID) (err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
@@ -65,8 +65,8 @@ func (_d TokenRepoWithSlog) DeleteByID(ctx context.Context, id uuid.UUID) (err e
 	return _d._base.DeleteByID(ctx, id)
 }
 
-// GetAll implements _sourceOperations.TokenRepo
-func (_d TokenRepoWithSlog) GetAll(ctx context.Context) (t1 _sourceOperations.Tokens, err error) {
+// GetAll implements _sourceProvisioning.TokenRepo
+func (_d TokenRepoWithSlog) GetAll(ctx context.Context) (t1 _sourceProvisioning.Tokens, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 	).Debug("TokenRepoWithSlog: calling GetAll")
@@ -84,7 +84,7 @@ func (_d TokenRepoWithSlog) GetAll(ctx context.Context) (t1 _sourceOperations.To
 	return _d._base.GetAll(ctx)
 }
 
-// GetAllIDs implements _sourceOperations.TokenRepo
+// GetAllIDs implements _sourceProvisioning.TokenRepo
 func (_d TokenRepoWithSlog) GetAllIDs(ctx context.Context) (sa1 []string, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
@@ -103,8 +103,8 @@ func (_d TokenRepoWithSlog) GetAllIDs(ctx context.Context) (sa1 []string, err er
 	return _d._base.GetAllIDs(ctx)
 }
 
-// GetByID implements _sourceOperations.TokenRepo
-func (_d TokenRepoWithSlog) GetByID(ctx context.Context, id uuid.UUID) (t1 _sourceOperations.Token, err error) {
+// GetByID implements _sourceProvisioning.TokenRepo
+func (_d TokenRepoWithSlog) GetByID(ctx context.Context, id uuid.UUID) (t1 _sourceProvisioning.Token, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.Any("id", id),
@@ -123,8 +123,8 @@ func (_d TokenRepoWithSlog) GetByID(ctx context.Context, id uuid.UUID) (t1 _sour
 	return _d._base.GetByID(ctx, id)
 }
 
-// UpdateByID implements _sourceOperations.TokenRepo
-func (_d TokenRepoWithSlog) UpdateByID(ctx context.Context, token _sourceOperations.Token) (t1 _sourceOperations.Token, err error) {
+// UpdateByID implements _sourceProvisioning.TokenRepo
+func (_d TokenRepoWithSlog) UpdateByID(ctx context.Context, token _sourceProvisioning.Token) (t1 _sourceProvisioning.Token, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.Any("token", token),

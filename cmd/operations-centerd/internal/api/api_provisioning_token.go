@@ -8,17 +8,17 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/FuturFusion/operations-center/internal/operations"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/response"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type tokenHandler struct {
-	service operations.TokenService
+	service provisioning.TokenService
 }
 
-func registerTokenHandler(router *http.ServeMux, service operations.TokenService) {
+func registerTokenHandler(router *http.ServeMux, service provisioning.TokenService) {
 	handler := &tokenHandler{
 		service: service,
 	}
@@ -185,7 +185,7 @@ func (t *tokenHandler) tokensPost(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	_, err = t.service.Create(r.Context(), operations.Token{
+	_, err = t.service.Create(r.Context(), provisioning.Token{
 		UsesRemaining: token.UsesRemaining,
 		ExpireAt:      token.ExpireAt,
 		Description:   token.Description,
@@ -197,7 +197,7 @@ func (t *tokenHandler) tokensPost(r *http.Request) response.Response {
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/tokens/"+token.UUID.String())
 }
 
-// swagger:operation GET /1.0/tokens/{name} tokens token_get
+// swagger:operation GET /1.0/tokens/{uuid} tokens token_get
 //
 //	Get the token
 //
@@ -319,7 +319,7 @@ func (t *tokenHandler) tokenPut(r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = t.service.UpdateByID(ctx, operations.Token{
+	_, err = t.service.UpdateByID(ctx, provisioning.Token{
 		UUID:          currentToken.UUID,
 		UsesRemaining: token.UsesRemaining,
 		ExpireAt:      token.ExpireAt,

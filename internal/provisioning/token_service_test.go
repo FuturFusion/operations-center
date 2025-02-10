@@ -1,4 +1,4 @@
-package operations_test
+package provisioning_test
 
 import (
 	"context"
@@ -8,8 +8,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/operations"
-	"github.com/FuturFusion/operations-center/internal/operations/repo/mock"
+	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
 
@@ -21,7 +22,7 @@ var (
 func TestTokenService_Create(t *testing.T) {
 	tests := []struct {
 		name            string
-		token           operations.Token
+		token           provisioning.Token
 		randomUUIDValue uuid.UUID
 		randomUUIDErr   error
 		repoCreateErr   error
@@ -30,7 +31,7 @@ func TestTokenService_Create(t *testing.T) {
 	}{
 		{
 			name: "success",
-			token: operations.Token{
+			token: provisioning.Token{
 				UsesRemaining: 1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
 			},
@@ -40,7 +41,7 @@ func TestTokenService_Create(t *testing.T) {
 		},
 		{
 			name: "error - random uuid",
-			token: operations.Token{
+			token: provisioning.Token{
 				UsesRemaining: 1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
 			},
@@ -50,19 +51,19 @@ func TestTokenService_Create(t *testing.T) {
 		},
 		{
 			name: "error - validation",
-			token: operations.Token{
+			token: provisioning.Token{
 				UsesRemaining: -1, // invalid
 				ExpireAt:      time.Now().Add(1 * time.Minute),
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
-				var verr operations.ErrValidation
-				require.ErrorAs(tt, err, &verr)
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
 			},
 		},
 		{
 			name: "error - repo.Create",
-			token: operations.Token{
+			token: provisioning.Token{
 				UsesRemaining: 1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
 			},
@@ -77,13 +78,13 @@ func TestTokenService_Create(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.TokenRepoMock{
-				CreateFunc: func(ctx context.Context, in operations.Token) (operations.Token, error) {
-					return operations.Token{}, tc.repoCreateErr
+				CreateFunc: func(ctx context.Context, in provisioning.Token) (provisioning.Token, error) {
+					return provisioning.Token{}, tc.repoCreateErr
 				},
 			}
 
-			tokenSvc := operations.NewTokenService(repo,
-				operations.WithRandomUUID(func() (uuid.UUID, error) { return tc.randomUUIDValue, tc.randomUUIDErr }),
+			tokenSvc := provisioning.NewTokenService(repo,
+				provisioning.WithRandomUUID(func() (uuid.UUID, error) { return tc.randomUUIDValue, tc.randomUUIDErr }),
 			)
 
 			// Run test
@@ -98,7 +99,7 @@ func TestTokenService_Create(t *testing.T) {
 func TestTokenService_GetAll(t *testing.T) {
 	tests := []struct {
 		name             string
-		repoGetAllTokens operations.Tokens
+		repoGetAllTokens provisioning.Tokens
 		repoGetAllErr    error
 
 		assertErr require.ErrorAssertionFunc
@@ -106,14 +107,14 @@ func TestTokenService_GetAll(t *testing.T) {
 	}{
 		{
 			name: "success",
-			repoGetAllTokens: operations.Tokens{
-				operations.Token{
+			repoGetAllTokens: provisioning.Tokens{
+				provisioning.Token{
 					UUID:          uuidA,
 					UsesRemaining: 1,
 					ExpireAt:      time.Now().Add(1 * time.Minute),
 					Description:   "A",
 				},
-				operations.Token{
+				provisioning.Token{
 					UUID:          uuidB,
 					UsesRemaining: 10,
 					ExpireAt:      time.Now().Add(1 * time.Minute),
@@ -137,12 +138,12 @@ func TestTokenService_GetAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.TokenRepoMock{
-				GetAllFunc: func(ctx context.Context) (operations.Tokens, error) {
+				GetAllFunc: func(ctx context.Context) (provisioning.Tokens, error) {
 					return tc.repoGetAllTokens, tc.repoGetAllErr
 				},
 			}
 
-			tokenSvc := operations.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo)
 
 			// Run test
 			tokens, err := tokenSvc.GetAll(context.Background())
@@ -190,14 +191,14 @@ func TestTokenService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			tokenSvc := operations.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo)
 
 			// Run test
-			inventoryNames, err := tokenSvc.GetAllIDs(context.Background())
+			tokenIDs, err := tokenSvc.GetAllIDs(context.Background())
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, inventoryNames, tc.count)
+			require.Len(t, tokenIDs, tc.count)
 		})
 	}
 }
@@ -206,7 +207,7 @@ func TestTokenService_GetByID(t *testing.T) {
 	tests := []struct {
 		name             string
 		idArg            uuid.UUID
-		repoGetByIDToken operations.Token
+		repoGetByIDToken provisioning.Token
 		repoGetByIDErr   error
 
 		assertErr require.ErrorAssertionFunc
@@ -214,7 +215,7 @@ func TestTokenService_GetByID(t *testing.T) {
 		{
 			name:  "success",
 			idArg: uuidA,
-			repoGetByIDToken: operations.Token{
+			repoGetByIDToken: provisioning.Token{
 				UUID:          uuidA,
 				UsesRemaining: 1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
@@ -236,12 +237,12 @@ func TestTokenService_GetByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.TokenRepoMock{
-				GetByIDFunc: func(ctx context.Context, uuid uuid.UUID) (operations.Token, error) {
+				GetByIDFunc: func(ctx context.Context, uuid uuid.UUID) (provisioning.Token, error) {
 					return tc.repoGetByIDToken, tc.repoGetByIDErr
 				},
 			}
 
-			tokenSvc := operations.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo)
 
 			// Run test
 			token, err := tokenSvc.GetByID(context.Background(), tc.idArg)
@@ -256,21 +257,21 @@ func TestTokenService_GetByID(t *testing.T) {
 func TestTokenService_UpdateByID(t *testing.T) {
 	tests := []struct {
 		name            string
-		token           operations.Token
-		repoUpdateToken operations.Token
+		token           provisioning.Token
+		repoUpdateToken provisioning.Token
 		repoUpdateErr   error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
-			token: operations.Token{
+			token: provisioning.Token{
 				UUID:          uuidA,
 				UsesRemaining: 1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
 				Description:   "A",
 			},
-			repoUpdateToken: operations.Token{
+			repoUpdateToken: provisioning.Token{
 				UUID:          uuidA,
 				UsesRemaining: 1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
@@ -281,21 +282,21 @@ func TestTokenService_UpdateByID(t *testing.T) {
 		},
 		{
 			name: "error - invalid value for uses remaining",
-			token: operations.Token{
+			token: provisioning.Token{
 				UUID:          uuidA,
 				UsesRemaining: -1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
 				Description:   "A",
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
-				var verr operations.ErrValidation
-				require.ErrorAs(tt, err, &verr)
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
 			},
 		},
 		{
 			name: "error - repo",
-			token: operations.Token{
+			token: provisioning.Token{
 				UUID:          uuidA,
 				UsesRemaining: 1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
@@ -311,12 +312,12 @@ func TestTokenService_UpdateByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.TokenRepoMock{
-				UpdateByIDFunc: func(ctx context.Context, in operations.Token) (operations.Token, error) {
+				UpdateByIDFunc: func(ctx context.Context, in provisioning.Token) (provisioning.Token, error) {
 					return tc.repoUpdateToken, tc.repoUpdateErr
 				},
 			}
 
-			tokenSvc := operations.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo)
 
 			// Run test
 			token, err := tokenSvc.UpdateByID(context.Background(), tc.token)
@@ -360,7 +361,7 @@ func TestTokenService_DeleteByID(t *testing.T) {
 				},
 			}
 
-			tokenSvc := operations.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo)
 
 			// Run test
 			err := tokenSvc.DeleteByID(context.Background(), tc.idArg)

@@ -15,8 +15,8 @@ import (
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
-	"github.com/FuturFusion/operations-center/internal/operations"
-	"github.com/FuturFusion/operations-center/internal/operations/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/response"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -68,7 +68,9 @@ func (d *Daemon) Start() error {
 	// TODO: setup OIDC
 
 	// Setup Services
-	tokenSvc := operations.NewTokenService(sqlite.NewToken(dbWithTransaction))
+	tokenSvc := provisioning.NewTokenService(sqlite.NewToken(dbWithTransaction))
+	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(dbWithTransaction))
+	serverSvc := provisioning.NewServerService(sqlite.NewServer(dbWithTransaction))
 
 	// Setup Routes
 	router := http.NewServeMux()
@@ -85,6 +87,12 @@ func (d *Daemon) Start() error {
 
 	tokenRouter := newSubRouter(provisioningRouter, "/tokens")
 	registerTokenHandler(tokenRouter, tokenSvc)
+
+	clusterRouter := newSubRouter(provisioningRouter, "/clusters")
+	registerClusterHandler(clusterRouter, clusterSvc)
+
+	serverRouter := newSubRouter(provisioningRouter, "/servers")
+	registerServerHandler(serverRouter, serverSvc)
 
 	// Setup web server
 	d.server = &http.Server{

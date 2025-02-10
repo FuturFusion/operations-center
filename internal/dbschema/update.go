@@ -13,6 +13,26 @@ CREATE TABLE tokens (
   description TEXT NOT NULL
 );
 
+CREATE TABLE clusters (
+  id INTEGER PRIMARY KEY NOT NULL,
+  name TEXT NOT NULL,
+  connection_url TEXT NOT NULL,
+  server_hostnames TEXT NOT NULL,
+  last_updated TEXT NOT NULL,
+  UNIQUE (name)
+);
+
+CREATE TABLE servers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  hostname TEXT NOT NULL,
+  type TEXT NOT NULL,
+  connection_url TEXT NOT NULL,
+  last_updated TEXT NOT NULL,
+  UNIQUE (hostname),
+  FOREIGN KEY(cluster_id) REFERENCES clusters(id)
+);
+
 INSERT INTO schema (version, updated_at) VALUES (2, strftime("%s"))
 `
 
@@ -53,6 +73,26 @@ CREATE TABLE tokens (
   uses_remaining INTEGER NOT NULL,
   expire_at TEXT NOT NULL,
   description TEXT NOT NULL
+);
+
+CREATE TABLE clusters (
+  id INTEGER PRIMARY KEY NOT NULL,
+  name TEXT NOT NULL,
+  connection_url TEXT NOT NULL,
+  server_hostnames TEXT NOT NULL,
+  last_updated TEXT NOT NULL,
+  UNIQUE (name)
+);
+
+CREATE TABLE servers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  hostname TEXT NOT NULL,
+  type TEXT NOT NULL,
+  connection_url TEXT NOT NULL,
+  last_updated TEXT NOT NULL,
+  UNIQUE (hostname),
+  FOREIGN KEY(cluster_id) REFERENCES clusters(id)
 );
 `
 	_, err := tx.Exec(stmt)

@@ -1,15 +1,15 @@
-package operations_test
+package domain_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/operations"
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 func TestValidationErr_Error(t *testing.T) {
-	err := operations.NewValidationErrf("boom!")
+	err := domain.NewValidationErrf("boom!")
 
 	require.Equal(t, "boom!", err.Error())
 }
