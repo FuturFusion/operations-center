@@ -48,7 +48,7 @@ func (s tokenService) GetAll(ctx context.Context) (Tokens, error) {
 	return s.repo.GetAll(ctx)
 }
 
-func (s tokenService) GetAllIDs(ctx context.Context) ([]string, error) {
+func (s tokenService) GetAllIDs(ctx context.Context) ([]uuid.UUID, error) {
 	return s.repo.GetAllIDs(ctx)
 }
 

@@ -158,7 +158,7 @@ func TestTokenService_GetAll(t *testing.T) {
 func TestTokenService_GetAllNames(t *testing.T) {
 	tests := []struct {
 		name             string
-		repoGetAllIDs    []string
+		repoGetAllIDs    []uuid.UUID
 		repoGetAllIDsErr error
 
 		assertErr require.ErrorAssertionFunc
@@ -166,8 +166,8 @@ func TestTokenService_GetAllNames(t *testing.T) {
 	}{
 		{
 			name: "success",
-			repoGetAllIDs: []string{
-				"b32d0079-c48b-4957-b1cb-bef54125c861", "464d229b-3069-4a82-bc59-b215a7c6ed1b",
+			repoGetAllIDs: []uuid.UUID{
+				uuid.Must(uuid.Parse("b32d0079-c48b-4957-b1cb-bef54125c861")), uuid.Must(uuid.Parse("464d229b-3069-4a82-bc59-b215a7c6ed1b")),
 			},
 
 			assertErr: require.NoError,
@@ -186,7 +186,7 @@ func TestTokenService_GetAllNames(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.TokenRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]string, error) {
+				GetAllIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}

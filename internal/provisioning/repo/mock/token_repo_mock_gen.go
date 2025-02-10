@@ -30,7 +30,7 @@ var _ provisioning.TokenRepo = &TokenRepoMock{}
 //			GetAllFunc: func(ctx context.Context) (provisioning.Tokens, error) {
 //				panic("mock out the GetAll method")
 //			},
-//			GetAllIDsFunc: func(ctx context.Context) ([]string, error) {
+//			GetAllIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
 //				panic("mock out the GetAllIDs method")
 //			},
 //			GetByIDFunc: func(ctx context.Context, id uuid.UUID) (provisioning.Token, error) {
@@ -56,7 +56,7 @@ type TokenRepoMock struct {
 	GetAllFunc func(ctx context.Context) (provisioning.Tokens, error)
 
 	// GetAllIDsFunc mocks the GetAllIDs method.
-	GetAllIDsFunc func(ctx context.Context) ([]string, error)
+	GetAllIDsFunc func(ctx context.Context) ([]uuid.UUID, error)
 
 	// GetByIDFunc mocks the GetByID method.
 	GetByIDFunc func(ctx context.Context, id uuid.UUID) (provisioning.Token, error)
@@ -218,7 +218,7 @@ func (mock *TokenRepoMock) GetAllCalls() []struct {
 }
 
 // GetAllIDs calls GetAllIDsFunc.
-func (mock *TokenRepoMock) GetAllIDs(ctx context.Context) ([]string, error) {
+func (mock *TokenRepoMock) GetAllIDs(ctx context.Context) ([]uuid.UUID, error) {
 	if mock.GetAllIDsFunc == nil {
 		panic("TokenRepoMock.GetAllIDsFunc: method is nil but TokenRepo.GetAllIDs was just called")
 	}

@@ -61,7 +61,7 @@ func TestTokenDatabaseActions(t *testing.T) {
 	tokenIDs, err := token.GetAllIDs(ctx)
 	require.NoError(t, err)
 	require.Len(t, tokenIDs, 2)
-	require.ElementsMatch(t, []string{"8dae5ba3-2ad9-48a5-a7c4-188efb36fbb6", "e74417e0-e6d8-465a-b7bc-86d99a45ba49"}, tokenIDs)
+	require.ElementsMatch(t, []uuid.UUID{uuid.Must(uuid.Parse("8dae5ba3-2ad9-48a5-a7c4-188efb36fbb6")), uuid.Must(uuid.Parse("e74417e0-e6d8-465a-b7bc-86d99a45ba49"))}, tokenIDs)
 
 	// Should get back tokenA unchanged.
 	dbTokenA, err := token.GetByID(ctx, tokenA.UUID)
