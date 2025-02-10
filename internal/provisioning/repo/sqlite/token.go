@@ -71,7 +71,7 @@ func (t token) GetAll(ctx context.Context) (provisioning.Tokens, error) {
 	return tokens, nil
 }
 
-func (t token) GetAllIDs(ctx context.Context) ([]string, error) {
+func (t token) GetAllIDs(ctx context.Context) ([]uuid.UUID, error) {
 	const sqlStmt = `SELECT uuid FROM tokens ORDER BY uuid`
 
 	rows, err := t.db.QueryContext(ctx, sqlStmt)
@@ -81,7 +81,7 @@ func (t token) GetAllIDs(ctx context.Context) ([]string, error) {
 
 	defer func() { _ = rows.Close() }()
 
-	var tokenIDs []string
+	var tokenIDs []uuid.UUID
 	for rows.Next() {
 		var tokenID string
 		err := rows.Scan(&tokenID)
@@ -89,7 +89,12 @@ func (t token) GetAllIDs(ctx context.Context) ([]string, error) {
 			return nil, mapErr(err)
 		}
 
-		tokenIDs = append(tokenIDs, tokenID)
+		id, err := uuid.Parse(tokenID)
+		if err != nil {
+			return nil, err
+		}
+
+		tokenIDs = append(tokenIDs, id)
 	}
 
 	if rows.Err() != nil {

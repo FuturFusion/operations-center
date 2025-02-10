@@ -85,13 +85,13 @@ func (_d TokenRepoWithSlog) GetAll(ctx context.Context) (t1 _sourceProvisioning.
 }
 
 // GetAllIDs implements _sourceProvisioning.TokenRepo
-func (_d TokenRepoWithSlog) GetAllIDs(ctx context.Context) (sa1 []string, err error) {
+func (_d TokenRepoWithSlog) GetAllIDs(ctx context.Context) (ua1 []uuid.UUID, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 	).Debug("TokenRepoWithSlog: calling GetAllIDs")
 	defer func() {
 		log := _d._log.With(
-			slog.Any("sa1", sa1),
+			slog.Any("ua1", ua1),
 			slog.Any("err", err),
 		)
 		if err != nil {

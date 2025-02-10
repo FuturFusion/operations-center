@@ -136,14 +136,14 @@ func (t *tokenHandler) tokensGet(r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	tokenNames, err := t.service.GetAllIDs(r.Context())
+	tokenIDs, err := t.service.GetAllIDs(r.Context())
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(tokenNames))
-	for _, name := range tokenNames {
-		result = append(result, fmt.Sprintf("/%s/tokens/%s", api.APIVersion, name))
+	result := make([]string, 0, len(tokenIDs))
+	for _, id := range tokenIDs {
+		result = append(result, fmt.Sprintf("/%s/tokens/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)
