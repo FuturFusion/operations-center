@@ -23,7 +23,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
-		LastUpdated:     time.Now(),
+		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	testClusterB := provisioning.Cluster{
@@ -31,7 +31,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"one", "two"},
-		LastUpdated:     time.Now(),
+		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	serverA := provisioning.Server{
@@ -41,8 +41,8 @@ func TestServerDatabaseActions(t *testing.T) {
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
 		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(`{}`),
-		LastUpdated:   time.Now(),
+		VersionData:   json.RawMessage(nil),
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	serverB := provisioning.Server{
@@ -52,8 +52,8 @@ func TestServerDatabaseActions(t *testing.T) {
 		Type:          api.ServerTypeMigrationManager,
 		ConnectionURL: "https://two/",
 		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(`{}`),
-		LastUpdated:   time.Now(),
+		VersionData:   json.RawMessage(nil),
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	ctx := context.Background()
@@ -86,9 +86,9 @@ func TestServerDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add server
-	serverA, err = server.Create(ctx, serverA)
+	_, err = server.Create(ctx, serverA)
 	require.NoError(t, err)
-	serverB, err = server.Create(ctx, serverB)
+	_, err = server.Create(ctx, serverB)
 	require.NoError(t, err)
 
 	// Ensure we have three entries

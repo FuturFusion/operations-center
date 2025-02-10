@@ -20,7 +20,7 @@ func TestClusterDatabaseActions(t *testing.T) {
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"server1", "server2"},
-		LastUpdated:     time.Now(),
+		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	clusterB := provisioning.Cluster{
@@ -28,7 +28,7 @@ func TestClusterDatabaseActions(t *testing.T) {
 		Name:            "two",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"server10", "server11"},
-		LastUpdated:     time.Now(),
+		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	ctx := context.Background()
@@ -49,9 +49,9 @@ func TestClusterDatabaseActions(t *testing.T) {
 	cluster := sqlite.NewCluster(db)
 
 	// Add cluster
-	clusterA, err = cluster.Create(ctx, clusterA)
+	_, err = cluster.Create(ctx, clusterA)
 	require.NoError(t, err)
-	clusterB, err = cluster.Create(ctx, clusterB)
+	_, err = cluster.Create(ctx, clusterB)
 	require.NoError(t, err)
 
 	// Ensure we have three entries

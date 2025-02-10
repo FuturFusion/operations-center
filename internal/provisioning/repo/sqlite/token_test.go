@@ -19,14 +19,14 @@ func TestTokenDatabaseActions(t *testing.T) {
 	tokenA := provisioning.Token{
 		UUID:          uuid.Must(uuid.Parse(`8dae5ba3-2ad9-48a5-a7c4-188efb36fbb6`)),
 		UsesRemaining: 1,
-		ExpireAt:      time.Now().Add(1 * time.Minute),
+		ExpireAt:      time.Now().Add(1 * time.Minute).UTC().Truncate(0), // Truncate to remove the monotonic clock.
 		Description:   "token A",
 	}
 
 	tokenB := provisioning.Token{
 		UUID:          uuid.Must(uuid.Parse(`e74417e0-e6d8-465a-b7bc-86d99a45ba49`)),
 		UsesRemaining: 10,
-		ExpireAt:      time.Now().Add(10 * time.Minute),
+		ExpireAt:      time.Now().Add(10 * time.Minute).UTC().Truncate(0), // Truncate to remove the monotonic clock.
 		Description:   "token B",
 	}
 
@@ -48,9 +48,9 @@ func TestTokenDatabaseActions(t *testing.T) {
 	token := sqlite.NewToken(db)
 
 	// Add token
-	tokenA, err = token.Create(ctx, tokenA)
+	_, err = token.Create(ctx, tokenA)
 	require.NoError(t, err)
-	tokenB, err = token.Create(ctx, tokenB)
+	_, err = token.Create(ctx, tokenB)
 	require.NoError(t, err)
 
 	// Ensure we have three entries

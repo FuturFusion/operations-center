@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"strings"
-	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -36,7 +35,7 @@ RETURNING id, name, connection_url, server_hostnames, last_updated;
 		sql.Named("name", in.Name),
 		sql.Named("connection_url", in.ConnectionURL),
 		sql.Named("server_hostnames", serverHostnames),
-		sql.Named("last_updated", datetime(in.LastUpdated)),
+		sql.Named("last_updated", in.LastUpdated),
 	)
 	if row.Err() != nil {
 		return provisioning.Cluster{}, mapErr(row.Err())
@@ -135,7 +134,7 @@ RETURNING id, name, connection_url, server_hostnames, last_updated;
 		sql.Named("id", in.ID),
 		sql.Named("connection_url", in.ConnectionURL),
 		sql.Named("server_hostnames", serverHostnames),
-		sql.Named("last_updated", datetime(in.LastUpdated)),
+		sql.Named("last_updated", in.LastUpdated),
 	)
 	if row.Err() != nil {
 		return provisioning.Cluster{}, mapErr(row.Err())
@@ -167,21 +166,19 @@ func (c cluster) DeleteByID(ctx context.Context, id int) error {
 func scanCluster(row interface{ Scan(dest ...any) error }) (provisioning.Cluster, error) {
 	var cluster provisioning.Cluster
 	var serverNames string
-	var lastUpdated datetime
 
 	err := row.Scan(
 		&cluster.ID,
 		&cluster.Name,
 		&cluster.ConnectionURL,
 		&serverNames,
-		&lastUpdated,
+		&cluster.LastUpdated,
 	)
 	if err != nil {
 		return provisioning.Cluster{}, mapErr(err)
 	}
 
 	cluster.ServerHostnames = strings.Split(serverNames, ",")
-	cluster.LastUpdated = time.Time(lastUpdated)
 
 	return cluster, nil
 }

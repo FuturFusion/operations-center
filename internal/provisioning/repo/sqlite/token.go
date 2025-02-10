@@ -3,7 +3,6 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -34,7 +33,7 @@ RETURNING uuid, uses_remaining, expire_at, description;
 	row := t.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("uuid", in.UUID),
 		sql.Named("uses_remaining", in.UsesRemaining),
-		sql.Named("expire_at", datetime(in.ExpireAt)),
+		sql.Named("expire_at", in.ExpireAt),
 		sql.Named("description", in.Description),
 	)
 	if row.Err() != nil {
@@ -124,7 +123,7 @@ RETURNING uuid, uses_remaining, expire_at, description;
 
 	row := t.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("uses_remaining", in.UsesRemaining),
-		sql.Named("expire_at", datetime(in.ExpireAt)),
+		sql.Named("expire_at", in.ExpireAt),
 		sql.Named("description", in.Description),
 		sql.Named("uuid", in.UUID),
 	)
@@ -157,19 +156,16 @@ func (t token) DeleteByID(ctx context.Context, id uuid.UUID) error {
 
 func scanToken(row interface{ Scan(dest ...any) error }) (provisioning.Token, error) {
 	var token provisioning.Token
-	var expireAt datetime
 
 	err := row.Scan(
 		&token.UUID,
 		&token.UsesRemaining,
-		&expireAt,
+		&token.ExpireAt,
 		&token.Description,
 	)
 	if err != nil {
 		return provisioning.Token{}, mapErr(err)
 	}
-
-	token.ExpireAt = time.Time(expireAt)
 
 	return token, nil
 }
