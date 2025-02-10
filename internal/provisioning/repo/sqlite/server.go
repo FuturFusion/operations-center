@@ -3,7 +3,6 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -34,7 +33,7 @@ RETURNING id, cluster_id, hostname, type, connection_url, last_updated;
 		sql.Named("hostname", in.Hostname),
 		sql.Named("type", in.Type),
 		sql.Named("connection_url", in.ConnectionURL),
-		sql.Named("last_updated", datetime(in.LastUpdated)),
+		sql.Named("last_updated", in.LastUpdated),
 	)
 	if row.Err() != nil {
 		return provisioning.Server{}, mapErr(row.Err())
@@ -132,7 +131,7 @@ RETURNING id, cluster_id, hostname, type, connection_url, last_updated;
 		sql.Named("cluster_id", in.ClusterID),
 		sql.Named("type", in.Type),
 		sql.Named("connection_url", in.ConnectionURL),
-		sql.Named("last_updated", datetime(in.LastUpdated)),
+		sql.Named("last_updated", in.LastUpdated),
 	)
 	if row.Err() != nil {
 		return provisioning.Server{}, mapErr(row.Err())
@@ -163,7 +162,6 @@ func (c server) DeleteByID(ctx context.Context, id int) error {
 
 func scanServer(row interface{ Scan(dest ...any) error }) (provisioning.Server, error) {
 	var server provisioning.Server
-	var lastUpdated datetime
 
 	err := row.Scan(
 		&server.ID,
@@ -171,13 +169,11 @@ func scanServer(row interface{ Scan(dest ...any) error }) (provisioning.Server, 
 		&server.Hostname,
 		&server.Type,
 		&server.ConnectionURL,
-		&lastUpdated,
+		&server.LastUpdated,
 	)
 	if err != nil {
 		return provisioning.Server{}, mapErr(err)
 	}
-
-	server.LastUpdated = time.Time(lastUpdated)
 
 	return server, nil
 }

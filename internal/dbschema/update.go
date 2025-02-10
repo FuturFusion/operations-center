@@ -9,7 +9,7 @@ const freshSchema = `
 CREATE TABLE tokens (
   uuid TEXT PRIMARY KEY NOT NULL,
   uses_remaining INTEGER NOT NULL,
-  expire_at TEXT NOT NULL,
+  expire_at DATETIME NOT NULL,
   description TEXT NOT NULL
 );
 
@@ -18,7 +18,7 @@ CREATE TABLE clusters (
   name TEXT NOT NULL,
   connection_url TEXT NOT NULL,
   server_hostnames TEXT NOT NULL,
-  last_updated TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
   UNIQUE (name)
 );
 
@@ -28,7 +28,7 @@ CREATE TABLE servers (
   hostname TEXT NOT NULL,
   type TEXT NOT NULL,
   connection_url TEXT NOT NULL,
-  last_updated TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
   UNIQUE (hostname),
   FOREIGN KEY(cluster_id) REFERENCES clusters(id)
 );
@@ -71,7 +71,7 @@ func updateFromV1(ctx context.Context, tx *sql.Tx) error {
 CREATE TABLE tokens (
   uuid TEXT PRIMARY KEY NOT NULL,
   uses_remaining INTEGER NOT NULL,
-  expire_at TEXT NOT NULL,
+  expire_at DATETIME NOT NULL,
   description TEXT NOT NULL
 );
 
@@ -80,7 +80,7 @@ CREATE TABLE clusters (
   name TEXT NOT NULL,
   connection_url TEXT NOT NULL,
   server_hostnames TEXT NOT NULL,
-  last_updated TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
   UNIQUE (name)
 );
 
@@ -90,7 +90,7 @@ CREATE TABLE servers (
   hostname TEXT NOT NULL,
   type TEXT NOT NULL,
   connection_url TEXT NOT NULL,
-  last_updated TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
   UNIQUE (hostname),
   FOREIGN KEY(cluster_id) REFERENCES clusters(id)
 );
