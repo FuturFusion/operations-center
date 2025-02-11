@@ -3,4 +3,4 @@
 echo "Checking for oneline assign & test..."
 
 # Recursively grep go files for if statements that contain assignments.
-! git grep --untracked -P -n '^\s+if.*:=.*;.*{\s*$' -- '*.go' ':!:internal/migratekit/*.go'
+! git grep --untracked -P -n '^\s+if.*:=.*;.*{\s*$' -- '*.go' ':!:internal/migratekit/*.go' ':!:*.sql.go'

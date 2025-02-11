@@ -1,0 +1,23 @@
+---
+
+version: "2"
+sql:
+  - engine: "sqlite"
+    queries: "db/queries/"
+    schema: "db/schema/"
+    gen:
+      go:
+        package: "db"
+        out: "db"
+        emit_pointers_for_null_types: true
+        overrides:
+          - column: "servers.type"
+            go_type:
+              import: "github.com/FuturFusion/operations-center/shared/api"
+              type: "ServerType"
+          - column: "clusters.server_hostnames"
+            go_type:
+              type: "StringSlice"
+          - column: "storage_volumes.object"
+            go_type:
+              type: "StorageVolumeObject"
