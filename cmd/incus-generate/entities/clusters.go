@@ -1,0 +1,50 @@
+package entities
+
+import (
+	"strings"
+	"time"
+)
+
+// Code generation directives.
+//
+//go:generate -command mapper incus-generate db mapper -t clusters.mapper.go
+//go:generate mapper reset
+//
+//go:generate mapper stmt -e cluster objects
+//go:generate mapper stmt -e cluster objects-by-Name
+//go:generate mapper stmt -e cluster id
+//go:generate mapper stmt -e cluster create
+//go:generate mapper stmt -e cluster delete-by-Name
+//
+//go:generate mapper method -e cluster ID
+//go:generate mapper method -e cluster Exists
+//go:generate mapper method -e cluster GetOne
+//go:generate mapper method -e cluster GetMany
+//go:generate mapper method -e cluster Create
+//go:generate mapper method -e cluster DeleteOne-by-Name
+
+type Cluster struct {
+	ID              int
+	Name            string `db:"primary=yes"`
+	ConnectionURL   string
+	ServerHostnames StringSlice `db:"marshal=yes"`
+	LastUpdated     time.Time
+}
+
+type ClusterFilter struct {
+	Name *string
+}
+
+type StringSlice []string
+
+// MarshalText implements the encoding.TextMarshaler interface.
+func (s StringSlice) MarshalDB() (string, error) {
+	return strings.Join(s, ","), nil
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (s *StringSlice) UnmarshalDB(text string) error {
+	*s = StringSlice(strings.Split(text, ","))
+
+	return nil
+}
