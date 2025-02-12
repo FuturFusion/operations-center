@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -255,4 +256,54 @@ func Unauthorized(err error) Response {
 	}
 
 	return &errorResponse{http.StatusUnauthorized, message}
+}
+
+type readCloserResponse struct {
+	req      *http.Request
+	rc       io.ReadCloser
+	filename string
+	fileSize int
+	headers  map[string]string
+}
+
+// ReadCloserResponse returns a new file taking the file content from a io.ReadCloser.
+func ReadCloserResponse(r *http.Request, rc io.ReadCloser, filename string, fileSize int, headers map[string]string) Response {
+	return &readCloserResponse{
+		req:      r,
+		rc:       rc,
+		filename: filename,
+		fileSize: fileSize,
+		headers:  headers,
+	}
+}
+
+func (r readCloserResponse) Render(w http.ResponseWriter) error {
+	if r.headers != nil {
+		for k, v := range r.headers {
+			w.Header().Set(k, v)
+		}
+	}
+
+	// Only set Content-Type header if it is still set to the default or not yet set at all.
+	if w.Header().Get("Content-Type") == "application/json" || w.Header().Get("Content-Type") == "" {
+		w.Header().Set("Content-Type", "application/octet-stream")
+	}
+
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", r.filename))
+	w.Header().Set("Content-Length", strconv.Itoa(r.fileSize))
+
+	_, err := io.Copy(w, r.rc)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r readCloserResponse) String() string {
+	return fmt.Sprintf("readCloser response for %q", r.filename)
+}
+
+func (r readCloserResponse) Code() int {
+	return http.StatusOK
 }

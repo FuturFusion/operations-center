@@ -8,14 +8,17 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
+	ghClient "github.com/google/go-github/v69/github"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/github"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/response"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
@@ -67,10 +70,15 @@ func (d *Daemon) Start() error {
 
 	// TODO: setup OIDC
 
+	// TODO: Decide on the usage of the GITHUB_TOKEN. It is necessary to avoid
+	// being hit by the Github rate limiting.
+	gh := ghClient.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
+
 	// Setup Services
 	tokenSvc := provisioning.NewTokenService(sqlite.NewToken(dbWithTransaction))
 	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(dbWithTransaction))
 	serverSvc := provisioning.NewServerService(sqlite.NewServer(dbWithTransaction))
+	updateSvc := provisioning.NewUpdateService(github.NewUpdate(gh))
 
 	// Setup Routes
 	router := http.NewServeMux()
@@ -93,6 +101,9 @@ func (d *Daemon) Start() error {
 
 	provisioningServerRouter := newSubRouter(provisioningRouter, "/servers")
 	registerProvisioningServerHandler(provisioningServerRouter, serverSvc)
+
+	updateRouter := newSubRouter(provisioningRouter, "/updates")
+	registerUpdateHandler(updateRouter, updateSvc)
 
 	// Setup web server
 	d.server = &http.Server{
