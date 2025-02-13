@@ -1,0 +1,181 @@
+package api
+
+import (
+	"fmt"
+	"net/http"
+	"strconv"
+
+	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/response"
+	"github.com/FuturFusion/operations-center/shared/api"
+)
+
+type instanceHandler struct {
+	service inventory.InstanceService
+}
+
+func registerInventoryInstanceHandler(router *http.ServeMux, service inventory.InstanceService) {
+	handler := &instanceHandler{
+		service: service,
+	}
+
+	router.HandleFunc("GET /{$}", response.With(handler.instancesGet))
+	router.HandleFunc("GET /{id}", response.With(handler.instanceGet))
+	router.HandleFunc("POST /force-sync", response.With(handler.forceSyncPost))
+}
+
+// swagger:operation GET /1.0/inventory/instances instances instances_get
+//
+//		Get the instance
+//
+//		Returns a list of instance (list of relative URLs).
+//
+//		---
+//		produces:
+//		  - application/json
+//		responses:
+//		  "200":
+//		    description: API instance
+//		    schema:
+//		      type: object
+//		      description: Sync response
+//		      properties:
+//		        type:
+//		          type: string
+//		          description: Response type
+//		          example: sync
+//		        status:
+//		          type: string
+//		          description: Status description
+//		          example: Success
+//		        status_code:
+//		          type: integer
+//		          description: Status code
+//		          example: 200
+//		        metadata:
+//		          type: array
+//		          description: List of instance
+//	               items:
+//	                 type: string
+//	               example: |-
+//	                 [
+//	                   "/1.0/inventory/instances/b32d0079-c48b-4957-b1cb-bef54125c861",
+//	                   "/1.0/inventory/instances/464d229b-3069-4a82-bc59-b215a7c6ed1b"
+//	                 ]
+//		  "403":
+//		    $ref: "#/responses/Forbidden"
+//		  "500":
+//		    $ref: "#/responses/InternalServerError"
+func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
+	instanceIDs, err := i.service.GetAllIDs(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	result := make([]string, 0, len(instanceIDs))
+	for _, id := range instanceIDs {
+		result = append(result, fmt.Sprintf("/%s/clusters/%d", api.APIVersion, id))
+	}
+
+	return response.SyncResponse(true, result)
+}
+
+// swagger:operation GET /1.0/inventory/instances/{id} instances instance_get
+//
+//	Get the instance
+//
+//	Gets a specific instance.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Instance
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          $ref: "#/definitions/Instance"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (i *instanceHandler) instanceGet(r *http.Request) response.Response {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	instance, err := i.service.GetByID(r.Context(), id)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponse(
+		true,
+		api.Instance{
+			ID:          instance.ID,
+			ClusterID:   instance.ClusterID,
+			ServerID:    instance.ServerID,
+			ProjectName: instance.ProjectName,
+			Name:        instance.Name,
+			Object:      instance.Object,
+			LastUpdated: instance.LastUpdated,
+		},
+	)
+}
+
+// swagger:operation POST /1.0/inventory/instances/force-sync instances instances_force_sync_post
+//
+//	Force sync all
+//
+//	Force sync of instances for all servers in all clusters.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Empty response
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (i *instanceHandler) forceSyncPost(r *http.Request) response.Response {
+	err := i.service.SyncAll(r.Context())
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to sync instances: %w", err))
+	}
+
+	return response.EmptySyncResponse
+}

@@ -1,0 +1,17 @@
+package api
+
+import (
+	"time"
+
+	incusapi "github.com/lxc/incus/v6/shared/api"
+)
+
+type Instance struct {
+	ID          int                   `json:"id" yaml:"id"`
+	ClusterID   int                   `json:"cluster_id" yaml:"cluster_id"`
+	ServerID    int                   `json:"server_id" yaml:"server_id"`
+	ProjectName string                `json:"project_name" yaml:"project_name"`
+	Name        string                `json:"name" yaml:"name"`
+	Object      incusapi.InstanceFull `json:"object" yaml:"object"`
+	LastUpdated time.Time             `json:"last_updated" yaml:"last_updated"`
+}

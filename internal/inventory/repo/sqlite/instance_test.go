@@ -1,0 +1,122 @@
+package sqlite_test
+
+import (
+	"context"
+	"encoding/json"
+	"testing"
+	"time"
+
+	incusapi "github.com/lxc/incus/v6/shared/api"
+	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/internal/dbschema"
+	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/inventory"
+	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
+	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/shared/api"
+)
+
+func TestInstanceDatabaseActions(t *testing.T) {
+	testClusterA := provisioning.Cluster{
+		ID:              1,
+		Name:            "one",
+		ConnectionURL:   "https://cluster-one/",
+		ServerHostnames: []string{"one", "two"},
+		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
+	testServerA := provisioning.Server{
+		ID:            1,
+		ClusterID:     1,
+		Hostname:      "one",
+		Type:          api.ServerTypeIncus,
+		ConnectionURL: "https://one/",
+		HardwareData:  incusapi.Resources{},
+		VersionData:   json.RawMessage(nil),
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
+	instanceA := inventory.Instance{
+		ServerID:    1,
+		ProjectName: "one",
+		Name:        "one",
+		Object:      incusapi.InstanceFull{},
+		LastUpdated: time.Now(),
+	}
+
+	instanceB := inventory.Instance{
+		ServerID:    1,
+		ProjectName: "two",
+		Name:        "two",
+		Object:      incusapi.InstanceFull{},
+		LastUpdated: time.Now(),
+	}
+
+	ctx := context.Background()
+
+	// Create a new temporary database.
+	tmpDir := t.TempDir()
+	db, err := dbdriver.Open(tmpDir)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		err = db.Close()
+		require.NoError(t, err)
+	})
+
+	_, err = dbschema.Ensure(ctx, db, tmpDir)
+	require.NoError(t, err)
+
+	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db))
+	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
+
+	instance := inventorySqlite.NewInstance(db)
+
+	// Cannot add an instance with an invalid server.
+	_, err = instance.Create(ctx, instanceA)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
+	// Add dummy clusters
+	_, err = clusterSvc.Create(ctx, testClusterA)
+	require.NoError(t, err)
+
+	// Add dummy server.
+	_, err = serverSvc.Create(ctx, testServerA)
+	require.NoError(t, err)
+
+	// Add instances
+	instanceA, err = instance.Create(ctx, instanceA)
+	require.NoError(t, err)
+	require.Equal(t, 1, instanceA.ClusterID)
+
+	instanceB, err = instance.Create(ctx, instanceB)
+	require.NoError(t, err)
+	require.Equal(t, 1, instanceB.ClusterID)
+
+	// Ensure we have two entries
+	instanceIDs, err := instance.GetAllIDs(ctx)
+	require.NoError(t, err)
+	require.Len(t, instanceIDs, 2)
+	require.ElementsMatch(t, []int{1, 2}, instanceIDs)
+
+	// Should get back instanceA unchanged.
+	instanceA.ClusterID = 1
+	dbInstanceA, err := instance.GetByID(ctx, instanceA.ID)
+	require.NoError(t, err)
+	require.Equal(t, instanceA, dbInstanceA)
+
+	// Delete instances by server ID.
+	err = instance.DeleteByServerID(ctx, 1)
+	require.NoError(t, err)
+
+	_, err = instance.GetByID(ctx, instanceA.ID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Should have no instances remaining.
+	instanceIDs, err = instance.GetAllIDs(ctx)
+	require.NoError(t, err)
+	require.Zero(t, instanceIDs)
+}

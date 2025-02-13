@@ -33,6 +33,10 @@ func (s serverService) GetAll(ctx context.Context) (Servers, error) {
 	return s.repo.GetAll(ctx)
 }
 
+func (s serverService) GetAllByClusterID(ctx context.Context, clusterID int) (Servers, error) {
+	return s.repo.GetAllByClusterID(ctx, clusterID)
+}
+
 func (s serverService) GetAllHostnames(ctx context.Context) ([]string, error) {
 	return s.repo.GetAllHostnames(ctx)
 }
@@ -121,6 +125,8 @@ func (s serverService) DeleteByHostname(ctx context.Context, hostname string) er
 		if err != nil {
 			return err
 		}
+
+		// FIXME: deleteting a server also requires to delete all the inventory.
 
 		return s.repo.DeleteByID(ctx, server.ID)
 	})

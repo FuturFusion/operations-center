@@ -53,7 +53,7 @@ func TestTokenDatabaseActions(t *testing.T) {
 	_, err = token.Create(ctx, tokenB)
 	require.NoError(t, err)
 
-	// Ensure we have three entries
+	// Ensure we have two entries
 	tokens, err := token.GetAll(ctx)
 	require.NoError(t, err)
 	require.Len(t, tokens, 2)
