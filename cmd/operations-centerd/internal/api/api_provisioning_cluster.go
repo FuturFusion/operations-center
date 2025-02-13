@@ -109,7 +109,7 @@ func registerProvisioningClusterHandler(router *http.ServeMux, service provision
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (t *clusterHandler) clustersGet(r *http.Request) response.Response {
+func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 	// Parse the recursion field.
 	recursion, err := strconv.Atoi(r.FormValue("recursion"))
 	if err != nil {
@@ -117,7 +117,7 @@ func (t *clusterHandler) clustersGet(r *http.Request) response.Response {
 	}
 
 	if recursion == 1 {
-		clusters, err := t.service.GetAll(r.Context())
+		clusters, err := c.service.GetAll(r.Context())
 		if err != nil {
 			return response.SmartError(err)
 		}
@@ -136,7 +136,7 @@ func (t *clusterHandler) clustersGet(r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	clusterNames, err := t.service.GetAllNames(r.Context())
+	clusterNames, err := c.service.GetAllNames(r.Context())
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -176,7 +176,7 @@ func (t *clusterHandler) clustersGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (t *clusterHandler) clustersPost(r *http.Request) response.Response {
+func (c *clusterHandler) clustersPost(r *http.Request) response.Response {
 	var cluster api.Cluster
 
 	// Decode into the new cluster.
@@ -185,7 +185,7 @@ func (t *clusterHandler) clustersPost(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	_, err = t.service.Create(r.Context(), provisioning.Cluster{
+	_, err = c.service.Create(r.Context(), provisioning.Cluster{
 		ID:              cluster.ID,
 		Name:            cluster.Name,
 		ConnectionURL:   cluster.ConnectionURL,
@@ -233,10 +233,10 @@ func (t *clusterHandler) clustersPost(r *http.Request) response.Response {
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (t *clusterHandler) clusterGet(r *http.Request) response.Response {
+func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	cluster, err := t.service.GetByName(r.Context(), name)
+	cluster, err := c.service.GetByName(r.Context(), name)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -283,7 +283,7 @@ func (t *clusterHandler) clusterGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (t *clusterHandler) clusterPut(r *http.Request) response.Response {
+func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
 	var cluster api.Cluster
@@ -301,7 +301,7 @@ func (t *clusterHandler) clusterPut(r *http.Request) response.Response {
 		}
 	}()
 
-	currentCluster, err := t.service.GetByName(ctx, name)
+	currentCluster, err := c.service.GetByName(ctx, name)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get cluster %q: %w", name, err))
 	}
@@ -312,7 +312,7 @@ func (t *clusterHandler) clusterPut(r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = t.service.UpdateByName(ctx, name, provisioning.Cluster{
+	_, err = c.service.UpdateByName(ctx, name, provisioning.Cluster{
 		ID:              cluster.ID,
 		Name:            cluster.Name,
 		ConnectionURL:   cluster.ConnectionURL,
@@ -349,10 +349,10 @@ func (t *clusterHandler) clusterPut(r *http.Request) response.Response {
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (t *clusterHandler) clusterDelete(r *http.Request) response.Response {
+func (c *clusterHandler) clusterDelete(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	err := t.service.DeleteByName(r.Context(), name)
+	err := c.service.DeleteByName(r.Context(), name)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -389,7 +389,7 @@ func (t *clusterHandler) clusterDelete(r *http.Request) response.Response {
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (t *clusterHandler) clusterPost(r *http.Request) response.Response {
+func (c *clusterHandler) clusterPost(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
 	var cluster api.Cluster
@@ -407,7 +407,7 @@ func (t *clusterHandler) clusterPost(r *http.Request) response.Response {
 		}
 	}()
 
-	currentCluster, err := t.service.GetByName(ctx, name)
+	currentCluster, err := c.service.GetByName(ctx, name)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get cluster %q: %w", name, err))
 	}
@@ -418,7 +418,7 @@ func (t *clusterHandler) clusterPost(r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = t.service.RenameByName(ctx, name, provisioning.Cluster{
+	_, err = c.service.RenameByName(ctx, name, provisioning.Cluster{
 		ID:              currentCluster.ID,
 		Name:            cluster.Name,
 		ConnectionURL:   currentCluster.ConnectionURL,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"log/slog"
 	"net"
 	"net/http"
@@ -105,11 +106,15 @@ func (d *Daemon) Start() error {
 	updateRouter := newSubRouter(provisioningRouter, "/updates")
 	registerUpdateHandler(updateRouter, updateSvc)
 
+	errorLogger := &log.Logger{}
+	errorLogger.SetOutput(httpErrorLogger{})
+
 	// Setup web server
 	d.server = &http.Server{
 		Handler:     router,
 		IdleTimeout: 30 * time.Second,
 		Addr:        fmt.Sprintf("%s:%d", d.config.RestServerAddr, d.config.RestServerPort),
+		ErrorLog:    errorLogger,
 	}
 
 	group, errgroupCtx := errgroup.WithContext(context.Background())
@@ -220,4 +225,11 @@ func handleRootPath(h http.Handler, ignoreTrailingSlash bool) http.Handler {
 			return
 		}
 	})
+}
+
+type httpErrorLogger struct{}
+
+func (httpErrorLogger) Write(p []byte) (n int, err error) {
+	slog.Error(string(p)) //nolint:sloglint // error message coming from the http server is the message.
+	return len(p), nil
 }
