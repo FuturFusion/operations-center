@@ -8,13 +8,12 @@ import (
 	"log"
 	"time"
 
+	_ "github.com/mattn/go-sqlite3"
+
 	"github.com/FuturFusion/operations-center/cmd/incus-generate/entities"
 	"github.com/FuturFusion/operations-center/cmd/incus-generate/query"
 	"github.com/FuturFusion/operations-center/cmd/sqlc-poc/ptr"
-	_ "github.com/mattn/go-sqlite3"
 )
-
-//go:generate go run github.com/sqlc-dev/sqlc/cmd/sqlc generate
 
 //go:embed schema.sql
 var ddl string
@@ -91,7 +90,6 @@ func run() error {
 			ProjectID: ptr.To(int64(1)),
 			Name:      ptr.To("one"),
 		})
-
 		if err != nil {
 			return err
 		}
@@ -102,7 +100,6 @@ func run() error {
 		storageVolumes2, err = entities.GetStorageVolumes(ctx, tx, entities.StorageVolumeFilter{
 			ProjectID: ptr.To(int64(2)),
 		})
-
 		if err != nil {
 			return err
 		}
