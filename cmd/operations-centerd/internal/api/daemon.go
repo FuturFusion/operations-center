@@ -20,7 +20,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/dbschema"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/github"
-	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
+	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/response"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -76,9 +76,9 @@ func (d *Daemon) Start() error {
 	gh := ghClient.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
 
 	// Setup Services
-	tokenSvc := provisioning.NewTokenService(sqlite.NewToken(dbWithTransaction))
-	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(dbWithTransaction))
-	serverSvc := provisioning.NewServerService(sqlite.NewServer(dbWithTransaction))
+	tokenSvc := provisioning.NewTokenService(provisioningSqlite.NewToken(dbWithTransaction))
+	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(dbWithTransaction))
+	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(dbWithTransaction))
 	updateSvc := provisioning.NewUpdateService(github.NewUpdate(gh))
 
 	// Setup Routes
