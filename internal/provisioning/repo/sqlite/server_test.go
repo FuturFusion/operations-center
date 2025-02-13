@@ -91,7 +91,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	_, err = server.Create(ctx, serverB)
 	require.NoError(t, err)
 
-	// Ensure we have three entries
+	// Ensure we have two entries
 	servers, err := server.GetAll(ctx)
 	require.NoError(t, err)
 	require.Len(t, servers, 2)

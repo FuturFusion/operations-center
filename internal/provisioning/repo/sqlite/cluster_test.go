@@ -54,7 +54,7 @@ func TestClusterDatabaseActions(t *testing.T) {
 	_, err = cluster.Create(ctx, clusterB)
 	require.NoError(t, err)
 
-	// Ensure we have three entries
+	// Ensure we have two entries
 	clusters, err := cluster.GetAll(ctx)
 	require.NoError(t, err)
 	require.Len(t, clusters, 2)
