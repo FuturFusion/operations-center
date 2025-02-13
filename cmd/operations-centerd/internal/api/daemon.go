@@ -18,6 +18,10 @@ import (
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
+	"github.com/FuturFusion/operations-center/internal/inventory"
+	incusRepo "github.com/FuturFusion/operations-center/internal/inventory/repo/incus"
+	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/github"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
@@ -35,16 +39,30 @@ type environment interface {
 type Daemon struct {
 	env environment
 
-	config *config.Config
+	config            *config.Config
+	clientCertificate string
+	clientKey         string
 
 	server   *http.Server
 	errgroup *errgroup.Group
 }
 
 func NewDaemon(env environment, cfg *config.Config) *Daemon {
+	clientCert, err := os.ReadFile(cfg.ClientCertificateFilename)
+	if err != nil {
+		slog.Warn("failed to read client certificate", slog.String("file", cfg.ClientCertificateFilename), logger.Err(err))
+	}
+
+	clientKey, err := os.ReadFile(cfg.ClientKeyFilename)
+	if err != nil {
+		slog.Warn("failed to read client key", slog.String("file", cfg.ClientKeyFilename), logger.Err(err))
+	}
+
 	d := &Daemon{
-		env:    env,
-		config: cfg,
+		env:               env,
+		config:            cfg,
+		clientCertificate: string(clientCert),
+		clientKey:         string(clientKey),
 	}
 
 	return d
@@ -81,6 +99,16 @@ func (d *Daemon) Start() error {
 	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(dbWithTransaction))
 	updateSvc := provisioning.NewUpdateService(github.NewUpdate(gh))
 
+	inventoryInstanceSvc := inventory.NewInstanceService(
+		inventorySqlite.NewInstance(dbWithTransaction),
+		clusterSvc,
+		serverSvc,
+		incusRepo.ServerClientProvider(
+			d.clientCertificate,
+			d.clientKey,
+		),
+	)
+
 	// Setup Routes
 	router := http.NewServeMux()
 	router.HandleFunc("GET /{$}",
@@ -105,6 +133,11 @@ func (d *Daemon) Start() error {
 
 	updateRouter := newSubRouter(provisioningRouter, "/updates")
 	registerUpdateHandler(updateRouter, updateSvc)
+
+	inventoryRouter := newSubRouter(api10router, "/inventory")
+
+	inventoryInstanceRouter := newSubRouter(inventoryRouter, "/instances")
+	registerInventoryInstanceHandler(inventoryInstanceRouter, inventoryInstanceSvc)
 
 	errorLogger := &log.Logger{}
 	errorLogger.SetOutput(httpErrorLogger{})

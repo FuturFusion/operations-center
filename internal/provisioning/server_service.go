@@ -126,6 +126,8 @@ func (s serverService) DeleteByHostname(ctx context.Context, hostname string) er
 			return err
 		}
 
+		// FIXME: deleteting a server also requires to delete all the inventory.
+
 		return s.repo.DeleteByID(ctx, server.ID)
 	})
 }
