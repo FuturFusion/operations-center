@@ -175,28 +175,28 @@ func (u *UpdateSeverity) Scan(value any) error {
 type Update struct {
 	// Opaque ID of the update.
 	// Example: lxc$incus-os$123
-	ID string
+	ID string `json:"id" yaml:"id"`
 
 	// List of Components, that are available with the Update. Allowed entries:
 	// HypervisorOS, Migration Manager, Migration Manager Worker, Operations Center
 	// Example: ["HypervisorOS", "Migration Manager"]
-	Components UpdateComponents
+	Components UpdateComponents `json:"components" yaml:"components"`
 
 	// Version of the Update as opaque string.
 	// Example: 202501311418
-	Version string
+	Version string `json:"version" yaml:"version"`
 
 	// PublishedAt is the date, when the Update has been published in RFC3339 format.
 	// Example: 2025-02-12T09:59:00Z
-	PublishedAt time.Time
+	PublishedAt time.Time `json:"published_at" yaml:"published_at"`
 
 	// Severity of the Update. Allowed values: none, low, medium, high, critical
 	// Example: none
-	Severity UpdateSeverity
+	Severity UpdateSeverity `json:"severity" yaml:"severity"`
 
 	// Channel of the Update.
 	// Example: stable
-	Channel string
+	Channel string `json:"channel" yaml:"channel"`
 }
 
 // Update defines an update file.
@@ -205,17 +205,17 @@ type Update struct {
 type UpdateFile struct {
 	// ID of the Update, this file belongs to.
 	// Example: lxc$incus-os$123
-	UpdateID string
+	UpdateID string `json:"update_id" yaml:"update_id"`
 
 	// Filename of the File.
 	// Example: IncusOS_202501311418.efi.gz
-	Filename string
+	Filename string `json:"filename" yaml:"filename"`
 
 	// URL of the File.
 	// Example: https://github.com/lxc/incus-os/releases/download/202501311418/IncusOS_202501311418.efi.gz
-	URL url.URL
+	URL url.URL `json:"url" yaml:"url"`
 
 	// Size of the File in bytes.
 	// Example: 54300000
-	Size int
+	Size int `json:"size" yaml:"size"`
 }

@@ -69,32 +69,32 @@ func (s *ServerType) Scan(value any) error {
 type Server struct {
 	// An opaque integer identifier for the server.
 	// Example: 1
-	ID int
+	ID int `json:"id" yaml:"id"`
 
 	// The custer ID of the cluster the server is part of.
 	// Example: 1
-	ClusterID int
+	ClusterID int `json:"cluster_id" yaml:"cluster_id"`
 
 	// Hostname or name of the server.
 	// Example: incus.local
-	Hostname string
+	Hostname string `json:"hostname" yaml:"hostname"`
 
 	// Type defines the type of the server, which is normally one of "incus", "migration-manager", "operations-center".
 	// Example: incus
-	Type ServerType
+	Type ServerType `json:"server_type" yaml:"server_type"`
 
 	// URL, hostname or IP address of the server endpoint.
 	// Example: https://incus.local:6443
-	ConnectionURL string
+	ConnectionURL string `json:"connection_url" yaml:"connection_url"`
 
 	// HardwareData contains the hardware data of the server, in the same form as presented by Incus in the resource API.
-	HardwareData incusapi.Resources // FXIME: should this be json.RawMessage?
+	HardwareData incusapi.Resources `json:"hardware_data" yaml:"hardware_data"` // FIXME: should this be json.RawMessage?
 
 	// VersionData contains information about the servers version.
 	// Example: ...
-	VersionData json.RawMessage // FIXME: it is not yet clear, how the structure of the version information will actually look like.
+	VersionData json.RawMessage `json:"version_data" yaml:"version_data"` // FIXME: it is not yet clear, how the structure of the version information will actually look like.
 
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
-	LastUpdated time.Time
+	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
 }
