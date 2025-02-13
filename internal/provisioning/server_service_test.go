@@ -199,16 +199,16 @@ func TestServerService_GetAllByClusterID(t *testing.T) {
 
 func TestServerService_GetAllHostnames(t *testing.T) {
 	tests := []struct {
-		name             string
-		repoGetAllIDs    []string
-		repoGetAllIDsErr error
+		name                   string
+		repoGetAllHostnames    []string
+		repoGetAllHostnamesErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success",
-			repoGetAllIDs: []string{
+			repoGetAllHostnames: []string{
 				"one", "two",
 			},
 
@@ -216,8 +216,8 @@ func TestServerService_GetAllHostnames(t *testing.T) {
 			count:     2,
 		},
 		{
-			name:             "error - repo",
-			repoGetAllIDsErr: boom.Error,
+			name:                   "error - repo",
+			repoGetAllHostnamesErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -229,7 +229,7 @@ func TestServerService_GetAllHostnames(t *testing.T) {
 			// Setup
 			repo := &mock.ServerRepoMock{
 				GetAllHostnamesFunc: func(ctx context.Context) ([]string, error) {
-					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
+					return tc.repoGetAllHostnames, tc.repoGetAllHostnamesErr
 				},
 			}
 
