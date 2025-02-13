@@ -83,6 +83,26 @@ func (_d ServerRepoWithSlog) GetAll(ctx context.Context) (s1 _sourceProvisioning
 	return _d._base.GetAll(ctx)
 }
 
+// GetAllByClusterID implements _sourceProvisioning.ServerRepo
+func (_d ServerRepoWithSlog) GetAllByClusterID(ctx context.Context, clusterID int) (s1 _sourceProvisioning.Servers, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Int("clusterID", clusterID),
+	).Debug("ServerRepoWithSlog: calling GetAllByClusterID")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("s1", s1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("ServerRepoWithSlog: method GetAllByClusterID returned an error")
+		} else {
+			log.Debug("ServerRepoWithSlog: method GetAllByClusterID finished")
+		}
+	}()
+	return _d._base.GetAllByClusterID(ctx, clusterID)
+}
+
 // GetAllHostnames implements _sourceProvisioning.ServerRepo
 func (_d ServerRepoWithSlog) GetAllHostnames(ctx context.Context) (sa1 []string, err error) {
 	_d._log.With(

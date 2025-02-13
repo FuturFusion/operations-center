@@ -29,6 +29,9 @@ var _ provisioning.ServerRepo = &ServerRepoMock{}
 //			GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
 //				panic("mock out the GetAll method")
 //			},
+//			GetAllByClusterIDFunc: func(ctx context.Context, clusterID int) (provisioning.Servers, error) {
+//				panic("mock out the GetAllByClusterID method")
+//			},
 //			GetAllHostnamesFunc: func(ctx context.Context) ([]string, error) {
 //				panic("mock out the GetAllHostnames method")
 //			},
@@ -56,6 +59,9 @@ type ServerRepoMock struct {
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Servers, error)
+
+	// GetAllByClusterIDFunc mocks the GetAllByClusterID method.
+	GetAllByClusterIDFunc func(ctx context.Context, clusterID int) (provisioning.Servers, error)
 
 	// GetAllHostnamesFunc mocks the GetAllHostnames method.
 	GetAllHostnamesFunc func(ctx context.Context) ([]string, error)
@@ -90,6 +96,13 @@ type ServerRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// GetAllByClusterID holds details about calls to the GetAllByClusterID method.
+		GetAllByClusterID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterID is the clusterID argument value.
+			ClusterID int
+		}
 		// GetAllHostnames holds details about calls to the GetAllHostnames method.
 		GetAllHostnames []struct {
 			// Ctx is the ctx argument value.
@@ -117,13 +130,14 @@ type ServerRepoMock struct {
 			Server provisioning.Server
 		}
 	}
-	lockCreate          sync.RWMutex
-	lockDeleteByID      sync.RWMutex
-	lockGetAll          sync.RWMutex
-	lockGetAllHostnames sync.RWMutex
-	lockGetByHostname   sync.RWMutex
-	lockGetByID         sync.RWMutex
-	lockUpdateByID      sync.RWMutex
+	lockCreate            sync.RWMutex
+	lockDeleteByID        sync.RWMutex
+	lockGetAll            sync.RWMutex
+	lockGetAllByClusterID sync.RWMutex
+	lockGetAllHostnames   sync.RWMutex
+	lockGetByHostname     sync.RWMutex
+	lockGetByID           sync.RWMutex
+	lockUpdateByID        sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -227,6 +241,42 @@ func (mock *ServerRepoMock) GetAllCalls() []struct {
 	mock.lockGetAll.RLock()
 	calls = mock.calls.GetAll
 	mock.lockGetAll.RUnlock()
+	return calls
+}
+
+// GetAllByClusterID calls GetAllByClusterIDFunc.
+func (mock *ServerRepoMock) GetAllByClusterID(ctx context.Context, clusterID int) (provisioning.Servers, error) {
+	if mock.GetAllByClusterIDFunc == nil {
+		panic("ServerRepoMock.GetAllByClusterIDFunc: method is nil but ServerRepo.GetAllByClusterID was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		ClusterID int
+	}{
+		Ctx:       ctx,
+		ClusterID: clusterID,
+	}
+	mock.lockGetAllByClusterID.Lock()
+	mock.calls.GetAllByClusterID = append(mock.calls.GetAllByClusterID, callInfo)
+	mock.lockGetAllByClusterID.Unlock()
+	return mock.GetAllByClusterIDFunc(ctx, clusterID)
+}
+
+// GetAllByClusterIDCalls gets all the calls that were made to GetAllByClusterID.
+// Check the length with:
+//
+//	len(mockedServerRepo.GetAllByClusterIDCalls())
+func (mock *ServerRepoMock) GetAllByClusterIDCalls() []struct {
+	Ctx       context.Context
+	ClusterID int
+} {
+	var calls []struct {
+		Ctx       context.Context
+		ClusterID int
+	}
+	mock.lockGetAllByClusterID.RLock()
+	calls = mock.calls.GetAllByClusterID
+	mock.lockGetAllByClusterID.RUnlock()
 	return calls
 }
 

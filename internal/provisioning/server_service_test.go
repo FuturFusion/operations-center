@@ -135,6 +135,68 @@ func TestServerService_GetAll(t *testing.T) {
 	}
 }
 
+func TestServerService_GetAllByClusterID(t *testing.T) {
+	tests := []struct {
+		name                         string
+		clusterIDArg                 int
+		repoGetAllByClusterIDServers provisioning.Servers
+		repoGetAllByClusterIDErr     error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name:         "success",
+			clusterIDArg: 1,
+			repoGetAllByClusterIDServers: provisioning.Servers{
+				provisioning.Server{
+					ID:            1,
+					Hostname:      "one",
+					ClusterID:     1,
+					ConnectionURL: "http://one/",
+				},
+				provisioning.Server{
+					ID:            2,
+					Hostname:      "one",
+					ClusterID:     1,
+					ConnectionURL: "http://one/",
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:                     "error - repo",
+			clusterIDArg:             1,
+			repoGetAllByClusterIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ServerRepoMock{
+				GetAllByClusterIDFunc: func(ctx context.Context, custerID int) (provisioning.Servers, error) {
+					return tc.repoGetAllByClusterIDServers, tc.repoGetAllByClusterIDErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo)
+
+			// Run test
+			servers, err := serverSvc.GetAllByClusterID(context.Background(), tc.clusterIDArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, servers, tc.count)
+		})
+	}
+}
+
 func TestServerService_GetAllHostnames(t *testing.T) {
 	tests := []struct {
 		name             string

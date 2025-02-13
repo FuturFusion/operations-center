@@ -69,6 +69,41 @@ func (c server) GetAll(ctx context.Context) (provisioning.Servers, error) {
 	return servers, nil
 }
 
+func (c server) GetAllByClusterID(ctx context.Context, clusterID int) (provisioning.Servers, error) {
+	const sqlStmt = `
+SELECT
+  id, cluster_id, hostname, type, connection_url, last_updated
+FROM servers
+WHERE
+  cluster_id = :cluster_id;
+`
+
+	rows, err := c.db.QueryContext(ctx, sqlStmt,
+		sql.Named("cluster_id", clusterID),
+	)
+	if err != nil {
+		return nil, mapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var servers provisioning.Servers
+	for rows.Next() {
+		server, err := scanServer(rows)
+		if err != nil {
+			return nil, mapErr(err)
+		}
+
+		servers = append(servers, server)
+	}
+
+	if rows.Err() != nil {
+		return nil, mapErr(rows.Err())
+	}
+
+	return servers, nil
+}
+
 func (c server) GetAllHostnames(ctx context.Context) ([]string, error) {
 	const sqlStmt = `SELECT hostname FROM servers ORDER BY id`
 

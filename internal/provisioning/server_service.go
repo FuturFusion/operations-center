@@ -33,6 +33,10 @@ func (s serverService) GetAll(ctx context.Context) (Servers, error) {
 	return s.repo.GetAll(ctx)
 }
 
+func (s serverService) GetAllByClusterID(ctx context.Context, clusterID int) (Servers, error) {
+	return s.repo.GetAllByClusterID(ctx, clusterID)
+}
+
 func (s serverService) GetAllHostnames(ctx context.Context) ([]string, error) {
 	return s.repo.GetAllHostnames(ctx)
 }

@@ -5,6 +5,7 @@ import "context"
 type ServerService interface {
 	Create(ctx context.Context, server Server) (Server, error)
 	GetAll(ctx context.Context) (Servers, error)
+	GetAllByClusterID(ctx context.Context, clusterID int) (Servers, error)
 	GetAllHostnames(ctx context.Context) ([]string, error)
 	GetByID(ctx context.Context, id int) (Server, error)
 	GetByHostname(ctx context.Context, name string) (Server, error)
@@ -20,6 +21,7 @@ type ServerService interface {
 type ServerRepo interface {
 	Create(ctx context.Context, server Server) (Server, error)
 	GetAll(ctx context.Context) (Servers, error)
+	GetAllByClusterID(ctx context.Context, clusterID int) (Servers, error)
 	GetAllHostnames(ctx context.Context) ([]string, error)
 	GetByID(ctx context.Context, id int) (Server, error)
 	GetByHostname(ctx context.Context, name string) (Server, error)
