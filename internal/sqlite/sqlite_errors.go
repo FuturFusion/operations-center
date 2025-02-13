@@ -10,7 +10,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
-func mapErr(err error) error {
+func MapErr(err error) error {
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return domain.ErrNotFound

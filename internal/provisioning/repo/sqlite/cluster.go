@@ -7,16 +7,16 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/provisioning/repo"
+	"github.com/FuturFusion/operations-center/internal/sqlite"
 )
 
 type cluster struct {
-	db repo.DBTX
+	db sqlite.DBTX
 }
 
 var _ provisioning.ClusterRepo = &cluster{}
 
-func NewCluster(db repo.DBTX) *cluster {
+func NewCluster(db sqlite.DBTX) *cluster {
 	return &cluster{
 		db: db,
 	}
@@ -38,7 +38,7 @@ RETURNING id, name, connection_url, server_hostnames, last_updated;
 		sql.Named("last_updated", in.LastUpdated),
 	)
 	if row.Err() != nil {
-		return provisioning.Cluster{}, mapErr(row.Err())
+		return provisioning.Cluster{}, sqlite.MapErr(row.Err())
 	}
 
 	return scanCluster(row)
@@ -49,7 +49,7 @@ func (c cluster) GetAll(ctx context.Context) (provisioning.Clusters, error) {
 
 	rows, err := c.db.QueryContext(ctx, sqlStmt)
 	if err != nil {
-		return nil, mapErr(err)
+		return nil, sqlite.MapErr(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -58,14 +58,14 @@ func (c cluster) GetAll(ctx context.Context) (provisioning.Clusters, error) {
 	for rows.Next() {
 		cluster, err := scanCluster(rows)
 		if err != nil {
-			return nil, mapErr(err)
+			return nil, sqlite.MapErr(err)
 		}
 
 		clusters = append(clusters, cluster)
 	}
 
 	if rows.Err() != nil {
-		return nil, mapErr(rows.Err())
+		return nil, sqlite.MapErr(rows.Err())
 	}
 
 	return clusters, nil
@@ -76,7 +76,7 @@ func (c cluster) GetAllNames(ctx context.Context) ([]string, error) {
 
 	rows, err := c.db.QueryContext(ctx, sqlStmt)
 	if err != nil {
-		return nil, mapErr(err)
+		return nil, sqlite.MapErr(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -86,14 +86,14 @@ func (c cluster) GetAllNames(ctx context.Context) ([]string, error) {
 		var clusterName string
 		err := rows.Scan(&clusterName)
 		if err != nil {
-			return nil, mapErr(err)
+			return nil, sqlite.MapErr(err)
 		}
 
 		clusterNames = append(clusterNames, clusterName)
 	}
 
 	if rows.Err() != nil {
-		return nil, mapErr(rows.Err())
+		return nil, sqlite.MapErr(rows.Err())
 	}
 
 	return clusterNames, nil
@@ -104,7 +104,7 @@ func (c cluster) GetByID(ctx context.Context, id int) (provisioning.Cluster, err
 
 	row := c.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
 	if row.Err() != nil {
-		return provisioning.Cluster{}, mapErr(row.Err())
+		return provisioning.Cluster{}, sqlite.MapErr(row.Err())
 	}
 
 	return scanCluster(row)
@@ -115,7 +115,7 @@ func (c cluster) GetByName(ctx context.Context, name string) (provisioning.Clust
 
 	row := c.db.QueryRowContext(ctx, sqlStmt, sql.Named("name", name))
 	if row.Err() != nil {
-		return provisioning.Cluster{}, mapErr(row.Err())
+		return provisioning.Cluster{}, sqlite.MapErr(row.Err())
 	}
 
 	return scanCluster(row)
@@ -137,7 +137,7 @@ RETURNING id, name, connection_url, server_hostnames, last_updated;
 		sql.Named("last_updated", in.LastUpdated),
 	)
 	if row.Err() != nil {
-		return provisioning.Cluster{}, mapErr(row.Err())
+		return provisioning.Cluster{}, sqlite.MapErr(row.Err())
 	}
 
 	return scanCluster(row)
@@ -148,12 +148,12 @@ func (c cluster) DeleteByID(ctx context.Context, id int) error {
 
 	result, err := c.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
 	if err != nil {
-		return mapErr(err)
+		return sqlite.MapErr(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
 	if err != nil {
-		return mapErr(err)
+		return sqlite.MapErr(err)
 	}
 
 	if affectedRows == 0 {
@@ -175,7 +175,7 @@ func scanCluster(row interface{ Scan(dest ...any) error }) (provisioning.Cluster
 		&cluster.LastUpdated,
 	)
 	if err != nil {
-		return provisioning.Cluster{}, mapErr(err)
+		return provisioning.Cluster{}, sqlite.MapErr(err)
 	}
 
 	cluster.ServerHostnames = strings.Split(serverNames, ",")

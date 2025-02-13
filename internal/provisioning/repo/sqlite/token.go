@@ -8,16 +8,16 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/provisioning/repo"
+	"github.com/FuturFusion/operations-center/internal/sqlite"
 )
 
 type token struct {
-	db repo.DBTX
+	db sqlite.DBTX
 }
 
 var _ provisioning.TokenRepo = &token{}
 
-func NewToken(db repo.DBTX) *token {
+func NewToken(db sqlite.DBTX) *token {
 	return &token{
 		db: db,
 	}
@@ -37,7 +37,7 @@ RETURNING uuid, uses_remaining, expire_at, description;
 		sql.Named("description", in.Description),
 	)
 	if row.Err() != nil {
-		return provisioning.Token{}, mapErr(row.Err())
+		return provisioning.Token{}, sqlite.MapErr(row.Err())
 	}
 
 	return scanToken(row)
@@ -48,7 +48,7 @@ func (t token) GetAll(ctx context.Context) (provisioning.Tokens, error) {
 
 	rows, err := t.db.QueryContext(ctx, sqlStmt)
 	if err != nil {
-		return nil, mapErr(err)
+		return nil, sqlite.MapErr(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -57,14 +57,14 @@ func (t token) GetAll(ctx context.Context) (provisioning.Tokens, error) {
 	for rows.Next() {
 		token, err := scanToken(rows)
 		if err != nil {
-			return nil, mapErr(err)
+			return nil, sqlite.MapErr(err)
 		}
 
 		tokens = append(tokens, token)
 	}
 
 	if rows.Err() != nil {
-		return nil, mapErr(rows.Err())
+		return nil, sqlite.MapErr(rows.Err())
 	}
 
 	return tokens, nil
@@ -75,7 +75,7 @@ func (t token) GetAllIDs(ctx context.Context) ([]uuid.UUID, error) {
 
 	rows, err := t.db.QueryContext(ctx, sqlStmt)
 	if err != nil {
-		return nil, mapErr(err)
+		return nil, sqlite.MapErr(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -85,7 +85,7 @@ func (t token) GetAllIDs(ctx context.Context) ([]uuid.UUID, error) {
 		var tokenID string
 		err := rows.Scan(&tokenID)
 		if err != nil {
-			return nil, mapErr(err)
+			return nil, sqlite.MapErr(err)
 		}
 
 		id, err := uuid.Parse(tokenID)
@@ -97,7 +97,7 @@ func (t token) GetAllIDs(ctx context.Context) ([]uuid.UUID, error) {
 	}
 
 	if rows.Err() != nil {
-		return nil, mapErr(rows.Err())
+		return nil, sqlite.MapErr(rows.Err())
 	}
 
 	return tokenIDs, nil
@@ -108,7 +108,7 @@ func (t token) GetByID(ctx context.Context, id uuid.UUID) (provisioning.Token, e
 
 	row := t.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if row.Err() != nil {
-		return provisioning.Token{}, mapErr(row.Err())
+		return provisioning.Token{}, sqlite.MapErr(row.Err())
 	}
 
 	return scanToken(row)
@@ -128,7 +128,7 @@ RETURNING uuid, uses_remaining, expire_at, description;
 		sql.Named("uuid", in.UUID),
 	)
 	if row.Err() != nil {
-		return provisioning.Token{}, mapErr(row.Err())
+		return provisioning.Token{}, sqlite.MapErr(row.Err())
 	}
 
 	return scanToken(row)
@@ -139,12 +139,12 @@ func (t token) DeleteByID(ctx context.Context, id uuid.UUID) error {
 
 	result, err := t.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if err != nil {
-		return mapErr(err)
+		return sqlite.MapErr(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
 	if err != nil {
-		return mapErr(err)
+		return sqlite.MapErr(err)
 	}
 
 	if affectedRows == 0 {
@@ -164,7 +164,7 @@ func scanToken(row interface{ Scan(dest ...any) error }) (provisioning.Token, er
 		&token.Description,
 	)
 	if err != nil {
-		return provisioning.Token{}, mapErr(err)
+		return provisioning.Token{}, sqlite.MapErr(err)
 	}
 
 	return token, nil

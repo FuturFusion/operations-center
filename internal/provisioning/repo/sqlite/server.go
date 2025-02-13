@@ -6,16 +6,16 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/provisioning/repo"
+	"github.com/FuturFusion/operations-center/internal/sqlite"
 )
 
 type server struct {
-	db repo.DBTX
+	db sqlite.DBTX
 }
 
 var _ provisioning.ServerRepo = &server{}
 
-func NewServer(db repo.DBTX) *server {
+func NewServer(db sqlite.DBTX) *server {
 	return &server{
 		db: db,
 	}
@@ -36,7 +36,7 @@ RETURNING id, cluster_id, hostname, type, connection_url, last_updated;
 		sql.Named("last_updated", in.LastUpdated),
 	)
 	if row.Err() != nil {
-		return provisioning.Server{}, mapErr(row.Err())
+		return provisioning.Server{}, sqlite.MapErr(row.Err())
 	}
 
 	return scanServer(row)
@@ -47,7 +47,7 @@ func (c server) GetAll(ctx context.Context) (provisioning.Servers, error) {
 
 	rows, err := c.db.QueryContext(ctx, sqlStmt)
 	if err != nil {
-		return nil, mapErr(err)
+		return nil, sqlite.MapErr(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -56,14 +56,14 @@ func (c server) GetAll(ctx context.Context) (provisioning.Servers, error) {
 	for rows.Next() {
 		server, err := scanServer(rows)
 		if err != nil {
-			return nil, mapErr(err)
+			return nil, sqlite.MapErr(err)
 		}
 
 		servers = append(servers, server)
 	}
 
 	if rows.Err() != nil {
-		return nil, mapErr(rows.Err())
+		return nil, sqlite.MapErr(rows.Err())
 	}
 
 	return servers, nil
@@ -82,7 +82,7 @@ WHERE
 		sql.Named("cluster_id", clusterID),
 	)
 	if err != nil {
-		return nil, mapErr(err)
+		return nil, sqlite.MapErr(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -91,14 +91,14 @@ WHERE
 	for rows.Next() {
 		server, err := scanServer(rows)
 		if err != nil {
-			return nil, mapErr(err)
+			return nil, sqlite.MapErr(err)
 		}
 
 		servers = append(servers, server)
 	}
 
 	if rows.Err() != nil {
-		return nil, mapErr(rows.Err())
+		return nil, sqlite.MapErr(rows.Err())
 	}
 
 	return servers, nil
@@ -109,7 +109,7 @@ func (c server) GetAllHostnames(ctx context.Context) ([]string, error) {
 
 	rows, err := c.db.QueryContext(ctx, sqlStmt)
 	if err != nil {
-		return nil, mapErr(err)
+		return nil, sqlite.MapErr(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -119,14 +119,14 @@ func (c server) GetAllHostnames(ctx context.Context) ([]string, error) {
 		var serverHostname string
 		err := rows.Scan(&serverHostname)
 		if err != nil {
-			return nil, mapErr(err)
+			return nil, sqlite.MapErr(err)
 		}
 
 		serverHostnames = append(serverHostnames, serverHostname)
 	}
 
 	if rows.Err() != nil {
-		return nil, mapErr(rows.Err())
+		return nil, sqlite.MapErr(rows.Err())
 	}
 
 	return serverHostnames, nil
@@ -137,7 +137,7 @@ func (c server) GetByID(ctx context.Context, id int) (provisioning.Server, error
 
 	row := c.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
 	if row.Err() != nil {
-		return provisioning.Server{}, mapErr(row.Err())
+		return provisioning.Server{}, sqlite.MapErr(row.Err())
 	}
 
 	return scanServer(row)
@@ -148,7 +148,7 @@ func (c server) GetByHostname(ctx context.Context, hostname string) (provisionin
 
 	row := c.db.QueryRowContext(ctx, sqlStmt, sql.Named("hostname", hostname))
 	if row.Err() != nil {
-		return provisioning.Server{}, mapErr(row.Err())
+		return provisioning.Server{}, sqlite.MapErr(row.Err())
 	}
 
 	return scanServer(row)
@@ -169,7 +169,7 @@ RETURNING id, cluster_id, hostname, type, connection_url, last_updated;
 		sql.Named("last_updated", in.LastUpdated),
 	)
 	if row.Err() != nil {
-		return provisioning.Server{}, mapErr(row.Err())
+		return provisioning.Server{}, sqlite.MapErr(row.Err())
 	}
 
 	return scanServer(row)
@@ -180,12 +180,12 @@ func (c server) DeleteByID(ctx context.Context, id int) error {
 
 	result, err := c.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
 	if err != nil {
-		return mapErr(err)
+		return sqlite.MapErr(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
 	if err != nil {
-		return mapErr(err)
+		return sqlite.MapErr(err)
 	}
 
 	if affectedRows == 0 {
@@ -207,7 +207,7 @@ func scanServer(row interface{ Scan(dest ...any) error }) (provisioning.Server, 
 		&server.LastUpdated,
 	)
 	if err != nil {
-		return provisioning.Server{}, mapErr(err)
+		return provisioning.Server{}, sqlite.MapErr(err)
 	}
 
 	return server, nil
