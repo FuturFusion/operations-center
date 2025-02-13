@@ -109,7 +109,7 @@ func registerProvisioningServerHandler(router *http.ServeMux, service provisioni
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (t *serverHandler) serversGet(r *http.Request) response.Response {
+func (s *serverHandler) serversGet(r *http.Request) response.Response {
 	// Parse the recursion field.
 	recursion, err := strconv.Atoi(r.FormValue("recursion"))
 	if err != nil {
@@ -117,7 +117,7 @@ func (t *serverHandler) serversGet(r *http.Request) response.Response {
 	}
 
 	if recursion == 1 {
-		servers, err := t.service.GetAll(r.Context())
+		servers, err := s.service.GetAll(r.Context())
 		if err != nil {
 			return response.SmartError(err)
 		}
@@ -139,7 +139,7 @@ func (t *serverHandler) serversGet(r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	serverHostnames, err := t.service.GetAllHostnames(r.Context())
+	serverHostnames, err := s.service.GetAllHostnames(r.Context())
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -179,7 +179,7 @@ func (t *serverHandler) serversGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (t *serverHandler) serversPost(r *http.Request) response.Response {
+func (s *serverHandler) serversPost(r *http.Request) response.Response {
 	var server api.Server
 
 	// Decode into the new server.
@@ -188,7 +188,7 @@ func (t *serverHandler) serversPost(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	_, err = t.service.Create(r.Context(), provisioning.Server{
+	_, err = s.service.Create(r.Context(), provisioning.Server{
 		ID:            server.ID,
 		ClusterID:     server.ClusterID,
 		Hostname:      server.Hostname,
@@ -239,10 +239,10 @@ func (t *serverHandler) serversPost(r *http.Request) response.Response {
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (t *serverHandler) serverGet(r *http.Request) response.Response {
+func (s *serverHandler) serverGet(r *http.Request) response.Response {
 	hostname := r.PathValue("hostname")
 
-	server, err := t.service.GetByHostname(r.Context(), hostname)
+	server, err := s.service.GetByHostname(r.Context(), hostname)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -292,7 +292,7 @@ func (t *serverHandler) serverGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (t *serverHandler) serverPut(r *http.Request) response.Response {
+func (s *serverHandler) serverPut(r *http.Request) response.Response {
 	hostname := r.PathValue("hostname")
 
 	var server api.Server
@@ -310,7 +310,7 @@ func (t *serverHandler) serverPut(r *http.Request) response.Response {
 		}
 	}()
 
-	currentServer, err := t.service.GetByHostname(ctx, hostname)
+	currentServer, err := s.service.GetByHostname(ctx, hostname)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get server %q: %w", hostname, err))
 	}
@@ -321,7 +321,7 @@ func (t *serverHandler) serverPut(r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = t.service.UpdateByHostname(ctx, hostname, provisioning.Server{
+	_, err = s.service.UpdateByHostname(ctx, hostname, provisioning.Server{
 		ID:            server.ID,
 		ClusterID:     server.ClusterID,
 		Hostname:      server.Hostname,
@@ -361,10 +361,10 @@ func (t *serverHandler) serverPut(r *http.Request) response.Response {
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (t *serverHandler) serverDelete(r *http.Request) response.Response {
+func (s *serverHandler) serverDelete(r *http.Request) response.Response {
 	hostname := r.PathValue("hostname")
 
-	err := t.service.DeleteByHostname(r.Context(), hostname)
+	err := s.service.DeleteByHostname(r.Context(), hostname)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -401,7 +401,7 @@ func (t *serverHandler) serverDelete(r *http.Request) response.Response {
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (t *serverHandler) serverPost(r *http.Request) response.Response {
+func (s *serverHandler) serverPost(r *http.Request) response.Response {
 	hostname := r.PathValue("hostname")
 
 	var server api.Server
@@ -419,7 +419,7 @@ func (t *serverHandler) serverPost(r *http.Request) response.Response {
 		}
 	}()
 
-	currentServer, err := t.service.GetByHostname(ctx, hostname)
+	currentServer, err := s.service.GetByHostname(ctx, hostname)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get server %q: %w", hostname, err))
 	}
@@ -430,7 +430,7 @@ func (t *serverHandler) serverPost(r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = t.service.RenameByHostname(ctx, hostname, provisioning.Server{
+	_, err = s.service.RenameByHostname(ctx, hostname, provisioning.Server{
 		ID:            server.ID,
 		ClusterID:     server.ClusterID,
 		Hostname:      server.Hostname,
