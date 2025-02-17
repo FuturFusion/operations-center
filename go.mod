@@ -60,7 +60,7 @@ require (
 	github.com/google/go-github/v69 v69.0.0
 	github.com/google/uuid v1.6.0
 	github.com/hexdigest/gowrap v1.4.1
-	github.com/lxc/incus/v6 v6.9.1-0.20250212215902-d1cd220be830
+	github.com/lxc/incus/v6 v6.9.1-0.20250214162529-64e9144a9d5b
 	github.com/matryer/moq v0.4.0
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/spf13/cobra v1.8.1
