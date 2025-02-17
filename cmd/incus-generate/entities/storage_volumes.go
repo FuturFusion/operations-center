@@ -9,7 +9,7 @@ import (
 // Code generation directives.
 //
 //go:generate -command mapper go run github.com/FuturFusion/operations-center/cmd/generate-database db mapper -t storage_volumes.mapper.go
-//go:generate mapper reset
+//go:generate mapper reset --no-incus-api
 //
 //go:generate mapper stmt -e storage_volume objects table=storage_volumes
 //go:generate mapper stmt -e storage_volume objects-by-Name-and-ServerID-and-ProjectID table=storage_volumes

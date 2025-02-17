@@ -63,12 +63,18 @@ func newDbMapperReset() *cobra.Command {
 	var target string
 	var build string
 	var iface bool
+	var noIncusAPI bool
 
 	cmd := &cobra.Command{
 		Use:   "reset",
 		Short: "Reset target source file and its interface file.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return file.Reset(target, db.Imports, build, iface)
+			imports := db.Imports
+			if !noIncusAPI {
+				imports = append(imports, db.ImportIncusShardAPI)
+			}
+
+			return file.Reset(target, imports, build, iface, noIncusAPI)
 		},
 	}
 
@@ -76,6 +82,7 @@ func newDbMapperReset() *cobra.Command {
 	flags.BoolVarP(&iface, "interface", "i", false, "create interface files")
 	flags.StringVarP(&target, "target", "t", "-", "target source file to generate")
 	flags.StringVarP(&build, "build", "b", "", "build comment to include")
+	flags.BoolVar(&noIncusAPI, "no-incus-api", false, "omit reference to Incus shared API package")
 
 	return cmd
 }

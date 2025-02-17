@@ -7,5 +7,6 @@ var Imports = []string{
 	"database/sql",
 	"fmt",
 	"github.com/FuturFusion/operations-center/cmd/incus-generate/query",
-	"github.com/FuturFusion/operations-center/shared/api",
 }
+
+const ImportIncusShardAPI = "github.com/FuturFusion/operations-center/shared/api"

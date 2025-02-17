@@ -8,7 +8,7 @@ import (
 // Code generation directives.
 //
 //go:generate -command mapper go run github.com/FuturFusion/operations-center/cmd/generate-database db mapper -t clusters.mapper.go
-//go:generate mapper reset
+//go:generate mapper reset --no-incus-api
 //
 //go:generate mapper stmt -e cluster objects
 //go:generate mapper stmt -e cluster objects-by-Name

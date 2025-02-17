@@ -14,8 +14,6 @@ import (
 	"github.com/lxc/incus/v6/shared/api"
 )
 
-var _ = api.ServerEnvironment{}
-
 var serverObjects = RegisterStmt(`
 SELECT servers.id, clusters.id AS cluster_id, servers.hostname, servers.type, servers.connection_url, servers.last_updated
   FROM servers

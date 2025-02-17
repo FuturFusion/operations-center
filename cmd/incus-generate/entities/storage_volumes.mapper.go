@@ -14,8 +14,6 @@ import (
 	"github.com/lxc/incus/v6/shared/api"
 )
 
-var _ = api.ServerEnvironment{}
-
 var storageVolumeObjects = RegisterStmt(`
 SELECT storage_volumes.id, servers.id AS server_id, storage_volumes.project_id, storage_volumes.name, storage_volumes.object, storage_volumes.last_updated
   FROM storage_volumes

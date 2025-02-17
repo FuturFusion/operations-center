@@ -10,7 +10,7 @@ import (
 )
 
 // Reset an auto-generated source file, writing a new empty file header.
-func Reset(path string, imports []string, buildComment string, iface bool) error {
+func Reset(path string, imports []string, buildComment string, iface bool, noIncusAPI bool) error {
 	// A new line needs to be appended after the build comment.
 	if buildComment != "" {
 		buildComment = fmt.Sprintf(`%s
@@ -38,8 +38,10 @@ import (
 
 	content += ")\n\n"
 
-	// FIXME: we should only import what's needed.
-	content += "var _ = api.ServerEnvironment{}\n"
+	if !noIncusAPI {
+		// FIXME: we should only import what's needed.
+		content += "var _ = api.ServerEnvironment{}\n"
+	}
 
 	bytes := []byte(content)
 
