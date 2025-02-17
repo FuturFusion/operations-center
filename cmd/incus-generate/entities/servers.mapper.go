@@ -7,11 +7,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/FuturFusion/operations-center/cmd/incus-generate/query"
-	"github.com/lxc/incus/v6/shared/api"
 )
 
 var serverObjects = RegisterStmt(`
@@ -45,7 +43,11 @@ DELETE FROM servers WHERE hostname = ?
 
 // GetServerID return the ID of the server with the given key.
 // generator: server ID
-func GetServerID(ctx context.Context, tx *sql.Tx, hostname string) (int64, error) {
+func GetServerID(ctx context.Context, tx *sql.Tx, hostname string) (_ int64, _err error) {
+	defer func() {
+		_err = mapErr(_err, "Server")
+	}()
+
 	stmt, err := Stmt(tx, serverID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"serverID\" prepared statement: %w", err)
@@ -55,7 +57,7 @@ func GetServerID(ctx context.Context, tx *sql.Tx, hostname string) (int64, error
 	var id int64
 	err = row.Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
-		return -1, api.StatusErrorf(http.StatusNotFound, "Server not found")
+		return -1, ErrNotFound
 	}
 
 	if err != nil {
@@ -67,14 +69,25 @@ func GetServerID(ctx context.Context, tx *sql.Tx, hostname string) (int64, error
 
 // ServerExists checks if a server with the given key exists.
 // generator: server Exists
-func ServerExists(ctx context.Context, tx *sql.Tx, hostname string) (bool, error) {
-	_, err := GetServerID(ctx, tx, hostname)
-	if err != nil {
-		if api.StatusErrorCheck(err, http.StatusNotFound) {
-			return false, nil
-		}
+func ServerExists(ctx context.Context, tx *sql.Tx, hostname string) (_ bool, _err error) {
+	defer func() {
+		_err = mapErr(_err, "Server")
+	}()
 
-		return false, err
+	stmt, err := Stmt(tx, serverID)
+	if err != nil {
+		return false, fmt.Errorf("Failed to get \"serverID\" prepared statement: %w", err)
+	}
+
+	row := stmt.QueryRowContext(ctx, hostname)
+	var id int64
+	err = row.Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, fmt.Errorf("Failed to get \"servers\" ID: %w", err)
 	}
 
 	return true, nil
@@ -82,7 +95,11 @@ func ServerExists(ctx context.Context, tx *sql.Tx, hostname string) (bool, error
 
 // GetServer returns the server with the given key.
 // generator: server GetOne
-func GetServer(ctx context.Context, tx *sql.Tx, hostname string) (*Server, error) {
+func GetServer(ctx context.Context, tx *sql.Tx, hostname string) (_ *Server, _err error) {
+	defer func() {
+		_err = mapErr(_err, "Server")
+	}()
+
 	filter := ServerFilter{}
 	filter.Hostname = &hostname
 
@@ -93,7 +110,7 @@ func GetServer(ctx context.Context, tx *sql.Tx, hostname string) (*Server, error
 
 	switch len(objects) {
 	case 0:
-		return nil, api.StatusErrorf(http.StatusNotFound, "Server not found")
+		return nil, ErrNotFound
 	case 1:
 		return &objects[0], nil
 	default:
@@ -157,7 +174,11 @@ func getServersRaw(ctx context.Context, tx *sql.Tx, sql string, args ...any) ([]
 
 // GetServers returns all available servers.
 // generator: server GetMany
-func GetServers(ctx context.Context, tx *sql.Tx, filters ...ServerFilter) ([]Server, error) {
+func GetServers(ctx context.Context, tx *sql.Tx, filters ...ServerFilter) (_ []Server, _err error) {
+	defer func() {
+		_err = mapErr(_err, "Server")
+	}()
+
 	var err error
 
 	// Result slice.
@@ -224,7 +245,11 @@ func GetServers(ctx context.Context, tx *sql.Tx, filters ...ServerFilter) ([]Ser
 
 // CreateServer adds a new server to the database.
 // generator: server Create
-func CreateServer(ctx context.Context, tx *sql.Tx, object Server) (int64, error) {
+func CreateServer(ctx context.Context, tx *sql.Tx, object Server) (_ int64, _err error) {
+	defer func() {
+		_err = mapErr(_err, "Server")
+	}()
+
 	// Check if a server with the same key exists.
 	exists, err := ServerExists(ctx, tx, object.Hostname)
 	if err != nil {
@@ -232,7 +257,7 @@ func CreateServer(ctx context.Context, tx *sql.Tx, object Server) (int64, error)
 	}
 
 	if exists {
-		return -1, api.StatusErrorf(http.StatusConflict, "This \"servers\" entry already exists")
+		return -1, ErrConflict
 	}
 
 	args := make([]any, 5)
@@ -266,7 +291,11 @@ func CreateServer(ctx context.Context, tx *sql.Tx, object Server) (int64, error)
 
 // DeleteServer deletes the server matching the given key parameters.
 // generator: server DeleteOne-by-Hostname
-func DeleteServer(ctx context.Context, tx *sql.Tx, hostname string) error {
+func DeleteServer(ctx context.Context, tx *sql.Tx, hostname string) (_err error) {
+	defer func() {
+		_err = mapErr(_err, "Server")
+	}()
+
 	stmt, err := Stmt(tx, serverDeleteByHostname)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"serverDeleteByHostname\" prepared statement: %w", err)
@@ -283,7 +312,7 @@ func DeleteServer(ctx context.Context, tx *sql.Tx, hostname string) error {
 	}
 
 	if n == 0 {
-		return api.StatusErrorf(http.StatusNotFound, "Server not found")
+		return ErrNotFound
 	} else if n > 1 {
 		return fmt.Errorf("Query deleted %d Server rows instead of 1", n)
 	}

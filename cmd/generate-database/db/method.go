@@ -650,15 +650,29 @@ func (m *Method) exists(buf *file.Buffer) error {
 
 	defer m.end(buf)
 
-	buf.L("_, err := Get%sID(ctx, tx, %s)", lex.Camel(m.entity), mapping.FieldParams(nk))
-	buf.L("if err != nil {")
-	buf.L("        if errors.Is(err, ErrNotFound) {")
-	buf.L("                return false, nil")
-	buf.L("        }")
-	buf.N()
-	buf.L("        return false, err")
+	if m.db == "" {
+		buf.L("stmt, err := Stmt(tx, %s)", stmtCodeVar(m.entity, "ID"))
+	} else {
+		buf.L("stmt, err := %s.Stmt(tx, %s)", m.db, stmtCodeVar(m.entity, "ID"))
+	}
+
+	m.ifErrNotNil(buf, true, "false", fmt.Sprintf(`fmt.Errorf("Failed to get \"%s\" prepared statement: %%w", err)`, stmtCodeVar(m.entity, "ID")))
+
+	for _, field := range nk {
+		if isTrue(field.Config.Get("marshal")) {
+			buf.L("marshaled%s, err := query.Marshal(%s)", field.Name, lex.Minuscule(field.Name))
+			m.ifErrNotNil(buf, true, "false", "err")
+		}
+	}
+
+	buf.L("row := stmt.QueryRowContext(ctx, %s)", mapping.FieldParamsMarshal(nk))
+	buf.L("var id int64")
+	buf.L("err = row.Scan(&id)")
+	buf.L("if errors.Is(err, sql.ErrNoRows) {")
+	buf.L(`        return false, nil`)
 	buf.L("}")
 	buf.N()
+	m.ifErrNotNil(buf, true, "false", fmt.Sprintf(`fmt.Errorf("Failed to get \"%s\" ID: %%w", err)`, entityTable(m.entity, m.config["table"])))
 	buf.L("return true, nil")
 
 	return nil

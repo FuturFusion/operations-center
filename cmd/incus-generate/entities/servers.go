@@ -17,14 +17,13 @@ import (
 //go:generate mapper stmt -e server create
 //go:generate mapper stmt -e server delete-by-Hostname
 //
-//go:generate mapper method -e server ID
-//go:generate mapper method -e server Exists
-//go:generate mapper method -e server GetOne
-//go:generate mapper method -e server GetMany
-//go:generate mapper method -e server Create
-//go:generate mapper method -e server DeleteOne-by-Hostname
+//go:generate mapper method -e server ID --map-error
+//go:generate mapper method -e server Exists --map-error
+//go:generate mapper method -e server GetOne --map-error
+//go:generate mapper method -e server GetMany --map-error
+//go:generate mapper method -e server Create --map-error
+//go:generate mapper method -e server DeleteOne-by-Hostname --map-error
 //
-//go:generate go run github.com/piranha/goreplace github.com/lxc/incus/v6/internal/server/db/query --replace github.com/FuturFusion/operations-center/cmd/incus-generate/query --only servers.mapper.go --no-colors
 //go:generate gofmt -s -w .
 //go:generate go run golang.org/x/tools/cmd/goimports -w .
 

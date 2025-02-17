@@ -7,11 +7,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/FuturFusion/operations-center/cmd/incus-generate/query"
-	"github.com/lxc/incus/v6/shared/api"
 )
 
 var clusterObjects = RegisterStmt(`
@@ -43,7 +41,11 @@ DELETE FROM clusters WHERE name = ?
 
 // GetClusterID return the ID of the cluster with the given key.
 // generator: cluster ID
-func GetClusterID(ctx context.Context, tx *sql.Tx, name string) (int64, error) {
+func GetClusterID(ctx context.Context, tx *sql.Tx, name string) (_ int64, _err error) {
+	defer func() {
+		_err = mapErr(_err, "Cluster")
+	}()
+
 	stmt, err := Stmt(tx, clusterID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"clusterID\" prepared statement: %w", err)
@@ -53,7 +55,7 @@ func GetClusterID(ctx context.Context, tx *sql.Tx, name string) (int64, error) {
 	var id int64
 	err = row.Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
-		return -1, api.StatusErrorf(http.StatusNotFound, "Cluster not found")
+		return -1, ErrNotFound
 	}
 
 	if err != nil {
@@ -65,14 +67,25 @@ func GetClusterID(ctx context.Context, tx *sql.Tx, name string) (int64, error) {
 
 // ClusterExists checks if a cluster with the given key exists.
 // generator: cluster Exists
-func ClusterExists(ctx context.Context, tx *sql.Tx, name string) (bool, error) {
-	_, err := GetClusterID(ctx, tx, name)
-	if err != nil {
-		if api.StatusErrorCheck(err, http.StatusNotFound) {
-			return false, nil
-		}
+func ClusterExists(ctx context.Context, tx *sql.Tx, name string) (_ bool, _err error) {
+	defer func() {
+		_err = mapErr(_err, "Cluster")
+	}()
 
-		return false, err
+	stmt, err := Stmt(tx, clusterID)
+	if err != nil {
+		return false, fmt.Errorf("Failed to get \"clusterID\" prepared statement: %w", err)
+	}
+
+	row := stmt.QueryRowContext(ctx, name)
+	var id int64
+	err = row.Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, fmt.Errorf("Failed to get \"clusters\" ID: %w", err)
 	}
 
 	return true, nil
@@ -80,7 +93,11 @@ func ClusterExists(ctx context.Context, tx *sql.Tx, name string) (bool, error) {
 
 // GetCluster returns the cluster with the given key.
 // generator: cluster GetOne
-func GetCluster(ctx context.Context, tx *sql.Tx, name string) (*Cluster, error) {
+func GetCluster(ctx context.Context, tx *sql.Tx, name string) (_ *Cluster, _err error) {
+	defer func() {
+		_err = mapErr(_err, "Cluster")
+	}()
+
 	filter := ClusterFilter{}
 	filter.Name = &name
 
@@ -91,7 +108,7 @@ func GetCluster(ctx context.Context, tx *sql.Tx, name string) (*Cluster, error) 
 
 	switch len(objects) {
 	case 0:
-		return nil, api.StatusErrorf(http.StatusNotFound, "Cluster not found")
+		return nil, ErrNotFound
 	case 1:
 		return &objects[0], nil
 	default:
@@ -167,7 +184,11 @@ func getClustersRaw(ctx context.Context, tx *sql.Tx, sql string, args ...any) ([
 
 // GetClusters returns all available clusters.
 // generator: cluster GetMany
-func GetClusters(ctx context.Context, tx *sql.Tx, filters ...ClusterFilter) ([]Cluster, error) {
+func GetClusters(ctx context.Context, tx *sql.Tx, filters ...ClusterFilter) (_ []Cluster, _err error) {
+	defer func() {
+		_err = mapErr(_err, "Cluster")
+	}()
+
 	var err error
 
 	// Result slice.
@@ -234,7 +255,11 @@ func GetClusters(ctx context.Context, tx *sql.Tx, filters ...ClusterFilter) ([]C
 
 // CreateCluster adds a new cluster to the database.
 // generator: cluster Create
-func CreateCluster(ctx context.Context, tx *sql.Tx, object Cluster) (int64, error) {
+func CreateCluster(ctx context.Context, tx *sql.Tx, object Cluster) (_ int64, _err error) {
+	defer func() {
+		_err = mapErr(_err, "Cluster")
+	}()
+
 	// Check if a cluster with the same key exists.
 	exists, err := ClusterExists(ctx, tx, object.Name)
 	if err != nil {
@@ -242,7 +267,7 @@ func CreateCluster(ctx context.Context, tx *sql.Tx, object Cluster) (int64, erro
 	}
 
 	if exists {
-		return -1, api.StatusErrorf(http.StatusConflict, "This \"clusters\" entry already exists")
+		return -1, ErrConflict
 	}
 
 	args := make([]any, 4)
@@ -280,7 +305,11 @@ func CreateCluster(ctx context.Context, tx *sql.Tx, object Cluster) (int64, erro
 
 // DeleteCluster deletes the cluster matching the given key parameters.
 // generator: cluster DeleteOne-by-Name
-func DeleteCluster(ctx context.Context, tx *sql.Tx, name string) error {
+func DeleteCluster(ctx context.Context, tx *sql.Tx, name string) (_err error) {
+	defer func() {
+		_err = mapErr(_err, "Cluster")
+	}()
+
 	stmt, err := Stmt(tx, clusterDeleteByName)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"clusterDeleteByName\" prepared statement: %w", err)
@@ -297,7 +326,7 @@ func DeleteCluster(ctx context.Context, tx *sql.Tx, name string) error {
 	}
 
 	if n == 0 {
-		return api.StatusErrorf(http.StatusNotFound, "Cluster not found")
+		return ErrNotFound
 	} else if n > 1 {
 		return fmt.Errorf("Query deleted %d Cluster rows instead of 1", n)
 	}

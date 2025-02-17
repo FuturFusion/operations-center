@@ -7,11 +7,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/FuturFusion/operations-center/cmd/incus-generate/query"
-	"github.com/lxc/incus/v6/shared/api"
 )
 
 var storageVolumeObjects = RegisterStmt(`
@@ -54,7 +52,11 @@ DELETE FROM storage_volumes WHERE name = ? AND server_id = (SELECT servers.id FR
 
 // GetStorageVolumeID return the ID of the storage_volume with the given key.
 // generator: storage_volume ID
-func GetStorageVolumeID(ctx context.Context, tx *sql.Tx, serverID int64, projectID int64, name string) (int64, error) {
+func GetStorageVolumeID(ctx context.Context, tx *sql.Tx, serverID int64, projectID int64, name string) (_ int64, _err error) {
+	defer func() {
+		_err = mapErr(_err, "Storage_volume")
+	}()
+
 	stmt, err := Stmt(tx, storageVolumeID)
 	if err != nil {
 		return -1, fmt.Errorf("Failed to get \"storageVolumeID\" prepared statement: %w", err)
@@ -64,7 +66,7 @@ func GetStorageVolumeID(ctx context.Context, tx *sql.Tx, serverID int64, project
 	var id int64
 	err = row.Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
-		return -1, api.StatusErrorf(http.StatusNotFound, "StorageVolume not found")
+		return -1, ErrNotFound
 	}
 
 	if err != nil {
@@ -76,14 +78,25 @@ func GetStorageVolumeID(ctx context.Context, tx *sql.Tx, serverID int64, project
 
 // StorageVolumeExists checks if a storage_volume with the given key exists.
 // generator: storage_volume Exists
-func StorageVolumeExists(ctx context.Context, tx *sql.Tx, serverID int64, projectID int64, name string) (bool, error) {
-	_, err := GetStorageVolumeID(ctx, tx, serverID, projectID, name)
-	if err != nil {
-		if api.StatusErrorCheck(err, http.StatusNotFound) {
-			return false, nil
-		}
+func StorageVolumeExists(ctx context.Context, tx *sql.Tx, serverID int64, projectID int64, name string) (_ bool, _err error) {
+	defer func() {
+		_err = mapErr(_err, "Storage_volume")
+	}()
 
-		return false, err
+	stmt, err := Stmt(tx, storageVolumeID)
+	if err != nil {
+		return false, fmt.Errorf("Failed to get \"storageVolumeID\" prepared statement: %w", err)
+	}
+
+	row := stmt.QueryRowContext(ctx, serverID, projectID, name)
+	var id int64
+	err = row.Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, fmt.Errorf("Failed to get \"storage_volumes\" ID: %w", err)
 	}
 
 	return true, nil
@@ -91,7 +104,11 @@ func StorageVolumeExists(ctx context.Context, tx *sql.Tx, serverID int64, projec
 
 // GetStorageVolume returns the storage_volume with the given key.
 // generator: storage_volume GetOne
-func GetStorageVolume(ctx context.Context, tx *sql.Tx, serverID int64, projectID int64, name string) (*StorageVolume, error) {
+func GetStorageVolume(ctx context.Context, tx *sql.Tx, serverID int64, projectID int64, name string) (_ *StorageVolume, _err error) {
+	defer func() {
+		_err = mapErr(_err, "Storage_volume")
+	}()
+
 	filter := StorageVolumeFilter{}
 	filter.ServerID = &serverID
 	filter.ProjectID = &projectID
@@ -104,7 +121,7 @@ func GetStorageVolume(ctx context.Context, tx *sql.Tx, serverID int64, projectID
 
 	switch len(objects) {
 	case 0:
-		return nil, api.StatusErrorf(http.StatusNotFound, "StorageVolume not found")
+		return nil, ErrNotFound
 	case 1:
 		return &objects[0], nil
 	default:
@@ -180,7 +197,11 @@ func getStorageVolumesRaw(ctx context.Context, tx *sql.Tx, sql string, args ...a
 
 // GetStorageVolumes returns all available storage_volumes.
 // generator: storage_volume GetMany
-func GetStorageVolumes(ctx context.Context, tx *sql.Tx, filters ...StorageVolumeFilter) ([]StorageVolume, error) {
+func GetStorageVolumes(ctx context.Context, tx *sql.Tx, filters ...StorageVolumeFilter) (_ []StorageVolume, _err error) {
+	defer func() {
+		_err = mapErr(_err, "Storage_volume")
+	}()
+
 	var err error
 
 	// Result slice.
@@ -271,7 +292,11 @@ func GetStorageVolumes(ctx context.Context, tx *sql.Tx, filters ...StorageVolume
 
 // CreateStorageVolume adds a new storage_volume to the database.
 // generator: storage_volume Create
-func CreateStorageVolume(ctx context.Context, tx *sql.Tx, object StorageVolume) (int64, error) {
+func CreateStorageVolume(ctx context.Context, tx *sql.Tx, object StorageVolume) (_ int64, _err error) {
+	defer func() {
+		_err = mapErr(_err, "Storage_volume")
+	}()
+
 	// Check if a storage_volume with the same key exists.
 	exists, err := StorageVolumeExists(ctx, tx, object.ServerID, object.ProjectID, object.Name)
 	if err != nil {
@@ -279,7 +304,7 @@ func CreateStorageVolume(ctx context.Context, tx *sql.Tx, object StorageVolume) 
 	}
 
 	if exists {
-		return -1, api.StatusErrorf(http.StatusConflict, "This \"storage_volumes\" entry already exists")
+		return -1, ErrConflict
 	}
 
 	args := make([]any, 5)
@@ -318,7 +343,11 @@ func CreateStorageVolume(ctx context.Context, tx *sql.Tx, object StorageVolume) 
 
 // DeleteStorageVolume deletes the storage_volume matching the given key parameters.
 // generator: storage_volume DeleteOne-by-Name-and-ServerID-and-ProjectID
-func DeleteStorageVolume(ctx context.Context, tx *sql.Tx, name string, serverID int64, projectID int64) error {
+func DeleteStorageVolume(ctx context.Context, tx *sql.Tx, name string, serverID int64, projectID int64) (_err error) {
+	defer func() {
+		_err = mapErr(_err, "Storage_volume")
+	}()
+
 	stmt, err := Stmt(tx, storageVolumeDeleteByNameAndServerIDAndProjectID)
 	if err != nil {
 		return fmt.Errorf("Failed to get \"storageVolumeDeleteByNameAndServerIDAndProjectID\" prepared statement: %w", err)
@@ -335,7 +364,7 @@ func DeleteStorageVolume(ctx context.Context, tx *sql.Tx, name string, serverID 
 	}
 
 	if n == 0 {
-		return api.StatusErrorf(http.StatusNotFound, "StorageVolume not found")
+		return ErrNotFound
 	} else if n > 1 {
 		return fmt.Errorf("Query deleted %d StorageVolume rows instead of 1", n)
 	}

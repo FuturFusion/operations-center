@@ -16,14 +16,13 @@ import (
 //go:generate mapper stmt -e cluster create
 //go:generate mapper stmt -e cluster delete-by-Name
 //
-//go:generate mapper method -e cluster ID
-//go:generate mapper method -e cluster Exists
-//go:generate mapper method -e cluster GetOne
-//go:generate mapper method -e cluster GetMany
-//go:generate mapper method -e cluster Create
-//go:generate mapper method -e cluster DeleteOne-by-Name
+//go:generate mapper method -e cluster ID --map-error
+//go:generate mapper method -e cluster Exists --map-error
+//go:generate mapper method -e cluster GetOne --map-error
+//go:generate mapper method -e cluster GetMany --map-error
+//go:generate mapper method -e cluster Create --map-error
+//go:generate mapper method -e cluster DeleteOne-by-Name --map-error
 //
-//go:generate go run github.com/piranha/goreplace github.com/lxc/incus/v6/internal/server/db/query --replace github.com/FuturFusion/operations-center/cmd/incus-generate/query --only clusters.mapper.go --no-colors
 //go:generate gofmt -s -w .
 //go:generate go run golang.org/x/tools/cmd/goimports -w .
 
