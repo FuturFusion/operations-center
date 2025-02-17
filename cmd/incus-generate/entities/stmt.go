@@ -11,21 +11,22 @@ import (
 // execution.
 //
 // Return a unique registration code.
-func RegisterStmt(sql string) int {
+func RegisterStmt(sqlStmt string) int {
 	code := len(stmts)
-	stmts[code] = sql
+	stmts[code] = sqlStmt
 	return code
 }
 
 // PrepareStmts prepares all registered statements and returns an index from
 // statement code to prepared statement object.
+// The caller must call the statement's [*Stmt.Close] method when the statement is no longer needed.
 func PrepareStmts(db *sql.DB, skipErrors bool) (map[int]*sql.Stmt, error) {
 	index := map[int]*sql.Stmt{}
 
-	for code, sql := range stmts {
-		stmt, err := db.Prepare(sql)
+	for code, sqlStmt := range stmts {
+		stmt, err := db.Prepare(sqlStmt) //nolint:sqlclosecheck // It is the callers responsibility to close the SQL statements after use.
 		if err != nil && !skipErrors {
-			return nil, fmt.Errorf("%q: %w", sql, err)
+			return nil, fmt.Errorf("%q: %w", sqlStmt, err)
 		}
 
 		index[code] = stmt

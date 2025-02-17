@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/lxc/incus/v6/shared/api"
 	"github.com/mattn/go-sqlite3"
 
-	"github.com/lxc/incus/v6/shared/api"
+	"github.com/FuturFusion/operations-center/internal/logger"
 )
 
 const maxRetries = 250

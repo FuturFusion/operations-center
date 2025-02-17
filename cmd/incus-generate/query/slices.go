@@ -79,7 +79,7 @@ func InsertStrings(tx *sql.Tx, stmt string, values []string) error {
 // Execute the given query and ensure that it yields rows with a single column
 // of the given database type. For every row yielded, execute the given
 // scanner.
-func scanSingleColumn(ctx context.Context, tx *sql.Tx, query string, args []any, typeName string, scan scanFunc) error {
+func scanSingleColumn(ctx context.Context, tx *sql.Tx, query string, args []any, _ string, scan scanFunc) error {
 	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
 		return err
