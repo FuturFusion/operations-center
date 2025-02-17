@@ -8,7 +8,7 @@ import (
 
 // Code generation directives.
 //
-//go:generate -command mapper go run github.com/lxc/incus/v6/cmd/generate-database db mapper -t servers.mapper.go
+//go:generate -command mapper go run github.com/FuturFusion/operations-center/cmd/generate-database db mapper -t servers.mapper.go
 //go:generate mapper reset
 //
 //go:generate mapper stmt -e server objects

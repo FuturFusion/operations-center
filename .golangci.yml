@@ -26,6 +26,8 @@ linters:
     - whitespace
 issues:
   exclude-use-default: false
+  exclude-dirs:
+    - cmd/generate-database/.*
 linters-settings:
   gci:
     sections:
