@@ -24,6 +24,10 @@ import (
 //go:generate mapper method -e storage_volume GetMany table=storage_volumes
 //go:generate mapper method -e storage_volume Create table=storage_volumes
 //go:generate mapper method -e storage_volume DeleteOne-by-Name-and-ServerID-and-ProjectID table=storage_volumes
+//
+//go:generate go run github.com/piranha/goreplace github.com/lxc/incus/v6/internal/server/db/query --replace github.com/FuturFusion/operations-center/cmd/incus-generate/query --only storage_volumes.mapper.go --no-colors
+//go:generate gofmt -s -w .
+//go:generate go run golang.org/x/tools/cmd/goimports -w .
 
 type StorageVolume struct {
 	ID          int64

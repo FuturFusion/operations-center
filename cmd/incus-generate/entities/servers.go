@@ -23,6 +23,10 @@ import (
 //go:generate mapper method -e server GetMany
 //go:generate mapper method -e server Create
 //go:generate mapper method -e server DeleteOne-by-Hostname
+//
+//go:generate go run github.com/piranha/goreplace github.com/lxc/incus/v6/internal/server/db/query --replace github.com/FuturFusion/operations-center/cmd/incus-generate/query --only servers.mapper.go --no-colors
+//go:generate gofmt -s -w .
+//go:generate go run golang.org/x/tools/cmd/goimports -w .
 
 type Server struct {
 	ID            int

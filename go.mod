@@ -2,7 +2,7 @@ module github.com/FuturFusion/operations-center
 
 go 1.22.7
 
-require golang.org/x/sys v0.29.0
+require golang.org/x/sys v0.30.0
 
 require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
@@ -47,12 +47,10 @@ require (
 	go.opentelemetry.io/otel/metric v1.34.0 // indirect
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.starlark.net v0.0.0-20241226192728-8dfa5b98479f // indirect
-	golang.org/x/crypto v0.32.0 // indirect
-	golang.org/x/mod v0.22.0 // indirect
+	golang.org/x/crypto v0.33.0 // indirect
+	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/oauth2 v0.25.0 // indirect
-	golang.org/x/term v0.28.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
-	golang.org/x/tools v0.29.0 // indirect
+	golang.org/x/term v0.29.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
@@ -65,6 +63,8 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/sync v0.10.0
+	golang.org/x/sync v0.11.0
+	golang.org/x/text v0.22.0
+	golang.org/x/tools v0.30.0
 	gopkg.in/yaml.v3 v3.0.1
 )

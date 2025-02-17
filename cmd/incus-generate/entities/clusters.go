@@ -22,6 +22,10 @@ import (
 //go:generate mapper method -e cluster GetMany
 //go:generate mapper method -e cluster Create
 //go:generate mapper method -e cluster DeleteOne-by-Name
+//
+//go:generate go run github.com/piranha/goreplace github.com/lxc/incus/v6/internal/server/db/query --replace github.com/FuturFusion/operations-center/cmd/incus-generate/query --only clusters.mapper.go --no-colors
+//go:generate gofmt -s -w .
+//go:generate go run golang.org/x/tools/cmd/goimports -w .
 
 type Cluster struct {
 	ID              int
