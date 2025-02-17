@@ -133,6 +133,7 @@ func newDbMapperMethod() *cobra.Command {
 	var pkg string
 	var entity string
 	var iface bool
+	var mapErr bool
 
 	cmd := &cobra.Command{
 		Use:   "method [kind] [param1=value1 ... paramN=valueN]",
@@ -150,7 +151,7 @@ func newDbMapperMethod() *cobra.Command {
 				return err
 			}
 
-			method, err := db.NewMethod(database, pkg, entity, kind, config)
+			method, err := db.NewMethod(database, pkg, entity, kind, config, mapErr)
 			if err != nil {
 				return err
 			}
@@ -165,6 +166,7 @@ func newDbMapperMethod() *cobra.Command {
 	flags.StringVarP(&database, "database", "d", "", "target database")
 	flags.StringVarP(&pkg, "package", "p", "", "Go package where the entity struct is declared")
 	flags.StringVarP(&entity, "entity", "e", "", "database entity to generate the method for")
+	flags.BoolVarP(&mapErr, "map-error", "m", false, "include logic to call mapErr in order to customize the returned errors")
 
 	return cmd
 }
