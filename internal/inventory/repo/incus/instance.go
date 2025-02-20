@@ -56,3 +56,17 @@ func (s serverClient) GetInstances(ctx context.Context, connectionURL string) ([
 
 	return serverInstances, nil
 }
+
+func (s serverClient) GetNetworks(ctx context.Context, connectionURL string) ([]incusapi.Network, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return nil, err
+	}
+
+	serverNetworks, err := client.GetNetworksAllProjects()
+	if err != nil {
+		return nil, err
+	}
+
+	return serverNetworks, nil
+}

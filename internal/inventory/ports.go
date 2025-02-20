@@ -25,4 +25,5 @@ type ServerService interface {
 type ServerClient interface {
 	ImageServerClient
 	InstanceServerClient
+	NetworkServerClient
 }

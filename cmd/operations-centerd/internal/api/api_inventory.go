@@ -25,10 +25,20 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 		serverClient,
 	)
 
+	inventoryNetworkSvc := inventory.NewNetworkService(
+		inventorySqlite.NewNetwork(db),
+		clusterSvc,
+		serverSvc,
+		serverClient,
+	)
+
 	// API routes
 	inventoryImageRouter := newSubRouter(inventoryRouter, "/images")
 	registerInventoryImageHandler(inventoryImageRouter, inventoryImageSvc)
 
 	inventoryInstanceRouter := newSubRouter(inventoryRouter, "/instances")
 	registerInventoryInstanceHandler(inventoryInstanceRouter, inventoryInstanceSvc)
+
+	inventoryNetworkRouter := newSubRouter(inventoryRouter, "/networks")
+	registerInventoryNetworkHandler(inventoryNetworkRouter, inventoryNetworkSvc)
 }
