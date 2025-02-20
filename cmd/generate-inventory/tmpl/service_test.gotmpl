@@ -1,0 +1,387 @@
+package inventory_test
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	incusapi "github.com/lxc/incus/v6/shared/api"
+	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/internal/inventory"
+	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
+	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/testing/boom"
+)
+
+func Test{{ .Name | pascalcase }}Service_GetAllIDs(t *testing.T) {
+	tests := []struct {
+		name             string
+		repoGetAllIDs    []int
+		repoGetAllIDsErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name: "success",
+			repoGetAllIDs: []int{
+				1, 2,
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:             "error - repo",
+			repoGetAllIDsErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.{{ .Name | camelcase }}RepoMock{
+				GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
+					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
+				},
+			}
+
+			{{ .Name | camelcase | minuscule }}Svc := inventory.New{{ .Name | camelcase }}Service(repo, nil, nil, nil)
+
+			// Run test
+			{{ .Name | camelcase | minuscule }}Hostnames, err := {{ .Name | camelcase | minuscule }}Svc.GetAllIDs(context.Background())
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, {{ .Name | camelcase }}Hostnames, tc.count)
+		})
+	}
+}
+
+func Test{{ .Name | pascalcase }}Service_GetByID(t *testing.T) {
+	tests := []struct {
+		name                string
+		idArg               int
+		repoGetByID{{ .Name | pascalcase }} inventory.{{ .Name | pascalcase }}
+		repoGetByIDErr      error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:  "success",
+			idArg: 1,
+			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				ID:          1,
+				ServerID:    1,
+				ProjectName: "one",
+				Name:        "one",
+				Object:      incusapi.{{ .ObjectType | pascalcase }}{},
+				LastUpdated: time.Now(),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - repo",
+			idArg:          1,
+			repoGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
+				GetByIDFunc: func(ctx context.Context, id int) (inventory.{{ .Name | pascalcase }}, error) {
+					return tc.repoGetByID{{ .Name | pascalcase }}, tc.repoGetByIDErr
+				},
+			}
+
+			{{ .Name | camelcase | minuscule }}Svc := inventory.New{{ .Name | camelcase }}Service(repo, nil, nil, nil)
+
+			// Run test
+			{{ .Name | camelcase }}, err := {{ .Name | camelcase }}Svc.GetByID(context.Background(), tc.idArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.repoGetByID{{ .Name | pascalcase }}, {{ .Name | camelcase }})
+		})
+	}
+}
+
+func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
+	// Includes also SyncCluster and SyncServer
+	tests := []struct {
+		name                              string
+		clusterSvcGetAllClusters          provisioning.Clusters
+		clusterSvcGetAllErr               error
+		serverSvcGetAllByClusterIDServers provisioning.Servers
+		serverSvcGetAllByClusterIDErr     error
+		serverSvcGetByIDServer            provisioning.Server
+		serverSvcGetByIDErr               error
+		{{ .Name | camelcase | minuscule }}ClientGet{{ .PluralName | camelcase }}        []incusapi.{{ .ObjectType | camelcase }}
+		{{ .Name | camelcase | minuscule }}ClientGet{{ .PluralName | camelcase }}Err     error
+		repoDeleteByServerIDErr           error
+		repoCreateErr                     error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			clusterSvcGetAllClusters: provisioning.Clusters{
+				{
+					ID:   1,
+					Name: "cluster one",
+				},
+			},
+			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+				{
+					ID:        1,
+					ClusterID: 1,
+					Hostname:  "server-one",
+				},
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			{{ .Name | camelcase | minuscule }}ClientGet{{ .PluralName | camelcase }}: []incusapi.{{ .ObjectType | camelcase }}{
+{{- if .ObjectEmbedded }}
+				{
+					{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- if .UsesEmbeddedPostType }}
+						{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+							{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+						},
+{{- else }}
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- end }}
+					},
+				},
+{{- else }}
+				{
+{{- if .UsesEmbeddedPostType }}
+					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+					},
+{{- else }}
+					{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- end }}
+				},
+{{- end }}
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                "error - cluster service get all",
+			clusterSvcGetAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - server service get all by cluster ID",
+			clusterSvcGetAllClusters: provisioning.Clusters{
+				{
+					ID:   1,
+					Name: "cluster one",
+				},
+			},
+			serverSvcGetAllByClusterIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - server service get by ID",
+			clusterSvcGetAllClusters: provisioning.Clusters{
+				{
+					ID:   1,
+					Name: "cluster one",
+				},
+			},
+			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+				{
+					ID:        1,
+					ClusterID: 1,
+					Hostname:  "server-one",
+				},
+			},
+			serverSvcGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - {{ .Name | camelcase }} client get {{ .PluralName | pascalcase }}",
+			clusterSvcGetAllClusters: provisioning.Clusters{
+				{
+					ID:   1,
+					Name: "cluster one",
+				},
+			},
+			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+				{
+					ID:        1,
+					ClusterID: 1,
+					Hostname:  "server-one",
+				},
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			{{ .Name | camelcase | minuscule }}ClientGet{{ .PluralName | camelcase }}Err: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - {{ .PluralName }} delete by server ID",
+			clusterSvcGetAllClusters: provisioning.Clusters{
+				{
+					ID:   1,
+					Name: "cluster one",
+				},
+			},
+			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+				{
+					ID:        1,
+					ClusterID: 1,
+					Hostname:  "server-one",
+				},
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			{{ .Name | camelcase | minuscule }}ClientGet{{ .PluralName | camelcase }}: []incusapi.{{ .ObjectType | camelcase }}{
+{{- if .ObjectEmbedded }}
+				{
+					{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- if .UsesEmbeddedPostType }}
+						{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+							{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+						},
+{{- else }}
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- end }}
+					},
+				},
+{{- else }}
+				{
+{{- if .UsesEmbeddedPostType }}
+					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+					},
+{{- else }}
+					{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- end }}
+				},
+{{- end }}
+			},
+			repoDeleteByServerIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - {{ .Name | camelcase }} create",
+			clusterSvcGetAllClusters: provisioning.Clusters{
+				{
+					ID:   1,
+					Name: "cluster one",
+				},
+			},
+			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+				{
+					ID:        1,
+					ClusterID: 1,
+					Hostname:  "server-one",
+				},
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			{{ .Name | camelcase | minuscule }}ClientGet{{ .PluralName | camelcase }}: []incusapi.{{ .ObjectType | camelcase }}{
+{{- if .ObjectEmbedded }}
+				{
+					{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- if .UsesEmbeddedPostType }}
+						{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+							{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+						},
+{{- else }}
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- end }}
+					},
+				},
+{{- else }}
+				{
+{{- if .UsesEmbeddedPostType }}
+					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+					},
+{{- else }}
+					{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- end }}
+				},
+{{- end }}
+			},
+			repoCreateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
+				DeleteByServerIDFunc: func(ctx context.Context, serverID int) error {
+					return tc.repoDeleteByServerIDErr
+				},
+				CreateFunc: func(ctx context.Context, {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
+					return inventory.{{ .Name | pascalcase }}{}, tc.repoCreateErr
+				},
+			}
+
+			clusterSvc := &serviceMock.ClusterServiceMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
+					return tc.clusterSvcGetAllClusters, tc.clusterSvcGetAllErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetAllByClusterIDFunc: func(ctx context.Context, clusterID int) (provisioning.Servers, error) {
+					return tc.serverSvcGetAllByClusterIDServers, tc.serverSvcGetAllByClusterIDErr
+				},
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				},
+			}
+
+			{{ .Name | camelcase | minuscule }}Client := &serviceMock.{{ .Name | camelcase }}ServerClientMock{
+				Get{{ .PluralName | camelcase }}Func: func(ctx context.Context, connectionURL string) ([]incusapi.{{ .ObjectType | camelcase }}, error) {
+					return tc.{{ .Name | camelcase | minuscule }}ClientGet{{ .PluralName | camelcase }}, tc.{{ .Name | camelcase | minuscule }}ClientGet{{ .PluralName | camelcase }}Err
+				},
+			}
+
+			{{ .Name | camelcase | minuscule }}Svc := inventory.New{{ .Name | camelcase }}Service(repo, clusterSvc, serverSvc, {{ .Name | camelcase | minuscule }}Client)
+
+			// Run test
+			err := {{ .Name | camelcase }}Svc.SyncAll(context.Background())
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}

@@ -10,32 +10,32 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-type instanceHandler struct {
-	service inventory.InstanceService
+type {{ .Name | camelcase }}Handler struct {
+	service inventory.{{ .Name | pascalcase }}Service
 }
 
-func registerInventoryInstanceHandler(router *http.ServeMux, service inventory.InstanceService) {
-	handler := &instanceHandler{
+func registerInventory{{ .Name | pascalcase }}Handler(router *http.ServeMux, service inventory.{{ .Name | pascalcase }}Service) {
+	handler := &{{ .Name | camelcase }}Handler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.instancesGet))
-	router.HandleFunc("GET /{id}", response.With(handler.instanceGet))
+	router.HandleFunc("GET /{$}", response.With(handler.{{ .PluralName | camelcase }}Get))
+	router.HandleFunc("GET /{id}", response.With(handler.{{ .Name | camelcase }}Get))
 	router.HandleFunc("POST /force-sync", response.With(handler.forceSyncPost))
 }
 
-// swagger:operation GET /1.0/inventory/instances instances instances_get
+// swagger:operation GET /1.0/inventory/{{ .PluralName }} {{ .PluralName }} {{ .PluralName }}_get
 //
-//		Get the instance
+//		Get the {{ .Name }}
 //
-//		Returns a list of instance (list of relative URLs).
+//		Returns a list of {{ .Name }} (list of relative URLs).
 //
 //		---
 //		produces:
 //		  - application/json
 //		responses:
 //		  "200":
-//		    description: API instance
+//		    description: API {{ .Name }}
 //		    schema:
 //		      type: object
 //		      description: Sync response
@@ -54,44 +54,44 @@ func registerInventoryInstanceHandler(router *http.ServeMux, service inventory.I
 //		          example: 200
 //		        metadata:
 //		          type: array
-//		          description: List of instance
+//		          description: List of {{ .Name }}
 //	               items:
 //	                 type: string
 //	               example: |-
 //	                 [
-//	                   "/1.0/inventory/instances/1",
-//	                   "/1.0/inventory/instances/2"
+//	                   "/1.0/inventory/{{ .PluralName }}/1",
+//	                   "/1.0/inventory/{{ .PluralName }}/2"
 //	                 ]
 //		  "403":
 //		    $ref: "#/responses/Forbidden"
 //		  "500":
 //		    $ref: "#/responses/InternalServerError"
-func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
-	instanceIDs, err := i.service.GetAllIDs(r.Context())
+func (i *{{ .Name | camelcase | minuscule }}Handler) {{ .PluralName | camelcase | minuscule }}Get(r *http.Request) response.Response {
+	{{ .Name | camelcase | minuscule }}IDs, err := i.service.GetAllIDs(r.Context())
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(instanceIDs))
-	for _, id := range instanceIDs {
+	result := make([]string, 0, len({{ .Name | camelcase | minuscule }}IDs))
+	for _, id := range {{ .Name | camelcase | minuscule }}IDs {
 		result = append(result, fmt.Sprintf("/%s/clusters/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/inventory/instances/{id} instances instance_get
+// swagger:operation GET /1.0/inventory/{{ .PluralName }}/{id} {{ .PluralName }} {{ .Name }}_get
 //
-//	Get the instance
+//	Get the {{ .Name }}
 //
-//	Gets a specific instance.
+//	Gets a specific {{ .Name }}.
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Instance
+//	    description: {{ .Name | pascalcase }}
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -109,41 +109,43 @@ func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
 //	          description: Status code
 //	          example: 200
 //	        metadata:
-//	          $ref: "#/definitions/Instance"
+//	          $ref: "#/definitions/{{ .Name | pascalcase }}"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (i *instanceHandler) instanceGet(r *http.Request) response.Response {
+func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}Get(r *http.Request) response.Response {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	instance, err := i.service.GetByID(r.Context(), id)
+	{{ .Name | camelcase }}, err := i.service.GetByID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
 	return response.SyncResponse(
 		true,
-		api.Instance{
-			ID:          instance.ID,
-			ClusterID:   instance.ClusterID,
-			ServerID:    instance.ServerID,
-			ProjectName: instance.ProjectName,
-			Name:        instance.Name,
-			Object:      instance.Object,
-			LastUpdated: instance.LastUpdated,
+		api.{{ .Name | pascalcase }}{
+			ID:          {{ .Name | camelcase }}.ID,
+			ClusterID:   {{ .Name | camelcase }}.ClusterID,
+			ServerID:    {{ .Name | camelcase }}.ServerID,
+{{- if .HasProject }}
+			ProjectName: {{ .Name | camelcase }}.ProjectName,
+{{- end }}
+			Name:        {{ .Name | camelcase | minuscule }}.Name,
+			Object:      {{ .Name | camelcase | minuscule }}.Object,
+			LastUpdated: {{ .Name | camelcase | minuscule }}.LastUpdated,
 		},
 	)
 }
 
-// swagger:operation POST /1.0/inventory/instances/force-sync instances instances_force_sync_post
+// swagger:operation POST /1.0/inventory/{{ .PluralName }}/force-sync {{ .PluralName }} {{ .PluralName }}_force_sync_post
 //
 //	Force sync all
 //
-//	Force sync of instances for all servers in all clusters.
+//	Force sync of {{ .PluralName }} for all servers in all clusters.
 //
 //	---
 //	produces:
@@ -171,10 +173,10 @@ func (i *instanceHandler) instanceGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (i *instanceHandler) forceSyncPost(r *http.Request) response.Response {
+func (i *{{ .Name | camelcase }}Handler) forceSyncPost(r *http.Request) response.Response {
 	err := i.service.SyncAll(r.Context())
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to sync instances: %w", err))
+		return response.SmartError(fmt.Errorf("Failed to sync {{ .PluralName }}: %w", err))
 	}
 
 	return response.EmptySyncResponse

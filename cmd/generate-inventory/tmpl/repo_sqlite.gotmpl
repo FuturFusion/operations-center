@@ -1,0 +1,143 @@
+package sqlite
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/sqlite"
+)
+
+type {{ .Name | camelcase }} struct {
+	db sqlite.DBTX
+}
+
+var _ inventory.{{ .Name | pascalcase }}Repo = &{{ .Name | camelcase }}{}
+
+func New{{ .Name | pascalcase }}(db sqlite.DBTX) *{{ .Name | camelcase }} {
+	return &{{ .Name | camelcase }}{
+		db: db,
+	}
+}
+
+func (i {{ .Name | camelcase }}) Create(ctx context.Context, in inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
+	const sqlStmt = `
+WITH _server AS (
+  SELECT cluster_id FROM servers WHERE server_id = :server_id
+)
+INSERT INTO {{ .PluralName }} (server_id, project_name, name, object, last_updated)
+VALUES(:server_id, :project_name, :name, :object, :last_updated)
+RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project_name, name, object, last_updated;
+`
+
+	marshaledObject, err := json.Marshal(in.Object)
+	if err != nil {
+		return inventory.{{ .Name | pascalcase }}{}, err
+	}
+
+	row := i.db.QueryRowContext(ctx, sqlStmt,
+		sql.Named("server_id", in.ServerID),
+		sql.Named("project_name", in.ProjectName),
+		sql.Named("name", in.Name),
+		sql.Named("object", marshaledObject),
+		sql.Named("last_updated", in.LastUpdated),
+	)
+	if row.Err() != nil {
+		return inventory.{{ .Name | pascalcase }}{}, sqlite.MapErr(row.Err())
+	}
+
+	return scan{{ .Name | pascalcase }}(row)
+}
+
+func (i {{ .Name | camelcase | minuscule }}) GetAllIDs(ctx context.Context) ([]int, error) {
+	const sqlStmt = `SELECT id FROM {{ .PluralName }} ORDER BY id`
+
+	rows, err := i.db.QueryContext(ctx, sqlStmt)
+	if err != nil {
+		return nil, sqlite.MapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var ids []int
+	for rows.Next() {
+		var id int
+		err := rows.Scan(&id)
+		if err != nil {
+			return nil, sqlite.MapErr(err)
+		}
+
+		ids = append(ids, id)
+	}
+
+	if rows.Err() != nil {
+		return nil, sqlite.MapErr(rows.Err())
+	}
+
+	return ids, nil
+}
+
+func (i {{ .Name | camelcase }}) GetByID(ctx context.Context, id int) (inventory.{{ .Name | pascalcase }}, error) {
+	const sqlStmt = `
+SELECT
+  {{ .PluralName }}.id, servers.cluster_id as cluster_id, {{ .PluralName }}.server_id, {{ .PluralName }}.project_name, {{ .PluralName }}.name, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
+FROM
+  {{ .PluralName }}
+  INNER JOIN servers ON {{ .PluralName }}.server_id = servers.id
+WHERE {{ .PluralName }}.id=:id;
+`
+
+	row := i.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
+	if row.Err() != nil {
+		return inventory.{{ .Name | pascalcase }}{}, sqlite.MapErr(row.Err())
+	}
+
+	return scan{{ .Name | pascalcase }}(row)
+}
+
+func (i {{ .Name | camelcase }}) DeleteByServerID(ctx context.Context, serverID int) error {
+	const sqlStmt = `DELETE FROM {{ .PluralName }} WHERE server_id=:serverID;`
+
+	result, err := i.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	if affectedRows == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
+}
+
+func scan{{ .Name | pascalcase }}(row interface{ Scan(dest ...any) error }) (inventory.{{ .Name | pascalcase }}, error) {
+	var object []byte
+	var {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}
+
+	err := row.Scan(
+		&{{ .Name }}.ID,
+		&{{ .Name }}.ClusterID,
+		&{{ .Name }}.ServerID,
+		&{{ .Name }}.ProjectName,
+		&{{ .Name }}.Name,
+		&object,
+		&{{ .Name | camelcase }}.LastUpdated,
+	)
+	if err != nil {
+		return inventory.{{ .Name | pascalcase }}{}, sqlite.MapErr(err)
+	}
+
+	err = json.Unmarshal(object, &{{ .Name | camelcase }}.Object)
+	if err != nil {
+		return inventory.{{ .Name | pascalcase }}{}, err
+	}
+
+	return {{ .Name | camelcase }}, nil
+}
