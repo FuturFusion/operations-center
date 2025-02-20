@@ -84,8 +84,12 @@ func main() {
 
 	var err error
 
+	funcsMap := sprig.FuncMap()
+	funcsMap["pascalcase"] = PascalCase
+	funcsMap["camelcase"] = CamelCase
+
 	t := template.New("")
-	t = t.Funcs(sprig.FuncMap())
+	t = t.Funcs(funcsMap)
 	t, err = t.ParseFS(templateFS, "tmpl/*.gotmpl")
 	die(err)
 
@@ -107,7 +111,7 @@ func main() {
 		func() {
 			filename := strings.Builder{}
 
-			filenameTmpl, err := template.New("name").Funcs(sprig.FuncMap()).Parse(target.TargetName)
+			filenameTmpl, err := template.New("name").Funcs(funcsMap).Parse(target.TargetName)
 			die(err)
 
 			err = filenameTmpl.Execute(&filename, args)
