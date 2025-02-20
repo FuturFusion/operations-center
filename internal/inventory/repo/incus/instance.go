@@ -70,3 +70,17 @@ func (s serverClient) GetNetworks(ctx context.Context, connectionURL string) ([]
 
 	return serverNetworks, nil
 }
+
+func (s serverClient) GetNetworkACLs(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return nil, err
+	}
+
+	serverNetworkACLs, err := client.GetNetworkACLsAllProjects()
+	if err != nil {
+		return nil, err
+	}
+
+	return serverNetworkACLs, nil
+}
