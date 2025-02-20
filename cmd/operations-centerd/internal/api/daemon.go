@@ -10,10 +10,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	ghClient "github.com/google/go-github/v69/github"
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
@@ -174,9 +176,18 @@ func (d *Daemon) Start() error {
 	})
 
 	group.Go(func() error {
-		slog.Info("Start http listener", slog.Any("addr", d.server.Addr))
+		slog.Info("Start https listener", slog.Any("addr", d.server.Addr))
 
-		err := d.server.ListenAndServe()
+		certFile := filepath.Join(d.env.VarDir(), "server.crt")
+		keyFile := filepath.Join(d.env.VarDir(), "server.key")
+
+		// Ensure that the certificate exists, or create a new one if it does not.
+		err := incusTLS.FindOrGenCert(certFile, keyFile, false, true)
+		if err != nil {
+			return err
+		}
+
+		err = d.server.ListenAndServeTLS(certFile, keyFile)
 		if errors.Is(err, http.ErrServerClosed) {
 			// Ignore error from graceful shutdown.
 			return nil

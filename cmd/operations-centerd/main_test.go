@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"io"
 	"net/http"
 	"os"
@@ -45,7 +46,15 @@ func TestMain0RunDaemon(t *testing.T) {
 	// Check for errors during daemon start (require must only be used in the main test go routing)
 	require.NoError(t, daemonErr)
 
-	resp, err := http.Get("http://localhost:7443")
+	client := http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	}
+
+	resp, err := client.Get("https://localhost:7443")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 

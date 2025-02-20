@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -71,7 +72,15 @@ func TestStartAndStop(t *testing.T) {
 			assertFunc: func(t *testing.T) {
 				t.Helper()
 
-				resp, err := http.Get("http://localhost:17443")
+				client := http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+
+				resp, err := client.Get("https://localhost:17443")
 				require.NoError(t, err)
 				defer resp.Body.Close()
 
