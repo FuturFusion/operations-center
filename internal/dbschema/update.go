@@ -110,12 +110,12 @@ CREATE TABLE servers (
 );
 
 CREATE TABLE instances (
-  id TEXT PRIMARY KEY NOT NULL,
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   server_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
-  last_updated TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
   UNIQUE (server_id, project_name, name),
   -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
   -- and constraints should not cross domain boundaries.
