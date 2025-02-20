@@ -21,7 +21,10 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //
 //		// make and configure a mocked inventory.ServerClient
 //		mockedServerClient := &ServerClientMock{
-//			GetInstancesFunc: func(ctx context.Context) ([]incusapi.InstanceFull, error) {
+//			GetImagesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Image, error) {
+//				panic("mock out the GetImages method")
+//			},
+//			GetInstancesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error) {
 //				panic("mock out the GetInstances method")
 //			},
 //		}
@@ -31,34 +34,85 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //
 //	}
 type ServerClientMock struct {
+	// GetImagesFunc mocks the GetImages method.
+	GetImagesFunc func(ctx context.Context, connectionURL string) ([]incusapi.Image, error)
+
 	// GetInstancesFunc mocks the GetInstances method.
-	GetInstancesFunc func(ctx context.Context) ([]incusapi.InstanceFull, error)
+	GetInstancesFunc func(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetImages holds details about calls to the GetImages method.
+		GetImages []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+		}
 		// GetInstances holds details about calls to the GetInstances method.
 		GetInstances []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
 		}
 	}
+	lockGetImages    sync.RWMutex
 	lockGetInstances sync.RWMutex
 }
 
+// GetImages calls GetImagesFunc.
+func (mock *ServerClientMock) GetImages(ctx context.Context, connectionURL string) ([]incusapi.Image, error) {
+	if mock.GetImagesFunc == nil {
+		panic("ServerClientMock.GetImagesFunc: method is nil but ServerClient.GetImages was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+	}
+	mock.lockGetImages.Lock()
+	mock.calls.GetImages = append(mock.calls.GetImages, callInfo)
+	mock.lockGetImages.Unlock()
+	return mock.GetImagesFunc(ctx, connectionURL)
+}
+
+// GetImagesCalls gets all the calls that were made to GetImages.
+// Check the length with:
+//
+//	len(mockedServerClient.GetImagesCalls())
+func (mock *ServerClientMock) GetImagesCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+	}
+	mock.lockGetImages.RLock()
+	calls = mock.calls.GetImages
+	mock.lockGetImages.RUnlock()
+	return calls
+}
+
 // GetInstances calls GetInstancesFunc.
-func (mock *ServerClientMock) GetInstances(ctx context.Context) ([]incusapi.InstanceFull, error) {
+func (mock *ServerClientMock) GetInstances(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error) {
 	if mock.GetInstancesFunc == nil {
 		panic("ServerClientMock.GetInstancesFunc: method is nil but ServerClient.GetInstances was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
+		Ctx           context.Context
+		ConnectionURL string
 	}{
-		Ctx: ctx,
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
 	}
 	mock.lockGetInstances.Lock()
 	mock.calls.GetInstances = append(mock.calls.GetInstances, callInfo)
 	mock.lockGetInstances.Unlock()
-	return mock.GetInstancesFunc(ctx)
+	return mock.GetInstancesFunc(ctx, connectionURL)
 }
 
 // GetInstancesCalls gets all the calls that were made to GetInstances.
@@ -66,10 +120,12 @@ func (mock *ServerClientMock) GetInstances(ctx context.Context) ([]incusapi.Inst
 //
 //	len(mockedServerClient.GetInstancesCalls())
 func (mock *ServerClientMock) GetInstancesCalls() []struct {
-	Ctx context.Context
+	Ctx           context.Context
+	ConnectionURL string
 } {
 	var calls []struct {
-		Ctx context.Context
+		Ctx           context.Context
+		ConnectionURL string
 	}
 	mock.lockGetInstances.RLock()
 	calls = mock.calls.GetInstances

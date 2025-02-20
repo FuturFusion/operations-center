@@ -20,9 +20,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
-	"github.com/FuturFusion/operations-center/internal/inventory"
 	incusRepo "github.com/FuturFusion/operations-center/internal/inventory/repo/incus"
-	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/github"
@@ -95,21 +93,16 @@ func (d *Daemon) Start() error {
 	// being hit by the Github rate limiting.
 	gh := ghClient.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
 
+	serverClientProvider := incusRepo.ServerClientProvider(
+		d.clientCertificate,
+		d.clientKey,
+	)
+
 	// Setup Services
 	tokenSvc := provisioning.NewTokenService(provisioningSqlite.NewToken(dbWithTransaction))
 	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(dbWithTransaction))
 	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(dbWithTransaction))
 	updateSvc := provisioning.NewUpdateService(github.NewUpdate(gh))
-
-	inventoryInstanceSvc := inventory.NewInstanceService(
-		inventorySqlite.NewInstance(dbWithTransaction),
-		clusterSvc,
-		serverSvc,
-		incusRepo.ServerClientProvider(
-			d.clientCertificate,
-			d.clientKey,
-		),
-	)
 
 	// Setup Routes
 	router := http.NewServeMux()
@@ -138,8 +131,7 @@ func (d *Daemon) Start() error {
 
 	inventoryRouter := newSubRouter(api10router, "/inventory")
 
-	inventoryInstanceRouter := newSubRouter(inventoryRouter, "/instances")
-	registerInventoryInstanceHandler(inventoryInstanceRouter, inventoryInstanceSvc)
+	registerInventoryRoutes(dbWithTransaction, clusterSvc, serverSvc, serverClientProvider, inventoryRouter)
 
 	errorLogger := &log.Logger{}
 	errorLogger.SetOutput(httpErrorLogger{})

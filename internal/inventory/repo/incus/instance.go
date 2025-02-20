@@ -10,28 +10,32 @@ import (
 )
 
 type serverClient struct {
-	client incus.InstanceServer
+	clientCert string
+	clientKey  string
 }
 
-func ServerClientProvider(clientCert string, clientKey string) inventory.ServerClientProvider {
-	return func(ctx context.Context, connectionURL string) (inventory.ServerClient, error) {
-		client, err := incus.ConnectIncusWithContext(ctx, connectionURL, &incus.ConnectionArgs{
-			TLSClientCert:      clientCert,
-			TLSClientKey:       clientKey,
-			InsecureSkipVerify: true,
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		return serverClient{
-			client: client,
-		}, nil
+func ServerClientProvider(clientCert string, clientKey string) inventory.ServerClient {
+	return serverClient{
+		clientCert: clientCert,
+		clientKey:  clientKey,
 	}
 }
 
-func (s serverClient) GetInstances(ctx context.Context) ([]incusapi.InstanceFull, error) {
-	serverInstances, err := s.client.GetInstancesFullAllProjects(incusapi.InstanceTypeAny)
+func (s serverClient) getClient(ctx context.Context, connectionURL string) (incus.InstanceServer, error) {
+	return incus.ConnectIncusWithContext(ctx, connectionURL, &incus.ConnectionArgs{
+		TLSClientCert:      s.clientCert,
+		TLSClientKey:       s.clientKey,
+		InsecureSkipVerify: true,
+	})
+}
+
+func (s serverClient) GetInstances(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return nil, err
+	}
+
+	serverInstances, err := client.GetInstancesFullAllProjects(incusapi.InstanceTypeAny)
 	if err != nil {
 		return nil, err
 	}
