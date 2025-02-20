@@ -12,7 +12,8 @@
         "github.vscode-github-actions",
         "davidanson.vscode-markdownlint",
         "shardulm94.trailing-spaces",
-        "Gruntfuggly.todo-tree"
+        "Gruntfuggly.todo-tree",
+        "casualjim.gotemplate",
       ],
       "settings": {
         "files.insertFinalNewline": true,
