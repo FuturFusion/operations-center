@@ -29,6 +29,20 @@ func (s serverClient) getClient(ctx context.Context, connectionURL string) (incu
 	})
 }
 
+func (s serverClient) GetImages(ctx context.Context, connectionURL string) ([]incusapi.Image, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return nil, err
+	}
+
+	serverImages, err := client.GetImagesAllProjects()
+	if err != nil {
+		return nil, err
+	}
+
+	return serverImages, nil
+}
+
 func (s serverClient) GetInstances(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error) {
 	client, err := s.getClient(ctx, connectionURL)
 	if err != nil {

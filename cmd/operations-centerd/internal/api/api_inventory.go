@@ -11,6 +11,13 @@ import (
 
 func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverSvc provisioning.ServerService, serverClient inventory.ServerClient, inventoryRouter *http.ServeMux) {
 	// Service
+	inventoryImageSvc := inventory.NewImageService(
+		inventorySqlite.NewImage(db),
+		clusterSvc,
+		serverSvc,
+		serverClient,
+	)
+
 	inventoryInstanceSvc := inventory.NewInstanceService(
 		inventorySqlite.NewInstance(db),
 		clusterSvc,
@@ -19,6 +26,9 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 	)
 
 	// API routes
+	inventoryImageRouter := newSubRouter(inventoryRouter, "/images")
+	registerInventoryImageHandler(inventoryImageRouter, inventoryImageSvc)
+
 	inventoryInstanceRouter := newSubRouter(inventoryRouter, "/instances")
 	registerInventoryInstanceHandler(inventoryInstanceRouter, inventoryInstanceSvc)
 }

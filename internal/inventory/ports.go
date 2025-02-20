@@ -23,5 +23,6 @@ type ServerService interface {
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/server_client_mock_gen.go -rm . ServerClient
 
 type ServerClient interface {
+	ImageServerClient
 	InstanceServerClient
 }
