@@ -126,3 +126,17 @@ func (s serverClient) GetProfiles(ctx context.Context, connectionURL string) ([]
 
 	return serverProfiles, nil
 }
+
+func (s serverClient) GetProjects(ctx context.Context, connectionURL string) ([]incusapi.Project, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return nil, err
+	}
+
+	serverProjects, err := client.GetProjects()
+	if err != nil {
+		return nil, err
+	}
+
+	return serverProjects, nil
+}

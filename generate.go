@@ -10,3 +10,4 @@ package tools
 // TODO: network_peer
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory network_zone
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory profile
+//go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory --omit-project project

@@ -60,6 +60,13 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 		serverClient,
 	)
 
+	inventoryProjectSvc := inventory.NewProjectService(
+		inventorySqlite.NewProject(db),
+		clusterSvc,
+		serverSvc,
+		serverClient,
+	)
+
 	// API routes
 	inventoryImageRouter := newSubRouter(inventoryRouter, "/images")
 	registerInventoryImageHandler(inventoryImageRouter, inventoryImageSvc)
@@ -81,4 +88,7 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryProfileRouter := newSubRouter(inventoryRouter, "/profiles")
 	registerInventoryProfileHandler(inventoryProfileRouter, inventoryProfileSvc)
+
+	inventoryProjectRouter := newSubRouter(inventoryRouter, "/projects")
+	registerInventoryProjectHandler(inventoryProjectRouter, inventoryProjectSvc)
 }

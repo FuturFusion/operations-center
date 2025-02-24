@@ -30,4 +30,5 @@ type ServerClient interface {
 	NetworkIntegrationServerClient
 	NetworkZoneServerClient
 	ProfileServerClient
+	ProjectServerClient
 }
