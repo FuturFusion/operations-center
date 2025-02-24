@@ -98,3 +98,17 @@ func (s serverClient) GetNetworkIntegrations(ctx context.Context, connectionURL 
 
 	return serverNetworkIntegrations, nil
 }
+
+func (s serverClient) GetNetworkZones(ctx context.Context, connectionURL string) ([]incusapi.NetworkZone, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return nil, err
+	}
+
+	serverNetworkZones, err := client.GetNetworkZonesAllProjects()
+	if err != nil {
+		return nil, err
+	}
+
+	return serverNetworkZones, nil
+}
