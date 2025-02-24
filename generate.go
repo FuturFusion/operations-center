@@ -9,3 +9,4 @@ package tools
 // TODO: network_loadbalancer
 // TODO: network_peer
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory network_zone
+//go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory profile

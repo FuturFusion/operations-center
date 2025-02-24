@@ -116,6 +116,20 @@ CREATE TABLE network_zones (
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 
+CREATE TABLE profiles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  server_id INTEGER NOT NULL,
+  project_name TEXT NOT NULL,
+  name TEXT NOT NULL,
+  object TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (server_id, project_name, name),
+  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
+  -- and constraints should not cross domain boundaries.
+  -- Or is it wrong to assume these to be separate domains in the first place?
+  FOREIGN KEY (server_id) REFERENCES servers(id)
+);
+
 INSERT INTO schema (version, updated_at) VALUES (2, strftime("%s"))
 `
 
@@ -248,6 +262,20 @@ CREATE TABLE network_integrations (
 );
 
 CREATE TABLE network_zones (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  server_id INTEGER NOT NULL,
+  project_name TEXT NOT NULL,
+  name TEXT NOT NULL,
+  object TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (server_id, project_name, name),
+  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
+  -- and constraints should not cross domain boundaries.
+  -- Or is it wrong to assume these to be separate domains in the first place?
+  FOREIGN KEY (server_id) REFERENCES servers(id)
+);
+
+CREATE TABLE profiles (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   server_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,

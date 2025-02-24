@@ -112,3 +112,17 @@ func (s serverClient) GetNetworkZones(ctx context.Context, connectionURL string)
 
 	return serverNetworkZones, nil
 }
+
+func (s serverClient) GetProfiles(ctx context.Context, connectionURL string) ([]incusapi.Profile, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return nil, err
+	}
+
+	serverProfiles, err := client.GetProfilesAllProjects()
+	if err != nil {
+		return nil, err
+	}
+
+	return serverProfiles, nil
+}

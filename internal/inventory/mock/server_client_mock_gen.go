@@ -39,6 +39,9 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //			GetNetworksFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Network, error) {
 //				panic("mock out the GetNetworks method")
 //			},
+//			GetProfilesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Profile, error) {
+//				panic("mock out the GetProfiles method")
+//			},
 //		}
 //
 //		// use mockedServerClient in code that requires inventory.ServerClient
@@ -63,6 +66,9 @@ type ServerClientMock struct {
 
 	// GetNetworksFunc mocks the GetNetworks method.
 	GetNetworksFunc func(ctx context.Context, connectionURL string) ([]incusapi.Network, error)
+
+	// GetProfilesFunc mocks the GetProfiles method.
+	GetProfilesFunc func(ctx context.Context, connectionURL string) ([]incusapi.Profile, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -108,6 +114,13 @@ type ServerClientMock struct {
 			// ConnectionURL is the connectionURL argument value.
 			ConnectionURL string
 		}
+		// GetProfiles holds details about calls to the GetProfiles method.
+		GetProfiles []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+		}
 	}
 	lockGetImages              sync.RWMutex
 	lockGetInstances           sync.RWMutex
@@ -115,6 +128,7 @@ type ServerClientMock struct {
 	lockGetNetworkIntegrations sync.RWMutex
 	lockGetNetworkZones        sync.RWMutex
 	lockGetNetworks            sync.RWMutex
+	lockGetProfiles            sync.RWMutex
 }
 
 // GetImages calls GetImagesFunc.
@@ -330,5 +344,41 @@ func (mock *ServerClientMock) GetNetworksCalls() []struct {
 	mock.lockGetNetworks.RLock()
 	calls = mock.calls.GetNetworks
 	mock.lockGetNetworks.RUnlock()
+	return calls
+}
+
+// GetProfiles calls GetProfilesFunc.
+func (mock *ServerClientMock) GetProfiles(ctx context.Context, connectionURL string) ([]incusapi.Profile, error) {
+	if mock.GetProfilesFunc == nil {
+		panic("ServerClientMock.GetProfilesFunc: method is nil but ServerClient.GetProfiles was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+	}
+	mock.lockGetProfiles.Lock()
+	mock.calls.GetProfiles = append(mock.calls.GetProfiles, callInfo)
+	mock.lockGetProfiles.Unlock()
+	return mock.GetProfilesFunc(ctx, connectionURL)
+}
+
+// GetProfilesCalls gets all the calls that were made to GetProfiles.
+// Check the length with:
+//
+//	len(mockedServerClient.GetProfilesCalls())
+func (mock *ServerClientMock) GetProfilesCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+	}
+	mock.lockGetProfiles.RLock()
+	calls = mock.calls.GetProfiles
+	mock.lockGetProfiles.RUnlock()
 	return calls
 }
