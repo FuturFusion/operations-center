@@ -27,4 +27,5 @@ type ServerClient interface {
 	InstanceServerClient
 	NetworkServerClient
 	NetworkACLServerClient
+	NetworkIntegrationServerClient
 }

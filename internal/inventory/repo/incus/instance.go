@@ -84,3 +84,17 @@ func (s serverClient) GetNetworkACLs(ctx context.Context, connectionURL string) 
 
 	return serverNetworkACLs, nil
 }
+
+func (s serverClient) GetNetworkIntegrations(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return nil, err
+	}
+
+	serverNetworkIntegrations, err := client.GetNetworkIntegrations()
+	if err != nil {
+		return nil, err
+	}
+
+	return serverNetworkIntegrations, nil
+}

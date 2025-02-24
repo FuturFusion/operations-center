@@ -100,7 +100,9 @@ func (s {{ .Name | camelcase }}Service) SyncServer(ctx context.Context, serverID
 			{{ .Name | camelcase }} := {{ .Name | pascalcase }}{
 				ClusterID:   server.ClusterID,
 				ServerID:    serverID,
-				ProjectName: server{{ .Name | camelcase }}.Project,
+{{- if .HasProject }}
+				ProjectName: server{{ .Name | pascalcase }}.Project,
+{{- end }}
 				Name:        server{{ .Name | camelcase }}.{{ .ObjectNamePropertyName | camelcase }},
 				Object:      server{{ .Name | camelcase }},
 				LastUpdated: s.now(),

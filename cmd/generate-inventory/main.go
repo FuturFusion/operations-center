@@ -23,6 +23,7 @@ func main() {
 	pluralName := pflag.String("plural", "", "plural form of the entity")
 	objectNamePropertyName := pflag.String("object-name-property-name", "Name", "Name property of the object")
 	objectType := pflag.String("object-type", "", "Go type used for object in model")
+	omitProject := pflag.Bool("omit-project", false, "if omit-project is provided, the entity does not have a relation to a project")
 	pflag.Parse()
 
 	name := pflag.Args()[0]
@@ -99,12 +100,14 @@ func main() {
 		ObjectType             string
 		ObjectEmbedded         bool
 		ObjectNamePropertyName string
+		HasProject             bool
 	}{
 		Name:                   name,
 		PluralName:             *pluralName,
 		ObjectType:             *objectType,
 		ObjectEmbedded:         objectEmbedded,
 		ObjectNamePropertyName: *objectNamePropertyName,
+		HasProject:             !*omitProject,
 	}
 
 	for _, target := range targets {

@@ -78,7 +78,9 @@ func Test{{ .Name | pascalcase }}Service_GetByID(t *testing.T) {
 			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				ServerID:    1,
+{{- if .HasProject }}
 				ProjectName: "one",
+{{- end }}
 				Name:        "one",
 				Object:      incusapi.{{ .ObjectType | pascalcase }}{},
 				LastUpdated: time.Now(),

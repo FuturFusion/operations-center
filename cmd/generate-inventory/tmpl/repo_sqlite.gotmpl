@@ -27,9 +27,9 @@ func (i {{ .Name | camelcase }}) Create(ctx context.Context, in inventory.{{ .Na
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
 )
-INSERT INTO {{ .PluralName }} (server_id, project_name, name, object, last_updated)
-VALUES(:server_id, :project_name, :name, :object, :last_updated)
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project_name, name, object, last_updated;
+INSERT INTO {{ .PluralName }} (server_id, {{ if .HasProject }}project_name, {{ end -}} name, object, last_updated)
+VALUES(:server_id, {{ if .HasProject }}:project_name, {{ end -}} :name, :object, :last_updated)
+RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, {{ if .HasProject }}project_name, {{ end -}} name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -39,7 +39,9 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 
 	row := i.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("server_id", in.ServerID),
+{{- if .HasProject }}
 		sql.Named("project_name", in.ProjectName),
+{{- end }}
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
 		sql.Named("last_updated", in.LastUpdated),
@@ -82,7 +84,7 @@ func (i {{ .Name | camelcase | minuscule }}) GetAllIDs(ctx context.Context) ([]i
 func (i {{ .Name | camelcase }}) GetByID(ctx context.Context, id int) (inventory.{{ .Name | pascalcase }}, error) {
 	const sqlStmt = `
 SELECT
-  {{ .PluralName }}.id, servers.cluster_id as cluster_id, {{ .PluralName }}.server_id, {{ .PluralName }}.project_name, {{ .PluralName }}.name, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
+  {{ .PluralName }}.id, servers.cluster_id as cluster_id, {{ .PluralName }}.server_id, {{ if .HasProject }}{{ .PluralName }}.project_name, {{ end -}} {{ .PluralName }}.name, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
 FROM
   {{ .PluralName }}
   INNER JOIN servers ON {{ .PluralName }}.server_id = servers.id
@@ -122,11 +124,13 @@ func scan{{ .Name | pascalcase }}(row interface{ Scan(dest ...any) error }) (inv
 	var {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}
 
 	err := row.Scan(
-		&{{ .Name }}.ID,
-		&{{ .Name }}.ClusterID,
-		&{{ .Name }}.ServerID,
-		&{{ .Name }}.ProjectName,
-		&{{ .Name }}.Name,
+		&{{ .Name | camelcase }}.ID,
+		&{{ .Name | camelcase }}.ClusterID,
+		&{{ .Name | camelcase }}.ServerID,
+{{- if .HasProject }}
+		&{{ .Name | camelcase }}.ProjectName,
+{{- end }}
+		&{{ .Name | camelcase | minuscule }}.Name,
 		&object,
 		&{{ .Name | camelcase }}.LastUpdated,
 	)

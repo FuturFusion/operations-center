@@ -30,6 +30,9 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //			GetNetworkACLsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error) {
 //				panic("mock out the GetNetworkACLs method")
 //			},
+//			GetNetworkIntegrationsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error) {
+//				panic("mock out the GetNetworkIntegrations method")
+//			},
 //			GetNetworksFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Network, error) {
 //				panic("mock out the GetNetworks method")
 //			},
@@ -48,6 +51,9 @@ type ServerClientMock struct {
 
 	// GetNetworkACLsFunc mocks the GetNetworkACLs method.
 	GetNetworkACLsFunc func(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error)
+
+	// GetNetworkIntegrationsFunc mocks the GetNetworkIntegrations method.
+	GetNetworkIntegrationsFunc func(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error)
 
 	// GetNetworksFunc mocks the GetNetworks method.
 	GetNetworksFunc func(ctx context.Context, connectionURL string) ([]incusapi.Network, error)
@@ -75,6 +81,13 @@ type ServerClientMock struct {
 			// ConnectionURL is the connectionURL argument value.
 			ConnectionURL string
 		}
+		// GetNetworkIntegrations holds details about calls to the GetNetworkIntegrations method.
+		GetNetworkIntegrations []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+		}
 		// GetNetworks holds details about calls to the GetNetworks method.
 		GetNetworks []struct {
 			// Ctx is the ctx argument value.
@@ -83,10 +96,11 @@ type ServerClientMock struct {
 			ConnectionURL string
 		}
 	}
-	lockGetImages      sync.RWMutex
-	lockGetInstances   sync.RWMutex
-	lockGetNetworkACLs sync.RWMutex
-	lockGetNetworks    sync.RWMutex
+	lockGetImages              sync.RWMutex
+	lockGetInstances           sync.RWMutex
+	lockGetNetworkACLs         sync.RWMutex
+	lockGetNetworkIntegrations sync.RWMutex
+	lockGetNetworks            sync.RWMutex
 }
 
 // GetImages calls GetImagesFunc.
@@ -194,6 +208,42 @@ func (mock *ServerClientMock) GetNetworkACLsCalls() []struct {
 	mock.lockGetNetworkACLs.RLock()
 	calls = mock.calls.GetNetworkACLs
 	mock.lockGetNetworkACLs.RUnlock()
+	return calls
+}
+
+// GetNetworkIntegrations calls GetNetworkIntegrationsFunc.
+func (mock *ServerClientMock) GetNetworkIntegrations(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error) {
+	if mock.GetNetworkIntegrationsFunc == nil {
+		panic("ServerClientMock.GetNetworkIntegrationsFunc: method is nil but ServerClient.GetNetworkIntegrations was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+	}
+	mock.lockGetNetworkIntegrations.Lock()
+	mock.calls.GetNetworkIntegrations = append(mock.calls.GetNetworkIntegrations, callInfo)
+	mock.lockGetNetworkIntegrations.Unlock()
+	return mock.GetNetworkIntegrationsFunc(ctx, connectionURL)
+}
+
+// GetNetworkIntegrationsCalls gets all the calls that were made to GetNetworkIntegrations.
+// Check the length with:
+//
+//	len(mockedServerClient.GetNetworkIntegrationsCalls())
+func (mock *ServerClientMock) GetNetworkIntegrationsCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+	}
+	mock.lockGetNetworkIntegrations.RLock()
+	calls = mock.calls.GetNetworkIntegrations
+	mock.lockGetNetworkIntegrations.RUnlock()
 	return calls
 }
 
