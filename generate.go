@@ -7,7 +7,7 @@ package tools
 // TODO: network_forward
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory --omit-project network_integration
 // TODO: network_loadbalancer
-// TODO: network_peer
+//go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory --omit-project --parent network network_peer
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory network_zone
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory profile
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory --omit-project project

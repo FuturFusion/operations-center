@@ -28,6 +28,7 @@ type ServerClient interface {
 	NetworkServerClient
 	NetworkACLServerClient
 	NetworkIntegrationServerClient
+	NetworkPeerServerClient
 	NetworkZoneServerClient
 	ProfileServerClient
 	ProjectServerClient

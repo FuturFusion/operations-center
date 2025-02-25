@@ -99,6 +99,20 @@ func (s serverClient) GetNetworkIntegrations(ctx context.Context, connectionURL 
 	return serverNetworkIntegrations, nil
 }
 
+func (s serverClient) GetNetworkPeers(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkPeer, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return nil, err
+	}
+
+	serverNetworkPeers, err := client.GetNetworkPeers(networkName)
+	if err != nil {
+		return nil, err
+	}
+
+	return serverNetworkPeers, nil
+}
+
 func (s serverClient) GetNetworkZones(ctx context.Context, connectionURL string) ([]incusapi.NetworkZone, error) {
 	client, err := s.getClient(ctx, connectionURL)
 	if err != nil {
