@@ -154,3 +154,17 @@ func (s serverClient) GetStoragePools(ctx context.Context, connectionURL string)
 
 	return serverStoragePools, nil
 }
+
+func (s serverClient) GetStorageVolumes(ctx context.Context, connectionURL string, storagePoolName string) ([]incusapi.StorageVolume, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return nil, err
+	}
+
+	serverStorageVolumes, err := client.GetStoragePoolVolumesAllProjects(storagePoolName)
+	if err != nil {
+		return nil, err
+	}
+
+	return serverStorageVolumes, nil
+}

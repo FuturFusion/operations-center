@@ -32,4 +32,5 @@ type ServerClient interface {
 	ProfileServerClient
 	ProjectServerClient
 	StoragePoolServerClient
+	StorageVolumeServerClient
 }
