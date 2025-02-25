@@ -133,6 +133,7 @@ func (i *networkLoadBalancerHandler) networkLoadBalancerGet(r *http.Request) res
 			ID:          networkLoadBalancer.ID,
 			ClusterID:   networkLoadBalancer.ClusterID,
 			ServerID:    networkLoadBalancer.ServerID,
+			NetworkName: networkLoadBalancer.NetworkName,
 			Name:        networkLoadBalancer.Name,
 			Object:      networkLoadBalancer.Object,
 			LastUpdated: networkLoadBalancer.LastUpdated,

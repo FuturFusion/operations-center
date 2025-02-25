@@ -44,6 +44,9 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 {{- if .HasProject }}
 		ProjectName: "one",
 {{- end }}
+{{- if .HasParent }}
+		{{ .ParentName | pascalcase }}Name:  "parent one",
+{{- end }}
 		Name:        "one",
 		Object:      incusapi.{{ .ObjectType | pascalcase }}{},
 		LastUpdated: time.Now(),
@@ -53,6 +56,9 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 		ServerID:    1,
 {{- if .HasProject }}
 		ProjectName: "two",
+{{- end }}
+{{- if .HasParent }}
+		{{ .ParentName | pascalcase }}Name:  "parent one",
 {{- end }}
 		Name:        "two",
 		Object:      incusapi.{{ .ObjectType | pascalcase }}{},

@@ -81,6 +81,9 @@ func Test{{ .Name | pascalcase }}Service_GetByID(t *testing.T) {
 {{- if .HasProject }}
 				ProjectName: "one",
 {{- end }}
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: "parent one",
+{{- end }}
 				Name:        "one",
 				Object:      incusapi.{{ .ObjectType | pascalcase }}{},
 				LastUpdated: time.Now(),

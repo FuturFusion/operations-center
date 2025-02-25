@@ -42,19 +42,21 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	}
 
 	storageBucketA := inventory.StorageBucket{
-		ServerID:    1,
-		ProjectName: "one",
-		Name:        "one",
-		Object:      incusapi.StorageBucket{},
-		LastUpdated: time.Now(),
+		ServerID:        1,
+		ProjectName:     "one",
+		StoragePoolName: "parent one",
+		Name:            "one",
+		Object:          incusapi.StorageBucket{},
+		LastUpdated:     time.Now(),
 	}
 
 	storageBucketB := inventory.StorageBucket{
-		ServerID:    1,
-		ProjectName: "two",
-		Name:        "two",
-		Object:      incusapi.StorageBucket{},
-		LastUpdated: time.Now(),
+		ServerID:        1,
+		ProjectName:     "two",
+		StoragePoolName: "parent one",
+		Name:            "two",
+		Object:          incusapi.StorageBucket{},
+		LastUpdated:     time.Now(),
 	}
 
 	ctx := context.Background()

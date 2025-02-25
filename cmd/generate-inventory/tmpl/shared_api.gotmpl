@@ -13,6 +13,9 @@ type {{ .Name | pascalcase }} struct {
 {{- if .HasProject }}
 	ProjectName string                `json:"project_name" yaml:"project_name"`
 {{- end }}
+{{- if .HasParent }}
+	{{ .ParentName | pascalcase }}Name  string `json:"parent_name" yaml:"parent_name"`
+{{- end }}
 	Name        string                `json:"name" yaml:"name"`
 	Object      incusapi.{{ .ObjectType | pascalcase }} `json:"object" yaml:"object"`
 	LastUpdated time.Time             `json:"last_updated" yaml:"last_updated"`

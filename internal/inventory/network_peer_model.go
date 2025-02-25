@@ -12,6 +12,7 @@ type NetworkPeer struct {
 	ID          int
 	ClusterID   int
 	ServerID    int
+	NetworkName string
 	Name        string
 	Object      incusapi.NetworkPeer
 	LastUpdated time.Time

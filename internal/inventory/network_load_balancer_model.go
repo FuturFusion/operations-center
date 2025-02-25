@@ -12,6 +12,7 @@ type NetworkLoadBalancer struct {
 	ID          int
 	ClusterID   int
 	ServerID    int
+	NetworkName string
 	Name        string
 	Object      incusapi.NetworkLoadBalancer
 	LastUpdated time.Time

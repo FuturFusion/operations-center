@@ -29,9 +29,9 @@ func (i networkLoadBalancer) Create(ctx context.Context, in inventory.NetworkLoa
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
 )
-INSERT INTO network_load_balancers (server_id, name, object, last_updated)
-VALUES(:server_id, :name, :object, :last_updated)
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, object, last_updated;
+INSERT INTO network_load_balancers (server_id, network_name, name, object, last_updated)
+VALUES(:server_id, :network_name, :name, :object, :last_updated)
+RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, network_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -41,6 +41,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, o
 
 	row := i.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("server_id", in.ServerID),
+		sql.Named("network_name", in.NetworkName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
 		sql.Named("last_updated", in.LastUpdated),
@@ -83,7 +84,7 @@ func (i networkLoadBalancer) GetAllIDs(ctx context.Context) ([]int, error) {
 func (i networkLoadBalancer) GetByID(ctx context.Context, id int) (inventory.NetworkLoadBalancer, error) {
 	const sqlStmt = `
 SELECT
-  network_load_balancers.id, servers.cluster_id as cluster_id, network_load_balancers.server_id, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
+  network_load_balancers.id, servers.cluster_id as cluster_id, network_load_balancers.server_id, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
 FROM
   network_load_balancers
   INNER JOIN servers ON network_load_balancers.server_id = servers.id
@@ -126,6 +127,7 @@ func scanNetworkLoadBalancer(row interface{ Scan(dest ...any) error }) (inventor
 		&networkLoadBalancer.ID,
 		&networkLoadBalancer.ClusterID,
 		&networkLoadBalancer.ServerID,
+		&networkLoadBalancer.NetworkName,
 		&networkLoadBalancer.Name,
 		&object,
 		&networkLoadBalancer.LastUpdated,

@@ -43,6 +43,7 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 
 	networkForwardA := inventory.NetworkForward{
 		ServerID:    1,
+		NetworkName: "parent one",
 		Name:        "one",
 		Object:      incusapi.NetworkForward{},
 		LastUpdated: time.Now(),
@@ -50,6 +51,7 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 
 	networkForwardB := inventory.NetworkForward{
 		ServerID:    1,
+		NetworkName: "parent one",
 		Name:        "two",
 		Object:      incusapi.NetworkForward{},
 		LastUpdated: time.Now(),

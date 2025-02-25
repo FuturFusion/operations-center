@@ -43,6 +43,7 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 
 	networkLoadBalancerA := inventory.NetworkLoadBalancer{
 		ServerID:    1,
+		NetworkName: "parent one",
 		Name:        "one",
 		Object:      incusapi.NetworkLoadBalancer{},
 		LastUpdated: time.Now(),
@@ -50,6 +51,7 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 
 	networkLoadBalancerB := inventory.NetworkLoadBalancer{
 		ServerID:    1,
+		NetworkName: "parent one",
 		Name:        "two",
 		Object:      incusapi.NetworkLoadBalancer{},
 		LastUpdated: time.Now(),

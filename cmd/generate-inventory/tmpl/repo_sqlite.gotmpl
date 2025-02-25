@@ -27,9 +27,9 @@ func (i {{ .Name | camelcase }}) Create(ctx context.Context, in inventory.{{ .Na
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
 )
-INSERT INTO {{ .PluralName }} (server_id, {{ if .HasProject }}project_name, {{ end -}} name, object, last_updated)
-VALUES(:server_id, {{ if .HasProject }}:project_name, {{ end -}} :name, :object, :last_updated)
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, {{ if .HasProject }}project_name, {{ end -}} name, object, last_updated;
+INSERT INTO {{ .PluralName }} (server_id, {{ if .HasProject }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name, object, last_updated)
+VALUES(:server_id, {{ if .HasProject }}:project_name, {{ end -}}{{ if .HasParent }}:{{ .ParentName }}_name, {{ end -}} :name, :object, :last_updated)
+RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, {{ if .HasProject }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -41,6 +41,9 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, {{ if .
 		sql.Named("server_id", in.ServerID),
 {{- if .HasProject }}
 		sql.Named("project_name", in.ProjectName),
+{{- end }}
+{{- if .HasParent }}
+		sql.Named("{{ .ParentName }}_name", in.{{ .ParentName | pascalcase }}Name),
 {{- end }}
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -84,7 +87,7 @@ func (i {{ .Name | camelcase | minuscule }}) GetAllIDs(ctx context.Context) ([]i
 func (i {{ .Name | camelcase }}) GetByID(ctx context.Context, id int) (inventory.{{ .Name | pascalcase }}, error) {
 	const sqlStmt = `
 SELECT
-  {{ .PluralName }}.id, servers.cluster_id as cluster_id, {{ .PluralName }}.server_id, {{ if .HasProject }}{{ .PluralName }}.project_name, {{ end -}} {{ .PluralName }}.name, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
+  {{ .PluralName }}.id, servers.cluster_id as cluster_id, {{ .PluralName }}.server_id, {{ if .HasProject }}{{ .PluralName }}.project_name, {{ end -}}{{ if .HasParent }}{{ .PluralName }}.{{ .ParentName }}_name, {{ end -}} {{ .PluralName }}.name, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
 FROM
   {{ .PluralName }}
   INNER JOIN servers ON {{ .PluralName }}.server_id = servers.id
@@ -130,7 +133,10 @@ func scan{{ .Name | pascalcase }}(row interface{ Scan(dest ...any) error }) (inv
 {{- if .HasProject }}
 		&{{ .Name | camelcase }}.ProjectName,
 {{- end }}
-		&{{ .Name | camelcase | minuscule }}.Name,
+{{- if .HasParent }}
+		&{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name,
+{{- end }}
+		&{{ .Name | camelcase }}.Name,
 		&object,
 		&{{ .Name | camelcase }}.LastUpdated,
 	)

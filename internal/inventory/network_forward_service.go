@@ -7,8 +7,6 @@ import (
 	"errors"
 	"time"
 
-	incusapi "github.com/lxc/incus/v6/shared/api"
-
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 )
@@ -96,42 +94,40 @@ func (s networkForwardService) SyncServer(ctx context.Context, serverID int) err
 		return err
 	}
 
-	var serverNetworkForwards []incusapi.NetworkForward
-
 	for _, network := range serverNetworks {
-		networkForward, err := s.networkForwardClient.GetNetworkForwards(ctx, server.ConnectionURL, network.Name)
+		serverNetworkForwards, err := s.networkForwardClient.GetNetworkForwards(ctx, server.ConnectionURL, network.Name)
 		if err != nil {
 			return err
 		}
 
-		serverNetworkForwards = append(serverNetworkForwards, networkForward...)
-	}
+		err = transaction.Do(ctx, func(ctx context.Context) error {
+			err = s.repo.DeleteByServerID(ctx, serverID)
+			if err != nil && !errors.Is(err, domain.ErrNotFound) {
+				return err
+			}
 
-	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByServerID(ctx, serverID)
-		if err != nil && !errors.Is(err, domain.ErrNotFound) {
+			for _, serverNetworkForward := range serverNetworkForwards {
+				networkForward := NetworkForward{
+					ClusterID:   server.ClusterID,
+					ServerID:    serverID,
+					NetworkName: network.Name,
+					Name:        serverNetworkForward.ListenAddress,
+					Object:      serverNetworkForward,
+					LastUpdated: s.now(),
+				}
+
+				_, err := s.repo.Create(ctx, networkForward)
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+		if err != nil {
 			return err
 		}
 
-		for _, serverNetworkForward := range serverNetworkForwards {
-			networkForward := NetworkForward{
-				ClusterID:   server.ClusterID,
-				ServerID:    serverID,
-				Name:        serverNetworkForward.ListenAddress,
-				Object:      serverNetworkForward,
-				LastUpdated: s.now(),
-			}
-
-			_, err := s.repo.Create(ctx, networkForward)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
 	}
 
 	return nil

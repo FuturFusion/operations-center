@@ -12,6 +12,7 @@ type NetworkForward struct {
 	ID          int
 	ClusterID   int
 	ServerID    int
+	NetworkName string
 	Name        string
 	Object      incusapi.NetworkForward
 	LastUpdated time.Time

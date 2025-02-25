@@ -29,9 +29,9 @@ func (i storageBucket) Create(ctx context.Context, in inventory.StorageBucket) (
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
 )
-INSERT INTO storage_buckets (server_id, project_name, name, object, last_updated)
-VALUES(:server_id, :project_name, :name, :object, :last_updated)
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project_name, name, object, last_updated;
+INSERT INTO storage_buckets (server_id, project_name, storage_pool_name, name, object, last_updated)
+VALUES(:server_id, :project_name, :storage_pool_name, :name, :object, :last_updated)
+RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project_name, storage_pool_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -42,6 +42,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 	row := i.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("server_id", in.ServerID),
 		sql.Named("project_name", in.ProjectName),
+		sql.Named("storage_pool_name", in.StoragePoolName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
 		sql.Named("last_updated", in.LastUpdated),
@@ -84,7 +85,7 @@ func (i storageBucket) GetAllIDs(ctx context.Context) ([]int, error) {
 func (i storageBucket) GetByID(ctx context.Context, id int) (inventory.StorageBucket, error) {
 	const sqlStmt = `
 SELECT
-  storage_buckets.id, servers.cluster_id as cluster_id, storage_buckets.server_id, storage_buckets.project_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
+  storage_buckets.id, servers.cluster_id as cluster_id, storage_buckets.server_id, storage_buckets.project_name, storage_buckets.storage_pool_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
 FROM
   storage_buckets
   INNER JOIN servers ON storage_buckets.server_id = servers.id
@@ -128,6 +129,7 @@ func scanStorageBucket(row interface{ Scan(dest ...any) error }) (inventory.Stor
 		&storageBucket.ClusterID,
 		&storageBucket.ServerID,
 		&storageBucket.ProjectName,
+		&storageBucket.StoragePoolName,
 		&storageBucket.Name,
 		&object,
 		&storageBucket.LastUpdated,

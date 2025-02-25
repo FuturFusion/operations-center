@@ -92,10 +92,11 @@ CREATE TABLE network_acls (
 CREATE TABLE network_forwards (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   server_id INTEGER NOT NULL,
+  network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, name),
+  UNIQUE (server_id, network_name, name),
   -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
   -- and constraints should not cross domain boundaries.
   -- Or is it wrong to assume these to be separate domains in the first place?
@@ -118,10 +119,11 @@ CREATE TABLE network_integrations (
 CREATE TABLE network_load_balancers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   server_id INTEGER NOT NULL,
+  network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, name),
+  UNIQUE (server_id, network_name, name),
   -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
   -- and constraints should not cross domain boundaries.
   -- Or is it wrong to assume these to be separate domains in the first place?
@@ -131,10 +133,11 @@ CREATE TABLE network_load_balancers (
 CREATE TABLE network_peers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   server_id INTEGER NOT NULL,
+  network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, name),
+  UNIQUE (server_id, network_name, name),
   -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
   -- and constraints should not cross domain boundaries.
   -- Or is it wrong to assume these to be separate domains in the first place?
@@ -186,10 +189,11 @@ CREATE TABLE storage_buckets (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   server_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
+  storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
+  UNIQUE (server_id, project_name, storage_pool_name, name),
   -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
   -- and constraints should not cross domain boundaries.
   -- Or is it wrong to assume these to be separate domains in the first place?
@@ -213,10 +217,11 @@ CREATE TABLE storage_volumes (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   server_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
+  storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
+  UNIQUE (server_id, project_name, storage_pool_name, name),
   -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
   -- and constraints should not cross domain boundaries.
   -- Or is it wrong to assume these to be separate domains in the first place?
@@ -344,10 +349,11 @@ CREATE TABLE network_acls (
 CREATE TABLE network_forwards (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   server_id INTEGER NOT NULL,
+  network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, name),
+  UNIQUE (server_id, network_name, name),
   -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
   -- and constraints should not cross domain boundaries.
   -- Or is it wrong to assume these to be separate domains in the first place?
@@ -370,10 +376,11 @@ CREATE TABLE network_integrations (
 CREATE TABLE network_load_balancers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   server_id INTEGER NOT NULL,
+  network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, name),
+  UNIQUE (server_id, network_name, name),
   -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
   -- and constraints should not cross domain boundaries.
   -- Or is it wrong to assume these to be separate domains in the first place?
@@ -383,10 +390,11 @@ CREATE TABLE network_load_balancers (
 CREATE TABLE network_peers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   server_id INTEGER NOT NULL,
+  network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, name),
+  UNIQUE (server_id, network_name, name),
   -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
   -- and constraints should not cross domain boundaries.
   -- Or is it wrong to assume these to be separate domains in the first place?
@@ -438,6 +446,7 @@ CREATE TABLE storage_buckets (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   server_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
+  storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
@@ -465,10 +474,11 @@ CREATE TABLE storage_volumes (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   server_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
+  storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
+  UNIQUE (server_id, project_name, storage_pool_name, name),
   -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
   -- and constraints should not cross domain boundaries.
   -- Or is it wrong to assume these to be separate domains in the first place?

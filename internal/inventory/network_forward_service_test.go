@@ -80,6 +80,7 @@ func TestNetworkForwardService_GetByID(t *testing.T) {
 			repoGetByIDNetworkForward: inventory.NetworkForward{
 				ID:          1,
 				ServerID:    1,
+				NetworkName: "parent one",
 				Name:        "one",
 				Object:      incusapi.NetworkForward{},
 				LastUpdated: time.Now(),

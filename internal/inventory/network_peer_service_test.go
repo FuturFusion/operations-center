@@ -80,6 +80,7 @@ func TestNetworkPeerService_GetByID(t *testing.T) {
 			repoGetByIDNetworkPeer: inventory.NetworkPeer{
 				ID:          1,
 				ServerID:    1,
+				NetworkName: "parent one",
 				Name:        "one",
 				Object:      incusapi.NetworkPeer{},
 				LastUpdated: time.Now(),

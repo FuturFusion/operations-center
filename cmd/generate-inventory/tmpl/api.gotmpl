@@ -134,9 +134,12 @@ func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}Get(r *http.Requ
 {{- if .HasProject }}
 			ProjectName: {{ .Name | camelcase }}.ProjectName,
 {{- end }}
-			Name:        {{ .Name | camelcase | minuscule }}.Name,
-			Object:      {{ .Name | camelcase | minuscule }}.Object,
-			LastUpdated: {{ .Name | camelcase | minuscule }}.LastUpdated,
+{{- if .HasParent }}
+			{{ .ParentName | pascalcase }}Name: {{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name,
+{{- end }}
+			Name:        {{ .Name | camelcase }}.Name,
+			Object:      {{ .Name | camelcase }}.Object,
+			LastUpdated: {{ .Name | camelcase }}.LastUpdated,
 		},
 	)
 }

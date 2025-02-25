@@ -7,8 +7,6 @@ import (
 	"errors"
 	"time"
 
-	incusapi "github.com/lxc/incus/v6/shared/api"
-
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 )
@@ -96,43 +94,41 @@ func (s storageBucketService) SyncServer(ctx context.Context, serverID int) erro
 		return err
 	}
 
-	var serverStorageBuckets []incusapi.StorageBucket
-
 	for _, storagePool := range serverStoragePools {
-		storageBucket, err := s.storageBucketClient.GetStorageBuckets(ctx, server.ConnectionURL, storagePool.Name)
+		serverStorageBuckets, err := s.storageBucketClient.GetStorageBuckets(ctx, server.ConnectionURL, storagePool.Name)
 		if err != nil {
 			return err
 		}
 
-		serverStorageBuckets = append(serverStorageBuckets, storageBucket...)
-	}
+		err = transaction.Do(ctx, func(ctx context.Context) error {
+			err = s.repo.DeleteByServerID(ctx, serverID)
+			if err != nil && !errors.Is(err, domain.ErrNotFound) {
+				return err
+			}
 
-	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByServerID(ctx, serverID)
-		if err != nil && !errors.Is(err, domain.ErrNotFound) {
+			for _, serverStorageBucket := range serverStorageBuckets {
+				storageBucket := StorageBucket{
+					ClusterID:       server.ClusterID,
+					ServerID:        serverID,
+					ProjectName:     serverStorageBucket.Project,
+					StoragePoolName: storagePool.Name,
+					Name:            serverStorageBucket.Name,
+					Object:          serverStorageBucket,
+					LastUpdated:     s.now(),
+				}
+
+				_, err := s.repo.Create(ctx, storageBucket)
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+		if err != nil {
 			return err
 		}
 
-		for _, serverStorageBucket := range serverStorageBuckets {
-			storageBucket := StorageBucket{
-				ClusterID:   server.ClusterID,
-				ServerID:    serverID,
-				ProjectName: serverStorageBucket.Project,
-				Name:        serverStorageBucket.Name,
-				Object:      serverStorageBucket,
-				LastUpdated: s.now(),
-			}
-
-			_, err := s.repo.Create(ctx, storageBucket)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
 	}
 
 	return nil

@@ -7,8 +7,6 @@ import (
 	"errors"
 	"time"
 
-	incusapi "github.com/lxc/incus/v6/shared/api"
-
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 )
@@ -96,42 +94,40 @@ func (s networkLoadBalancerService) SyncServer(ctx context.Context, serverID int
 		return err
 	}
 
-	var serverNetworkLoadBalancers []incusapi.NetworkLoadBalancer
-
 	for _, network := range serverNetworks {
-		networkLoadBalancer, err := s.networkLoadBalancerClient.GetNetworkLoadBalancers(ctx, server.ConnectionURL, network.Name)
+		serverNetworkLoadBalancers, err := s.networkLoadBalancerClient.GetNetworkLoadBalancers(ctx, server.ConnectionURL, network.Name)
 		if err != nil {
 			return err
 		}
 
-		serverNetworkLoadBalancers = append(serverNetworkLoadBalancers, networkLoadBalancer...)
-	}
+		err = transaction.Do(ctx, func(ctx context.Context) error {
+			err = s.repo.DeleteByServerID(ctx, serverID)
+			if err != nil && !errors.Is(err, domain.ErrNotFound) {
+				return err
+			}
 
-	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByServerID(ctx, serverID)
-		if err != nil && !errors.Is(err, domain.ErrNotFound) {
+			for _, serverNetworkLoadBalancer := range serverNetworkLoadBalancers {
+				networkLoadBalancer := NetworkLoadBalancer{
+					ClusterID:   server.ClusterID,
+					ServerID:    serverID,
+					NetworkName: network.Name,
+					Name:        serverNetworkLoadBalancer.ListenAddress,
+					Object:      serverNetworkLoadBalancer,
+					LastUpdated: s.now(),
+				}
+
+				_, err := s.repo.Create(ctx, networkLoadBalancer)
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+		if err != nil {
 			return err
 		}
 
-		for _, serverNetworkLoadBalancer := range serverNetworkLoadBalancers {
-			networkLoadBalancer := NetworkLoadBalancer{
-				ClusterID:   server.ClusterID,
-				ServerID:    serverID,
-				Name:        serverNetworkLoadBalancer.ListenAddress,
-				Object:      serverNetworkLoadBalancer,
-				LastUpdated: s.now(),
-			}
-
-			_, err := s.repo.Create(ctx, networkLoadBalancer)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
 	}
 
 	return nil

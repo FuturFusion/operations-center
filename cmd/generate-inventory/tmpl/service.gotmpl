@@ -4,10 +4,6 @@ import (
 	"context"
 	"errors"
 	"time"
-{{- if .HasParent }}
-
-	incusapi "github.com/lxc/incus/v6/shared/api"
-{{ end }}
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -103,16 +99,12 @@ func (s {{ .Name | camelcase }}Service) SyncServer(ctx context.Context, serverID
 		return err
 	}
 
-	var server{{ .PluralName | camelcase }} []incusapi.{{ .Name | camelcase }}
-
-	for _, {{ .ParentName | camelcase | minuscule }} := range server{{ .ParentName | camelcase }}s {
-		{{ .Name | camelcase | minuscule }}, err := s.{{ .Name | camelcase | minuscule }}Client.Get{{ .PluralName | camelcase }}(ctx, server.ConnectionURL, {{ .ParentName | camelcase | minuscule }}.Name)
+	for _, {{ .ParentName | camelcase }} := range server{{ .ParentName | pascalcase }}s {
+		server{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, server.ConnectionURL, {{ .ParentName | camelcase }}.Name)
 		if err != nil {
 			return err
 		}
 
-		server{{ .PluralName | camelcase }} = append(server{{ .PluralName | camelcase }}, {{ .Name | camelcase | minuscule }}...)
-	}
 {{ else }}
 	server{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, server.ConnectionURL)
 	if err != nil {
@@ -133,8 +125,11 @@ func (s {{ .Name | camelcase }}Service) SyncServer(ctx context.Context, serverID
 {{- if .HasProject }}
 				ProjectName: server{{ .Name | pascalcase }}.Project,
 {{- end }}
-				Name:        server{{ .Name | camelcase }}.{{ .ObjectNamePropertyName | camelcase }},
-				Object:      server{{ .Name | camelcase }},
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name:  {{ .ParentName | camelcase }}.Name,
+{{- end }}
+				Name:        server{{ .Name | pascalcase }}.{{ .ObjectNamePropertyName | pascalcase }},
+				Object:      server{{ .Name | pascalcase }},
 				LastUpdated: s.now(),
 			}
 
@@ -149,6 +144,9 @@ func (s {{ .Name | camelcase }}Service) SyncServer(ctx context.Context, serverID
 	if err != nil {
 		return err
 	}
+{{ if .HasParent }}
+	}
+{{ end }}
 
 	return nil
 }

@@ -7,8 +7,6 @@ import (
 	"errors"
 	"time"
 
-	incusapi "github.com/lxc/incus/v6/shared/api"
-
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 )
@@ -96,43 +94,41 @@ func (s storageVolumeService) SyncServer(ctx context.Context, serverID int) erro
 		return err
 	}
 
-	var serverStorageVolumes []incusapi.StorageVolume
-
 	for _, storagePool := range serverStoragePools {
-		storageVolume, err := s.storageVolumeClient.GetStorageVolumes(ctx, server.ConnectionURL, storagePool.Name)
+		serverStorageVolumes, err := s.storageVolumeClient.GetStorageVolumes(ctx, server.ConnectionURL, storagePool.Name)
 		if err != nil {
 			return err
 		}
 
-		serverStorageVolumes = append(serverStorageVolumes, storageVolume...)
-	}
+		err = transaction.Do(ctx, func(ctx context.Context) error {
+			err = s.repo.DeleteByServerID(ctx, serverID)
+			if err != nil && !errors.Is(err, domain.ErrNotFound) {
+				return err
+			}
 
-	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByServerID(ctx, serverID)
-		if err != nil && !errors.Is(err, domain.ErrNotFound) {
+			for _, serverStorageVolume := range serverStorageVolumes {
+				storageVolume := StorageVolume{
+					ClusterID:       server.ClusterID,
+					ServerID:        serverID,
+					ProjectName:     serverStorageVolume.Project,
+					StoragePoolName: storagePool.Name,
+					Name:            serverStorageVolume.Name,
+					Object:          serverStorageVolume,
+					LastUpdated:     s.now(),
+				}
+
+				_, err := s.repo.Create(ctx, storageVolume)
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+		if err != nil {
 			return err
 		}
 
-		for _, serverStorageVolume := range serverStorageVolumes {
-			storageVolume := StorageVolume{
-				ClusterID:   server.ClusterID,
-				ServerID:    serverID,
-				ProjectName: serverStorageVolume.Project,
-				Name:        serverStorageVolume.Name,
-				Object:      serverStorageVolume,
-				LastUpdated: s.now(),
-			}
-
-			_, err := s.repo.Create(ctx, storageVolume)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
 	}
 
 	return nil

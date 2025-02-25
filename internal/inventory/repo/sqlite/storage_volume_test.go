@@ -42,19 +42,21 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	}
 
 	storageVolumeA := inventory.StorageVolume{
-		ServerID:    1,
-		ProjectName: "one",
-		Name:        "one",
-		Object:      incusapi.StorageVolume{},
-		LastUpdated: time.Now(),
+		ServerID:        1,
+		ProjectName:     "one",
+		StoragePoolName: "parent one",
+		Name:            "one",
+		Object:          incusapi.StorageVolume{},
+		LastUpdated:     time.Now(),
 	}
 
 	storageVolumeB := inventory.StorageVolume{
-		ServerID:    1,
-		ProjectName: "two",
-		Name:        "two",
-		Object:      incusapi.StorageVolume{},
-		LastUpdated: time.Now(),
+		ServerID:        1,
+		ProjectName:     "two",
+		StoragePoolName: "parent one",
+		Name:            "two",
+		Object:          incusapi.StorageVolume{},
+		LastUpdated:     time.Now(),
 	}
 
 	ctx := context.Background()

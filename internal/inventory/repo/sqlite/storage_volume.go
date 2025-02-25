@@ -29,9 +29,9 @@ func (i storageVolume) Create(ctx context.Context, in inventory.StorageVolume) (
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
 )
-INSERT INTO storage_volumes (server_id, project_name, name, object, last_updated)
-VALUES(:server_id, :project_name, :name, :object, :last_updated)
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project_name, name, object, last_updated;
+INSERT INTO storage_volumes (server_id, project_name, storage_pool_name, name, object, last_updated)
+VALUES(:server_id, :project_name, :storage_pool_name, :name, :object, :last_updated)
+RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project_name, storage_pool_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -42,6 +42,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 	row := i.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("server_id", in.ServerID),
 		sql.Named("project_name", in.ProjectName),
+		sql.Named("storage_pool_name", in.StoragePoolName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
 		sql.Named("last_updated", in.LastUpdated),
@@ -84,7 +85,7 @@ func (i storageVolume) GetAllIDs(ctx context.Context) ([]int, error) {
 func (i storageVolume) GetByID(ctx context.Context, id int) (inventory.StorageVolume, error) {
 	const sqlStmt = `
 SELECT
-  storage_volumes.id, servers.cluster_id as cluster_id, storage_volumes.server_id, storage_volumes.project_name, storage_volumes.name, storage_volumes.object, storage_volumes.last_updated
+  storage_volumes.id, servers.cluster_id as cluster_id, storage_volumes.server_id, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.name, storage_volumes.object, storage_volumes.last_updated
 FROM
   storage_volumes
   INNER JOIN servers ON storage_volumes.server_id = servers.id
@@ -128,6 +129,7 @@ func scanStorageVolume(row interface{ Scan(dest ...any) error }) (inventory.Stor
 		&storageVolume.ClusterID,
 		&storageVolume.ServerID,
 		&storageVolume.ProjectName,
+		&storageVolume.StoragePoolName,
 		&storageVolume.Name,
 		&object,
 		&storageVolume.LastUpdated,

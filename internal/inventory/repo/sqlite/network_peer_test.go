@@ -43,6 +43,7 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 
 	networkPeerA := inventory.NetworkPeer{
 		ServerID:    1,
+		NetworkName: "parent one",
 		Name:        "one",
 		Object:      incusapi.NetworkPeer{},
 		LastUpdated: time.Now(),
@@ -50,6 +51,7 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 
 	networkPeerB := inventory.NetworkPeer{
 		ServerID:    1,
+		NetworkName: "parent one",
 		Name:        "two",
 		Object:      incusapi.NetworkPeer{},
 		LastUpdated: time.Now(),

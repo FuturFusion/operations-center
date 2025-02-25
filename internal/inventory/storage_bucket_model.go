@@ -9,13 +9,14 @@ import (
 )
 
 type StorageBucket struct {
-	ID          int
-	ClusterID   int
-	ServerID    int
-	ProjectName string
-	Name        string
-	Object      incusapi.StorageBucket
-	LastUpdated time.Time
+	ID              int
+	ClusterID       int
+	ServerID        int
+	ProjectName     string
+	StoragePoolName string
+	Name            string
+	Object          incusapi.StorageBucket
+	LastUpdated     time.Time
 }
 
 func (s StorageBucket) Validate() error {

@@ -12,6 +12,7 @@ type NetworkPeer struct {
 	ID          int                  `json:"id" yaml:"id"`
 	ClusterID   int                  `json:"cluster_id" yaml:"cluster_id"`
 	ServerID    int                  `json:"server_id" yaml:"server_id"`
+	NetworkName string               `json:"parent_name" yaml:"parent_name"`
 	Name        string               `json:"name" yaml:"name"`
 	Object      incusapi.NetworkPeer `json:"object" yaml:"object"`
 	LastUpdated time.Time            `json:"last_updated" yaml:"last_updated"`

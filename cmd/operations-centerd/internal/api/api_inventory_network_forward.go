@@ -133,6 +133,7 @@ func (i *networkForwardHandler) networkForwardGet(r *http.Request) response.Resp
 			ID:          networkForward.ID,
 			ClusterID:   networkForward.ClusterID,
 			ServerID:    networkForward.ServerID,
+			NetworkName: networkForward.NetworkName,
 			Name:        networkForward.Name,
 			Object:      networkForward.Object,
 			LastUpdated: networkForward.LastUpdated,

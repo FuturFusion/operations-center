@@ -130,13 +130,14 @@ func (i *storageVolumeHandler) storageVolumeGet(r *http.Request) response.Respon
 	return response.SyncResponse(
 		true,
 		api.StorageVolume{
-			ID:          storageVolume.ID,
-			ClusterID:   storageVolume.ClusterID,
-			ServerID:    storageVolume.ServerID,
-			ProjectName: storageVolume.ProjectName,
-			Name:        storageVolume.Name,
-			Object:      storageVolume.Object,
-			LastUpdated: storageVolume.LastUpdated,
+			ID:              storageVolume.ID,
+			ClusterID:       storageVolume.ClusterID,
+			ServerID:        storageVolume.ServerID,
+			ProjectName:     storageVolume.ProjectName,
+			StoragePoolName: storageVolume.StoragePoolName,
+			Name:            storageVolume.Name,
+			Object:          storageVolume.Object,
+			LastUpdated:     storageVolume.LastUpdated,
 		},
 	)
 }

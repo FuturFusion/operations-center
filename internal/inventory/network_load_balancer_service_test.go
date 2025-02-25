@@ -80,6 +80,7 @@ func TestNetworkLoadBalancerService_GetByID(t *testing.T) {
 			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
 				ID:          1,
 				ServerID:    1,
+				NetworkName: "parent one",
 				Name:        "one",
 				Object:      incusapi.NetworkLoadBalancer{},
 				LastUpdated: time.Now(),

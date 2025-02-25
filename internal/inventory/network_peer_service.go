@@ -7,8 +7,6 @@ import (
 	"errors"
 	"time"
 
-	incusapi "github.com/lxc/incus/v6/shared/api"
-
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 )
@@ -96,42 +94,40 @@ func (s networkPeerService) SyncServer(ctx context.Context, serverID int) error 
 		return err
 	}
 
-	var serverNetworkPeers []incusapi.NetworkPeer
-
 	for _, network := range serverNetworks {
-		networkPeer, err := s.networkPeerClient.GetNetworkPeers(ctx, server.ConnectionURL, network.Name)
+		serverNetworkPeers, err := s.networkPeerClient.GetNetworkPeers(ctx, server.ConnectionURL, network.Name)
 		if err != nil {
 			return err
 		}
 
-		serverNetworkPeers = append(serverNetworkPeers, networkPeer...)
-	}
+		err = transaction.Do(ctx, func(ctx context.Context) error {
+			err = s.repo.DeleteByServerID(ctx, serverID)
+			if err != nil && !errors.Is(err, domain.ErrNotFound) {
+				return err
+			}
 
-	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByServerID(ctx, serverID)
-		if err != nil && !errors.Is(err, domain.ErrNotFound) {
+			for _, serverNetworkPeer := range serverNetworkPeers {
+				networkPeer := NetworkPeer{
+					ClusterID:   server.ClusterID,
+					ServerID:    serverID,
+					NetworkName: network.Name,
+					Name:        serverNetworkPeer.Name,
+					Object:      serverNetworkPeer,
+					LastUpdated: s.now(),
+				}
+
+				_, err := s.repo.Create(ctx, networkPeer)
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+		if err != nil {
 			return err
 		}
 
-		for _, serverNetworkPeer := range serverNetworkPeers {
-			networkPeer := NetworkPeer{
-				ClusterID:   server.ClusterID,
-				ServerID:    serverID,
-				Name:        serverNetworkPeer.Name,
-				Object:      serverNetworkPeer,
-				LastUpdated: s.now(),
-			}
-
-			_, err := s.repo.Create(ctx, networkPeer)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
 	}
 
 	return nil

@@ -29,9 +29,9 @@ func (i networkPeer) Create(ctx context.Context, in inventory.NetworkPeer) (inve
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
 )
-INSERT INTO network_peers (server_id, name, object, last_updated)
-VALUES(:server_id, :name, :object, :last_updated)
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, object, last_updated;
+INSERT INTO network_peers (server_id, network_name, name, object, last_updated)
+VALUES(:server_id, :network_name, :name, :object, :last_updated)
+RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, network_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -41,6 +41,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, o
 
 	row := i.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("server_id", in.ServerID),
+		sql.Named("network_name", in.NetworkName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
 		sql.Named("last_updated", in.LastUpdated),
@@ -83,7 +84,7 @@ func (i networkPeer) GetAllIDs(ctx context.Context) ([]int, error) {
 func (i networkPeer) GetByID(ctx context.Context, id int) (inventory.NetworkPeer, error) {
 	const sqlStmt = `
 SELECT
-  network_peers.id, servers.cluster_id as cluster_id, network_peers.server_id, network_peers.name, network_peers.object, network_peers.last_updated
+  network_peers.id, servers.cluster_id as cluster_id, network_peers.server_id, network_peers.network_name, network_peers.name, network_peers.object, network_peers.last_updated
 FROM
   network_peers
   INNER JOIN servers ON network_peers.server_id = servers.id
@@ -126,6 +127,7 @@ func scanNetworkPeer(row interface{ Scan(dest ...any) error }) (inventory.Networ
 		&networkPeer.ID,
 		&networkPeer.ClusterID,
 		&networkPeer.ServerID,
+		&networkPeer.NetworkName,
 		&networkPeer.Name,
 		&object,
 		&networkPeer.LastUpdated,

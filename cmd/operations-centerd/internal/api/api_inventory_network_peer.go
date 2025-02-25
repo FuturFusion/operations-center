@@ -133,6 +133,7 @@ func (i *networkPeerHandler) networkPeerGet(r *http.Request) response.Response {
 			ID:          networkPeer.ID,
 			ClusterID:   networkPeer.ClusterID,
 			ServerID:    networkPeer.ServerID,
+			NetworkName: networkPeer.NetworkName,
 			Name:        networkPeer.Name,
 			Object:      networkPeer.Object,
 			LastUpdated: networkPeer.LastUpdated,

@@ -29,9 +29,9 @@ func (i networkForward) Create(ctx context.Context, in inventory.NetworkForward)
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
 )
-INSERT INTO network_forwards (server_id, name, object, last_updated)
-VALUES(:server_id, :name, :object, :last_updated)
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, object, last_updated;
+INSERT INTO network_forwards (server_id, network_name, name, object, last_updated)
+VALUES(:server_id, :network_name, :name, :object, :last_updated)
+RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, network_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -41,6 +41,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, o
 
 	row := i.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("server_id", in.ServerID),
+		sql.Named("network_name", in.NetworkName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
 		sql.Named("last_updated", in.LastUpdated),
@@ -83,7 +84,7 @@ func (i networkForward) GetAllIDs(ctx context.Context) ([]int, error) {
 func (i networkForward) GetByID(ctx context.Context, id int) (inventory.NetworkForward, error) {
 	const sqlStmt = `
 SELECT
-  network_forwards.id, servers.cluster_id as cluster_id, network_forwards.server_id, network_forwards.name, network_forwards.object, network_forwards.last_updated
+  network_forwards.id, servers.cluster_id as cluster_id, network_forwards.server_id, network_forwards.network_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
 FROM
   network_forwards
   INNER JOIN servers ON network_forwards.server_id = servers.id
@@ -126,6 +127,7 @@ func scanNetworkForward(row interface{ Scan(dest ...any) error }) (inventory.Net
 		&networkForward.ID,
 		&networkForward.ClusterID,
 		&networkForward.ServerID,
+		&networkForward.NetworkName,
 		&networkForward.Name,
 		&object,
 		&networkForward.LastUpdated,

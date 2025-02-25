@@ -130,13 +130,14 @@ func (i *storageBucketHandler) storageBucketGet(r *http.Request) response.Respon
 	return response.SyncResponse(
 		true,
 		api.StorageBucket{
-			ID:          storageBucket.ID,
-			ClusterID:   storageBucket.ClusterID,
-			ServerID:    storageBucket.ServerID,
-			ProjectName: storageBucket.ProjectName,
-			Name:        storageBucket.Name,
-			Object:      storageBucket.Object,
-			LastUpdated: storageBucket.LastUpdated,
+			ID:              storageBucket.ID,
+			ClusterID:       storageBucket.ClusterID,
+			ServerID:        storageBucket.ServerID,
+			ProjectName:     storageBucket.ProjectName,
+			StoragePoolName: storageBucket.StoragePoolName,
+			Name:            storageBucket.Name,
+			Object:          storageBucket.Object,
+			LastUpdated:     storageBucket.LastUpdated,
 		},
 	)
 }
