@@ -8,16 +8,16 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-func (s serverClient) GetInstances(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error) {
+func (s serverClient) GetNetworkZones(ctx context.Context, connectionURL string) ([]incusapi.NetworkZone, error) {
 	client, err := s.getClient(ctx, connectionURL)
 	if err != nil {
 		return nil, err
 	}
 
-	serverInstances, err := client.GetInstancesFullAllProjects(incusapi.InstanceTypeAny)
+	serverNetworkZones, err := client.GetNetworkZonesAllProjects()
 	if err != nil {
 		return nil, err
 	}
 
-	return serverInstances, nil
+	return serverNetworkZones, nil
 }

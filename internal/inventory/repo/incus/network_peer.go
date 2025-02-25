@@ -8,16 +8,16 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-func (s serverClient) GetInstances(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error) {
+func (s serverClient) GetNetworkPeers(ctx context.Context, connectionURL string, networkPeerName string) ([]incusapi.NetworkPeer, error) {
 	client, err := s.getClient(ctx, connectionURL)
 	if err != nil {
 		return nil, err
 	}
 
-	serverInstances, err := client.GetInstancesFullAllProjects(incusapi.InstanceTypeAny)
+	serverNetworkPeers, err := client.GetNetworkPeers(networkPeerName)
 	if err != nil {
 		return nil, err
 	}
 
-	return serverInstances, nil
+	return serverNetworkPeers, nil
 }

@@ -93,7 +93,7 @@ func (d *Daemon) Start() error {
 	// being hit by the Github rate limiting.
 	gh := ghClient.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
 
-	serverClientProvider := incusRepo.ServerClientProvider(
+	serverClientProvider := incusRepo.New(
 		d.clientCertificate,
 		d.clientKey,
 	)

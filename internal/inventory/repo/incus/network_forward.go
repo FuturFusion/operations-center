@@ -8,16 +8,16 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-func (s serverClient) GetInstances(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error) {
+func (s serverClient) GetNetworkForwards(ctx context.Context, connectionURL string, networkForwardName string) ([]incusapi.NetworkForward, error) {
 	client, err := s.getClient(ctx, connectionURL)
 	if err != nil {
 		return nil, err
 	}
 
-	serverInstances, err := client.GetInstancesFullAllProjects(incusapi.InstanceTypeAny)
+	serverNetworkForwards, err := client.GetNetworkForwards(networkForwardName)
 	if err != nil {
 		return nil, err
 	}
 
-	return serverInstances, nil
+	return serverNetworkForwards, nil
 }

@@ -8,16 +8,16 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-func (s serverClient) GetInstances(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error) {
+func (s serverClient) GetStorageBuckets(ctx context.Context, connectionURL string, storageBucketName string) ([]incusapi.StorageBucket, error) {
 	client, err := s.getClient(ctx, connectionURL)
 	if err != nil {
 		return nil, err
 	}
 
-	serverInstances, err := client.GetInstancesFullAllProjects(incusapi.InstanceTypeAny)
+	serverStorageBuckets, err := client.GetStoragePoolBucketsAllProjects(storageBucketName)
 	if err != nil {
 		return nil, err
 	}
 
-	return serverInstances, nil
+	return serverStorageBuckets, nil
 }

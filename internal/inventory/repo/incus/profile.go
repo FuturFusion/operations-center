@@ -8,16 +8,16 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-func (s serverClient) GetInstances(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error) {
+func (s serverClient) GetProfiles(ctx context.Context, connectionURL string) ([]incusapi.Profile, error) {
 	client, err := s.getClient(ctx, connectionURL)
 	if err != nil {
 		return nil, err
 	}
 
-	serverInstances, err := client.GetInstancesFullAllProjects(incusapi.InstanceTypeAny)
+	serverProfiles, err := client.GetProfilesAllProjects()
 	if err != nil {
 		return nil, err
 	}
 
-	return serverInstances, nil
+	return serverProfiles, nil
 }
