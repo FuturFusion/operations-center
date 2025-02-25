@@ -46,6 +46,14 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 		serverClient,
 	)
 
+	inventoryNetworkLoadBalancerSvc := inventory.NewNetworkLoadBalancerService(
+		inventorySqlite.NewNetworkLoadBalancer(db),
+		clusterSvc,
+		serverSvc,
+		serverClient,
+		serverClient,
+	)
+
 	inventoryNetworkPeerSvc := inventory.NewNetworkPeerService(
 		inventorySqlite.NewNetworkPeer(db),
 		clusterSvc,
@@ -113,6 +121,9 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryNetworkIntegrationRouter := newSubRouter(inventoryRouter, "/network_integrations")
 	registerInventoryNetworkIntegrationHandler(inventoryNetworkIntegrationRouter, inventoryNetworkIntegrationSvc)
+
+	inventoryNetworkLoadBalancerRouter := newSubRouter(inventoryRouter, "/network_load_balancers")
+	registerInventoryNetworkLoadBalancerHandler(inventoryNetworkLoadBalancerRouter, inventoryNetworkLoadBalancerSvc)
 
 	inventoryNetworkPeerRouter := newSubRouter(inventoryRouter, "/network_peers")
 	registerInventoryNetworkPeerHandler(inventoryNetworkPeerRouter, inventoryNetworkPeerSvc)

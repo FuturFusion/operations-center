@@ -6,7 +6,7 @@ package tools
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory --object-name-property-name project network_acl
 // TODO: network_forward
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory --omit-project network_integration
-// TODO: network_loadbalancer
+//go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory --object-name-property-name listen_address --omit-project --parent network network_load_balancer
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory --omit-project --parent network network_peer
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory network_zone
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory profile

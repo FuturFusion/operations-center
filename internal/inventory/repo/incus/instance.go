@@ -99,6 +99,20 @@ func (s serverClient) GetNetworkIntegrations(ctx context.Context, connectionURL 
 	return serverNetworkIntegrations, nil
 }
 
+func (s serverClient) GetNetworkLoadBalancers(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkLoadBalancer, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return nil, err
+	}
+
+	serverNetworkLoadBalancers, err := client.GetNetworkLoadBalancers(networkName)
+	if err != nil {
+		return nil, err
+	}
+
+	return serverNetworkLoadBalancers, nil
+}
+
 func (s serverClient) GetNetworkPeers(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkPeer, error) {
 	client, err := s.getClient(ctx, connectionURL)
 	if err != nil {

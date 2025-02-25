@@ -33,6 +33,9 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //			GetNetworkIntegrationsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error) {
 //				panic("mock out the GetNetworkIntegrations method")
 //			},
+//			GetNetworkLoadBalancersFunc: func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkLoadBalancer, error) {
+//				panic("mock out the GetNetworkLoadBalancers method")
+//			},
 //			GetNetworkPeersFunc: func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkPeer, error) {
 //				panic("mock out the GetNetworkPeers method")
 //			},
@@ -75,6 +78,9 @@ type ServerClientMock struct {
 
 	// GetNetworkIntegrationsFunc mocks the GetNetworkIntegrations method.
 	GetNetworkIntegrationsFunc func(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error)
+
+	// GetNetworkLoadBalancersFunc mocks the GetNetworkLoadBalancers method.
+	GetNetworkLoadBalancersFunc func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkLoadBalancer, error)
 
 	// GetNetworkPeersFunc mocks the GetNetworkPeers method.
 	GetNetworkPeersFunc func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkPeer, error)
@@ -129,6 +135,15 @@ type ServerClientMock struct {
 			Ctx context.Context
 			// ConnectionURL is the connectionURL argument value.
 			ConnectionURL string
+		}
+		// GetNetworkLoadBalancers holds details about calls to the GetNetworkLoadBalancers method.
+		GetNetworkLoadBalancers []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// NetworkName is the networkName argument value.
+			NetworkName string
 		}
 		// GetNetworkPeers holds details about calls to the GetNetworkPeers method.
 		GetNetworkPeers []struct {
@@ -193,18 +208,19 @@ type ServerClientMock struct {
 			StoragePoolName string
 		}
 	}
-	lockGetImages              sync.RWMutex
-	lockGetInstances           sync.RWMutex
-	lockGetNetworkACLs         sync.RWMutex
-	lockGetNetworkIntegrations sync.RWMutex
-	lockGetNetworkPeers        sync.RWMutex
-	lockGetNetworkZones        sync.RWMutex
-	lockGetNetworks            sync.RWMutex
-	lockGetProfiles            sync.RWMutex
-	lockGetProjects            sync.RWMutex
-	lockGetStorageBuckets      sync.RWMutex
-	lockGetStoragePools        sync.RWMutex
-	lockGetStorageVolumes      sync.RWMutex
+	lockGetImages               sync.RWMutex
+	lockGetInstances            sync.RWMutex
+	lockGetNetworkACLs          sync.RWMutex
+	lockGetNetworkIntegrations  sync.RWMutex
+	lockGetNetworkLoadBalancers sync.RWMutex
+	lockGetNetworkPeers         sync.RWMutex
+	lockGetNetworkZones         sync.RWMutex
+	lockGetNetworks             sync.RWMutex
+	lockGetProfiles             sync.RWMutex
+	lockGetProjects             sync.RWMutex
+	lockGetStorageBuckets       sync.RWMutex
+	lockGetStoragePools         sync.RWMutex
+	lockGetStorageVolumes       sync.RWMutex
 }
 
 // GetImages calls GetImagesFunc.
@@ -348,6 +364,46 @@ func (mock *ServerClientMock) GetNetworkIntegrationsCalls() []struct {
 	mock.lockGetNetworkIntegrations.RLock()
 	calls = mock.calls.GetNetworkIntegrations
 	mock.lockGetNetworkIntegrations.RUnlock()
+	return calls
+}
+
+// GetNetworkLoadBalancers calls GetNetworkLoadBalancersFunc.
+func (mock *ServerClientMock) GetNetworkLoadBalancers(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkLoadBalancer, error) {
+	if mock.GetNetworkLoadBalancersFunc == nil {
+		panic("ServerClientMock.GetNetworkLoadBalancersFunc: method is nil but ServerClient.GetNetworkLoadBalancers was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+		NetworkName   string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+		NetworkName:   networkName,
+	}
+	mock.lockGetNetworkLoadBalancers.Lock()
+	mock.calls.GetNetworkLoadBalancers = append(mock.calls.GetNetworkLoadBalancers, callInfo)
+	mock.lockGetNetworkLoadBalancers.Unlock()
+	return mock.GetNetworkLoadBalancersFunc(ctx, connectionURL, networkName)
+}
+
+// GetNetworkLoadBalancersCalls gets all the calls that were made to GetNetworkLoadBalancers.
+// Check the length with:
+//
+//	len(mockedServerClient.GetNetworkLoadBalancersCalls())
+func (mock *ServerClientMock) GetNetworkLoadBalancersCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+	NetworkName   string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+		NetworkName   string
+	}
+	mock.lockGetNetworkLoadBalancers.RLock()
+	calls = mock.calls.GetNetworkLoadBalancers
+	mock.lockGetNetworkLoadBalancers.RUnlock()
 	return calls
 }
 
