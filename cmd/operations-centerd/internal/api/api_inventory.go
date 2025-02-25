@@ -39,6 +39,14 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 		serverClient,
 	)
 
+	inventoryNetworkForwardSvc := inventory.NewNetworkForwardService(
+		inventorySqlite.NewNetworkForward(db),
+		clusterSvc,
+		serverSvc,
+		serverClient,
+		serverClient,
+	)
+
 	inventoryNetworkIntegrationSvc := inventory.NewNetworkIntegrationService(
 		inventorySqlite.NewNetworkIntegration(db),
 		clusterSvc,
@@ -118,6 +126,9 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryNetworkACLRouter := newSubRouter(inventoryRouter, "/network_acls")
 	registerInventoryNetworkACLHandler(inventoryNetworkACLRouter, inventoryNetworkACLSvc)
+
+	inventoryNetworkForwardRouter := newSubRouter(inventoryRouter, "/network_forward")
+	registerInventoryNetworkForwardHandler(inventoryNetworkForwardRouter, inventoryNetworkForwardSvc)
 
 	inventoryNetworkIntegrationRouter := newSubRouter(inventoryRouter, "/network_integrations")
 	registerInventoryNetworkIntegrationHandler(inventoryNetworkIntegrationRouter, inventoryNetworkIntegrationSvc)

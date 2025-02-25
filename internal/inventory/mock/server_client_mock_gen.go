@@ -30,6 +30,9 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //			GetNetworkACLsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error) {
 //				panic("mock out the GetNetworkACLs method")
 //			},
+//			GetNetworkForwardsFunc: func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkForward, error) {
+//				panic("mock out the GetNetworkForwards method")
+//			},
 //			GetNetworkIntegrationsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error) {
 //				panic("mock out the GetNetworkIntegrations method")
 //			},
@@ -75,6 +78,9 @@ type ServerClientMock struct {
 
 	// GetNetworkACLsFunc mocks the GetNetworkACLs method.
 	GetNetworkACLsFunc func(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error)
+
+	// GetNetworkForwardsFunc mocks the GetNetworkForwards method.
+	GetNetworkForwardsFunc func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkForward, error)
 
 	// GetNetworkIntegrationsFunc mocks the GetNetworkIntegrations method.
 	GetNetworkIntegrationsFunc func(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error)
@@ -128,6 +134,15 @@ type ServerClientMock struct {
 			Ctx context.Context
 			// ConnectionURL is the connectionURL argument value.
 			ConnectionURL string
+		}
+		// GetNetworkForwards holds details about calls to the GetNetworkForwards method.
+		GetNetworkForwards []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// NetworkName is the networkName argument value.
+			NetworkName string
 		}
 		// GetNetworkIntegrations holds details about calls to the GetNetworkIntegrations method.
 		GetNetworkIntegrations []struct {
@@ -211,6 +226,7 @@ type ServerClientMock struct {
 	lockGetImages               sync.RWMutex
 	lockGetInstances            sync.RWMutex
 	lockGetNetworkACLs          sync.RWMutex
+	lockGetNetworkForwards      sync.RWMutex
 	lockGetNetworkIntegrations  sync.RWMutex
 	lockGetNetworkLoadBalancers sync.RWMutex
 	lockGetNetworkPeers         sync.RWMutex
@@ -328,6 +344,46 @@ func (mock *ServerClientMock) GetNetworkACLsCalls() []struct {
 	mock.lockGetNetworkACLs.RLock()
 	calls = mock.calls.GetNetworkACLs
 	mock.lockGetNetworkACLs.RUnlock()
+	return calls
+}
+
+// GetNetworkForwards calls GetNetworkForwardsFunc.
+func (mock *ServerClientMock) GetNetworkForwards(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkForward, error) {
+	if mock.GetNetworkForwardsFunc == nil {
+		panic("ServerClientMock.GetNetworkForwardsFunc: method is nil but ServerClient.GetNetworkForwards was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+		NetworkName   string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+		NetworkName:   networkName,
+	}
+	mock.lockGetNetworkForwards.Lock()
+	mock.calls.GetNetworkForwards = append(mock.calls.GetNetworkForwards, callInfo)
+	mock.lockGetNetworkForwards.Unlock()
+	return mock.GetNetworkForwardsFunc(ctx, connectionURL, networkName)
+}
+
+// GetNetworkForwardsCalls gets all the calls that were made to GetNetworkForwards.
+// Check the length with:
+//
+//	len(mockedServerClient.GetNetworkForwardsCalls())
+func (mock *ServerClientMock) GetNetworkForwardsCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+	NetworkName   string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+		NetworkName   string
+	}
+	mock.lockGetNetworkForwards.RLock()
+	calls = mock.calls.GetNetworkForwards
+	mock.lockGetNetworkForwards.RUnlock()
 	return calls
 }
 

@@ -85,6 +85,20 @@ func (s serverClient) GetNetworkACLs(ctx context.Context, connectionURL string) 
 	return serverNetworkACLs, nil
 }
 
+func (s serverClient) GetNetworkForwards(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkForward, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return nil, err
+	}
+
+	serverNetworkForwards, err := client.GetNetworkForwards(networkName)
+	if err != nil {
+		return nil, err
+	}
+
+	return serverNetworkForwards, nil
+}
+
 func (s serverClient) GetNetworkIntegrations(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error) {
 	client, err := s.getClient(ctx, connectionURL)
 	if err != nil {
