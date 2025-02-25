@@ -22,4 +22,10 @@ func (s Image) Validate() error {
 	return nil
 }
 
-type Images []Instance
+type Images []Image
+
+type ImageFilter struct {
+	Cluster *string
+	Server  *string
+	Project *string
+}

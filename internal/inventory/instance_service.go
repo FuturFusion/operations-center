@@ -41,8 +41,8 @@ func NewInstanceService(repo InstanceRepo, clusterSvc ClusterService, serverSvc 
 	return instanceSvc
 }
 
-func (s instanceService) GetAllIDs(ctx context.Context) ([]int, error) {
-	return s.repo.GetAllIDs(ctx)
+func (s instanceService) GetAllIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]int, error) {
+	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }
 
 func (s instanceService) GetByID(ctx context.Context, id int) (Instance, error) {

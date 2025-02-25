@@ -6,6 +6,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
@@ -53,10 +55,33 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, network
 	return scanNetworkForward(row)
 }
 
-func (i networkForward) GetAllIDs(ctx context.Context) ([]int, error) {
-	const sqlStmt = `SELECT id FROM network_forwards ORDER BY id`
+func (i networkForward) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) ([]int, error) {
+	const sqlStmt = `
+SELECT network_forwards.id
+FROM network_forwards
+  INNER JOIN servers ON network_forwards.server_id = servers.id
+  INNER JOIN clusters ON servers.cluster_id = clusters.id
+WHERE true
+%s
+ORDER BY network_forwards.id
+`
 
-	rows, err := i.db.QueryContext(ctx, sqlStmt)
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster`)
+		args = append(args, sql.Named("cluster", filter.Cluster))
+	}
+
+	if filter.Server != nil {
+		whereClause = append(whereClause, ` AND servers.hostname = :server`)
+		args = append(args, sql.Named("server", filter.Server))
+	}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := i.db.QueryContext(ctx, sqlStmtComplete, args...)
 	if err != nil {
 		return nil, sqlite.MapErr(err)
 	}

@@ -48,7 +48,7 @@ func TestInstanceService_GetAllIDs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.InstanceRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
+				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.InstanceFilter) ([]int, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}
@@ -56,7 +56,7 @@ func TestInstanceService_GetAllIDs(t *testing.T) {
 			instanceSvc := inventory.NewInstanceService(repo, nil, nil, nil)
 
 			// Run test
-			instanceHostnames, err := instanceSvc.GetAllIDs(context.Background())
+			instanceHostnames, err := instanceSvc.GetAllIDsWithFilter(context.Background(), inventory.InstanceFilter{})
 
 			// Assert
 			tc.assertErr(t, err)

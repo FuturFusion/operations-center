@@ -64,23 +64,24 @@ func (_d NetworkACLRepoWithSlog) DeleteByServerID(ctx context.Context, serverID 
 	return _d._base.DeleteByServerID(ctx, serverID)
 }
 
-// GetAllIDs implements _sourceInventory.NetworkACLRepo
-func (_d NetworkACLRepoWithSlog) GetAllIDs(ctx context.Context) (ia1 []int, err error) {
+// GetAllIDsWithFilter implements _sourceInventory.NetworkACLRepo
+func (_d NetworkACLRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sourceInventory.NetworkACLFilter) (ia1 []int, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
-	).Debug("NetworkACLRepoWithSlog: calling GetAllIDs")
+		slog.Any("filter", filter),
+	).Debug("NetworkACLRepoWithSlog: calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With(
 			slog.Any("ia1", ia1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("NetworkACLRepoWithSlog: method GetAllIDs returned an error")
+			log.Error("NetworkACLRepoWithSlog: method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("NetworkACLRepoWithSlog: method GetAllIDs finished")
+			log.Debug("NetworkACLRepoWithSlog: method GetAllIDsWithFilter finished")
 		}
 	}()
-	return _d._base.GetAllIDs(ctx)
+	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
 // GetByID implements _sourceInventory.NetworkACLRepo

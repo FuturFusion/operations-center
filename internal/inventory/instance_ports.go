@@ -9,7 +9,7 @@ import (
 )
 
 type InstanceService interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Instance, error)
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
@@ -21,7 +21,7 @@ type InstanceService interface {
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i InstanceRepo -t prometheus -o ./repo/middleware/instance_prometheus_gen.go
 
 type InstanceRepo interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Instance, error)
 	Create(ctx context.Context, instance Instance) (Instance, error)
 	DeleteByServerID(ctx context.Context, serverID int) error

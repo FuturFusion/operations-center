@@ -48,7 +48,7 @@ func TestNetworkService_GetAllIDs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
+				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkFilter) ([]int, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}
@@ -56,7 +56,7 @@ func TestNetworkService_GetAllIDs(t *testing.T) {
 			networkSvc := inventory.NewNetworkService(repo, nil, nil, nil)
 
 			// Run test
-			networkHostnames, err := networkSvc.GetAllIDs(context.Background())
+			networkHostnames, err := networkSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkFilter{})
 
 			// Assert
 			tc.assertErr(t, err)

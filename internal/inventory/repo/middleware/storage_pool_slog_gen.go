@@ -64,23 +64,24 @@ func (_d StoragePoolRepoWithSlog) DeleteByServerID(ctx context.Context, serverID
 	return _d._base.DeleteByServerID(ctx, serverID)
 }
 
-// GetAllIDs implements _sourceInventory.StoragePoolRepo
-func (_d StoragePoolRepoWithSlog) GetAllIDs(ctx context.Context) (ia1 []int, err error) {
+// GetAllIDsWithFilter implements _sourceInventory.StoragePoolRepo
+func (_d StoragePoolRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sourceInventory.StoragePoolFilter) (ia1 []int, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
-	).Debug("StoragePoolRepoWithSlog: calling GetAllIDs")
+		slog.Any("filter", filter),
+	).Debug("StoragePoolRepoWithSlog: calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With(
 			slog.Any("ia1", ia1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("StoragePoolRepoWithSlog: method GetAllIDs returned an error")
+			log.Error("StoragePoolRepoWithSlog: method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("StoragePoolRepoWithSlog: method GetAllIDs finished")
+			log.Debug("StoragePoolRepoWithSlog: method GetAllIDsWithFilter finished")
 		}
 	}()
-	return _d._base.GetAllIDs(ctx)
+	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
 // GetByID implements _sourceInventory.StoragePoolRepo

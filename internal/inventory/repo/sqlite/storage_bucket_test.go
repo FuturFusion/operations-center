@@ -101,7 +101,7 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	require.Equal(t, 1, storageBucketB.ClusterID)
 
 	// Ensure we have two entries
-	storageBucketIDs, err := storageBucket.GetAllIDs(ctx)
+	storageBucketIDs, err := storageBucket.GetAllIDsWithFilter(ctx, inventory.StorageBucketFilter{})
 	require.NoError(t, err)
 	require.Len(t, storageBucketIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, storageBucketIDs)
@@ -120,7 +120,7 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no storage_buckets remaining.
-	storageBucketIDs, err = storageBucket.GetAllIDs(ctx)
+	storageBucketIDs, err = storageBucket.GetAllIDsWithFilter(ctx, inventory.StorageBucketFilter{})
 	require.NoError(t, err)
 	require.Zero(t, storageBucketIDs)
 }

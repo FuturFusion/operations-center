@@ -9,7 +9,7 @@ import (
 )
 
 type NetworkForwardService interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter NetworkForwardFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkForward, error)
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
@@ -21,7 +21,7 @@ type NetworkForwardService interface {
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkForwardRepo -t prometheus -o ./repo/middleware/network_forward_prometheus_gen.go
 
 type NetworkForwardRepo interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter NetworkForwardFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkForward, error)
 	Create(ctx context.Context, networkForward NetworkForward) (NetworkForward, error)
 	DeleteByServerID(ctx context.Context, serverID int) error

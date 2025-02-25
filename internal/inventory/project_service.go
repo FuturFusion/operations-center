@@ -41,8 +41,8 @@ func NewProjectService(repo ProjectRepo, clusterSvc ClusterService, serverSvc Se
 	return projectSvc
 }
 
-func (s projectService) GetAllIDs(ctx context.Context) ([]int, error) {
-	return s.repo.GetAllIDs(ctx)
+func (s projectService) GetAllIDsWithFilter(ctx context.Context, filter ProjectFilter) ([]int, error) {
+	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }
 
 func (s projectService) GetByID(ctx context.Context, id int) (Project, error) {

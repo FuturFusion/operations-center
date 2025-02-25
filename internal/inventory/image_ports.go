@@ -9,7 +9,7 @@ import (
 )
 
 type ImageService interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter ImageFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Image, error)
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
@@ -21,7 +21,7 @@ type ImageService interface {
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ImageRepo -t prometheus -o ./repo/middleware/image_prometheus_gen.go
 
 type ImageRepo interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter ImageFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Image, error)
 	Create(ctx context.Context, image Image) (Image, error)
 	DeleteByServerID(ctx context.Context, serverID int) error

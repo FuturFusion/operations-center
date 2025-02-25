@@ -48,7 +48,7 @@ func TestImageService_GetAllIDs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ImageRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
+				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.ImageFilter) ([]int, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}
@@ -56,7 +56,7 @@ func TestImageService_GetAllIDs(t *testing.T) {
 			imageSvc := inventory.NewImageService(repo, nil, nil, nil)
 
 			// Run test
-			imageHostnames, err := imageSvc.GetAllIDs(context.Background())
+			imageHostnames, err := imageSvc.GetAllIDsWithFilter(context.Background(), inventory.ImageFilter{})
 
 			// Assert
 			tc.assertErr(t, err)

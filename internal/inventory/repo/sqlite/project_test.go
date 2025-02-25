@@ -97,7 +97,7 @@ func TestProjectDatabaseActions(t *testing.T) {
 	require.Equal(t, 1, projectB.ClusterID)
 
 	// Ensure we have two entries
-	projectIDs, err := project.GetAllIDs(ctx)
+	projectIDs, err := project.GetAllIDsWithFilter(ctx, inventory.ProjectFilter{})
 	require.NoError(t, err)
 	require.Len(t, projectIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, projectIDs)
@@ -116,7 +116,7 @@ func TestProjectDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no projects remaining.
-	projectIDs, err = project.GetAllIDs(ctx)
+	projectIDs, err = project.GetAllIDsWithFilter(ctx, inventory.ProjectFilter{})
 	require.NoError(t, err)
 	require.Zero(t, projectIDs)
 }

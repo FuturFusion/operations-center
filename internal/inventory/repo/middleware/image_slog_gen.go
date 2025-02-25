@@ -64,23 +64,24 @@ func (_d ImageRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) 
 	return _d._base.DeleteByServerID(ctx, serverID)
 }
 
-// GetAllIDs implements _sourceInventory.ImageRepo
-func (_d ImageRepoWithSlog) GetAllIDs(ctx context.Context) (ia1 []int, err error) {
+// GetAllIDsWithFilter implements _sourceInventory.ImageRepo
+func (_d ImageRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sourceInventory.ImageFilter) (ia1 []int, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
-	).Debug("ImageRepoWithSlog: calling GetAllIDs")
+		slog.Any("filter", filter),
+	).Debug("ImageRepoWithSlog: calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With(
 			slog.Any("ia1", ia1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("ImageRepoWithSlog: method GetAllIDs returned an error")
+			log.Error("ImageRepoWithSlog: method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("ImageRepoWithSlog: method GetAllIDs finished")
+			log.Debug("ImageRepoWithSlog: method GetAllIDsWithFilter finished")
 		}
 	}()
-	return _d._base.GetAllIDs(ctx)
+	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
 // GetByID implements _sourceInventory.ImageRepo

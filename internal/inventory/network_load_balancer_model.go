@@ -22,4 +22,9 @@ func (s NetworkLoadBalancer) Validate() error {
 	return nil
 }
 
-type NetworkLoadBalancers []Instance
+type NetworkLoadBalancers []NetworkLoadBalancer
+
+type NetworkLoadBalancerFilter struct {
+	Cluster *string
+	Server  *string
+}

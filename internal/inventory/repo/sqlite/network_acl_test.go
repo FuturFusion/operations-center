@@ -99,7 +99,7 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 	require.Equal(t, 1, networkACLB.ClusterID)
 
 	// Ensure we have two entries
-	networkACLIDs, err := networkACL.GetAllIDs(ctx)
+	networkACLIDs, err := networkACL.GetAllIDsWithFilter(ctx, inventory.NetworkACLFilter{})
 	require.NoError(t, err)
 	require.Len(t, networkACLIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, networkACLIDs)
@@ -118,7 +118,7 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no network_acls remaining.
-	networkACLIDs, err = networkACL.GetAllIDs(ctx)
+	networkACLIDs, err = networkACL.GetAllIDsWithFilter(ctx, inventory.NetworkACLFilter{})
 	require.NoError(t, err)
 	require.Zero(t, networkACLIDs)
 }

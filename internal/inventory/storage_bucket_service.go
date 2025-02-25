@@ -43,8 +43,8 @@ func NewStorageBucketService(repo StorageBucketRepo, clusterSvc ClusterService, 
 	return storageBucketSvc
 }
 
-func (s storageBucketService) GetAllIDs(ctx context.Context) ([]int, error) {
-	return s.repo.GetAllIDs(ctx)
+func (s storageBucketService) GetAllIDsWithFilter(ctx context.Context, filter StorageBucketFilter) ([]int, error) {
+	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }
 
 func (s storageBucketService) GetByID(ctx context.Context, id int) (StorageBucket, error) {

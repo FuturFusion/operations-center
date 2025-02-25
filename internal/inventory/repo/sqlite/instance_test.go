@@ -99,7 +99,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.Equal(t, 1, instanceB.ClusterID)
 
 	// Ensure we have two entries
-	instanceIDs, err := instance.GetAllIDs(ctx)
+	instanceIDs, err := instance.GetAllIDsWithFilter(ctx, inventory.InstanceFilter{})
 	require.NoError(t, err)
 	require.Len(t, instanceIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, instanceIDs)
@@ -118,7 +118,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no instances remaining.
-	instanceIDs, err = instance.GetAllIDs(ctx)
+	instanceIDs, err = instance.GetAllIDsWithFilter(ctx, inventory.InstanceFilter{})
 	require.NoError(t, err)
 	require.Zero(t, instanceIDs)
 }

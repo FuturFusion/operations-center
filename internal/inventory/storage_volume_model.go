@@ -23,4 +23,10 @@ func (s StorageVolume) Validate() error {
 	return nil
 }
 
-type StorageVolumes []Instance
+type StorageVolumes []StorageVolume
+
+type StorageVolumeFilter struct {
+	Cluster *string
+	Server  *string
+	Project *string
+}

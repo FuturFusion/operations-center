@@ -45,8 +45,8 @@ func Test{{ .Name | pascalcase }}Service_GetAllIDs(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &repoMock.{{ .Name | camelcase }}RepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
+			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
+				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) ([]int, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}
@@ -54,7 +54,7 @@ func Test{{ .Name | pascalcase }}Service_GetAllIDs(t *testing.T) {
 			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, nil, nil, nil {{- if .HasParent -}}, nil {{- end -}} )
 
 			// Run test
-			{{ .Name | camelcase | minuscule }}Hostnames, err := {{ .Name | camelcase | minuscule }}Svc.GetAllIDs(context.Background())
+			{{ .Name | camelcase }}Hostnames, err := {{ .Name | camelcase }}Svc.GetAllIDsWithFilter(context.Background(), inventory.{{ .Name | pascalcase }}Filter{})
 
 			// Assert
 			tc.assertErr(t, err)

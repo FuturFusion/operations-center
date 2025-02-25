@@ -22,4 +22,10 @@ func (s Network) Validate() error {
 	return nil
 }
 
-type Networks []Instance
+type Networks []Network
+
+type NetworkFilter struct {
+	Cluster *string
+	Server  *string
+	Project *string
+}

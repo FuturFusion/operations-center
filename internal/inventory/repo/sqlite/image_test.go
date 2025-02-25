@@ -99,7 +99,7 @@ func TestImageDatabaseActions(t *testing.T) {
 	require.Equal(t, 1, imageB.ClusterID)
 
 	// Ensure we have two entries
-	imageIDs, err := image.GetAllIDs(ctx)
+	imageIDs, err := image.GetAllIDsWithFilter(ctx, inventory.ImageFilter{})
 	require.NoError(t, err)
 	require.Len(t, imageIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, imageIDs)
@@ -118,7 +118,7 @@ func TestImageDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no images remaining.
-	imageIDs, err = image.GetAllIDs(ctx)
+	imageIDs, err = image.GetAllIDsWithFilter(ctx, inventory.ImageFilter{})
 	require.NoError(t, err)
 	require.Zero(t, imageIDs)
 }

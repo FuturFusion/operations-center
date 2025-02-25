@@ -9,7 +9,7 @@ import (
 )
 
 type ProjectService interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter ProjectFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Project, error)
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
@@ -21,7 +21,7 @@ type ProjectService interface {
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProjectRepo -t prometheus -o ./repo/middleware/project_prometheus_gen.go
 
 type ProjectRepo interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter ProjectFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Project, error)
 	Create(ctx context.Context, project Project) (Project, error)
 	DeleteByServerID(ctx context.Context, serverID int) error

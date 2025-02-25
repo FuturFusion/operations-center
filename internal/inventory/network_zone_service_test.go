@@ -48,7 +48,7 @@ func TestNetworkZoneService_GetAllIDs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkZoneRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
+				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkZoneFilter) ([]int, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}
@@ -56,7 +56,7 @@ func TestNetworkZoneService_GetAllIDs(t *testing.T) {
 			networkZoneSvc := inventory.NewNetworkZoneService(repo, nil, nil, nil)
 
 			// Run test
-			networkZoneHostnames, err := networkZoneSvc.GetAllIDs(context.Background())
+			networkZoneHostnames, err := networkZoneSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkZoneFilter{})
 
 			// Assert
 			tc.assertErr(t, err)

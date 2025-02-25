@@ -64,23 +64,24 @@ func (_d NetworkPeerRepoWithSlog) DeleteByServerID(ctx context.Context, serverID
 	return _d._base.DeleteByServerID(ctx, serverID)
 }
 
-// GetAllIDs implements _sourceInventory.NetworkPeerRepo
-func (_d NetworkPeerRepoWithSlog) GetAllIDs(ctx context.Context) (ia1 []int, err error) {
+// GetAllIDsWithFilter implements _sourceInventory.NetworkPeerRepo
+func (_d NetworkPeerRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sourceInventory.NetworkPeerFilter) (ia1 []int, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
-	).Debug("NetworkPeerRepoWithSlog: calling GetAllIDs")
+		slog.Any("filter", filter),
+	).Debug("NetworkPeerRepoWithSlog: calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With(
 			slog.Any("ia1", ia1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("NetworkPeerRepoWithSlog: method GetAllIDs returned an error")
+			log.Error("NetworkPeerRepoWithSlog: method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("NetworkPeerRepoWithSlog: method GetAllIDs finished")
+			log.Debug("NetworkPeerRepoWithSlog: method GetAllIDsWithFilter finished")
 		}
 	}()
-	return _d._base.GetAllIDs(ctx)
+	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
 // GetByID implements _sourceInventory.NetworkPeerRepo

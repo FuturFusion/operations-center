@@ -9,7 +9,7 @@ import (
 )
 
 type StorageVolumeService interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter StorageVolumeFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StorageVolume, error)
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
@@ -21,7 +21,7 @@ type StorageVolumeService interface {
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageVolumeRepo -t prometheus -o ./repo/middleware/storage_volume_prometheus_gen.go
 
 type StorageVolumeRepo interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter StorageVolumeFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StorageVolume, error)
 	Create(ctx context.Context, storageVolume StorageVolume) (StorageVolume, error)
 	DeleteByServerID(ctx context.Context, serverID int) error

@@ -43,8 +43,8 @@ func NewNetworkLoadBalancerService(repo NetworkLoadBalancerRepo, clusterSvc Clus
 	return networkLoadBalancerSvc
 }
 
-func (s networkLoadBalancerService) GetAllIDs(ctx context.Context) ([]int, error) {
-	return s.repo.GetAllIDs(ctx)
+func (s networkLoadBalancerService) GetAllIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]int, error) {
+	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }
 
 func (s networkLoadBalancerService) GetByID(ctx context.Context, id int) (NetworkLoadBalancer, error) {

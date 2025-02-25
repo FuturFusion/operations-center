@@ -97,7 +97,7 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	require.Equal(t, 1, networkIntegrationB.ClusterID)
 
 	// Ensure we have two entries
-	networkIntegrationIDs, err := networkIntegration.GetAllIDs(ctx)
+	networkIntegrationIDs, err := networkIntegration.GetAllIDsWithFilter(ctx, inventory.NetworkIntegrationFilter{})
 	require.NoError(t, err)
 	require.Len(t, networkIntegrationIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, networkIntegrationIDs)
@@ -116,7 +116,7 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no network_integrations remaining.
-	networkIntegrationIDs, err = networkIntegration.GetAllIDs(ctx)
+	networkIntegrationIDs, err = networkIntegration.GetAllIDsWithFilter(ctx, inventory.NetworkIntegrationFilter{})
 	require.NoError(t, err)
 	require.Zero(t, networkIntegrationIDs)
 }

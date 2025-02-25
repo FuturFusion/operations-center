@@ -22,4 +22,9 @@ func (s NetworkForward) Validate() error {
 	return nil
 }
 
-type NetworkForwards []Instance
+type NetworkForwards []NetworkForward
+
+type NetworkForwardFilter struct {
+	Cluster *string
+	Server  *string
+}

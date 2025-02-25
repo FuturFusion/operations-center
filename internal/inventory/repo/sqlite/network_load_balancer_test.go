@@ -99,7 +99,7 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	require.Equal(t, 1, networkLoadBalancerB.ClusterID)
 
 	// Ensure we have two entries
-	networkLoadBalancerIDs, err := networkLoadBalancer.GetAllIDs(ctx)
+	networkLoadBalancerIDs, err := networkLoadBalancer.GetAllIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{})
 	require.NoError(t, err)
 	require.Len(t, networkLoadBalancerIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, networkLoadBalancerIDs)
@@ -118,7 +118,7 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no network_load_balancers remaining.
-	networkLoadBalancerIDs, err = networkLoadBalancer.GetAllIDs(ctx)
+	networkLoadBalancerIDs, err = networkLoadBalancer.GetAllIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{})
 	require.NoError(t, err)
 	require.Zero(t, networkLoadBalancerIDs)
 }

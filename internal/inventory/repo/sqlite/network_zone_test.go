@@ -99,7 +99,7 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 	require.Equal(t, 1, networkZoneB.ClusterID)
 
 	// Ensure we have two entries
-	networkZoneIDs, err := networkZone.GetAllIDs(ctx)
+	networkZoneIDs, err := networkZone.GetAllIDsWithFilter(ctx, inventory.NetworkZoneFilter{})
 	require.NoError(t, err)
 	require.Len(t, networkZoneIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, networkZoneIDs)
@@ -118,7 +118,7 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no network_zones remaining.
-	networkZoneIDs, err = networkZone.GetAllIDs(ctx)
+	networkZoneIDs, err = networkZone.GetAllIDsWithFilter(ctx, inventory.NetworkZoneFilter{})
 	require.NoError(t, err)
 	require.Zero(t, networkZoneIDs)
 }

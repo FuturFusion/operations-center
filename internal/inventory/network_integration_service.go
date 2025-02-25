@@ -41,8 +41,8 @@ func NewNetworkIntegrationService(repo NetworkIntegrationRepo, clusterSvc Cluste
 	return networkIntegrationSvc
 }
 
-func (s networkIntegrationService) GetAllIDs(ctx context.Context) ([]int, error) {
-	return s.repo.GetAllIDs(ctx)
+func (s networkIntegrationService) GetAllIDsWithFilter(ctx context.Context, filter NetworkIntegrationFilter) ([]int, error) {
+	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }
 
 func (s networkIntegrationService) GetByID(ctx context.Context, id int) (NetworkIntegration, error) {

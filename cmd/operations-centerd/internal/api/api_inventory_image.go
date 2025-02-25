@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -35,6 +36,22 @@ func registerInventoryImageHandler(router *http.ServeMux, service inventory.Imag
 //		---
 //		produces:
 //		  - application/json
+//		parameters:
+//		  - in: query
+//		    name: cluster
+//		    description: Cluster name
+//		    type: string
+//		    example: cluster
+//		  - in: query
+//		    name: server
+//		    description: Server name
+//		    type: string
+//		    example: localhost
+//		  - in: query
+//		    name: project
+//		    description: Project name
+//		    type: string
+//		    example: default
 //		responses:
 //		  "200":
 //		    description: API image
@@ -69,14 +86,28 @@ func registerInventoryImageHandler(router *http.ServeMux, service inventory.Imag
 //		  "500":
 //		    $ref: "#/responses/InternalServerError"
 func (i *imageHandler) imagesGet(r *http.Request) response.Response {
-	imageIDs, err := i.service.GetAllIDs(r.Context())
+	var filter inventory.ImageFilter
+
+	if r.URL.Query().Get("cluster") != "" {
+		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+	}
+
+	if r.URL.Query().Get("server") != "" {
+		filter.Server = ptr.To(r.URL.Query().Get("server"))
+	}
+
+	if r.URL.Query().Get("project") != "" {
+		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	}
+
+	imageIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
 	result := make([]string, 0, len(imageIDs))
 	for _, id := range imageIDs {
-		result = append(result, fmt.Sprintf("/%s/clusters/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/image/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)

@@ -64,23 +64,24 @@ func (_d NetworkForwardRepoWithSlog) DeleteByServerID(ctx context.Context, serve
 	return _d._base.DeleteByServerID(ctx, serverID)
 }
 
-// GetAllIDs implements _sourceInventory.NetworkForwardRepo
-func (_d NetworkForwardRepoWithSlog) GetAllIDs(ctx context.Context) (ia1 []int, err error) {
+// GetAllIDsWithFilter implements _sourceInventory.NetworkForwardRepo
+func (_d NetworkForwardRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sourceInventory.NetworkForwardFilter) (ia1 []int, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
-	).Debug("NetworkForwardRepoWithSlog: calling GetAllIDs")
+		slog.Any("filter", filter),
+	).Debug("NetworkForwardRepoWithSlog: calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With(
 			slog.Any("ia1", ia1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("NetworkForwardRepoWithSlog: method GetAllIDs returned an error")
+			log.Error("NetworkForwardRepoWithSlog: method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("NetworkForwardRepoWithSlog: method GetAllIDs finished")
+			log.Debug("NetworkForwardRepoWithSlog: method GetAllIDsWithFilter finished")
 		}
 	}()
-	return _d._base.GetAllIDs(ctx)
+	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
 // GetByID implements _sourceInventory.NetworkForwardRepo

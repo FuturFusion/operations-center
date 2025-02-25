@@ -64,23 +64,24 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteByServerID(ctx context.Context, 
 	return _d._base.DeleteByServerID(ctx, serverID)
 }
 
-// GetAllIDs implements _sourceInventory.NetworkLoadBalancerRepo
-func (_d NetworkLoadBalancerRepoWithSlog) GetAllIDs(ctx context.Context) (ia1 []int, err error) {
+// GetAllIDsWithFilter implements _sourceInventory.NetworkLoadBalancerRepo
+func (_d NetworkLoadBalancerRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sourceInventory.NetworkLoadBalancerFilter) (ia1 []int, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
-	).Debug("NetworkLoadBalancerRepoWithSlog: calling GetAllIDs")
+		slog.Any("filter", filter),
+	).Debug("NetworkLoadBalancerRepoWithSlog: calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With(
 			slog.Any("ia1", ia1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("NetworkLoadBalancerRepoWithSlog: method GetAllIDs returned an error")
+			log.Error("NetworkLoadBalancerRepoWithSlog: method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("NetworkLoadBalancerRepoWithSlog: method GetAllIDs finished")
+			log.Debug("NetworkLoadBalancerRepoWithSlog: method GetAllIDsWithFilter finished")
 		}
 	}()
-	return _d._base.GetAllIDs(ctx)
+	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
 // GetByID implements _sourceInventory.NetworkLoadBalancerRepo

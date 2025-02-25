@@ -48,7 +48,7 @@ func TestProjectService_GetAllIDs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ProjectRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
+				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.ProjectFilter) ([]int, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}
@@ -56,7 +56,7 @@ func TestProjectService_GetAllIDs(t *testing.T) {
 			projectSvc := inventory.NewProjectService(repo, nil, nil, nil)
 
 			// Run test
-			projectHostnames, err := projectSvc.GetAllIDs(context.Background())
+			projectHostnames, err := projectSvc.GetAllIDsWithFilter(context.Background(), inventory.ProjectFilter{})
 
 			// Assert
 			tc.assertErr(t, err)

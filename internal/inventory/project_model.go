@@ -21,4 +21,9 @@ func (s Project) Validate() error {
 	return nil
 }
 
-type Projects []Instance
+type Projects []Project
+
+type ProjectFilter struct {
+	Cluster *string
+	Server  *string
+}

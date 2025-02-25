@@ -25,4 +25,12 @@ func (s {{ .Name | pascalcase }}) Validate() error {
 	return nil
 }
 
-type {{ .PluralName | camelcase }} []Instance
+type {{ .PluralName | pascalcase }} []{{ .Name | pascalcase }}
+
+type {{ .Name | pascalcase }}Filter struct{
+	Cluster *string
+	Server  *string
+{{- if .HasProject }}
+	Project *string
+{{- end }}
+}

@@ -22,4 +22,10 @@ func (s Profile) Validate() error {
 	return nil
 }
 
-type Profiles []Instance
+type Profiles []Profile
+
+type ProfileFilter struct {
+	Cluster *string
+	Server  *string
+	Project *string
+}

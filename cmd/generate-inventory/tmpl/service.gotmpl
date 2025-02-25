@@ -47,8 +47,8 @@ func New{{ .Name | pascalcase }}Service(repo {{ .Name | pascalcase }}Repo, clust
 	return {{ .Name | camelcase }}Svc
 }
 
-func (s {{ .Name | camelcase | minuscule }}Service) GetAllIDs(ctx context.Context) ([]int, error) {
-	return s.repo.GetAllIDs(ctx)
+func (s {{ .Name | camelcase }}Service) GetAllIDsWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) ([]int, error) {
+	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }
 
 func (s {{ .Name | camelcase }}Service) GetByID(ctx context.Context, id int) ({{ .Name | pascalcase }}, error) {

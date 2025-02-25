@@ -64,23 +64,24 @@ func (_d ProjectRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int
 	return _d._base.DeleteByServerID(ctx, serverID)
 }
 
-// GetAllIDs implements _sourceInventory.ProjectRepo
-func (_d ProjectRepoWithSlog) GetAllIDs(ctx context.Context) (ia1 []int, err error) {
+// GetAllIDsWithFilter implements _sourceInventory.ProjectRepo
+func (_d ProjectRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sourceInventory.ProjectFilter) (ia1 []int, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
-	).Debug("ProjectRepoWithSlog: calling GetAllIDs")
+		slog.Any("filter", filter),
+	).Debug("ProjectRepoWithSlog: calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With(
 			slog.Any("ia1", ia1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("ProjectRepoWithSlog: method GetAllIDs returned an error")
+			log.Error("ProjectRepoWithSlog: method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("ProjectRepoWithSlog: method GetAllIDs finished")
+			log.Debug("ProjectRepoWithSlog: method GetAllIDsWithFilter finished")
 		}
 	}()
-	return _d._base.GetAllIDs(ctx)
+	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
 // GetByID implements _sourceInventory.ProjectRepo

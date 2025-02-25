@@ -41,8 +41,8 @@ func NewNetworkACLService(repo NetworkACLRepo, clusterSvc ClusterService, server
 	return networkACLSvc
 }
 
-func (s networkACLService) GetAllIDs(ctx context.Context) ([]int, error) {
-	return s.repo.GetAllIDs(ctx)
+func (s networkACLService) GetAllIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]int, error) {
+	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }
 
 func (s networkACLService) GetByID(ctx context.Context, id int) (NetworkACL, error) {

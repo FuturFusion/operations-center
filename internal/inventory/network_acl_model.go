@@ -22,4 +22,10 @@ func (s NetworkACL) Validate() error {
 	return nil
 }
 
-type NetworkACLs []Instance
+type NetworkACLs []NetworkACL
+
+type NetworkACLFilter struct {
+	Cluster *string
+	Server  *string
+	Project *string
+}

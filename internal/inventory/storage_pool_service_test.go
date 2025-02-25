@@ -48,7 +48,7 @@ func TestStoragePoolService_GetAllIDs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.StoragePoolRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
+				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.StoragePoolFilter) ([]int, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}
@@ -56,7 +56,7 @@ func TestStoragePoolService_GetAllIDs(t *testing.T) {
 			storagePoolSvc := inventory.NewStoragePoolService(repo, nil, nil, nil)
 
 			// Run test
-			storagePoolHostnames, err := storagePoolSvc.GetAllIDs(context.Background())
+			storagePoolHostnames, err := storagePoolSvc.GetAllIDsWithFilter(context.Background(), inventory.StoragePoolFilter{})
 
 			// Assert
 			tc.assertErr(t, err)

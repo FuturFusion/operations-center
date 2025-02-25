@@ -48,7 +48,7 @@ func TestProfileService_GetAllIDs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ProfileRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
+				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.ProfileFilter) ([]int, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}
@@ -56,7 +56,7 @@ func TestProfileService_GetAllIDs(t *testing.T) {
 			profileSvc := inventory.NewProfileService(repo, nil, nil, nil)
 
 			// Run test
-			profileHostnames, err := profileSvc.GetAllIDs(context.Background())
+			profileHostnames, err := profileSvc.GetAllIDsWithFilter(context.Background(), inventory.ProfileFilter{})
 
 			// Assert
 			tc.assertErr(t, err)

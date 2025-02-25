@@ -9,7 +9,7 @@ import (
 )
 
 type NetworkZoneService interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter NetworkZoneFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkZone, error)
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
@@ -21,7 +21,7 @@ type NetworkZoneService interface {
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkZoneRepo -t prometheus -o ./repo/middleware/network_zone_prometheus_gen.go
 
 type NetworkZoneRepo interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter NetworkZoneFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkZone, error)
 	Create(ctx context.Context, networkZone NetworkZone) (NetworkZone, error)
 	DeleteByServerID(ctx context.Context, serverID int) error

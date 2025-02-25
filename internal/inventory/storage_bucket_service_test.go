@@ -48,7 +48,7 @@ func TestStorageBucketService_GetAllIDs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.StorageBucketRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
+				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.StorageBucketFilter) ([]int, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}
@@ -56,7 +56,7 @@ func TestStorageBucketService_GetAllIDs(t *testing.T) {
 			storageBucketSvc := inventory.NewStorageBucketService(repo, nil, nil, nil, nil)
 
 			// Run test
-			storageBucketHostnames, err := storageBucketSvc.GetAllIDs(context.Background())
+			storageBucketHostnames, err := storageBucketSvc.GetAllIDsWithFilter(context.Background(), inventory.StorageBucketFilter{})
 
 			// Assert
 			tc.assertErr(t, err)

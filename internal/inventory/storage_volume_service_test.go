@@ -48,7 +48,7 @@ func TestStorageVolumeService_GetAllIDs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.StorageVolumeRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
+				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.StorageVolumeFilter) ([]int, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}
@@ -56,7 +56,7 @@ func TestStorageVolumeService_GetAllIDs(t *testing.T) {
 			storageVolumeSvc := inventory.NewStorageVolumeService(repo, nil, nil, nil, nil)
 
 			// Run test
-			storageVolumeHostnames, err := storageVolumeSvc.GetAllIDs(context.Background())
+			storageVolumeHostnames, err := storageVolumeSvc.GetAllIDsWithFilter(context.Background(), inventory.StorageVolumeFilter{})
 
 			// Assert
 			tc.assertErr(t, err)

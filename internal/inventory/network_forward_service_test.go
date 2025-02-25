@@ -48,7 +48,7 @@ func TestNetworkForwardService_GetAllIDs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkForwardRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
+				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkForwardFilter) ([]int, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}
@@ -56,7 +56,7 @@ func TestNetworkForwardService_GetAllIDs(t *testing.T) {
 			networkForwardSvc := inventory.NewNetworkForwardService(repo, nil, nil, nil, nil)
 
 			// Run test
-			networkForwardHostnames, err := networkForwardSvc.GetAllIDs(context.Background())
+			networkForwardHostnames, err := networkForwardSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkForwardFilter{})
 
 			// Assert
 			tc.assertErr(t, err)

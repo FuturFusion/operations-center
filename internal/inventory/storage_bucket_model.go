@@ -23,4 +23,10 @@ func (s StorageBucket) Validate() error {
 	return nil
 }
 
-type StorageBuckets []Instance
+type StorageBuckets []StorageBucket
+
+type StorageBucketFilter struct {
+	Cluster *string
+	Server  *string
+	Project *string
+}

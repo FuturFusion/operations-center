@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -35,6 +36,22 @@ func registerInventoryNetworkLoadBalancerHandler(router *http.ServeMux, service 
 //		---
 //		produces:
 //		  - application/json
+//		parameters:
+//		  - in: query
+//		    name: cluster
+//		    description: Cluster name
+//		    type: string
+//		    example: cluster
+//		  - in: query
+//		    name: server
+//		    description: Server name
+//		    type: string
+//		    example: localhost
+//		  - in: query
+//		    name: project
+//		    description: Project name
+//		    type: string
+//		    example: default
 //		responses:
 //		  "200":
 //		    description: API network_load_balancer
@@ -69,14 +86,24 @@ func registerInventoryNetworkLoadBalancerHandler(router *http.ServeMux, service 
 //		  "500":
 //		    $ref: "#/responses/InternalServerError"
 func (i *networkLoadBalancerHandler) networkLoadBalancersGet(r *http.Request) response.Response {
-	networkLoadBalancerIDs, err := i.service.GetAllIDs(r.Context())
+	var filter inventory.NetworkLoadBalancerFilter
+
+	if r.URL.Query().Get("cluster") != "" {
+		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+	}
+
+	if r.URL.Query().Get("server") != "" {
+		filter.Server = ptr.To(r.URL.Query().Get("server"))
+	}
+
+	networkLoadBalancerIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
 	result := make([]string, 0, len(networkLoadBalancerIDs))
 	for _, id := range networkLoadBalancerIDs {
-		result = append(result, fmt.Sprintf("/%s/clusters/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/network_load_balancer/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)

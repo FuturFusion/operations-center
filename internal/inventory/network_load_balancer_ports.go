@@ -9,7 +9,7 @@ import (
 )
 
 type NetworkLoadBalancerService interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkLoadBalancer, error)
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
@@ -21,7 +21,7 @@ type NetworkLoadBalancerService interface {
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkLoadBalancerRepo -t prometheus -o ./repo/middleware/network_load_balancer_prometheus_gen.go
 
 type NetworkLoadBalancerRepo interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkLoadBalancer, error)
 	Create(ctx context.Context, networkLoadBalancer NetworkLoadBalancer) (NetworkLoadBalancer, error)
 	DeleteByServerID(ctx context.Context, serverID int) error

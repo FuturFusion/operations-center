@@ -21,4 +21,9 @@ func (s StoragePool) Validate() error {
 	return nil
 }
 
-type StoragePools []Instance
+type StoragePools []StoragePool
+
+type StoragePoolFilter struct {
+	Cluster *string
+	Server  *string
+}

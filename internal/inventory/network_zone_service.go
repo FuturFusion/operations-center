@@ -41,8 +41,8 @@ func NewNetworkZoneService(repo NetworkZoneRepo, clusterSvc ClusterService, serv
 	return networkZoneSvc
 }
 
-func (s networkZoneService) GetAllIDs(ctx context.Context) ([]int, error) {
-	return s.repo.GetAllIDs(ctx)
+func (s networkZoneService) GetAllIDsWithFilter(ctx context.Context, filter NetworkZoneFilter) ([]int, error) {
+	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }
 
 func (s networkZoneService) GetByID(ctx context.Context, id int) (NetworkZone, error) {

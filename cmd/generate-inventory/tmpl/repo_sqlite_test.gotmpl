@@ -107,7 +107,7 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	require.Equal(t, 1, {{ .Name | camelcase }}B.ClusterID)
 
 	// Ensure we have two entries
-	{{ .Name | camelcase | minuscule }}IDs, err := {{ .Name | camelcase | minuscule }}.GetAllIDs(ctx)
+	{{ .Name | camelcase }}IDs, err := {{ .Name | camelcase }}.GetAllIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{})
 	require.NoError(t, err)
 	require.Len(t, {{ .Name | camelcase }}IDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, {{ .Name | camelcase }}IDs)
@@ -126,7 +126,7 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no {{ .PluralName }} remaining.
-	{{ .Name | camelcase | minuscule }}IDs, err = {{ .Name | camelcase | minuscule }}.GetAllIDs(ctx)
+	{{ .Name | camelcase }}IDs, err = {{ .Name | camelcase }}.GetAllIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{})
 	require.NoError(t, err)
 	require.Zero(t, {{ .Name | camelcase }}IDs)
 }

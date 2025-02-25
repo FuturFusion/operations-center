@@ -101,7 +101,7 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	require.Equal(t, 1, storageVolumeB.ClusterID)
 
 	// Ensure we have two entries
-	storageVolumeIDs, err := storageVolume.GetAllIDs(ctx)
+	storageVolumeIDs, err := storageVolume.GetAllIDsWithFilter(ctx, inventory.StorageVolumeFilter{})
 	require.NoError(t, err)
 	require.Len(t, storageVolumeIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, storageVolumeIDs)
@@ -120,7 +120,7 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no storage_volumes remaining.
-	storageVolumeIDs, err = storageVolume.GetAllIDs(ctx)
+	storageVolumeIDs, err = storageVolume.GetAllIDsWithFilter(ctx, inventory.StorageVolumeFilter{})
 	require.NoError(t, err)
 	require.Zero(t, storageVolumeIDs)
 }

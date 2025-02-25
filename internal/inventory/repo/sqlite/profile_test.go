@@ -99,7 +99,7 @@ func TestProfileDatabaseActions(t *testing.T) {
 	require.Equal(t, 1, profileB.ClusterID)
 
 	// Ensure we have two entries
-	profileIDs, err := profile.GetAllIDs(ctx)
+	profileIDs, err := profile.GetAllIDsWithFilter(ctx, inventory.ProfileFilter{})
 	require.NoError(t, err)
 	require.Len(t, profileIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, profileIDs)
@@ -118,7 +118,7 @@ func TestProfileDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no profiles remaining.
-	profileIDs, err = profile.GetAllIDs(ctx)
+	profileIDs, err = profile.GetAllIDsWithFilter(ctx, inventory.ProfileFilter{})
 	require.NoError(t, err)
 	require.Zero(t, profileIDs)
 }

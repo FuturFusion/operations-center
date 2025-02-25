@@ -26,8 +26,8 @@ var _ inventory.NetworkIntegrationRepo = &NetworkIntegrationRepoMock{}
 //			DeleteByServerIDFunc: func(ctx context.Context, serverID int) error {
 //				panic("mock out the DeleteByServerID method")
 //			},
-//			GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
-//				panic("mock out the GetAllIDs method")
+//			GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]int, error) {
+//				panic("mock out the GetAllIDsWithFilter method")
 //			},
 //			GetByIDFunc: func(ctx context.Context, id int) (inventory.NetworkIntegration, error) {
 //				panic("mock out the GetByID method")
@@ -45,8 +45,8 @@ type NetworkIntegrationRepoMock struct {
 	// DeleteByServerIDFunc mocks the DeleteByServerID method.
 	DeleteByServerIDFunc func(ctx context.Context, serverID int) error
 
-	// GetAllIDsFunc mocks the GetAllIDs method.
-	GetAllIDsFunc func(ctx context.Context) ([]int, error)
+	// GetAllIDsWithFilterFunc mocks the GetAllIDsWithFilter method.
+	GetAllIDsWithFilterFunc func(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]int, error)
 
 	// GetByIDFunc mocks the GetByID method.
 	GetByIDFunc func(ctx context.Context, id int) (inventory.NetworkIntegration, error)
@@ -67,10 +67,12 @@ type NetworkIntegrationRepoMock struct {
 			// ServerID is the serverID argument value.
 			ServerID int
 		}
-		// GetAllIDs holds details about calls to the GetAllIDs method.
-		GetAllIDs []struct {
+		// GetAllIDsWithFilter holds details about calls to the GetAllIDsWithFilter method.
+		GetAllIDsWithFilter []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// Filter is the filter argument value.
+			Filter inventory.NetworkIntegrationFilter
 		}
 		// GetByID holds details about calls to the GetByID method.
 		GetByID []struct {
@@ -80,10 +82,10 @@ type NetworkIntegrationRepoMock struct {
 			ID int
 		}
 	}
-	lockCreate           sync.RWMutex
-	lockDeleteByServerID sync.RWMutex
-	lockGetAllIDs        sync.RWMutex
-	lockGetByID          sync.RWMutex
+	lockCreate              sync.RWMutex
+	lockDeleteByServerID    sync.RWMutex
+	lockGetAllIDsWithFilter sync.RWMutex
+	lockGetByID             sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -158,35 +160,39 @@ func (mock *NetworkIntegrationRepoMock) DeleteByServerIDCalls() []struct {
 	return calls
 }
 
-// GetAllIDs calls GetAllIDsFunc.
-func (mock *NetworkIntegrationRepoMock) GetAllIDs(ctx context.Context) ([]int, error) {
-	if mock.GetAllIDsFunc == nil {
-		panic("NetworkIntegrationRepoMock.GetAllIDsFunc: method is nil but NetworkIntegrationRepo.GetAllIDs was just called")
+// GetAllIDsWithFilter calls GetAllIDsWithFilterFunc.
+func (mock *NetworkIntegrationRepoMock) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]int, error) {
+	if mock.GetAllIDsWithFilterFunc == nil {
+		panic("NetworkIntegrationRepoMock.GetAllIDsWithFilterFunc: method is nil but NetworkIntegrationRepo.GetAllIDsWithFilter was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
+		Ctx    context.Context
+		Filter inventory.NetworkIntegrationFilter
 	}{
-		Ctx: ctx,
+		Ctx:    ctx,
+		Filter: filter,
 	}
-	mock.lockGetAllIDs.Lock()
-	mock.calls.GetAllIDs = append(mock.calls.GetAllIDs, callInfo)
-	mock.lockGetAllIDs.Unlock()
-	return mock.GetAllIDsFunc(ctx)
+	mock.lockGetAllIDsWithFilter.Lock()
+	mock.calls.GetAllIDsWithFilter = append(mock.calls.GetAllIDsWithFilter, callInfo)
+	mock.lockGetAllIDsWithFilter.Unlock()
+	return mock.GetAllIDsWithFilterFunc(ctx, filter)
 }
 
-// GetAllIDsCalls gets all the calls that were made to GetAllIDs.
+// GetAllIDsWithFilterCalls gets all the calls that were made to GetAllIDsWithFilter.
 // Check the length with:
 //
-//	len(mockedNetworkIntegrationRepo.GetAllIDsCalls())
-func (mock *NetworkIntegrationRepoMock) GetAllIDsCalls() []struct {
-	Ctx context.Context
+//	len(mockedNetworkIntegrationRepo.GetAllIDsWithFilterCalls())
+func (mock *NetworkIntegrationRepoMock) GetAllIDsWithFilterCalls() []struct {
+	Ctx    context.Context
+	Filter inventory.NetworkIntegrationFilter
 } {
 	var calls []struct {
-		Ctx context.Context
+		Ctx    context.Context
+		Filter inventory.NetworkIntegrationFilter
 	}
-	mock.lockGetAllIDs.RLock()
-	calls = mock.calls.GetAllIDs
-	mock.lockGetAllIDs.RUnlock()
+	mock.lockGetAllIDsWithFilter.RLock()
+	calls = mock.calls.GetAllIDsWithFilter
+	mock.lockGetAllIDsWithFilter.RUnlock()
 	return calls
 }
 

@@ -21,4 +21,9 @@ func (s NetworkIntegration) Validate() error {
 	return nil
 }
 
-type NetworkIntegrations []Instance
+type NetworkIntegrations []NetworkIntegration
+
+type NetworkIntegrationFilter struct {
+	Cluster *string
+	Server  *string
+}

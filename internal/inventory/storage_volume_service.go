@@ -43,8 +43,8 @@ func NewStorageVolumeService(repo StorageVolumeRepo, clusterSvc ClusterService, 
 	return storageVolumeSvc
 }
 
-func (s storageVolumeService) GetAllIDs(ctx context.Context) ([]int, error) {
-	return s.repo.GetAllIDs(ctx)
+func (s storageVolumeService) GetAllIDsWithFilter(ctx context.Context, filter StorageVolumeFilter) ([]int, error) {
+	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }
 
 func (s storageVolumeService) GetByID(ctx context.Context, id int) (StorageVolume, error) {

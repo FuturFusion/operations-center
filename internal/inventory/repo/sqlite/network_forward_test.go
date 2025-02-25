@@ -99,7 +99,7 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 	require.Equal(t, 1, networkForwardB.ClusterID)
 
 	// Ensure we have two entries
-	networkForwardIDs, err := networkForward.GetAllIDs(ctx)
+	networkForwardIDs, err := networkForward.GetAllIDsWithFilter(ctx, inventory.NetworkForwardFilter{})
 	require.NoError(t, err)
 	require.Len(t, networkForwardIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, networkForwardIDs)
@@ -118,7 +118,7 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no network_forwards remaining.
-	networkForwardIDs, err = networkForward.GetAllIDs(ctx)
+	networkForwardIDs, err = networkForward.GetAllIDsWithFilter(ctx, inventory.NetworkForwardFilter{})
 	require.NoError(t, err)
 	require.Zero(t, networkForwardIDs)
 }

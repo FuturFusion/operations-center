@@ -9,7 +9,7 @@ import (
 )
 
 type ProfileService interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Profile, error)
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
@@ -21,7 +21,7 @@ type ProfileService interface {
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProfileRepo -t prometheus -o ./repo/middleware/profile_prometheus_gen.go
 
 type ProfileRepo interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Profile, error)
 	Create(ctx context.Context, profile Profile) (Profile, error)
 	DeleteByServerID(ctx context.Context, serverID int) error

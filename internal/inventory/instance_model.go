@@ -23,3 +23,9 @@ func (s Instance) Validate() error {
 }
 
 type Instances []Instance
+
+type InstanceFilter struct {
+	Cluster *string
+	Server  *string
+	Project *string
+}

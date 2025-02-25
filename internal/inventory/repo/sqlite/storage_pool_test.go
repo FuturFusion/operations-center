@@ -97,7 +97,7 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	require.Equal(t, 1, storagePoolB.ClusterID)
 
 	// Ensure we have two entries
-	storagePoolIDs, err := storagePool.GetAllIDs(ctx)
+	storagePoolIDs, err := storagePool.GetAllIDsWithFilter(ctx, inventory.StoragePoolFilter{})
 	require.NoError(t, err)
 	require.Len(t, storagePoolIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, storagePoolIDs)
@@ -116,7 +116,7 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no storage_pools remaining.
-	storagePoolIDs, err = storagePool.GetAllIDs(ctx)
+	storagePoolIDs, err = storagePool.GetAllIDsWithFilter(ctx, inventory.StoragePoolFilter{})
 	require.NoError(t, err)
 	require.Zero(t, storagePoolIDs)
 }

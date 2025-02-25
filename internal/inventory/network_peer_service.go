@@ -43,8 +43,8 @@ func NewNetworkPeerService(repo NetworkPeerRepo, clusterSvc ClusterService, serv
 	return networkPeerSvc
 }
 
-func (s networkPeerService) GetAllIDs(ctx context.Context) ([]int, error) {
-	return s.repo.GetAllIDs(ctx)
+func (s networkPeerService) GetAllIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]int, error) {
+	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }
 
 func (s networkPeerService) GetByID(ctx context.Context, id int) (NetworkPeer, error) {

@@ -48,7 +48,7 @@ func TestNetworkLoadBalancerService_GetAllIDs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkLoadBalancerRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
+				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) ([]int, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}
@@ -56,7 +56,7 @@ func TestNetworkLoadBalancerService_GetAllIDs(t *testing.T) {
 			networkLoadBalancerSvc := inventory.NewNetworkLoadBalancerService(repo, nil, nil, nil, nil)
 
 			// Run test
-			networkLoadBalancerHostnames, err := networkLoadBalancerSvc.GetAllIDs(context.Background())
+			networkLoadBalancerHostnames, err := networkLoadBalancerSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkLoadBalancerFilter{})
 
 			// Assert
 			tc.assertErr(t, err)

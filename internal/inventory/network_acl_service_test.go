@@ -48,7 +48,7 @@ func TestNetworkACLService_GetAllIDs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkACLRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
+				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkACLFilter) ([]int, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}
@@ -56,7 +56,7 @@ func TestNetworkACLService_GetAllIDs(t *testing.T) {
 			networkACLSvc := inventory.NewNetworkACLService(repo, nil, nil, nil)
 
 			// Run test
-			networkACLHostnames, err := networkACLSvc.GetAllIDs(context.Background())
+			networkACLHostnames, err := networkACLSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkACLFilter{})
 
 			// Assert
 			tc.assertErr(t, err)

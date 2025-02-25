@@ -41,8 +41,8 @@ func NewProfileService(repo ProfileRepo, clusterSvc ClusterService, serverSvc Se
 	return profileSvc
 }
 
-func (s profileService) GetAllIDs(ctx context.Context) ([]int, error) {
-	return s.repo.GetAllIDs(ctx)
+func (s profileService) GetAllIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]int, error) {
+	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }
 
 func (s profileService) GetByID(ctx context.Context, id int) (Profile, error) {

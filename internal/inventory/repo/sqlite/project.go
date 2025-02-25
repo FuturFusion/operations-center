@@ -6,6 +6,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
@@ -52,10 +54,33 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, o
 	return scanProject(row)
 }
 
-func (i project) GetAllIDs(ctx context.Context) ([]int, error) {
-	const sqlStmt = `SELECT id FROM projects ORDER BY id`
+func (i project) GetAllIDsWithFilter(ctx context.Context, filter inventory.ProjectFilter) ([]int, error) {
+	const sqlStmt = `
+SELECT projects.id
+FROM projects
+  INNER JOIN servers ON projects.server_id = servers.id
+  INNER JOIN clusters ON servers.cluster_id = clusters.id
+WHERE true
+%s
+ORDER BY projects.id
+`
 
-	rows, err := i.db.QueryContext(ctx, sqlStmt)
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster`)
+		args = append(args, sql.Named("cluster", filter.Cluster))
+	}
+
+	if filter.Server != nil {
+		whereClause = append(whereClause, ` AND servers.hostname = :server`)
+		args = append(args, sql.Named("server", filter.Server))
+	}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := i.db.QueryContext(ctx, sqlStmtComplete, args...)
 	if err != nil {
 		return nil, sqlite.MapErr(err)
 	}

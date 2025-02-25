@@ -9,7 +9,7 @@ import (
 )
 
 type NetworkPeerService interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkPeer, error)
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
@@ -21,7 +21,7 @@ type NetworkPeerService interface {
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkPeerRepo -t prometheus -o ./repo/middleware/network_peer_prometheus_gen.go
 
 type NetworkPeerRepo interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkPeer, error)
 	Create(ctx context.Context, networkPeer NetworkPeer) (NetworkPeer, error)
 	DeleteByServerID(ctx context.Context, serverID int) error

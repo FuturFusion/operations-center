@@ -48,7 +48,7 @@ func TestNetworkIntegrationService_GetAllIDs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkIntegrationRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
+				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]int, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}
@@ -56,7 +56,7 @@ func TestNetworkIntegrationService_GetAllIDs(t *testing.T) {
 			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, nil, nil, nil)
 
 			// Run test
-			networkIntegrationHostnames, err := networkIntegrationSvc.GetAllIDs(context.Background())
+			networkIntegrationHostnames, err := networkIntegrationSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkIntegrationFilter{})
 
 			// Assert
 			tc.assertErr(t, err)

@@ -48,7 +48,7 @@ func TestNetworkPeerService_GetAllIDs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkPeerRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]int, error) {
+				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkPeerFilter) ([]int, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}
@@ -56,7 +56,7 @@ func TestNetworkPeerService_GetAllIDs(t *testing.T) {
 			networkPeerSvc := inventory.NewNetworkPeerService(repo, nil, nil, nil, nil)
 
 			// Run test
-			networkPeerHostnames, err := networkPeerSvc.GetAllIDs(context.Background())
+			networkPeerHostnames, err := networkPeerSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkPeerFilter{})
 
 			// Assert
 			tc.assertErr(t, err)

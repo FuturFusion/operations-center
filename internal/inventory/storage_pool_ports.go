@@ -9,7 +9,7 @@ import (
 )
 
 type StoragePoolService interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StoragePool, error)
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
@@ -21,7 +21,7 @@ type StoragePoolService interface {
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StoragePoolRepo -t prometheus -o ./repo/middleware/storage_pool_prometheus_gen.go
 
 type StoragePoolRepo interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StoragePool, error)
 	Create(ctx context.Context, storagePool StoragePool) (StoragePool, error)
 	DeleteByServerID(ctx context.Context, serverID int) error

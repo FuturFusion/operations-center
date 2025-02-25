@@ -9,7 +9,7 @@ import (
 )
 
 type NetworkACLService interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkACL, error)
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
@@ -21,7 +21,7 @@ type NetworkACLService interface {
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkACLRepo -t prometheus -o ./repo/middleware/network_acl_prometheus_gen.go
 
 type NetworkACLRepo interface {
-	GetAllIDs(ctx context.Context) ([]int, error)
+	GetAllIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkACL, error)
 	Create(ctx context.Context, networkACL NetworkACL) (NetworkACL, error)
 	DeleteByServerID(ctx context.Context, serverID int) error

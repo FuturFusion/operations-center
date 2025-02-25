@@ -99,7 +99,7 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 	require.Equal(t, 1, networkPeerB.ClusterID)
 
 	// Ensure we have two entries
-	networkPeerIDs, err := networkPeer.GetAllIDs(ctx)
+	networkPeerIDs, err := networkPeer.GetAllIDsWithFilter(ctx, inventory.NetworkPeerFilter{})
 	require.NoError(t, err)
 	require.Len(t, networkPeerIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, networkPeerIDs)
@@ -118,7 +118,7 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no network_peers remaining.
-	networkPeerIDs, err = networkPeer.GetAllIDs(ctx)
+	networkPeerIDs, err = networkPeer.GetAllIDsWithFilter(ctx, inventory.NetworkPeerFilter{})
 	require.NoError(t, err)
 	require.Zero(t, networkPeerIDs)
 }
