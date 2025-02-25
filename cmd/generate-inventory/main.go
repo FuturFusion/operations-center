@@ -59,44 +59,44 @@ func main() {
 		TargetName   string
 	}{
 		{
-			"api.gotmpl",
-			"cmd/operations-centerd/internal/api/api_inventory_{{ .Name }}.go",
+			TemplateName: "api.gotmpl",
+			TargetName:   "cmd/operations-centerd/internal/api/api_inventory_{{ .Name }}.go",
 		},
 		{
-			"shared_api.gotmpl",
-			"shared/api/inventory_{{ .Name }}.go",
+			TemplateName: "model.gotmpl",
+			TargetName:   "internal/inventory/{{ .Name }}_model.go",
 		},
 		{
-			"ports.gotmpl",
-			"internal/inventory/{{ .Name }}_ports.go",
+			TemplateName: "ports.gotmpl",
+			TargetName:   "internal/inventory/{{ .Name }}_ports.go",
 		},
 		{
-			"model.gotmpl",
-			"internal/inventory/{{ .Name }}_model.go",
+			TemplateName: "repo_incus.gotmpl",
+			TargetName:   "internal/inventory/repo/incus/{{ .Name }}.go",
 		},
 		{
-			"service_internal_test.gotmpl",
-			"internal/inventory/{{ .Name }}_service_internal_test.go",
+			TemplateName: "repo_sqlite_test.gotmpl",
+			TargetName:   "internal/inventory/repo/sqlite/{{ .Name }}_test.go",
 		},
 		{
-			"service_test.gotmpl",
-			"internal/inventory/{{ .Name }}_service_test.go",
+			TemplateName: "repo_sqlite.gotmpl",
+			TargetName:   "internal/inventory/repo/sqlite/{{ .Name }}.go",
 		},
 		{
-			"service.gotmpl",
-			"internal/inventory/{{ .Name }}_service.go",
+			TemplateName: "service_internal_test.gotmpl",
+			TargetName:   "internal/inventory/{{ .Name }}_service_internal_test.go",
 		},
 		{
-			"repo_sqlite.gotmpl",
-			"internal/inventory/repo/sqlite/{{ .Name }}.go",
+			TemplateName: "service_test.gotmpl",
+			TargetName:   "internal/inventory/{{ .Name }}_service_test.go",
 		},
 		{
-			"repo_sqlite_test.gotmpl",
-			"internal/inventory/repo/sqlite/{{ .Name }}_test.go",
+			TemplateName: "service.gotmpl",
+			TargetName:   "internal/inventory/{{ .Name }}_service.go",
 		},
 		{
-			"repo_incus.gotmpl",
-			"internal/inventory/repo/incus/{{ .Name }}.go",
+			TemplateName: "shared_api.gotmpl",
+			TargetName:   "shared/api/inventory_{{ .Name }}.go",
 		},
 	}
 
