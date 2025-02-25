@@ -51,7 +51,7 @@ func Test{{ .Name | pascalcase }}Service_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			{{ .Name | camelcase | minuscule }}Svc := inventory.New{{ .Name | camelcase }}Service(repo, nil, nil, nil)
+			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, nil, nil, nil {{- if .HasParent -}}, nil {{- end -}} )
 
 			// Run test
 			{{ .Name | camelcase | minuscule }}Hostnames, err := {{ .Name | camelcase | minuscule }}Svc.GetAllIDs(context.Background())
@@ -106,7 +106,7 @@ func Test{{ .Name | pascalcase }}Service_GetByID(t *testing.T) {
 				},
 			}
 
-			{{ .Name | camelcase | minuscule }}Svc := inventory.New{{ .Name | camelcase }}Service(repo, nil, nil, nil)
+			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, nil, nil, nil {{- if .HasParent -}}, nil {{- end -}} )
 
 			// Run test
 			{{ .Name | camelcase }}, err := {{ .Name | camelcase }}Svc.GetByID(context.Background(), tc.idArg)
@@ -128,8 +128,12 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 		serverSvcGetAllByClusterIDErr     error
 		serverSvcGetByIDServer            provisioning.Server
 		serverSvcGetByIDErr               error
-		{{ .Name | camelcase | minuscule }}ClientGet{{ .PluralName | camelcase }}        []incusapi.{{ .ObjectType | camelcase }}
-		{{ .Name | camelcase | minuscule }}ClientGet{{ .PluralName | camelcase }}Err     error
+{{- if .HasParent }}
+		{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }} []incusapi.{{ .ParentObjectType | pascalcase }}
+		{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}Err error
+{{- end }}
+		{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}        []incusapi.{{ .ObjectType | pascalcase }}
+		{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}Err     error
 		repoDeleteByServerIDErr           error
 		repoCreateErr                     error
 
@@ -155,7 +159,14 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				ClusterID: 1,
 				Hostname:  "server-one",
 			},
-			{{ .Name | camelcase | minuscule }}ClientGet{{ .PluralName | camelcase }}: []incusapi.{{ .ObjectType | camelcase }}{
+{{- if .HasParent }}
+			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
+				{
+					Name: "{{ .ParentName | camelcase }} one",
+				},
+			},
+{{- end }}
+			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}: []incusapi.{{ .ObjectType | pascalcase }}{
 {{- if .ObjectEmbedded }}
 				{
 					{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
@@ -220,6 +231,32 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 		},
+{{- if .HasParent }}
+		{
+			name: "error - {{ .ParentName | camelcase }} client get {{ .ParentPluralName | pascalcase }}",
+			clusterSvcGetAllClusters: provisioning.Clusters{
+				{
+					ID:   1,
+					Name: "cluster one",
+				},
+			},
+			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+				{
+					ID:        1,
+					ClusterID: 1,
+					Hostname:  "server-one",
+				},
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}Err: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+{{- end }}
 		{
 			name: "error - {{ .Name | camelcase }} client get {{ .PluralName | pascalcase }}",
 			clusterSvcGetAllClusters: provisioning.Clusters{
@@ -240,7 +277,14 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				ClusterID: 1,
 				Hostname:  "server-one",
 			},
-			{{ .Name | camelcase | minuscule }}ClientGet{{ .PluralName | camelcase }}Err: boom.Error,
+{{- if .HasParent }}
+			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
+				{
+					Name: "{{ .ParentName | camelcase }} one",
+				},
+			},
+{{- end }}
+			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}Err: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -264,7 +308,14 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				ClusterID: 1,
 				Hostname:  "server-one",
 			},
-			{{ .Name | camelcase | minuscule }}ClientGet{{ .PluralName | camelcase }}: []incusapi.{{ .ObjectType | camelcase }}{
+{{- if .HasParent }}
+			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
+				{
+					Name: "{{ .ParentName | camelcase }} one",
+				},
+			},
+{{- end }}
+			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}: []incusapi.{{ .ObjectType | pascalcase }}{
 {{- if .ObjectEmbedded }}
 				{
 					{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
@@ -313,7 +364,14 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				ClusterID: 1,
 				Hostname:  "server-one",
 			},
-			{{ .Name | camelcase | minuscule }}ClientGet{{ .PluralName | camelcase }}: []incusapi.{{ .ObjectType | camelcase }}{
+{{- if .HasParent }}
+			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
+				{
+					Name: "{{ .ParentName | camelcase }} one",
+				},
+			},
+{{- end }}
+			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}: []incusapi.{{ .ObjectType | pascalcase }}{
 {{- if .ObjectEmbedded }}
 				{
 					{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
@@ -370,14 +428,22 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
 				},
 			}
+{{- if .HasParent }}
 
-			{{ .Name | camelcase | minuscule }}Client := &serviceMock.{{ .Name | camelcase }}ServerClientMock{
-				Get{{ .PluralName | camelcase }}Func: func(ctx context.Context, connectionURL string) ([]incusapi.{{ .ObjectType | camelcase }}, error) {
-					return tc.{{ .Name | camelcase | minuscule }}ClientGet{{ .PluralName | camelcase }}, tc.{{ .Name | camelcase | minuscule }}ClientGet{{ .PluralName | camelcase }}Err
+			{{ .ParentName | camelcase }}Client := &serviceMock.{{ .ParentName | pascalcase }}ServerClientMock{
+				Get{{ .ParentPluralName | pascalcase }}Func: func(ctx context.Context, connectionURL string) ([]incusapi.{{ .ParentObjectType | pascalcase }}, error) {
+					return tc.{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}, tc.{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}Err
+				},
+			}
+{{- end }}
+
+			{{ .Name | camelcase }}Client := &serviceMock.{{ .Name | pascalcase }}ServerClientMock{
+				Get{{ .PluralName | pascalcase }}Func: func(ctx context.Context, connectionURL string {{- if .HasParent }}, {{ .ParentName | camelcase }}Name string {{ end }}) ([]incusapi.{{ .ObjectType | pascalcase }}, error) {
+					return tc.{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}, tc.{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}Err
 				},
 			}
 
-			{{ .Name | camelcase | minuscule }}Svc := inventory.New{{ .Name | camelcase }}Service(repo, clusterSvc, serverSvc, {{ .Name | camelcase | minuscule }}Client)
+			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, clusterSvc, serverSvc, {{ .Name | camelcase }}Client {{- if .HasParent }}, {{ .ParentName | camelcase }}Client {{- end }})
 
 			// Run test
 			err := {{ .Name | camelcase }}Svc.SyncAll(context.Background())

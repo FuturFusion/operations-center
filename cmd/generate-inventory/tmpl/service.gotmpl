@@ -4,6 +4,10 @@ import (
 	"context"
 	"errors"
 	"time"
+{{- if .HasParent }}
+
+	incusapi "github.com/lxc/incus/v6/shared/api"
+{{ end }}
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -13,7 +17,11 @@ type {{ .Name | camelcase }}Service struct {
 	repo                   {{ .Name | pascalcase }}Repo
 	clusterSvc             ClusterService
 	serverSvc              ServerService
-	{{ .Name | camelcase | minuscule }}Client {{ .Name | camelcase }}ServerClient
+
+{{- if .HasParent }}
+	{{ .ParentName | camelcase }}Client {{ .ParentObjectType | pascalcase }}ServerClient
+{{- end }}
+	{{ .Name | camelcase }}Client {{ .Name | pascalcase }}ServerClient
 
 	now func() time.Time
 }
@@ -22,12 +30,16 @@ var _ {{ .Name | pascalcase }}Service = &{{ .Name | camelcase }}Service{}
 
 type {{ .Name | pascalcase }}ServiceOption func(s *{{ .Name | camelcase }}Service)
 
-func New{{ .Name | camelcase }}Service(repo {{ .Name | camelcase }}Repo, clusterSvc ClusterService, serverSvc ServerService, client {{ .Name | camelcase }}ServerClient, opts ...{{ .Name | camelcase }}ServiceOption) {{ .Name | camelcase | minuscule }}Service {
-	{{ .Name | camelcase | minuscule }}Svc := {{ .Name | camelcase | minuscule }}Service{
+func New{{ .Name | pascalcase }}Service(repo {{ .Name | pascalcase }}Repo, clusterSvc ClusterService, serverSvc ServerService, client {{ .Name | pascalcase }}ServerClient, {{ if .HasParent }}parentClient {{ .ParentName | pascalcase }}ServerClient, {{ end -}} opts ...{{ .Name | pascalcase }}ServiceOption) {{ .Name | camelcase }}Service {
+	{{ .Name | camelcase }}Svc := {{ .Name | camelcase }}Service{
 		repo:                   repo,
 		clusterSvc:             clusterSvc,
 		serverSvc:              serverSvc,
-		{{ .Name | camelcase | minuscule }}Client: client,
+
+{{- if .HasParent }}
+		{{ .ParentName | camelcase }}Client: parentClient,
+{{- end }}
+		{{ .Name | camelcase }}Client: client,
 
 		now: time.Now,
 	}
@@ -85,10 +97,28 @@ func (s {{ .Name | camelcase }}Service) SyncServer(ctx context.Context, serverID
 		return err
 	}
 
-	server{{ .PluralName | camelcase }}, err := s.{{ .Name | camelcase | minuscule }}Client.Get{{ .PluralName | camelcase }}(ctx, server.ConnectionURL)
+{{ if .HasParent }}
+	server{{ .ParentName | pascalcase }}s, err := s.{{ .ParentName | camelcase }}Client.Get{{ .ParentName | pascalcase }}s(ctx, server.ConnectionURL)
 	if err != nil {
 		return err
 	}
+
+	var server{{ .PluralName | camelcase }} []incusapi.{{ .Name | camelcase }}
+
+	for _, {{ .ParentName | camelcase | minuscule }} := range server{{ .ParentName | camelcase }}s {
+		{{ .Name | camelcase | minuscule }}, err := s.{{ .Name | camelcase | minuscule }}Client.Get{{ .PluralName | camelcase }}(ctx, server.ConnectionURL, {{ .ParentName | camelcase | minuscule }}.Name)
+		if err != nil {
+			return err
+		}
+
+		server{{ .PluralName | camelcase }} = append(server{{ .PluralName | camelcase }}, {{ .Name | camelcase | minuscule }}...)
+	}
+{{ else }}
+	server{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, server.ConnectionURL)
+	if err != nil {
+		return err
+	}
+{{ end }}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		err = s.repo.DeleteByServerID(ctx, serverID)

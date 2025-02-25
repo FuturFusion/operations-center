@@ -24,6 +24,10 @@ func main() {
 	objectNamePropertyName := pflag.String("object-name-property-name", "Name", "Name property of the object")
 	objectType := pflag.String("object-type", "", "Go type used for object in model")
 	omitProject := pflag.Bool("omit-project", false, "if omit-project is provided, the entity does not have a relation to a project")
+	usesEmbeddedPostType := pflag.Bool("uses-embedded-post-type", false, "if uses-embedded-post-type is provided, the name property is part of an embedded Post type")
+	parentName := pflag.String("parent", "", "name of the parent entity, if any")
+	parentPluralName := pflag.String("parent-plural", "", "plural form of the parent entity")
+	parentObjectType := pflag.String("parent-object-type", "", "Go type used for object in model for the parent entity")
 	pflag.Parse()
 
 	name := pflag.Args()[0]
@@ -39,6 +43,14 @@ func main() {
 
 	if *objectType == "" {
 		*objectType = name
+	}
+
+	if *parentPluralName == "" {
+		*parentPluralName = *parentName + "s"
+	}
+
+	if *parentObjectType == "" {
+		*parentObjectType = *parentName
 	}
 
 	targets := []struct {
@@ -101,6 +113,11 @@ func main() {
 		ObjectEmbedded         bool
 		ObjectNamePropertyName string
 		HasProject             bool
+		UsesEmbeddedPostType   bool
+		HasParent              bool
+		ParentName             string
+		ParentPluralName       string
+		ParentObjectType       string
 	}{
 		Name:                   name,
 		PluralName:             *pluralName,
@@ -108,6 +125,11 @@ func main() {
 		ObjectEmbedded:         objectEmbedded,
 		ObjectNamePropertyName: *objectNamePropertyName,
 		HasProject:             !*omitProject,
+		UsesEmbeddedPostType:   *usesEmbeddedPostType,
+		HasParent:              *parentName != "",
+		ParentName:             *parentName,
+		ParentPluralName:       *parentPluralName,
+		ParentObjectType:       *parentObjectType,
 	}
 
 	for _, target := range targets {

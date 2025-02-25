@@ -27,6 +27,6 @@ type {{ .Name | camelcase }}Repo interface {
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/{{ .Name }}_server_client_mock_gen.go -rm . {{ .Name | pascalcase }}ServerClient
 
-type {{ .Name | camelcase }}ServerClient interface {
-	Get{{ .PluralName | camelcase }}(ctx context.Context, connectionURL string) ([]incusapi.{{ .ObjectType | camelcase }}, error)
+type {{ .Name | pascalcase }}ServerClient interface {
+	Get{{ .PluralName | pascalcase }}(ctx context.Context, connectionURL string {{- if .HasParent }}, {{ .ParentName | camelcase }}Name string {{ end }}) ([]incusapi.{{ .ObjectType | pascalcase }}, error)
 }
