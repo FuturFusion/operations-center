@@ -11,6 +11,6 @@ package tools
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory network_zone
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory profile
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory --omit-project project
-// TODO: storage_bucket
+//go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory --parent storage_pool storage_bucket
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory --omit-project storage_pool
 //go:generate go run github.com/FuturFusion/operations-center/cmd/generate-inventory --parent storage_pool storage_volume

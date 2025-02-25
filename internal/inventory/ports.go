@@ -31,6 +31,7 @@ type ServerClient interface {
 	NetworkZoneServerClient
 	ProfileServerClient
 	ProjectServerClient
+	StorageBucketServerClient
 	StoragePoolServerClient
 	StorageVolumeServerClient
 }

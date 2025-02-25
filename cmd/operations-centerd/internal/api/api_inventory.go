@@ -67,6 +67,14 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 		serverClient,
 	)
 
+	inventoryStorageBucketSvc := inventory.NewStorageBucketService(
+		inventorySqlite.NewStorageBucket(db),
+		clusterSvc,
+		serverSvc,
+		serverClient,
+		serverClient,
+	)
+
 	inventoryStoragePoolSvc := inventory.NewStoragePoolService(
 		inventorySqlite.NewStoragePool(db),
 		clusterSvc,
@@ -106,6 +114,9 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryProjectRouter := newSubRouter(inventoryRouter, "/projects")
 	registerInventoryProjectHandler(inventoryProjectRouter, inventoryProjectSvc)
+
+	inventoryStorageBucketRouter := newSubRouter(inventoryRouter, "/storage_buckets")
+	registerInventoryStorageBucketHandler(inventoryStorageBucketRouter, inventoryStorageBucketSvc)
 
 	inventoryStoragePoolRouter := newSubRouter(inventoryRouter, "/storage_pools")
 	registerInventoryStoragePoolHandler(inventoryStoragePoolRouter, inventoryStoragePoolSvc)

@@ -141,6 +141,20 @@ func (s serverClient) GetProjects(ctx context.Context, connectionURL string) ([]
 	return serverProjects, nil
 }
 
+func (s serverClient) GetStorageBuckets(ctx context.Context, connectionURL string, storagePoolName string) ([]incusapi.StorageBucket, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return nil, err
+	}
+
+	serverStorageBuckets, err := client.GetStoragePoolBucketsAllProjects(storagePoolName)
+	if err != nil {
+		return nil, err
+	}
+
+	return serverStorageBuckets, nil
+}
+
 func (s serverClient) GetStoragePools(ctx context.Context, connectionURL string) ([]incusapi.StoragePool, error) {
 	client, err := s.getClient(ctx, connectionURL)
 	if err != nil {
