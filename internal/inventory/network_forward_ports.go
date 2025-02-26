@@ -11,6 +11,7 @@ import (
 type NetworkForwardService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkForwardFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkForward, error)
+	ResyncByID(ctx context.Context, id int) error
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 	SyncServer(ctx context.Context, serverID int) error
@@ -25,10 +26,12 @@ type NetworkForwardRepo interface {
 	GetByID(ctx context.Context, id int) (NetworkForward, error)
 	Create(ctx context.Context, networkForward NetworkForward) (NetworkForward, error)
 	DeleteByServerID(ctx context.Context, serverID int) error
+	UpdateByID(ctx context.Context, networkForward NetworkForward) (NetworkForward, error)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/network_forward_server_client_mock_gen.go -rm . NetworkForwardServerClient
 
 type NetworkForwardServerClient interface {
 	GetNetworkForwards(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkForward, error)
+	GetNetworkForwardByName(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (incusapi.NetworkForward, error)
 }

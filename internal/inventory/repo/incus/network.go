@@ -21,3 +21,17 @@ func (s serverClient) GetNetworks(ctx context.Context, connectionURL string) ([]
 
 	return serverNetworks, nil
 }
+
+func (s serverClient) GetNetworkByName(ctx context.Context, connectionURL string, networkName string) (incusapi.Network, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return incusapi.Network{}, err
+	}
+
+	serverNetwork, _, err := client.GetNetwork(networkName)
+	if err != nil {
+		return incusapi.Network{}, err
+	}
+
+	return *serverNetwork, nil
+}

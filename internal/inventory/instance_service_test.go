@@ -122,6 +122,135 @@ func TestInstanceService_GetByID(t *testing.T) {
 	}
 }
 
+func TestInstanceService_ResyncByID(t *testing.T) {
+	tests := []struct {
+		name                               string
+		serverSvcGetByIDServer             provisioning.Server
+		serverSvcGetByIDErr                error
+		instanceClientGetInstanceByName    incusapi.InstanceFull
+		instanceClientGetInstanceByNameErr error
+		repoGetByIDInstance                inventory.Instance
+		repoGetByIDErr                     error
+		repoUpdateByIDErr                  error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByIDInstance: inventory.Instance{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			instanceClientGetInstanceByName: incusapi.InstanceFull{
+				Instance: incusapi.Instance{
+					Name: "instance one",
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - instance get by ID",
+			repoGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - server get by ID",
+			repoGetByIDInstance: inventory.Instance{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - instance get by name",
+			repoGetByIDInstance: inventory.Instance{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			instanceClientGetInstanceByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - update by ID",
+			repoGetByIDInstance: inventory.Instance{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			instanceClientGetInstanceByName: incusapi.InstanceFull{
+				Instance: incusapi.Instance{
+					Name: "instance one",
+				},
+			},
+			repoUpdateByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.InstanceRepoMock{
+				GetByIDFunc: func(ctx context.Context, id int) (inventory.Instance, error) {
+					return tc.repoGetByIDInstance, tc.repoGetByIDErr
+				},
+				UpdateByIDFunc: func(ctx context.Context, instance inventory.Instance) (inventory.Instance, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), instance.LastUpdated)
+					return inventory.Instance{}, tc.repoUpdateByIDErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+					require.Equal(t, 1, id)
+					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				},
+			}
+
+			instanceClient := &serviceMock.InstanceServerClientMock{
+				GetInstanceByNameFunc: func(ctx context.Context, connectionURL string, instanceName string) (incusapi.InstanceFull, error) {
+					require.Equal(t, "one", instanceName)
+					return tc.instanceClientGetInstanceByName, tc.instanceClientGetInstanceByNameErr
+				},
+			}
+
+			instanceSvc := inventory.NewInstanceService(repo, nil, serverSvc, instanceClient, inventory.InstanceWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			err := instanceSvc.ResyncByID(context.Background(), 1)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestInstanceService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {

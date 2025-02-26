@@ -11,6 +11,7 @@ import (
 type NetworkZoneService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkZoneFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkZone, error)
+	ResyncByID(ctx context.Context, id int) error
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 	SyncServer(ctx context.Context, serverID int) error
@@ -25,10 +26,12 @@ type NetworkZoneRepo interface {
 	GetByID(ctx context.Context, id int) (NetworkZone, error)
 	Create(ctx context.Context, networkZone NetworkZone) (NetworkZone, error)
 	DeleteByServerID(ctx context.Context, serverID int) error
+	UpdateByID(ctx context.Context, networkZone NetworkZone) (NetworkZone, error)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/network_zone_server_client_mock_gen.go -rm . NetworkZoneServerClient
 
 type NetworkZoneServerClient interface {
 	GetNetworkZones(ctx context.Context, connectionURL string) ([]incusapi.NetworkZone, error)
+	GetNetworkZoneByName(ctx context.Context, connectionURL string, networkZoneName string) (incusapi.NetworkZone, error)
 }

@@ -51,6 +51,42 @@ func (s networkPeerService) GetByID(ctx context.Context, id int) (NetworkPeer, e
 	return s.repo.GetByID(ctx, id)
 }
 
+func (s networkPeerService) ResyncByID(ctx context.Context, id int) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		networkPeer, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		server, err := s.serverSvc.GetByID(ctx, networkPeer.ServerID)
+		if err != nil {
+			return err
+		}
+
+		serverNetworkPeer, err := s.networkPeerClient.GetNetworkPeerByName(ctx, server.ConnectionURL, networkPeer.NetworkName, networkPeer.Name)
+		// FIXME: how to differentiate general errors from "not found" errors?
+		// TODO: if the NetworkPeer is not found, it needs to be removed from the inventory.
+		if err != nil {
+			return err
+		}
+
+		networkPeer.Object = serverNetworkPeer
+		networkPeer.LastUpdated = s.now()
+
+		_, err = s.repo.UpdateByID(ctx, networkPeer)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s networkPeerService) SyncAll(ctx context.Context) error {
 	clusters, err := s.clusterSvc.GetAll(ctx)
 	if err != nil {

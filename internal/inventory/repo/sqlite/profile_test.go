@@ -134,6 +134,11 @@ func TestProfileDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, profileA, dbProfileA)
 
+	profileB.LastUpdated = time.Now().UTC().Truncate(0)
+	dbProfileB, err := profile.UpdateByID(ctx, profileB)
+	require.NoError(t, err)
+	require.Equal(t, profileB, dbProfileB)
+
 	// Delete profiles by server ID.
 	err = profile.DeleteByServerID(ctx, 1)
 	require.NoError(t, err)

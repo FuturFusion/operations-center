@@ -11,6 +11,7 @@ import (
 type NetworkService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Network, error)
+	ResyncByID(ctx context.Context, id int) error
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 	SyncServer(ctx context.Context, serverID int) error
@@ -25,10 +26,12 @@ type NetworkRepo interface {
 	GetByID(ctx context.Context, id int) (Network, error)
 	Create(ctx context.Context, network Network) (Network, error)
 	DeleteByServerID(ctx context.Context, serverID int) error
+	UpdateByID(ctx context.Context, network Network) (Network, error)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/network_server_client_mock_gen.go -rm . NetworkServerClient
 
 type NetworkServerClient interface {
 	GetNetworks(ctx context.Context, connectionURL string) ([]incusapi.Network, error)
+	GetNetworkByName(ctx context.Context, connectionURL string, networkName string) (incusapi.Network, error)
 }

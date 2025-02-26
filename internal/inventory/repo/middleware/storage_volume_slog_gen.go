@@ -103,3 +103,23 @@ func (_d StorageVolumeRepoWithSlog) GetByID(ctx context.Context, id int) (s1 _so
 	}()
 	return _d._base.GetByID(ctx, id)
 }
+
+// UpdateByID implements _sourceInventory.StorageVolumeRepo
+func (_d StorageVolumeRepoWithSlog) UpdateByID(ctx context.Context, storageVolume _sourceInventory.StorageVolume) (s1 _sourceInventory.StorageVolume, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Any("storageVolume", storageVolume),
+	).Debug("StorageVolumeRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("s1", s1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("StorageVolumeRepoWithSlog: method UpdateByID returned an error")
+		} else {
+			log.Debug("StorageVolumeRepoWithSlog: method UpdateByID finished")
+		}
+	}()
+	return _d._base.UpdateByID(ctx, storageVolume)
+}

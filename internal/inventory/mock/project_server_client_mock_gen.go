@@ -21,6 +21,9 @@ var _ inventory.ProjectServerClient = &ProjectServerClientMock{}
 //
 //		// make and configure a mocked inventory.ProjectServerClient
 //		mockedProjectServerClient := &ProjectServerClientMock{
+//			GetProjectByNameFunc: func(ctx context.Context, connectionURL string, projectName string) (incusapi.Project, error) {
+//				panic("mock out the GetProjectByName method")
+//			},
 //			GetProjectsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Project, error) {
 //				panic("mock out the GetProjects method")
 //			},
@@ -31,11 +34,23 @@ var _ inventory.ProjectServerClient = &ProjectServerClientMock{}
 //
 //	}
 type ProjectServerClientMock struct {
+	// GetProjectByNameFunc mocks the GetProjectByName method.
+	GetProjectByNameFunc func(ctx context.Context, connectionURL string, projectName string) (incusapi.Project, error)
+
 	// GetProjectsFunc mocks the GetProjects method.
 	GetProjectsFunc func(ctx context.Context, connectionURL string) ([]incusapi.Project, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetProjectByName holds details about calls to the GetProjectByName method.
+		GetProjectByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// ProjectName is the projectName argument value.
+			ProjectName string
+		}
 		// GetProjects holds details about calls to the GetProjects method.
 		GetProjects []struct {
 			// Ctx is the ctx argument value.
@@ -44,7 +59,48 @@ type ProjectServerClientMock struct {
 			ConnectionURL string
 		}
 	}
-	lockGetProjects sync.RWMutex
+	lockGetProjectByName sync.RWMutex
+	lockGetProjects      sync.RWMutex
+}
+
+// GetProjectByName calls GetProjectByNameFunc.
+func (mock *ProjectServerClientMock) GetProjectByName(ctx context.Context, connectionURL string, projectName string) (incusapi.Project, error) {
+	if mock.GetProjectByNameFunc == nil {
+		panic("ProjectServerClientMock.GetProjectByNameFunc: method is nil but ProjectServerClient.GetProjectByName was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+		ProjectName   string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+		ProjectName:   projectName,
+	}
+	mock.lockGetProjectByName.Lock()
+	mock.calls.GetProjectByName = append(mock.calls.GetProjectByName, callInfo)
+	mock.lockGetProjectByName.Unlock()
+	return mock.GetProjectByNameFunc(ctx, connectionURL, projectName)
+}
+
+// GetProjectByNameCalls gets all the calls that were made to GetProjectByName.
+// Check the length with:
+//
+//	len(mockedProjectServerClient.GetProjectByNameCalls())
+func (mock *ProjectServerClientMock) GetProjectByNameCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+	ProjectName   string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+		ProjectName   string
+	}
+	mock.lockGetProjectByName.RLock()
+	calls = mock.calls.GetProjectByName
+	mock.lockGetProjectByName.RUnlock()
+	return calls
 }
 
 // GetProjects calls GetProjectsFunc.

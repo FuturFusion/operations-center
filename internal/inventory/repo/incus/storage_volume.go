@@ -21,3 +21,18 @@ func (s serverClient) GetStorageVolumes(ctx context.Context, connectionURL strin
 
 	return serverStorageVolumes, nil
 }
+
+func (s serverClient) GetStorageVolumeByName(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string) (incusapi.StorageVolume, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return incusapi.StorageVolume{}, err
+	}
+
+	// FIXME: currently we just pass empty string ("") for the type, which is obviously wrong and needs to be fixed.
+	serverStorageVolume, _, err := client.GetStoragePoolVolume(storagePoolName, "", storageVolumeName)
+	if err != nil {
+		return incusapi.StorageVolume{}, err
+	}
+
+	return *serverStorageVolume, nil
+}

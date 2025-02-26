@@ -51,6 +51,43 @@ func (s storageVolumeService) GetByID(ctx context.Context, id int) (StorageVolum
 	return s.repo.GetByID(ctx, id)
 }
 
+func (s storageVolumeService) ResyncByID(ctx context.Context, id int) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		storageVolume, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		server, err := s.serverSvc.GetByID(ctx, storageVolume.ServerID)
+		if err != nil {
+			return err
+		}
+
+		serverStorageVolume, err := s.storageVolumeClient.GetStorageVolumeByName(ctx, server.ConnectionURL, storageVolume.StoragePoolName, storageVolume.Name)
+		// FIXME: how to differentiate general errors from "not found" errors?
+		// TODO: if the StorageVolume is not found, it needs to be removed from the inventory.
+		if err != nil {
+			return err
+		}
+
+		storageVolume.ProjectName = serverStorageVolume.Project
+		storageVolume.Object = serverStorageVolume
+		storageVolume.LastUpdated = s.now()
+
+		_, err = s.repo.UpdateByID(ctx, storageVolume)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s storageVolumeService) SyncAll(ctx context.Context) error {
 	clusters, err := s.clusterSvc.GetAll(ctx)
 	if err != nil {

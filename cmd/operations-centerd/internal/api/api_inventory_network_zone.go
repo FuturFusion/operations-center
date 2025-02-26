@@ -24,6 +24,7 @@ func registerInventoryNetworkZoneHandler(router *http.ServeMux, service inventor
 
 	router.HandleFunc("GET /{$}", response.With(handler.networkZonesGet))
 	router.HandleFunc("GET /{id}", response.With(handler.networkZoneGet))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.networkZoneResyncPost))
 	router.HandleFunc("POST /force-sync", response.With(handler.forceSyncPost))
 }
 
@@ -170,6 +171,52 @@ func (i *networkZoneHandler) networkZoneGet(r *http.Request) response.Response {
 			LastUpdated: networkZone.LastUpdated,
 		},
 	)
+}
+
+// swagger:operation POST /1.0/inventory/network_zones/{id}/resync network_zones network_zone_get_resync_post
+//
+//	Resync the network_zone
+//
+//	Resync a specific network_zone.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Empty response
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (i *networkZoneHandler) networkZoneResyncPost(r *http.Request) response.Response {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	err = i.service.ResyncByID(r.Context(), id)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to resync network_zone: %w", err))
+	}
+
+	return response.EmptySyncResponse
 }
 
 // swagger:operation POST /1.0/inventory/network_zones/force-sync network_zones network_zones_force_sync_post

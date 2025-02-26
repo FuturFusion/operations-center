@@ -21,6 +21,9 @@ var _ inventory.NetworkForwardServerClient = &NetworkForwardServerClientMock{}
 //
 //		// make and configure a mocked inventory.NetworkForwardServerClient
 //		mockedNetworkForwardServerClient := &NetworkForwardServerClientMock{
+//			GetNetworkForwardByNameFunc: func(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
+//				panic("mock out the GetNetworkForwardByName method")
+//			},
 //			GetNetworkForwardsFunc: func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkForward, error) {
 //				panic("mock out the GetNetworkForwards method")
 //			},
@@ -31,11 +34,25 @@ var _ inventory.NetworkForwardServerClient = &NetworkForwardServerClientMock{}
 //
 //	}
 type NetworkForwardServerClientMock struct {
+	// GetNetworkForwardByNameFunc mocks the GetNetworkForwardByName method.
+	GetNetworkForwardByNameFunc func(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (incusapi.NetworkForward, error)
+
 	// GetNetworkForwardsFunc mocks the GetNetworkForwards method.
 	GetNetworkForwardsFunc func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkForward, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetNetworkForwardByName holds details about calls to the GetNetworkForwardByName method.
+		GetNetworkForwardByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// NetworkName is the networkName argument value.
+			NetworkName string
+			// NetworkForwardName is the networkForwardName argument value.
+			NetworkForwardName string
+		}
 		// GetNetworkForwards holds details about calls to the GetNetworkForwards method.
 		GetNetworkForwards []struct {
 			// Ctx is the ctx argument value.
@@ -46,7 +63,52 @@ type NetworkForwardServerClientMock struct {
 			NetworkName string
 		}
 	}
-	lockGetNetworkForwards sync.RWMutex
+	lockGetNetworkForwardByName sync.RWMutex
+	lockGetNetworkForwards      sync.RWMutex
+}
+
+// GetNetworkForwardByName calls GetNetworkForwardByNameFunc.
+func (mock *NetworkForwardServerClientMock) GetNetworkForwardByName(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
+	if mock.GetNetworkForwardByNameFunc == nil {
+		panic("NetworkForwardServerClientMock.GetNetworkForwardByNameFunc: method is nil but NetworkForwardServerClient.GetNetworkForwardByName was just called")
+	}
+	callInfo := struct {
+		Ctx                context.Context
+		ConnectionURL      string
+		NetworkName        string
+		NetworkForwardName string
+	}{
+		Ctx:                ctx,
+		ConnectionURL:      connectionURL,
+		NetworkName:        networkName,
+		NetworkForwardName: networkForwardName,
+	}
+	mock.lockGetNetworkForwardByName.Lock()
+	mock.calls.GetNetworkForwardByName = append(mock.calls.GetNetworkForwardByName, callInfo)
+	mock.lockGetNetworkForwardByName.Unlock()
+	return mock.GetNetworkForwardByNameFunc(ctx, connectionURL, networkName, networkForwardName)
+}
+
+// GetNetworkForwardByNameCalls gets all the calls that were made to GetNetworkForwardByName.
+// Check the length with:
+//
+//	len(mockedNetworkForwardServerClient.GetNetworkForwardByNameCalls())
+func (mock *NetworkForwardServerClientMock) GetNetworkForwardByNameCalls() []struct {
+	Ctx                context.Context
+	ConnectionURL      string
+	NetworkName        string
+	NetworkForwardName string
+} {
+	var calls []struct {
+		Ctx                context.Context
+		ConnectionURL      string
+		NetworkName        string
+		NetworkForwardName string
+	}
+	mock.lockGetNetworkForwardByName.RLock()
+	calls = mock.calls.GetNetworkForwardByName
+	mock.lockGetNetworkForwardByName.RUnlock()
+	return calls
 }
 
 // GetNetworkForwards calls GetNetworkForwardsFunc.

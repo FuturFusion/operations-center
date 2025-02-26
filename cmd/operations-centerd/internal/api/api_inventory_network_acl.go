@@ -24,6 +24,7 @@ func registerInventoryNetworkACLHandler(router *http.ServeMux, service inventory
 
 	router.HandleFunc("GET /{$}", response.With(handler.networkACLsGet))
 	router.HandleFunc("GET /{id}", response.With(handler.networkACLGet))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.networkACLResyncPost))
 	router.HandleFunc("POST /force-sync", response.With(handler.forceSyncPost))
 }
 
@@ -170,6 +171,52 @@ func (i *networkACLHandler) networkACLGet(r *http.Request) response.Response {
 			LastUpdated: networkACL.LastUpdated,
 		},
 	)
+}
+
+// swagger:operation POST /1.0/inventory/network_acls/{id}/resync network_acls network_acl_get_resync_post
+//
+//	Resync the network_acl
+//
+//	Resync a specific network_acl.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Empty response
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (i *networkACLHandler) networkACLResyncPost(r *http.Request) response.Response {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	err = i.service.ResyncByID(r.Context(), id)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to resync network_acl: %w", err))
+	}
+
+	return response.EmptySyncResponse
 }
 
 // swagger:operation POST /1.0/inventory/network_acls/force-sync network_acls network_acls_force_sync_post

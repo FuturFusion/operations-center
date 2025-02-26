@@ -143,6 +143,35 @@ func (i project) DeleteByServerID(ctx context.Context, serverID int) error {
 	return nil
 }
 
+func (i project) UpdateByID(ctx context.Context, in inventory.Project) (inventory.Project, error) {
+	const sqlStmt = `
+WITH _server AS (
+  SELECT cluster_id FROM servers WHERE server_id = :server_id
+)
+UPDATE projects SET server_id=:server_id, name=:name, object=:object, last_updated=:last_updated
+WHERE id=:id
+RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, object, last_updated;
+`
+
+	marshaledObject, err := json.Marshal(in.Object)
+	if err != nil {
+		return inventory.Project{}, err
+	}
+
+	row := i.db.QueryRowContext(ctx, sqlStmt,
+		sql.Named("id", in.ID),
+		sql.Named("server_id", in.ServerID),
+		sql.Named("name", in.Name),
+		sql.Named("object", marshaledObject),
+		sql.Named("last_updated", in.LastUpdated),
+	)
+	if row.Err() != nil {
+		return inventory.Project{}, sqlite.MapErr(row.Err())
+	}
+
+	return scanProject(row)
+}
+
 func scanProject(row interface{ Scan(dest ...any) error }) (inventory.Project, error) {
 	var object []byte
 	var project inventory.Project

@@ -133,6 +133,11 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, networkPeerA, dbNetworkPeerA)
 
+	networkPeerB.LastUpdated = time.Now().UTC().Truncate(0)
+	dbNetworkPeerB, err := networkPeer.UpdateByID(ctx, networkPeerB)
+	require.NoError(t, err)
+	require.Equal(t, networkPeerB, dbNetworkPeerB)
+
 	// Delete network_peers by server ID.
 	err = networkPeer.DeleteByServerID(ctx, 1)
 	require.NoError(t, err)

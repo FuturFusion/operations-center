@@ -24,6 +24,7 @@ func registerInventoryNetworkLoadBalancerHandler(router *http.ServeMux, service 
 
 	router.HandleFunc("GET /{$}", response.With(handler.networkLoadBalancersGet))
 	router.HandleFunc("GET /{id}", response.With(handler.networkLoadBalancerGet))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.networkLoadBalancerResyncPost))
 	router.HandleFunc("POST /force-sync", response.With(handler.forceSyncPost))
 }
 
@@ -166,6 +167,52 @@ func (i *networkLoadBalancerHandler) networkLoadBalancerGet(r *http.Request) res
 			LastUpdated: networkLoadBalancer.LastUpdated,
 		},
 	)
+}
+
+// swagger:operation POST /1.0/inventory/network_load_balancers/{id}/resync network_load_balancers network_load_balancer_get_resync_post
+//
+//	Resync the network_load_balancer
+//
+//	Resync a specific network_load_balancer.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Empty response
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (i *networkLoadBalancerHandler) networkLoadBalancerResyncPost(r *http.Request) response.Response {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	err = i.service.ResyncByID(r.Context(), id)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to resync network_load_balancer: %w", err))
+	}
+
+	return response.EmptySyncResponse
 }
 
 // swagger:operation POST /1.0/inventory/network_load_balancers/force-sync network_load_balancers network_load_balancers_force_sync_post

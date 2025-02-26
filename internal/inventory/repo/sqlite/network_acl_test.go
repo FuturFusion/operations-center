@@ -134,6 +134,11 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, networkACLA, dbNetworkACLA)
 
+	networkACLB.LastUpdated = time.Now().UTC().Truncate(0)
+	dbNetworkACLB, err := networkACL.UpdateByID(ctx, networkACLB)
+	require.NoError(t, err)
+	require.Equal(t, networkACLB, dbNetworkACLB)
+
 	// Delete network_acls by server ID.
 	err = networkACL.DeleteByServerID(ctx, 1)
 	require.NoError(t, err)

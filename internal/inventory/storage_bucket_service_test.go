@@ -123,6 +123,136 @@ func TestStorageBucketService_GetByID(t *testing.T) {
 	}
 }
 
+func TestStorageBucketService_ResyncByID(t *testing.T) {
+	tests := []struct {
+		name                                         string
+		serverSvcGetByIDServer                       provisioning.Server
+		serverSvcGetByIDErr                          error
+		storageBucketClientGetStorageBucketByName    incusapi.StorageBucket
+		storageBucketClientGetStorageBucketByNameErr error
+		repoGetByIDStorageBucket                     inventory.StorageBucket
+		repoGetByIDErr                               error
+		repoUpdateByIDErr                            error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByIDStorageBucket: inventory.StorageBucket{
+				ID:              1,
+				ServerID:        1,
+				Name:            "one",
+				StoragePoolName: "storage_pool",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
+				Name: "storageBucket one",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - storageBucket get by ID",
+			repoGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - server get by ID",
+			repoGetByIDStorageBucket: inventory.StorageBucket{
+				ID:              1,
+				ServerID:        1,
+				Name:            "one",
+				StoragePoolName: "storage_pool",
+			},
+			serverSvcGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - storageBucket get by name",
+			repoGetByIDStorageBucket: inventory.StorageBucket{
+				ID:              1,
+				ServerID:        1,
+				Name:            "one",
+				StoragePoolName: "storage_pool",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			storageBucketClientGetStorageBucketByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - update by ID",
+			repoGetByIDStorageBucket: inventory.StorageBucket{
+				ID:              1,
+				ServerID:        1,
+				Name:            "one",
+				StoragePoolName: "storage_pool",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
+				Name: "storageBucket one",
+			},
+			repoUpdateByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.StorageBucketRepoMock{
+				GetByIDFunc: func(ctx context.Context, id int) (inventory.StorageBucket, error) {
+					return tc.repoGetByIDStorageBucket, tc.repoGetByIDErr
+				},
+				UpdateByIDFunc: func(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), storageBucket.LastUpdated)
+					return inventory.StorageBucket{}, tc.repoUpdateByIDErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+					require.Equal(t, 1, id)
+					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				},
+			}
+
+			storageBucketClient := &serviceMock.StorageBucketServerClientMock{
+				GetStorageBucketByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
+					require.Equal(t, "one", storageBucketName)
+					require.Equal(t, "storage_pool", storagePoolName)
+					return tc.storageBucketClientGetStorageBucketByName, tc.storageBucketClientGetStorageBucketByNameErr
+				},
+			}
+
+			storageBucketSvc := inventory.NewStorageBucketService(repo, nil, serverSvc, storageBucketClient, nil, inventory.StorageBucketWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			err := storageBucketSvc.ResyncByID(context.Background(), 1)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestStorageBucketService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {

@@ -21,6 +21,9 @@ var _ inventory.NetworkACLServerClient = &NetworkACLServerClientMock{}
 //
 //		// make and configure a mocked inventory.NetworkACLServerClient
 //		mockedNetworkACLServerClient := &NetworkACLServerClientMock{
+//			GetNetworkACLByNameFunc: func(ctx context.Context, connectionURL string, networkACLName string) (incusapi.NetworkACL, error) {
+//				panic("mock out the GetNetworkACLByName method")
+//			},
 //			GetNetworkACLsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error) {
 //				panic("mock out the GetNetworkACLs method")
 //			},
@@ -31,11 +34,23 @@ var _ inventory.NetworkACLServerClient = &NetworkACLServerClientMock{}
 //
 //	}
 type NetworkACLServerClientMock struct {
+	// GetNetworkACLByNameFunc mocks the GetNetworkACLByName method.
+	GetNetworkACLByNameFunc func(ctx context.Context, connectionURL string, networkACLName string) (incusapi.NetworkACL, error)
+
 	// GetNetworkACLsFunc mocks the GetNetworkACLs method.
 	GetNetworkACLsFunc func(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetNetworkACLByName holds details about calls to the GetNetworkACLByName method.
+		GetNetworkACLByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// NetworkACLName is the networkACLName argument value.
+			NetworkACLName string
+		}
 		// GetNetworkACLs holds details about calls to the GetNetworkACLs method.
 		GetNetworkACLs []struct {
 			// Ctx is the ctx argument value.
@@ -44,7 +59,48 @@ type NetworkACLServerClientMock struct {
 			ConnectionURL string
 		}
 	}
-	lockGetNetworkACLs sync.RWMutex
+	lockGetNetworkACLByName sync.RWMutex
+	lockGetNetworkACLs      sync.RWMutex
+}
+
+// GetNetworkACLByName calls GetNetworkACLByNameFunc.
+func (mock *NetworkACLServerClientMock) GetNetworkACLByName(ctx context.Context, connectionURL string, networkACLName string) (incusapi.NetworkACL, error) {
+	if mock.GetNetworkACLByNameFunc == nil {
+		panic("NetworkACLServerClientMock.GetNetworkACLByNameFunc: method is nil but NetworkACLServerClient.GetNetworkACLByName was just called")
+	}
+	callInfo := struct {
+		Ctx            context.Context
+		ConnectionURL  string
+		NetworkACLName string
+	}{
+		Ctx:            ctx,
+		ConnectionURL:  connectionURL,
+		NetworkACLName: networkACLName,
+	}
+	mock.lockGetNetworkACLByName.Lock()
+	mock.calls.GetNetworkACLByName = append(mock.calls.GetNetworkACLByName, callInfo)
+	mock.lockGetNetworkACLByName.Unlock()
+	return mock.GetNetworkACLByNameFunc(ctx, connectionURL, networkACLName)
+}
+
+// GetNetworkACLByNameCalls gets all the calls that were made to GetNetworkACLByName.
+// Check the length with:
+//
+//	len(mockedNetworkACLServerClient.GetNetworkACLByNameCalls())
+func (mock *NetworkACLServerClientMock) GetNetworkACLByNameCalls() []struct {
+	Ctx            context.Context
+	ConnectionURL  string
+	NetworkACLName string
+} {
+	var calls []struct {
+		Ctx            context.Context
+		ConnectionURL  string
+		NetworkACLName string
+	}
+	mock.lockGetNetworkACLByName.RLock()
+	calls = mock.calls.GetNetworkACLByName
+	mock.lockGetNetworkACLByName.RUnlock()
+	return calls
 }
 
 // GetNetworkACLs calls GetNetworkACLsFunc.

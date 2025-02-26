@@ -123,6 +123,136 @@ func TestStorageVolumeService_GetByID(t *testing.T) {
 	}
 }
 
+func TestStorageVolumeService_ResyncByID(t *testing.T) {
+	tests := []struct {
+		name                                         string
+		serverSvcGetByIDServer                       provisioning.Server
+		serverSvcGetByIDErr                          error
+		storageVolumeClientGetStorageVolumeByName    incusapi.StorageVolume
+		storageVolumeClientGetStorageVolumeByNameErr error
+		repoGetByIDStorageVolume                     inventory.StorageVolume
+		repoGetByIDErr                               error
+		repoUpdateByIDErr                            error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByIDStorageVolume: inventory.StorageVolume{
+				ID:              1,
+				ServerID:        1,
+				Name:            "one",
+				StoragePoolName: "storage_pool",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
+				Name: "storageVolume one",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - storageVolume get by ID",
+			repoGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - server get by ID",
+			repoGetByIDStorageVolume: inventory.StorageVolume{
+				ID:              1,
+				ServerID:        1,
+				Name:            "one",
+				StoragePoolName: "storage_pool",
+			},
+			serverSvcGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - storageVolume get by name",
+			repoGetByIDStorageVolume: inventory.StorageVolume{
+				ID:              1,
+				ServerID:        1,
+				Name:            "one",
+				StoragePoolName: "storage_pool",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			storageVolumeClientGetStorageVolumeByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - update by ID",
+			repoGetByIDStorageVolume: inventory.StorageVolume{
+				ID:              1,
+				ServerID:        1,
+				Name:            "one",
+				StoragePoolName: "storage_pool",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
+				Name: "storageVolume one",
+			},
+			repoUpdateByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.StorageVolumeRepoMock{
+				GetByIDFunc: func(ctx context.Context, id int) (inventory.StorageVolume, error) {
+					return tc.repoGetByIDStorageVolume, tc.repoGetByIDErr
+				},
+				UpdateByIDFunc: func(ctx context.Context, storageVolume inventory.StorageVolume) (inventory.StorageVolume, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), storageVolume.LastUpdated)
+					return inventory.StorageVolume{}, tc.repoUpdateByIDErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+					require.Equal(t, 1, id)
+					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				},
+			}
+
+			storageVolumeClient := &serviceMock.StorageVolumeServerClientMock{
+				GetStorageVolumeByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string) (incusapi.StorageVolume, error) {
+					require.Equal(t, "one", storageVolumeName)
+					require.Equal(t, "storage_pool", storagePoolName)
+					return tc.storageVolumeClientGetStorageVolumeByName, tc.storageVolumeClientGetStorageVolumeByNameErr
+				},
+			}
+
+			storageVolumeSvc := inventory.NewStorageVolumeService(repo, nil, serverSvc, storageVolumeClient, nil, inventory.StorageVolumeWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			err := storageVolumeSvc.ResyncByID(context.Background(), 1)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestStorageVolumeService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {

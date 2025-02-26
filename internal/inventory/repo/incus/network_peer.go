@@ -21,3 +21,17 @@ func (s serverClient) GetNetworkPeers(ctx context.Context, connectionURL string,
 
 	return serverNetworkPeers, nil
 }
+
+func (s serverClient) GetNetworkPeerByName(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return incusapi.NetworkPeer{}, err
+	}
+
+	serverNetworkPeer, _, err := client.GetNetworkPeer(networkName, networkPeerName)
+	if err != nil {
+		return incusapi.NetworkPeer{}, err
+	}
+
+	return *serverNetworkPeer, nil
+}

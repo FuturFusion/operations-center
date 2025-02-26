@@ -150,6 +150,37 @@ func (i storageBucket) DeleteByServerID(ctx context.Context, serverID int) error
 	return nil
 }
 
+func (i storageBucket) UpdateByID(ctx context.Context, in inventory.StorageBucket) (inventory.StorageBucket, error) {
+	const sqlStmt = `
+WITH _server AS (
+  SELECT cluster_id FROM servers WHERE server_id = :server_id
+)
+UPDATE storage_buckets SET server_id=:server_id, project_name=:project_name, storage_pool_name=:storage_pool_name, name=:name, object=:object, last_updated=:last_updated
+WHERE id=:id
+RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project_name, storage_pool_name, name, object, last_updated;
+`
+
+	marshaledObject, err := json.Marshal(in.Object)
+	if err != nil {
+		return inventory.StorageBucket{}, err
+	}
+
+	row := i.db.QueryRowContext(ctx, sqlStmt,
+		sql.Named("id", in.ID),
+		sql.Named("server_id", in.ServerID),
+		sql.Named("project_name", in.ProjectName),
+		sql.Named("storage_pool_name", in.StoragePoolName),
+		sql.Named("name", in.Name),
+		sql.Named("object", marshaledObject),
+		sql.Named("last_updated", in.LastUpdated),
+	)
+	if row.Err() != nil {
+		return inventory.StorageBucket{}, sqlite.MapErr(row.Err())
+	}
+
+	return scanStorageBucket(row)
+}
+
 func scanStorageBucket(row interface{ Scan(dest ...any) error }) (inventory.StorageBucket, error) {
 	var object []byte
 	var storageBucket inventory.StorageBucket

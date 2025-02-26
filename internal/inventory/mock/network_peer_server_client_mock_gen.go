@@ -21,6 +21,9 @@ var _ inventory.NetworkPeerServerClient = &NetworkPeerServerClientMock{}
 //
 //		// make and configure a mocked inventory.NetworkPeerServerClient
 //		mockedNetworkPeerServerClient := &NetworkPeerServerClientMock{
+//			GetNetworkPeerByNameFunc: func(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
+//				panic("mock out the GetNetworkPeerByName method")
+//			},
 //			GetNetworkPeersFunc: func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkPeer, error) {
 //				panic("mock out the GetNetworkPeers method")
 //			},
@@ -31,11 +34,25 @@ var _ inventory.NetworkPeerServerClient = &NetworkPeerServerClientMock{}
 //
 //	}
 type NetworkPeerServerClientMock struct {
+	// GetNetworkPeerByNameFunc mocks the GetNetworkPeerByName method.
+	GetNetworkPeerByNameFunc func(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (incusapi.NetworkPeer, error)
+
 	// GetNetworkPeersFunc mocks the GetNetworkPeers method.
 	GetNetworkPeersFunc func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkPeer, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetNetworkPeerByName holds details about calls to the GetNetworkPeerByName method.
+		GetNetworkPeerByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// NetworkName is the networkName argument value.
+			NetworkName string
+			// NetworkPeerName is the networkPeerName argument value.
+			NetworkPeerName string
+		}
 		// GetNetworkPeers holds details about calls to the GetNetworkPeers method.
 		GetNetworkPeers []struct {
 			// Ctx is the ctx argument value.
@@ -46,7 +63,52 @@ type NetworkPeerServerClientMock struct {
 			NetworkName string
 		}
 	}
-	lockGetNetworkPeers sync.RWMutex
+	lockGetNetworkPeerByName sync.RWMutex
+	lockGetNetworkPeers      sync.RWMutex
+}
+
+// GetNetworkPeerByName calls GetNetworkPeerByNameFunc.
+func (mock *NetworkPeerServerClientMock) GetNetworkPeerByName(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
+	if mock.GetNetworkPeerByNameFunc == nil {
+		panic("NetworkPeerServerClientMock.GetNetworkPeerByNameFunc: method is nil but NetworkPeerServerClient.GetNetworkPeerByName was just called")
+	}
+	callInfo := struct {
+		Ctx             context.Context
+		ConnectionURL   string
+		NetworkName     string
+		NetworkPeerName string
+	}{
+		Ctx:             ctx,
+		ConnectionURL:   connectionURL,
+		NetworkName:     networkName,
+		NetworkPeerName: networkPeerName,
+	}
+	mock.lockGetNetworkPeerByName.Lock()
+	mock.calls.GetNetworkPeerByName = append(mock.calls.GetNetworkPeerByName, callInfo)
+	mock.lockGetNetworkPeerByName.Unlock()
+	return mock.GetNetworkPeerByNameFunc(ctx, connectionURL, networkName, networkPeerName)
+}
+
+// GetNetworkPeerByNameCalls gets all the calls that were made to GetNetworkPeerByName.
+// Check the length with:
+//
+//	len(mockedNetworkPeerServerClient.GetNetworkPeerByNameCalls())
+func (mock *NetworkPeerServerClientMock) GetNetworkPeerByNameCalls() []struct {
+	Ctx             context.Context
+	ConnectionURL   string
+	NetworkName     string
+	NetworkPeerName string
+} {
+	var calls []struct {
+		Ctx             context.Context
+		ConnectionURL   string
+		NetworkName     string
+		NetworkPeerName string
+	}
+	mock.lockGetNetworkPeerByName.RLock()
+	calls = mock.calls.GetNetworkPeerByName
+	mock.lockGetNetworkPeerByName.RUnlock()
+	return calls
 }
 
 // GetNetworkPeers calls GetNetworkPeersFunc.

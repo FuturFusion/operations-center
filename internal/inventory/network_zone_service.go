@@ -49,6 +49,43 @@ func (s networkZoneService) GetByID(ctx context.Context, id int) (NetworkZone, e
 	return s.repo.GetByID(ctx, id)
 }
 
+func (s networkZoneService) ResyncByID(ctx context.Context, id int) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		networkZone, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		server, err := s.serverSvc.GetByID(ctx, networkZone.ServerID)
+		if err != nil {
+			return err
+		}
+
+		serverNetworkZone, err := s.networkZoneClient.GetNetworkZoneByName(ctx, server.ConnectionURL, networkZone.Name)
+		// FIXME: how to differentiate general errors from "not found" errors?
+		// TODO: if the NetworkZone is not found, it needs to be removed from the inventory.
+		if err != nil {
+			return err
+		}
+
+		networkZone.ProjectName = serverNetworkZone.Project
+		networkZone.Object = serverNetworkZone
+		networkZone.LastUpdated = s.now()
+
+		_, err = s.repo.UpdateByID(ctx, networkZone)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s networkZoneService) SyncAll(ctx context.Context) error {
 	clusters, err := s.clusterSvc.GetAll(ctx)
 	if err != nil {

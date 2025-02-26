@@ -122,6 +122,131 @@ func TestNetworkService_GetByID(t *testing.T) {
 	}
 }
 
+func TestNetworkService_ResyncByID(t *testing.T) {
+	tests := []struct {
+		name                             string
+		serverSvcGetByIDServer           provisioning.Server
+		serverSvcGetByIDErr              error
+		networkClientGetNetworkByName    incusapi.Network
+		networkClientGetNetworkByNameErr error
+		repoGetByIDNetwork               inventory.Network
+		repoGetByIDErr                   error
+		repoUpdateByIDErr                error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByIDNetwork: inventory.Network{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkClientGetNetworkByName: incusapi.Network{
+				Name: "network one",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - network get by ID",
+			repoGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - server get by ID",
+			repoGetByIDNetwork: inventory.Network{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - network get by name",
+			repoGetByIDNetwork: inventory.Network{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkClientGetNetworkByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - update by ID",
+			repoGetByIDNetwork: inventory.Network{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkClientGetNetworkByName: incusapi.Network{
+				Name: "network one",
+			},
+			repoUpdateByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.NetworkRepoMock{
+				GetByIDFunc: func(ctx context.Context, id int) (inventory.Network, error) {
+					return tc.repoGetByIDNetwork, tc.repoGetByIDErr
+				},
+				UpdateByIDFunc: func(ctx context.Context, network inventory.Network) (inventory.Network, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), network.LastUpdated)
+					return inventory.Network{}, tc.repoUpdateByIDErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+					require.Equal(t, 1, id)
+					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				},
+			}
+
+			networkClient := &serviceMock.NetworkServerClientMock{
+				GetNetworkByNameFunc: func(ctx context.Context, connectionURL string, networkName string) (incusapi.Network, error) {
+					require.Equal(t, "one", networkName)
+					return tc.networkClientGetNetworkByName, tc.networkClientGetNetworkByNameErr
+				},
+			}
+
+			networkSvc := inventory.NewNetworkService(repo, nil, serverSvc, networkClient, inventory.NetworkWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			err := networkSvc.ResyncByID(context.Background(), 1)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestNetworkService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {

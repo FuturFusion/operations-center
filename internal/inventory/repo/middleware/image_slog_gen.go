@@ -103,3 +103,23 @@ func (_d ImageRepoWithSlog) GetByID(ctx context.Context, id int) (i1 _sourceInve
 	}()
 	return _d._base.GetByID(ctx, id)
 }
+
+// UpdateByID implements _sourceInventory.ImageRepo
+func (_d ImageRepoWithSlog) UpdateByID(ctx context.Context, image _sourceInventory.Image) (i1 _sourceInventory.Image, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Any("image", image),
+	).Debug("ImageRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("i1", i1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("ImageRepoWithSlog: method UpdateByID returned an error")
+		} else {
+			log.Debug("ImageRepoWithSlog: method UpdateByID finished")
+		}
+	}()
+	return _d._base.UpdateByID(ctx, image)
+}

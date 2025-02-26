@@ -21,3 +21,17 @@ func (s serverClient) GetNetworkLoadBalancers(ctx context.Context, connectionURL
 
 	return serverNetworkLoadBalancers, nil
 }
+
+func (s serverClient) GetNetworkLoadBalancerByName(ctx context.Context, connectionURL string, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return incusapi.NetworkLoadBalancer{}, err
+	}
+
+	serverNetworkLoadBalancer, _, err := client.GetNetworkLoadBalancer(networkName, networkLoadBalancerName)
+	if err != nil {
+		return incusapi.NetworkLoadBalancer{}, err
+	}
+
+	return *serverNetworkLoadBalancer, nil
+}

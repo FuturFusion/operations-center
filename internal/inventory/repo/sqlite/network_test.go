@@ -134,6 +134,11 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, networkA, dbNetworkA)
 
+	networkB.LastUpdated = time.Now().UTC().Truncate(0)
+	dbNetworkB, err := network.UpdateByID(ctx, networkB)
+	require.NoError(t, err)
+	require.Equal(t, networkB, dbNetworkB)
+
 	// Delete networks by server ID.
 	err = network.DeleteByServerID(ctx, 1)
 	require.NoError(t, err)

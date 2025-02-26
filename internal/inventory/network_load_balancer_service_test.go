@@ -122,6 +122,136 @@ func TestNetworkLoadBalancerService_GetByID(t *testing.T) {
 	}
 }
 
+func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
+	tests := []struct {
+		name                                                     string
+		serverSvcGetByIDServer                                   provisioning.Server
+		serverSvcGetByIDErr                                      error
+		networkLoadBalancerClientGetNetworkLoadBalancerByName    incusapi.NetworkLoadBalancer
+		networkLoadBalancerClientGetNetworkLoadBalancerByNameErr error
+		repoGetByIDNetworkLoadBalancer                           inventory.NetworkLoadBalancer
+		repoGetByIDErr                                           error
+		repoUpdateByIDErr                                        error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
+				ID:          1,
+				ServerID:    1,
+				Name:        "one",
+				NetworkName: "network",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkLoadBalancerClientGetNetworkLoadBalancerByName: incusapi.NetworkLoadBalancer{
+				ListenAddress: "networkLoadBalancer one",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - networkLoadBalancer get by ID",
+			repoGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - server get by ID",
+			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
+				ID:          1,
+				ServerID:    1,
+				Name:        "one",
+				NetworkName: "network",
+			},
+			serverSvcGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - networkLoadBalancer get by name",
+			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
+				ID:          1,
+				ServerID:    1,
+				Name:        "one",
+				NetworkName: "network",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkLoadBalancerClientGetNetworkLoadBalancerByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - update by ID",
+			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
+				ID:          1,
+				ServerID:    1,
+				Name:        "one",
+				NetworkName: "network",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkLoadBalancerClientGetNetworkLoadBalancerByName: incusapi.NetworkLoadBalancer{
+				ListenAddress: "networkLoadBalancer one",
+			},
+			repoUpdateByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.NetworkLoadBalancerRepoMock{
+				GetByIDFunc: func(ctx context.Context, id int) (inventory.NetworkLoadBalancer, error) {
+					return tc.repoGetByIDNetworkLoadBalancer, tc.repoGetByIDErr
+				},
+				UpdateByIDFunc: func(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkLoadBalancer.LastUpdated)
+					return inventory.NetworkLoadBalancer{}, tc.repoUpdateByIDErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+					require.Equal(t, 1, id)
+					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				},
+			}
+
+			networkLoadBalancerClient := &serviceMock.NetworkLoadBalancerServerClientMock{
+				GetNetworkLoadBalancerByNameFunc: func(ctx context.Context, connectionURL string, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
+					require.Equal(t, "one", networkLoadBalancerName)
+					require.Equal(t, "network", networkName)
+					return tc.networkLoadBalancerClientGetNetworkLoadBalancerByName, tc.networkLoadBalancerClientGetNetworkLoadBalancerByNameErr
+				},
+			}
+
+			networkLoadBalancerSvc := inventory.NewNetworkLoadBalancerService(repo, nil, serverSvc, networkLoadBalancerClient, nil, inventory.NetworkLoadBalancerWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			err := networkLoadBalancerSvc.ResyncByID(context.Background(), 1)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {

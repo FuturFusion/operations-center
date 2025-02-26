@@ -131,6 +131,11 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, networkIntegrationA, dbNetworkIntegrationA)
 
+	networkIntegrationB.LastUpdated = time.Now().UTC().Truncate(0)
+	dbNetworkIntegrationB, err := networkIntegration.UpdateByID(ctx, networkIntegrationB)
+	require.NoError(t, err)
+	require.Equal(t, networkIntegrationB, dbNetworkIntegrationB)
+
 	// Delete network_integrations by server ID.
 	err = networkIntegration.DeleteByServerID(ctx, 1)
 	require.NoError(t, err)

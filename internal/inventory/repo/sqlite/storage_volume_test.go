@@ -136,6 +136,11 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, storageVolumeA, dbStorageVolumeA)
 
+	storageVolumeB.LastUpdated = time.Now().UTC().Truncate(0)
+	dbStorageVolumeB, err := storageVolume.UpdateByID(ctx, storageVolumeB)
+	require.NoError(t, err)
+	require.Equal(t, storageVolumeB, dbStorageVolumeB)
+
 	// Delete storage_volumes by server ID.
 	err = storageVolume.DeleteByServerID(ctx, 1)
 	require.NoError(t, err)

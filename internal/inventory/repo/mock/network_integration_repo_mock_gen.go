@@ -32,6 +32,9 @@ var _ inventory.NetworkIntegrationRepo = &NetworkIntegrationRepoMock{}
 //			GetByIDFunc: func(ctx context.Context, id int) (inventory.NetworkIntegration, error) {
 //				panic("mock out the GetByID method")
 //			},
+//			UpdateByIDFunc: func(ctx context.Context, networkIntegration inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
+//				panic("mock out the UpdateByID method")
+//			},
 //		}
 //
 //		// use mockedNetworkIntegrationRepo in code that requires inventory.NetworkIntegrationRepo
@@ -50,6 +53,9 @@ type NetworkIntegrationRepoMock struct {
 
 	// GetByIDFunc mocks the GetByID method.
 	GetByIDFunc func(ctx context.Context, id int) (inventory.NetworkIntegration, error)
+
+	// UpdateByIDFunc mocks the UpdateByID method.
+	UpdateByIDFunc func(ctx context.Context, networkIntegration inventory.NetworkIntegration) (inventory.NetworkIntegration, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -81,11 +87,19 @@ type NetworkIntegrationRepoMock struct {
 			// ID is the id argument value.
 			ID int
 		}
+		// UpdateByID holds details about calls to the UpdateByID method.
+		UpdateByID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// NetworkIntegration is the networkIntegration argument value.
+			NetworkIntegration inventory.NetworkIntegration
+		}
 	}
 	lockCreate              sync.RWMutex
 	lockDeleteByServerID    sync.RWMutex
 	lockGetAllIDsWithFilter sync.RWMutex
 	lockGetByID             sync.RWMutex
+	lockUpdateByID          sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -229,5 +243,41 @@ func (mock *NetworkIntegrationRepoMock) GetByIDCalls() []struct {
 	mock.lockGetByID.RLock()
 	calls = mock.calls.GetByID
 	mock.lockGetByID.RUnlock()
+	return calls
+}
+
+// UpdateByID calls UpdateByIDFunc.
+func (mock *NetworkIntegrationRepoMock) UpdateByID(ctx context.Context, networkIntegration inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
+	if mock.UpdateByIDFunc == nil {
+		panic("NetworkIntegrationRepoMock.UpdateByIDFunc: method is nil but NetworkIntegrationRepo.UpdateByID was just called")
+	}
+	callInfo := struct {
+		Ctx                context.Context
+		NetworkIntegration inventory.NetworkIntegration
+	}{
+		Ctx:                ctx,
+		NetworkIntegration: networkIntegration,
+	}
+	mock.lockUpdateByID.Lock()
+	mock.calls.UpdateByID = append(mock.calls.UpdateByID, callInfo)
+	mock.lockUpdateByID.Unlock()
+	return mock.UpdateByIDFunc(ctx, networkIntegration)
+}
+
+// UpdateByIDCalls gets all the calls that were made to UpdateByID.
+// Check the length with:
+//
+//	len(mockedNetworkIntegrationRepo.UpdateByIDCalls())
+func (mock *NetworkIntegrationRepoMock) UpdateByIDCalls() []struct {
+	Ctx                context.Context
+	NetworkIntegration inventory.NetworkIntegration
+} {
+	var calls []struct {
+		Ctx                context.Context
+		NetworkIntegration inventory.NetworkIntegration
+	}
+	mock.lockUpdateByID.RLock()
+	calls = mock.calls.UpdateByID
+	mock.lockUpdateByID.RUnlock()
 	return calls
 }

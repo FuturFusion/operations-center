@@ -21,6 +21,9 @@ var _ inventory.NetworkZoneServerClient = &NetworkZoneServerClientMock{}
 //
 //		// make and configure a mocked inventory.NetworkZoneServerClient
 //		mockedNetworkZoneServerClient := &NetworkZoneServerClientMock{
+//			GetNetworkZoneByNameFunc: func(ctx context.Context, connectionURL string, networkZoneName string) (incusapi.NetworkZone, error) {
+//				panic("mock out the GetNetworkZoneByName method")
+//			},
 //			GetNetworkZonesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkZone, error) {
 //				panic("mock out the GetNetworkZones method")
 //			},
@@ -31,11 +34,23 @@ var _ inventory.NetworkZoneServerClient = &NetworkZoneServerClientMock{}
 //
 //	}
 type NetworkZoneServerClientMock struct {
+	// GetNetworkZoneByNameFunc mocks the GetNetworkZoneByName method.
+	GetNetworkZoneByNameFunc func(ctx context.Context, connectionURL string, networkZoneName string) (incusapi.NetworkZone, error)
+
 	// GetNetworkZonesFunc mocks the GetNetworkZones method.
 	GetNetworkZonesFunc func(ctx context.Context, connectionURL string) ([]incusapi.NetworkZone, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetNetworkZoneByName holds details about calls to the GetNetworkZoneByName method.
+		GetNetworkZoneByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// NetworkZoneName is the networkZoneName argument value.
+			NetworkZoneName string
+		}
 		// GetNetworkZones holds details about calls to the GetNetworkZones method.
 		GetNetworkZones []struct {
 			// Ctx is the ctx argument value.
@@ -44,7 +59,48 @@ type NetworkZoneServerClientMock struct {
 			ConnectionURL string
 		}
 	}
-	lockGetNetworkZones sync.RWMutex
+	lockGetNetworkZoneByName sync.RWMutex
+	lockGetNetworkZones      sync.RWMutex
+}
+
+// GetNetworkZoneByName calls GetNetworkZoneByNameFunc.
+func (mock *NetworkZoneServerClientMock) GetNetworkZoneByName(ctx context.Context, connectionURL string, networkZoneName string) (incusapi.NetworkZone, error) {
+	if mock.GetNetworkZoneByNameFunc == nil {
+		panic("NetworkZoneServerClientMock.GetNetworkZoneByNameFunc: method is nil but NetworkZoneServerClient.GetNetworkZoneByName was just called")
+	}
+	callInfo := struct {
+		Ctx             context.Context
+		ConnectionURL   string
+		NetworkZoneName string
+	}{
+		Ctx:             ctx,
+		ConnectionURL:   connectionURL,
+		NetworkZoneName: networkZoneName,
+	}
+	mock.lockGetNetworkZoneByName.Lock()
+	mock.calls.GetNetworkZoneByName = append(mock.calls.GetNetworkZoneByName, callInfo)
+	mock.lockGetNetworkZoneByName.Unlock()
+	return mock.GetNetworkZoneByNameFunc(ctx, connectionURL, networkZoneName)
+}
+
+// GetNetworkZoneByNameCalls gets all the calls that were made to GetNetworkZoneByName.
+// Check the length with:
+//
+//	len(mockedNetworkZoneServerClient.GetNetworkZoneByNameCalls())
+func (mock *NetworkZoneServerClientMock) GetNetworkZoneByNameCalls() []struct {
+	Ctx             context.Context
+	ConnectionURL   string
+	NetworkZoneName string
+} {
+	var calls []struct {
+		Ctx             context.Context
+		ConnectionURL   string
+		NetworkZoneName string
+	}
+	mock.lockGetNetworkZoneByName.RLock()
+	calls = mock.calls.GetNetworkZoneByName
+	mock.lockGetNetworkZoneByName.RUnlock()
+	return calls
 }
 
 // GetNetworkZones calls GetNetworkZonesFunc.

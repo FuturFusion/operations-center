@@ -144,6 +144,11 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, {{ .Name | camelcase }}A, db{{ .Name | pascalcase }}A)
 
+	{{ .Name | camelcase }}B.LastUpdated = time.Now().UTC().Truncate(0)
+	db{{ .Name | pascalcase }}B, err := {{ .Name | camelcase }}.UpdateByID(ctx, {{ .Name | camelcase }}B)
+	require.NoError(t, err)
+	require.Equal(t, {{ .Name | camelcase }}B, db{{ .Name | pascalcase }}B)
+
 	// Delete {{ .PluralName }} by server ID.
 	err = {{ .Name | camelcase }}.DeleteByServerID(ctx, 1)
 	require.NoError(t, err)

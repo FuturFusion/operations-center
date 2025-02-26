@@ -11,6 +11,7 @@ import (
 type NetworkPeerService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkPeer, error)
+	ResyncByID(ctx context.Context, id int) error
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 	SyncServer(ctx context.Context, serverID int) error
@@ -25,10 +26,12 @@ type NetworkPeerRepo interface {
 	GetByID(ctx context.Context, id int) (NetworkPeer, error)
 	Create(ctx context.Context, networkPeer NetworkPeer) (NetworkPeer, error)
 	DeleteByServerID(ctx context.Context, serverID int) error
+	UpdateByID(ctx context.Context, networkPeer NetworkPeer) (NetworkPeer, error)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/network_peer_server_client_mock_gen.go -rm . NetworkPeerServerClient
 
 type NetworkPeerServerClient interface {
 	GetNetworkPeers(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkPeer, error)
+	GetNetworkPeerByName(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (incusapi.NetworkPeer, error)
 }

@@ -134,6 +134,11 @@ func TestImageDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, imageA, dbImageA)
 
+	imageB.LastUpdated = time.Now().UTC().Truncate(0)
+	dbImageB, err := image.UpdateByID(ctx, imageB)
+	require.NoError(t, err)
+	require.Equal(t, imageB, dbImageB)
+
 	// Delete images by server ID.
 	err = image.DeleteByServerID(ctx, 1)
 	require.NoError(t, err)

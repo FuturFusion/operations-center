@@ -122,6 +122,131 @@ func TestImageService_GetByID(t *testing.T) {
 	}
 }
 
+func TestImageService_ResyncByID(t *testing.T) {
+	tests := []struct {
+		name                         string
+		serverSvcGetByIDServer       provisioning.Server
+		serverSvcGetByIDErr          error
+		imageClientGetImageByName    incusapi.Image
+		imageClientGetImageByNameErr error
+		repoGetByIDImage             inventory.Image
+		repoGetByIDErr               error
+		repoUpdateByIDErr            error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByIDImage: inventory.Image{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			imageClientGetImageByName: incusapi.Image{
+				Filename: "image one",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - image get by ID",
+			repoGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - server get by ID",
+			repoGetByIDImage: inventory.Image{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - image get by name",
+			repoGetByIDImage: inventory.Image{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			imageClientGetImageByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - update by ID",
+			repoGetByIDImage: inventory.Image{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			imageClientGetImageByName: incusapi.Image{
+				Filename: "image one",
+			},
+			repoUpdateByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ImageRepoMock{
+				GetByIDFunc: func(ctx context.Context, id int) (inventory.Image, error) {
+					return tc.repoGetByIDImage, tc.repoGetByIDErr
+				},
+				UpdateByIDFunc: func(ctx context.Context, image inventory.Image) (inventory.Image, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), image.LastUpdated)
+					return inventory.Image{}, tc.repoUpdateByIDErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+					require.Equal(t, 1, id)
+					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				},
+			}
+
+			imageClient := &serviceMock.ImageServerClientMock{
+				GetImageByNameFunc: func(ctx context.Context, connectionURL string, imageName string) (incusapi.Image, error) {
+					require.Equal(t, "one", imageName)
+					return tc.imageClientGetImageByName, tc.imageClientGetImageByNameErr
+				},
+			}
+
+			imageSvc := inventory.NewImageService(repo, nil, serverSvc, imageClient, inventory.ImageWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			err := imageSvc.ResyncByID(context.Background(), 1)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestImageService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {

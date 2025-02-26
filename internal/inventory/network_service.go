@@ -49,6 +49,43 @@ func (s networkService) GetByID(ctx context.Context, id int) (Network, error) {
 	return s.repo.GetByID(ctx, id)
 }
 
+func (s networkService) ResyncByID(ctx context.Context, id int) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		network, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		server, err := s.serverSvc.GetByID(ctx, network.ServerID)
+		if err != nil {
+			return err
+		}
+
+		serverNetwork, err := s.networkClient.GetNetworkByName(ctx, server.ConnectionURL, network.Name)
+		// FIXME: how to differentiate general errors from "not found" errors?
+		// TODO: if the Network is not found, it needs to be removed from the inventory.
+		if err != nil {
+			return err
+		}
+
+		network.ProjectName = serverNetwork.Project
+		network.Object = serverNetwork
+		network.LastUpdated = s.now()
+
+		_, err = s.repo.UpdateByID(ctx, network)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s networkService) SyncAll(ctx context.Context) error {
 	clusters, err := s.clusterSvc.GetAll(ctx)
 	if err != nil {

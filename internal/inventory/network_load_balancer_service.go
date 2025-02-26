@@ -51,6 +51,42 @@ func (s networkLoadBalancerService) GetByID(ctx context.Context, id int) (Networ
 	return s.repo.GetByID(ctx, id)
 }
 
+func (s networkLoadBalancerService) ResyncByID(ctx context.Context, id int) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		networkLoadBalancer, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		server, err := s.serverSvc.GetByID(ctx, networkLoadBalancer.ServerID)
+		if err != nil {
+			return err
+		}
+
+		serverNetworkLoadBalancer, err := s.networkLoadBalancerClient.GetNetworkLoadBalancerByName(ctx, server.ConnectionURL, networkLoadBalancer.NetworkName, networkLoadBalancer.Name)
+		// FIXME: how to differentiate general errors from "not found" errors?
+		// TODO: if the NetworkLoadBalancer is not found, it needs to be removed from the inventory.
+		if err != nil {
+			return err
+		}
+
+		networkLoadBalancer.Object = serverNetworkLoadBalancer
+		networkLoadBalancer.LastUpdated = s.now()
+
+		_, err = s.repo.UpdateByID(ctx, networkLoadBalancer)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s networkLoadBalancerService) SyncAll(ctx context.Context) error {
 	clusters, err := s.clusterSvc.GetAll(ctx)
 	if err != nil {

@@ -121,6 +121,131 @@ func TestNetworkIntegrationService_GetByID(t *testing.T) {
 	}
 }
 
+func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
+	tests := []struct {
+		name                                                   string
+		serverSvcGetByIDServer                                 provisioning.Server
+		serverSvcGetByIDErr                                    error
+		networkIntegrationClientGetNetworkIntegrationByName    incusapi.NetworkIntegration
+		networkIntegrationClientGetNetworkIntegrationByNameErr error
+		repoGetByIDNetworkIntegration                          inventory.NetworkIntegration
+		repoGetByIDErr                                         error
+		repoUpdateByIDErr                                      error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByIDNetworkIntegration: inventory.NetworkIntegration{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
+				Name: "networkIntegration one",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - networkIntegration get by ID",
+			repoGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - server get by ID",
+			repoGetByIDNetworkIntegration: inventory.NetworkIntegration{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - networkIntegration get by name",
+			repoGetByIDNetworkIntegration: inventory.NetworkIntegration{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkIntegrationClientGetNetworkIntegrationByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - update by ID",
+			repoGetByIDNetworkIntegration: inventory.NetworkIntegration{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
+				Name: "networkIntegration one",
+			},
+			repoUpdateByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.NetworkIntegrationRepoMock{
+				GetByIDFunc: func(ctx context.Context, id int) (inventory.NetworkIntegration, error) {
+					return tc.repoGetByIDNetworkIntegration, tc.repoGetByIDErr
+				},
+				UpdateByIDFunc: func(ctx context.Context, networkIntegration inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkIntegration.LastUpdated)
+					return inventory.NetworkIntegration{}, tc.repoUpdateByIDErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+					require.Equal(t, 1, id)
+					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				},
+			}
+
+			networkIntegrationClient := &serviceMock.NetworkIntegrationServerClientMock{
+				GetNetworkIntegrationByNameFunc: func(ctx context.Context, connectionURL string, networkIntegrationName string) (incusapi.NetworkIntegration, error) {
+					require.Equal(t, "one", networkIntegrationName)
+					return tc.networkIntegrationClientGetNetworkIntegrationByName, tc.networkIntegrationClientGetNetworkIntegrationByNameErr
+				},
+			}
+
+			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, nil, serverSvc, networkIntegrationClient, inventory.NetworkIntegrationWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			err := networkIntegrationSvc.ResyncByID(context.Background(), 1)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {

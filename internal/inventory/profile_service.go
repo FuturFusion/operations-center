@@ -49,6 +49,43 @@ func (s profileService) GetByID(ctx context.Context, id int) (Profile, error) {
 	return s.repo.GetByID(ctx, id)
 }
 
+func (s profileService) ResyncByID(ctx context.Context, id int) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		profile, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		server, err := s.serverSvc.GetByID(ctx, profile.ServerID)
+		if err != nil {
+			return err
+		}
+
+		serverProfile, err := s.profileClient.GetProfileByName(ctx, server.ConnectionURL, profile.Name)
+		// FIXME: how to differentiate general errors from "not found" errors?
+		// TODO: if the Profile is not found, it needs to be removed from the inventory.
+		if err != nil {
+			return err
+		}
+
+		profile.ProjectName = serverProfile.Project
+		profile.Object = serverProfile
+		profile.LastUpdated = s.now()
+
+		_, err = s.repo.UpdateByID(ctx, profile)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s profileService) SyncAll(ctx context.Context) error {
 	clusters, err := s.clusterSvc.GetAll(ctx)
 	if err != nil {

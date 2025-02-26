@@ -133,6 +133,11 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, networkForwardA, dbNetworkForwardA)
 
+	networkForwardB.LastUpdated = time.Now().UTC().Truncate(0)
+	dbNetworkForwardB, err := networkForward.UpdateByID(ctx, networkForwardB)
+	require.NoError(t, err)
+	require.Equal(t, networkForwardB, dbNetworkForwardB)
+
 	// Delete network_forwards by server ID.
 	err = networkForward.DeleteByServerID(ctx, 1)
 	require.NoError(t, err)

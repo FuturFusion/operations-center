@@ -144,6 +144,36 @@ func (i networkPeer) DeleteByServerID(ctx context.Context, serverID int) error {
 	return nil
 }
 
+func (i networkPeer) UpdateByID(ctx context.Context, in inventory.NetworkPeer) (inventory.NetworkPeer, error) {
+	const sqlStmt = `
+WITH _server AS (
+  SELECT cluster_id FROM servers WHERE server_id = :server_id
+)
+UPDATE network_peers SET server_id=:server_id, network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
+WHERE id=:id
+RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, network_name, name, object, last_updated;
+`
+
+	marshaledObject, err := json.Marshal(in.Object)
+	if err != nil {
+		return inventory.NetworkPeer{}, err
+	}
+
+	row := i.db.QueryRowContext(ctx, sqlStmt,
+		sql.Named("id", in.ID),
+		sql.Named("server_id", in.ServerID),
+		sql.Named("network_name", in.NetworkName),
+		sql.Named("name", in.Name),
+		sql.Named("object", marshaledObject),
+		sql.Named("last_updated", in.LastUpdated),
+	)
+	if row.Err() != nil {
+		return inventory.NetworkPeer{}, sqlite.MapErr(row.Err())
+	}
+
+	return scanNetworkPeer(row)
+}
+
 func scanNetworkPeer(row interface{ Scan(dest ...any) error }) (inventory.NetworkPeer, error) {
 	var object []byte
 	var networkPeer inventory.NetworkPeer

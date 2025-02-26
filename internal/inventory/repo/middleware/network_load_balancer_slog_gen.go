@@ -103,3 +103,23 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetByID(ctx context.Context, id int) (
 	}()
 	return _d._base.GetByID(ctx, id)
 }
+
+// UpdateByID implements _sourceInventory.NetworkLoadBalancerRepo
+func (_d NetworkLoadBalancerRepoWithSlog) UpdateByID(ctx context.Context, networkLoadBalancer _sourceInventory.NetworkLoadBalancer) (n1 _sourceInventory.NetworkLoadBalancer, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Any("networkLoadBalancer", networkLoadBalancer),
+	).Debug("NetworkLoadBalancerRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("n1", n1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("NetworkLoadBalancerRepoWithSlog: method UpdateByID returned an error")
+		} else {
+			log.Debug("NetworkLoadBalancerRepoWithSlog: method UpdateByID finished")
+		}
+	}()
+	return _d._base.UpdateByID(ctx, networkLoadBalancer)
+}

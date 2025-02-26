@@ -21,6 +21,9 @@ var _ inventory.StorageBucketServerClient = &StorageBucketServerClientMock{}
 //
 //		// make and configure a mocked inventory.StorageBucketServerClient
 //		mockedStorageBucketServerClient := &StorageBucketServerClientMock{
+//			GetStorageBucketByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
+//				panic("mock out the GetStorageBucketByName method")
+//			},
 //			GetStorageBucketsFunc: func(ctx context.Context, connectionURL string, storagePoolName string) ([]incusapi.StorageBucket, error) {
 //				panic("mock out the GetStorageBuckets method")
 //			},
@@ -31,11 +34,25 @@ var _ inventory.StorageBucketServerClient = &StorageBucketServerClientMock{}
 //
 //	}
 type StorageBucketServerClientMock struct {
+	// GetStorageBucketByNameFunc mocks the GetStorageBucketByName method.
+	GetStorageBucketByNameFunc func(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error)
+
 	// GetStorageBucketsFunc mocks the GetStorageBuckets method.
 	GetStorageBucketsFunc func(ctx context.Context, connectionURL string, storagePoolName string) ([]incusapi.StorageBucket, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetStorageBucketByName holds details about calls to the GetStorageBucketByName method.
+		GetStorageBucketByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// StoragePoolName is the storagePoolName argument value.
+			StoragePoolName string
+			// StorageBucketName is the storageBucketName argument value.
+			StorageBucketName string
+		}
 		// GetStorageBuckets holds details about calls to the GetStorageBuckets method.
 		GetStorageBuckets []struct {
 			// Ctx is the ctx argument value.
@@ -46,7 +63,52 @@ type StorageBucketServerClientMock struct {
 			StoragePoolName string
 		}
 	}
-	lockGetStorageBuckets sync.RWMutex
+	lockGetStorageBucketByName sync.RWMutex
+	lockGetStorageBuckets      sync.RWMutex
+}
+
+// GetStorageBucketByName calls GetStorageBucketByNameFunc.
+func (mock *StorageBucketServerClientMock) GetStorageBucketByName(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
+	if mock.GetStorageBucketByNameFunc == nil {
+		panic("StorageBucketServerClientMock.GetStorageBucketByNameFunc: method is nil but StorageBucketServerClient.GetStorageBucketByName was just called")
+	}
+	callInfo := struct {
+		Ctx               context.Context
+		ConnectionURL     string
+		StoragePoolName   string
+		StorageBucketName string
+	}{
+		Ctx:               ctx,
+		ConnectionURL:     connectionURL,
+		StoragePoolName:   storagePoolName,
+		StorageBucketName: storageBucketName,
+	}
+	mock.lockGetStorageBucketByName.Lock()
+	mock.calls.GetStorageBucketByName = append(mock.calls.GetStorageBucketByName, callInfo)
+	mock.lockGetStorageBucketByName.Unlock()
+	return mock.GetStorageBucketByNameFunc(ctx, connectionURL, storagePoolName, storageBucketName)
+}
+
+// GetStorageBucketByNameCalls gets all the calls that were made to GetStorageBucketByName.
+// Check the length with:
+//
+//	len(mockedStorageBucketServerClient.GetStorageBucketByNameCalls())
+func (mock *StorageBucketServerClientMock) GetStorageBucketByNameCalls() []struct {
+	Ctx               context.Context
+	ConnectionURL     string
+	StoragePoolName   string
+	StorageBucketName string
+} {
+	var calls []struct {
+		Ctx               context.Context
+		ConnectionURL     string
+		StoragePoolName   string
+		StorageBucketName string
+	}
+	mock.lockGetStorageBucketByName.RLock()
+	calls = mock.calls.GetStorageBucketByName
+	mock.lockGetStorageBucketByName.RUnlock()
+	return calls
 }
 
 // GetStorageBuckets calls GetStorageBucketsFunc.

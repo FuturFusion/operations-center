@@ -55,6 +55,45 @@ func (s {{ .Name | camelcase }}Service) GetByID(ctx context.Context, id int) ({{
 	return s.repo.GetByID(ctx, id)
 }
 
+func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		{{ .Name | camelcase }}, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		server, err := s.serverSvc.GetByID(ctx, {{ .Name | camelcase }}.ServerID)
+		if err != nil {
+			return err
+		}
+
+		server{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, server.ConnectionURL, {{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name)
+		// FIXME: how to differentiate general errors from "not found" errors?
+		// TODO: if the {{ .Name | pascalcase }} is not found, it needs to be removed from the inventory.
+		if err != nil {
+			return err
+		}
+
+{{ if .HasProject }}
+		{{ .Name | camelcase }}.ProjectName = server{{ .Name | pascalcase }}.Project
+{{- end }}
+		{{ .Name | camelcase }}.Object = server{{ .Name | pascalcase }}
+		{{ .Name | camelcase }}.LastUpdated = s.now()
+
+		_, err = s.repo.UpdateByID(ctx, {{ .Name | camelcase }})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s {{ .Name | camelcase }}Service) SyncAll(ctx context.Context) error {
 	clusters, err := s.clusterSvc.GetAll(ctx)
 	if err != nil {

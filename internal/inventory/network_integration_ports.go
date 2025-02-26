@@ -11,6 +11,7 @@ import (
 type NetworkIntegrationService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkIntegrationFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkIntegration, error)
+	ResyncByID(ctx context.Context, id int) error
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 	SyncServer(ctx context.Context, serverID int) error
@@ -25,10 +26,12 @@ type NetworkIntegrationRepo interface {
 	GetByID(ctx context.Context, id int) (NetworkIntegration, error)
 	Create(ctx context.Context, networkIntegration NetworkIntegration) (NetworkIntegration, error)
 	DeleteByServerID(ctx context.Context, serverID int) error
+	UpdateByID(ctx context.Context, networkIntegration NetworkIntegration) (NetworkIntegration, error)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/network_integration_server_client_mock_gen.go -rm . NetworkIntegrationServerClient
 
 type NetworkIntegrationServerClient interface {
 	GetNetworkIntegrations(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error)
+	GetNetworkIntegrationByName(ctx context.Context, connectionURL string, networkIntegrationName string) (incusapi.NetworkIntegration, error)
 }

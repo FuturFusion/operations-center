@@ -21,6 +21,9 @@ var _ inventory.ProfileServerClient = &ProfileServerClientMock{}
 //
 //		// make and configure a mocked inventory.ProfileServerClient
 //		mockedProfileServerClient := &ProfileServerClientMock{
+//			GetProfileByNameFunc: func(ctx context.Context, connectionURL string, profileName string) (incusapi.Profile, error) {
+//				panic("mock out the GetProfileByName method")
+//			},
 //			GetProfilesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Profile, error) {
 //				panic("mock out the GetProfiles method")
 //			},
@@ -31,11 +34,23 @@ var _ inventory.ProfileServerClient = &ProfileServerClientMock{}
 //
 //	}
 type ProfileServerClientMock struct {
+	// GetProfileByNameFunc mocks the GetProfileByName method.
+	GetProfileByNameFunc func(ctx context.Context, connectionURL string, profileName string) (incusapi.Profile, error)
+
 	// GetProfilesFunc mocks the GetProfiles method.
 	GetProfilesFunc func(ctx context.Context, connectionURL string) ([]incusapi.Profile, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetProfileByName holds details about calls to the GetProfileByName method.
+		GetProfileByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// ProfileName is the profileName argument value.
+			ProfileName string
+		}
 		// GetProfiles holds details about calls to the GetProfiles method.
 		GetProfiles []struct {
 			// Ctx is the ctx argument value.
@@ -44,7 +59,48 @@ type ProfileServerClientMock struct {
 			ConnectionURL string
 		}
 	}
-	lockGetProfiles sync.RWMutex
+	lockGetProfileByName sync.RWMutex
+	lockGetProfiles      sync.RWMutex
+}
+
+// GetProfileByName calls GetProfileByNameFunc.
+func (mock *ProfileServerClientMock) GetProfileByName(ctx context.Context, connectionURL string, profileName string) (incusapi.Profile, error) {
+	if mock.GetProfileByNameFunc == nil {
+		panic("ProfileServerClientMock.GetProfileByNameFunc: method is nil but ProfileServerClient.GetProfileByName was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+		ProfileName   string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+		ProfileName:   profileName,
+	}
+	mock.lockGetProfileByName.Lock()
+	mock.calls.GetProfileByName = append(mock.calls.GetProfileByName, callInfo)
+	mock.lockGetProfileByName.Unlock()
+	return mock.GetProfileByNameFunc(ctx, connectionURL, profileName)
+}
+
+// GetProfileByNameCalls gets all the calls that were made to GetProfileByName.
+// Check the length with:
+//
+//	len(mockedProfileServerClient.GetProfileByNameCalls())
+func (mock *ProfileServerClientMock) GetProfileByNameCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+	ProfileName   string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+		ProfileName   string
+	}
+	mock.lockGetProfileByName.RLock()
+	calls = mock.calls.GetProfileByName
+	mock.lockGetProfileByName.RUnlock()
+	return calls
 }
 
 // GetProfiles calls GetProfilesFunc.

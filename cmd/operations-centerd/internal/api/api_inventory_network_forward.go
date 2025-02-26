@@ -24,6 +24,7 @@ func registerInventoryNetworkForwardHandler(router *http.ServeMux, service inven
 
 	router.HandleFunc("GET /{$}", response.With(handler.networkForwardsGet))
 	router.HandleFunc("GET /{id}", response.With(handler.networkForwardGet))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.networkForwardResyncPost))
 	router.HandleFunc("POST /force-sync", response.With(handler.forceSyncPost))
 }
 
@@ -166,6 +167,52 @@ func (i *networkForwardHandler) networkForwardGet(r *http.Request) response.Resp
 			LastUpdated: networkForward.LastUpdated,
 		},
 	)
+}
+
+// swagger:operation POST /1.0/inventory/network_forwards/{id}/resync network_forwards network_forward_get_resync_post
+//
+//	Resync the network_forward
+//
+//	Resync a specific network_forward.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Empty response
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (i *networkForwardHandler) networkForwardResyncPost(r *http.Request) response.Response {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	err = i.service.ResyncByID(r.Context(), id)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to resync network_forward: %w", err))
+	}
+
+	return response.EmptySyncResponse
 }
 
 // swagger:operation POST /1.0/inventory/network_forwards/force-sync network_forwards network_forwards_force_sync_post

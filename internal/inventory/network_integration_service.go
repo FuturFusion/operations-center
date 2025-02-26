@@ -49,6 +49,42 @@ func (s networkIntegrationService) GetByID(ctx context.Context, id int) (Network
 	return s.repo.GetByID(ctx, id)
 }
 
+func (s networkIntegrationService) ResyncByID(ctx context.Context, id int) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		networkIntegration, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		server, err := s.serverSvc.GetByID(ctx, networkIntegration.ServerID)
+		if err != nil {
+			return err
+		}
+
+		serverNetworkIntegration, err := s.networkIntegrationClient.GetNetworkIntegrationByName(ctx, server.ConnectionURL, networkIntegration.Name)
+		// FIXME: how to differentiate general errors from "not found" errors?
+		// TODO: if the NetworkIntegration is not found, it needs to be removed from the inventory.
+		if err != nil {
+			return err
+		}
+
+		networkIntegration.Object = serverNetworkIntegration
+		networkIntegration.LastUpdated = s.now()
+
+		_, err = s.repo.UpdateByID(ctx, networkIntegration)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s networkIntegrationService) SyncAll(ctx context.Context) error {
 	clusters, err := s.clusterSvc.GetAll(ctx)
 	if err != nil {

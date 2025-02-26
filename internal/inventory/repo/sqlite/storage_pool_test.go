@@ -131,6 +131,11 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, storagePoolA, dbStoragePoolA)
 
+	storagePoolB.LastUpdated = time.Now().UTC().Truncate(0)
+	dbStoragePoolB, err := storagePool.UpdateByID(ctx, storagePoolB)
+	require.NoError(t, err)
+	require.Equal(t, storagePoolB, dbStoragePoolB)
+
 	// Delete storage_pools by server ID.
 	err = storagePool.DeleteByServerID(ctx, 1)
 	require.NoError(t, err)

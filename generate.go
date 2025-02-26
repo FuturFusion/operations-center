@@ -1,17 +1,17 @@
 package tools
 
 //go:generate -command generate-inventory go run github.com/FuturFusion/operations-center/cmd/generate-inventory
-//go:generate generate-inventory --object-name-property-name filename --incus-get-method GetImagesAllProjects image
-//go:generate generate-inventory --object-type InstanceFull --incus-get-method GetInstancesFullAllProjects instance
-//go:generate generate-inventory --incus-get-method GetNetworksAllProjects network
-//go:generate generate-inventory --uses-embedded-post-type --incus-get-method GetNetworkACLsAllProjects network_acl
-//go:generate generate-inventory --object-name-property-name listen_address --omit-project --parent network --incus-get-method GetNetworkForwards network_forward
-//go:generate generate-inventory --omit-project --incus-get-method GetNetworkIntegrations network_integration
-//go:generate generate-inventory --object-name-property-name listen_address --omit-project --parent network --incus-get-method GetNetworkLoadBalancers network_load_balancer
-//go:generate generate-inventory --omit-project --parent network --incus-get-method GetNetworkPeers network_peer
-//go:generate generate-inventory --incus-get-method GetNetworkZonesAllProjects network_zone
-//go:generate generate-inventory --incus-get-method GetProfilesAllProjects profile
-//go:generate generate-inventory --omit-project --incus-get-method GetProjects project
-//go:generate generate-inventory --parent storage_pool --incus-get-method GetStoragePoolBucketsAllProjects storage_bucket
-//go:generate generate-inventory --omit-project --incus-get-method GetStoragePools storage_pool
-//go:generate generate-inventory --parent storage_pool --incus-get-method GetStoragePoolVolumesAllProjects storage_volume
+//go:generate generate-inventory --object-name-property-name filename --incus-get-all-method GetImagesAllProjects --incus-get-method GetImage image
+//go:generate generate-inventory --object-type InstanceFull --incus-get-all-method GetInstancesFullAllProjects --incus-get-method GetInstanceFull instance
+//go:generate generate-inventory --incus-get-all-method GetNetworksAllProjects --incus-get-method GetNetwork network
+//go:generate generate-inventory --uses-embedded-post-type --incus-get-all-method GetNetworkACLsAllProjects --incus-get-method GetNetworkACL network_acl
+//go:generate generate-inventory --object-name-property-name listen_address --omit-project --parent network --incus-get-all-method GetNetworkForwards --incus-get-method GetNetworkForward network_forward
+//go:generate generate-inventory --omit-project --incus-get-all-method GetNetworkIntegrations --incus-get-method GetNetworkIntegration network_integration
+//go:generate generate-inventory --object-name-property-name listen_address --omit-project --parent network --incus-get-all-method GetNetworkLoadBalancers --incus-get-method GetNetworkLoadBalancer network_load_balancer
+//go:generate generate-inventory --omit-project --parent network --incus-get-all-method GetNetworkPeers --incus-get-method GetNetworkPeer network_peer
+//go:generate generate-inventory --incus-get-all-method GetNetworkZonesAllProjects --incus-get-method GetNetworkZone network_zone
+//go:generate generate-inventory --incus-get-all-method GetProfilesAllProjects --incus-get-method GetProfile profile
+//go:generate generate-inventory --omit-project --incus-get-all-method GetProjects --incus-get-method GetProject project
+//go:generate generate-inventory --parent storage_pool --incus-get-all-method GetStoragePoolBucketsAllProjects --incus-get-method GetStoragePoolBucket storage_bucket
+//go:generate generate-inventory --omit-project --incus-get-all-method GetStoragePools --incus-get-method GetStoragePool storage_pool
+//go:generate generate-inventory --parent storage_pool --incus-get-all-method GetStoragePoolVolumesAllProjects --incus-get-method GetStoragePoolVolume storage_volume

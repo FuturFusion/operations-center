@@ -21,6 +21,9 @@ var _ inventory.NetworkIntegrationServerClient = &NetworkIntegrationServerClient
 //
 //		// make and configure a mocked inventory.NetworkIntegrationServerClient
 //		mockedNetworkIntegrationServerClient := &NetworkIntegrationServerClientMock{
+//			GetNetworkIntegrationByNameFunc: func(ctx context.Context, connectionURL string, networkIntegrationName string) (incusapi.NetworkIntegration, error) {
+//				panic("mock out the GetNetworkIntegrationByName method")
+//			},
 //			GetNetworkIntegrationsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error) {
 //				panic("mock out the GetNetworkIntegrations method")
 //			},
@@ -31,11 +34,23 @@ var _ inventory.NetworkIntegrationServerClient = &NetworkIntegrationServerClient
 //
 //	}
 type NetworkIntegrationServerClientMock struct {
+	// GetNetworkIntegrationByNameFunc mocks the GetNetworkIntegrationByName method.
+	GetNetworkIntegrationByNameFunc func(ctx context.Context, connectionURL string, networkIntegrationName string) (incusapi.NetworkIntegration, error)
+
 	// GetNetworkIntegrationsFunc mocks the GetNetworkIntegrations method.
 	GetNetworkIntegrationsFunc func(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetNetworkIntegrationByName holds details about calls to the GetNetworkIntegrationByName method.
+		GetNetworkIntegrationByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// NetworkIntegrationName is the networkIntegrationName argument value.
+			NetworkIntegrationName string
+		}
 		// GetNetworkIntegrations holds details about calls to the GetNetworkIntegrations method.
 		GetNetworkIntegrations []struct {
 			// Ctx is the ctx argument value.
@@ -44,7 +59,48 @@ type NetworkIntegrationServerClientMock struct {
 			ConnectionURL string
 		}
 	}
-	lockGetNetworkIntegrations sync.RWMutex
+	lockGetNetworkIntegrationByName sync.RWMutex
+	lockGetNetworkIntegrations      sync.RWMutex
+}
+
+// GetNetworkIntegrationByName calls GetNetworkIntegrationByNameFunc.
+func (mock *NetworkIntegrationServerClientMock) GetNetworkIntegrationByName(ctx context.Context, connectionURL string, networkIntegrationName string) (incusapi.NetworkIntegration, error) {
+	if mock.GetNetworkIntegrationByNameFunc == nil {
+		panic("NetworkIntegrationServerClientMock.GetNetworkIntegrationByNameFunc: method is nil but NetworkIntegrationServerClient.GetNetworkIntegrationByName was just called")
+	}
+	callInfo := struct {
+		Ctx                    context.Context
+		ConnectionURL          string
+		NetworkIntegrationName string
+	}{
+		Ctx:                    ctx,
+		ConnectionURL:          connectionURL,
+		NetworkIntegrationName: networkIntegrationName,
+	}
+	mock.lockGetNetworkIntegrationByName.Lock()
+	mock.calls.GetNetworkIntegrationByName = append(mock.calls.GetNetworkIntegrationByName, callInfo)
+	mock.lockGetNetworkIntegrationByName.Unlock()
+	return mock.GetNetworkIntegrationByNameFunc(ctx, connectionURL, networkIntegrationName)
+}
+
+// GetNetworkIntegrationByNameCalls gets all the calls that were made to GetNetworkIntegrationByName.
+// Check the length with:
+//
+//	len(mockedNetworkIntegrationServerClient.GetNetworkIntegrationByNameCalls())
+func (mock *NetworkIntegrationServerClientMock) GetNetworkIntegrationByNameCalls() []struct {
+	Ctx                    context.Context
+	ConnectionURL          string
+	NetworkIntegrationName string
+} {
+	var calls []struct {
+		Ctx                    context.Context
+		ConnectionURL          string
+		NetworkIntegrationName string
+	}
+	mock.lockGetNetworkIntegrationByName.RLock()
+	calls = mock.calls.GetNetworkIntegrationByName
+	mock.lockGetNetworkIntegrationByName.RUnlock()
+	return calls
 }
 
 // GetNetworkIntegrations calls GetNetworkIntegrationsFunc.

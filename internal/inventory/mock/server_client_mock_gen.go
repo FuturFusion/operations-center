@@ -21,26 +21,53 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //
 //		// make and configure a mocked inventory.ServerClient
 //		mockedServerClient := &ServerClientMock{
+//			GetImageByNameFunc: func(ctx context.Context, connectionURL string, imageName string) (incusapi.Image, error) {
+//				panic("mock out the GetImageByName method")
+//			},
 //			GetImagesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Image, error) {
 //				panic("mock out the GetImages method")
+//			},
+//			GetInstanceByNameFunc: func(ctx context.Context, connectionURL string, instanceName string) (incusapi.InstanceFull, error) {
+//				panic("mock out the GetInstanceByName method")
 //			},
 //			GetInstancesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error) {
 //				panic("mock out the GetInstances method")
 //			},
+//			GetNetworkACLByNameFunc: func(ctx context.Context, connectionURL string, networkACLName string) (incusapi.NetworkACL, error) {
+//				panic("mock out the GetNetworkACLByName method")
+//			},
 //			GetNetworkACLsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error) {
 //				panic("mock out the GetNetworkACLs method")
+//			},
+//			GetNetworkByNameFunc: func(ctx context.Context, connectionURL string, networkName string) (incusapi.Network, error) {
+//				panic("mock out the GetNetworkByName method")
+//			},
+//			GetNetworkForwardByNameFunc: func(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
+//				panic("mock out the GetNetworkForwardByName method")
 //			},
 //			GetNetworkForwardsFunc: func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkForward, error) {
 //				panic("mock out the GetNetworkForwards method")
 //			},
+//			GetNetworkIntegrationByNameFunc: func(ctx context.Context, connectionURL string, networkIntegrationName string) (incusapi.NetworkIntegration, error) {
+//				panic("mock out the GetNetworkIntegrationByName method")
+//			},
 //			GetNetworkIntegrationsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error) {
 //				panic("mock out the GetNetworkIntegrations method")
+//			},
+//			GetNetworkLoadBalancerByNameFunc: func(ctx context.Context, connectionURL string, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
+//				panic("mock out the GetNetworkLoadBalancerByName method")
 //			},
 //			GetNetworkLoadBalancersFunc: func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkLoadBalancer, error) {
 //				panic("mock out the GetNetworkLoadBalancers method")
 //			},
+//			GetNetworkPeerByNameFunc: func(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
+//				panic("mock out the GetNetworkPeerByName method")
+//			},
 //			GetNetworkPeersFunc: func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkPeer, error) {
 //				panic("mock out the GetNetworkPeers method")
+//			},
+//			GetNetworkZoneByNameFunc: func(ctx context.Context, connectionURL string, networkZoneName string) (incusapi.NetworkZone, error) {
+//				panic("mock out the GetNetworkZoneByName method")
 //			},
 //			GetNetworkZonesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkZone, error) {
 //				panic("mock out the GetNetworkZones method")
@@ -48,17 +75,32 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //			GetNetworksFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Network, error) {
 //				panic("mock out the GetNetworks method")
 //			},
+//			GetProfileByNameFunc: func(ctx context.Context, connectionURL string, profileName string) (incusapi.Profile, error) {
+//				panic("mock out the GetProfileByName method")
+//			},
 //			GetProfilesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Profile, error) {
 //				panic("mock out the GetProfiles method")
+//			},
+//			GetProjectByNameFunc: func(ctx context.Context, connectionURL string, projectName string) (incusapi.Project, error) {
+//				panic("mock out the GetProjectByName method")
 //			},
 //			GetProjectsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Project, error) {
 //				panic("mock out the GetProjects method")
 //			},
+//			GetStorageBucketByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
+//				panic("mock out the GetStorageBucketByName method")
+//			},
 //			GetStorageBucketsFunc: func(ctx context.Context, connectionURL string, storagePoolName string) ([]incusapi.StorageBucket, error) {
 //				panic("mock out the GetStorageBuckets method")
 //			},
+//			GetStoragePoolByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string) (incusapi.StoragePool, error) {
+//				panic("mock out the GetStoragePoolByName method")
+//			},
 //			GetStoragePoolsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.StoragePool, error) {
 //				panic("mock out the GetStoragePools method")
+//			},
+//			GetStorageVolumeByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string) (incusapi.StorageVolume, error) {
+//				panic("mock out the GetStorageVolumeByName method")
 //			},
 //			GetStorageVolumesFunc: func(ctx context.Context, connectionURL string, storagePoolName string) ([]incusapi.StorageVolume, error) {
 //				panic("mock out the GetStorageVolumes method")
@@ -70,26 +112,53 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //
 //	}
 type ServerClientMock struct {
+	// GetImageByNameFunc mocks the GetImageByName method.
+	GetImageByNameFunc func(ctx context.Context, connectionURL string, imageName string) (incusapi.Image, error)
+
 	// GetImagesFunc mocks the GetImages method.
 	GetImagesFunc func(ctx context.Context, connectionURL string) ([]incusapi.Image, error)
+
+	// GetInstanceByNameFunc mocks the GetInstanceByName method.
+	GetInstanceByNameFunc func(ctx context.Context, connectionURL string, instanceName string) (incusapi.InstanceFull, error)
 
 	// GetInstancesFunc mocks the GetInstances method.
 	GetInstancesFunc func(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error)
 
+	// GetNetworkACLByNameFunc mocks the GetNetworkACLByName method.
+	GetNetworkACLByNameFunc func(ctx context.Context, connectionURL string, networkACLName string) (incusapi.NetworkACL, error)
+
 	// GetNetworkACLsFunc mocks the GetNetworkACLs method.
 	GetNetworkACLsFunc func(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error)
+
+	// GetNetworkByNameFunc mocks the GetNetworkByName method.
+	GetNetworkByNameFunc func(ctx context.Context, connectionURL string, networkName string) (incusapi.Network, error)
+
+	// GetNetworkForwardByNameFunc mocks the GetNetworkForwardByName method.
+	GetNetworkForwardByNameFunc func(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (incusapi.NetworkForward, error)
 
 	// GetNetworkForwardsFunc mocks the GetNetworkForwards method.
 	GetNetworkForwardsFunc func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkForward, error)
 
+	// GetNetworkIntegrationByNameFunc mocks the GetNetworkIntegrationByName method.
+	GetNetworkIntegrationByNameFunc func(ctx context.Context, connectionURL string, networkIntegrationName string) (incusapi.NetworkIntegration, error)
+
 	// GetNetworkIntegrationsFunc mocks the GetNetworkIntegrations method.
 	GetNetworkIntegrationsFunc func(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error)
+
+	// GetNetworkLoadBalancerByNameFunc mocks the GetNetworkLoadBalancerByName method.
+	GetNetworkLoadBalancerByNameFunc func(ctx context.Context, connectionURL string, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error)
 
 	// GetNetworkLoadBalancersFunc mocks the GetNetworkLoadBalancers method.
 	GetNetworkLoadBalancersFunc func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkLoadBalancer, error)
 
+	// GetNetworkPeerByNameFunc mocks the GetNetworkPeerByName method.
+	GetNetworkPeerByNameFunc func(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (incusapi.NetworkPeer, error)
+
 	// GetNetworkPeersFunc mocks the GetNetworkPeers method.
 	GetNetworkPeersFunc func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkPeer, error)
+
+	// GetNetworkZoneByNameFunc mocks the GetNetworkZoneByName method.
+	GetNetworkZoneByNameFunc func(ctx context.Context, connectionURL string, networkZoneName string) (incusapi.NetworkZone, error)
 
 	// GetNetworkZonesFunc mocks the GetNetworkZones method.
 	GetNetworkZonesFunc func(ctx context.Context, connectionURL string) ([]incusapi.NetworkZone, error)
@@ -97,29 +166,62 @@ type ServerClientMock struct {
 	// GetNetworksFunc mocks the GetNetworks method.
 	GetNetworksFunc func(ctx context.Context, connectionURL string) ([]incusapi.Network, error)
 
+	// GetProfileByNameFunc mocks the GetProfileByName method.
+	GetProfileByNameFunc func(ctx context.Context, connectionURL string, profileName string) (incusapi.Profile, error)
+
 	// GetProfilesFunc mocks the GetProfiles method.
 	GetProfilesFunc func(ctx context.Context, connectionURL string) ([]incusapi.Profile, error)
+
+	// GetProjectByNameFunc mocks the GetProjectByName method.
+	GetProjectByNameFunc func(ctx context.Context, connectionURL string, projectName string) (incusapi.Project, error)
 
 	// GetProjectsFunc mocks the GetProjects method.
 	GetProjectsFunc func(ctx context.Context, connectionURL string) ([]incusapi.Project, error)
 
+	// GetStorageBucketByNameFunc mocks the GetStorageBucketByName method.
+	GetStorageBucketByNameFunc func(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error)
+
 	// GetStorageBucketsFunc mocks the GetStorageBuckets method.
 	GetStorageBucketsFunc func(ctx context.Context, connectionURL string, storagePoolName string) ([]incusapi.StorageBucket, error)
 
+	// GetStoragePoolByNameFunc mocks the GetStoragePoolByName method.
+	GetStoragePoolByNameFunc func(ctx context.Context, connectionURL string, storagePoolName string) (incusapi.StoragePool, error)
+
 	// GetStoragePoolsFunc mocks the GetStoragePools method.
 	GetStoragePoolsFunc func(ctx context.Context, connectionURL string) ([]incusapi.StoragePool, error)
+
+	// GetStorageVolumeByNameFunc mocks the GetStorageVolumeByName method.
+	GetStorageVolumeByNameFunc func(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string) (incusapi.StorageVolume, error)
 
 	// GetStorageVolumesFunc mocks the GetStorageVolumes method.
 	GetStorageVolumesFunc func(ctx context.Context, connectionURL string, storagePoolName string) ([]incusapi.StorageVolume, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetImageByName holds details about calls to the GetImageByName method.
+		GetImageByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// ImageName is the imageName argument value.
+			ImageName string
+		}
 		// GetImages holds details about calls to the GetImages method.
 		GetImages []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ConnectionURL is the connectionURL argument value.
 			ConnectionURL string
+		}
+		// GetInstanceByName holds details about calls to the GetInstanceByName method.
+		GetInstanceByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// InstanceName is the instanceName argument value.
+			InstanceName string
 		}
 		// GetInstances holds details about calls to the GetInstances method.
 		GetInstances []struct {
@@ -128,12 +230,41 @@ type ServerClientMock struct {
 			// ConnectionURL is the connectionURL argument value.
 			ConnectionURL string
 		}
+		// GetNetworkACLByName holds details about calls to the GetNetworkACLByName method.
+		GetNetworkACLByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// NetworkACLName is the networkACLName argument value.
+			NetworkACLName string
+		}
 		// GetNetworkACLs holds details about calls to the GetNetworkACLs method.
 		GetNetworkACLs []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ConnectionURL is the connectionURL argument value.
 			ConnectionURL string
+		}
+		// GetNetworkByName holds details about calls to the GetNetworkByName method.
+		GetNetworkByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// NetworkName is the networkName argument value.
+			NetworkName string
+		}
+		// GetNetworkForwardByName holds details about calls to the GetNetworkForwardByName method.
+		GetNetworkForwardByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// NetworkName is the networkName argument value.
+			NetworkName string
+			// NetworkForwardName is the networkForwardName argument value.
+			NetworkForwardName string
 		}
 		// GetNetworkForwards holds details about calls to the GetNetworkForwards method.
 		GetNetworkForwards []struct {
@@ -144,12 +275,32 @@ type ServerClientMock struct {
 			// NetworkName is the networkName argument value.
 			NetworkName string
 		}
+		// GetNetworkIntegrationByName holds details about calls to the GetNetworkIntegrationByName method.
+		GetNetworkIntegrationByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// NetworkIntegrationName is the networkIntegrationName argument value.
+			NetworkIntegrationName string
+		}
 		// GetNetworkIntegrations holds details about calls to the GetNetworkIntegrations method.
 		GetNetworkIntegrations []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ConnectionURL is the connectionURL argument value.
 			ConnectionURL string
+		}
+		// GetNetworkLoadBalancerByName holds details about calls to the GetNetworkLoadBalancerByName method.
+		GetNetworkLoadBalancerByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// NetworkName is the networkName argument value.
+			NetworkName string
+			// NetworkLoadBalancerName is the networkLoadBalancerName argument value.
+			NetworkLoadBalancerName string
 		}
 		// GetNetworkLoadBalancers holds details about calls to the GetNetworkLoadBalancers method.
 		GetNetworkLoadBalancers []struct {
@@ -160,6 +311,17 @@ type ServerClientMock struct {
 			// NetworkName is the networkName argument value.
 			NetworkName string
 		}
+		// GetNetworkPeerByName holds details about calls to the GetNetworkPeerByName method.
+		GetNetworkPeerByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// NetworkName is the networkName argument value.
+			NetworkName string
+			// NetworkPeerName is the networkPeerName argument value.
+			NetworkPeerName string
+		}
 		// GetNetworkPeers holds details about calls to the GetNetworkPeers method.
 		GetNetworkPeers []struct {
 			// Ctx is the ctx argument value.
@@ -168,6 +330,15 @@ type ServerClientMock struct {
 			ConnectionURL string
 			// NetworkName is the networkName argument value.
 			NetworkName string
+		}
+		// GetNetworkZoneByName holds details about calls to the GetNetworkZoneByName method.
+		GetNetworkZoneByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// NetworkZoneName is the networkZoneName argument value.
+			NetworkZoneName string
 		}
 		// GetNetworkZones holds details about calls to the GetNetworkZones method.
 		GetNetworkZones []struct {
@@ -183,12 +354,30 @@ type ServerClientMock struct {
 			// ConnectionURL is the connectionURL argument value.
 			ConnectionURL string
 		}
+		// GetProfileByName holds details about calls to the GetProfileByName method.
+		GetProfileByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// ProfileName is the profileName argument value.
+			ProfileName string
+		}
 		// GetProfiles holds details about calls to the GetProfiles method.
 		GetProfiles []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ConnectionURL is the connectionURL argument value.
 			ConnectionURL string
+		}
+		// GetProjectByName holds details about calls to the GetProjectByName method.
+		GetProjectByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// ProjectName is the projectName argument value.
+			ProjectName string
 		}
 		// GetProjects holds details about calls to the GetProjects method.
 		GetProjects []struct {
@@ -197,8 +386,28 @@ type ServerClientMock struct {
 			// ConnectionURL is the connectionURL argument value.
 			ConnectionURL string
 		}
+		// GetStorageBucketByName holds details about calls to the GetStorageBucketByName method.
+		GetStorageBucketByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// StoragePoolName is the storagePoolName argument value.
+			StoragePoolName string
+			// StorageBucketName is the storageBucketName argument value.
+			StorageBucketName string
+		}
 		// GetStorageBuckets holds details about calls to the GetStorageBuckets method.
 		GetStorageBuckets []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// StoragePoolName is the storagePoolName argument value.
+			StoragePoolName string
+		}
+		// GetStoragePoolByName holds details about calls to the GetStoragePoolByName method.
+		GetStoragePoolByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ConnectionURL is the connectionURL argument value.
@@ -213,6 +422,17 @@ type ServerClientMock struct {
 			// ConnectionURL is the connectionURL argument value.
 			ConnectionURL string
 		}
+		// GetStorageVolumeByName holds details about calls to the GetStorageVolumeByName method.
+		GetStorageVolumeByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// StoragePoolName is the storagePoolName argument value.
+			StoragePoolName string
+			// StorageVolumeName is the storageVolumeName argument value.
+			StorageVolumeName string
+		}
 		// GetStorageVolumes holds details about calls to the GetStorageVolumes method.
 		GetStorageVolumes []struct {
 			// Ctx is the ctx argument value.
@@ -223,20 +443,74 @@ type ServerClientMock struct {
 			StoragePoolName string
 		}
 	}
-	lockGetImages               sync.RWMutex
-	lockGetInstances            sync.RWMutex
-	lockGetNetworkACLs          sync.RWMutex
-	lockGetNetworkForwards      sync.RWMutex
-	lockGetNetworkIntegrations  sync.RWMutex
-	lockGetNetworkLoadBalancers sync.RWMutex
-	lockGetNetworkPeers         sync.RWMutex
-	lockGetNetworkZones         sync.RWMutex
-	lockGetNetworks             sync.RWMutex
-	lockGetProfiles             sync.RWMutex
-	lockGetProjects             sync.RWMutex
-	lockGetStorageBuckets       sync.RWMutex
-	lockGetStoragePools         sync.RWMutex
-	lockGetStorageVolumes       sync.RWMutex
+	lockGetImageByName               sync.RWMutex
+	lockGetImages                    sync.RWMutex
+	lockGetInstanceByName            sync.RWMutex
+	lockGetInstances                 sync.RWMutex
+	lockGetNetworkACLByName          sync.RWMutex
+	lockGetNetworkACLs               sync.RWMutex
+	lockGetNetworkByName             sync.RWMutex
+	lockGetNetworkForwardByName      sync.RWMutex
+	lockGetNetworkForwards           sync.RWMutex
+	lockGetNetworkIntegrationByName  sync.RWMutex
+	lockGetNetworkIntegrations       sync.RWMutex
+	lockGetNetworkLoadBalancerByName sync.RWMutex
+	lockGetNetworkLoadBalancers      sync.RWMutex
+	lockGetNetworkPeerByName         sync.RWMutex
+	lockGetNetworkPeers              sync.RWMutex
+	lockGetNetworkZoneByName         sync.RWMutex
+	lockGetNetworkZones              sync.RWMutex
+	lockGetNetworks                  sync.RWMutex
+	lockGetProfileByName             sync.RWMutex
+	lockGetProfiles                  sync.RWMutex
+	lockGetProjectByName             sync.RWMutex
+	lockGetProjects                  sync.RWMutex
+	lockGetStorageBucketByName       sync.RWMutex
+	lockGetStorageBuckets            sync.RWMutex
+	lockGetStoragePoolByName         sync.RWMutex
+	lockGetStoragePools              sync.RWMutex
+	lockGetStorageVolumeByName       sync.RWMutex
+	lockGetStorageVolumes            sync.RWMutex
+}
+
+// GetImageByName calls GetImageByNameFunc.
+func (mock *ServerClientMock) GetImageByName(ctx context.Context, connectionURL string, imageName string) (incusapi.Image, error) {
+	if mock.GetImageByNameFunc == nil {
+		panic("ServerClientMock.GetImageByNameFunc: method is nil but ServerClient.GetImageByName was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+		ImageName     string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+		ImageName:     imageName,
+	}
+	mock.lockGetImageByName.Lock()
+	mock.calls.GetImageByName = append(mock.calls.GetImageByName, callInfo)
+	mock.lockGetImageByName.Unlock()
+	return mock.GetImageByNameFunc(ctx, connectionURL, imageName)
+}
+
+// GetImageByNameCalls gets all the calls that were made to GetImageByName.
+// Check the length with:
+//
+//	len(mockedServerClient.GetImageByNameCalls())
+func (mock *ServerClientMock) GetImageByNameCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+	ImageName     string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+		ImageName     string
+	}
+	mock.lockGetImageByName.RLock()
+	calls = mock.calls.GetImageByName
+	mock.lockGetImageByName.RUnlock()
+	return calls
 }
 
 // GetImages calls GetImagesFunc.
@@ -272,6 +546,46 @@ func (mock *ServerClientMock) GetImagesCalls() []struct {
 	mock.lockGetImages.RLock()
 	calls = mock.calls.GetImages
 	mock.lockGetImages.RUnlock()
+	return calls
+}
+
+// GetInstanceByName calls GetInstanceByNameFunc.
+func (mock *ServerClientMock) GetInstanceByName(ctx context.Context, connectionURL string, instanceName string) (incusapi.InstanceFull, error) {
+	if mock.GetInstanceByNameFunc == nil {
+		panic("ServerClientMock.GetInstanceByNameFunc: method is nil but ServerClient.GetInstanceByName was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+		InstanceName  string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+		InstanceName:  instanceName,
+	}
+	mock.lockGetInstanceByName.Lock()
+	mock.calls.GetInstanceByName = append(mock.calls.GetInstanceByName, callInfo)
+	mock.lockGetInstanceByName.Unlock()
+	return mock.GetInstanceByNameFunc(ctx, connectionURL, instanceName)
+}
+
+// GetInstanceByNameCalls gets all the calls that were made to GetInstanceByName.
+// Check the length with:
+//
+//	len(mockedServerClient.GetInstanceByNameCalls())
+func (mock *ServerClientMock) GetInstanceByNameCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+	InstanceName  string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+		InstanceName  string
+	}
+	mock.lockGetInstanceByName.RLock()
+	calls = mock.calls.GetInstanceByName
+	mock.lockGetInstanceByName.RUnlock()
 	return calls
 }
 
@@ -311,6 +625,46 @@ func (mock *ServerClientMock) GetInstancesCalls() []struct {
 	return calls
 }
 
+// GetNetworkACLByName calls GetNetworkACLByNameFunc.
+func (mock *ServerClientMock) GetNetworkACLByName(ctx context.Context, connectionURL string, networkACLName string) (incusapi.NetworkACL, error) {
+	if mock.GetNetworkACLByNameFunc == nil {
+		panic("ServerClientMock.GetNetworkACLByNameFunc: method is nil but ServerClient.GetNetworkACLByName was just called")
+	}
+	callInfo := struct {
+		Ctx            context.Context
+		ConnectionURL  string
+		NetworkACLName string
+	}{
+		Ctx:            ctx,
+		ConnectionURL:  connectionURL,
+		NetworkACLName: networkACLName,
+	}
+	mock.lockGetNetworkACLByName.Lock()
+	mock.calls.GetNetworkACLByName = append(mock.calls.GetNetworkACLByName, callInfo)
+	mock.lockGetNetworkACLByName.Unlock()
+	return mock.GetNetworkACLByNameFunc(ctx, connectionURL, networkACLName)
+}
+
+// GetNetworkACLByNameCalls gets all the calls that were made to GetNetworkACLByName.
+// Check the length with:
+//
+//	len(mockedServerClient.GetNetworkACLByNameCalls())
+func (mock *ServerClientMock) GetNetworkACLByNameCalls() []struct {
+	Ctx            context.Context
+	ConnectionURL  string
+	NetworkACLName string
+} {
+	var calls []struct {
+		Ctx            context.Context
+		ConnectionURL  string
+		NetworkACLName string
+	}
+	mock.lockGetNetworkACLByName.RLock()
+	calls = mock.calls.GetNetworkACLByName
+	mock.lockGetNetworkACLByName.RUnlock()
+	return calls
+}
+
 // GetNetworkACLs calls GetNetworkACLsFunc.
 func (mock *ServerClientMock) GetNetworkACLs(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error) {
 	if mock.GetNetworkACLsFunc == nil {
@@ -344,6 +698,90 @@ func (mock *ServerClientMock) GetNetworkACLsCalls() []struct {
 	mock.lockGetNetworkACLs.RLock()
 	calls = mock.calls.GetNetworkACLs
 	mock.lockGetNetworkACLs.RUnlock()
+	return calls
+}
+
+// GetNetworkByName calls GetNetworkByNameFunc.
+func (mock *ServerClientMock) GetNetworkByName(ctx context.Context, connectionURL string, networkName string) (incusapi.Network, error) {
+	if mock.GetNetworkByNameFunc == nil {
+		panic("ServerClientMock.GetNetworkByNameFunc: method is nil but ServerClient.GetNetworkByName was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+		NetworkName   string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+		NetworkName:   networkName,
+	}
+	mock.lockGetNetworkByName.Lock()
+	mock.calls.GetNetworkByName = append(mock.calls.GetNetworkByName, callInfo)
+	mock.lockGetNetworkByName.Unlock()
+	return mock.GetNetworkByNameFunc(ctx, connectionURL, networkName)
+}
+
+// GetNetworkByNameCalls gets all the calls that were made to GetNetworkByName.
+// Check the length with:
+//
+//	len(mockedServerClient.GetNetworkByNameCalls())
+func (mock *ServerClientMock) GetNetworkByNameCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+	NetworkName   string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+		NetworkName   string
+	}
+	mock.lockGetNetworkByName.RLock()
+	calls = mock.calls.GetNetworkByName
+	mock.lockGetNetworkByName.RUnlock()
+	return calls
+}
+
+// GetNetworkForwardByName calls GetNetworkForwardByNameFunc.
+func (mock *ServerClientMock) GetNetworkForwardByName(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
+	if mock.GetNetworkForwardByNameFunc == nil {
+		panic("ServerClientMock.GetNetworkForwardByNameFunc: method is nil but ServerClient.GetNetworkForwardByName was just called")
+	}
+	callInfo := struct {
+		Ctx                context.Context
+		ConnectionURL      string
+		NetworkName        string
+		NetworkForwardName string
+	}{
+		Ctx:                ctx,
+		ConnectionURL:      connectionURL,
+		NetworkName:        networkName,
+		NetworkForwardName: networkForwardName,
+	}
+	mock.lockGetNetworkForwardByName.Lock()
+	mock.calls.GetNetworkForwardByName = append(mock.calls.GetNetworkForwardByName, callInfo)
+	mock.lockGetNetworkForwardByName.Unlock()
+	return mock.GetNetworkForwardByNameFunc(ctx, connectionURL, networkName, networkForwardName)
+}
+
+// GetNetworkForwardByNameCalls gets all the calls that were made to GetNetworkForwardByName.
+// Check the length with:
+//
+//	len(mockedServerClient.GetNetworkForwardByNameCalls())
+func (mock *ServerClientMock) GetNetworkForwardByNameCalls() []struct {
+	Ctx                context.Context
+	ConnectionURL      string
+	NetworkName        string
+	NetworkForwardName string
+} {
+	var calls []struct {
+		Ctx                context.Context
+		ConnectionURL      string
+		NetworkName        string
+		NetworkForwardName string
+	}
+	mock.lockGetNetworkForwardByName.RLock()
+	calls = mock.calls.GetNetworkForwardByName
+	mock.lockGetNetworkForwardByName.RUnlock()
 	return calls
 }
 
@@ -387,6 +825,46 @@ func (mock *ServerClientMock) GetNetworkForwardsCalls() []struct {
 	return calls
 }
 
+// GetNetworkIntegrationByName calls GetNetworkIntegrationByNameFunc.
+func (mock *ServerClientMock) GetNetworkIntegrationByName(ctx context.Context, connectionURL string, networkIntegrationName string) (incusapi.NetworkIntegration, error) {
+	if mock.GetNetworkIntegrationByNameFunc == nil {
+		panic("ServerClientMock.GetNetworkIntegrationByNameFunc: method is nil but ServerClient.GetNetworkIntegrationByName was just called")
+	}
+	callInfo := struct {
+		Ctx                    context.Context
+		ConnectionURL          string
+		NetworkIntegrationName string
+	}{
+		Ctx:                    ctx,
+		ConnectionURL:          connectionURL,
+		NetworkIntegrationName: networkIntegrationName,
+	}
+	mock.lockGetNetworkIntegrationByName.Lock()
+	mock.calls.GetNetworkIntegrationByName = append(mock.calls.GetNetworkIntegrationByName, callInfo)
+	mock.lockGetNetworkIntegrationByName.Unlock()
+	return mock.GetNetworkIntegrationByNameFunc(ctx, connectionURL, networkIntegrationName)
+}
+
+// GetNetworkIntegrationByNameCalls gets all the calls that were made to GetNetworkIntegrationByName.
+// Check the length with:
+//
+//	len(mockedServerClient.GetNetworkIntegrationByNameCalls())
+func (mock *ServerClientMock) GetNetworkIntegrationByNameCalls() []struct {
+	Ctx                    context.Context
+	ConnectionURL          string
+	NetworkIntegrationName string
+} {
+	var calls []struct {
+		Ctx                    context.Context
+		ConnectionURL          string
+		NetworkIntegrationName string
+	}
+	mock.lockGetNetworkIntegrationByName.RLock()
+	calls = mock.calls.GetNetworkIntegrationByName
+	mock.lockGetNetworkIntegrationByName.RUnlock()
+	return calls
+}
+
 // GetNetworkIntegrations calls GetNetworkIntegrationsFunc.
 func (mock *ServerClientMock) GetNetworkIntegrations(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error) {
 	if mock.GetNetworkIntegrationsFunc == nil {
@@ -420,6 +898,50 @@ func (mock *ServerClientMock) GetNetworkIntegrationsCalls() []struct {
 	mock.lockGetNetworkIntegrations.RLock()
 	calls = mock.calls.GetNetworkIntegrations
 	mock.lockGetNetworkIntegrations.RUnlock()
+	return calls
+}
+
+// GetNetworkLoadBalancerByName calls GetNetworkLoadBalancerByNameFunc.
+func (mock *ServerClientMock) GetNetworkLoadBalancerByName(ctx context.Context, connectionURL string, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
+	if mock.GetNetworkLoadBalancerByNameFunc == nil {
+		panic("ServerClientMock.GetNetworkLoadBalancerByNameFunc: method is nil but ServerClient.GetNetworkLoadBalancerByName was just called")
+	}
+	callInfo := struct {
+		Ctx                     context.Context
+		ConnectionURL           string
+		NetworkName             string
+		NetworkLoadBalancerName string
+	}{
+		Ctx:                     ctx,
+		ConnectionURL:           connectionURL,
+		NetworkName:             networkName,
+		NetworkLoadBalancerName: networkLoadBalancerName,
+	}
+	mock.lockGetNetworkLoadBalancerByName.Lock()
+	mock.calls.GetNetworkLoadBalancerByName = append(mock.calls.GetNetworkLoadBalancerByName, callInfo)
+	mock.lockGetNetworkLoadBalancerByName.Unlock()
+	return mock.GetNetworkLoadBalancerByNameFunc(ctx, connectionURL, networkName, networkLoadBalancerName)
+}
+
+// GetNetworkLoadBalancerByNameCalls gets all the calls that were made to GetNetworkLoadBalancerByName.
+// Check the length with:
+//
+//	len(mockedServerClient.GetNetworkLoadBalancerByNameCalls())
+func (mock *ServerClientMock) GetNetworkLoadBalancerByNameCalls() []struct {
+	Ctx                     context.Context
+	ConnectionURL           string
+	NetworkName             string
+	NetworkLoadBalancerName string
+} {
+	var calls []struct {
+		Ctx                     context.Context
+		ConnectionURL           string
+		NetworkName             string
+		NetworkLoadBalancerName string
+	}
+	mock.lockGetNetworkLoadBalancerByName.RLock()
+	calls = mock.calls.GetNetworkLoadBalancerByName
+	mock.lockGetNetworkLoadBalancerByName.RUnlock()
 	return calls
 }
 
@@ -463,6 +985,50 @@ func (mock *ServerClientMock) GetNetworkLoadBalancersCalls() []struct {
 	return calls
 }
 
+// GetNetworkPeerByName calls GetNetworkPeerByNameFunc.
+func (mock *ServerClientMock) GetNetworkPeerByName(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
+	if mock.GetNetworkPeerByNameFunc == nil {
+		panic("ServerClientMock.GetNetworkPeerByNameFunc: method is nil but ServerClient.GetNetworkPeerByName was just called")
+	}
+	callInfo := struct {
+		Ctx             context.Context
+		ConnectionURL   string
+		NetworkName     string
+		NetworkPeerName string
+	}{
+		Ctx:             ctx,
+		ConnectionURL:   connectionURL,
+		NetworkName:     networkName,
+		NetworkPeerName: networkPeerName,
+	}
+	mock.lockGetNetworkPeerByName.Lock()
+	mock.calls.GetNetworkPeerByName = append(mock.calls.GetNetworkPeerByName, callInfo)
+	mock.lockGetNetworkPeerByName.Unlock()
+	return mock.GetNetworkPeerByNameFunc(ctx, connectionURL, networkName, networkPeerName)
+}
+
+// GetNetworkPeerByNameCalls gets all the calls that were made to GetNetworkPeerByName.
+// Check the length with:
+//
+//	len(mockedServerClient.GetNetworkPeerByNameCalls())
+func (mock *ServerClientMock) GetNetworkPeerByNameCalls() []struct {
+	Ctx             context.Context
+	ConnectionURL   string
+	NetworkName     string
+	NetworkPeerName string
+} {
+	var calls []struct {
+		Ctx             context.Context
+		ConnectionURL   string
+		NetworkName     string
+		NetworkPeerName string
+	}
+	mock.lockGetNetworkPeerByName.RLock()
+	calls = mock.calls.GetNetworkPeerByName
+	mock.lockGetNetworkPeerByName.RUnlock()
+	return calls
+}
+
 // GetNetworkPeers calls GetNetworkPeersFunc.
 func (mock *ServerClientMock) GetNetworkPeers(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkPeer, error) {
 	if mock.GetNetworkPeersFunc == nil {
@@ -500,6 +1066,46 @@ func (mock *ServerClientMock) GetNetworkPeersCalls() []struct {
 	mock.lockGetNetworkPeers.RLock()
 	calls = mock.calls.GetNetworkPeers
 	mock.lockGetNetworkPeers.RUnlock()
+	return calls
+}
+
+// GetNetworkZoneByName calls GetNetworkZoneByNameFunc.
+func (mock *ServerClientMock) GetNetworkZoneByName(ctx context.Context, connectionURL string, networkZoneName string) (incusapi.NetworkZone, error) {
+	if mock.GetNetworkZoneByNameFunc == nil {
+		panic("ServerClientMock.GetNetworkZoneByNameFunc: method is nil but ServerClient.GetNetworkZoneByName was just called")
+	}
+	callInfo := struct {
+		Ctx             context.Context
+		ConnectionURL   string
+		NetworkZoneName string
+	}{
+		Ctx:             ctx,
+		ConnectionURL:   connectionURL,
+		NetworkZoneName: networkZoneName,
+	}
+	mock.lockGetNetworkZoneByName.Lock()
+	mock.calls.GetNetworkZoneByName = append(mock.calls.GetNetworkZoneByName, callInfo)
+	mock.lockGetNetworkZoneByName.Unlock()
+	return mock.GetNetworkZoneByNameFunc(ctx, connectionURL, networkZoneName)
+}
+
+// GetNetworkZoneByNameCalls gets all the calls that were made to GetNetworkZoneByName.
+// Check the length with:
+//
+//	len(mockedServerClient.GetNetworkZoneByNameCalls())
+func (mock *ServerClientMock) GetNetworkZoneByNameCalls() []struct {
+	Ctx             context.Context
+	ConnectionURL   string
+	NetworkZoneName string
+} {
+	var calls []struct {
+		Ctx             context.Context
+		ConnectionURL   string
+		NetworkZoneName string
+	}
+	mock.lockGetNetworkZoneByName.RLock()
+	calls = mock.calls.GetNetworkZoneByName
+	mock.lockGetNetworkZoneByName.RUnlock()
 	return calls
 }
 
@@ -575,6 +1181,46 @@ func (mock *ServerClientMock) GetNetworksCalls() []struct {
 	return calls
 }
 
+// GetProfileByName calls GetProfileByNameFunc.
+func (mock *ServerClientMock) GetProfileByName(ctx context.Context, connectionURL string, profileName string) (incusapi.Profile, error) {
+	if mock.GetProfileByNameFunc == nil {
+		panic("ServerClientMock.GetProfileByNameFunc: method is nil but ServerClient.GetProfileByName was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+		ProfileName   string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+		ProfileName:   profileName,
+	}
+	mock.lockGetProfileByName.Lock()
+	mock.calls.GetProfileByName = append(mock.calls.GetProfileByName, callInfo)
+	mock.lockGetProfileByName.Unlock()
+	return mock.GetProfileByNameFunc(ctx, connectionURL, profileName)
+}
+
+// GetProfileByNameCalls gets all the calls that were made to GetProfileByName.
+// Check the length with:
+//
+//	len(mockedServerClient.GetProfileByNameCalls())
+func (mock *ServerClientMock) GetProfileByNameCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+	ProfileName   string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+		ProfileName   string
+	}
+	mock.lockGetProfileByName.RLock()
+	calls = mock.calls.GetProfileByName
+	mock.lockGetProfileByName.RUnlock()
+	return calls
+}
+
 // GetProfiles calls GetProfilesFunc.
 func (mock *ServerClientMock) GetProfiles(ctx context.Context, connectionURL string) ([]incusapi.Profile, error) {
 	if mock.GetProfilesFunc == nil {
@@ -611,6 +1257,46 @@ func (mock *ServerClientMock) GetProfilesCalls() []struct {
 	return calls
 }
 
+// GetProjectByName calls GetProjectByNameFunc.
+func (mock *ServerClientMock) GetProjectByName(ctx context.Context, connectionURL string, projectName string) (incusapi.Project, error) {
+	if mock.GetProjectByNameFunc == nil {
+		panic("ServerClientMock.GetProjectByNameFunc: method is nil but ServerClient.GetProjectByName was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+		ProjectName   string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+		ProjectName:   projectName,
+	}
+	mock.lockGetProjectByName.Lock()
+	mock.calls.GetProjectByName = append(mock.calls.GetProjectByName, callInfo)
+	mock.lockGetProjectByName.Unlock()
+	return mock.GetProjectByNameFunc(ctx, connectionURL, projectName)
+}
+
+// GetProjectByNameCalls gets all the calls that were made to GetProjectByName.
+// Check the length with:
+//
+//	len(mockedServerClient.GetProjectByNameCalls())
+func (mock *ServerClientMock) GetProjectByNameCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+	ProjectName   string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+		ProjectName   string
+	}
+	mock.lockGetProjectByName.RLock()
+	calls = mock.calls.GetProjectByName
+	mock.lockGetProjectByName.RUnlock()
+	return calls
+}
+
 // GetProjects calls GetProjectsFunc.
 func (mock *ServerClientMock) GetProjects(ctx context.Context, connectionURL string) ([]incusapi.Project, error) {
 	if mock.GetProjectsFunc == nil {
@@ -644,6 +1330,50 @@ func (mock *ServerClientMock) GetProjectsCalls() []struct {
 	mock.lockGetProjects.RLock()
 	calls = mock.calls.GetProjects
 	mock.lockGetProjects.RUnlock()
+	return calls
+}
+
+// GetStorageBucketByName calls GetStorageBucketByNameFunc.
+func (mock *ServerClientMock) GetStorageBucketByName(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
+	if mock.GetStorageBucketByNameFunc == nil {
+		panic("ServerClientMock.GetStorageBucketByNameFunc: method is nil but ServerClient.GetStorageBucketByName was just called")
+	}
+	callInfo := struct {
+		Ctx               context.Context
+		ConnectionURL     string
+		StoragePoolName   string
+		StorageBucketName string
+	}{
+		Ctx:               ctx,
+		ConnectionURL:     connectionURL,
+		StoragePoolName:   storagePoolName,
+		StorageBucketName: storageBucketName,
+	}
+	mock.lockGetStorageBucketByName.Lock()
+	mock.calls.GetStorageBucketByName = append(mock.calls.GetStorageBucketByName, callInfo)
+	mock.lockGetStorageBucketByName.Unlock()
+	return mock.GetStorageBucketByNameFunc(ctx, connectionURL, storagePoolName, storageBucketName)
+}
+
+// GetStorageBucketByNameCalls gets all the calls that were made to GetStorageBucketByName.
+// Check the length with:
+//
+//	len(mockedServerClient.GetStorageBucketByNameCalls())
+func (mock *ServerClientMock) GetStorageBucketByNameCalls() []struct {
+	Ctx               context.Context
+	ConnectionURL     string
+	StoragePoolName   string
+	StorageBucketName string
+} {
+	var calls []struct {
+		Ctx               context.Context
+		ConnectionURL     string
+		StoragePoolName   string
+		StorageBucketName string
+	}
+	mock.lockGetStorageBucketByName.RLock()
+	calls = mock.calls.GetStorageBucketByName
+	mock.lockGetStorageBucketByName.RUnlock()
 	return calls
 }
 
@@ -687,6 +1417,46 @@ func (mock *ServerClientMock) GetStorageBucketsCalls() []struct {
 	return calls
 }
 
+// GetStoragePoolByName calls GetStoragePoolByNameFunc.
+func (mock *ServerClientMock) GetStoragePoolByName(ctx context.Context, connectionURL string, storagePoolName string) (incusapi.StoragePool, error) {
+	if mock.GetStoragePoolByNameFunc == nil {
+		panic("ServerClientMock.GetStoragePoolByNameFunc: method is nil but ServerClient.GetStoragePoolByName was just called")
+	}
+	callInfo := struct {
+		Ctx             context.Context
+		ConnectionURL   string
+		StoragePoolName string
+	}{
+		Ctx:             ctx,
+		ConnectionURL:   connectionURL,
+		StoragePoolName: storagePoolName,
+	}
+	mock.lockGetStoragePoolByName.Lock()
+	mock.calls.GetStoragePoolByName = append(mock.calls.GetStoragePoolByName, callInfo)
+	mock.lockGetStoragePoolByName.Unlock()
+	return mock.GetStoragePoolByNameFunc(ctx, connectionURL, storagePoolName)
+}
+
+// GetStoragePoolByNameCalls gets all the calls that were made to GetStoragePoolByName.
+// Check the length with:
+//
+//	len(mockedServerClient.GetStoragePoolByNameCalls())
+func (mock *ServerClientMock) GetStoragePoolByNameCalls() []struct {
+	Ctx             context.Context
+	ConnectionURL   string
+	StoragePoolName string
+} {
+	var calls []struct {
+		Ctx             context.Context
+		ConnectionURL   string
+		StoragePoolName string
+	}
+	mock.lockGetStoragePoolByName.RLock()
+	calls = mock.calls.GetStoragePoolByName
+	mock.lockGetStoragePoolByName.RUnlock()
+	return calls
+}
+
 // GetStoragePools calls GetStoragePoolsFunc.
 func (mock *ServerClientMock) GetStoragePools(ctx context.Context, connectionURL string) ([]incusapi.StoragePool, error) {
 	if mock.GetStoragePoolsFunc == nil {
@@ -720,6 +1490,50 @@ func (mock *ServerClientMock) GetStoragePoolsCalls() []struct {
 	mock.lockGetStoragePools.RLock()
 	calls = mock.calls.GetStoragePools
 	mock.lockGetStoragePools.RUnlock()
+	return calls
+}
+
+// GetStorageVolumeByName calls GetStorageVolumeByNameFunc.
+func (mock *ServerClientMock) GetStorageVolumeByName(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string) (incusapi.StorageVolume, error) {
+	if mock.GetStorageVolumeByNameFunc == nil {
+		panic("ServerClientMock.GetStorageVolumeByNameFunc: method is nil but ServerClient.GetStorageVolumeByName was just called")
+	}
+	callInfo := struct {
+		Ctx               context.Context
+		ConnectionURL     string
+		StoragePoolName   string
+		StorageVolumeName string
+	}{
+		Ctx:               ctx,
+		ConnectionURL:     connectionURL,
+		StoragePoolName:   storagePoolName,
+		StorageVolumeName: storageVolumeName,
+	}
+	mock.lockGetStorageVolumeByName.Lock()
+	mock.calls.GetStorageVolumeByName = append(mock.calls.GetStorageVolumeByName, callInfo)
+	mock.lockGetStorageVolumeByName.Unlock()
+	return mock.GetStorageVolumeByNameFunc(ctx, connectionURL, storagePoolName, storageVolumeName)
+}
+
+// GetStorageVolumeByNameCalls gets all the calls that were made to GetStorageVolumeByName.
+// Check the length with:
+//
+//	len(mockedServerClient.GetStorageVolumeByNameCalls())
+func (mock *ServerClientMock) GetStorageVolumeByNameCalls() []struct {
+	Ctx               context.Context
+	ConnectionURL     string
+	StoragePoolName   string
+	StorageVolumeName string
+} {
+	var calls []struct {
+		Ctx               context.Context
+		ConnectionURL     string
+		StoragePoolName   string
+		StorageVolumeName string
+	}
+	mock.lockGetStorageVolumeByName.RLock()
+	calls = mock.calls.GetStorageVolumeByName
+	mock.lockGetStorageVolumeByName.RUnlock()
 	return calls
 }
 

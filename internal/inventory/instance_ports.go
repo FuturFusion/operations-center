@@ -11,6 +11,7 @@ import (
 type InstanceService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Instance, error)
+	ResyncByID(ctx context.Context, id int) error
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 	SyncServer(ctx context.Context, serverID int) error
@@ -25,10 +26,12 @@ type InstanceRepo interface {
 	GetByID(ctx context.Context, id int) (Instance, error)
 	Create(ctx context.Context, instance Instance) (Instance, error)
 	DeleteByServerID(ctx context.Context, serverID int) error
+	UpdateByID(ctx context.Context, instance Instance) (Instance, error)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/instance_server_client_mock_gen.go -rm . InstanceServerClient
 
 type InstanceServerClient interface {
 	GetInstances(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error)
+	GetInstanceByName(ctx context.Context, connectionURL string, instanceName string) (incusapi.InstanceFull, error)
 }

@@ -21,3 +21,17 @@ func (s serverClient) GetProfiles(ctx context.Context, connectionURL string) ([]
 
 	return serverProfiles, nil
 }
+
+func (s serverClient) GetProfileByName(ctx context.Context, connectionURL string, profileName string) (incusapi.Profile, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return incusapi.Profile{}, err
+	}
+
+	serverProfile, _, err := client.GetProfile(profileName)
+	if err != nil {
+		return incusapi.Profile{}, err
+	}
+
+	return *serverProfile, nil
+}

@@ -121,6 +121,131 @@ func TestStoragePoolService_GetByID(t *testing.T) {
 	}
 }
 
+func TestStoragePoolService_ResyncByID(t *testing.T) {
+	tests := []struct {
+		name                                     string
+		serverSvcGetByIDServer                   provisioning.Server
+		serverSvcGetByIDErr                      error
+		storagePoolClientGetStoragePoolByName    incusapi.StoragePool
+		storagePoolClientGetStoragePoolByNameErr error
+		repoGetByIDStoragePool                   inventory.StoragePool
+		repoGetByIDErr                           error
+		repoUpdateByIDErr                        error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByIDStoragePool: inventory.StoragePool{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			storagePoolClientGetStoragePoolByName: incusapi.StoragePool{
+				Name: "storagePool one",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - storagePool get by ID",
+			repoGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - server get by ID",
+			repoGetByIDStoragePool: inventory.StoragePool{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - storagePool get by name",
+			repoGetByIDStoragePool: inventory.StoragePool{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			storagePoolClientGetStoragePoolByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - update by ID",
+			repoGetByIDStoragePool: inventory.StoragePool{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			storagePoolClientGetStoragePoolByName: incusapi.StoragePool{
+				Name: "storagePool one",
+			},
+			repoUpdateByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.StoragePoolRepoMock{
+				GetByIDFunc: func(ctx context.Context, id int) (inventory.StoragePool, error) {
+					return tc.repoGetByIDStoragePool, tc.repoGetByIDErr
+				},
+				UpdateByIDFunc: func(ctx context.Context, storagePool inventory.StoragePool) (inventory.StoragePool, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), storagePool.LastUpdated)
+					return inventory.StoragePool{}, tc.repoUpdateByIDErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+					require.Equal(t, 1, id)
+					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				},
+			}
+
+			storagePoolClient := &serviceMock.StoragePoolServerClientMock{
+				GetStoragePoolByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string) (incusapi.StoragePool, error) {
+					require.Equal(t, "one", storagePoolName)
+					return tc.storagePoolClientGetStoragePoolByName, tc.storagePoolClientGetStoragePoolByNameErr
+				},
+			}
+
+			storagePoolSvc := inventory.NewStoragePoolService(repo, nil, serverSvc, storagePoolClient, inventory.StoragePoolWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			err := storagePoolSvc.ResyncByID(context.Background(), 1)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestStoragePoolService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {

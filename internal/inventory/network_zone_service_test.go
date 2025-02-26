@@ -122,6 +122,131 @@ func TestNetworkZoneService_GetByID(t *testing.T) {
 	}
 }
 
+func TestNetworkZoneService_ResyncByID(t *testing.T) {
+	tests := []struct {
+		name                                     string
+		serverSvcGetByIDServer                   provisioning.Server
+		serverSvcGetByIDErr                      error
+		networkZoneClientGetNetworkZoneByName    incusapi.NetworkZone
+		networkZoneClientGetNetworkZoneByNameErr error
+		repoGetByIDNetworkZone                   inventory.NetworkZone
+		repoGetByIDErr                           error
+		repoUpdateByIDErr                        error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByIDNetworkZone: inventory.NetworkZone{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkZoneClientGetNetworkZoneByName: incusapi.NetworkZone{
+				Name: "networkZone one",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - networkZone get by ID",
+			repoGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - server get by ID",
+			repoGetByIDNetworkZone: inventory.NetworkZone{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - networkZone get by name",
+			repoGetByIDNetworkZone: inventory.NetworkZone{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkZoneClientGetNetworkZoneByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - update by ID",
+			repoGetByIDNetworkZone: inventory.NetworkZone{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkZoneClientGetNetworkZoneByName: incusapi.NetworkZone{
+				Name: "networkZone one",
+			},
+			repoUpdateByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.NetworkZoneRepoMock{
+				GetByIDFunc: func(ctx context.Context, id int) (inventory.NetworkZone, error) {
+					return tc.repoGetByIDNetworkZone, tc.repoGetByIDErr
+				},
+				UpdateByIDFunc: func(ctx context.Context, networkZone inventory.NetworkZone) (inventory.NetworkZone, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkZone.LastUpdated)
+					return inventory.NetworkZone{}, tc.repoUpdateByIDErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+					require.Equal(t, 1, id)
+					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				},
+			}
+
+			networkZoneClient := &serviceMock.NetworkZoneServerClientMock{
+				GetNetworkZoneByNameFunc: func(ctx context.Context, connectionURL string, networkZoneName string) (incusapi.NetworkZone, error) {
+					require.Equal(t, "one", networkZoneName)
+					return tc.networkZoneClientGetNetworkZoneByName, tc.networkZoneClientGetNetworkZoneByNameErr
+				},
+			}
+
+			networkZoneSvc := inventory.NewNetworkZoneService(repo, nil, serverSvc, networkZoneClient, inventory.NetworkZoneWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			err := networkZoneSvc.ResyncByID(context.Background(), 1)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestNetworkZoneService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {

@@ -32,6 +32,9 @@ var _ inventory.NetworkPeerRepo = &NetworkPeerRepoMock{}
 //			GetByIDFunc: func(ctx context.Context, id int) (inventory.NetworkPeer, error) {
 //				panic("mock out the GetByID method")
 //			},
+//			UpdateByIDFunc: func(ctx context.Context, networkPeer inventory.NetworkPeer) (inventory.NetworkPeer, error) {
+//				panic("mock out the UpdateByID method")
+//			},
 //		}
 //
 //		// use mockedNetworkPeerRepo in code that requires inventory.NetworkPeerRepo
@@ -50,6 +53,9 @@ type NetworkPeerRepoMock struct {
 
 	// GetByIDFunc mocks the GetByID method.
 	GetByIDFunc func(ctx context.Context, id int) (inventory.NetworkPeer, error)
+
+	// UpdateByIDFunc mocks the UpdateByID method.
+	UpdateByIDFunc func(ctx context.Context, networkPeer inventory.NetworkPeer) (inventory.NetworkPeer, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -81,11 +87,19 @@ type NetworkPeerRepoMock struct {
 			// ID is the id argument value.
 			ID int
 		}
+		// UpdateByID holds details about calls to the UpdateByID method.
+		UpdateByID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// NetworkPeer is the networkPeer argument value.
+			NetworkPeer inventory.NetworkPeer
+		}
 	}
 	lockCreate              sync.RWMutex
 	lockDeleteByServerID    sync.RWMutex
 	lockGetAllIDsWithFilter sync.RWMutex
 	lockGetByID             sync.RWMutex
+	lockUpdateByID          sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -229,5 +243,41 @@ func (mock *NetworkPeerRepoMock) GetByIDCalls() []struct {
 	mock.lockGetByID.RLock()
 	calls = mock.calls.GetByID
 	mock.lockGetByID.RUnlock()
+	return calls
+}
+
+// UpdateByID calls UpdateByIDFunc.
+func (mock *NetworkPeerRepoMock) UpdateByID(ctx context.Context, networkPeer inventory.NetworkPeer) (inventory.NetworkPeer, error) {
+	if mock.UpdateByIDFunc == nil {
+		panic("NetworkPeerRepoMock.UpdateByIDFunc: method is nil but NetworkPeerRepo.UpdateByID was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		NetworkPeer inventory.NetworkPeer
+	}{
+		Ctx:         ctx,
+		NetworkPeer: networkPeer,
+	}
+	mock.lockUpdateByID.Lock()
+	mock.calls.UpdateByID = append(mock.calls.UpdateByID, callInfo)
+	mock.lockUpdateByID.Unlock()
+	return mock.UpdateByIDFunc(ctx, networkPeer)
+}
+
+// UpdateByIDCalls gets all the calls that were made to UpdateByID.
+// Check the length with:
+//
+//	len(mockedNetworkPeerRepo.UpdateByIDCalls())
+func (mock *NetworkPeerRepoMock) UpdateByIDCalls() []struct {
+	Ctx         context.Context
+	NetworkPeer inventory.NetworkPeer
+} {
+	var calls []struct {
+		Ctx         context.Context
+		NetworkPeer inventory.NetworkPeer
+	}
+	mock.lockUpdateByID.RLock()
+	calls = mock.calls.UpdateByID
+	mock.lockUpdateByID.RUnlock()
 	return calls
 }

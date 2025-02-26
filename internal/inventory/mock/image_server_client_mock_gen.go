@@ -21,6 +21,9 @@ var _ inventory.ImageServerClient = &ImageServerClientMock{}
 //
 //		// make and configure a mocked inventory.ImageServerClient
 //		mockedImageServerClient := &ImageServerClientMock{
+//			GetImageByNameFunc: func(ctx context.Context, connectionURL string, imageName string) (incusapi.Image, error) {
+//				panic("mock out the GetImageByName method")
+//			},
 //			GetImagesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Image, error) {
 //				panic("mock out the GetImages method")
 //			},
@@ -31,11 +34,23 @@ var _ inventory.ImageServerClient = &ImageServerClientMock{}
 //
 //	}
 type ImageServerClientMock struct {
+	// GetImageByNameFunc mocks the GetImageByName method.
+	GetImageByNameFunc func(ctx context.Context, connectionURL string, imageName string) (incusapi.Image, error)
+
 	// GetImagesFunc mocks the GetImages method.
 	GetImagesFunc func(ctx context.Context, connectionURL string) ([]incusapi.Image, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetImageByName holds details about calls to the GetImageByName method.
+		GetImageByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// ImageName is the imageName argument value.
+			ImageName string
+		}
 		// GetImages holds details about calls to the GetImages method.
 		GetImages []struct {
 			// Ctx is the ctx argument value.
@@ -44,7 +59,48 @@ type ImageServerClientMock struct {
 			ConnectionURL string
 		}
 	}
-	lockGetImages sync.RWMutex
+	lockGetImageByName sync.RWMutex
+	lockGetImages      sync.RWMutex
+}
+
+// GetImageByName calls GetImageByNameFunc.
+func (mock *ImageServerClientMock) GetImageByName(ctx context.Context, connectionURL string, imageName string) (incusapi.Image, error) {
+	if mock.GetImageByNameFunc == nil {
+		panic("ImageServerClientMock.GetImageByNameFunc: method is nil but ImageServerClient.GetImageByName was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+		ImageName     string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+		ImageName:     imageName,
+	}
+	mock.lockGetImageByName.Lock()
+	mock.calls.GetImageByName = append(mock.calls.GetImageByName, callInfo)
+	mock.lockGetImageByName.Unlock()
+	return mock.GetImageByNameFunc(ctx, connectionURL, imageName)
+}
+
+// GetImageByNameCalls gets all the calls that were made to GetImageByName.
+// Check the length with:
+//
+//	len(mockedImageServerClient.GetImageByNameCalls())
+func (mock *ImageServerClientMock) GetImageByNameCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+	ImageName     string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+		ImageName     string
+	}
+	mock.lockGetImageByName.RLock()
+	calls = mock.calls.GetImageByName
+	mock.lockGetImageByName.RUnlock()
+	return calls
 }
 
 // GetImages calls GetImagesFunc.

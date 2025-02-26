@@ -21,3 +21,17 @@ func (s serverClient) GetProjects(ctx context.Context, connectionURL string) ([]
 
 	return serverProjects, nil
 }
+
+func (s serverClient) GetProjectByName(ctx context.Context, connectionURL string, projectName string) (incusapi.Project, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return incusapi.Project{}, err
+	}
+
+	serverProject, _, err := client.GetProject(projectName)
+	if err != nil {
+		return incusapi.Project{}, err
+	}
+
+	return *serverProject, nil
+}

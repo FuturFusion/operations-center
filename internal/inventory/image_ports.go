@@ -11,6 +11,7 @@ import (
 type ImageService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter ImageFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Image, error)
+	ResyncByID(ctx context.Context, id int) error
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 	SyncServer(ctx context.Context, serverID int) error
@@ -25,10 +26,12 @@ type ImageRepo interface {
 	GetByID(ctx context.Context, id int) (Image, error)
 	Create(ctx context.Context, image Image) (Image, error)
 	DeleteByServerID(ctx context.Context, serverID int) error
+	UpdateByID(ctx context.Context, image Image) (Image, error)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/image_server_client_mock_gen.go -rm . ImageServerClient
 
 type ImageServerClient interface {
 	GetImages(ctx context.Context, connectionURL string) ([]incusapi.Image, error)
+	GetImageByName(ctx context.Context, connectionURL string, imageName string) (incusapi.Image, error)
 }

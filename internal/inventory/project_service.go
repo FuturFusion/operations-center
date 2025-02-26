@@ -49,6 +49,42 @@ func (s projectService) GetByID(ctx context.Context, id int) (Project, error) {
 	return s.repo.GetByID(ctx, id)
 }
 
+func (s projectService) ResyncByID(ctx context.Context, id int) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		project, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		server, err := s.serverSvc.GetByID(ctx, project.ServerID)
+		if err != nil {
+			return err
+		}
+
+		serverProject, err := s.projectClient.GetProjectByName(ctx, server.ConnectionURL, project.Name)
+		// FIXME: how to differentiate general errors from "not found" errors?
+		// TODO: if the Project is not found, it needs to be removed from the inventory.
+		if err != nil {
+			return err
+		}
+
+		project.Object = serverProject
+		project.LastUpdated = s.now()
+
+		_, err = s.repo.UpdateByID(ctx, project)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s projectService) SyncAll(ctx context.Context) error {
 	clusters, err := s.clusterSvc.GetAll(ctx)
 	if err != nil {

@@ -122,6 +122,135 @@ func TestNetworkACLService_GetByID(t *testing.T) {
 	}
 }
 
+func TestNetworkACLService_ResyncByID(t *testing.T) {
+	tests := []struct {
+		name                                   string
+		serverSvcGetByIDServer                 provisioning.Server
+		serverSvcGetByIDErr                    error
+		networkACLClientGetNetworkACLByName    incusapi.NetworkACL
+		networkACLClientGetNetworkACLByNameErr error
+		repoGetByIDNetworkACL                  inventory.NetworkACL
+		repoGetByIDErr                         error
+		repoUpdateByIDErr                      error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByIDNetworkACL: inventory.NetworkACL{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkACLClientGetNetworkACLByName: incusapi.NetworkACL{
+				NetworkACLPost: incusapi.NetworkACLPost{
+					Name: "networkACL one",
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - networkACL get by ID",
+			repoGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - server get by ID",
+			repoGetByIDNetworkACL: inventory.NetworkACL{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - networkACL get by name",
+			repoGetByIDNetworkACL: inventory.NetworkACL{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkACLClientGetNetworkACLByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - update by ID",
+			repoGetByIDNetworkACL: inventory.NetworkACL{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkACLClientGetNetworkACLByName: incusapi.NetworkACL{
+				NetworkACLPost: incusapi.NetworkACLPost{
+					Name: "networkACL one",
+				},
+			},
+			repoUpdateByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.NetworkACLRepoMock{
+				GetByIDFunc: func(ctx context.Context, id int) (inventory.NetworkACL, error) {
+					return tc.repoGetByIDNetworkACL, tc.repoGetByIDErr
+				},
+				UpdateByIDFunc: func(ctx context.Context, networkACL inventory.NetworkACL) (inventory.NetworkACL, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkACL.LastUpdated)
+					return inventory.NetworkACL{}, tc.repoUpdateByIDErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+					require.Equal(t, 1, id)
+					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				},
+			}
+
+			networkACLClient := &serviceMock.NetworkACLServerClientMock{
+				GetNetworkACLByNameFunc: func(ctx context.Context, connectionURL string, networkACLName string) (incusapi.NetworkACL, error) {
+					require.Equal(t, "one", networkACLName)
+					return tc.networkACLClientGetNetworkACLByName, tc.networkACLClientGetNetworkACLByNameErr
+				},
+			}
+
+			networkACLSvc := inventory.NewNetworkACLService(repo, nil, serverSvc, networkACLClient, inventory.NetworkACLWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			err := networkACLSvc.ResyncByID(context.Background(), 1)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestNetworkACLService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {

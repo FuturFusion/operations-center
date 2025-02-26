@@ -21,3 +21,17 @@ func (s serverClient) GetInstances(ctx context.Context, connectionURL string) ([
 
 	return serverInstances, nil
 }
+
+func (s serverClient) GetInstanceByName(ctx context.Context, connectionURL string, instanceName string) (incusapi.InstanceFull, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return incusapi.InstanceFull{}, err
+	}
+
+	serverInstance, _, err := client.GetInstanceFull(instanceName)
+	if err != nil {
+		return incusapi.InstanceFull{}, err
+	}
+
+	return *serverInstance, nil
+}

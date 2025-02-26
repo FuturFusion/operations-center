@@ -49,6 +49,43 @@ func (s imageService) GetByID(ctx context.Context, id int) (Image, error) {
 	return s.repo.GetByID(ctx, id)
 }
 
+func (s imageService) ResyncByID(ctx context.Context, id int) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		image, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		server, err := s.serverSvc.GetByID(ctx, image.ServerID)
+		if err != nil {
+			return err
+		}
+
+		serverImage, err := s.imageClient.GetImageByName(ctx, server.ConnectionURL, image.Name)
+		// FIXME: how to differentiate general errors from "not found" errors?
+		// TODO: if the Image is not found, it needs to be removed from the inventory.
+		if err != nil {
+			return err
+		}
+
+		image.ProjectName = serverImage.Project
+		image.Object = serverImage
+		image.LastUpdated = s.now()
+
+		_, err = s.repo.UpdateByID(ctx, image)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s imageService) SyncAll(ctx context.Context) error {
 	clusters, err := s.clusterSvc.GetAll(ctx)
 	if err != nil {

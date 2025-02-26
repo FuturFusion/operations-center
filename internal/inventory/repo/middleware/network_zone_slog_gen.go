@@ -103,3 +103,23 @@ func (_d NetworkZoneRepoWithSlog) GetByID(ctx context.Context, id int) (n1 _sour
 	}()
 	return _d._base.GetByID(ctx, id)
 }
+
+// UpdateByID implements _sourceInventory.NetworkZoneRepo
+func (_d NetworkZoneRepoWithSlog) UpdateByID(ctx context.Context, networkZone _sourceInventory.NetworkZone) (n1 _sourceInventory.NetworkZone, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Any("networkZone", networkZone),
+	).Debug("NetworkZoneRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("n1", n1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("NetworkZoneRepoWithSlog: method UpdateByID returned an error")
+		} else {
+			log.Debug("NetworkZoneRepoWithSlog: method UpdateByID finished")
+		}
+	}()
+	return _d._base.UpdateByID(ctx, networkZone)
+}

@@ -11,6 +11,7 @@ import (
 type NetworkACLService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkACL, error)
+	ResyncByID(ctx context.Context, id int) error
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 	SyncServer(ctx context.Context, serverID int) error
@@ -25,10 +26,12 @@ type NetworkACLRepo interface {
 	GetByID(ctx context.Context, id int) (NetworkACL, error)
 	Create(ctx context.Context, networkACL NetworkACL) (NetworkACL, error)
 	DeleteByServerID(ctx context.Context, serverID int) error
+	UpdateByID(ctx context.Context, networkACL NetworkACL) (NetworkACL, error)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/network_acl_server_client_mock_gen.go -rm . NetworkACLServerClient
 
 type NetworkACLServerClient interface {
 	GetNetworkACLs(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error)
+	GetNetworkACLByName(ctx context.Context, connectionURL string, networkACLName string) (incusapi.NetworkACL, error)
 }

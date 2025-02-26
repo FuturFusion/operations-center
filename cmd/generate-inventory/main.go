@@ -74,6 +74,7 @@ func main() {
 	objectType := pflag.String("object-type", "", "Go type used for object in model")
 	omitProject := pflag.Bool("omit-project", false, "if omit-project is provided, the entity does not have a relation to a project")
 	usesEmbeddedPostType := pflag.Bool("uses-embedded-post-type", false, "if uses-embedded-post-type is provided, the name property is part of an embedded Post type")
+	incusGetAllMethod := pflag.String("incus-get-all-method", "", "method of the Incus client to get all the entities, e.g. GetStoragePoolBucketsAllProjects")
 	incusGetMethod := pflag.String("incus-get-method", "", "method of the Incus client to get the entities, e.g. GetStoragePoolBucketsAllProjects")
 	parentName := pflag.String("parent", "", "name of the parent entity, if any")
 	parentPluralName := pflag.String("parent-plural", "", "plural form of the parent entity")
@@ -127,6 +128,7 @@ func main() {
 		ObjectNamePropertyName string
 		HasProject             bool
 		UsesEmbeddedPostType   bool
+		IncusGetAllMethod      string
 		IncusGetMethod         string
 		HasParent              bool
 		ParentName             string
@@ -140,6 +142,7 @@ func main() {
 		ObjectNamePropertyName: *objectNamePropertyName,
 		HasProject:             !*omitProject,
 		UsesEmbeddedPostType:   *usesEmbeddedPostType,
+		IncusGetAllMethod:      *incusGetAllMethod,
 		IncusGetMethod:         *incusGetMethod,
 		HasParent:              *parentName != "",
 		ParentName:             *parentName,

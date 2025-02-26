@@ -11,6 +11,7 @@ import (
 type StoragePoolService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StoragePool, error)
+	ResyncByID(ctx context.Context, id int) error
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 	SyncServer(ctx context.Context, serverID int) error
@@ -25,10 +26,12 @@ type StoragePoolRepo interface {
 	GetByID(ctx context.Context, id int) (StoragePool, error)
 	Create(ctx context.Context, storagePool StoragePool) (StoragePool, error)
 	DeleteByServerID(ctx context.Context, serverID int) error
+	UpdateByID(ctx context.Context, storagePool StoragePool) (StoragePool, error)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/storage_pool_server_client_mock_gen.go -rm . StoragePoolServerClient
 
 type StoragePoolServerClient interface {
 	GetStoragePools(ctx context.Context, connectionURL string) ([]incusapi.StoragePool, error)
+	GetStoragePoolByName(ctx context.Context, connectionURL string, storagePoolName string) (incusapi.StoragePool, error)
 }

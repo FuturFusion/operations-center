@@ -21,3 +21,17 @@ func (s serverClient) GetStoragePools(ctx context.Context, connectionURL string)
 
 	return serverStoragePools, nil
 }
+
+func (s serverClient) GetStoragePoolByName(ctx context.Context, connectionURL string, storagePoolName string) (incusapi.StoragePool, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return incusapi.StoragePool{}, err
+	}
+
+	serverStoragePool, _, err := client.GetStoragePool(storagePoolName)
+	if err != nil {
+		return incusapi.StoragePool{}, err
+	}
+
+	return *serverStoragePool, nil
+}

@@ -125,6 +125,170 @@ func Test{{ .Name | pascalcase }}Service_GetByID(t *testing.T) {
 	}
 }
 
+func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
+	tests := []struct {
+		name                               string
+		serverSvcGetByIDServer             provisioning.Server
+		serverSvcGetByIDErr                error
+		{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName    incusapi.{{ .ObjectType | pascalcase }}
+		{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr error
+		repoGetByID{{ .Name | pascalcase }}                inventory.{{ .Name | pascalcase }}
+		repoGetByIDErr                     error
+		repoUpdateByIDErr                  error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: "{{ .ParentName }}",
+{{- end }}
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+				{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+					},
+{{- else }}
+					{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- end }}
+{{- if .ObjectEmbedded }}
+				},
+{{- end }}
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - {{ .Name | camelcase }} get by ID",
+			repoGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - server get by ID",
+			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: "{{ .ParentName }}",
+{{- end }}
+			},
+			serverSvcGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - {{ .Name | camelcase }} get by name",
+			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: "{{ .ParentName }}",
+{{- end }}
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - update by ID",
+			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: "{{ .ParentName }}",
+{{- end }}
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+				{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+					},
+{{- else }}
+					{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- end }}
+{{- if .ObjectEmbedded }}
+				},
+{{- end }}
+			},
+			repoUpdateByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
+				GetByIDFunc: func(ctx context.Context, id int) (inventory.{{ .Name | pascalcase }}, error) {
+					return tc.repoGetByID{{ .Name | pascalcase }}, tc.repoGetByIDErr
+				},
+				UpdateByIDFunc: func(ctx context.Context, {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), {{ .Name | camelcase }}.LastUpdated)
+					return inventory.{{ .Name | pascalcase }}{}, tc.repoUpdateByIDErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+					require.Equal(t, 1, id)
+					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				},
+			}
+
+			{{ .Name | camelcase }}Client := &serviceMock.{{ .Name | pascalcase }}ServerClientMock{
+				Get{{ .Name | pascalcase }}ByNameFunc: func(ctx context.Context, connectionURL string, {{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string) (incusapi.{{ .ObjectType | pascalcase }}, error) {
+					require.Equal(t, "one", {{ .Name | camelcase }}Name)
+{{- if .HasParent }}
+					require.Equal(t, "{{ .ParentName }}", {{ .ParentName | camelcase }}Name)
+{{- end }}
+					return tc.{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName, tc.{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr
+				},
+			}
+
+			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, nil, serverSvc, {{ .Name | camelcase }}Client, {{ if .HasParent }}nil, {{ end -}} inventory.{{ .Name | pascalcase }}WithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			err := {{ .Name | camelcase }}Svc.ResyncByID(context.Background(), 1)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {
@@ -174,9 +338,10 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			},
 {{- end }}
 			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}: []incusapi.{{ .ObjectType | pascalcase }}{
-{{- if .ObjectEmbedded }}
 				{
+{{- if .ObjectEmbedded }}
 					{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
 {{- if .UsesEmbeddedPostType }}
 						{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
 							{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
@@ -184,19 +349,10 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- else }}
 						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
 {{- end }}
+{{- if .ObjectEmbedded }}
 					},
-				},
-{{- else }}
-				{
-{{- if .UsesEmbeddedPostType }}
-					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
-						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
-					},
-{{- else }}
-					{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
 {{- end }}
 				},
-{{- end }}
 			},
 
 			assertErr: require.NoError,
@@ -323,9 +479,10 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			},
 {{- end }}
 			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}: []incusapi.{{ .ObjectType | pascalcase }}{
-{{- if .ObjectEmbedded }}
 				{
+{{- if .ObjectEmbedded }}
 					{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
 {{- if .UsesEmbeddedPostType }}
 						{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
 							{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
@@ -333,19 +490,10 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- else }}
 						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
 {{- end }}
+{{- if .ObjectEmbedded }}
 					},
-				},
-{{- else }}
-				{
-{{- if .UsesEmbeddedPostType }}
-					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
-						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
-					},
-{{- else }}
-					{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
 {{- end }}
 				},
-{{- end }}
 			},
 			repoDeleteByServerIDErr: boom.Error,
 

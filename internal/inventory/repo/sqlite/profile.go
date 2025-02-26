@@ -149,6 +149,36 @@ func (i profile) DeleteByServerID(ctx context.Context, serverID int) error {
 	return nil
 }
 
+func (i profile) UpdateByID(ctx context.Context, in inventory.Profile) (inventory.Profile, error) {
+	const sqlStmt = `
+WITH _server AS (
+  SELECT cluster_id FROM servers WHERE server_id = :server_id
+)
+UPDATE profiles SET server_id=:server_id, project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
+WHERE id=:id
+RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project_name, name, object, last_updated;
+`
+
+	marshaledObject, err := json.Marshal(in.Object)
+	if err != nil {
+		return inventory.Profile{}, err
+	}
+
+	row := i.db.QueryRowContext(ctx, sqlStmt,
+		sql.Named("id", in.ID),
+		sql.Named("server_id", in.ServerID),
+		sql.Named("project_name", in.ProjectName),
+		sql.Named("name", in.Name),
+		sql.Named("object", marshaledObject),
+		sql.Named("last_updated", in.LastUpdated),
+	)
+	if row.Err() != nil {
+		return inventory.Profile{}, sqlite.MapErr(row.Err())
+	}
+
+	return scanProfile(row)
+}
+
 func scanProfile(row interface{ Scan(dest ...any) error }) (inventory.Profile, error) {
 	var object []byte
 	var profile inventory.Profile

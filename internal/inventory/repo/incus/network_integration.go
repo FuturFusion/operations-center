@@ -21,3 +21,17 @@ func (s serverClient) GetNetworkIntegrations(ctx context.Context, connectionURL 
 
 	return serverNetworkIntegrations, nil
 }
+
+func (s serverClient) GetNetworkIntegrationByName(ctx context.Context, connectionURL string, networkIntegrationName string) (incusapi.NetworkIntegration, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return incusapi.NetworkIntegration{}, err
+	}
+
+	serverNetworkIntegration, _, err := client.GetNetworkIntegration(networkIntegrationName)
+	if err != nil {
+		return incusapi.NetworkIntegration{}, err
+	}
+
+	return *serverNetworkIntegration, nil
+}

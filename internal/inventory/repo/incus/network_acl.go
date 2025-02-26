@@ -21,3 +21,17 @@ func (s serverClient) GetNetworkACLs(ctx context.Context, connectionURL string) 
 
 	return serverNetworkACLs, nil
 }
+
+func (s serverClient) GetNetworkACLByName(ctx context.Context, connectionURL string, networkACLName string) (incusapi.NetworkACL, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return incusapi.NetworkACL{}, err
+	}
+
+	serverNetworkACL, _, err := client.GetNetworkACL(networkACLName)
+	if err != nil {
+		return incusapi.NetworkACL{}, err
+	}
+
+	return *serverNetworkACL, nil
+}

@@ -21,3 +21,17 @@ func (s serverClient) GetNetworkZones(ctx context.Context, connectionURL string)
 
 	return serverNetworkZones, nil
 }
+
+func (s serverClient) GetNetworkZoneByName(ctx context.Context, connectionURL string, networkZoneName string) (incusapi.NetworkZone, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return incusapi.NetworkZone{}, err
+	}
+
+	serverNetworkZone, _, err := client.GetNetworkZone(networkZoneName)
+	if err != nil {
+		return incusapi.NetworkZone{}, err
+	}
+
+	return *serverNetworkZone, nil
+}

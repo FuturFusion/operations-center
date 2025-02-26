@@ -32,6 +32,9 @@ var _ inventory.NetworkZoneRepo = &NetworkZoneRepoMock{}
 //			GetByIDFunc: func(ctx context.Context, id int) (inventory.NetworkZone, error) {
 //				panic("mock out the GetByID method")
 //			},
+//			UpdateByIDFunc: func(ctx context.Context, networkZone inventory.NetworkZone) (inventory.NetworkZone, error) {
+//				panic("mock out the UpdateByID method")
+//			},
 //		}
 //
 //		// use mockedNetworkZoneRepo in code that requires inventory.NetworkZoneRepo
@@ -50,6 +53,9 @@ type NetworkZoneRepoMock struct {
 
 	// GetByIDFunc mocks the GetByID method.
 	GetByIDFunc func(ctx context.Context, id int) (inventory.NetworkZone, error)
+
+	// UpdateByIDFunc mocks the UpdateByID method.
+	UpdateByIDFunc func(ctx context.Context, networkZone inventory.NetworkZone) (inventory.NetworkZone, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -81,11 +87,19 @@ type NetworkZoneRepoMock struct {
 			// ID is the id argument value.
 			ID int
 		}
+		// UpdateByID holds details about calls to the UpdateByID method.
+		UpdateByID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// NetworkZone is the networkZone argument value.
+			NetworkZone inventory.NetworkZone
+		}
 	}
 	lockCreate              sync.RWMutex
 	lockDeleteByServerID    sync.RWMutex
 	lockGetAllIDsWithFilter sync.RWMutex
 	lockGetByID             sync.RWMutex
+	lockUpdateByID          sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -229,5 +243,41 @@ func (mock *NetworkZoneRepoMock) GetByIDCalls() []struct {
 	mock.lockGetByID.RLock()
 	calls = mock.calls.GetByID
 	mock.lockGetByID.RUnlock()
+	return calls
+}
+
+// UpdateByID calls UpdateByIDFunc.
+func (mock *NetworkZoneRepoMock) UpdateByID(ctx context.Context, networkZone inventory.NetworkZone) (inventory.NetworkZone, error) {
+	if mock.UpdateByIDFunc == nil {
+		panic("NetworkZoneRepoMock.UpdateByIDFunc: method is nil but NetworkZoneRepo.UpdateByID was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		NetworkZone inventory.NetworkZone
+	}{
+		Ctx:         ctx,
+		NetworkZone: networkZone,
+	}
+	mock.lockUpdateByID.Lock()
+	mock.calls.UpdateByID = append(mock.calls.UpdateByID, callInfo)
+	mock.lockUpdateByID.Unlock()
+	return mock.UpdateByIDFunc(ctx, networkZone)
+}
+
+// UpdateByIDCalls gets all the calls that were made to UpdateByID.
+// Check the length with:
+//
+//	len(mockedNetworkZoneRepo.UpdateByIDCalls())
+func (mock *NetworkZoneRepoMock) UpdateByIDCalls() []struct {
+	Ctx         context.Context
+	NetworkZone inventory.NetworkZone
+} {
+	var calls []struct {
+		Ctx         context.Context
+		NetworkZone inventory.NetworkZone
+	}
+	mock.lockUpdateByID.RLock()
+	calls = mock.calls.UpdateByID
+	mock.lockUpdateByID.RUnlock()
 	return calls
 }

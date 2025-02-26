@@ -131,6 +131,11 @@ func TestProjectDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, projectA, dbProjectA)
 
+	projectB.LastUpdated = time.Now().UTC().Truncate(0)
+	dbProjectB, err := project.UpdateByID(ctx, projectB)
+	require.NoError(t, err)
+	require.Equal(t, projectB, dbProjectB)
+
 	// Delete projects by server ID.
 	err = project.DeleteByServerID(ctx, 1)
 	require.NoError(t, err)

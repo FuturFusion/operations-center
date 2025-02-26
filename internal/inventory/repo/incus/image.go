@@ -21,3 +21,17 @@ func (s serverClient) GetImages(ctx context.Context, connectionURL string) ([]in
 
 	return serverImages, nil
 }
+
+func (s serverClient) GetImageByName(ctx context.Context, connectionURL string, imageName string) (incusapi.Image, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return incusapi.Image{}, err
+	}
+
+	serverImage, _, err := client.GetImage(imageName)
+	if err != nil {
+		return incusapi.Image{}, err
+	}
+
+	return *serverImage, nil
+}

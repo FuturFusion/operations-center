@@ -103,3 +103,23 @@ func (_d ProjectRepoWithSlog) GetByID(ctx context.Context, id int) (p1 _sourceIn
 	}()
 	return _d._base.GetByID(ctx, id)
 }
+
+// UpdateByID implements _sourceInventory.ProjectRepo
+func (_d ProjectRepoWithSlog) UpdateByID(ctx context.Context, project _sourceInventory.Project) (p1 _sourceInventory.Project, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Any("project", project),
+	).Debug("ProjectRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("p1", p1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("ProjectRepoWithSlog: method UpdateByID returned an error")
+		} else {
+			log.Debug("ProjectRepoWithSlog: method UpdateByID finished")
+		}
+	}()
+	return _d._base.UpdateByID(ctx, project)
+}

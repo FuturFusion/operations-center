@@ -32,6 +32,9 @@ var _ inventory.StorageBucketRepo = &StorageBucketRepoMock{}
 //			GetByIDFunc: func(ctx context.Context, id int) (inventory.StorageBucket, error) {
 //				panic("mock out the GetByID method")
 //			},
+//			UpdateByIDFunc: func(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error) {
+//				panic("mock out the UpdateByID method")
+//			},
 //		}
 //
 //		// use mockedStorageBucketRepo in code that requires inventory.StorageBucketRepo
@@ -50,6 +53,9 @@ type StorageBucketRepoMock struct {
 
 	// GetByIDFunc mocks the GetByID method.
 	GetByIDFunc func(ctx context.Context, id int) (inventory.StorageBucket, error)
+
+	// UpdateByIDFunc mocks the UpdateByID method.
+	UpdateByIDFunc func(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -81,11 +87,19 @@ type StorageBucketRepoMock struct {
 			// ID is the id argument value.
 			ID int
 		}
+		// UpdateByID holds details about calls to the UpdateByID method.
+		UpdateByID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// StorageBucket is the storageBucket argument value.
+			StorageBucket inventory.StorageBucket
+		}
 	}
 	lockCreate              sync.RWMutex
 	lockDeleteByServerID    sync.RWMutex
 	lockGetAllIDsWithFilter sync.RWMutex
 	lockGetByID             sync.RWMutex
+	lockUpdateByID          sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -229,5 +243,41 @@ func (mock *StorageBucketRepoMock) GetByIDCalls() []struct {
 	mock.lockGetByID.RLock()
 	calls = mock.calls.GetByID
 	mock.lockGetByID.RUnlock()
+	return calls
+}
+
+// UpdateByID calls UpdateByIDFunc.
+func (mock *StorageBucketRepoMock) UpdateByID(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error) {
+	if mock.UpdateByIDFunc == nil {
+		panic("StorageBucketRepoMock.UpdateByIDFunc: method is nil but StorageBucketRepo.UpdateByID was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		StorageBucket inventory.StorageBucket
+	}{
+		Ctx:           ctx,
+		StorageBucket: storageBucket,
+	}
+	mock.lockUpdateByID.Lock()
+	mock.calls.UpdateByID = append(mock.calls.UpdateByID, callInfo)
+	mock.lockUpdateByID.Unlock()
+	return mock.UpdateByIDFunc(ctx, storageBucket)
+}
+
+// UpdateByIDCalls gets all the calls that were made to UpdateByID.
+// Check the length with:
+//
+//	len(mockedStorageBucketRepo.UpdateByIDCalls())
+func (mock *StorageBucketRepoMock) UpdateByIDCalls() []struct {
+	Ctx           context.Context
+	StorageBucket inventory.StorageBucket
+} {
+	var calls []struct {
+		Ctx           context.Context
+		StorageBucket inventory.StorageBucket
+	}
+	mock.lockUpdateByID.RLock()
+	calls = mock.calls.UpdateByID
+	mock.lockUpdateByID.RUnlock()
 	return calls
 }

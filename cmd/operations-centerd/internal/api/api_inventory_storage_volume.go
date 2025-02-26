@@ -24,6 +24,7 @@ func registerInventoryStorageVolumeHandler(router *http.ServeMux, service invent
 
 	router.HandleFunc("GET /{$}", response.With(handler.storageVolumesGet))
 	router.HandleFunc("GET /{id}", response.With(handler.storageVolumeGet))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.storageVolumeResyncPost))
 	router.HandleFunc("POST /force-sync", response.With(handler.forceSyncPost))
 }
 
@@ -171,6 +172,52 @@ func (i *storageVolumeHandler) storageVolumeGet(r *http.Request) response.Respon
 			LastUpdated:     storageVolume.LastUpdated,
 		},
 	)
+}
+
+// swagger:operation POST /1.0/inventory/storage_volumes/{id}/resync storage_volumes storage_volume_get_resync_post
+//
+//	Resync the storage_volume
+//
+//	Resync a specific storage_volume.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Empty response
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (i *storageVolumeHandler) storageVolumeResyncPost(r *http.Request) response.Response {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	err = i.service.ResyncByID(r.Context(), id)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to resync storage_volume: %w", err))
+	}
+
+	return response.EmptySyncResponse
 }
 
 // swagger:operation POST /1.0/inventory/storage_volumes/force-sync storage_volumes storage_volumes_force_sync_post

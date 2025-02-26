@@ -49,6 +49,43 @@ func (s networkACLService) GetByID(ctx context.Context, id int) (NetworkACL, err
 	return s.repo.GetByID(ctx, id)
 }
 
+func (s networkACLService) ResyncByID(ctx context.Context, id int) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		networkACL, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		server, err := s.serverSvc.GetByID(ctx, networkACL.ServerID)
+		if err != nil {
+			return err
+		}
+
+		serverNetworkACL, err := s.networkACLClient.GetNetworkACLByName(ctx, server.ConnectionURL, networkACL.Name)
+		// FIXME: how to differentiate general errors from "not found" errors?
+		// TODO: if the NetworkACL is not found, it needs to be removed from the inventory.
+		if err != nil {
+			return err
+		}
+
+		networkACL.ProjectName = serverNetworkACL.Project
+		networkACL.Object = serverNetworkACL
+		networkACL.LastUpdated = s.now()
+
+		_, err = s.repo.UpdateByID(ctx, networkACL)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s networkACLService) SyncAll(ctx context.Context) error {
 	clusters, err := s.clusterSvc.GetAll(ctx)
 	if err != nil {

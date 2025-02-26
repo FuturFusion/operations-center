@@ -103,3 +103,23 @@ func (_d ProfileRepoWithSlog) GetByID(ctx context.Context, id int) (p1 _sourceIn
 	}()
 	return _d._base.GetByID(ctx, id)
 }
+
+// UpdateByID implements _sourceInventory.ProfileRepo
+func (_d ProfileRepoWithSlog) UpdateByID(ctx context.Context, profile _sourceInventory.Profile) (p1 _sourceInventory.Profile, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Any("profile", profile),
+	).Debug("ProfileRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("p1", p1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("ProfileRepoWithSlog: method UpdateByID returned an error")
+		} else {
+			log.Debug("ProfileRepoWithSlog: method UpdateByID finished")
+		}
+	}()
+	return _d._base.UpdateByID(ctx, profile)
+}

@@ -21,3 +21,17 @@ func (s serverClient) GetNetworkForwards(ctx context.Context, connectionURL stri
 
 	return serverNetworkForwards, nil
 }
+
+func (s serverClient) GetNetworkForwardByName(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return incusapi.NetworkForward{}, err
+	}
+
+	serverNetworkForward, _, err := client.GetNetworkForward(networkName, networkForwardName)
+	if err != nil {
+		return incusapi.NetworkForward{}, err
+	}
+
+	return *serverNetworkForward, nil
+}

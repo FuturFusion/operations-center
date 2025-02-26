@@ -103,3 +103,23 @@ func (_d InstanceRepoWithSlog) GetByID(ctx context.Context, id int) (i1 _sourceI
 	}()
 	return _d._base.GetByID(ctx, id)
 }
+
+// UpdateByID implements _sourceInventory.InstanceRepo
+func (_d InstanceRepoWithSlog) UpdateByID(ctx context.Context, instance _sourceInventory.Instance) (i1 _sourceInventory.Instance, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Any("instance", instance),
+	).Debug("InstanceRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("i1", i1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("InstanceRepoWithSlog: method UpdateByID returned an error")
+		} else {
+			log.Debug("InstanceRepoWithSlog: method UpdateByID finished")
+		}
+	}()
+	return _d._base.UpdateByID(ctx, instance)
+}

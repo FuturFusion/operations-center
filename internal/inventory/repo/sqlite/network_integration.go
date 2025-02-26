@@ -143,6 +143,35 @@ func (i networkIntegration) DeleteByServerID(ctx context.Context, serverID int) 
 	return nil
 }
 
+func (i networkIntegration) UpdateByID(ctx context.Context, in inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
+	const sqlStmt = `
+WITH _server AS (
+  SELECT cluster_id FROM servers WHERE server_id = :server_id
+)
+UPDATE network_integrations SET server_id=:server_id, name=:name, object=:object, last_updated=:last_updated
+WHERE id=:id
+RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, object, last_updated;
+`
+
+	marshaledObject, err := json.Marshal(in.Object)
+	if err != nil {
+		return inventory.NetworkIntegration{}, err
+	}
+
+	row := i.db.QueryRowContext(ctx, sqlStmt,
+		sql.Named("id", in.ID),
+		sql.Named("server_id", in.ServerID),
+		sql.Named("name", in.Name),
+		sql.Named("object", marshaledObject),
+		sql.Named("last_updated", in.LastUpdated),
+	)
+	if row.Err() != nil {
+		return inventory.NetworkIntegration{}, sqlite.MapErr(row.Err())
+	}
+
+	return scanNetworkIntegration(row)
+}
+
 func scanNetworkIntegration(row interface{ Scan(dest ...any) error }) (inventory.NetworkIntegration, error) {
 	var object []byte
 	var networkIntegration inventory.NetworkIntegration

@@ -21,6 +21,9 @@ var _ inventory.InstanceServerClient = &InstanceServerClientMock{}
 //
 //		// make and configure a mocked inventory.InstanceServerClient
 //		mockedInstanceServerClient := &InstanceServerClientMock{
+//			GetInstanceByNameFunc: func(ctx context.Context, connectionURL string, instanceName string) (incusapi.InstanceFull, error) {
+//				panic("mock out the GetInstanceByName method")
+//			},
 //			GetInstancesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error) {
 //				panic("mock out the GetInstances method")
 //			},
@@ -31,11 +34,23 @@ var _ inventory.InstanceServerClient = &InstanceServerClientMock{}
 //
 //	}
 type InstanceServerClientMock struct {
+	// GetInstanceByNameFunc mocks the GetInstanceByName method.
+	GetInstanceByNameFunc func(ctx context.Context, connectionURL string, instanceName string) (incusapi.InstanceFull, error)
+
 	// GetInstancesFunc mocks the GetInstances method.
 	GetInstancesFunc func(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetInstanceByName holds details about calls to the GetInstanceByName method.
+		GetInstanceByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// InstanceName is the instanceName argument value.
+			InstanceName string
+		}
 		// GetInstances holds details about calls to the GetInstances method.
 		GetInstances []struct {
 			// Ctx is the ctx argument value.
@@ -44,7 +59,48 @@ type InstanceServerClientMock struct {
 			ConnectionURL string
 		}
 	}
-	lockGetInstances sync.RWMutex
+	lockGetInstanceByName sync.RWMutex
+	lockGetInstances      sync.RWMutex
+}
+
+// GetInstanceByName calls GetInstanceByNameFunc.
+func (mock *InstanceServerClientMock) GetInstanceByName(ctx context.Context, connectionURL string, instanceName string) (incusapi.InstanceFull, error) {
+	if mock.GetInstanceByNameFunc == nil {
+		panic("InstanceServerClientMock.GetInstanceByNameFunc: method is nil but InstanceServerClient.GetInstanceByName was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+		InstanceName  string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+		InstanceName:  instanceName,
+	}
+	mock.lockGetInstanceByName.Lock()
+	mock.calls.GetInstanceByName = append(mock.calls.GetInstanceByName, callInfo)
+	mock.lockGetInstanceByName.Unlock()
+	return mock.GetInstanceByNameFunc(ctx, connectionURL, instanceName)
+}
+
+// GetInstanceByNameCalls gets all the calls that were made to GetInstanceByName.
+// Check the length with:
+//
+//	len(mockedInstanceServerClient.GetInstanceByNameCalls())
+func (mock *InstanceServerClientMock) GetInstanceByNameCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+	InstanceName  string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+		InstanceName  string
+	}
+	mock.lockGetInstanceByName.RLock()
+	calls = mock.calls.GetInstanceByName
+	mock.lockGetInstanceByName.RUnlock()
+	return calls
 }
 
 // GetInstances calls GetInstancesFunc.

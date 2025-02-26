@@ -32,6 +32,9 @@ var _ inventory.NetworkLoadBalancerRepo = &NetworkLoadBalancerRepoMock{}
 //			GetByIDFunc: func(ctx context.Context, id int) (inventory.NetworkLoadBalancer, error) {
 //				panic("mock out the GetByID method")
 //			},
+//			UpdateByIDFunc: func(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
+//				panic("mock out the UpdateByID method")
+//			},
 //		}
 //
 //		// use mockedNetworkLoadBalancerRepo in code that requires inventory.NetworkLoadBalancerRepo
@@ -50,6 +53,9 @@ type NetworkLoadBalancerRepoMock struct {
 
 	// GetByIDFunc mocks the GetByID method.
 	GetByIDFunc func(ctx context.Context, id int) (inventory.NetworkLoadBalancer, error)
+
+	// UpdateByIDFunc mocks the UpdateByID method.
+	UpdateByIDFunc func(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -81,11 +87,19 @@ type NetworkLoadBalancerRepoMock struct {
 			// ID is the id argument value.
 			ID int
 		}
+		// UpdateByID holds details about calls to the UpdateByID method.
+		UpdateByID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// NetworkLoadBalancer is the networkLoadBalancer argument value.
+			NetworkLoadBalancer inventory.NetworkLoadBalancer
+		}
 	}
 	lockCreate              sync.RWMutex
 	lockDeleteByServerID    sync.RWMutex
 	lockGetAllIDsWithFilter sync.RWMutex
 	lockGetByID             sync.RWMutex
+	lockUpdateByID          sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -229,5 +243,41 @@ func (mock *NetworkLoadBalancerRepoMock) GetByIDCalls() []struct {
 	mock.lockGetByID.RLock()
 	calls = mock.calls.GetByID
 	mock.lockGetByID.RUnlock()
+	return calls
+}
+
+// UpdateByID calls UpdateByIDFunc.
+func (mock *NetworkLoadBalancerRepoMock) UpdateByID(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
+	if mock.UpdateByIDFunc == nil {
+		panic("NetworkLoadBalancerRepoMock.UpdateByIDFunc: method is nil but NetworkLoadBalancerRepo.UpdateByID was just called")
+	}
+	callInfo := struct {
+		Ctx                 context.Context
+		NetworkLoadBalancer inventory.NetworkLoadBalancer
+	}{
+		Ctx:                 ctx,
+		NetworkLoadBalancer: networkLoadBalancer,
+	}
+	mock.lockUpdateByID.Lock()
+	mock.calls.UpdateByID = append(mock.calls.UpdateByID, callInfo)
+	mock.lockUpdateByID.Unlock()
+	return mock.UpdateByIDFunc(ctx, networkLoadBalancer)
+}
+
+// UpdateByIDCalls gets all the calls that were made to UpdateByID.
+// Check the length with:
+//
+//	len(mockedNetworkLoadBalancerRepo.UpdateByIDCalls())
+func (mock *NetworkLoadBalancerRepoMock) UpdateByIDCalls() []struct {
+	Ctx                 context.Context
+	NetworkLoadBalancer inventory.NetworkLoadBalancer
+} {
+	var calls []struct {
+		Ctx                 context.Context
+		NetworkLoadBalancer inventory.NetworkLoadBalancer
+	}
+	mock.lockUpdateByID.RLock()
+	calls = mock.calls.UpdateByID
+	mock.lockUpdateByID.RUnlock()
 	return calls
 }

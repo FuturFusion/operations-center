@@ -21,6 +21,9 @@ var _ inventory.NetworkServerClient = &NetworkServerClientMock{}
 //
 //		// make and configure a mocked inventory.NetworkServerClient
 //		mockedNetworkServerClient := &NetworkServerClientMock{
+//			GetNetworkByNameFunc: func(ctx context.Context, connectionURL string, networkName string) (incusapi.Network, error) {
+//				panic("mock out the GetNetworkByName method")
+//			},
 //			GetNetworksFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Network, error) {
 //				panic("mock out the GetNetworks method")
 //			},
@@ -31,11 +34,23 @@ var _ inventory.NetworkServerClient = &NetworkServerClientMock{}
 //
 //	}
 type NetworkServerClientMock struct {
+	// GetNetworkByNameFunc mocks the GetNetworkByName method.
+	GetNetworkByNameFunc func(ctx context.Context, connectionURL string, networkName string) (incusapi.Network, error)
+
 	// GetNetworksFunc mocks the GetNetworks method.
 	GetNetworksFunc func(ctx context.Context, connectionURL string) ([]incusapi.Network, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetNetworkByName holds details about calls to the GetNetworkByName method.
+		GetNetworkByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// NetworkName is the networkName argument value.
+			NetworkName string
+		}
 		// GetNetworks holds details about calls to the GetNetworks method.
 		GetNetworks []struct {
 			// Ctx is the ctx argument value.
@@ -44,7 +59,48 @@ type NetworkServerClientMock struct {
 			ConnectionURL string
 		}
 	}
-	lockGetNetworks sync.RWMutex
+	lockGetNetworkByName sync.RWMutex
+	lockGetNetworks      sync.RWMutex
+}
+
+// GetNetworkByName calls GetNetworkByNameFunc.
+func (mock *NetworkServerClientMock) GetNetworkByName(ctx context.Context, connectionURL string, networkName string) (incusapi.Network, error) {
+	if mock.GetNetworkByNameFunc == nil {
+		panic("NetworkServerClientMock.GetNetworkByNameFunc: method is nil but NetworkServerClient.GetNetworkByName was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+		NetworkName   string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+		NetworkName:   networkName,
+	}
+	mock.lockGetNetworkByName.Lock()
+	mock.calls.GetNetworkByName = append(mock.calls.GetNetworkByName, callInfo)
+	mock.lockGetNetworkByName.Unlock()
+	return mock.GetNetworkByNameFunc(ctx, connectionURL, networkName)
+}
+
+// GetNetworkByNameCalls gets all the calls that were made to GetNetworkByName.
+// Check the length with:
+//
+//	len(mockedNetworkServerClient.GetNetworkByNameCalls())
+func (mock *NetworkServerClientMock) GetNetworkByNameCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+	NetworkName   string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+		NetworkName   string
+	}
+	mock.lockGetNetworkByName.RLock()
+	calls = mock.calls.GetNetworkByName
+	mock.lockGetNetworkByName.RUnlock()
+	return calls
 }
 
 // GetNetworks calls GetNetworksFunc.

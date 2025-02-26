@@ -11,6 +11,7 @@ import (
 type ProfileService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Profile, error)
+	ResyncByID(ctx context.Context, id int) error
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 	SyncServer(ctx context.Context, serverID int) error
@@ -25,10 +26,12 @@ type ProfileRepo interface {
 	GetByID(ctx context.Context, id int) (Profile, error)
 	Create(ctx context.Context, profile Profile) (Profile, error)
 	DeleteByServerID(ctx context.Context, serverID int) error
+	UpdateByID(ctx context.Context, profile Profile) (Profile, error)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/profile_server_client_mock_gen.go -rm . ProfileServerClient
 
 type ProfileServerClient interface {
 	GetProfiles(ctx context.Context, connectionURL string) ([]incusapi.Profile, error)
+	GetProfileByName(ctx context.Context, connectionURL string, profileName string) (incusapi.Profile, error)
 }

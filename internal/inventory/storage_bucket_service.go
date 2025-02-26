@@ -51,6 +51,43 @@ func (s storageBucketService) GetByID(ctx context.Context, id int) (StorageBucke
 	return s.repo.GetByID(ctx, id)
 }
 
+func (s storageBucketService) ResyncByID(ctx context.Context, id int) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		storageBucket, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		server, err := s.serverSvc.GetByID(ctx, storageBucket.ServerID)
+		if err != nil {
+			return err
+		}
+
+		serverStorageBucket, err := s.storageBucketClient.GetStorageBucketByName(ctx, server.ConnectionURL, storageBucket.StoragePoolName, storageBucket.Name)
+		// FIXME: how to differentiate general errors from "not found" errors?
+		// TODO: if the StorageBucket is not found, it needs to be removed from the inventory.
+		if err != nil {
+			return err
+		}
+
+		storageBucket.ProjectName = serverStorageBucket.Project
+		storageBucket.Object = serverStorageBucket
+		storageBucket.LastUpdated = s.now()
+
+		_, err = s.repo.UpdateByID(ctx, storageBucket)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s storageBucketService) SyncAll(ctx context.Context) error {
 	clusters, err := s.clusterSvc.GetAll(ctx)
 	if err != nil {
