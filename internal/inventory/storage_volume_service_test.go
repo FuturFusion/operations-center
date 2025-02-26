@@ -10,6 +10,7 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
@@ -150,7 +151,8 @@ func TestStorageVolumeService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
-				Name: "storageVolume one",
+				Name:    "storageVolume one",
+				Project: "project one",
 			},
 
 			assertErr: require.NoError,
@@ -191,6 +193,29 @@ func TestStorageVolumeService_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - validate",
+			repoGetByIDStorageVolume: inventory.StorageVolume{
+				ID:              1,
+				ServerID:        1,
+				Name:            "", // invalid
+				StoragePoolName: "storage_pool",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
+				Name:    "storageVolume one",
+				Project: "project one",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
 			name: "error - update by ID",
 			repoGetByIDStorageVolume: inventory.StorageVolume{
 				ID:              1,
@@ -204,7 +229,8 @@ func TestStorageVolumeService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
-				Name: "storageVolume one",
+				Name:    "storageVolume one",
+				Project: "project one",
 			},
 			repoUpdateByIDErr: boom.Error,
 
@@ -234,7 +260,7 @@ func TestStorageVolumeService_ResyncByID(t *testing.T) {
 
 			storageVolumeClient := &serviceMock.StorageVolumeServerClientMock{
 				GetStorageVolumeByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string) (incusapi.StorageVolume, error) {
-					require.Equal(t, "one", storageVolumeName)
+					require.Equal(t, tc.repoGetByIDStorageVolume.Name, storageVolumeName)
 					require.Equal(t, "storage_pool", storagePoolName)
 					return tc.storageVolumeClientGetStorageVolumeByName, tc.storageVolumeClientGetStorageVolumeByNameErr
 				},
@@ -299,7 +325,8 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 			},
 			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolume{
 				{
-					Name: "storageVolume one",
+					Name:    "storageVolume one",
+					Project: "project one",
 				},
 			},
 
@@ -422,12 +449,50 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 			},
 			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolume{
 				{
-					Name: "storageVolume one",
+					Name:    "storageVolume one",
+					Project: "project one",
 				},
 			},
 			repoDeleteByServerIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - validate",
+			clusterSvcGetAllClusters: provisioning.Clusters{
+				{
+					ID:   1,
+					Name: "cluster one",
+				},
+			},
+			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+				{
+					ID:        1,
+					ClusterID: 1,
+					Hostname:  "server-one",
+				},
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			storagePoolClientGetStoragePools: []incusapi.StoragePool{
+				{
+					Name: "storagePool one",
+				},
+			},
+			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolume{
+				{
+					Name:    "", // invalid
+					Project: "project one",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - storageVolume create",
@@ -456,7 +521,8 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 			},
 			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolume{
 				{
-					Name: "storageVolume one",
+					Name:    "storageVolume one",
+					Project: "project one",
 				},
 			},
 			repoCreateErr: boom.Error,

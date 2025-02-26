@@ -10,6 +10,7 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
@@ -149,7 +150,8 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 			},
 			instanceClientGetInstanceByName: incusapi.InstanceFull{
 				Instance: incusapi.Instance{
-					Name: "instance one",
+					Name:    "instance one",
+					Project: "project one",
 				},
 			},
 
@@ -189,6 +191,30 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - validate",
+			repoGetByIDInstance: inventory.Instance{
+				ID:       1,
+				ServerID: 1,
+				Name:     "", // invalid
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			instanceClientGetInstanceByName: incusapi.InstanceFull{
+				Instance: incusapi.Instance{
+					Name:    "instance one",
+					Project: "project one",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
 			name: "error - update by ID",
 			repoGetByIDInstance: inventory.Instance{
 				ID:       1,
@@ -202,7 +228,8 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 			},
 			instanceClientGetInstanceByName: incusapi.InstanceFull{
 				Instance: incusapi.Instance{
-					Name: "instance one",
+					Name:    "instance one",
+					Project: "project one",
 				},
 			},
 			repoUpdateByIDErr: boom.Error,
@@ -233,7 +260,7 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 
 			instanceClient := &serviceMock.InstanceServerClientMock{
 				GetInstanceByNameFunc: func(ctx context.Context, connectionURL string, instanceName string) (incusapi.InstanceFull, error) {
-					require.Equal(t, "one", instanceName)
+					require.Equal(t, tc.repoGetByIDInstance.Name, instanceName)
 					return tc.instanceClientGetInstanceByName, tc.instanceClientGetInstanceByNameErr
 				},
 			}
@@ -291,7 +318,8 @@ func TestInstanceService_SyncAll(t *testing.T) {
 			instanceClientGetInstances: []incusapi.InstanceFull{
 				{
 					Instance: incusapi.Instance{
-						Name: "instance one",
+						Name:    "instance one",
+						Project: "project one",
 					},
 				},
 			},
@@ -382,13 +410,48 @@ func TestInstanceService_SyncAll(t *testing.T) {
 			instanceClientGetInstances: []incusapi.InstanceFull{
 				{
 					Instance: incusapi.Instance{
-						Name: "instance one",
+						Name:    "instance one",
+						Project: "project one",
 					},
 				},
 			},
 			repoDeleteByServerIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - validate",
+			clusterSvcGetAllClusters: provisioning.Clusters{
+				{
+					ID:   1,
+					Name: "cluster one",
+				},
+			},
+			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+				{
+					ID:        1,
+					ClusterID: 1,
+					Hostname:  "server-one",
+				},
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			instanceClientGetInstances: []incusapi.InstanceFull{
+				{
+					Instance: incusapi.Instance{
+						Name:    "", // invalid
+						Project: "project one",
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - instance create",
@@ -413,7 +476,8 @@ func TestInstanceService_SyncAll(t *testing.T) {
 			instanceClientGetInstances: []incusapi.InstanceFull{
 				{
 					Instance: incusapi.Instance{
-						Name: "instance one",
+						Name:    "instance one",
+						Project: "project one",
 					},
 				},
 			},

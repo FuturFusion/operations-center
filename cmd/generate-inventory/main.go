@@ -31,6 +31,10 @@ var targets = []struct {
 		TargetName:   "cmd/operations-centerd/internal/api/api_inventory_{{ .Name }}.go",
 	},
 	{
+		TemplateName: "model_test.gotmpl",
+		TargetName:   "internal/inventory/{{ .Name }}_model_test.go",
+	},
+	{
 		TemplateName: "model.gotmpl",
 		TargetName:   "internal/inventory/{{ .Name }}_model.go",
 	},

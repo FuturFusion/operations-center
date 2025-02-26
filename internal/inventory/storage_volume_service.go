@@ -74,6 +74,11 @@ func (s storageVolumeService) ResyncByID(ctx context.Context, id int) error {
 		storageVolume.Object = serverStorageVolume
 		storageVolume.LastUpdated = s.now()
 
+		err = storageVolume.Validate()
+		if err != nil {
+			return err
+		}
+
 		_, err = s.repo.UpdateByID(ctx, storageVolume)
 		if err != nil {
 			return err
@@ -152,6 +157,11 @@ func (s storageVolumeService) SyncServer(ctx context.Context, serverID int) erro
 					Name:            serverStorageVolume.Name,
 					Object:          serverStorageVolume,
 					LastUpdated:     s.now(),
+				}
+
+				err = storageVolume.Validate()
+				if err != nil {
+					return err
 				}
 
 				_, err := s.repo.Create(ctx, storageVolume)

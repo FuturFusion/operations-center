@@ -6,6 +6,8 @@ import (
 	"time"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 type StoragePool struct {
@@ -17,7 +19,15 @@ type StoragePool struct {
 	LastUpdated time.Time
 }
 
-func (s StoragePool) Validate() error {
+func (m StoragePool) Validate() error {
+	if m.ServerID < 1 {
+		return domain.NewValidationErrf("Invalid StoragePool, server id can not be less than 1")
+	}
+
+	if m.Name == "" {
+		return domain.NewValidationErrf("Invalid StoragePool, name can not be empty")
+	}
+
 	return nil
 }
 

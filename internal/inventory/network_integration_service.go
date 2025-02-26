@@ -71,6 +71,11 @@ func (s networkIntegrationService) ResyncByID(ctx context.Context, id int) error
 		networkIntegration.Object = serverNetworkIntegration
 		networkIntegration.LastUpdated = s.now()
 
+		err = networkIntegration.Validate()
+		if err != nil {
+			return err
+		}
+
 		_, err = s.repo.UpdateByID(ctx, networkIntegration)
 		if err != nil {
 			return err
@@ -141,6 +146,11 @@ func (s networkIntegrationService) SyncServer(ctx context.Context, serverID int)
 				Name:        serverNetworkIntegration.Name,
 				Object:      serverNetworkIntegration,
 				LastUpdated: s.now(),
+			}
+
+			err = networkIntegration.Validate()
+			if err != nil {
+				return err
 			}
 
 			_, err := s.repo.Create(ctx, networkIntegration)

@@ -6,6 +6,8 @@ import (
 	"time"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 type NetworkForward struct {
@@ -18,7 +20,19 @@ type NetworkForward struct {
 	LastUpdated time.Time
 }
 
-func (s NetworkForward) Validate() error {
+func (m NetworkForward) Validate() error {
+	if m.ServerID < 1 {
+		return domain.NewValidationErrf("Invalid NetworkForward, server id can not be less than 1")
+	}
+
+	if m.Name == "" {
+		return domain.NewValidationErrf("Invalid NetworkForward, name can not be empty")
+	}
+
+	if m.NetworkName == "" {
+		return domain.NewValidationErrf("Invalid NetworkForward, parent name (Network) can not be empty")
+	}
+
 	return nil
 }
 

@@ -73,6 +73,11 @@ func (s networkPeerService) ResyncByID(ctx context.Context, id int) error {
 		networkPeer.Object = serverNetworkPeer
 		networkPeer.LastUpdated = s.now()
 
+		err = networkPeer.Validate()
+		if err != nil {
+			return err
+		}
+
 		_, err = s.repo.UpdateByID(ctx, networkPeer)
 		if err != nil {
 			return err
@@ -150,6 +155,11 @@ func (s networkPeerService) SyncServer(ctx context.Context, serverID int) error 
 					Name:        serverNetworkPeer.Name,
 					Object:      serverNetworkPeer,
 					LastUpdated: s.now(),
+				}
+
+				err = networkPeer.Validate()
+				if err != nil {
+					return err
 				}
 
 				_, err := s.repo.Create(ctx, networkPeer)

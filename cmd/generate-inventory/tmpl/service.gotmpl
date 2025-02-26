@@ -80,6 +80,11 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 		{{ .Name | camelcase }}.Object = server{{ .Name | pascalcase }}
 		{{ .Name | camelcase }}.LastUpdated = s.now()
 
+		err = {{ .Name | camelcase }}.Validate()
+		if err != nil {
+			return err
+		}
+
 		_, err = s.repo.UpdateByID(ctx, {{ .Name | camelcase }})
 		if err != nil {
 			return err
@@ -170,6 +175,11 @@ func (s {{ .Name | camelcase }}Service) SyncServer(ctx context.Context, serverID
 				Name:        server{{ .Name | pascalcase }}.{{ .ObjectNamePropertyName | pascalcase }},
 				Object:      server{{ .Name | pascalcase }},
 				LastUpdated: s.now(),
+			}
+
+			err = {{ .Name | camelcase }}.Validate()
+			if err != nil {
+				return err
 			}
 
 			_, err := s.repo.Create(ctx, {{ .Name | camelcase }})

@@ -73,6 +73,11 @@ func (s networkLoadBalancerService) ResyncByID(ctx context.Context, id int) erro
 		networkLoadBalancer.Object = serverNetworkLoadBalancer
 		networkLoadBalancer.LastUpdated = s.now()
 
+		err = networkLoadBalancer.Validate()
+		if err != nil {
+			return err
+		}
+
 		_, err = s.repo.UpdateByID(ctx, networkLoadBalancer)
 		if err != nil {
 			return err
@@ -150,6 +155,11 @@ func (s networkLoadBalancerService) SyncServer(ctx context.Context, serverID int
 					Name:        serverNetworkLoadBalancer.ListenAddress,
 					Object:      serverNetworkLoadBalancer,
 					LastUpdated: s.now(),
+				}
+
+				err = networkLoadBalancer.Validate()
+				if err != nil {
+					return err
 				}
 
 				_, err := s.repo.Create(ctx, networkLoadBalancer)

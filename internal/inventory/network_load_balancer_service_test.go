@@ -10,6 +10,7 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
@@ -190,6 +191,28 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - validate",
+			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
+				ID:          1,
+				ServerID:    1,
+				Name:        "", // invalid
+				NetworkName: "network",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkLoadBalancerClientGetNetworkLoadBalancerByName: incusapi.NetworkLoadBalancer{
+				ListenAddress: "networkLoadBalancer one",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
 			name: "error - update by ID",
 			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
 				ID:          1,
@@ -233,7 +256,7 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 
 			networkLoadBalancerClient := &serviceMock.NetworkLoadBalancerServerClientMock{
 				GetNetworkLoadBalancerByNameFunc: func(ctx context.Context, connectionURL string, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
-					require.Equal(t, "one", networkLoadBalancerName)
+					require.Equal(t, tc.repoGetByIDNetworkLoadBalancer.Name, networkLoadBalancerName)
 					require.Equal(t, "network", networkName)
 					return tc.networkLoadBalancerClientGetNetworkLoadBalancerByName, tc.networkLoadBalancerClientGetNetworkLoadBalancerByNameErr
 				},
@@ -427,6 +450,42 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			repoDeleteByServerIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - validate",
+			clusterSvcGetAllClusters: provisioning.Clusters{
+				{
+					ID:   1,
+					Name: "cluster one",
+				},
+			},
+			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+				{
+					ID:        1,
+					ClusterID: 1,
+					Hostname:  "server-one",
+				},
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkClientGetNetworks: []incusapi.Network{
+				{
+					Name: "network one",
+				},
+			},
+			networkLoadBalancerClientGetNetworkLoadBalancers: []incusapi.NetworkLoadBalancer{
+				{
+					ListenAddress: "", // invalid
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - networkLoadBalancer create",

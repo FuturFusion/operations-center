@@ -73,6 +73,11 @@ func (s networkForwardService) ResyncByID(ctx context.Context, id int) error {
 		networkForward.Object = serverNetworkForward
 		networkForward.LastUpdated = s.now()
 
+		err = networkForward.Validate()
+		if err != nil {
+			return err
+		}
+
 		_, err = s.repo.UpdateByID(ctx, networkForward)
 		if err != nil {
 			return err
@@ -150,6 +155,11 @@ func (s networkForwardService) SyncServer(ctx context.Context, serverID int) err
 					Name:        serverNetworkForward.ListenAddress,
 					Object:      serverNetworkForward,
 					LastUpdated: s.now(),
+				}
+
+				err = networkForward.Validate()
+				if err != nil {
+					return err
 				}
 
 				_, err := s.repo.Create(ctx, networkForward)

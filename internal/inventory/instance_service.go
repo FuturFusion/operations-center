@@ -72,6 +72,11 @@ func (s instanceService) ResyncByID(ctx context.Context, id int) error {
 		instance.Object = serverInstance
 		instance.LastUpdated = s.now()
 
+		err = instance.Validate()
+		if err != nil {
+			return err
+		}
+
 		_, err = s.repo.UpdateByID(ctx, instance)
 		if err != nil {
 			return err
@@ -143,6 +148,11 @@ func (s instanceService) SyncServer(ctx context.Context, serverID int) error {
 				Name:        serverInstance.Name,
 				Object:      serverInstance,
 				LastUpdated: s.now(),
+			}
+
+			err = instance.Validate()
+			if err != nil {
+				return err
 			}
 
 			_, err := s.repo.Create(ctx, instance)

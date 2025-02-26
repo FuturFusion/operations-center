@@ -71,6 +71,11 @@ func (s projectService) ResyncByID(ctx context.Context, id int) error {
 		project.Object = serverProject
 		project.LastUpdated = s.now()
 
+		err = project.Validate()
+		if err != nil {
+			return err
+		}
+
 		_, err = s.repo.UpdateByID(ctx, project)
 		if err != nil {
 			return err
@@ -141,6 +146,11 @@ func (s projectService) SyncServer(ctx context.Context, serverID int) error {
 				Name:        serverProject.Name,
 				Object:      serverProject,
 				LastUpdated: s.now(),
+			}
+
+			err = project.Validate()
+			if err != nil {
+				return err
 			}
 
 			_, err := s.repo.Create(ctx, project)

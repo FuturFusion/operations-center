@@ -6,6 +6,8 @@ import (
 	"time"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 type NetworkACL struct {
@@ -18,7 +20,19 @@ type NetworkACL struct {
 	LastUpdated time.Time
 }
 
-func (s NetworkACL) Validate() error {
+func (m NetworkACL) Validate() error {
+	if m.ServerID < 1 {
+		return domain.NewValidationErrf("Invalid NetworkACL, server id can not be less than 1")
+	}
+
+	if m.Name == "" {
+		return domain.NewValidationErrf("Invalid NetworkACL, name can not be empty")
+	}
+
+	if m.ProjectName == "" {
+		return domain.NewValidationErrf("Invalid NetworkACL, project name can not be empty")
+	}
+
 	return nil
 }
 

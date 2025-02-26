@@ -72,6 +72,11 @@ func (s profileService) ResyncByID(ctx context.Context, id int) error {
 		profile.Object = serverProfile
 		profile.LastUpdated = s.now()
 
+		err = profile.Validate()
+		if err != nil {
+			return err
+		}
+
 		_, err = s.repo.UpdateByID(ctx, profile)
 		if err != nil {
 			return err
@@ -143,6 +148,11 @@ func (s profileService) SyncServer(ctx context.Context, serverID int) error {
 				Name:        serverProfile.Name,
 				Object:      serverProfile,
 				LastUpdated: s.now(),
+			}
+
+			err = profile.Validate()
+			if err != nil {
+				return err
 			}
 
 			_, err := s.repo.Create(ctx, profile)

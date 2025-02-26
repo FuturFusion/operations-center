@@ -6,6 +6,8 @@ import (
 	"time"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 type NetworkPeer struct {
@@ -18,7 +20,19 @@ type NetworkPeer struct {
 	LastUpdated time.Time
 }
 
-func (s NetworkPeer) Validate() error {
+func (m NetworkPeer) Validate() error {
+	if m.ServerID < 1 {
+		return domain.NewValidationErrf("Invalid NetworkPeer, server id can not be less than 1")
+	}
+
+	if m.Name == "" {
+		return domain.NewValidationErrf("Invalid NetworkPeer, name can not be empty")
+	}
+
+	if m.NetworkName == "" {
+		return domain.NewValidationErrf("Invalid NetworkPeer, parent name (Network) can not be empty")
+	}
+
 	return nil
 }
 

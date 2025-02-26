@@ -10,6 +10,7 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
@@ -148,7 +149,8 @@ func TestProfileService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			profileClientGetProfileByName: incusapi.Profile{
-				Name: "profile one",
+				Name:    "profile one",
+				Project: "project one",
 			},
 
 			assertErr: require.NoError,
@@ -187,6 +189,28 @@ func TestProfileService_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - validate",
+			repoGetByIDProfile: inventory.Profile{
+				ID:       1,
+				ServerID: 1,
+				Name:     "", // invalid
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			profileClientGetProfileByName: incusapi.Profile{
+				Name:    "profile one",
+				Project: "project one",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
 			name: "error - update by ID",
 			repoGetByIDProfile: inventory.Profile{
 				ID:       1,
@@ -199,7 +223,8 @@ func TestProfileService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			profileClientGetProfileByName: incusapi.Profile{
-				Name: "profile one",
+				Name:    "profile one",
+				Project: "project one",
 			},
 			repoUpdateByIDErr: boom.Error,
 
@@ -229,7 +254,7 @@ func TestProfileService_ResyncByID(t *testing.T) {
 
 			profileClient := &serviceMock.ProfileServerClientMock{
 				GetProfileByNameFunc: func(ctx context.Context, connectionURL string, profileName string) (incusapi.Profile, error) {
-					require.Equal(t, "one", profileName)
+					require.Equal(t, tc.repoGetByIDProfile.Name, profileName)
 					return tc.profileClientGetProfileByName, tc.profileClientGetProfileByNameErr
 				},
 			}
@@ -286,7 +311,8 @@ func TestProfileService_SyncAll(t *testing.T) {
 			},
 			profileClientGetProfiles: []incusapi.Profile{
 				{
-					Name: "profile one",
+					Name:    "profile one",
+					Project: "project one",
 				},
 			},
 
@@ -375,12 +401,45 @@ func TestProfileService_SyncAll(t *testing.T) {
 			},
 			profileClientGetProfiles: []incusapi.Profile{
 				{
-					Name: "profile one",
+					Name:    "profile one",
+					Project: "project one",
 				},
 			},
 			repoDeleteByServerIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - validate",
+			clusterSvcGetAllClusters: provisioning.Clusters{
+				{
+					ID:   1,
+					Name: "cluster one",
+				},
+			},
+			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+				{
+					ID:        1,
+					ClusterID: 1,
+					Hostname:  "server-one",
+				},
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			profileClientGetProfiles: []incusapi.Profile{
+				{
+					Name:    "", // invalid
+					Project: "project one",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - profile create",
@@ -404,7 +463,8 @@ func TestProfileService_SyncAll(t *testing.T) {
 			},
 			profileClientGetProfiles: []incusapi.Profile{
 				{
-					Name: "profile one",
+					Name:    "profile one",
+					Project: "project one",
 				},
 			},
 			repoCreateErr: boom.Error,

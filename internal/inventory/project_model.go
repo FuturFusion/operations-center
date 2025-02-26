@@ -6,6 +6,8 @@ import (
 	"time"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 type Project struct {
@@ -17,7 +19,15 @@ type Project struct {
 	LastUpdated time.Time
 }
 
-func (s Project) Validate() error {
+func (m Project) Validate() error {
+	if m.ServerID < 1 {
+		return domain.NewValidationErrf("Invalid Project, server id can not be less than 1")
+	}
+
+	if m.Name == "" {
+		return domain.NewValidationErrf("Invalid Project, name can not be empty")
+	}
+
 	return nil
 }
 

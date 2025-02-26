@@ -6,6 +6,8 @@ import (
 	"time"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 type NetworkLoadBalancer struct {
@@ -18,7 +20,19 @@ type NetworkLoadBalancer struct {
 	LastUpdated time.Time
 }
 
-func (s NetworkLoadBalancer) Validate() error {
+func (m NetworkLoadBalancer) Validate() error {
+	if m.ServerID < 1 {
+		return domain.NewValidationErrf("Invalid NetworkLoadBalancer, server id can not be less than 1")
+	}
+
+	if m.Name == "" {
+		return domain.NewValidationErrf("Invalid NetworkLoadBalancer, name can not be empty")
+	}
+
+	if m.NetworkName == "" {
+		return domain.NewValidationErrf("Invalid NetworkLoadBalancer, parent name (Network) can not be empty")
+	}
+
 	return nil
 }
 

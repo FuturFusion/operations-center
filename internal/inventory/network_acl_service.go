@@ -72,6 +72,11 @@ func (s networkACLService) ResyncByID(ctx context.Context, id int) error {
 		networkACL.Object = serverNetworkACL
 		networkACL.LastUpdated = s.now()
 
+		err = networkACL.Validate()
+		if err != nil {
+			return err
+		}
+
 		_, err = s.repo.UpdateByID(ctx, networkACL)
 		if err != nil {
 			return err
@@ -143,6 +148,11 @@ func (s networkACLService) SyncServer(ctx context.Context, serverID int) error {
 				Name:        serverNetworkACL.Name,
 				Object:      serverNetworkACL,
 				LastUpdated: s.now(),
+			}
+
+			err = networkACL.Validate()
+			if err != nil {
+				return err
 			}
 
 			_, err := s.repo.Create(ctx, networkACL)

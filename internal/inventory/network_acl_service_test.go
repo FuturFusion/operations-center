@@ -10,6 +10,7 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
@@ -151,6 +152,7 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 				NetworkACLPost: incusapi.NetworkACLPost{
 					Name: "networkACL one",
 				},
+				Project: "project one",
 			},
 
 			assertErr: require.NoError,
@@ -189,6 +191,30 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - validate",
+			repoGetByIDNetworkACL: inventory.NetworkACL{
+				ID:       1,
+				ServerID: 1,
+				Name:     "", // invalid
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkACLClientGetNetworkACLByName: incusapi.NetworkACL{
+				NetworkACLPost: incusapi.NetworkACLPost{
+					Name: "networkACL one",
+				},
+				Project: "project one",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
 			name: "error - update by ID",
 			repoGetByIDNetworkACL: inventory.NetworkACL{
 				ID:       1,
@@ -204,6 +230,7 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 				NetworkACLPost: incusapi.NetworkACLPost{
 					Name: "networkACL one",
 				},
+				Project: "project one",
 			},
 			repoUpdateByIDErr: boom.Error,
 
@@ -233,7 +260,7 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 
 			networkACLClient := &serviceMock.NetworkACLServerClientMock{
 				GetNetworkACLByNameFunc: func(ctx context.Context, connectionURL string, networkACLName string) (incusapi.NetworkACL, error) {
-					require.Equal(t, "one", networkACLName)
+					require.Equal(t, tc.repoGetByIDNetworkACL.Name, networkACLName)
 					return tc.networkACLClientGetNetworkACLByName, tc.networkACLClientGetNetworkACLByNameErr
 				},
 			}
@@ -293,6 +320,7 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 					NetworkACLPost: incusapi.NetworkACLPost{
 						Name: "networkACL one",
 					},
+					Project: "project one",
 				},
 			},
 
@@ -384,11 +412,46 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 					NetworkACLPost: incusapi.NetworkACLPost{
 						Name: "networkACL one",
 					},
+					Project: "project one",
 				},
 			},
 			repoDeleteByServerIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - validate",
+			clusterSvcGetAllClusters: provisioning.Clusters{
+				{
+					ID:   1,
+					Name: "cluster one",
+				},
+			},
+			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+				{
+					ID:        1,
+					ClusterID: 1,
+					Hostname:  "server-one",
+				},
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkACLClientGetNetworkACLs: []incusapi.NetworkACL{
+				{
+					NetworkACLPost: incusapi.NetworkACLPost{
+						Name: "", // invalid
+					},
+					Project: "project one",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - networkACL create",
@@ -415,6 +478,7 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 					NetworkACLPost: incusapi.NetworkACLPost{
 						Name: "networkACL one",
 					},
+					Project: "project one",
 				},
 			},
 			repoCreateErr: boom.Error,

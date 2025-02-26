@@ -6,6 +6,8 @@ import (
 	"time"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 type StorageVolume struct {
@@ -19,7 +21,23 @@ type StorageVolume struct {
 	LastUpdated     time.Time
 }
 
-func (s StorageVolume) Validate() error {
+func (m StorageVolume) Validate() error {
+	if m.ServerID < 1 {
+		return domain.NewValidationErrf("Invalid StorageVolume, server id can not be less than 1")
+	}
+
+	if m.Name == "" {
+		return domain.NewValidationErrf("Invalid StorageVolume, name can not be empty")
+	}
+
+	if m.ProjectName == "" {
+		return domain.NewValidationErrf("Invalid StorageVolume, project name can not be empty")
+	}
+
+	if m.StoragePoolName == "" {
+		return domain.NewValidationErrf("Invalid StorageVolume, parent name (StoragePool) can not be empty")
+	}
+
 	return nil
 }
 

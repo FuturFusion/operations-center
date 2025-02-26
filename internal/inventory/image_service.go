@@ -72,6 +72,11 @@ func (s imageService) ResyncByID(ctx context.Context, id int) error {
 		image.Object = serverImage
 		image.LastUpdated = s.now()
 
+		err = image.Validate()
+		if err != nil {
+			return err
+		}
+
 		_, err = s.repo.UpdateByID(ctx, image)
 		if err != nil {
 			return err
@@ -143,6 +148,11 @@ func (s imageService) SyncServer(ctx context.Context, serverID int) error {
 				Name:        serverImage.Filename,
 				Object:      serverImage,
 				LastUpdated: s.now(),
+			}
+
+			err = image.Validate()
+			if err != nil {
+				return err
 			}
 
 			_, err := s.repo.Create(ctx, image)
