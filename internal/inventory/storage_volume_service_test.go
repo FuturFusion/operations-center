@@ -53,7 +53,9 @@ func TestStorageVolumeService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			storageVolumeSvc := inventory.NewStorageVolumeService(repo, nil, nil, nil, nil)
+			storageVolumeSvc := inventory.NewStorageVolumeService(repo, nil, nil, nil, nil, inventory.StorageVolumeWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			storageVolumeHostnames, err := storageVolumeSvc.GetAllIDsWithFilter(context.Background(), inventory.StorageVolumeFilter{})
@@ -107,7 +109,9 @@ func TestStorageVolumeService_GetByID(t *testing.T) {
 				},
 			}
 
-			storageVolumeSvc := inventory.NewStorageVolumeService(repo, nil, nil, nil, nil)
+			storageVolumeSvc := inventory.NewStorageVolumeService(repo, nil, nil, nil, nil, inventory.StorageVolumeWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			storageVolume, err := storageVolumeSvc.GetByID(context.Background(), tc.idArg)
@@ -370,7 +374,9 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 				},
 			}
 
-			storageVolumeSvc := inventory.NewStorageVolumeService(repo, clusterSvc, serverSvc, storageVolumeClient, storagePoolClient)
+			storageVolumeSvc := inventory.NewStorageVolumeService(repo, clusterSvc, serverSvc, storageVolumeClient, storagePoolClient, inventory.StorageVolumeWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			err := storageVolumeSvc.SyncAll(context.Background())

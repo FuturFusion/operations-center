@@ -53,7 +53,9 @@ func TestInstanceService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			instanceSvc := inventory.NewInstanceService(repo, nil, nil, nil)
+			instanceSvc := inventory.NewInstanceService(repo, nil, nil, nil, inventory.InstanceWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			instanceHostnames, err := instanceSvc.GetAllIDsWithFilter(context.Background(), inventory.InstanceFilter{})
@@ -106,7 +108,9 @@ func TestInstanceService_GetByID(t *testing.T) {
 				},
 			}
 
-			instanceSvc := inventory.NewInstanceService(repo, nil, nil, nil)
+			instanceSvc := inventory.NewInstanceService(repo, nil, nil, nil, inventory.InstanceWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			instance, err := instanceSvc.GetByID(context.Background(), tc.idArg)
@@ -323,7 +327,9 @@ func TestInstanceService_SyncAll(t *testing.T) {
 				},
 			}
 
-			instanceSvc := inventory.NewInstanceService(repo, clusterSvc, serverSvc, instanceClient)
+			instanceSvc := inventory.NewInstanceService(repo, clusterSvc, serverSvc, instanceClient, inventory.InstanceWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			err := instanceSvc.SyncAll(context.Background())

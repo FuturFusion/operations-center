@@ -53,7 +53,9 @@ func TestStoragePoolService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			storagePoolSvc := inventory.NewStoragePoolService(repo, nil, nil, nil)
+			storagePoolSvc := inventory.NewStoragePoolService(repo, nil, nil, nil, inventory.StoragePoolWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			storagePoolHostnames, err := storagePoolSvc.GetAllIDsWithFilter(context.Background(), inventory.StoragePoolFilter{})
@@ -105,7 +107,9 @@ func TestStoragePoolService_GetByID(t *testing.T) {
 				},
 			}
 
-			storagePoolSvc := inventory.NewStoragePoolService(repo, nil, nil, nil)
+			storagePoolSvc := inventory.NewStoragePoolService(repo, nil, nil, nil, inventory.StoragePoolWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			storagePool, err := storagePoolSvc.GetByID(context.Background(), tc.idArg)
@@ -316,7 +320,9 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 				},
 			}
 
-			storagePoolSvc := inventory.NewStoragePoolService(repo, clusterSvc, serverSvc, storagePoolClient)
+			storagePoolSvc := inventory.NewStoragePoolService(repo, clusterSvc, serverSvc, storagePoolClient, inventory.StoragePoolWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			err := storagePoolSvc.SyncAll(context.Background())

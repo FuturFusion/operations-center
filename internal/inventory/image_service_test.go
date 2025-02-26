@@ -53,7 +53,9 @@ func TestImageService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			imageSvc := inventory.NewImageService(repo, nil, nil, nil)
+			imageSvc := inventory.NewImageService(repo, nil, nil, nil, inventory.ImageWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			imageHostnames, err := imageSvc.GetAllIDsWithFilter(context.Background(), inventory.ImageFilter{})
@@ -106,7 +108,9 @@ func TestImageService_GetByID(t *testing.T) {
 				},
 			}
 
-			imageSvc := inventory.NewImageService(repo, nil, nil, nil)
+			imageSvc := inventory.NewImageService(repo, nil, nil, nil, inventory.ImageWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			image, err := imageSvc.GetByID(context.Background(), tc.idArg)
@@ -317,7 +321,9 @@ func TestImageService_SyncAll(t *testing.T) {
 				},
 			}
 
-			imageSvc := inventory.NewImageService(repo, clusterSvc, serverSvc, imageClient)
+			imageSvc := inventory.NewImageService(repo, clusterSvc, serverSvc, imageClient, inventory.ImageWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			err := imageSvc.SyncAll(context.Background())

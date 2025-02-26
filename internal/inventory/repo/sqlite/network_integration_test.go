@@ -17,6 +17,7 @@ import (
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -41,6 +42,17 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
+	testServerB := provisioning.Server{
+		ID:            2,
+		ClusterID:     1,
+		Hostname:      "two",
+		Type:          api.ServerTypeIncus,
+		ConnectionURL: "https://one/",
+		HardwareData:  incusapi.Resources{},
+		VersionData:   json.RawMessage(nil),
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
 	networkIntegrationA := inventory.NetworkIntegration{
 		ServerID:    1,
 		Name:        "one",
@@ -49,7 +61,7 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	}
 
 	networkIntegrationB := inventory.NetworkIntegration{
-		ServerID:    1,
+		ServerID:    2,
 		Name:        "two",
 		Object:      incusapi.NetworkIntegration{},
 		LastUpdated: time.Now(),
@@ -83,8 +95,10 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	_, err = clusterSvc.Create(ctx, testClusterA)
 	require.NoError(t, err)
 
-	// Add dummy server.
+	// Add dummy servers.
 	_, err = serverSvc.Create(ctx, testServerA)
+	require.NoError(t, err)
+	_, err = serverSvc.Create(ctx, testServerB)
 	require.NoError(t, err)
 
 	// Add network_integrations
@@ -96,11 +110,20 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, networkIntegrationB.ClusterID)
 
-	// Ensure we have two entries
+	// Ensure we have two entries without filter
 	networkIntegrationIDs, err := networkIntegration.GetAllIDsWithFilter(ctx, inventory.NetworkIntegrationFilter{})
 	require.NoError(t, err)
 	require.Len(t, networkIntegrationIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, networkIntegrationIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	networkIntegrationIDs, err = networkIntegration.GetAllIDsWithFilter(ctx, inventory.NetworkIntegrationFilter{
+		Cluster: ptr.To("one"),
+		Server:  ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, networkIntegrationIDs, 1)
+	require.ElementsMatch(t, []int{1}, networkIntegrationIDs)
 
 	// Should get back networkIntegrationA unchanged.
 	networkIntegrationA.ClusterID = 1
@@ -110,6 +133,8 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 
 	// Delete network_integrations by server ID.
 	err = networkIntegration.DeleteByServerID(ctx, 1)
+	require.NoError(t, err)
+	err = networkIntegration.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 
 	_, err = networkIntegration.GetByID(ctx, networkIntegrationA.ID)

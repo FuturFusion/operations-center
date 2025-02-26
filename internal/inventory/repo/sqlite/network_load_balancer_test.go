@@ -17,6 +17,7 @@ import (
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -41,6 +42,17 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
+	testServerB := provisioning.Server{
+		ID:            2,
+		ClusterID:     1,
+		Hostname:      "two",
+		Type:          api.ServerTypeIncus,
+		ConnectionURL: "https://one/",
+		HardwareData:  incusapi.Resources{},
+		VersionData:   json.RawMessage(nil),
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
 	networkLoadBalancerA := inventory.NetworkLoadBalancer{
 		ServerID:    1,
 		NetworkName: "parent one",
@@ -50,7 +62,7 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	}
 
 	networkLoadBalancerB := inventory.NetworkLoadBalancer{
-		ServerID:    1,
+		ServerID:    2,
 		NetworkName: "parent one",
 		Name:        "two",
 		Object:      incusapi.NetworkLoadBalancer{},
@@ -85,8 +97,10 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	_, err = clusterSvc.Create(ctx, testClusterA)
 	require.NoError(t, err)
 
-	// Add dummy server.
+	// Add dummy servers.
 	_, err = serverSvc.Create(ctx, testServerA)
+	require.NoError(t, err)
+	_, err = serverSvc.Create(ctx, testServerB)
 	require.NoError(t, err)
 
 	// Add network_load_balancers
@@ -98,11 +112,20 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, networkLoadBalancerB.ClusterID)
 
-	// Ensure we have two entries
+	// Ensure we have two entries without filter
 	networkLoadBalancerIDs, err := networkLoadBalancer.GetAllIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{})
 	require.NoError(t, err)
 	require.Len(t, networkLoadBalancerIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, networkLoadBalancerIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	networkLoadBalancerIDs, err = networkLoadBalancer.GetAllIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{
+		Cluster: ptr.To("one"),
+		Server:  ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, networkLoadBalancerIDs, 1)
+	require.ElementsMatch(t, []int{1}, networkLoadBalancerIDs)
 
 	// Should get back networkLoadBalancerA unchanged.
 	networkLoadBalancerA.ClusterID = 1
@@ -112,6 +135,8 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 
 	// Delete network_load_balancers by server ID.
 	err = networkLoadBalancer.DeleteByServerID(ctx, 1)
+	require.NoError(t, err)
+	err = networkLoadBalancer.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 
 	_, err = networkLoadBalancer.GetByID(ctx, networkLoadBalancerA.ID)

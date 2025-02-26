@@ -53,7 +53,9 @@ func TestNetworkLoadBalancerService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			networkLoadBalancerSvc := inventory.NewNetworkLoadBalancerService(repo, nil, nil, nil, nil)
+			networkLoadBalancerSvc := inventory.NewNetworkLoadBalancerService(repo, nil, nil, nil, nil, inventory.NetworkLoadBalancerWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			networkLoadBalancerHostnames, err := networkLoadBalancerSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkLoadBalancerFilter{})
@@ -106,7 +108,9 @@ func TestNetworkLoadBalancerService_GetByID(t *testing.T) {
 				},
 			}
 
-			networkLoadBalancerSvc := inventory.NewNetworkLoadBalancerService(repo, nil, nil, nil, nil)
+			networkLoadBalancerSvc := inventory.NewNetworkLoadBalancerService(repo, nil, nil, nil, nil, inventory.NetworkLoadBalancerWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			networkLoadBalancer, err := networkLoadBalancerSvc.GetByID(context.Background(), tc.idArg)
@@ -369,7 +373,9 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkLoadBalancerSvc := inventory.NewNetworkLoadBalancerService(repo, clusterSvc, serverSvc, networkLoadBalancerClient, networkClient)
+			networkLoadBalancerSvc := inventory.NewNetworkLoadBalancerService(repo, clusterSvc, serverSvc, networkLoadBalancerClient, networkClient, inventory.NetworkLoadBalancerWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			err := networkLoadBalancerSvc.SyncAll(context.Background())

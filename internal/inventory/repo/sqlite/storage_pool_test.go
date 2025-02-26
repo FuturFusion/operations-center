@@ -17,6 +17,7 @@ import (
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -41,6 +42,17 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
+	testServerB := provisioning.Server{
+		ID:            2,
+		ClusterID:     1,
+		Hostname:      "two",
+		Type:          api.ServerTypeIncus,
+		ConnectionURL: "https://one/",
+		HardwareData:  incusapi.Resources{},
+		VersionData:   json.RawMessage(nil),
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
 	storagePoolA := inventory.StoragePool{
 		ServerID:    1,
 		Name:        "one",
@@ -49,7 +61,7 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	}
 
 	storagePoolB := inventory.StoragePool{
-		ServerID:    1,
+		ServerID:    2,
 		Name:        "two",
 		Object:      incusapi.StoragePool{},
 		LastUpdated: time.Now(),
@@ -83,8 +95,10 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	_, err = clusterSvc.Create(ctx, testClusterA)
 	require.NoError(t, err)
 
-	// Add dummy server.
+	// Add dummy servers.
 	_, err = serverSvc.Create(ctx, testServerA)
+	require.NoError(t, err)
+	_, err = serverSvc.Create(ctx, testServerB)
 	require.NoError(t, err)
 
 	// Add storage_pools
@@ -96,11 +110,20 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, storagePoolB.ClusterID)
 
-	// Ensure we have two entries
+	// Ensure we have two entries without filter
 	storagePoolIDs, err := storagePool.GetAllIDsWithFilter(ctx, inventory.StoragePoolFilter{})
 	require.NoError(t, err)
 	require.Len(t, storagePoolIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, storagePoolIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	storagePoolIDs, err = storagePool.GetAllIDsWithFilter(ctx, inventory.StoragePoolFilter{
+		Cluster: ptr.To("one"),
+		Server:  ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, storagePoolIDs, 1)
+	require.ElementsMatch(t, []int{1}, storagePoolIDs)
 
 	// Should get back storagePoolA unchanged.
 	storagePoolA.ClusterID = 1
@@ -110,6 +133,8 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 
 	// Delete storage_pools by server ID.
 	err = storagePool.DeleteByServerID(ctx, 1)
+	require.NoError(t, err)
+	err = storagePool.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 
 	_, err = storagePool.GetByID(ctx, storagePoolA.ID)

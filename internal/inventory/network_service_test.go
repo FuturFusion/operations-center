@@ -53,7 +53,9 @@ func TestNetworkService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			networkSvc := inventory.NewNetworkService(repo, nil, nil, nil)
+			networkSvc := inventory.NewNetworkService(repo, nil, nil, nil, inventory.NetworkWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			networkHostnames, err := networkSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkFilter{})
@@ -106,7 +108,9 @@ func TestNetworkService_GetByID(t *testing.T) {
 				},
 			}
 
-			networkSvc := inventory.NewNetworkService(repo, nil, nil, nil)
+			networkSvc := inventory.NewNetworkService(repo, nil, nil, nil, inventory.NetworkWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			network, err := networkSvc.GetByID(context.Background(), tc.idArg)
@@ -317,7 +321,9 @@ func TestNetworkService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkSvc := inventory.NewNetworkService(repo, clusterSvc, serverSvc, networkClient)
+			networkSvc := inventory.NewNetworkService(repo, clusterSvc, serverSvc, networkClient, inventory.NetworkWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			err := networkSvc.SyncAll(context.Background())

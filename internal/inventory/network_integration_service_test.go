@@ -53,7 +53,9 @@ func TestNetworkIntegrationService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, nil, nil, nil)
+			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, nil, nil, nil, inventory.NetworkIntegrationWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			networkIntegrationHostnames, err := networkIntegrationSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkIntegrationFilter{})
@@ -105,7 +107,9 @@ func TestNetworkIntegrationService_GetByID(t *testing.T) {
 				},
 			}
 
-			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, nil, nil, nil)
+			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, nil, nil, nil, inventory.NetworkIntegrationWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			networkIntegration, err := networkIntegrationSvc.GetByID(context.Background(), tc.idArg)
@@ -316,7 +320,9 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, clusterSvc, serverSvc, networkIntegrationClient)
+			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, clusterSvc, serverSvc, networkIntegrationClient, inventory.NetworkIntegrationWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			err := networkIntegrationSvc.SyncAll(context.Background())

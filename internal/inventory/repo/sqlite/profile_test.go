@@ -17,6 +17,7 @@ import (
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -41,6 +42,17 @@ func TestProfileDatabaseActions(t *testing.T) {
 		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
+	testServerB := provisioning.Server{
+		ID:            2,
+		ClusterID:     1,
+		Hostname:      "two",
+		Type:          api.ServerTypeIncus,
+		ConnectionURL: "https://one/",
+		HardwareData:  incusapi.Resources{},
+		VersionData:   json.RawMessage(nil),
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
 	profileA := inventory.Profile{
 		ServerID:    1,
 		ProjectName: "one",
@@ -50,7 +62,7 @@ func TestProfileDatabaseActions(t *testing.T) {
 	}
 
 	profileB := inventory.Profile{
-		ServerID:    1,
+		ServerID:    2,
 		ProjectName: "two",
 		Name:        "two",
 		Object:      incusapi.Profile{},
@@ -85,8 +97,10 @@ func TestProfileDatabaseActions(t *testing.T) {
 	_, err = clusterSvc.Create(ctx, testClusterA)
 	require.NoError(t, err)
 
-	// Add dummy server.
+	// Add dummy servers.
 	_, err = serverSvc.Create(ctx, testServerA)
+	require.NoError(t, err)
+	_, err = serverSvc.Create(ctx, testServerB)
 	require.NoError(t, err)
 
 	// Add profiles
@@ -98,11 +112,21 @@ func TestProfileDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, profileB.ClusterID)
 
-	// Ensure we have two entries
+	// Ensure we have two entries without filter
 	profileIDs, err := profile.GetAllIDsWithFilter(ctx, inventory.ProfileFilter{})
 	require.NoError(t, err)
 	require.Len(t, profileIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, profileIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	profileIDs, err = profile.GetAllIDsWithFilter(ctx, inventory.ProfileFilter{
+		Cluster: ptr.To("one"),
+		Server:  ptr.To("one"),
+		Project: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, profileIDs, 1)
+	require.ElementsMatch(t, []int{1}, profileIDs)
 
 	// Should get back profileA unchanged.
 	profileA.ClusterID = 1
@@ -112,6 +136,8 @@ func TestProfileDatabaseActions(t *testing.T) {
 
 	// Delete profiles by server ID.
 	err = profile.DeleteByServerID(ctx, 1)
+	require.NoError(t, err)
+	err = profile.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 
 	_, err = profile.GetByID(ctx, profileA.ID)

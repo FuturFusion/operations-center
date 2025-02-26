@@ -53,7 +53,9 @@ func TestProfileService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			profileSvc := inventory.NewProfileService(repo, nil, nil, nil)
+			profileSvc := inventory.NewProfileService(repo, nil, nil, nil, inventory.ProfileWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			profileHostnames, err := profileSvc.GetAllIDsWithFilter(context.Background(), inventory.ProfileFilter{})
@@ -106,7 +108,9 @@ func TestProfileService_GetByID(t *testing.T) {
 				},
 			}
 
-			profileSvc := inventory.NewProfileService(repo, nil, nil, nil)
+			profileSvc := inventory.NewProfileService(repo, nil, nil, nil, inventory.ProfileWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			profile, err := profileSvc.GetByID(context.Background(), tc.idArg)
@@ -317,7 +321,9 @@ func TestProfileService_SyncAll(t *testing.T) {
 				},
 			}
 
-			profileSvc := inventory.NewProfileService(repo, clusterSvc, serverSvc, profileClient)
+			profileSvc := inventory.NewProfileService(repo, clusterSvc, serverSvc, profileClient, inventory.ProfileWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			err := profileSvc.SyncAll(context.Background())

@@ -53,7 +53,9 @@ func TestNetworkACLService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			networkACLSvc := inventory.NewNetworkACLService(repo, nil, nil, nil)
+			networkACLSvc := inventory.NewNetworkACLService(repo, nil, nil, nil, inventory.NetworkACLWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			networkACLHostnames, err := networkACLSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkACLFilter{})
@@ -106,7 +108,9 @@ func TestNetworkACLService_GetByID(t *testing.T) {
 				},
 			}
 
-			networkACLSvc := inventory.NewNetworkACLService(repo, nil, nil, nil)
+			networkACLSvc := inventory.NewNetworkACLService(repo, nil, nil, nil, inventory.NetworkACLWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			networkACL, err := networkACLSvc.GetByID(context.Background(), tc.idArg)
@@ -323,7 +327,9 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkACLSvc := inventory.NewNetworkACLService(repo, clusterSvc, serverSvc, networkACLClient)
+			networkACLSvc := inventory.NewNetworkACLService(repo, clusterSvc, serverSvc, networkACLClient, inventory.NetworkACLWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			err := networkACLSvc.SyncAll(context.Background())

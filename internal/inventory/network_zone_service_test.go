@@ -53,7 +53,9 @@ func TestNetworkZoneService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			networkZoneSvc := inventory.NewNetworkZoneService(repo, nil, nil, nil)
+			networkZoneSvc := inventory.NewNetworkZoneService(repo, nil, nil, nil, inventory.NetworkZoneWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			networkZoneHostnames, err := networkZoneSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkZoneFilter{})
@@ -106,7 +108,9 @@ func TestNetworkZoneService_GetByID(t *testing.T) {
 				},
 			}
 
-			networkZoneSvc := inventory.NewNetworkZoneService(repo, nil, nil, nil)
+			networkZoneSvc := inventory.NewNetworkZoneService(repo, nil, nil, nil, inventory.NetworkZoneWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			networkZone, err := networkZoneSvc.GetByID(context.Background(), tc.idArg)
@@ -317,7 +321,9 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkZoneSvc := inventory.NewNetworkZoneService(repo, clusterSvc, serverSvc, networkZoneClient)
+			networkZoneSvc := inventory.NewNetworkZoneService(repo, clusterSvc, serverSvc, networkZoneClient, inventory.NetworkZoneWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			err := networkZoneSvc.SyncAll(context.Background())

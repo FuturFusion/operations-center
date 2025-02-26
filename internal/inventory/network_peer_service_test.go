@@ -53,7 +53,9 @@ func TestNetworkPeerService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			networkPeerSvc := inventory.NewNetworkPeerService(repo, nil, nil, nil, nil)
+			networkPeerSvc := inventory.NewNetworkPeerService(repo, nil, nil, nil, nil, inventory.NetworkPeerWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			networkPeerHostnames, err := networkPeerSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkPeerFilter{})
@@ -106,7 +108,9 @@ func TestNetworkPeerService_GetByID(t *testing.T) {
 				},
 			}
 
-			networkPeerSvc := inventory.NewNetworkPeerService(repo, nil, nil, nil, nil)
+			networkPeerSvc := inventory.NewNetworkPeerService(repo, nil, nil, nil, nil, inventory.NetworkPeerWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			networkPeer, err := networkPeerSvc.GetByID(context.Background(), tc.idArg)
@@ -369,7 +373,9 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkPeerSvc := inventory.NewNetworkPeerService(repo, clusterSvc, serverSvc, networkPeerClient, networkClient)
+			networkPeerSvc := inventory.NewNetworkPeerService(repo, clusterSvc, serverSvc, networkPeerClient, networkClient, inventory.NetworkPeerWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			err := networkPeerSvc.SyncAll(context.Background())

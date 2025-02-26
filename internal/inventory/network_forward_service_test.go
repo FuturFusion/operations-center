@@ -53,7 +53,9 @@ func TestNetworkForwardService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			networkForwardSvc := inventory.NewNetworkForwardService(repo, nil, nil, nil, nil)
+			networkForwardSvc := inventory.NewNetworkForwardService(repo, nil, nil, nil, nil, inventory.NetworkForwardWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			networkForwardHostnames, err := networkForwardSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkForwardFilter{})
@@ -106,7 +108,9 @@ func TestNetworkForwardService_GetByID(t *testing.T) {
 				},
 			}
 
-			networkForwardSvc := inventory.NewNetworkForwardService(repo, nil, nil, nil, nil)
+			networkForwardSvc := inventory.NewNetworkForwardService(repo, nil, nil, nil, nil, inventory.NetworkForwardWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			networkForward, err := networkForwardSvc.GetByID(context.Background(), tc.idArg)
@@ -369,7 +373,9 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkForwardSvc := inventory.NewNetworkForwardService(repo, clusterSvc, serverSvc, networkForwardClient, networkClient)
+			networkForwardSvc := inventory.NewNetworkForwardService(repo, clusterSvc, serverSvc, networkForwardClient, networkClient, inventory.NetworkForwardWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			err := networkForwardSvc.SyncAll(context.Background())

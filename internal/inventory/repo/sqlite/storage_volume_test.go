@@ -17,6 +17,7 @@ import (
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -41,6 +42,17 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
+	testServerB := provisioning.Server{
+		ID:            2,
+		ClusterID:     1,
+		Hostname:      "two",
+		Type:          api.ServerTypeIncus,
+		ConnectionURL: "https://one/",
+		HardwareData:  incusapi.Resources{},
+		VersionData:   json.RawMessage(nil),
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
 	storageVolumeA := inventory.StorageVolume{
 		ServerID:        1,
 		ProjectName:     "one",
@@ -51,7 +63,7 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	}
 
 	storageVolumeB := inventory.StorageVolume{
-		ServerID:        1,
+		ServerID:        2,
 		ProjectName:     "two",
 		StoragePoolName: "parent one",
 		Name:            "two",
@@ -87,8 +99,10 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	_, err = clusterSvc.Create(ctx, testClusterA)
 	require.NoError(t, err)
 
-	// Add dummy server.
+	// Add dummy servers.
 	_, err = serverSvc.Create(ctx, testServerA)
+	require.NoError(t, err)
+	_, err = serverSvc.Create(ctx, testServerB)
 	require.NoError(t, err)
 
 	// Add storage_volumes
@@ -100,11 +114,21 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, storageVolumeB.ClusterID)
 
-	// Ensure we have two entries
+	// Ensure we have two entries without filter
 	storageVolumeIDs, err := storageVolume.GetAllIDsWithFilter(ctx, inventory.StorageVolumeFilter{})
 	require.NoError(t, err)
 	require.Len(t, storageVolumeIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, storageVolumeIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	storageVolumeIDs, err = storageVolume.GetAllIDsWithFilter(ctx, inventory.StorageVolumeFilter{
+		Cluster: ptr.To("one"),
+		Server:  ptr.To("one"),
+		Project: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, storageVolumeIDs, 1)
+	require.ElementsMatch(t, []int{1}, storageVolumeIDs)
 
 	// Should get back storageVolumeA unchanged.
 	storageVolumeA.ClusterID = 1
@@ -114,6 +138,8 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 
 	// Delete storage_volumes by server ID.
 	err = storageVolume.DeleteByServerID(ctx, 1)
+	require.NoError(t, err)
+	err = storageVolume.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 
 	_, err = storageVolume.GetByID(ctx, storageVolumeA.ID)

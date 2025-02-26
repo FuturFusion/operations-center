@@ -53,7 +53,9 @@ func TestStorageBucketService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			storageBucketSvc := inventory.NewStorageBucketService(repo, nil, nil, nil, nil)
+			storageBucketSvc := inventory.NewStorageBucketService(repo, nil, nil, nil, nil, inventory.StorageBucketWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			storageBucketHostnames, err := storageBucketSvc.GetAllIDsWithFilter(context.Background(), inventory.StorageBucketFilter{})
@@ -107,7 +109,9 @@ func TestStorageBucketService_GetByID(t *testing.T) {
 				},
 			}
 
-			storageBucketSvc := inventory.NewStorageBucketService(repo, nil, nil, nil, nil)
+			storageBucketSvc := inventory.NewStorageBucketService(repo, nil, nil, nil, nil, inventory.StorageBucketWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			storageBucket, err := storageBucketSvc.GetByID(context.Background(), tc.idArg)
@@ -370,7 +374,9 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 				},
 			}
 
-			storageBucketSvc := inventory.NewStorageBucketService(repo, clusterSvc, serverSvc, storageBucketClient, storagePoolClient)
+			storageBucketSvc := inventory.NewStorageBucketService(repo, clusterSvc, serverSvc, storageBucketClient, storagePoolClient, inventory.StorageBucketWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			err := storageBucketSvc.SyncAll(context.Background())

@@ -53,7 +53,9 @@ func TestProjectService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			projectSvc := inventory.NewProjectService(repo, nil, nil, nil)
+			projectSvc := inventory.NewProjectService(repo, nil, nil, nil, inventory.ProjectWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			projectHostnames, err := projectSvc.GetAllIDsWithFilter(context.Background(), inventory.ProjectFilter{})
@@ -105,7 +107,9 @@ func TestProjectService_GetByID(t *testing.T) {
 				},
 			}
 
-			projectSvc := inventory.NewProjectService(repo, nil, nil, nil)
+			projectSvc := inventory.NewProjectService(repo, nil, nil, nil, inventory.ProjectWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			project, err := projectSvc.GetByID(context.Background(), tc.idArg)
@@ -316,7 +320,9 @@ func TestProjectService_SyncAll(t *testing.T) {
 				},
 			}
 
-			projectSvc := inventory.NewProjectService(repo, clusterSvc, serverSvc, projectClient)
+			projectSvc := inventory.NewProjectService(repo, clusterSvc, serverSvc, projectClient, inventory.ProjectWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
 
 			// Run test
 			err := projectSvc.SyncAll(context.Background())
