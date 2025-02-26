@@ -24,7 +24,7 @@ func New{{ .Name | pascalcase }}(db sqlite.DBTX) *{{ .Name | camelcase }} {
 	}
 }
 
-func (i {{ .Name | camelcase }}) Create(ctx context.Context, in inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
+func (r {{ .Name | camelcase }}) Create(ctx context.Context, in inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
 	const sqlStmt = `
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
@@ -39,7 +39,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, {{ if .
 		return inventory.{{ .Name | pascalcase }}{}, err
 	}
 
-	row := i.db.QueryRowContext(ctx, sqlStmt,
+	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("server_id", in.ServerID),
 {{- if .HasProject }}
 		sql.Named("project_name", in.ProjectName),
@@ -58,7 +58,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, {{ if .
 	return scan{{ .Name | pascalcase }}(row)
 }
 
-func (i {{ .Name | camelcase }}) GetAllIDsWithFilter(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) ([]int, error) {
+func (r {{ .Name | camelcase }}) GetAllIDsWithFilter(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) ([]int, error) {
 	const sqlStmt = `
 SELECT {{ .PluralName }}.id
 FROM {{ .PluralName }}
@@ -91,7 +91,7 @@ ORDER BY {{ .PluralName }}.id
 
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
-	rows, err := i.db.QueryContext(ctx, sqlStmtComplete, args...)
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
 	if err != nil {
 		return nil, sqlite.MapErr(err)
 	}
@@ -116,7 +116,7 @@ ORDER BY {{ .PluralName }}.id
 	return ids, nil
 }
 
-func (i {{ .Name | camelcase }}) GetByID(ctx context.Context, id int) (inventory.{{ .Name | pascalcase }}, error) {
+func (r {{ .Name | camelcase }}) GetByID(ctx context.Context, id int) (inventory.{{ .Name | pascalcase }}, error) {
 	const sqlStmt = `
 SELECT
   {{ .PluralName }}.id, servers.cluster_id as cluster_id, {{ .PluralName }}.server_id, {{ if .HasProject }}{{ .PluralName }}.project_name, {{ end -}}{{ if .HasParent }}{{ .PluralName }}.{{ .ParentName }}_name, {{ end -}} {{ .PluralName }}.name, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
@@ -126,7 +126,7 @@ FROM
 WHERE {{ .PluralName }}.id=:id;
 `
 
-	row := i.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
+	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
 	if row.Err() != nil {
 		return inventory.{{ .Name | pascalcase }}{}, sqlite.MapErr(row.Err())
 	}
@@ -134,10 +134,10 @@ WHERE {{ .PluralName }}.id=:id;
 	return scan{{ .Name | pascalcase }}(row)
 }
 
-func (i {{ .Name | camelcase }}) DeleteByServerID(ctx context.Context, serverID int) error {
+func (r {{ .Name | camelcase }}) DeleteByServerID(ctx context.Context, serverID int) error {
 	const sqlStmt = `DELETE FROM {{ .PluralName }} WHERE server_id=:serverID;`
 
-	result, err := i.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -154,7 +154,7 @@ func (i {{ .Name | camelcase }}) DeleteByServerID(ctx context.Context, serverID 
 	return nil
 }
 
-func (i {{ .Name | camelcase }}) UpdateByID(ctx context.Context, in inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
+func (r {{ .Name | camelcase }}) UpdateByID(ctx context.Context, in inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
 	const sqlStmt = `
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
@@ -169,7 +169,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, {{ if .
 		return inventory.{{ .Name | pascalcase }}{}, err
 	}
 
-	row := i.db.QueryRowContext(ctx, sqlStmt,
+	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
 		sql.Named("server_id", in.ServerID),
 {{- if .HasProject }}

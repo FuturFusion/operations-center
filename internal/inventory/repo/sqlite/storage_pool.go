@@ -26,7 +26,7 @@ func NewStoragePool(db sqlite.DBTX) *storagePool {
 	}
 }
 
-func (i storagePool) Create(ctx context.Context, in inventory.StoragePool) (inventory.StoragePool, error) {
+func (r storagePool) Create(ctx context.Context, in inventory.StoragePool) (inventory.StoragePool, error) {
 	const sqlStmt = `
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
@@ -41,7 +41,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, o
 		return inventory.StoragePool{}, err
 	}
 
-	row := i.db.QueryRowContext(ctx, sqlStmt,
+	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("server_id", in.ServerID),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -54,7 +54,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, o
 	return scanStoragePool(row)
 }
 
-func (i storagePool) GetAllIDsWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) ([]int, error) {
+func (r storagePool) GetAllIDsWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT storage_pools.id
 FROM storage_pools
@@ -80,7 +80,7 @@ ORDER BY storage_pools.id
 
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
-	rows, err := i.db.QueryContext(ctx, sqlStmtComplete, args...)
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
 	if err != nil {
 		return nil, sqlite.MapErr(err)
 	}
@@ -105,7 +105,7 @@ ORDER BY storage_pools.id
 	return ids, nil
 }
 
-func (i storagePool) GetByID(ctx context.Context, id int) (inventory.StoragePool, error) {
+func (r storagePool) GetByID(ctx context.Context, id int) (inventory.StoragePool, error) {
 	const sqlStmt = `
 SELECT
   storage_pools.id, servers.cluster_id as cluster_id, storage_pools.server_id, storage_pools.name, storage_pools.object, storage_pools.last_updated
@@ -115,7 +115,7 @@ FROM
 WHERE storage_pools.id=:id;
 `
 
-	row := i.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
+	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
 	if row.Err() != nil {
 		return inventory.StoragePool{}, sqlite.MapErr(row.Err())
 	}
@@ -123,10 +123,10 @@ WHERE storage_pools.id=:id;
 	return scanStoragePool(row)
 }
 
-func (i storagePool) DeleteByServerID(ctx context.Context, serverID int) error {
+func (r storagePool) DeleteByServerID(ctx context.Context, serverID int) error {
 	const sqlStmt = `DELETE FROM storage_pools WHERE server_id=:serverID;`
 
-	result, err := i.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -143,7 +143,7 @@ func (i storagePool) DeleteByServerID(ctx context.Context, serverID int) error {
 	return nil
 }
 
-func (i storagePool) UpdateByID(ctx context.Context, in inventory.StoragePool) (inventory.StoragePool, error) {
+func (r storagePool) UpdateByID(ctx context.Context, in inventory.StoragePool) (inventory.StoragePool, error) {
 	const sqlStmt = `
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
@@ -158,7 +158,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, o
 		return inventory.StoragePool{}, err
 	}
 
-	row := i.db.QueryRowContext(ctx, sqlStmt,
+	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
 		sql.Named("server_id", in.ServerID),
 		sql.Named("name", in.Name),

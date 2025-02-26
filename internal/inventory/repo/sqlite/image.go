@@ -26,7 +26,7 @@ func NewImage(db sqlite.DBTX) *image {
 	}
 }
 
-func (i image) Create(ctx context.Context, in inventory.Image) (inventory.Image, error) {
+func (r image) Create(ctx context.Context, in inventory.Image) (inventory.Image, error) {
 	const sqlStmt = `
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
@@ -41,7 +41,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 		return inventory.Image{}, err
 	}
 
-	row := i.db.QueryRowContext(ctx, sqlStmt,
+	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("server_id", in.ServerID),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
@@ -55,7 +55,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 	return scanImage(row)
 }
 
-func (i image) GetAllIDsWithFilter(ctx context.Context, filter inventory.ImageFilter) ([]int, error) {
+func (r image) GetAllIDsWithFilter(ctx context.Context, filter inventory.ImageFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT images.id
 FROM images
@@ -86,7 +86,7 @@ ORDER BY images.id
 
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
-	rows, err := i.db.QueryContext(ctx, sqlStmtComplete, args...)
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
 	if err != nil {
 		return nil, sqlite.MapErr(err)
 	}
@@ -111,7 +111,7 @@ ORDER BY images.id
 	return ids, nil
 }
 
-func (i image) GetByID(ctx context.Context, id int) (inventory.Image, error) {
+func (r image) GetByID(ctx context.Context, id int) (inventory.Image, error) {
 	const sqlStmt = `
 SELECT
   images.id, servers.cluster_id as cluster_id, images.server_id, images.project_name, images.name, images.object, images.last_updated
@@ -121,7 +121,7 @@ FROM
 WHERE images.id=:id;
 `
 
-	row := i.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
+	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
 	if row.Err() != nil {
 		return inventory.Image{}, sqlite.MapErr(row.Err())
 	}
@@ -129,10 +129,10 @@ WHERE images.id=:id;
 	return scanImage(row)
 }
 
-func (i image) DeleteByServerID(ctx context.Context, serverID int) error {
+func (r image) DeleteByServerID(ctx context.Context, serverID int) error {
 	const sqlStmt = `DELETE FROM images WHERE server_id=:serverID;`
 
-	result, err := i.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -149,7 +149,7 @@ func (i image) DeleteByServerID(ctx context.Context, serverID int) error {
 	return nil
 }
 
-func (i image) UpdateByID(ctx context.Context, in inventory.Image) (inventory.Image, error) {
+func (r image) UpdateByID(ctx context.Context, in inventory.Image) (inventory.Image, error) {
 	const sqlStmt = `
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
@@ -164,7 +164,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 		return inventory.Image{}, err
 	}
 
-	row := i.db.QueryRowContext(ctx, sqlStmt,
+	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
 		sql.Named("server_id", in.ServerID),
 		sql.Named("project_name", in.ProjectName),

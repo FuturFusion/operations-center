@@ -26,7 +26,7 @@ func NewProfile(db sqlite.DBTX) *profile {
 	}
 }
 
-func (i profile) Create(ctx context.Context, in inventory.Profile) (inventory.Profile, error) {
+func (r profile) Create(ctx context.Context, in inventory.Profile) (inventory.Profile, error) {
 	const sqlStmt = `
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
@@ -41,7 +41,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 		return inventory.Profile{}, err
 	}
 
-	row := i.db.QueryRowContext(ctx, sqlStmt,
+	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("server_id", in.ServerID),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
@@ -55,7 +55,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 	return scanProfile(row)
 }
 
-func (i profile) GetAllIDsWithFilter(ctx context.Context, filter inventory.ProfileFilter) ([]int, error) {
+func (r profile) GetAllIDsWithFilter(ctx context.Context, filter inventory.ProfileFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT profiles.id
 FROM profiles
@@ -86,7 +86,7 @@ ORDER BY profiles.id
 
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
-	rows, err := i.db.QueryContext(ctx, sqlStmtComplete, args...)
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
 	if err != nil {
 		return nil, sqlite.MapErr(err)
 	}
@@ -111,7 +111,7 @@ ORDER BY profiles.id
 	return ids, nil
 }
 
-func (i profile) GetByID(ctx context.Context, id int) (inventory.Profile, error) {
+func (r profile) GetByID(ctx context.Context, id int) (inventory.Profile, error) {
 	const sqlStmt = `
 SELECT
   profiles.id, servers.cluster_id as cluster_id, profiles.server_id, profiles.project_name, profiles.name, profiles.object, profiles.last_updated
@@ -121,7 +121,7 @@ FROM
 WHERE profiles.id=:id;
 `
 
-	row := i.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
+	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
 	if row.Err() != nil {
 		return inventory.Profile{}, sqlite.MapErr(row.Err())
 	}
@@ -129,10 +129,10 @@ WHERE profiles.id=:id;
 	return scanProfile(row)
 }
 
-func (i profile) DeleteByServerID(ctx context.Context, serverID int) error {
+func (r profile) DeleteByServerID(ctx context.Context, serverID int) error {
 	const sqlStmt = `DELETE FROM profiles WHERE server_id=:serverID;`
 
-	result, err := i.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -149,7 +149,7 @@ func (i profile) DeleteByServerID(ctx context.Context, serverID int) error {
 	return nil
 }
 
-func (i profile) UpdateByID(ctx context.Context, in inventory.Profile) (inventory.Profile, error) {
+func (r profile) UpdateByID(ctx context.Context, in inventory.Profile) (inventory.Profile, error) {
 	const sqlStmt = `
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
@@ -164,7 +164,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 		return inventory.Profile{}, err
 	}
 
-	row := i.db.QueryRowContext(ctx, sqlStmt,
+	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
 		sql.Named("server_id", in.ServerID),
 		sql.Named("project_name", in.ProjectName),

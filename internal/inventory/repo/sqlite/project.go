@@ -26,7 +26,7 @@ func NewProject(db sqlite.DBTX) *project {
 	}
 }
 
-func (i project) Create(ctx context.Context, in inventory.Project) (inventory.Project, error) {
+func (r project) Create(ctx context.Context, in inventory.Project) (inventory.Project, error) {
 	const sqlStmt = `
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
@@ -41,7 +41,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, o
 		return inventory.Project{}, err
 	}
 
-	row := i.db.QueryRowContext(ctx, sqlStmt,
+	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("server_id", in.ServerID),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -54,7 +54,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, o
 	return scanProject(row)
 }
 
-func (i project) GetAllIDsWithFilter(ctx context.Context, filter inventory.ProjectFilter) ([]int, error) {
+func (r project) GetAllIDsWithFilter(ctx context.Context, filter inventory.ProjectFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT projects.id
 FROM projects
@@ -80,7 +80,7 @@ ORDER BY projects.id
 
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
-	rows, err := i.db.QueryContext(ctx, sqlStmtComplete, args...)
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
 	if err != nil {
 		return nil, sqlite.MapErr(err)
 	}
@@ -105,7 +105,7 @@ ORDER BY projects.id
 	return ids, nil
 }
 
-func (i project) GetByID(ctx context.Context, id int) (inventory.Project, error) {
+func (r project) GetByID(ctx context.Context, id int) (inventory.Project, error) {
 	const sqlStmt = `
 SELECT
   projects.id, servers.cluster_id as cluster_id, projects.server_id, projects.name, projects.object, projects.last_updated
@@ -115,7 +115,7 @@ FROM
 WHERE projects.id=:id;
 `
 
-	row := i.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
+	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
 	if row.Err() != nil {
 		return inventory.Project{}, sqlite.MapErr(row.Err())
 	}
@@ -123,10 +123,10 @@ WHERE projects.id=:id;
 	return scanProject(row)
 }
 
-func (i project) DeleteByServerID(ctx context.Context, serverID int) error {
+func (r project) DeleteByServerID(ctx context.Context, serverID int) error {
 	const sqlStmt = `DELETE FROM projects WHERE server_id=:serverID;`
 
-	result, err := i.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -143,7 +143,7 @@ func (i project) DeleteByServerID(ctx context.Context, serverID int) error {
 	return nil
 }
 
-func (i project) UpdateByID(ctx context.Context, in inventory.Project) (inventory.Project, error) {
+func (r project) UpdateByID(ctx context.Context, in inventory.Project) (inventory.Project, error) {
 	const sqlStmt = `
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
@@ -158,7 +158,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, o
 		return inventory.Project{}, err
 	}
 
-	row := i.db.QueryRowContext(ctx, sqlStmt,
+	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
 		sql.Named("server_id", in.ServerID),
 		sql.Named("name", in.Name),

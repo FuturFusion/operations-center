@@ -26,7 +26,7 @@ func NewNetworkForward(db sqlite.DBTX) *networkForward {
 	}
 }
 
-func (i networkForward) Create(ctx context.Context, in inventory.NetworkForward) (inventory.NetworkForward, error) {
+func (r networkForward) Create(ctx context.Context, in inventory.NetworkForward) (inventory.NetworkForward, error) {
 	const sqlStmt = `
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
@@ -41,7 +41,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, network
 		return inventory.NetworkForward{}, err
 	}
 
-	row := i.db.QueryRowContext(ctx, sqlStmt,
+	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("server_id", in.ServerID),
 		sql.Named("network_name", in.NetworkName),
 		sql.Named("name", in.Name),
@@ -55,7 +55,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, network
 	return scanNetworkForward(row)
 }
 
-func (i networkForward) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) ([]int, error) {
+func (r networkForward) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT network_forwards.id
 FROM network_forwards
@@ -81,7 +81,7 @@ ORDER BY network_forwards.id
 
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
-	rows, err := i.db.QueryContext(ctx, sqlStmtComplete, args...)
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
 	if err != nil {
 		return nil, sqlite.MapErr(err)
 	}
@@ -106,7 +106,7 @@ ORDER BY network_forwards.id
 	return ids, nil
 }
 
-func (i networkForward) GetByID(ctx context.Context, id int) (inventory.NetworkForward, error) {
+func (r networkForward) GetByID(ctx context.Context, id int) (inventory.NetworkForward, error) {
 	const sqlStmt = `
 SELECT
   network_forwards.id, servers.cluster_id as cluster_id, network_forwards.server_id, network_forwards.network_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
@@ -116,7 +116,7 @@ FROM
 WHERE network_forwards.id=:id;
 `
 
-	row := i.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
+	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
 	if row.Err() != nil {
 		return inventory.NetworkForward{}, sqlite.MapErr(row.Err())
 	}
@@ -124,10 +124,10 @@ WHERE network_forwards.id=:id;
 	return scanNetworkForward(row)
 }
 
-func (i networkForward) DeleteByServerID(ctx context.Context, serverID int) error {
+func (r networkForward) DeleteByServerID(ctx context.Context, serverID int) error {
 	const sqlStmt = `DELETE FROM network_forwards WHERE server_id=:serverID;`
 
-	result, err := i.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -144,7 +144,7 @@ func (i networkForward) DeleteByServerID(ctx context.Context, serverID int) erro
 	return nil
 }
 
-func (i networkForward) UpdateByID(ctx context.Context, in inventory.NetworkForward) (inventory.NetworkForward, error) {
+func (r networkForward) UpdateByID(ctx context.Context, in inventory.NetworkForward) (inventory.NetworkForward, error) {
 	const sqlStmt = `
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
@@ -159,7 +159,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, network
 		return inventory.NetworkForward{}, err
 	}
 
-	row := i.db.QueryRowContext(ctx, sqlStmt,
+	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
 		sql.Named("server_id", in.ServerID),
 		sql.Named("network_name", in.NetworkName),

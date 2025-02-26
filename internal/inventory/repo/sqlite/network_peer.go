@@ -26,7 +26,7 @@ func NewNetworkPeer(db sqlite.DBTX) *networkPeer {
 	}
 }
 
-func (i networkPeer) Create(ctx context.Context, in inventory.NetworkPeer) (inventory.NetworkPeer, error) {
+func (r networkPeer) Create(ctx context.Context, in inventory.NetworkPeer) (inventory.NetworkPeer, error) {
 	const sqlStmt = `
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
@@ -41,7 +41,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, network
 		return inventory.NetworkPeer{}, err
 	}
 
-	row := i.db.QueryRowContext(ctx, sqlStmt,
+	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("server_id", in.ServerID),
 		sql.Named("network_name", in.NetworkName),
 		sql.Named("name", in.Name),
@@ -55,7 +55,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, network
 	return scanNetworkPeer(row)
 }
 
-func (i networkPeer) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) ([]int, error) {
+func (r networkPeer) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT network_peers.id
 FROM network_peers
@@ -81,7 +81,7 @@ ORDER BY network_peers.id
 
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
-	rows, err := i.db.QueryContext(ctx, sqlStmtComplete, args...)
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
 	if err != nil {
 		return nil, sqlite.MapErr(err)
 	}
@@ -106,7 +106,7 @@ ORDER BY network_peers.id
 	return ids, nil
 }
 
-func (i networkPeer) GetByID(ctx context.Context, id int) (inventory.NetworkPeer, error) {
+func (r networkPeer) GetByID(ctx context.Context, id int) (inventory.NetworkPeer, error) {
 	const sqlStmt = `
 SELECT
   network_peers.id, servers.cluster_id as cluster_id, network_peers.server_id, network_peers.network_name, network_peers.name, network_peers.object, network_peers.last_updated
@@ -116,7 +116,7 @@ FROM
 WHERE network_peers.id=:id;
 `
 
-	row := i.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
+	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
 	if row.Err() != nil {
 		return inventory.NetworkPeer{}, sqlite.MapErr(row.Err())
 	}
@@ -124,10 +124,10 @@ WHERE network_peers.id=:id;
 	return scanNetworkPeer(row)
 }
 
-func (i networkPeer) DeleteByServerID(ctx context.Context, serverID int) error {
+func (r networkPeer) DeleteByServerID(ctx context.Context, serverID int) error {
 	const sqlStmt = `DELETE FROM network_peers WHERE server_id=:serverID;`
 
-	result, err := i.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -144,7 +144,7 @@ func (i networkPeer) DeleteByServerID(ctx context.Context, serverID int) error {
 	return nil
 }
 
-func (i networkPeer) UpdateByID(ctx context.Context, in inventory.NetworkPeer) (inventory.NetworkPeer, error) {
+func (r networkPeer) UpdateByID(ctx context.Context, in inventory.NetworkPeer) (inventory.NetworkPeer, error) {
 	const sqlStmt = `
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
@@ -159,7 +159,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, network
 		return inventory.NetworkPeer{}, err
 	}
 
-	row := i.db.QueryRowContext(ctx, sqlStmt,
+	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
 		sql.Named("server_id", in.ServerID),
 		sql.Named("network_name", in.NetworkName),
