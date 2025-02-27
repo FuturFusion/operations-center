@@ -134,6 +134,7 @@ func TestNetworkZoneService_ResyncByID(t *testing.T) {
 		repoGetByIDNetworkZone                   inventory.NetworkZone
 		repoGetByIDErr                           error
 		repoUpdateByIDErr                        error
+		repoDeleteByIDErr                        error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -153,6 +154,22 @@ func TestNetworkZoneService_ResyncByID(t *testing.T) {
 				Name:    "networkZone one",
 				Project: "project one",
 			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - networkZone get by name - not found",
+			repoGetByIDNetworkZone: inventory.NetworkZone{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkZoneClientGetNetworkZoneByNameErr: domain.ErrNotFound,
 
 			assertErr: require.NoError,
 		},
@@ -186,6 +203,23 @@ func TestNetworkZoneService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			networkZoneClientGetNetworkZoneByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - networkZone get by name - not found - delete by id",
+			repoGetByIDNetworkZone: inventory.NetworkZone{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkZoneClientGetNetworkZoneByNameErr: domain.ErrNotFound,
+			repoDeleteByIDErr:                        boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -243,6 +277,9 @@ func TestNetworkZoneService_ResyncByID(t *testing.T) {
 				UpdateByIDFunc: func(ctx context.Context, networkZone inventory.NetworkZone) (inventory.NetworkZone, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkZone.LastUpdated)
 					return inventory.NetworkZone{}, tc.repoUpdateByIDErr
+				},
+				DeleteByIDFunc: func(ctx context.Context, id int) error {
+					return tc.repoDeleteByIDErr
 				},
 			}
 

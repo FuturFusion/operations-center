@@ -134,6 +134,7 @@ func TestImageService_ResyncByID(t *testing.T) {
 		repoGetByIDImage             inventory.Image
 		repoGetByIDErr               error
 		repoUpdateByIDErr            error
+		repoDeleteByIDErr            error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -153,6 +154,22 @@ func TestImageService_ResyncByID(t *testing.T) {
 				Filename: "image one",
 				Project:  "project one",
 			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - image get by name - not found",
+			repoGetByIDImage: inventory.Image{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			imageClientGetImageByNameErr: domain.ErrNotFound,
 
 			assertErr: require.NoError,
 		},
@@ -186,6 +203,23 @@ func TestImageService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			imageClientGetImageByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - image get by name - not found - delete by id",
+			repoGetByIDImage: inventory.Image{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			imageClientGetImageByNameErr: domain.ErrNotFound,
+			repoDeleteByIDErr:            boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -243,6 +277,9 @@ func TestImageService_ResyncByID(t *testing.T) {
 				UpdateByIDFunc: func(ctx context.Context, image inventory.Image) (inventory.Image, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), image.LastUpdated)
 					return inventory.Image{}, tc.repoUpdateByIDErr
+				},
+				DeleteByIDFunc: func(ctx context.Context, id int) error {
+					return tc.repoDeleteByIDErr
 				},
 			}
 

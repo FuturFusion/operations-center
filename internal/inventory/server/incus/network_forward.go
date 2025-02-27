@@ -4,8 +4,11 @@ package incus
 
 import (
 	"context"
+	"net/http"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 func (s serverClient) GetNetworkForwards(ctx context.Context, connectionURL string, networkForwardName string) ([]incusapi.NetworkForward, error) {
@@ -29,6 +32,10 @@ func (s serverClient) GetNetworkForwardByName(ctx context.Context, connectionURL
 	}
 
 	serverNetworkForward, _, err := client.GetNetworkForward(networkName, networkForwardName)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return incusapi.NetworkForward{}, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return incusapi.NetworkForward{}, err
 	}

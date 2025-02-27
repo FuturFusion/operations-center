@@ -133,6 +133,7 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 		repoGetByIDStoragePool                   inventory.StoragePool
 		repoGetByIDErr                           error
 		repoUpdateByIDErr                        error
+		repoDeleteByIDErr                        error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -151,6 +152,22 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 			storagePoolClientGetStoragePoolByName: incusapi.StoragePool{
 				Name: "storagePool one",
 			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - storagePool get by name - not found",
+			repoGetByIDStoragePool: inventory.StoragePool{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			storagePoolClientGetStoragePoolByNameErr: domain.ErrNotFound,
 
 			assertErr: require.NoError,
 		},
@@ -184,6 +201,23 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			storagePoolClientGetStoragePoolByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - storagePool get by name - not found - delete by id",
+			repoGetByIDStoragePool: inventory.StoragePool{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			storagePoolClientGetStoragePoolByNameErr: domain.ErrNotFound,
+			repoDeleteByIDErr:                        boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -239,6 +273,9 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 				UpdateByIDFunc: func(ctx context.Context, storagePool inventory.StoragePool) (inventory.StoragePool, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), storagePool.LastUpdated)
 					return inventory.StoragePool{}, tc.repoUpdateByIDErr
+				},
+				DeleteByIDFunc: func(ctx context.Context, id int) error {
+					return tc.repoDeleteByIDErr
 				},
 			}
 

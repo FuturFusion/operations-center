@@ -130,6 +130,26 @@ WHERE storage_buckets.id=:id;
 	return scanStorageBucket(row)
 }
 
+func (r storageBucket) DeleteByID(ctx context.Context, id int) error {
+	const sqlStmt = `DELETE FROM storage_buckets WHERE id=:id;`
+
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	if affectedRows == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
+}
+
 func (r storageBucket) DeleteByServerID(ctx context.Context, serverID int) error {
 	const sqlStmt = `DELETE FROM storage_buckets WHERE server_id=:serverID;`
 

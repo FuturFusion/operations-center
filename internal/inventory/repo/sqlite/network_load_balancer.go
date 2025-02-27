@@ -124,6 +124,26 @@ WHERE network_load_balancers.id=:id;
 	return scanNetworkLoadBalancer(row)
 }
 
+func (r networkLoadBalancer) DeleteByID(ctx context.Context, id int) error {
+	const sqlStmt = `DELETE FROM network_load_balancers WHERE id=:id;`
+
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	if affectedRows == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
+}
+
 func (r networkLoadBalancer) DeleteByServerID(ctx context.Context, serverID int) error {
 	const sqlStmt = `DELETE FROM network_load_balancers WHERE server_id=:serverID;`
 

@@ -129,6 +129,26 @@ WHERE profiles.id=:id;
 	return scanProfile(row)
 }
 
+func (r profile) DeleteByID(ctx context.Context, id int) error {
+	const sqlStmt = `DELETE FROM profiles WHERE id=:id;`
+
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	if affectedRows == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
+}
+
 func (r profile) DeleteByServerID(ctx context.Context, serverID int) error {
 	const sqlStmt = `DELETE FROM profiles WHERE server_id=:serverID;`
 

@@ -134,6 +134,7 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 		repoGetByIDNetworkACL                  inventory.NetworkACL
 		repoGetByIDErr                         error
 		repoUpdateByIDErr                      error
+		repoDeleteByIDErr                      error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -155,6 +156,22 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 				},
 				Project: "project one",
 			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - networkACL get by name - not found",
+			repoGetByIDNetworkACL: inventory.NetworkACL{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkACLClientGetNetworkACLByNameErr: domain.ErrNotFound,
 
 			assertErr: require.NoError,
 		},
@@ -188,6 +205,23 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			networkACLClientGetNetworkACLByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - networkACL get by name - not found - delete by id",
+			repoGetByIDNetworkACL: inventory.NetworkACL{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkACLClientGetNetworkACLByNameErr: domain.ErrNotFound,
+			repoDeleteByIDErr:                      boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -249,6 +283,9 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 				UpdateByIDFunc: func(ctx context.Context, networkACL inventory.NetworkACL) (inventory.NetworkACL, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkACL.LastUpdated)
 					return inventory.NetworkACL{}, tc.repoUpdateByIDErr
+				},
+				DeleteByIDFunc: func(ctx context.Context, id int) error {
+					return tc.repoDeleteByIDErr
 				},
 			}
 

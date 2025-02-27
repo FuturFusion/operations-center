@@ -78,8 +78,15 @@ func (s networkPeerService) ResyncByID(ctx context.Context, id int) error {
 		}
 
 		serverNetworkPeer, err := s.networkPeerClient.GetNetworkPeerByName(ctx, server.ConnectionURL, networkPeer.NetworkName, networkPeer.Name)
-		// FIXME: how to differentiate general errors from "not found" errors?
-		// TODO: if the NetworkPeer is not found, it needs to be removed from the inventory.
+		if errors.Is(err, domain.ErrNotFound) {
+			err = s.repo.DeleteByID(ctx, networkPeer.ID)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
 		if err != nil {
 			return err
 		}

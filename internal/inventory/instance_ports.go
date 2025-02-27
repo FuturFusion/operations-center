@@ -28,6 +28,7 @@ type InstanceRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Instance, error)
 	Create(ctx context.Context, instance Instance) (Instance, error)
+	DeleteByID(ctx context.Context, id int) error
 	DeleteByServerID(ctx context.Context, serverID int) error
 	UpdateByID(ctx context.Context, instance Instance) (Instance, error)
 }

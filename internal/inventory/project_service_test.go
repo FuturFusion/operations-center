@@ -133,6 +133,7 @@ func TestProjectService_ResyncByID(t *testing.T) {
 		repoGetByIDProject               inventory.Project
 		repoGetByIDErr                   error
 		repoUpdateByIDErr                error
+		repoDeleteByIDErr                error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -151,6 +152,22 @@ func TestProjectService_ResyncByID(t *testing.T) {
 			projectClientGetProjectByName: incusapi.Project{
 				Name: "project one",
 			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - project get by name - not found",
+			repoGetByIDProject: inventory.Project{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			projectClientGetProjectByNameErr: domain.ErrNotFound,
 
 			assertErr: require.NoError,
 		},
@@ -184,6 +201,23 @@ func TestProjectService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			projectClientGetProjectByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - project get by name - not found - delete by id",
+			repoGetByIDProject: inventory.Project{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			projectClientGetProjectByNameErr: domain.ErrNotFound,
+			repoDeleteByIDErr:                boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -239,6 +273,9 @@ func TestProjectService_ResyncByID(t *testing.T) {
 				UpdateByIDFunc: func(ctx context.Context, project inventory.Project) (inventory.Project, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), project.LastUpdated)
 					return inventory.Project{}, tc.repoUpdateByIDErr
+				},
+				DeleteByIDFunc: func(ctx context.Context, id int) error {
+					return tc.repoDeleteByIDErr
 				},
 			}
 

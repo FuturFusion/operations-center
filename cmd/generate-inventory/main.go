@@ -43,7 +43,7 @@ var targets = []struct {
 		TargetName:   "internal/inventory/{{ .Name }}_ports.go",
 	},
 	{
-		TemplateName: "repo_incus.gotmpl",
+		TemplateName: "server_incus.gotmpl",
 		TargetName:   "internal/inventory/server/incus/{{ .Name }}.go",
 	},
 	{

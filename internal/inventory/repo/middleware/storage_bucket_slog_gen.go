@@ -57,6 +57,36 @@ func (_d StorageBucketRepoWithSlog) Create(ctx context.Context, storageBucket _s
 	return _d._base.Create(ctx, storageBucket)
 }
 
+// DeleteByID implements _sourceInventory.StorageBucketRepo
+func (_d StorageBucketRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
+		)
+	}
+	log.Debug("StorageBucketRepoWithSlog: calling DeleteByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("StorageBucketRepoWithSlog: method DeleteByID returned an error")
+		} else {
+			log.Debug("StorageBucketRepoWithSlog: method DeleteByID finished")
+		}
+	}()
+	return _d._base.DeleteByID(ctx, id)
+}
+
 // DeleteByServerID implements _sourceInventory.StorageBucketRepo
 func (_d StorageBucketRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
 	log := _d._log.With()

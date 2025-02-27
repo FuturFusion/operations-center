@@ -141,9 +141,11 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, storageVolumeB, dbStorageVolumeB)
 
-	// Delete storage_volumes by server ID.
-	err = storageVolume.DeleteByServerID(ctx, 1)
+	// Delete storage_volumes by ID.
+	err = storageVolume.DeleteByID(ctx, 1)
 	require.NoError(t, err)
+
+	// Delete storage_volumes by server ID.
 	err = storageVolume.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 

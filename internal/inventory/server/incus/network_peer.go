@@ -4,8 +4,11 @@ package incus
 
 import (
 	"context"
+	"net/http"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 func (s serverClient) GetNetworkPeers(ctx context.Context, connectionURL string, networkPeerName string) ([]incusapi.NetworkPeer, error) {
@@ -29,6 +32,10 @@ func (s serverClient) GetNetworkPeerByName(ctx context.Context, connectionURL st
 	}
 
 	serverNetworkPeer, _, err := client.GetNetworkPeer(networkName, networkPeerName)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return incusapi.NetworkPeer{}, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return incusapi.NetworkPeer{}, err
 	}

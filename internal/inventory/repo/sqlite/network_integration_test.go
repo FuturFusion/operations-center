@@ -136,9 +136,11 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, networkIntegrationB, dbNetworkIntegrationB)
 
-	// Delete network_integrations by server ID.
-	err = networkIntegration.DeleteByServerID(ctx, 1)
+	// Delete network_integrations by ID.
+	err = networkIntegration.DeleteByID(ctx, 1)
 	require.NoError(t, err)
+
+	// Delete network_integrations by server ID.
 	err = networkIntegration.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 

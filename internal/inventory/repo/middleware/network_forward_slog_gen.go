@@ -57,6 +57,36 @@ func (_d NetworkForwardRepoWithSlog) Create(ctx context.Context, networkForward 
 	return _d._base.Create(ctx, networkForward)
 }
 
+// DeleteByID implements _sourceInventory.NetworkForwardRepo
+func (_d NetworkForwardRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
+		)
+	}
+	log.Debug("NetworkForwardRepoWithSlog: calling DeleteByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("NetworkForwardRepoWithSlog: method DeleteByID returned an error")
+		} else {
+			log.Debug("NetworkForwardRepoWithSlog: method DeleteByID finished")
+		}
+	}()
+	return _d._base.DeleteByID(ctx, id)
+}
+
 // DeleteByServerID implements _sourceInventory.NetworkForwardRepo
 func (_d NetworkForwardRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
 	log := _d._log.With()

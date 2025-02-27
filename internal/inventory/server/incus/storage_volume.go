@@ -4,8 +4,11 @@ package incus
 
 import (
 	"context"
+	"net/http"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 func (s serverClient) GetStorageVolumes(ctx context.Context, connectionURL string, storageVolumeName string) ([]incusapi.StorageVolume, error) {
@@ -30,6 +33,10 @@ func (s serverClient) GetStorageVolumeByName(ctx context.Context, connectionURL 
 
 	// FIXME: currently we just pass empty string ("") for the type, which is obviously wrong and needs to be fixed.
 	serverStorageVolume, _, err := client.GetStoragePoolVolume(storagePoolName, "", storageVolumeName)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return incusapi.StorageVolume{}, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return incusapi.StorageVolume{}, err
 	}

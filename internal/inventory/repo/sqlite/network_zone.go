@@ -129,6 +129,26 @@ WHERE network_zones.id=:id;
 	return scanNetworkZone(row)
 }
 
+func (r networkZone) DeleteByID(ctx context.Context, id int) error {
+	const sqlStmt = `DELETE FROM network_zones WHERE id=:id;`
+
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	if affectedRows == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
+}
+
 func (r networkZone) DeleteByServerID(ctx context.Context, serverID int) error {
 	const sqlStmt = `DELETE FROM network_zones WHERE server_id=:serverID;`
 

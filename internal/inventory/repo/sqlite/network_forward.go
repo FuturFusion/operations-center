@@ -124,6 +124,26 @@ WHERE network_forwards.id=:id;
 	return scanNetworkForward(row)
 }
 
+func (r networkForward) DeleteByID(ctx context.Context, id int) error {
+	const sqlStmt = `DELETE FROM network_forwards WHERE id=:id;`
+
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	if affectedRows == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
+}
+
 func (r networkForward) DeleteByServerID(ctx context.Context, serverID int) error {
 	const sqlStmt = `DELETE FROM network_forwards WHERE server_id=:serverID;`
 

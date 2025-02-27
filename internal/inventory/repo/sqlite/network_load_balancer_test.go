@@ -138,9 +138,11 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, networkLoadBalancerB, dbNetworkLoadBalancerB)
 
-	// Delete network_load_balancers by server ID.
-	err = networkLoadBalancer.DeleteByServerID(ctx, 1)
+	// Delete network_load_balancers by ID.
+	err = networkLoadBalancer.DeleteByID(ctx, 1)
 	require.NoError(t, err)
+
+	// Delete network_load_balancers by server ID.
 	err = networkLoadBalancer.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 

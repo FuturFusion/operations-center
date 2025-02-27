@@ -28,6 +28,7 @@ type StoragePoolRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StoragePool, error)
 	Create(ctx context.Context, storagePool StoragePool) (StoragePool, error)
+	DeleteByID(ctx context.Context, id int) error
 	DeleteByServerID(ctx context.Context, serverID int) error
 	UpdateByID(ctx context.Context, storagePool StoragePool) (StoragePool, error)
 }

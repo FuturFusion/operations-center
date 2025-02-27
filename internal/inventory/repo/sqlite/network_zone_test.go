@@ -139,9 +139,11 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, networkZoneB, dbNetworkZoneB)
 
-	// Delete network_zones by server ID.
-	err = networkZone.DeleteByServerID(ctx, 1)
+	// Delete network_zones by ID.
+	err = networkZone.DeleteByID(ctx, 1)
 	require.NoError(t, err)
+
+	// Delete network_zones by server ID.
 	err = networkZone.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 

@@ -124,6 +124,26 @@ WHERE network_peers.id=:id;
 	return scanNetworkPeer(row)
 }
 
+func (r networkPeer) DeleteByID(ctx context.Context, id int) error {
+	const sqlStmt = `DELETE FROM network_peers WHERE id=:id;`
+
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	if affectedRows == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
+}
+
 func (r networkPeer) DeleteByServerID(ctx context.Context, serverID int) error {
 	const sqlStmt = `DELETE FROM network_peers WHERE server_id=:serverID;`
 

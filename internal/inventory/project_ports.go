@@ -28,6 +28,7 @@ type ProjectRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter ProjectFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Project, error)
 	Create(ctx context.Context, project Project) (Project, error)
+	DeleteByID(ctx context.Context, id int) error
 	DeleteByServerID(ctx context.Context, serverID int) error
 	UpdateByID(ctx context.Context, project Project) (Project, error)
 }

@@ -135,6 +135,7 @@ func TestStorageBucketService_ResyncByID(t *testing.T) {
 		repoGetByIDStorageBucket                     inventory.StorageBucket
 		repoGetByIDErr                               error
 		repoUpdateByIDErr                            error
+		repoDeleteByIDErr                            error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -155,6 +156,23 @@ func TestStorageBucketService_ResyncByID(t *testing.T) {
 				Name:    "storageBucket one",
 				Project: "project one",
 			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - storageBucket get by name - not found",
+			repoGetByIDStorageBucket: inventory.StorageBucket{
+				ID:              1,
+				ServerID:        1,
+				Name:            "one",
+				StoragePoolName: "storage_pool",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			storageBucketClientGetStorageBucketByNameErr: domain.ErrNotFound,
 
 			assertErr: require.NoError,
 		},
@@ -190,6 +208,24 @@ func TestStorageBucketService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			storageBucketClientGetStorageBucketByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - storageBucket get by name - not found - delete by id",
+			repoGetByIDStorageBucket: inventory.StorageBucket{
+				ID:              1,
+				ServerID:        1,
+				Name:            "one",
+				StoragePoolName: "storage_pool",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			storageBucketClientGetStorageBucketByNameErr: domain.ErrNotFound,
+			repoDeleteByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -249,6 +285,9 @@ func TestStorageBucketService_ResyncByID(t *testing.T) {
 				UpdateByIDFunc: func(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), storageBucket.LastUpdated)
 					return inventory.StorageBucket{}, tc.repoUpdateByIDErr
+				},
+				DeleteByIDFunc: func(ctx context.Context, id int) error {
+					return tc.repoDeleteByIDErr
 				},
 			}
 

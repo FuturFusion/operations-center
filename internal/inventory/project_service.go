@@ -62,8 +62,15 @@ func (s projectService) ResyncByID(ctx context.Context, id int) error {
 		}
 
 		serverProject, err := s.projectClient.GetProjectByName(ctx, server.ConnectionURL, project.Name)
-		// FIXME: how to differentiate general errors from "not found" errors?
-		// TODO: if the Project is not found, it needs to be removed from the inventory.
+		if errors.Is(err, domain.ErrNotFound) {
+			err = s.repo.DeleteByID(ctx, project.ID)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
 		if err != nil {
 			return err
 		}

@@ -4,8 +4,11 @@ package incus
 
 import (
 	"context"
+	"net/http"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 func (s serverClient) GetInstances(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error) {
@@ -29,6 +32,10 @@ func (s serverClient) GetInstanceByName(ctx context.Context, connectionURL strin
 	}
 
 	serverInstance, _, err := client.GetInstanceFull(instanceName)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return incusapi.InstanceFull{}, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return incusapi.InstanceFull{}, err
 	}

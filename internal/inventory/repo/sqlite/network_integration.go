@@ -123,6 +123,26 @@ WHERE network_integrations.id=:id;
 	return scanNetworkIntegration(row)
 }
 
+func (r networkIntegration) DeleteByID(ctx context.Context, id int) error {
+	const sqlStmt = `DELETE FROM network_integrations WHERE id=:id;`
+
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	if affectedRows == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
+}
+
 func (r networkIntegration) DeleteByServerID(ctx context.Context, serverID int) error {
 	const sqlStmt = `DELETE FROM network_integrations WHERE server_id=:serverID;`
 

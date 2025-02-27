@@ -28,6 +28,7 @@ type NetworkACLRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkACL, error)
 	Create(ctx context.Context, networkACL NetworkACL) (NetworkACL, error)
+	DeleteByID(ctx context.Context, id int) error
 	DeleteByServerID(ctx context.Context, serverID int) error
 	UpdateByID(ctx context.Context, networkACL NetworkACL) (NetworkACL, error)
 }

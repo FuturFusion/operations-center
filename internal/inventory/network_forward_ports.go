@@ -28,6 +28,7 @@ type NetworkForwardRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkForwardFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkForward, error)
 	Create(ctx context.Context, networkForward NetworkForward) (NetworkForward, error)
+	DeleteByID(ctx context.Context, id int) error
 	DeleteByServerID(ctx context.Context, serverID int) error
 	UpdateByID(ctx context.Context, networkForward NetworkForward) (NetworkForward, error)
 }

@@ -4,8 +4,11 @@ package incus
 
 import (
 	"context"
+	"net/http"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 func (s serverClient) GetProjects(ctx context.Context, connectionURL string) ([]incusapi.Project, error) {
@@ -29,6 +32,10 @@ func (s serverClient) GetProjectByName(ctx context.Context, connectionURL string
 	}
 
 	serverProject, _, err := client.GetProject(projectName)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return incusapi.Project{}, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return incusapi.Project{}, err
 	}

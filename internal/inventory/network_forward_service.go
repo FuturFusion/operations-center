@@ -78,8 +78,15 @@ func (s networkForwardService) ResyncByID(ctx context.Context, id int) error {
 		}
 
 		serverNetworkForward, err := s.networkForwardClient.GetNetworkForwardByName(ctx, server.ConnectionURL, networkForward.NetworkName, networkForward.Name)
-		// FIXME: how to differentiate general errors from "not found" errors?
-		// TODO: if the NetworkForward is not found, it needs to be removed from the inventory.
+		if errors.Is(err, domain.ErrNotFound) {
+			err = s.repo.DeleteByID(ctx, networkForward.ID)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
 		if err != nil {
 			return err
 		}

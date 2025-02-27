@@ -134,6 +134,7 @@ func TestProfileService_ResyncByID(t *testing.T) {
 		repoGetByIDProfile               inventory.Profile
 		repoGetByIDErr                   error
 		repoUpdateByIDErr                error
+		repoDeleteByIDErr                error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -153,6 +154,22 @@ func TestProfileService_ResyncByID(t *testing.T) {
 				Name:    "profile one",
 				Project: "project one",
 			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - profile get by name - not found",
+			repoGetByIDProfile: inventory.Profile{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			profileClientGetProfileByNameErr: domain.ErrNotFound,
 
 			assertErr: require.NoError,
 		},
@@ -186,6 +203,23 @@ func TestProfileService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			profileClientGetProfileByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - profile get by name - not found - delete by id",
+			repoGetByIDProfile: inventory.Profile{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			profileClientGetProfileByNameErr: domain.ErrNotFound,
+			repoDeleteByIDErr:                boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -243,6 +277,9 @@ func TestProfileService_ResyncByID(t *testing.T) {
 				UpdateByIDFunc: func(ctx context.Context, profile inventory.Profile) (inventory.Profile, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), profile.LastUpdated)
 					return inventory.Profile{}, tc.repoUpdateByIDErr
+				},
+				DeleteByIDFunc: func(ctx context.Context, id int) error {
+					return tc.repoDeleteByIDErr
 				},
 			}
 

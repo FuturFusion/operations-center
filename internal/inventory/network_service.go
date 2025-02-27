@@ -62,8 +62,15 @@ func (s networkService) ResyncByID(ctx context.Context, id int) error {
 		}
 
 		serverNetwork, err := s.networkClient.GetNetworkByName(ctx, server.ConnectionURL, network.Name)
-		// FIXME: how to differentiate general errors from "not found" errors?
-		// TODO: if the Network is not found, it needs to be removed from the inventory.
+		if errors.Is(err, domain.ErrNotFound) {
+			err = s.repo.DeleteByID(ctx, network.ID)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
 		if err != nil {
 			return err
 		}

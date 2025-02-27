@@ -134,6 +134,7 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 		repoGetByIDNetworkPeer                   inventory.NetworkPeer
 		repoGetByIDErr                           error
 		repoUpdateByIDErr                        error
+		repoDeleteByIDErr                        error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -153,6 +154,23 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 			networkPeerClientGetNetworkPeerByName: incusapi.NetworkPeer{
 				Name: "networkPeer one",
 			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - networkPeer get by name - not found",
+			repoGetByIDNetworkPeer: inventory.NetworkPeer{
+				ID:          1,
+				ServerID:    1,
+				Name:        "one",
+				NetworkName: "network",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkPeerClientGetNetworkPeerByNameErr: domain.ErrNotFound,
 
 			assertErr: require.NoError,
 		},
@@ -188,6 +206,24 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			networkPeerClientGetNetworkPeerByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - networkPeer get by name - not found - delete by id",
+			repoGetByIDNetworkPeer: inventory.NetworkPeer{
+				ID:          1,
+				ServerID:    1,
+				Name:        "one",
+				NetworkName: "network",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkPeerClientGetNetworkPeerByNameErr: domain.ErrNotFound,
+			repoDeleteByIDErr:                        boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -245,6 +281,9 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 				UpdateByIDFunc: func(ctx context.Context, networkPeer inventory.NetworkPeer) (inventory.NetworkPeer, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkPeer.LastUpdated)
 					return inventory.NetworkPeer{}, tc.repoUpdateByIDErr
+				},
+				DeleteByIDFunc: func(ctx context.Context, id int) error {
+					return tc.repoDeleteByIDErr
 				},
 			}
 

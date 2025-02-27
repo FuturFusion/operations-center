@@ -28,6 +28,7 @@ type NetworkRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Network, error)
 	Create(ctx context.Context, network Network) (Network, error)
+	DeleteByID(ctx context.Context, id int) error
 	DeleteByServerID(ctx context.Context, serverID int) error
 	UpdateByID(ctx context.Context, network Network) (Network, error)
 }

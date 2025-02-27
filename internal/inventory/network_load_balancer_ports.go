@@ -28,6 +28,7 @@ type NetworkLoadBalancerRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkLoadBalancer, error)
 	Create(ctx context.Context, networkLoadBalancer NetworkLoadBalancer) (NetworkLoadBalancer, error)
+	DeleteByID(ctx context.Context, id int) error
 	DeleteByServerID(ctx context.Context, serverID int) error
 	UpdateByID(ctx context.Context, networkLoadBalancer NetworkLoadBalancer) (NetworkLoadBalancer, error)
 }

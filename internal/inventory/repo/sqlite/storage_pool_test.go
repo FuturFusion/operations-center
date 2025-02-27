@@ -136,9 +136,11 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, storagePoolB, dbStoragePoolB)
 
-	// Delete storage_pools by server ID.
-	err = storagePool.DeleteByServerID(ctx, 1)
+	// Delete storage_pools by ID.
+	err = storagePool.DeleteByID(ctx, 1)
 	require.NoError(t, err)
+
+	// Delete storage_pools by server ID.
 	err = storagePool.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 

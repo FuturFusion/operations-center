@@ -62,8 +62,15 @@ func (s networkZoneService) ResyncByID(ctx context.Context, id int) error {
 		}
 
 		serverNetworkZone, err := s.networkZoneClient.GetNetworkZoneByName(ctx, server.ConnectionURL, networkZone.Name)
-		// FIXME: how to differentiate general errors from "not found" errors?
-		// TODO: if the NetworkZone is not found, it needs to be removed from the inventory.
+		if errors.Is(err, domain.ErrNotFound) {
+			err = s.repo.DeleteByID(ctx, networkZone.ID)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
 		if err != nil {
 			return err
 		}

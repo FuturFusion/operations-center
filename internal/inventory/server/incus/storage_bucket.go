@@ -4,8 +4,11 @@ package incus
 
 import (
 	"context"
+	"net/http"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 func (s serverClient) GetStorageBuckets(ctx context.Context, connectionURL string, storageBucketName string) ([]incusapi.StorageBucket, error) {
@@ -29,6 +32,10 @@ func (s serverClient) GetStorageBucketByName(ctx context.Context, connectionURL 
 	}
 
 	serverStorageBucket, _, err := client.GetStoragePoolBucket(storagePoolName, storageBucketName)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return incusapi.StorageBucket{}, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return incusapi.StorageBucket{}, err
 	}
