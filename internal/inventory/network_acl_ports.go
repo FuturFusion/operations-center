@@ -8,6 +8,9 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkACLService -t ../logger/slog.gotmpl -o ./middleware/network_acl_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkACLService -t prometheus -o ./middleware/network_acl_prometheus_gen.go
+
 type NetworkACLService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkACL, error)

@@ -8,6 +8,9 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkZoneService -t ../logger/slog.gotmpl -o ./middleware/network_zone_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkZoneService -t prometheus -o ./middleware/network_zone_prometheus_gen.go
+
 type NetworkZoneService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkZoneFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkZone, error)

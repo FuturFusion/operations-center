@@ -2,6 +2,9 @@ package provisioning
 
 import "context"
 
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ServerService -t ../logger/slog.gotmpl -o ./middleware/server_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ServerService -t prometheus -o ./middleware/server_prometheus_gen.go
+
 type ServerService interface {
 	Create(ctx context.Context, server Server) (Server, error)
 	GetAll(ctx context.Context) (Servers, error)

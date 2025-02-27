@@ -8,6 +8,9 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ImageService -t ../logger/slog.gotmpl -o ./middleware/image_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ImageService -t prometheus -o ./middleware/image_prometheus_gen.go
+
 type ImageService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter ImageFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Image, error)

@@ -8,6 +8,9 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkPeerService -t ../logger/slog.gotmpl -o ./middleware/network_peer_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkPeerService -t prometheus -o ./middleware/network_peer_prometheus_gen.go
+
 type NetworkPeerService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkPeer, error)

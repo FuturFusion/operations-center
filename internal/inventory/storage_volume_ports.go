@@ -8,6 +8,9 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageVolumeService -t ../logger/slog.gotmpl -o ./middleware/storage_volume_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageVolumeService -t prometheus -o ./middleware/storage_volume_prometheus_gen.go
+
 type StorageVolumeService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter StorageVolumeFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StorageVolume, error)

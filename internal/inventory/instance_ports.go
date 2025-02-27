@@ -8,6 +8,9 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i InstanceService -t ../logger/slog.gotmpl -o ./middleware/instance_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i InstanceService -t prometheus -o ./middleware/instance_prometheus_gen.go
+
 type InstanceService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Instance, error)

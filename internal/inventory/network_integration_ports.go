@@ -8,6 +8,9 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkIntegrationService -t ../logger/slog.gotmpl -o ./middleware/network_integration_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkIntegrationService -t prometheus -o ./middleware/network_integration_prometheus_gen.go
+
 type NetworkIntegrationService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkIntegrationFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkIntegration, error)

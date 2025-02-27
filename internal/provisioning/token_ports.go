@@ -6,6 +6,9 @@ import (
 	"github.com/google/uuid"
 )
 
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i TokenService -t ../logger/slog.gotmpl -o ./middleware/token_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i TokenService -t prometheus -o ./middleware/token_prometheus_gen.go
+
 type TokenService interface {
 	Create(ctx context.Context, token Token) (Token, error)
 	GetAll(ctx context.Context) (Tokens, error)

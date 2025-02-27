@@ -8,6 +8,9 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StoragePoolService -t ../logger/slog.gotmpl -o ./middleware/storage_pool_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StoragePoolService -t prometheus -o ./middleware/storage_pool_prometheus_gen.go
+
 type StoragePoolService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StoragePool, error)

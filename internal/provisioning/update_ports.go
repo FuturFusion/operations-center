@@ -5,6 +5,9 @@ import (
 	"io"
 )
 
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i UpdateService -t ../logger/slog.gotmpl -o ./middleware/update_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i UpdateService -t prometheus -o ./middleware/update_prometheus_gen.go
+
 type UpdateService interface {
 	GetAll(ctx context.Context) (Updates, error)
 	GetAllIDs(ctx context.Context) ([]string, error)
