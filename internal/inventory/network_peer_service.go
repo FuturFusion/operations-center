@@ -7,6 +7,8 @@ import (
 	"errors"
 	"time"
 
+	incusapi "github.com/lxc/incus/v6/shared/api"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 )
@@ -18,12 +20,20 @@ type networkPeerService struct {
 	networkClient     NetworkServerClient
 	networkPeerClient NetworkPeerServerClient
 
+	isParentFilted func(incusapi.Network) bool
+
 	now func() time.Time
 }
 
 var _ NetworkPeerService = &networkPeerService{}
 
 type NetworkPeerServiceOption func(s *networkPeerService)
+
+func NetworkPeerWithParentFilter(f func(incusapi.Network) bool) NetworkPeerServiceOption {
+	return func(s *networkPeerService) {
+		s.isParentFilted = f
+	}
+}
 
 func NewNetworkPeerService(repo NetworkPeerRepo, clusterSvc ClusterService, serverSvc ServerService, client NetworkPeerServerClient, parentClient NetworkServerClient, opts ...NetworkPeerServiceOption) networkPeerService {
 	networkPeerSvc := networkPeerService{
@@ -32,6 +42,10 @@ func NewNetworkPeerService(repo NetworkPeerRepo, clusterSvc ClusterService, serv
 		serverSvc:         serverSvc,
 		networkClient:     parentClient,
 		networkPeerClient: client,
+
+		isParentFilted: func(_ incusapi.Network) bool {
+			return false
+		},
 
 		now: time.Now,
 	}
@@ -136,6 +150,10 @@ func (s networkPeerService) SyncServer(ctx context.Context, serverID int) error 
 	}
 
 	for _, network := range serverNetworks {
+		if s.isParentFilted(network) {
+			continue
+		}
+
 		serverNetworkPeers, err := s.networkPeerClient.GetNetworkPeers(ctx, server.ConnectionURL, network.Name)
 		if err != nil {
 			return err
@@ -173,7 +191,6 @@ func (s networkPeerService) SyncServer(ctx context.Context, serverID int) error 
 		if err != nil {
 			return err
 		}
-
 	}
 
 	return nil

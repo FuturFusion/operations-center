@@ -287,6 +287,7 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 		networkZoneClientGetNetworkZonesErr error
 		repoDeleteByServerIDErr             error
 		repoCreateErr                       error
+		serviceOptions                      []inventory.NetworkZoneServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -507,9 +508,14 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkZoneSvc := inventory.NewNetworkZoneService(repo, clusterSvc, serverSvc, networkZoneClient, inventory.NetworkZoneWithNow(func() time.Time {
-				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-			}))
+			networkZoneSvc := inventory.NewNetworkZoneService(repo, clusterSvc, serverSvc, networkZoneClient,
+				append(
+					tc.serviceOptions,
+					inventory.NetworkZoneWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
 
 			// Run test
 			err := networkZoneSvc.SyncAll(context.Background())

@@ -92,7 +92,7 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db))
+	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), nil)
 	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
 
 	{{ .Name | camelcase }} := inventorySqlite.New{{ .Name | pascalcase }}(db)

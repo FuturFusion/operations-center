@@ -7,6 +7,8 @@ import (
 	"errors"
 	"time"
 
+	incusapi "github.com/lxc/incus/v6/shared/api"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 )
@@ -18,12 +20,20 @@ type networkForwardService struct {
 	networkClient        NetworkServerClient
 	networkForwardClient NetworkForwardServerClient
 
+	isParentFilted func(incusapi.Network) bool
+
 	now func() time.Time
 }
 
 var _ NetworkForwardService = &networkForwardService{}
 
 type NetworkForwardServiceOption func(s *networkForwardService)
+
+func NetworkForwardWithParentFilter(f func(incusapi.Network) bool) NetworkForwardServiceOption {
+	return func(s *networkForwardService) {
+		s.isParentFilted = f
+	}
+}
 
 func NewNetworkForwardService(repo NetworkForwardRepo, clusterSvc ClusterService, serverSvc ServerService, client NetworkForwardServerClient, parentClient NetworkServerClient, opts ...NetworkForwardServiceOption) networkForwardService {
 	networkForwardSvc := networkForwardService{
@@ -32,6 +42,10 @@ func NewNetworkForwardService(repo NetworkForwardRepo, clusterSvc ClusterService
 		serverSvc:            serverSvc,
 		networkClient:        parentClient,
 		networkForwardClient: client,
+
+		isParentFilted: func(_ incusapi.Network) bool {
+			return false
+		},
 
 		now: time.Now,
 	}
@@ -136,6 +150,10 @@ func (s networkForwardService) SyncServer(ctx context.Context, serverID int) err
 	}
 
 	for _, network := range serverNetworks {
+		if s.isParentFilted(network) {
+			continue
+		}
+
 		serverNetworkForwards, err := s.networkForwardClient.GetNetworkForwards(ctx, server.ConnectionURL, network.Name)
 		if err != nil {
 			return err
@@ -173,7 +191,6 @@ func (s networkForwardService) SyncServer(ctx context.Context, serverID int) err
 		if err != nil {
 			return err
 		}
-
 	}
 
 	return nil

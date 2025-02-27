@@ -287,6 +287,7 @@ func TestNetworkService_SyncAll(t *testing.T) {
 		networkClientGetNetworksErr       error
 		repoDeleteByServerIDErr           error
 		repoCreateErr                     error
+		serviceOptions                    []inventory.NetworkServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -507,9 +508,14 @@ func TestNetworkService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkSvc := inventory.NewNetworkService(repo, clusterSvc, serverSvc, networkClient, inventory.NetworkWithNow(func() time.Time {
-				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-			}))
+			networkSvc := inventory.NewNetworkService(repo, clusterSvc, serverSvc, networkClient,
+				append(
+					tc.serviceOptions,
+					inventory.NetworkWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
 
 			// Run test
 			err := networkSvc.SyncAll(context.Background())

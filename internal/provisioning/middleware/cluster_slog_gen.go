@@ -241,6 +241,36 @@ func (_d ClusterServiceWithSlog) RenameByName(ctx context.Context, name string, 
 	return _d._base.RenameByName(ctx, name, cluster)
 }
 
+// ResyncInventoryByName implements _sourceProvisioning.ClusterService
+func (_d ClusterServiceWithSlog) ResyncInventoryByName(ctx context.Context, name string) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.Debug("ClusterServiceWithSlog: calling ResyncInventoryByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("ClusterServiceWithSlog: method ResyncInventoryByName returned an error")
+		} else {
+			log.Debug("ClusterServiceWithSlog: method ResyncInventoryByName finished")
+		}
+	}()
+	return _d._base.ResyncInventoryByName(ctx, name)
+}
+
 // UpdateByName implements _sourceProvisioning.ClusterService
 func (_d ClusterServiceWithSlog) UpdateByName(ctx context.Context, name string, cluster _sourceProvisioning.Cluster) (c2 _sourceProvisioning.Cluster, err error) {
 	log := _d._log.With()

@@ -4,6 +4,10 @@ import (
 	"context"
 	"errors"
 	"time"
+{{- if .HasParent }}
+
+	incusapi "github.com/lxc/incus/v6/shared/api"
+{{- end }}
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -18,6 +22,10 @@ type {{ .Name | camelcase }}Service struct {
 	{{ .ParentName | camelcase }}Client {{ .ParentObjectType | pascalcase }}ServerClient
 {{- end }}
 	{{ .Name | camelcase }}Client {{ .Name | pascalcase }}ServerClient
+{{- if .HasParent }}
+
+	isParentFilted func(incusapi.{{ .ParentObjectType | pascalcase }}) bool
+{{- end }}
 
 	now func() time.Time
 }
@@ -25,6 +33,14 @@ type {{ .Name | camelcase }}Service struct {
 var _ {{ .Name | pascalcase }}Service = &{{ .Name | camelcase }}Service{}
 
 type {{ .Name | pascalcase }}ServiceOption func(s *{{ .Name | camelcase }}Service)
+{{- if .HasParent }}
+
+func {{ .Name | pascalcase }}WithParentFilter(f func(incusapi.{{ .ParentObjectType | pascalcase }}) bool) {{ .Name | pascalcase }}ServiceOption {
+	return func(s *{{ .Name | camelcase }}Service) {
+		s.isParentFilted = f
+	}
+}
+{{- end }}
 
 func New{{ .Name | pascalcase }}Service(repo {{ .Name | pascalcase }}Repo, clusterSvc ClusterService, serverSvc ServerService, client {{ .Name | pascalcase }}ServerClient, {{ if .HasParent }}parentClient {{ .ParentName | pascalcase }}ServerClient, {{ end -}} opts ...{{ .Name | pascalcase }}ServiceOption) {{ .Name | camelcase }}Service {
 	{{ .Name | camelcase }}Svc := {{ .Name | camelcase }}Service{
@@ -36,6 +52,12 @@ func New{{ .Name | pascalcase }}Service(repo {{ .Name | pascalcase }}Repo, clust
 		{{ .ParentName | camelcase }}Client: parentClient,
 {{- end }}
 		{{ .Name | camelcase }}Client: client,
+{{- if .HasParent }}
+
+	isParentFilted: func(_ incusapi.{{ .ParentObjectType | pascalcase }}) bool {
+		return false
+	},
+{{- end }}
 
 		now: time.Now,
 	}
@@ -144,6 +166,12 @@ func (s {{ .Name | camelcase }}Service) SyncServer(ctx context.Context, serverID
 	}
 
 	for _, {{ .ParentName | camelcase }} := range server{{ .ParentName | pascalcase }}s {
+{{- if .HasParent }}
+		if s.isParentFilted({{ .ParentName | camelcase }}) {
+			continue
+		}
+{{- end }}
+
 		server{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, server.ConnectionURL, {{ .ParentName | camelcase }}.Name)
 		if err != nil {
 			return err
@@ -193,9 +221,9 @@ func (s {{ .Name | camelcase }}Service) SyncServer(ctx context.Context, serverID
 	if err != nil {
 		return err
 	}
-{{ if .HasParent }}
+{{- if .HasParent }}
 	}
-{{ end }}
+{{- end }}
 
 	return nil
 }

@@ -293,6 +293,7 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 		networkACLClientGetNetworkACLsErr error
 		repoDeleteByServerIDErr           error
 		repoCreateErr                     error
+		serviceOptions                    []inventory.NetworkACLServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -521,9 +522,14 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkACLSvc := inventory.NewNetworkACLService(repo, clusterSvc, serverSvc, networkACLClient, inventory.NetworkACLWithNow(func() time.Time {
-				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-			}))
+			networkACLSvc := inventory.NewNetworkACLService(repo, clusterSvc, serverSvc, networkACLClient,
+				append(
+					tc.serviceOptions,
+					inventory.NetworkACLWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
 
 			// Run test
 			err := networkACLSvc.SyncAll(context.Background())

@@ -287,6 +287,7 @@ func TestImageService_SyncAll(t *testing.T) {
 		imageClientGetImagesErr           error
 		repoDeleteByServerIDErr           error
 		repoCreateErr                     error
+		serviceOptions                    []inventory.ImageServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -507,9 +508,14 @@ func TestImageService_SyncAll(t *testing.T) {
 				},
 			}
 
-			imageSvc := inventory.NewImageService(repo, clusterSvc, serverSvc, imageClient, inventory.ImageWithNow(func() time.Time {
-				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-			}))
+			imageSvc := inventory.NewImageService(repo, clusterSvc, serverSvc, imageClient,
+				append(
+					tc.serviceOptions,
+					inventory.ImageWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
 
 			// Run test
 			err := imageSvc.SyncAll(context.Background())

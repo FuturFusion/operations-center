@@ -7,6 +7,8 @@ import (
 	"errors"
 	"time"
 
+	incusapi "github.com/lxc/incus/v6/shared/api"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 )
@@ -18,12 +20,20 @@ type storageVolumeService struct {
 	storagePoolClient   StoragePoolServerClient
 	storageVolumeClient StorageVolumeServerClient
 
+	isParentFilted func(incusapi.StoragePool) bool
+
 	now func() time.Time
 }
 
 var _ StorageVolumeService = &storageVolumeService{}
 
 type StorageVolumeServiceOption func(s *storageVolumeService)
+
+func StorageVolumeWithParentFilter(f func(incusapi.StoragePool) bool) StorageVolumeServiceOption {
+	return func(s *storageVolumeService) {
+		s.isParentFilted = f
+	}
+}
 
 func NewStorageVolumeService(repo StorageVolumeRepo, clusterSvc ClusterService, serverSvc ServerService, client StorageVolumeServerClient, parentClient StoragePoolServerClient, opts ...StorageVolumeServiceOption) storageVolumeService {
 	storageVolumeSvc := storageVolumeService{
@@ -32,6 +42,10 @@ func NewStorageVolumeService(repo StorageVolumeRepo, clusterSvc ClusterService, 
 		serverSvc:           serverSvc,
 		storagePoolClient:   parentClient,
 		storageVolumeClient: client,
+
+		isParentFilted: func(_ incusapi.StoragePool) bool {
+			return false
+		},
 
 		now: time.Now,
 	}
@@ -137,6 +151,10 @@ func (s storageVolumeService) SyncServer(ctx context.Context, serverID int) erro
 	}
 
 	for _, storagePool := range serverStoragePools {
+		if s.isParentFilted(storagePool) {
+			continue
+		}
+
 		serverStorageVolumes, err := s.storageVolumeClient.GetStorageVolumes(ctx, server.ConnectionURL, storagePool.Name)
 		if err != nil {
 			return err
@@ -175,7 +193,6 @@ func (s storageVolumeService) SyncServer(ctx context.Context, serverID int) erro
 		if err != nil {
 			return err
 		}
-
 	}
 
 	return nil

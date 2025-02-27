@@ -354,6 +354,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 		{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}Err     error
 		repoDeleteByServerIDErr           error
 		repoCreateErr                     error
+		serviceOptions                    []inventory.{{ .Name | pascalcase }}ServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -382,6 +383,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				{
 					Name: "{{ .ParentName | camelcase }} one",
 				},
+				{
+					Name: "filtered",
+				},
 			},
 {{- end }}
 			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}: []incusapi.{{ .ObjectType | pascalcase }}{
@@ -404,6 +408,13 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- end }}
 				},
 			},
+{{- if .HasParent }}
+			serviceOptions: []inventory.{{ .Name | pascalcase }}ServiceOption{
+				inventory.{{ .Name | pascalcase }}WithParentFilter(func(parent incusapi.{{ .ParentObjectType | pascalcase }}) bool {
+					return parent.Name == "filtered"
+				}),
+			},
+{{- end }}
 
 			assertErr: require.NoError,
 		},
@@ -699,9 +710,14 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				},
 			}
 
-			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, clusterSvc, serverSvc, {{ .Name | camelcase }}Client, {{ if .HasParent }}{{ .ParentName | camelcase }}Client, {{ end -}} inventory.{{ .Name | pascalcase }}WithNow(func() time.Time {
-				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-			}))
+			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, clusterSvc, serverSvc, {{ .Name | camelcase }}Client, {{- if .HasParent }}{{ .ParentName | camelcase }}Client, {{- end }}
+				append(
+					tc.serviceOptions,
+					inventory.{{ .Name | pascalcase }}WithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...
+			)
 
 			// Run test
 			err := {{ .Name | camelcase }}Svc.SyncAll(context.Background())

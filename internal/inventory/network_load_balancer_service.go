@@ -7,6 +7,8 @@ import (
 	"errors"
 	"time"
 
+	incusapi "github.com/lxc/incus/v6/shared/api"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 )
@@ -18,12 +20,20 @@ type networkLoadBalancerService struct {
 	networkClient             NetworkServerClient
 	networkLoadBalancerClient NetworkLoadBalancerServerClient
 
+	isParentFilted func(incusapi.Network) bool
+
 	now func() time.Time
 }
 
 var _ NetworkLoadBalancerService = &networkLoadBalancerService{}
 
 type NetworkLoadBalancerServiceOption func(s *networkLoadBalancerService)
+
+func NetworkLoadBalancerWithParentFilter(f func(incusapi.Network) bool) NetworkLoadBalancerServiceOption {
+	return func(s *networkLoadBalancerService) {
+		s.isParentFilted = f
+	}
+}
 
 func NewNetworkLoadBalancerService(repo NetworkLoadBalancerRepo, clusterSvc ClusterService, serverSvc ServerService, client NetworkLoadBalancerServerClient, parentClient NetworkServerClient, opts ...NetworkLoadBalancerServiceOption) networkLoadBalancerService {
 	networkLoadBalancerSvc := networkLoadBalancerService{
@@ -32,6 +42,10 @@ func NewNetworkLoadBalancerService(repo NetworkLoadBalancerRepo, clusterSvc Clus
 		serverSvc:                 serverSvc,
 		networkClient:             parentClient,
 		networkLoadBalancerClient: client,
+
+		isParentFilted: func(_ incusapi.Network) bool {
+			return false
+		},
 
 		now: time.Now,
 	}
@@ -136,6 +150,10 @@ func (s networkLoadBalancerService) SyncServer(ctx context.Context, serverID int
 	}
 
 	for _, network := range serverNetworks {
+		if s.isParentFilted(network) {
+			continue
+		}
+
 		serverNetworkLoadBalancers, err := s.networkLoadBalancerClient.GetNetworkLoadBalancers(ctx, server.ConnectionURL, network.Name)
 		if err != nil {
 			return err
@@ -173,7 +191,6 @@ func (s networkLoadBalancerService) SyncServer(ctx context.Context, serverID int
 		if err != nil {
 			return err
 		}
-
 	}
 
 	return nil

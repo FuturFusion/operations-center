@@ -283,6 +283,7 @@ func TestProjectService_SyncAll(t *testing.T) {
 		projectClientGetProjectsErr       error
 		repoDeleteByServerIDErr           error
 		repoCreateErr                     error
+		serviceOptions                    []inventory.ProjectServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -499,9 +500,14 @@ func TestProjectService_SyncAll(t *testing.T) {
 				},
 			}
 
-			projectSvc := inventory.NewProjectService(repo, clusterSvc, serverSvc, projectClient, inventory.ProjectWithNow(func() time.Time {
-				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-			}))
+			projectSvc := inventory.NewProjectService(repo, clusterSvc, serverSvc, projectClient,
+				append(
+					tc.serviceOptions,
+					inventory.ProjectWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
 
 			// Run test
 			err := projectSvc.SyncAll(context.Background())

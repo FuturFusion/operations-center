@@ -292,6 +292,7 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 		networkPeerClientGetNetworkPeersErr error
 		repoDeleteByServerIDErr             error
 		repoCreateErr                       error
+		serviceOptions                      []inventory.NetworkPeerServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -319,11 +320,19 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 				{
 					Name: "network one",
 				},
+				{
+					Name: "filtered",
+				},
 			},
 			networkPeerClientGetNetworkPeers: []incusapi.NetworkPeer{
 				{
 					Name: "networkPeer one",
 				},
+			},
+			serviceOptions: []inventory.NetworkPeerServiceOption{
+				inventory.NetworkPeerWithParentFilter(func(parent incusapi.Network) bool {
+					return parent.Name == "filtered"
+				}),
 			},
 
 			assertErr: require.NoError,
@@ -563,9 +572,14 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkPeerSvc := inventory.NewNetworkPeerService(repo, clusterSvc, serverSvc, networkPeerClient, networkClient, inventory.NetworkPeerWithNow(func() time.Time {
-				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-			}))
+			networkPeerSvc := inventory.NewNetworkPeerService(repo, clusterSvc, serverSvc, networkPeerClient, networkClient,
+				append(
+					tc.serviceOptions,
+					inventory.NetworkPeerWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
 
 			// Run test
 			err := networkPeerSvc.SyncAll(context.Background())

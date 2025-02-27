@@ -86,7 +86,7 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db))
+	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), nil)
 	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
 
 	storageVolume := inventorySqlite.NewStorageVolume(db)

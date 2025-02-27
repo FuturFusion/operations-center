@@ -292,6 +292,7 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		networkLoadBalancerClientGetNetworkLoadBalancersErr error
 		repoDeleteByServerIDErr                             error
 		repoCreateErr                                       error
+		serviceOptions                                      []inventory.NetworkLoadBalancerServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -319,11 +320,19 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 				{
 					Name: "network one",
 				},
+				{
+					Name: "filtered",
+				},
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancers: []incusapi.NetworkLoadBalancer{
 				{
 					ListenAddress: "networkLoadBalancer one",
 				},
+			},
+			serviceOptions: []inventory.NetworkLoadBalancerServiceOption{
+				inventory.NetworkLoadBalancerWithParentFilter(func(parent incusapi.Network) bool {
+					return parent.Name == "filtered"
+				}),
 			},
 
 			assertErr: require.NoError,
@@ -563,9 +572,14 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkLoadBalancerSvc := inventory.NewNetworkLoadBalancerService(repo, clusterSvc, serverSvc, networkLoadBalancerClient, networkClient, inventory.NetworkLoadBalancerWithNow(func() time.Time {
-				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-			}))
+			networkLoadBalancerSvc := inventory.NewNetworkLoadBalancerService(repo, clusterSvc, serverSvc, networkLoadBalancerClient, networkClient,
+				append(
+					tc.serviceOptions,
+					inventory.NetworkLoadBalancerWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
 
 			// Run test
 			err := networkLoadBalancerSvc.SyncAll(context.Background())

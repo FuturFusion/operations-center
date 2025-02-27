@@ -283,6 +283,7 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 		storagePoolClientGetStoragePoolsErr error
 		repoDeleteByServerIDErr             error
 		repoCreateErr                       error
+		serviceOptions                      []inventory.StoragePoolServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -499,9 +500,14 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 				},
 			}
 
-			storagePoolSvc := inventory.NewStoragePoolService(repo, clusterSvc, serverSvc, storagePoolClient, inventory.StoragePoolWithNow(func() time.Time {
-				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-			}))
+			storagePoolSvc := inventory.NewStoragePoolService(repo, clusterSvc, serverSvc, storagePoolClient,
+				append(
+					tc.serviceOptions,
+					inventory.StoragePoolWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
 
 			// Run test
 			err := storagePoolSvc.SyncAll(context.Background())

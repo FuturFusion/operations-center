@@ -292,6 +292,7 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 		networkForwardClientGetNetworkForwardsErr error
 		repoDeleteByServerIDErr                   error
 		repoCreateErr                             error
+		serviceOptions                            []inventory.NetworkForwardServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -319,11 +320,19 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 				{
 					Name: "network one",
 				},
+				{
+					Name: "filtered",
+				},
 			},
 			networkForwardClientGetNetworkForwards: []incusapi.NetworkForward{
 				{
 					ListenAddress: "networkForward one",
 				},
+			},
+			serviceOptions: []inventory.NetworkForwardServiceOption{
+				inventory.NetworkForwardWithParentFilter(func(parent incusapi.Network) bool {
+					return parent.Name == "filtered"
+				}),
 			},
 
 			assertErr: require.NoError,
@@ -563,9 +572,14 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkForwardSvc := inventory.NewNetworkForwardService(repo, clusterSvc, serverSvc, networkForwardClient, networkClient, inventory.NetworkForwardWithNow(func() time.Time {
-				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-			}))
+			networkForwardSvc := inventory.NewNetworkForwardService(repo, clusterSvc, serverSvc, networkForwardClient, networkClient,
+				append(
+					tc.serviceOptions,
+					inventory.NetworkForwardWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
 
 			// Run test
 			err := networkForwardSvc.SyncAll(context.Background())

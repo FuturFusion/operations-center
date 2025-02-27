@@ -296,6 +296,7 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 		storageBucketClientGetStorageBucketsErr error
 		repoDeleteByServerIDErr                 error
 		repoCreateErr                           error
+		serviceOptions                          []inventory.StorageBucketServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -323,12 +324,20 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 				{
 					Name: "storagePool one",
 				},
+				{
+					Name: "filtered",
+				},
 			},
 			storageBucketClientGetStorageBuckets: []incusapi.StorageBucket{
 				{
 					Name:    "storageBucket one",
 					Project: "project one",
 				},
+			},
+			serviceOptions: []inventory.StorageBucketServiceOption{
+				inventory.StorageBucketWithParentFilter(func(parent incusapi.StoragePool) bool {
+					return parent.Name == "filtered"
+				}),
 			},
 
 			assertErr: require.NoError,
@@ -571,9 +580,14 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 				},
 			}
 
-			storageBucketSvc := inventory.NewStorageBucketService(repo, clusterSvc, serverSvc, storageBucketClient, storagePoolClient, inventory.StorageBucketWithNow(func() time.Time {
-				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-			}))
+			storageBucketSvc := inventory.NewStorageBucketService(repo, clusterSvc, serverSvc, storageBucketClient, storagePoolClient,
+				append(
+					tc.serviceOptions,
+					inventory.StorageBucketWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
 
 			// Run test
 			err := storageBucketSvc.SyncAll(context.Background())

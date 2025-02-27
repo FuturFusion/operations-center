@@ -293,6 +293,7 @@ func TestInstanceService_SyncAll(t *testing.T) {
 		instanceClientGetInstancesErr     error
 		repoDeleteByServerIDErr           error
 		repoCreateErr                     error
+		serviceOptions                    []inventory.InstanceServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -521,9 +522,14 @@ func TestInstanceService_SyncAll(t *testing.T) {
 				},
 			}
 
-			instanceSvc := inventory.NewInstanceService(repo, clusterSvc, serverSvc, instanceClient, inventory.InstanceWithNow(func() time.Time {
-				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-			}))
+			instanceSvc := inventory.NewInstanceService(repo, clusterSvc, serverSvc, instanceClient,
+				append(
+					tc.serviceOptions,
+					inventory.InstanceWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
 
 			// Run test
 			err := instanceSvc.SyncAll(context.Background())

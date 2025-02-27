@@ -9,15 +9,21 @@ import (
 )
 
 type clusterService struct {
-	repo ClusterRepo
+	repo             ClusterRepo
+	inventorySyncers []InventorySyncer
 }
 
 var _ ClusterService = &clusterService{}
 
-func NewClusterService(repo ClusterRepo) clusterService {
-	return clusterService{
-		repo: repo,
+func NewClusterService(repo ClusterRepo, inventorySyncers []InventorySyncer) *clusterService {
+	return &clusterService{
+		repo:             repo,
+		inventorySyncers: inventorySyncers,
 	}
+}
+
+func (s *clusterService) SetInventorySyncers(inventorySyncers []InventorySyncer) {
+	(*s).inventorySyncers = inventorySyncers
 }
 
 func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster, error) {
@@ -128,4 +134,20 @@ func (s clusterService) DeleteByName(ctx context.Context, name string) error {
 
 		return s.repo.DeleteByID(ctx, cluster.ID)
 	})
+}
+
+func (s clusterService) ResyncInventoryByName(ctx context.Context, name string) error {
+	cluster, err := s.GetByName(ctx, name)
+	if err != nil {
+		return err
+	}
+
+	for _, inventorySyncer := range s.inventorySyncers {
+		err := inventorySyncer.SyncCluster(ctx, cluster.ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

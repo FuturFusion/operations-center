@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	incusapi "github.com/lxc/incus/v6/shared/api"
+
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	inventoryServiceMiddleware "github.com/FuturFusion/operations-center/internal/inventory/middleware"
 	inventoryRepoMiddleware "github.com/FuturFusion/operations-center/internal/inventory/repo/middleware"
@@ -12,7 +14,7 @@ import (
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 )
 
-func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverSvc provisioning.ServerService, serverClient inventory.ServerClient, inventoryRouter *http.ServeMux) {
+func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverSvc provisioning.ServerService, serverClient inventory.ServerClient, inventoryRouter *http.ServeMux) []provisioning.InventorySyncer {
 	// Service
 	inventoryImageSvc := inventoryServiceMiddleware.NewImageServiceWithSlog(
 		inventory.NewImageService(
@@ -76,6 +78,9 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			serverSvc,
 			serverClient,
 			serverClient,
+			inventory.NetworkForwardWithParentFilter(func(network incusapi.Network) bool {
+				return !network.Managed
+			}),
 		),
 		slog.Default(),
 	)
@@ -103,6 +108,17 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			serverSvc,
 			serverClient,
 			serverClient,
+			inventory.NetworkLoadBalancerWithParentFilter(func(network incusapi.Network) bool {
+				if !network.Managed {
+					return true
+				}
+
+				if network.Type == "bridge" {
+					return true
+				}
+
+				return false
+			}),
 		),
 		slog.Default(),
 	)
@@ -117,6 +133,17 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			serverSvc,
 			serverClient,
 			serverClient,
+			inventory.NetworkPeerWithParentFilter(func(network incusapi.Network) bool {
+				if !network.Managed {
+					return true
+				}
+
+				if network.Type == "bridge" {
+					return true
+				}
+
+				return false
+			}),
 		),
 		slog.Default(),
 	)
@@ -243,4 +270,21 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryStorageVolumeRouter := newSubRouter(inventoryRouter, "/storage_volumes")
 	registerInventoryStorageVolumeHandler(inventoryStorageVolumeRouter, inventoryStorageVolumeSvc)
+
+	return []provisioning.InventorySyncer{
+		inventoryImageSvc,
+		inventoryInstanceSvc,
+		inventoryNetworkSvc,
+		inventoryNetworkACLSvc,
+		inventoryNetworkForwardSvc,
+		inventoryNetworkIntegrationSvc,
+		inventoryNetworkLoadBalancerSvc,
+		inventoryNetworkPeerSvc,
+		inventoryNetworkZoneSvc,
+		inventoryProfileSvc,
+		inventoryProjectSvc,
+		inventoryStorageBucketSvc,
+		inventoryStoragePoolSvc,
+		inventoryStorageVolumeSvc,
+	}
 }

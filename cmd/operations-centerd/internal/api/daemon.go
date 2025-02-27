@@ -114,15 +114,19 @@ func (d *Daemon) Start() error {
 		),
 		slog.Default(),
 	)
-	clusterSvc := provisioningServiceMiddleware.NewClusterServiceWithSlog(
-		provisioning.NewClusterService(
-			provisioningRepoMiddleware.NewClusterRepoWithSlog(
-				provisioningSqlite.NewCluster(dbWithTransaction),
-				slog.Default(),
-			),
+
+	clusterSvc := provisioning.NewClusterService(
+		provisioningRepoMiddleware.NewClusterRepoWithSlog(
+			provisioningSqlite.NewCluster(dbWithTransaction),
+			slog.Default(),
 		),
+		nil,
+	)
+	clusterSvcWrapped := provisioningServiceMiddleware.NewClusterServiceWithSlog(
+		clusterSvc,
 		slog.Default(),
 	)
+
 	serverSvc := provisioningServiceMiddleware.NewServerServiceWithSlog(
 		provisioning.NewServerService(
 			provisioningRepoMiddleware.NewServerRepoWithSlog(
@@ -132,6 +136,7 @@ func (d *Daemon) Start() error {
 		),
 		slog.Default(),
 	)
+
 	updateSvc := provisioningServiceMiddleware.NewUpdateServiceWithSlog(
 		provisioning.NewUpdateService(
 			provisioningRepoMiddleware.NewUpdateRepoWithSlog(
@@ -159,7 +164,7 @@ func (d *Daemon) Start() error {
 	registerProvisioningTokenHandler(provisioningTokenRouter, tokenSvc)
 
 	provisioningClusterRouter := newSubRouter(provisioningRouter, "/clusters")
-	registerProvisioningClusterHandler(provisioningClusterRouter, clusterSvc)
+	registerProvisioningClusterHandler(provisioningClusterRouter, clusterSvcWrapped)
 
 	provisioningServerRouter := newSubRouter(provisioningRouter, "/servers")
 	registerProvisioningServerHandler(provisioningServerRouter, serverSvc)
@@ -169,7 +174,9 @@ func (d *Daemon) Start() error {
 
 	inventoryRouter := newSubRouter(api10router, "/inventory")
 
-	registerInventoryRoutes(dbWithTransaction, clusterSvc, serverSvc, serverClientProvider, inventoryRouter)
+	inventorySyncers := registerInventoryRoutes(dbWithTransaction, clusterSvcWrapped, serverSvc, serverClientProvider, inventoryRouter)
+
+	clusterSvc.SetInventorySyncers(inventorySyncers)
 
 	errorLogger := &log.Logger{}
 	errorLogger.SetOutput(httpErrorLogger{})

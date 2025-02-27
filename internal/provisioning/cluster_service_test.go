@@ -8,6 +8,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
@@ -65,7 +66,7 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo)
+			clusterSvc := provisioning.NewClusterService(repo, nil)
 
 			// Run test
 			_, err := clusterSvc.Create(context.Background(), tc.cluster)
@@ -123,7 +124,7 @@ func TestClusterService_GetAll(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo)
+			clusterSvc := provisioning.NewClusterService(repo, nil)
 
 			// Run test
 			clusters, err := clusterSvc.GetAll(context.Background())
@@ -171,7 +172,7 @@ func TestClusterService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo)
+			clusterSvc := provisioning.NewClusterService(repo, nil)
 
 			// Run test
 			clusterNames, err := clusterSvc.GetAllNames(context.Background())
@@ -221,7 +222,7 @@ func TestClusterService_GetByID(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo)
+			clusterSvc := provisioning.NewClusterService(repo, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetByID(context.Background(), tc.idArg)
@@ -279,7 +280,7 @@ func TestClusterService_GetByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo)
+			clusterSvc := provisioning.NewClusterService(repo, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetByName(context.Background(), tc.nameArg)
@@ -431,7 +432,7 @@ func TestClusterService_UpdateByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo)
+			clusterSvc := provisioning.NewClusterService(repo, nil)
 
 			// Run test
 			cluster, err := clusterSvc.UpdateByName(context.Background(), tc.nameArg, tc.cluster)
@@ -549,7 +550,7 @@ func TestClusterService_RenameByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo)
+			clusterSvc := provisioning.NewClusterService(repo, nil)
 
 			// Run test
 			cluster, err := clusterSvc.RenameByName(context.Background(), tc.nameArg, tc.cluster)
@@ -618,10 +619,87 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo)
+			clusterSvc := provisioning.NewClusterService(repo, nil)
 
 			// Run test
 			err := clusterSvc.DeleteByName(context.Background(), tc.nameArg)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestClusterService_ResyncInventoryByName(t *testing.T) {
+	tests := []struct {
+		name                 string
+		nameArg              string
+		repoGetByNameCluster provisioning.Cluster
+		repoGetByNameErr     error
+		inventorySyncerErr   error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+			repoGetByNameCluster: provisioning.Cluster{
+				ID:              1,
+				Name:            "one",
+				ServerHostnames: []string{"server1"},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "error - name empty",
+			nameArg: "", // invalid
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
+			name:             "error - repo.GetByName",
+			nameArg:          "one",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - sync cluster",
+			nameArg: "one",
+			repoGetByNameCluster: provisioning.Cluster{
+				ID:              1,
+				Name:            "one",
+				ServerHostnames: []string{"server1"},
+			},
+			inventorySyncerErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
+					return tc.repoGetByNameCluster, tc.repoGetByNameErr
+				},
+			}
+
+			inventorySyncer := &serviceMock.InventorySyncerMock{
+				SyncClusterFunc: func(ctx context.Context, clusterID int) error {
+					return tc.inventorySyncerErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil)
+			clusterSvc.SetInventorySyncers([]provisioning.InventorySyncer{inventorySyncer})
+
+			// Run test
+			err := clusterSvc.ResyncInventoryByName(context.Background(), tc.nameArg)
 
 			// Assert
 			tc.assertErr(t, err)

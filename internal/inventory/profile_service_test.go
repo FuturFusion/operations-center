@@ -287,6 +287,7 @@ func TestProfileService_SyncAll(t *testing.T) {
 		profileClientGetProfilesErr       error
 		repoDeleteByServerIDErr           error
 		repoCreateErr                     error
+		serviceOptions                    []inventory.ProfileServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -507,9 +508,14 @@ func TestProfileService_SyncAll(t *testing.T) {
 				},
 			}
 
-			profileSvc := inventory.NewProfileService(repo, clusterSvc, serverSvc, profileClient, inventory.ProfileWithNow(func() time.Time {
-				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-			}))
+			profileSvc := inventory.NewProfileService(repo, clusterSvc, serverSvc, profileClient,
+				append(
+					tc.serviceOptions,
+					inventory.ProfileWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
 
 			// Run test
 			err := profileSvc.SyncAll(context.Background())

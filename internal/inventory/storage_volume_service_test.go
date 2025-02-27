@@ -296,6 +296,7 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 		storageVolumeClientGetStorageVolumesErr error
 		repoDeleteByServerIDErr                 error
 		repoCreateErr                           error
+		serviceOptions                          []inventory.StorageVolumeServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -323,12 +324,20 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 				{
 					Name: "storagePool one",
 				},
+				{
+					Name: "filtered",
+				},
 			},
 			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolume{
 				{
 					Name:    "storageVolume one",
 					Project: "project one",
 				},
+			},
+			serviceOptions: []inventory.StorageVolumeServiceOption{
+				inventory.StorageVolumeWithParentFilter(func(parent incusapi.StoragePool) bool {
+					return parent.Name == "filtered"
+				}),
 			},
 
 			assertErr: require.NoError,
@@ -571,9 +580,14 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 				},
 			}
 
-			storageVolumeSvc := inventory.NewStorageVolumeService(repo, clusterSvc, serverSvc, storageVolumeClient, storagePoolClient, inventory.StorageVolumeWithNow(func() time.Time {
-				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-			}))
+			storageVolumeSvc := inventory.NewStorageVolumeService(repo, clusterSvc, serverSvc, storageVolumeClient, storagePoolClient,
+				append(
+					tc.serviceOptions,
+					inventory.StorageVolumeWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
 
 			// Run test
 			err := storageVolumeSvc.SyncAll(context.Background())

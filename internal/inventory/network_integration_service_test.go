@@ -283,6 +283,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 		networkIntegrationClientGetNetworkIntegrationsErr error
 		repoDeleteByServerIDErr                           error
 		repoCreateErr                                     error
+		serviceOptions                                    []inventory.NetworkIntegrationServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -499,9 +500,14 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, clusterSvc, serverSvc, networkIntegrationClient, inventory.NetworkIntegrationWithNow(func() time.Time {
-				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
-			}))
+			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, clusterSvc, serverSvc, networkIntegrationClient,
+				append(
+					tc.serviceOptions,
+					inventory.NetworkIntegrationWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
 
 			// Run test
 			err := networkIntegrationSvc.SyncAll(context.Background())
