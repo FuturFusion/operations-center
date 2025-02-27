@@ -23,6 +23,9 @@ var _ inventory.NetworkZoneRepo = &NetworkZoneRepoMock{}
 //			CreateFunc: func(ctx context.Context, networkZone inventory.NetworkZone) (inventory.NetworkZone, error) {
 //				panic("mock out the Create method")
 //			},
+//			DeleteByIDFunc: func(ctx context.Context, id int) error {
+//				panic("mock out the DeleteByID method")
+//			},
 //			DeleteByServerIDFunc: func(ctx context.Context, serverID int) error {
 //				panic("mock out the DeleteByServerID method")
 //			},
@@ -45,6 +48,9 @@ type NetworkZoneRepoMock struct {
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, networkZone inventory.NetworkZone) (inventory.NetworkZone, error)
 
+	// DeleteByIDFunc mocks the DeleteByID method.
+	DeleteByIDFunc func(ctx context.Context, id int) error
+
 	// DeleteByServerIDFunc mocks the DeleteByServerID method.
 	DeleteByServerIDFunc func(ctx context.Context, serverID int) error
 
@@ -65,6 +71,13 @@ type NetworkZoneRepoMock struct {
 			Ctx context.Context
 			// NetworkZone is the networkZone argument value.
 			NetworkZone inventory.NetworkZone
+		}
+		// DeleteByID holds details about calls to the DeleteByID method.
+		DeleteByID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID int
 		}
 		// DeleteByServerID holds details about calls to the DeleteByServerID method.
 		DeleteByServerID []struct {
@@ -96,6 +109,7 @@ type NetworkZoneRepoMock struct {
 		}
 	}
 	lockCreate              sync.RWMutex
+	lockDeleteByID          sync.RWMutex
 	lockDeleteByServerID    sync.RWMutex
 	lockGetAllIDsWithFilter sync.RWMutex
 	lockGetByID             sync.RWMutex
@@ -135,6 +149,42 @@ func (mock *NetworkZoneRepoMock) CreateCalls() []struct {
 	mock.lockCreate.RLock()
 	calls = mock.calls.Create
 	mock.lockCreate.RUnlock()
+	return calls
+}
+
+// DeleteByID calls DeleteByIDFunc.
+func (mock *NetworkZoneRepoMock) DeleteByID(ctx context.Context, id int) error {
+	if mock.DeleteByIDFunc == nil {
+		panic("NetworkZoneRepoMock.DeleteByIDFunc: method is nil but NetworkZoneRepo.DeleteByID was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  int
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockDeleteByID.Lock()
+	mock.calls.DeleteByID = append(mock.calls.DeleteByID, callInfo)
+	mock.lockDeleteByID.Unlock()
+	return mock.DeleteByIDFunc(ctx, id)
+}
+
+// DeleteByIDCalls gets all the calls that were made to DeleteByID.
+// Check the length with:
+//
+//	len(mockedNetworkZoneRepo.DeleteByIDCalls())
+func (mock *NetworkZoneRepoMock) DeleteByIDCalls() []struct {
+	Ctx context.Context
+	ID  int
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  int
+	}
+	mock.lockDeleteByID.RLock()
+	calls = mock.calls.DeleteByID
+	mock.lockDeleteByID.RUnlock()
 	return calls
 }
 

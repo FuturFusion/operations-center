@@ -129,6 +129,26 @@ WHERE networks.id=:id;
 	return scanNetwork(row)
 }
 
+func (r network) DeleteByID(ctx context.Context, id int) error {
+	const sqlStmt = `DELETE FROM networks WHERE id=:id;`
+
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return sqlite.MapErr(err)
+	}
+
+	if affectedRows == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
+}
+
 func (r network) DeleteByServerID(ctx context.Context, serverID int) error {
 	const sqlStmt = `DELETE FROM networks WHERE server_id=:serverID;`
 

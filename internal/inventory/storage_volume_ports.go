@@ -28,6 +28,7 @@ type StorageVolumeRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter StorageVolumeFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StorageVolume, error)
 	Create(ctx context.Context, storageVolume StorageVolume) (StorageVolume, error)
+	DeleteByID(ctx context.Context, id int) error
 	DeleteByServerID(ctx context.Context, serverID int) error
 	UpdateByID(ctx context.Context, storageVolume StorageVolume) (StorageVolume, error)
 }

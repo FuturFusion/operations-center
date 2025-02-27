@@ -138,9 +138,11 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, networkPeerB, dbNetworkPeerB)
 
-	// Delete network_peers by server ID.
-	err = networkPeer.DeleteByServerID(ctx, 1)
+	// Delete network_peers by ID.
+	err = networkPeer.DeleteByID(ctx, 1)
 	require.NoError(t, err)
+
+	// Delete network_peers by server ID.
 	err = networkPeer.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 

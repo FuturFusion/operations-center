@@ -28,6 +28,7 @@ type NetworkZoneRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkZoneFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkZone, error)
 	Create(ctx context.Context, networkZone NetworkZone) (NetworkZone, error)
+	DeleteByID(ctx context.Context, id int) error
 	DeleteByServerID(ctx context.Context, serverID int) error
 	UpdateByID(ctx context.Context, networkZone NetworkZone) (NetworkZone, error)
 }

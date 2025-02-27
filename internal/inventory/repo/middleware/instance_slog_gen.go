@@ -57,6 +57,36 @@ func (_d InstanceRepoWithSlog) Create(ctx context.Context, instance _sourceInven
 	return _d._base.Create(ctx, instance)
 }
 
+// DeleteByID implements _sourceInventory.InstanceRepo
+func (_d InstanceRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
+		)
+	}
+	log.Debug("InstanceRepoWithSlog: calling DeleteByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("InstanceRepoWithSlog: method DeleteByID returned an error")
+		} else {
+			log.Debug("InstanceRepoWithSlog: method DeleteByID finished")
+		}
+	}()
+	return _d._base.DeleteByID(ctx, id)
+}
+
 // DeleteByServerID implements _sourceInventory.InstanceRepo
 func (_d InstanceRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
 	log := _d._log.With()

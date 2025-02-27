@@ -57,6 +57,36 @@ func (_d NetworkACLRepoWithSlog) Create(ctx context.Context, networkACL _sourceI
 	return _d._base.Create(ctx, networkACL)
 }
 
+// DeleteByID implements _sourceInventory.NetworkACLRepo
+func (_d NetworkACLRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
+		)
+	}
+	log.Debug("NetworkACLRepoWithSlog: calling DeleteByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("NetworkACLRepoWithSlog: method DeleteByID returned an error")
+		} else {
+			log.Debug("NetworkACLRepoWithSlog: method DeleteByID finished")
+		}
+	}()
+	return _d._base.DeleteByID(ctx, id)
+}
+
 // DeleteByServerID implements _sourceInventory.NetworkACLRepo
 func (_d NetworkACLRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
 	log := _d._log.With()

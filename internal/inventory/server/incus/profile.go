@@ -4,8 +4,11 @@ package incus
 
 import (
 	"context"
+	"net/http"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 func (s serverClient) GetProfiles(ctx context.Context, connectionURL string) ([]incusapi.Profile, error) {
@@ -29,6 +32,10 @@ func (s serverClient) GetProfileByName(ctx context.Context, connectionURL string
 	}
 
 	serverProfile, _, err := client.GetProfile(profileName)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return incusapi.Profile{}, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return incusapi.Profile{}, err
 	}

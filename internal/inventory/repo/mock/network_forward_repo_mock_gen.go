@@ -23,6 +23,9 @@ var _ inventory.NetworkForwardRepo = &NetworkForwardRepoMock{}
 //			CreateFunc: func(ctx context.Context, networkForward inventory.NetworkForward) (inventory.NetworkForward, error) {
 //				panic("mock out the Create method")
 //			},
+//			DeleteByIDFunc: func(ctx context.Context, id int) error {
+//				panic("mock out the DeleteByID method")
+//			},
 //			DeleteByServerIDFunc: func(ctx context.Context, serverID int) error {
 //				panic("mock out the DeleteByServerID method")
 //			},
@@ -45,6 +48,9 @@ type NetworkForwardRepoMock struct {
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, networkForward inventory.NetworkForward) (inventory.NetworkForward, error)
 
+	// DeleteByIDFunc mocks the DeleteByID method.
+	DeleteByIDFunc func(ctx context.Context, id int) error
+
 	// DeleteByServerIDFunc mocks the DeleteByServerID method.
 	DeleteByServerIDFunc func(ctx context.Context, serverID int) error
 
@@ -65,6 +71,13 @@ type NetworkForwardRepoMock struct {
 			Ctx context.Context
 			// NetworkForward is the networkForward argument value.
 			NetworkForward inventory.NetworkForward
+		}
+		// DeleteByID holds details about calls to the DeleteByID method.
+		DeleteByID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID int
 		}
 		// DeleteByServerID holds details about calls to the DeleteByServerID method.
 		DeleteByServerID []struct {
@@ -96,6 +109,7 @@ type NetworkForwardRepoMock struct {
 		}
 	}
 	lockCreate              sync.RWMutex
+	lockDeleteByID          sync.RWMutex
 	lockDeleteByServerID    sync.RWMutex
 	lockGetAllIDsWithFilter sync.RWMutex
 	lockGetByID             sync.RWMutex
@@ -135,6 +149,42 @@ func (mock *NetworkForwardRepoMock) CreateCalls() []struct {
 	mock.lockCreate.RLock()
 	calls = mock.calls.Create
 	mock.lockCreate.RUnlock()
+	return calls
+}
+
+// DeleteByID calls DeleteByIDFunc.
+func (mock *NetworkForwardRepoMock) DeleteByID(ctx context.Context, id int) error {
+	if mock.DeleteByIDFunc == nil {
+		panic("NetworkForwardRepoMock.DeleteByIDFunc: method is nil but NetworkForwardRepo.DeleteByID was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  int
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockDeleteByID.Lock()
+	mock.calls.DeleteByID = append(mock.calls.DeleteByID, callInfo)
+	mock.lockDeleteByID.Unlock()
+	return mock.DeleteByIDFunc(ctx, id)
+}
+
+// DeleteByIDCalls gets all the calls that were made to DeleteByID.
+// Check the length with:
+//
+//	len(mockedNetworkForwardRepo.DeleteByIDCalls())
+func (mock *NetworkForwardRepoMock) DeleteByIDCalls() []struct {
+	Ctx context.Context
+	ID  int
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  int
+	}
+	mock.lockDeleteByID.RLock()
+	calls = mock.calls.DeleteByID
+	mock.lockDeleteByID.RUnlock()
 	return calls
 }
 

@@ -57,6 +57,36 @@ func (_d ProfileRepoWithSlog) Create(ctx context.Context, profile _sourceInvento
 	return _d._base.Create(ctx, profile)
 }
 
+// DeleteByID implements _sourceInventory.ProfileRepo
+func (_d ProfileRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
+		)
+	}
+	log.Debug("ProfileRepoWithSlog: calling DeleteByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("ProfileRepoWithSlog: method DeleteByID returned an error")
+		} else {
+			log.Debug("ProfileRepoWithSlog: method DeleteByID finished")
+		}
+	}()
+	return _d._base.DeleteByID(ctx, id)
+}
+
 // DeleteByServerID implements _sourceInventory.ProfileRepo
 func (_d ProfileRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
 	log := _d._log.With()

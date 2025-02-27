@@ -139,9 +139,11 @@ func TestProfileDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, profileB, dbProfileB)
 
-	// Delete profiles by server ID.
-	err = profile.DeleteByServerID(ctx, 1)
+	// Delete profiles by ID.
+	err = profile.DeleteByID(ctx, 1)
 	require.NoError(t, err)
+
+	// Delete profiles by server ID.
 	err = profile.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 

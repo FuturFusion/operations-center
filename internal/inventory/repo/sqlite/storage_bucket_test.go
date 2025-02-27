@@ -141,9 +141,11 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, storageBucketB, dbStorageBucketB)
 
-	// Delete storage_buckets by server ID.
-	err = storageBucket.DeleteByServerID(ctx, 1)
+	// Delete storage_buckets by ID.
+	err = storageBucket.DeleteByID(ctx, 1)
 	require.NoError(t, err)
+
+	// Delete storage_buckets by server ID.
 	err = storageBucket.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 

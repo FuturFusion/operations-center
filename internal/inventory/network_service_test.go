@@ -134,6 +134,7 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 		repoGetByIDNetwork               inventory.Network
 		repoGetByIDErr                   error
 		repoUpdateByIDErr                error
+		repoDeleteByIDErr                error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -153,6 +154,22 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 				Name:    "network one",
 				Project: "project one",
 			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - network get by name - not found",
+			repoGetByIDNetwork: inventory.Network{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkClientGetNetworkByNameErr: domain.ErrNotFound,
 
 			assertErr: require.NoError,
 		},
@@ -186,6 +203,23 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			networkClientGetNetworkByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - network get by name - not found - delete by id",
+			repoGetByIDNetwork: inventory.Network{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkClientGetNetworkByNameErr: domain.ErrNotFound,
+			repoDeleteByIDErr:                boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -243,6 +277,9 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 				UpdateByIDFunc: func(ctx context.Context, network inventory.Network) (inventory.Network, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), network.LastUpdated)
 					return inventory.Network{}, tc.repoUpdateByIDErr
+				},
+				DeleteByIDFunc: func(ctx context.Context, id int) error {
+					return tc.repoDeleteByIDErr
 				},
 			}
 

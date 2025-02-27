@@ -134,6 +134,7 @@ func TestNetworkForwardService_ResyncByID(t *testing.T) {
 		repoGetByIDNetworkForward                      inventory.NetworkForward
 		repoGetByIDErr                                 error
 		repoUpdateByIDErr                              error
+		repoDeleteByIDErr                              error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -153,6 +154,23 @@ func TestNetworkForwardService_ResyncByID(t *testing.T) {
 			networkForwardClientGetNetworkForwardByName: incusapi.NetworkForward{
 				ListenAddress: "networkForward one",
 			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - networkForward get by name - not found",
+			repoGetByIDNetworkForward: inventory.NetworkForward{
+				ID:          1,
+				ServerID:    1,
+				Name:        "one",
+				NetworkName: "network",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkForwardClientGetNetworkForwardByNameErr: domain.ErrNotFound,
 
 			assertErr: require.NoError,
 		},
@@ -188,6 +206,24 @@ func TestNetworkForwardService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			networkForwardClientGetNetworkForwardByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - networkForward get by name - not found - delete by id",
+			repoGetByIDNetworkForward: inventory.NetworkForward{
+				ID:          1,
+				ServerID:    1,
+				Name:        "one",
+				NetworkName: "network",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkForwardClientGetNetworkForwardByNameErr: domain.ErrNotFound,
+			repoDeleteByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -245,6 +281,9 @@ func TestNetworkForwardService_ResyncByID(t *testing.T) {
 				UpdateByIDFunc: func(ctx context.Context, networkForward inventory.NetworkForward) (inventory.NetworkForward, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkForward.LastUpdated)
 					return inventory.NetworkForward{}, tc.repoUpdateByIDErr
+				},
+				DeleteByIDFunc: func(ctx context.Context, id int) error {
+					return tc.repoDeleteByIDErr
 				},
 			}
 

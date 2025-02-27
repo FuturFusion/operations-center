@@ -139,9 +139,11 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, instanceB, dbInstanceB)
 
-	// Delete instances by server ID.
-	err = instance.DeleteByServerID(ctx, 1)
+	// Delete instances by ID.
+	err = instance.DeleteByID(ctx, 1)
 	require.NoError(t, err)
+
+	// Delete instances by server ID.
 	err = instance.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 

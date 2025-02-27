@@ -28,6 +28,7 @@ type ImageRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter ImageFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Image, error)
 	Create(ctx context.Context, image Image) (Image, error)
+	DeleteByID(ctx context.Context, id int) error
 	DeleteByServerID(ctx context.Context, serverID int) error
 	UpdateByID(ctx context.Context, image Image) (Image, error)
 }

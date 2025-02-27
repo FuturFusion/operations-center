@@ -62,8 +62,15 @@ func (s profileService) ResyncByID(ctx context.Context, id int) error {
 		}
 
 		serverProfile, err := s.profileClient.GetProfileByName(ctx, server.ConnectionURL, profile.Name)
-		// FIXME: how to differentiate general errors from "not found" errors?
-		// TODO: if the Profile is not found, it needs to be removed from the inventory.
+		if errors.Is(err, domain.ErrNotFound) {
+			err = s.repo.DeleteByID(ctx, profile.ID)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
 		if err != nil {
 			return err
 		}

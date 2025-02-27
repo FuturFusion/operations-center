@@ -57,6 +57,36 @@ func (_d NetworkIntegrationRepoWithSlog) Create(ctx context.Context, networkInte
 	return _d._base.Create(ctx, networkIntegration)
 }
 
+// DeleteByID implements _sourceInventory.NetworkIntegrationRepo
+func (_d NetworkIntegrationRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
+		)
+	}
+	log.Debug("NetworkIntegrationRepoWithSlog: calling DeleteByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("NetworkIntegrationRepoWithSlog: method DeleteByID returned an error")
+		} else {
+			log.Debug("NetworkIntegrationRepoWithSlog: method DeleteByID finished")
+		}
+	}()
+	return _d._base.DeleteByID(ctx, id)
+}
+
 // DeleteByServerID implements _sourceInventory.NetworkIntegrationRepo
 func (_d NetworkIntegrationRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
 	log := _d._log.With()

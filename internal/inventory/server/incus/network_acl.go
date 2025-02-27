@@ -4,8 +4,11 @@ package incus
 
 import (
 	"context"
+	"net/http"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 func (s serverClient) GetNetworkACLs(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error) {
@@ -29,6 +32,10 @@ func (s serverClient) GetNetworkACLByName(ctx context.Context, connectionURL str
 	}
 
 	serverNetworkACL, _, err := client.GetNetworkACL(networkACLName)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return incusapi.NetworkACL{}, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return incusapi.NetworkACL{}, err
 	}

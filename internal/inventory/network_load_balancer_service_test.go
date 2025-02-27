@@ -134,6 +134,7 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 		repoGetByIDNetworkLoadBalancer                           inventory.NetworkLoadBalancer
 		repoGetByIDErr                                           error
 		repoUpdateByIDErr                                        error
+		repoDeleteByIDErr                                        error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -153,6 +154,23 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 			networkLoadBalancerClientGetNetworkLoadBalancerByName: incusapi.NetworkLoadBalancer{
 				ListenAddress: "networkLoadBalancer one",
 			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - networkLoadBalancer get by name - not found",
+			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
+				ID:          1,
+				ServerID:    1,
+				Name:        "one",
+				NetworkName: "network",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkLoadBalancerClientGetNetworkLoadBalancerByNameErr: domain.ErrNotFound,
 
 			assertErr: require.NoError,
 		},
@@ -188,6 +206,24 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - networkLoadBalancer get by name - not found - delete by id",
+			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
+				ID:          1,
+				ServerID:    1,
+				Name:        "one",
+				NetworkName: "network",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkLoadBalancerClientGetNetworkLoadBalancerByNameErr: domain.ErrNotFound,
+			repoDeleteByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -245,6 +281,9 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 				UpdateByIDFunc: func(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkLoadBalancer.LastUpdated)
 					return inventory.NetworkLoadBalancer{}, tc.repoUpdateByIDErr
+				},
+				DeleteByIDFunc: func(ctx context.Context, id int) error {
+					return tc.repoDeleteByIDErr
 				},
 			}
 

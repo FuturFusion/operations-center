@@ -4,8 +4,11 @@ package incus
 
 import (
 	"context"
+	"net/http"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 func (s serverClient) GetNetworkIntegrations(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error) {
@@ -29,6 +32,10 @@ func (s serverClient) GetNetworkIntegrationByName(ctx context.Context, connectio
 	}
 
 	serverNetworkIntegration, _, err := client.GetNetworkIntegration(networkIntegrationName)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return incusapi.NetworkIntegration{}, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return incusapi.NetworkIntegration{}, err
 	}

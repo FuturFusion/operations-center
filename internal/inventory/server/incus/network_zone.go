@@ -4,8 +4,11 @@ package incus
 
 import (
 	"context"
+	"net/http"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 func (s serverClient) GetNetworkZones(ctx context.Context, connectionURL string) ([]incusapi.NetworkZone, error) {
@@ -29,6 +32,10 @@ func (s serverClient) GetNetworkZoneByName(ctx context.Context, connectionURL st
 	}
 
 	serverNetworkZone, _, err := client.GetNetworkZone(networkZoneName)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return incusapi.NetworkZone{}, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return incusapi.NetworkZone{}, err
 	}

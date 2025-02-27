@@ -62,8 +62,15 @@ func (s instanceService) ResyncByID(ctx context.Context, id int) error {
 		}
 
 		serverInstance, err := s.instanceClient.GetInstanceByName(ctx, server.ConnectionURL, instance.Name)
-		// FIXME: how to differentiate general errors from "not found" errors?
-		// TODO: if the Instance is not found, it needs to be removed from the inventory.
+		if errors.Is(err, domain.ErrNotFound) {
+			err = s.repo.DeleteByID(ctx, instance.ID)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
 		if err != nil {
 			return err
 		}

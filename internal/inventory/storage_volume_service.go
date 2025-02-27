@@ -78,8 +78,15 @@ func (s storageVolumeService) ResyncByID(ctx context.Context, id int) error {
 		}
 
 		serverStorageVolume, err := s.storageVolumeClient.GetStorageVolumeByName(ctx, server.ConnectionURL, storageVolume.StoragePoolName, storageVolume.Name)
-		// FIXME: how to differentiate general errors from "not found" errors?
-		// TODO: if the StorageVolume is not found, it needs to be removed from the inventory.
+		if errors.Is(err, domain.ErrNotFound) {
+			err = s.repo.DeleteByID(ctx, storageVolume.ID)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
 		if err != nil {
 			return err
 		}

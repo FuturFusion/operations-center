@@ -133,6 +133,7 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 		repoGetByIDNetworkIntegration                          inventory.NetworkIntegration
 		repoGetByIDErr                                         error
 		repoUpdateByIDErr                                      error
+		repoDeleteByIDErr                                      error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -151,6 +152,22 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
 				Name: "networkIntegration one",
 			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - networkIntegration get by name - not found",
+			repoGetByIDNetworkIntegration: inventory.NetworkIntegration{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkIntegrationClientGetNetworkIntegrationByNameErr: domain.ErrNotFound,
 
 			assertErr: require.NoError,
 		},
@@ -184,6 +201,23 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			networkIntegrationClientGetNetworkIntegrationByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - networkIntegration get by name - not found - delete by id",
+			repoGetByIDNetworkIntegration: inventory.NetworkIntegration{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			networkIntegrationClientGetNetworkIntegrationByNameErr: domain.ErrNotFound,
+			repoDeleteByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -239,6 +273,9 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 				UpdateByIDFunc: func(ctx context.Context, networkIntegration inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkIntegration.LastUpdated)
 					return inventory.NetworkIntegration{}, tc.repoUpdateByIDErr
+				},
+				DeleteByIDFunc: func(ctx context.Context, id int) error {
+					return tc.repoDeleteByIDErr
 				},
 			}
 

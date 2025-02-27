@@ -78,8 +78,15 @@ func (s storageBucketService) ResyncByID(ctx context.Context, id int) error {
 		}
 
 		serverStorageBucket, err := s.storageBucketClient.GetStorageBucketByName(ctx, server.ConnectionURL, storageBucket.StoragePoolName, storageBucket.Name)
-		// FIXME: how to differentiate general errors from "not found" errors?
-		// TODO: if the StorageBucket is not found, it needs to be removed from the inventory.
+		if errors.Is(err, domain.ErrNotFound) {
+			err = s.repo.DeleteByID(ctx, storageBucket.ID)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
 		if err != nil {
 			return err
 		}

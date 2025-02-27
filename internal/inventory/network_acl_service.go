@@ -62,8 +62,15 @@ func (s networkACLService) ResyncByID(ctx context.Context, id int) error {
 		}
 
 		serverNetworkACL, err := s.networkACLClient.GetNetworkACLByName(ctx, server.ConnectionURL, networkACL.Name)
-		// FIXME: how to differentiate general errors from "not found" errors?
-		// TODO: if the NetworkACL is not found, it needs to be removed from the inventory.
+		if errors.Is(err, domain.ErrNotFound) {
+			err = s.repo.DeleteByID(ctx, networkACL.ID)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
 		if err != nil {
 			return err
 		}

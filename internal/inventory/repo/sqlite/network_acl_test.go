@@ -139,9 +139,11 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, networkACLB, dbNetworkACLB)
 
-	// Delete network_acls by server ID.
-	err = networkACL.DeleteByServerID(ctx, 1)
+	// Delete network_acls by ID.
+	err = networkACL.DeleteByID(ctx, 1)
 	require.NoError(t, err)
+
+	// Delete network_acls by server ID.
 	err = networkACL.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 

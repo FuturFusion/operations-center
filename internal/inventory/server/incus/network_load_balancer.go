@@ -4,8 +4,11 @@ package incus
 
 import (
 	"context"
+	"net/http"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
 func (s serverClient) GetNetworkLoadBalancers(ctx context.Context, connectionURL string, networkLoadBalancerName string) ([]incusapi.NetworkLoadBalancer, error) {
@@ -29,6 +32,10 @@ func (s serverClient) GetNetworkLoadBalancerByName(ctx context.Context, connecti
 	}
 
 	serverNetworkLoadBalancer, _, err := client.GetNetworkLoadBalancer(networkName, networkLoadBalancerName)
+	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
+		return incusapi.NetworkLoadBalancer{}, domain.ErrNotFound
+	}
+
 	if err != nil {
 		return incusapi.NetworkLoadBalancer{}, err
 	}

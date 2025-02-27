@@ -129,14 +129,15 @@ func Test{{ .Name | pascalcase }}Service_GetByID(t *testing.T) {
 
 func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 	tests := []struct {
-		name                               string
-		serverSvcGetByIDServer             provisioning.Server
-		serverSvcGetByIDErr                error
+		name                   string
+		serverSvcGetByIDServer provisioning.Server
+		serverSvcGetByIDErr    error
 		{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName    incusapi.{{ .ObjectType | pascalcase }}
 		{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr error
-		repoGetByID{{ .Name | pascalcase }}                inventory.{{ .Name | pascalcase }}
-		repoGetByIDErr                     error
-		repoUpdateByIDErr                  error
+		repoGetByID{{ .Name | pascalcase }} inventory.{{ .Name | pascalcase }}
+		repoGetByIDErr    error
+		repoUpdateByIDErr error
+    repoDeleteByIDErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -177,6 +178,25 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name: "success - {{ .Name | camelcase }} get by name - not found",
+			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: "{{ .ParentName }}",
+{{- end }}
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr: domain.ErrNotFound,
+
+			assertErr: require.NoError,
+		},
+		{
 			name:           "error - {{ .Name | camelcase }} get by ID",
 			repoGetByIDErr: boom.Error,
 
@@ -212,6 +232,26 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - {{ .Name | camelcase }} get by name - not found - delete by id",
+			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: "{{ .ParentName }}",
+{{- end }}
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr: domain.ErrNotFound,
+			repoDeleteByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -303,6 +343,9 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 				UpdateByIDFunc: func(ctx context.Context, {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), {{ .Name | camelcase }}.LastUpdated)
 					return inventory.{{ .Name | pascalcase }}{}, tc.repoUpdateByIDErr
+				},
+				DeleteByIDFunc: func(ctx context.Context, id int) error{
+					return tc.repoDeleteByIDErr
 				},
 			}
 

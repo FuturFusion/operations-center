@@ -136,9 +136,11 @@ func TestProjectDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, projectB, dbProjectB)
 
-	// Delete projects by server ID.
-	err = project.DeleteByServerID(ctx, 1)
+	// Delete projects by ID.
+	err = project.DeleteByID(ctx, 1)
 	require.NoError(t, err)
+
+	// Delete projects by server ID.
 	err = project.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 

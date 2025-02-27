@@ -134,6 +134,7 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 		repoGetByIDInstance                inventory.Instance
 		repoGetByIDErr                     error
 		repoUpdateByIDErr                  error
+		repoDeleteByIDErr                  error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -155,6 +156,22 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 					Project: "project one",
 				},
 			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - instance get by name - not found",
+			repoGetByIDInstance: inventory.Instance{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			instanceClientGetInstanceByNameErr: domain.ErrNotFound,
 
 			assertErr: require.NoError,
 		},
@@ -188,6 +205,23 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 				Hostname:  "server-one",
 			},
 			instanceClientGetInstanceByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - instance get by name - not found - delete by id",
+			repoGetByIDInstance: inventory.Instance{
+				ID:       1,
+				ServerID: 1,
+				Name:     "one",
+			},
+			serverSvcGetByIDServer: provisioning.Server{
+				ID:        1,
+				ClusterID: 1,
+				Hostname:  "server-one",
+			},
+			instanceClientGetInstanceByNameErr: domain.ErrNotFound,
+			repoDeleteByIDErr:                  boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -249,6 +283,9 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 				UpdateByIDFunc: func(ctx context.Context, instance inventory.Instance) (inventory.Instance, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), instance.LastUpdated)
 					return inventory.Instance{}, tc.repoUpdateByIDErr
+				},
+				DeleteByIDFunc: func(ctx context.Context, id int) error {
+					return tc.repoDeleteByIDErr
 				},
 			}
 

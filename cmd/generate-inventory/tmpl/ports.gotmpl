@@ -26,6 +26,7 @@ type {{ .Name | pascalcase }}Repo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) ([]int, error)
 	GetByID(ctx context.Context, id int) ({{ .Name | pascalcase }}, error)
 	Create(ctx context.Context, {{ .Name | camelcase }} {{ .Name | pascalcase }}) ({{ .Name | pascalcase }}, error)
+	DeleteByID(ctx context.Context, id int) error
 	DeleteByServerID(ctx context.Context, serverID int) error
 	UpdateByID(ctx context.Context, {{ .Name | camelcase }} {{ .Name | pascalcase }}) ({{ .Name | pascalcase }}, error)
 }

@@ -28,6 +28,7 @@ type ProfileRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Profile, error)
 	Create(ctx context.Context, profile Profile) (Profile, error)
+	DeleteByID(ctx context.Context, id int) error
 	DeleteByServerID(ctx context.Context, serverID int) error
 	UpdateByID(ctx context.Context, profile Profile) (Profile, error)
 }

@@ -139,9 +139,11 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, networkB, dbNetworkB)
 
-	// Delete networks by server ID.
-	err = network.DeleteByServerID(ctx, 1)
+	// Delete networks by ID.
+	err = network.DeleteByID(ctx, 1)
 	require.NoError(t, err)
+
+	// Delete networks by server ID.
 	err = network.DeleteByServerID(ctx, 2)
 	require.NoError(t, err)
 
