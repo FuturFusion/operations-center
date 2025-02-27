@@ -60,11 +60,11 @@ func TestProfileService_GetAllIDs(t *testing.T) {
 			}))
 
 			// Run test
-			profileHostnames, err := profileSvc.GetAllIDsWithFilter(context.Background(), inventory.ProfileFilter{})
+			profileIDs, err := profileSvc.GetAllIDsWithFilter(context.Background(), inventory.ProfileFilter{})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, profileHostnames, tc.count)
+			require.Len(t, profileIDs, tc.count)
 		})
 	}
 }
@@ -148,7 +148,7 @@ func TestProfileService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			profileClientGetProfileByName: incusapi.Profile{
 				Name:    "profile one",
@@ -167,7 +167,7 @@ func TestProfileService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			profileClientGetProfileByNameErr: domain.ErrNotFound,
 
@@ -200,7 +200,7 @@ func TestProfileService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			profileClientGetProfileByNameErr: boom.Error,
 
@@ -216,7 +216,7 @@ func TestProfileService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			profileClientGetProfileByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr:                boom.Error,
@@ -233,7 +233,7 @@ func TestProfileService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			profileClientGetProfileByName: incusapi.Profile{
 				Name:    "profile one",
@@ -255,7 +255,7 @@ func TestProfileService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			profileClientGetProfileByName: incusapi.Profile{
 				Name:    "profile one",
@@ -340,13 +340,13 @@ func TestProfileService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			profileClientGetProfiles: []incusapi.Profile{
 				{
@@ -387,7 +387,7 @@ func TestProfileService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDErr: boom.Error,
@@ -406,13 +406,13 @@ func TestProfileService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			profileClientGetProfilesErr: boom.Error,
 
@@ -430,13 +430,13 @@ func TestProfileService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			profileClientGetProfiles: []incusapi.Profile{
 				{
@@ -460,13 +460,13 @@ func TestProfileService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			profileClientGetProfiles: []incusapi.Profile{
 				{
@@ -492,13 +492,13 @@ func TestProfileService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			profileClientGetProfiles: []incusapi.Profile{
 				{

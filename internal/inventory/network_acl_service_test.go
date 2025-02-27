@@ -60,11 +60,11 @@ func TestNetworkACLService_GetAllIDs(t *testing.T) {
 			}))
 
 			// Run test
-			networkACLHostnames, err := networkACLSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkACLFilter{})
+			networkACLIDs, err := networkACLSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkACLFilter{})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, networkACLHostnames, tc.count)
+			require.Len(t, networkACLIDs, tc.count)
 		})
 	}
 }
@@ -148,7 +148,7 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkACLClientGetNetworkACLByName: incusapi.NetworkACL{
 				NetworkACLPost: incusapi.NetworkACLPost{
@@ -169,7 +169,7 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkACLClientGetNetworkACLByNameErr: domain.ErrNotFound,
 
@@ -202,7 +202,7 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkACLClientGetNetworkACLByNameErr: boom.Error,
 
@@ -218,7 +218,7 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkACLClientGetNetworkACLByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr:                      boom.Error,
@@ -235,7 +235,7 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkACLClientGetNetworkACLByName: incusapi.NetworkACL{
 				NetworkACLPost: incusapi.NetworkACLPost{
@@ -259,7 +259,7 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkACLClientGetNetworkACLByName: incusapi.NetworkACL{
 				NetworkACLPost: incusapi.NetworkACLPost{
@@ -346,13 +346,13 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkACLClientGetNetworkACLs: []incusapi.NetworkACL{
 				{
@@ -395,7 +395,7 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDErr: boom.Error,
@@ -414,13 +414,13 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkACLClientGetNetworkACLsErr: boom.Error,
 
@@ -438,13 +438,13 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkACLClientGetNetworkACLs: []incusapi.NetworkACL{
 				{
@@ -470,13 +470,13 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkACLClientGetNetworkACLs: []incusapi.NetworkACL{
 				{
@@ -504,13 +504,13 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkACLClientGetNetworkACLs: []incusapi.NetworkACL{
 				{

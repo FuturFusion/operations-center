@@ -60,11 +60,11 @@ func TestNetworkIntegrationService_GetAllIDs(t *testing.T) {
 			}))
 
 			// Run test
-			networkIntegrationHostnames, err := networkIntegrationSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkIntegrationFilter{})
+			networkIntegrationIDs, err := networkIntegrationSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkIntegrationFilter{})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, networkIntegrationHostnames, tc.count)
+			require.Len(t, networkIntegrationIDs, tc.count)
 		})
 	}
 }
@@ -147,7 +147,7 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
 				Name: "networkIntegration one",
@@ -165,7 +165,7 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkIntegrationClientGetNetworkIntegrationByNameErr: domain.ErrNotFound,
 
@@ -198,7 +198,7 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkIntegrationClientGetNetworkIntegrationByNameErr: boom.Error,
 
@@ -214,7 +214,7 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkIntegrationClientGetNetworkIntegrationByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr: boom.Error,
@@ -231,7 +231,7 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
 				Name: "networkIntegration one",
@@ -252,7 +252,7 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
 				Name: "networkIntegration one",
@@ -336,13 +336,13 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
 				{
@@ -382,7 +382,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDErr: boom.Error,
@@ -401,13 +401,13 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkIntegrationClientGetNetworkIntegrationsErr: boom.Error,
 
@@ -425,13 +425,13 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
 				{
@@ -454,13 +454,13 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
 				{
@@ -485,13 +485,13 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
 				{

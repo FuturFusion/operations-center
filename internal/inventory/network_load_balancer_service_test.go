@@ -60,11 +60,11 @@ func TestNetworkLoadBalancerService_GetAllIDs(t *testing.T) {
 			}))
 
 			// Run test
-			networkLoadBalancerHostnames, err := networkLoadBalancerSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkLoadBalancerFilter{})
+			networkLoadBalancerIDs, err := networkLoadBalancerSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkLoadBalancerFilter{})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, networkLoadBalancerHostnames, tc.count)
+			require.Len(t, networkLoadBalancerIDs, tc.count)
 		})
 	}
 }
@@ -149,7 +149,7 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByName: incusapi.NetworkLoadBalancer{
 				ListenAddress: "networkLoadBalancer one",
@@ -168,7 +168,7 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByNameErr: domain.ErrNotFound,
 
@@ -203,7 +203,7 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByNameErr: boom.Error,
 
@@ -220,7 +220,7 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr: boom.Error,
@@ -238,7 +238,7 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByName: incusapi.NetworkLoadBalancer{
 				ListenAddress: "networkLoadBalancer one",
@@ -260,7 +260,7 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByName: incusapi.NetworkLoadBalancer{
 				ListenAddress: "networkLoadBalancer one",
@@ -347,13 +347,13 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -406,7 +406,7 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDErr: boom.Error,
@@ -425,13 +425,13 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworksErr: boom.Error,
 
@@ -449,13 +449,13 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -478,13 +478,13 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -512,13 +512,13 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -548,13 +548,13 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{

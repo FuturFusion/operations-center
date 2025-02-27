@@ -57,8 +57,8 @@ func (_d ServerServiceWithSlog) Create(ctx context.Context, server _sourceProvis
 	return _d._base.Create(ctx, server)
 }
 
-// DeleteByHostname implements _sourceProvisioning.ServerService
-func (_d ServerServiceWithSlog) DeleteByHostname(ctx context.Context, name string) (err error) {
+// DeleteByName implements _sourceProvisioning.ServerService
+func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
@@ -66,7 +66,7 @@ func (_d ServerServiceWithSlog) DeleteByHostname(ctx context.Context, name strin
 			slog.String("name", name),
 		)
 	}
-	log.Debug("ServerServiceWithSlog: calling DeleteByHostname")
+	log.Debug("ServerServiceWithSlog: calling DeleteByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -79,12 +79,12 @@ func (_d ServerServiceWithSlog) DeleteByHostname(ctx context.Context, name strin
 			}
 		}
 		if err != nil {
-			log.Error("ServerServiceWithSlog: method DeleteByHostname returned an error")
+			log.Error("ServerServiceWithSlog: method DeleteByName returned an error")
 		} else {
-			log.Debug("ServerServiceWithSlog: method DeleteByHostname finished")
+			log.Debug("ServerServiceWithSlog: method DeleteByName finished")
 		}
 	}()
-	return _d._base.DeleteByHostname(ctx, name)
+	return _d._base.DeleteByName(ctx, name)
 }
 
 // GetAll implements _sourceProvisioning.ServerService
@@ -148,15 +148,15 @@ func (_d ServerServiceWithSlog) GetAllByClusterID(ctx context.Context, clusterID
 	return _d._base.GetAllByClusterID(ctx, clusterID)
 }
 
-// GetAllHostnames implements _sourceProvisioning.ServerService
-func (_d ServerServiceWithSlog) GetAllHostnames(ctx context.Context) (sa1 []string, err error) {
+// GetAllNames implements _sourceProvisioning.ServerService
+func (_d ServerServiceWithSlog) GetAllNames(ctx context.Context) (sa1 []string, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("ServerServiceWithSlog: calling GetAllHostnames")
+	log.Debug("ServerServiceWithSlog: calling GetAllNames")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -170,43 +170,12 @@ func (_d ServerServiceWithSlog) GetAllHostnames(ctx context.Context) (sa1 []stri
 			}
 		}
 		if err != nil {
-			log.Error("ServerServiceWithSlog: method GetAllHostnames returned an error")
+			log.Error("ServerServiceWithSlog: method GetAllNames returned an error")
 		} else {
-			log.Debug("ServerServiceWithSlog: method GetAllHostnames finished")
+			log.Debug("ServerServiceWithSlog: method GetAllNames finished")
 		}
 	}()
-	return _d._base.GetAllHostnames(ctx)
-}
-
-// GetByHostname implements _sourceProvisioning.ServerService
-func (_d ServerServiceWithSlog) GetByHostname(ctx context.Context, name string) (s1 _sourceProvisioning.Server, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-			slog.String("name", name),
-		)
-	}
-	log.Debug("ServerServiceWithSlog: calling GetByHostname")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("s1", s1),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("ServerServiceWithSlog: method GetByHostname returned an error")
-		} else {
-			log.Debug("ServerServiceWithSlog: method GetByHostname finished")
-		}
-	}()
-	return _d._base.GetByHostname(ctx, name)
+	return _d._base.GetAllNames(ctx)
 }
 
 // GetByID implements _sourceProvisioning.ServerService
@@ -240,17 +209,16 @@ func (_d ServerServiceWithSlog) GetByID(ctx context.Context, id int) (s1 _source
 	return _d._base.GetByID(ctx, id)
 }
 
-// RenameByHostname implements _sourceProvisioning.ServerService
-func (_d ServerServiceWithSlog) RenameByHostname(ctx context.Context, name string, server _sourceProvisioning.Server) (s1 _sourceProvisioning.Server, err error) {
+// GetByName implements _sourceProvisioning.ServerService
+func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (s1 _sourceProvisioning.Server, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
-			slog.Any("server", server),
 		)
 	}
-	log.Debug("ServerServiceWithSlog: calling RenameByHostname")
+	log.Debug("ServerServiceWithSlog: calling GetByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -264,16 +232,16 @@ func (_d ServerServiceWithSlog) RenameByHostname(ctx context.Context, name strin
 			}
 		}
 		if err != nil {
-			log.Error("ServerServiceWithSlog: method RenameByHostname returned an error")
+			log.Error("ServerServiceWithSlog: method GetByName returned an error")
 		} else {
-			log.Debug("ServerServiceWithSlog: method RenameByHostname finished")
+			log.Debug("ServerServiceWithSlog: method GetByName finished")
 		}
 	}()
-	return _d._base.RenameByHostname(ctx, name, server)
+	return _d._base.GetByName(ctx, name)
 }
 
-// UpdateByHostname implements _sourceProvisioning.ServerService
-func (_d ServerServiceWithSlog) UpdateByHostname(ctx context.Context, name string, server _sourceProvisioning.Server) (s1 _sourceProvisioning.Server, err error) {
+// RenameByName implements _sourceProvisioning.ServerService
+func (_d ServerServiceWithSlog) RenameByName(ctx context.Context, name string, server _sourceProvisioning.Server) (s1 _sourceProvisioning.Server, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
@@ -282,7 +250,7 @@ func (_d ServerServiceWithSlog) UpdateByHostname(ctx context.Context, name strin
 			slog.Any("server", server),
 		)
 	}
-	log.Debug("ServerServiceWithSlog: calling UpdateByHostname")
+	log.Debug("ServerServiceWithSlog: calling RenameByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -296,10 +264,42 @@ func (_d ServerServiceWithSlog) UpdateByHostname(ctx context.Context, name strin
 			}
 		}
 		if err != nil {
-			log.Error("ServerServiceWithSlog: method UpdateByHostname returned an error")
+			log.Error("ServerServiceWithSlog: method RenameByName returned an error")
 		} else {
-			log.Debug("ServerServiceWithSlog: method UpdateByHostname finished")
+			log.Debug("ServerServiceWithSlog: method RenameByName finished")
 		}
 	}()
-	return _d._base.UpdateByHostname(ctx, name, server)
+	return _d._base.RenameByName(ctx, name, server)
+}
+
+// UpdateByName implements _sourceProvisioning.ServerService
+func (_d ServerServiceWithSlog) UpdateByName(ctx context.Context, name string, server _sourceProvisioning.Server) (s1 _sourceProvisioning.Server, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Any("server", server),
+		)
+	}
+	log.Debug("ServerServiceWithSlog: calling UpdateByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("s1", s1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("ServerServiceWithSlog: method UpdateByName returned an error")
+		} else {
+			log.Debug("ServerServiceWithSlog: method UpdateByName finished")
+		}
+	}()
+	return _d._base.UpdateByName(ctx, name, server)
 }

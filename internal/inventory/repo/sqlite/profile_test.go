@@ -34,7 +34,7 @@ func TestProfileDatabaseActions(t *testing.T) {
 	testServerA := provisioning.Server{
 		ID:            1,
 		ClusterID:     1,
-		Hostname:      "one",
+		Name:          "one",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
 		HardwareData:  incusapi.Resources{},
@@ -45,7 +45,7 @@ func TestProfileDatabaseActions(t *testing.T) {
 	testServerB := provisioning.Server{
 		ID:            2,
 		ClusterID:     1,
-		Hostname:      "two",
+		Name:          "two",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
 		HardwareData:  incusapi.Resources{},

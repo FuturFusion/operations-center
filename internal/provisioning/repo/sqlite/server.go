@@ -23,14 +23,14 @@ func NewServer(db sqlite.DBTX) *server {
 
 func (c server) Create(ctx context.Context, in provisioning.Server) (provisioning.Server, error) {
 	const sqlStmt = `
-INSERT INTO servers (cluster_id, hostname, type, connection_url, last_updated)
-VALUES(:cluster_id, :hostname, :type, :connection_url, :last_updated)
-RETURNING id, cluster_id, hostname, type, connection_url, last_updated;
+INSERT INTO servers (cluster_id, name, type, connection_url, last_updated)
+VALUES(:cluster_id, :name, :type, :connection_url, :last_updated)
+RETURNING id, cluster_id, name, type, connection_url, last_updated;
 `
 
 	row := c.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("cluster_id", in.ClusterID),
-		sql.Named("hostname", in.Hostname),
+		sql.Named("name", in.Name),
 		sql.Named("type", in.Type),
 		sql.Named("connection_url", in.ConnectionURL),
 		sql.Named("last_updated", in.LastUpdated),
@@ -43,7 +43,7 @@ RETURNING id, cluster_id, hostname, type, connection_url, last_updated;
 }
 
 func (c server) GetAll(ctx context.Context) (provisioning.Servers, error) {
-	const sqlStmt = `SELECT id, cluster_id, hostname, type, connection_url, last_updated FROM servers;`
+	const sqlStmt = `SELECT id, cluster_id, name, type, connection_url, last_updated FROM servers;`
 
 	rows, err := c.db.QueryContext(ctx, sqlStmt)
 	if err != nil {
@@ -72,7 +72,7 @@ func (c server) GetAll(ctx context.Context) (provisioning.Servers, error) {
 func (c server) GetAllByClusterID(ctx context.Context, clusterID int) (provisioning.Servers, error) {
 	const sqlStmt = `
 SELECT
-  id, cluster_id, hostname, type, connection_url, last_updated
+  id, cluster_id, name, type, connection_url, last_updated
 FROM servers
 WHERE
   cluster_id = :cluster_id;
@@ -104,8 +104,8 @@ WHERE
 	return servers, nil
 }
 
-func (c server) GetAllHostnames(ctx context.Context) ([]string, error) {
-	const sqlStmt = `SELECT hostname FROM servers ORDER BY id`
+func (c server) GetAllNames(ctx context.Context) ([]string, error) {
+	const sqlStmt = `SELECT name FROM servers ORDER BY id`
 
 	rows, err := c.db.QueryContext(ctx, sqlStmt)
 	if err != nil {
@@ -114,26 +114,26 @@ func (c server) GetAllHostnames(ctx context.Context) ([]string, error) {
 
 	defer func() { _ = rows.Close() }()
 
-	var serverHostnames []string
+	var serverNames []string
 	for rows.Next() {
-		var serverHostname string
-		err := rows.Scan(&serverHostname)
+		var serverName string
+		err := rows.Scan(&serverName)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
 		}
 
-		serverHostnames = append(serverHostnames, serverHostname)
+		serverNames = append(serverNames, serverName)
 	}
 
 	if rows.Err() != nil {
 		return nil, sqlite.MapErr(rows.Err())
 	}
 
-	return serverHostnames, nil
+	return serverNames, nil
 }
 
 func (c server) GetByID(ctx context.Context, id int) (provisioning.Server, error) {
-	const sqlStmt = `SELECT id, cluster_id, hostname, type, connection_url, last_updated FROM servers WHERE id=:id;`
+	const sqlStmt = `SELECT id, cluster_id, name, type, connection_url, last_updated FROM servers WHERE id=:id;`
 
 	row := c.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
 	if row.Err() != nil {
@@ -143,10 +143,10 @@ func (c server) GetByID(ctx context.Context, id int) (provisioning.Server, error
 	return scanServer(row)
 }
 
-func (c server) GetByHostname(ctx context.Context, hostname string) (provisioning.Server, error) {
-	const sqlStmt = `SELECT id, cluster_id, hostname, type, connection_url, last_updated FROM servers WHERE hostname=:hostname;`
+func (c server) GetByName(ctx context.Context, name string) (provisioning.Server, error) {
+	const sqlStmt = `SELECT id, cluster_id, name, type, connection_url, last_updated FROM servers WHERE name=:name;`
 
-	row := c.db.QueryRowContext(ctx, sqlStmt, sql.Named("hostname", hostname))
+	row := c.db.QueryRowContext(ctx, sqlStmt, sql.Named("name", name))
 	if row.Err() != nil {
 		return provisioning.Server{}, sqlite.MapErr(row.Err())
 	}
@@ -158,7 +158,7 @@ func (c server) UpdateByID(ctx context.Context, in provisioning.Server) (provisi
 	const sqlStmt = `
 UPDATE servers SET cluster_id=:cluster_id, type=:type, connection_url=:connection_url, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, cluster_id, hostname, type, connection_url, last_updated;
+RETURNING id, cluster_id, name, type, connection_url, last_updated;
 `
 
 	row := c.db.QueryRowContext(ctx, sqlStmt,
@@ -201,7 +201,7 @@ func scanServer(row interface{ Scan(dest ...any) error }) (provisioning.Server, 
 	err := row.Scan(
 		&server.ID,
 		&server.ClusterID,
-		&server.Hostname,
+		&server.Name,
 		&server.Type,
 		&server.ConnectionURL,
 		&server.LastUpdated,

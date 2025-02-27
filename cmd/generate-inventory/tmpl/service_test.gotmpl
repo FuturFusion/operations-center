@@ -58,11 +58,11 @@ func Test{{ .Name | pascalcase }}Service_GetAllIDs(t *testing.T) {
 			}))
 
 			// Run test
-			{{ .Name | camelcase }}Hostnames, err := {{ .Name | camelcase }}Svc.GetAllIDsWithFilter(context.Background(), inventory.{{ .Name | pascalcase }}Filter{})
+			{{ .Name | camelcase }}IDs, err := {{ .Name | camelcase }}Svc.GetAllIDsWithFilter(context.Background(), inventory.{{ .Name | pascalcase }}Filter{})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, {{ .Name | camelcase }}Hostnames, tc.count)
+			require.Len(t, {{ .Name | camelcase }}IDs, tc.count)
 		})
 	}
 }
@@ -154,7 +154,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
 {{- if .ObjectEmbedded }}
@@ -190,7 +190,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr: domain.ErrNotFound,
 
@@ -229,7 +229,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr: boom.Error,
 
@@ -248,7 +248,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr: boom.Error,
@@ -268,7 +268,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
 {{- if .ObjectEmbedded }}
@@ -307,7 +307,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
 {{- if .ObjectEmbedded }}
@@ -413,13 +413,13 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 {{- if .HasParent }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
@@ -491,7 +491,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDErr: boom.Error,
@@ -511,13 +511,13 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}Err: boom.Error,
 
@@ -536,13 +536,13 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 {{- if .HasParent }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
@@ -567,13 +567,13 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 {{- if .HasParent }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
@@ -618,13 +618,13 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 {{- if .HasParent }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
@@ -671,13 +671,13 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 {{- if .HasParent }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{

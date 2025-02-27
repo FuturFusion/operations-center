@@ -25,11 +25,11 @@ CREATE TABLE clusters (
 CREATE TABLE servers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
-  hostname TEXT NOT NULL,
+  name TEXT NOT NULL,
   type TEXT NOT NULL,
   connection_url TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (hostname),
+  UNIQUE (name),
   FOREIGN KEY(cluster_id) REFERENCES clusters(id)
 );
 
@@ -282,11 +282,11 @@ CREATE TABLE clusters (
 CREATE TABLE servers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
-  hostname TEXT NOT NULL,
+  name TEXT NOT NULL,
   type TEXT NOT NULL,
   connection_url TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (hostname),
+  UNIQUE (name),
   FOREIGN KEY(cluster_id) REFERENCES clusters(id)
 );
 

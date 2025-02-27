@@ -14,7 +14,7 @@ import (
 type Server struct {
 	ID            int
 	ClusterID     int
-	Hostname      string
+	Name          string
 	Type          api.ServerType
 	ConnectionURL string
 	HardwareData  incusapi.Resources
@@ -23,8 +23,8 @@ type Server struct {
 }
 
 func (s Server) Validate() error {
-	if s.Hostname == "" {
-		return domain.NewValidationErrf("Invalid server, hostname can not be empty")
+	if s.Name == "" {
+		return domain.NewValidationErrf("Invalid server, name can not be empty")
 	}
 
 	if s.ClusterID < 1 {

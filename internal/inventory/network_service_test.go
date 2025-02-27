@@ -60,11 +60,11 @@ func TestNetworkService_GetAllIDs(t *testing.T) {
 			}))
 
 			// Run test
-			networkHostnames, err := networkSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkFilter{})
+			networkIDs, err := networkSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkFilter{})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, networkHostnames, tc.count)
+			require.Len(t, networkIDs, tc.count)
 		})
 	}
 }
@@ -148,7 +148,7 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworkByName: incusapi.Network{
 				Name:    "network one",
@@ -167,7 +167,7 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworkByNameErr: domain.ErrNotFound,
 
@@ -200,7 +200,7 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworkByNameErr: boom.Error,
 
@@ -216,7 +216,7 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworkByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr:                boom.Error,
@@ -233,7 +233,7 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworkByName: incusapi.Network{
 				Name:    "network one",
@@ -255,7 +255,7 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworkByName: incusapi.Network{
 				Name:    "network one",
@@ -340,13 +340,13 @@ func TestNetworkService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -387,7 +387,7 @@ func TestNetworkService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDErr: boom.Error,
@@ -406,13 +406,13 @@ func TestNetworkService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworksErr: boom.Error,
 
@@ -430,13 +430,13 @@ func TestNetworkService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -460,13 +460,13 @@ func TestNetworkService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -492,13 +492,13 @@ func TestNetworkService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{

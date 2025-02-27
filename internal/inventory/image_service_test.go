@@ -60,11 +60,11 @@ func TestImageService_GetAllIDs(t *testing.T) {
 			}))
 
 			// Run test
-			imageHostnames, err := imageSvc.GetAllIDsWithFilter(context.Background(), inventory.ImageFilter{})
+			imageIDs, err := imageSvc.GetAllIDsWithFilter(context.Background(), inventory.ImageFilter{})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, imageHostnames, tc.count)
+			require.Len(t, imageIDs, tc.count)
 		})
 	}
 }
@@ -148,7 +148,7 @@ func TestImageService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			imageClientGetImageByName: incusapi.Image{
 				Filename: "image one",
@@ -167,7 +167,7 @@ func TestImageService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			imageClientGetImageByNameErr: domain.ErrNotFound,
 
@@ -200,7 +200,7 @@ func TestImageService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			imageClientGetImageByNameErr: boom.Error,
 
@@ -216,7 +216,7 @@ func TestImageService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			imageClientGetImageByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr:            boom.Error,
@@ -233,7 +233,7 @@ func TestImageService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			imageClientGetImageByName: incusapi.Image{
 				Filename: "image one",
@@ -255,7 +255,7 @@ func TestImageService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			imageClientGetImageByName: incusapi.Image{
 				Filename: "image one",
@@ -340,13 +340,13 @@ func TestImageService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			imageClientGetImages: []incusapi.Image{
 				{
@@ -387,7 +387,7 @@ func TestImageService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDErr: boom.Error,
@@ -406,13 +406,13 @@ func TestImageService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			imageClientGetImagesErr: boom.Error,
 
@@ -430,13 +430,13 @@ func TestImageService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			imageClientGetImages: []incusapi.Image{
 				{
@@ -460,13 +460,13 @@ func TestImageService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			imageClientGetImages: []incusapi.Image{
 				{
@@ -492,13 +492,13 @@ func TestImageService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			imageClientGetImages: []incusapi.Image{
 				{

@@ -60,11 +60,11 @@ func TestInstanceService_GetAllIDs(t *testing.T) {
 			}))
 
 			// Run test
-			instanceHostnames, err := instanceSvc.GetAllIDsWithFilter(context.Background(), inventory.InstanceFilter{})
+			instanceIDs, err := instanceSvc.GetAllIDsWithFilter(context.Background(), inventory.InstanceFilter{})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, instanceHostnames, tc.count)
+			require.Len(t, instanceIDs, tc.count)
 		})
 	}
 }
@@ -148,7 +148,7 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			instanceClientGetInstanceByName: incusapi.InstanceFull{
 				Instance: incusapi.Instance{
@@ -169,7 +169,7 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			instanceClientGetInstanceByNameErr: domain.ErrNotFound,
 
@@ -202,7 +202,7 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			instanceClientGetInstanceByNameErr: boom.Error,
 
@@ -218,7 +218,7 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			instanceClientGetInstanceByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr:                  boom.Error,
@@ -235,7 +235,7 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			instanceClientGetInstanceByName: incusapi.InstanceFull{
 				Instance: incusapi.Instance{
@@ -259,7 +259,7 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			instanceClientGetInstanceByName: incusapi.InstanceFull{
 				Instance: incusapi.Instance{
@@ -346,13 +346,13 @@ func TestInstanceService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			instanceClientGetInstances: []incusapi.InstanceFull{
 				{
@@ -395,7 +395,7 @@ func TestInstanceService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDErr: boom.Error,
@@ -414,13 +414,13 @@ func TestInstanceService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			instanceClientGetInstancesErr: boom.Error,
 
@@ -438,13 +438,13 @@ func TestInstanceService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			instanceClientGetInstances: []incusapi.InstanceFull{
 				{
@@ -470,13 +470,13 @@ func TestInstanceService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			instanceClientGetInstances: []incusapi.InstanceFull{
 				{
@@ -504,13 +504,13 @@ func TestInstanceService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			instanceClientGetInstances: []incusapi.InstanceFull{
 				{

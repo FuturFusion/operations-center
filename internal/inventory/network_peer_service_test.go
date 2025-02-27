@@ -60,11 +60,11 @@ func TestNetworkPeerService_GetAllIDs(t *testing.T) {
 			}))
 
 			// Run test
-			networkPeerHostnames, err := networkPeerSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkPeerFilter{})
+			networkPeerIDs, err := networkPeerSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkPeerFilter{})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, networkPeerHostnames, tc.count)
+			require.Len(t, networkPeerIDs, tc.count)
 		})
 	}
 }
@@ -149,7 +149,7 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkPeerClientGetNetworkPeerByName: incusapi.NetworkPeer{
 				Name: "networkPeer one",
@@ -168,7 +168,7 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkPeerClientGetNetworkPeerByNameErr: domain.ErrNotFound,
 
@@ -203,7 +203,7 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkPeerClientGetNetworkPeerByNameErr: boom.Error,
 
@@ -220,7 +220,7 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkPeerClientGetNetworkPeerByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr:                        boom.Error,
@@ -238,7 +238,7 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkPeerClientGetNetworkPeerByName: incusapi.NetworkPeer{
 				Name: "networkPeer one",
@@ -260,7 +260,7 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkPeerClientGetNetworkPeerByName: incusapi.NetworkPeer{
 				Name: "networkPeer one",
@@ -347,13 +347,13 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -406,7 +406,7 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDErr: boom.Error,
@@ -425,13 +425,13 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworksErr: boom.Error,
 
@@ -449,13 +449,13 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -478,13 +478,13 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -512,13 +512,13 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -548,13 +548,13 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{

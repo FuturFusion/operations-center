@@ -40,7 +40,7 @@ func TestCluster_Validate(t *testing.T) {
 			},
 		},
 		{
-			name: "error - server hostname list empty",
+			name: "error - server name list empty",
 			cluster: provisioning.Cluster{
 				Name:            "one",
 				ServerHostnames: nil, // invalid

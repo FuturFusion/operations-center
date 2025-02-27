@@ -60,11 +60,11 @@ func TestProjectService_GetAllIDs(t *testing.T) {
 			}))
 
 			// Run test
-			projectHostnames, err := projectSvc.GetAllIDsWithFilter(context.Background(), inventory.ProjectFilter{})
+			projectIDs, err := projectSvc.GetAllIDsWithFilter(context.Background(), inventory.ProjectFilter{})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, projectHostnames, tc.count)
+			require.Len(t, projectIDs, tc.count)
 		})
 	}
 }
@@ -147,7 +147,7 @@ func TestProjectService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			projectClientGetProjectByName: incusapi.Project{
 				Name: "project one",
@@ -165,7 +165,7 @@ func TestProjectService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			projectClientGetProjectByNameErr: domain.ErrNotFound,
 
@@ -198,7 +198,7 @@ func TestProjectService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			projectClientGetProjectByNameErr: boom.Error,
 
@@ -214,7 +214,7 @@ func TestProjectService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			projectClientGetProjectByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr:                boom.Error,
@@ -231,7 +231,7 @@ func TestProjectService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			projectClientGetProjectByName: incusapi.Project{
 				Name: "project one",
@@ -252,7 +252,7 @@ func TestProjectService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			projectClientGetProjectByName: incusapi.Project{
 				Name: "project one",
@@ -336,13 +336,13 @@ func TestProjectService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			projectClientGetProjects: []incusapi.Project{
 				{
@@ -382,7 +382,7 @@ func TestProjectService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDErr: boom.Error,
@@ -401,13 +401,13 @@ func TestProjectService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			projectClientGetProjectsErr: boom.Error,
 
@@ -425,13 +425,13 @@ func TestProjectService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			projectClientGetProjects: []incusapi.Project{
 				{
@@ -454,13 +454,13 @@ func TestProjectService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			projectClientGetProjects: []incusapi.Project{
 				{
@@ -485,13 +485,13 @@ func TestProjectService_SyncAll(t *testing.T) {
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			projectClientGetProjects: []incusapi.Project{
 				{

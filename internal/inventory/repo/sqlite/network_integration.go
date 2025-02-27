@@ -74,7 +74,7 @@ ORDER BY network_integrations.id
 	}
 
 	if filter.Server != nil {
-		whereClause = append(whereClause, ` AND servers.hostname = :server`)
+		whereClause = append(whereClause, ` AND servers.name = :server`)
 		args = append(args, sql.Named("server", filter.Server))
 	}
 

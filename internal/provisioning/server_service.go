@@ -37,25 +37,25 @@ func (s serverService) GetAllByClusterID(ctx context.Context, clusterID int) (Se
 	return s.repo.GetAllByClusterID(ctx, clusterID)
 }
 
-func (s serverService) GetAllHostnames(ctx context.Context) ([]string, error) {
-	return s.repo.GetAllHostnames(ctx)
+func (s serverService) GetAllNames(ctx context.Context) ([]string, error) {
+	return s.repo.GetAllNames(ctx)
 }
 
 func (s serverService) GetByID(ctx context.Context, id int) (Server, error) {
 	return s.repo.GetByID(ctx, id)
 }
 
-func (s serverService) GetByHostname(ctx context.Context, hostname string) (Server, error) {
-	if hostname == "" {
-		return Server{}, fmt.Errorf("Server hostname cannot be empty: %w", domain.ErrOperationNotPermitted)
+func (s serverService) GetByName(ctx context.Context, name string) (Server, error) {
+	if name == "" {
+		return Server{}, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	return s.repo.GetByHostname(ctx, hostname)
+	return s.repo.GetByName(ctx, name)
 }
 
-func (s serverService) UpdateByHostname(ctx context.Context, hostname string, newServer Server) (Server, error) {
-	if hostname == "" {
-		return Server{}, fmt.Errorf("Server hostname cannot be empty: %w", domain.ErrOperationNotPermitted)
+func (s serverService) UpdateByName(ctx context.Context, name string, newServer Server) (Server, error) {
+	if name == "" {
+		return Server{}, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
 	err := newServer.Validate()
@@ -63,13 +63,13 @@ func (s serverService) UpdateByHostname(ctx context.Context, hostname string, ne
 		return Server{}, err
 	}
 
-	if hostname != newServer.Hostname {
-		return Server{}, domain.NewValidationErrf("Invalid server, hostname mismatch")
+	if name != newServer.Name {
+		return Server{}, domain.NewValidationErrf("Invalid server, name mismatch")
 	}
 
 	var server Server
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		server, err = s.repo.GetByHostname(ctx, hostname)
+		server, err = s.repo.GetByName(ctx, name)
 		if err != nil {
 			return err
 		}
@@ -86,24 +86,24 @@ func (s serverService) UpdateByHostname(ctx context.Context, hostname string, ne
 	return server, nil
 }
 
-func (s serverService) RenameByHostname(ctx context.Context, hostname string, newServer Server) (Server, error) {
-	if hostname == "" {
-		return Server{}, fmt.Errorf("Server hostname cannot be empty: %w", domain.ErrOperationNotPermitted)
+func (s serverService) RenameByName(ctx context.Context, name string, newServer Server) (Server, error) {
+	if name == "" {
+		return Server{}, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	if newServer.Hostname == "" {
-		return Server{}, domain.NewValidationErrf("Invalid server, hostname cannot by empty")
+	if newServer.Name == "" {
+		return Server{}, domain.NewValidationErrf("Invalid server, name cannot by empty")
 	}
 
 	var server Server
 	var err error
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		server, err = s.repo.GetByHostname(ctx, hostname)
+		server, err = s.repo.GetByName(ctx, name)
 		if err != nil {
 			return err
 		}
 
-		server.Hostname = newServer.Hostname
+		server.Name = newServer.Name
 
 		server, err = s.repo.UpdateByID(ctx, server)
 		return err
@@ -115,13 +115,13 @@ func (s serverService) RenameByHostname(ctx context.Context, hostname string, ne
 	return server, nil
 }
 
-func (s serverService) DeleteByHostname(ctx context.Context, hostname string) error {
-	if hostname == "" {
-		return fmt.Errorf("Server hostname cannot be empty: %w", domain.ErrOperationNotPermitted)
+func (s serverService) DeleteByName(ctx context.Context, name string) error {
+	if name == "" {
+		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		server, err := s.repo.GetByHostname(ctx, hostname)
+		server, err := s.repo.GetByName(ctx, name)
 		if err != nil {
 			return err
 		}

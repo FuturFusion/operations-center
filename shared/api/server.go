@@ -75,9 +75,9 @@ type Server struct {
 	// Example: 1
 	ClusterID int `json:"cluster_id" yaml:"cluster_id"`
 
-	// Hostname or name of the server.
+	// Name or name of the server.
 	// Example: incus.local
-	Hostname string `json:"hostname" yaml:"hostname"`
+	Name string `json:"name" yaml:"name"`
 
 	// Type defines the type of the server, which is normally one of "incus", "migration-manager", "operations-center".
 	// Example: incus
