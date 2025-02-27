@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 )
 
 // InstanceRepoWithSlog implements _sourceInventory.InstanceRepo that is instrumented with slog logger
@@ -27,15 +28,26 @@ func NewInstanceRepoWithSlog(base _sourceInventory.InstanceRepo, log *slog.Logge
 
 // Create implements _sourceInventory.InstanceRepo
 func (_d InstanceRepoWithSlog) Create(ctx context.Context, instance _sourceInventory.Instance) (i1 _sourceInventory.Instance, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("instance", instance),
-	).Debug("InstanceRepoWithSlog: calling Create")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("i1", i1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("instance", instance),
 		)
+	}
+	log.Debug("InstanceRepoWithSlog: calling Create")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("i1", i1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("InstanceRepoWithSlog: method Create returned an error")
 		} else {
@@ -47,14 +59,25 @@ func (_d InstanceRepoWithSlog) Create(ctx context.Context, instance _sourceInven
 
 // DeleteByServerID implements _sourceInventory.InstanceRepo
 func (_d InstanceRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("serverID", serverID),
-	).Debug("InstanceRepoWithSlog: calling DeleteByServerID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("serverID", serverID),
 		)
+	}
+	log.Debug("InstanceRepoWithSlog: calling DeleteByServerID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("InstanceRepoWithSlog: method DeleteByServerID returned an error")
 		} else {
@@ -64,36 +87,59 @@ func (_d InstanceRepoWithSlog) DeleteByServerID(ctx context.Context, serverID in
 	return _d._base.DeleteByServerID(ctx, serverID)
 }
 
-// GetAllIDs implements _sourceInventory.InstanceRepo
-func (_d InstanceRepoWithSlog) GetAllIDs(ctx context.Context) (ia1 []int, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-	).Debug("InstanceRepoWithSlog: calling GetAllIDs")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("ia1", ia1),
-			slog.Any("err", err),
+// GetAllIDsWithFilter implements _sourceInventory.InstanceRepo
+func (_d InstanceRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sourceInventory.InstanceFilter) (ia1 []int, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
 		)
-		if err != nil {
-			log.Error("InstanceRepoWithSlog: method GetAllIDs returned an error")
+	}
+	log.Debug("InstanceRepoWithSlog: calling GetAllIDsWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("ia1", ia1),
+				slog.Any("err", err),
+			)
 		} else {
-			log.Debug("InstanceRepoWithSlog: method GetAllIDs finished")
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("InstanceRepoWithSlog: method GetAllIDsWithFilter returned an error")
+		} else {
+			log.Debug("InstanceRepoWithSlog: method GetAllIDsWithFilter finished")
 		}
 	}()
-	return _d._base.GetAllIDs(ctx)
+	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
 // GetByID implements _sourceInventory.InstanceRepo
 func (_d InstanceRepoWithSlog) GetByID(ctx context.Context, id int) (i1 _sourceInventory.Instance, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-	).Debug("InstanceRepoWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("i1", i1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
 		)
+	}
+	log.Debug("InstanceRepoWithSlog: calling GetByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("i1", i1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("InstanceRepoWithSlog: method GetByID returned an error")
 		} else {
@@ -101,4 +147,35 @@ func (_d InstanceRepoWithSlog) GetByID(ctx context.Context, id int) (i1 _sourceI
 		}
 	}()
 	return _d._base.GetByID(ctx, id)
+}
+
+// UpdateByID implements _sourceInventory.InstanceRepo
+func (_d InstanceRepoWithSlog) UpdateByID(ctx context.Context, instance _sourceInventory.Instance) (i1 _sourceInventory.Instance, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("instance", instance),
+		)
+	}
+	log.Debug("InstanceRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("i1", i1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("InstanceRepoWithSlog: method UpdateByID returned an error")
+		} else {
+			log.Debug("InstanceRepoWithSlog: method UpdateByID finished")
+		}
+	}()
+	return _d._base.UpdateByID(ctx, instance)
 }

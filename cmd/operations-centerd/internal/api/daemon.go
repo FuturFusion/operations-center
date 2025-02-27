@@ -20,12 +20,13 @@ import (
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
-	"github.com/FuturFusion/operations-center/internal/inventory"
-	incusRepo "github.com/FuturFusion/operations-center/internal/inventory/repo/incus"
-	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
+	incusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
+	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	provisioningServiceMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/github"
+	provisioningRepoMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/repo/middleware"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/response"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
@@ -95,20 +96,55 @@ func (d *Daemon) Start() error {
 	// being hit by the Github rate limiting.
 	gh := ghClient.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
 
-	// Setup Services
-	tokenSvc := provisioning.NewTokenService(provisioningSqlite.NewToken(dbWithTransaction))
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(dbWithTransaction))
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(dbWithTransaction))
-	updateSvc := provisioning.NewUpdateService(github.NewUpdate(gh))
-
-	inventoryInstanceSvc := inventory.NewInstanceService(
-		inventorySqlite.NewInstance(dbWithTransaction),
-		clusterSvc,
-		serverSvc,
-		incusRepo.ServerClientProvider(
+	serverClientProvider := serverMiddleware.NewServerClientWithSlog(
+		incusAdapter.New(
 			d.clientCertificate,
 			d.clientKey,
 		),
+		slog.Default(),
+	)
+
+	// Setup Services
+	tokenSvc := provisioningServiceMiddleware.NewTokenServiceWithSlog(
+		provisioning.NewTokenService(
+			provisioningRepoMiddleware.NewTokenRepoWithSlog(
+				provisioningSqlite.NewToken(dbWithTransaction),
+				slog.Default(),
+			),
+		),
+		slog.Default(),
+	)
+
+	clusterSvc := provisioning.NewClusterService(
+		provisioningRepoMiddleware.NewClusterRepoWithSlog(
+			provisioningSqlite.NewCluster(dbWithTransaction),
+			slog.Default(),
+		),
+		nil,
+	)
+	clusterSvcWrapped := provisioningServiceMiddleware.NewClusterServiceWithSlog(
+		clusterSvc,
+		slog.Default(),
+	)
+
+	serverSvc := provisioningServiceMiddleware.NewServerServiceWithSlog(
+		provisioning.NewServerService(
+			provisioningRepoMiddleware.NewServerRepoWithSlog(
+				provisioningSqlite.NewServer(dbWithTransaction),
+				slog.Default(),
+			),
+		),
+		slog.Default(),
+	)
+
+	updateSvc := provisioningServiceMiddleware.NewUpdateServiceWithSlog(
+		provisioning.NewUpdateService(
+			provisioningRepoMiddleware.NewUpdateRepoWithSlog(
+				github.NewUpdate(gh),
+				slog.Default(),
+			),
+		),
+		slog.Default(),
 	)
 
 	// Setup Routes
@@ -128,7 +164,7 @@ func (d *Daemon) Start() error {
 	registerProvisioningTokenHandler(provisioningTokenRouter, tokenSvc)
 
 	provisioningClusterRouter := newSubRouter(provisioningRouter, "/clusters")
-	registerProvisioningClusterHandler(provisioningClusterRouter, clusterSvc)
+	registerProvisioningClusterHandler(provisioningClusterRouter, clusterSvcWrapped)
 
 	provisioningServerRouter := newSubRouter(provisioningRouter, "/servers")
 	registerProvisioningServerHandler(provisioningServerRouter, serverSvc)
@@ -138,8 +174,9 @@ func (d *Daemon) Start() error {
 
 	inventoryRouter := newSubRouter(api10router, "/inventory")
 
-	inventoryInstanceRouter := newSubRouter(inventoryRouter, "/instances")
-	registerInventoryInstanceHandler(inventoryInstanceRouter, inventoryInstanceSvc)
+	inventorySyncers := registerInventoryRoutes(dbWithTransaction, clusterSvcWrapped, serverSvc, serverClientProvider, inventoryRouter)
+
+	clusterSvc.SetInventorySyncers(inventorySyncers)
 
 	errorLogger := &log.Logger{}
 	errorLogger.SetOutput(httpErrorLogger{})

@@ -1,0 +1,36 @@
+package incus
+
+import (
+	"context"
+
+	incusapi "github.com/lxc/incus/v6/shared/api"
+)
+
+func (s serverClient) Get{{ .PluralName | pascalcase }}(ctx context.Context, connectionURL string {{- if .HasParent }}, {{ .Name | camelcase }}Name string {{- end -}} ) ([]incusapi.{{ .ObjectType | pascalcase }}, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return nil, err
+	}
+
+	server{{ .PluralName | pascalcase }}, err := client.{{ .IncusGetAllMethod }}({{ if eq .IncusGetAllMethod "GetInstancesFullAllProjects" }}incusapi.{{ .Name | pascalcase }}TypeAny{{ end }}{{ if .HasParent }}{{ .Name | camelcase }}Name{{ end }})
+	if err != nil {
+		return nil, err
+	}
+
+	return server{{ .PluralName | pascalcase }}, nil
+}
+
+func (s serverClient) Get{{ .Name | pascalcase }}ByName(ctx context.Context, connectionURL string, {{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string) (incusapi.{{ .ObjectType | pascalcase }}, error) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return incusapi.{{ .ObjectType | pascalcase }}{}, err
+	}
+
+	{{ if eq .IncusGetMethod "GetStoragePoolVolume" }}// FIXME: currently we just pass empty string ("") for the type, which is obviously wrong and needs to be fixed.{{ end }}
+	server{{ .Name | pascalcase }}, _, err := client.{{ .IncusGetMethod }}({{ if .HasParent }}{{ .ParentName | camelcase }}Name, {{ end -}} {{ if eq .IncusGetMethod "GetStoragePoolVolume" }}"", {{ end }}{{ .Name | camelcase }}Name)
+	if err != nil {
+		return incusapi.{{ .ObjectType | pascalcase }}{}, err
+	}
+
+	return *server{{ .Name | pascalcase }}, nil
+}

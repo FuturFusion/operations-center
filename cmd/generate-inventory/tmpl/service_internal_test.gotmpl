@@ -1,0 +1,11 @@
+package inventory
+
+import (
+	"time"
+)
+
+func {{ .Name | pascalcase }}WithNow(now func() time.Time) {{ .Name | pascalcase }}ServiceOption {
+	return func(s *{{ .Name | camelcase }}Service) {
+		s.now = now
+	}
+}

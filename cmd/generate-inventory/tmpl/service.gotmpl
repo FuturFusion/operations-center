@@ -1,0 +1,229 @@
+package inventory
+
+import (
+	"context"
+	"errors"
+	"time"
+{{- if .HasParent }}
+
+	incusapi "github.com/lxc/incus/v6/shared/api"
+{{- end }}
+
+	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/transaction"
+)
+
+type {{ .Name | camelcase }}Service struct {
+	repo                   {{ .Name | pascalcase }}Repo
+	clusterSvc             ClusterService
+	serverSvc              ServerService
+
+{{- if .HasParent }}
+	{{ .ParentName | camelcase }}Client {{ .ParentObjectType | pascalcase }}ServerClient
+{{- end }}
+	{{ .Name | camelcase }}Client {{ .Name | pascalcase }}ServerClient
+{{- if .HasParent }}
+
+	isParentFilted func(incusapi.{{ .ParentObjectType | pascalcase }}) bool
+{{- end }}
+
+	now func() time.Time
+}
+
+var _ {{ .Name | pascalcase }}Service = &{{ .Name | camelcase }}Service{}
+
+type {{ .Name | pascalcase }}ServiceOption func(s *{{ .Name | camelcase }}Service)
+{{- if .HasParent }}
+
+func {{ .Name | pascalcase }}WithParentFilter(f func(incusapi.{{ .ParentObjectType | pascalcase }}) bool) {{ .Name | pascalcase }}ServiceOption {
+	return func(s *{{ .Name | camelcase }}Service) {
+		s.isParentFilted = f
+	}
+}
+{{- end }}
+
+func New{{ .Name | pascalcase }}Service(repo {{ .Name | pascalcase }}Repo, clusterSvc ClusterService, serverSvc ServerService, client {{ .Name | pascalcase }}ServerClient, {{ if .HasParent }}parentClient {{ .ParentName | pascalcase }}ServerClient, {{ end -}} opts ...{{ .Name | pascalcase }}ServiceOption) {{ .Name | camelcase }}Service {
+	{{ .Name | camelcase }}Svc := {{ .Name | camelcase }}Service{
+		repo:                   repo,
+		clusterSvc:             clusterSvc,
+		serverSvc:              serverSvc,
+
+{{- if .HasParent }}
+		{{ .ParentName | camelcase }}Client: parentClient,
+{{- end }}
+		{{ .Name | camelcase }}Client: client,
+{{- if .HasParent }}
+
+	isParentFilted: func(_ incusapi.{{ .ParentObjectType | pascalcase }}) bool {
+		return false
+	},
+{{- end }}
+
+		now: time.Now,
+	}
+
+	for _, opt := range opts {
+		opt(&{{ .Name | camelcase }}Svc)
+	}
+
+	return {{ .Name | camelcase }}Svc
+}
+
+func (s {{ .Name | camelcase }}Service) GetAllIDsWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) ([]int, error) {
+	return s.repo.GetAllIDsWithFilter(ctx, filter)
+}
+
+func (s {{ .Name | camelcase }}Service) GetByID(ctx context.Context, id int) ({{ .Name | pascalcase }}, error) {
+	return s.repo.GetByID(ctx, id)
+}
+
+func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		{{ .Name | camelcase }}, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		server, err := s.serverSvc.GetByID(ctx, {{ .Name | camelcase }}.ServerID)
+		if err != nil {
+			return err
+		}
+
+		server{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, server.ConnectionURL, {{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name)
+		// FIXME: how to differentiate general errors from "not found" errors?
+		// TODO: if the {{ .Name | pascalcase }} is not found, it needs to be removed from the inventory.
+		if err != nil {
+			return err
+		}
+
+{{ if .HasProject }}
+		{{ .Name | camelcase }}.ProjectName = server{{ .Name | pascalcase }}.Project
+{{- end }}
+		{{ .Name | camelcase }}.Object = server{{ .Name | pascalcase }}
+		{{ .Name | camelcase }}.LastUpdated = s.now()
+
+		err = {{ .Name | camelcase }}.Validate()
+		if err != nil {
+			return err
+		}
+
+		_, err = s.repo.UpdateByID(ctx, {{ .Name | camelcase }})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s {{ .Name | camelcase }}Service) SyncAll(ctx context.Context) error {
+	clusters, err := s.clusterSvc.GetAll(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, cluster := range clusters {
+		err = s.SyncCluster(ctx, cluster.ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, clusterID int) error {
+	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+	if err != nil {
+		return err
+	}
+
+	for _, server := range servers {
+		err = s.SyncServer(ctx, server.ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s {{ .Name | camelcase }}Service) SyncServer(ctx context.Context, serverID int) error {
+	server, err := s.serverSvc.GetByID(ctx, serverID)
+	if err != nil {
+		return err
+	}
+
+{{ if .HasParent }}
+	server{{ .ParentName | pascalcase }}s, err := s.{{ .ParentName | camelcase }}Client.Get{{ .ParentName | pascalcase }}s(ctx, server.ConnectionURL)
+	if err != nil {
+		return err
+	}
+
+	for _, {{ .ParentName | camelcase }} := range server{{ .ParentName | pascalcase }}s {
+{{- if .HasParent }}
+		if s.isParentFilted({{ .ParentName | camelcase }}) {
+			continue
+		}
+{{- end }}
+
+		server{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, server.ConnectionURL, {{ .ParentName | camelcase }}.Name)
+		if err != nil {
+			return err
+		}
+
+{{ else }}
+	server{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, server.ConnectionURL)
+	if err != nil {
+		return err
+	}
+{{ end }}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		err = s.repo.DeleteByServerID(ctx, serverID)
+		if err != nil && !errors.Is(err, domain.ErrNotFound) {
+			return err
+		}
+
+		for _, server{{ .Name | pascalcase }} := range server{{ .PluralName | pascalcase }} {
+			{{ .Name | camelcase }} := {{ .Name | pascalcase }}{
+				ClusterID:   server.ClusterID,
+				ServerID:    serverID,
+{{- if .HasProject }}
+				ProjectName: server{{ .Name | pascalcase }}.Project,
+{{- end }}
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name:  {{ .ParentName | camelcase }}.Name,
+{{- end }}
+				Name:        server{{ .Name | pascalcase }}.{{ .ObjectNamePropertyName | pascalcase }},
+				Object:      server{{ .Name | pascalcase }},
+				LastUpdated: s.now(),
+			}
+
+			err = {{ .Name | camelcase }}.Validate()
+			if err != nil {
+				return err
+			}
+
+			_, err := s.repo.Create(ctx, {{ .Name | camelcase }})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+{{- if .HasParent }}
+	}
+{{- end }}
+
+	return nil
+}

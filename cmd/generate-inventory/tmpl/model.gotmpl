@@ -1,0 +1,58 @@
+package inventory
+
+import (
+	"time"
+
+	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
+)
+
+type {{ .Name | pascalcase }} struct {
+	ID          int
+	ClusterID   int
+	ServerID    int
+{{- if .HasProject }}
+	ProjectName string
+{{- end }}
+{{- if .HasParent }}
+	{{ .ParentName | pascalcase }}Name string
+{{- end }}
+	Name        string
+	Object      incusapi.{{ .ObjectType | pascalcase }}
+	LastUpdated time.Time
+}
+
+func (m {{ .Name | pascalcase }}) Validate() error {
+	if m.ServerID < 1{
+		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, server id can not be less than 1")
+	}
+
+	if m.Name == "" {
+		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, name can not be empty")
+	}
+{{- if .HasProject }}
+
+	if m.ProjectName == "" {
+		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, project name can not be empty")
+	}
+{{- end }}
+{{- if .HasParent }}
+
+	if m.{{ .ParentName | pascalcase }}Name == "" {
+		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, parent name ({{ .ParentName | pascalcase}}) can not be empty")
+	}
+{{- end }}
+
+	return nil
+}
+
+type {{ .PluralName | pascalcase }} []{{ .Name | pascalcase }}
+
+type {{ .Name | pascalcase }}Filter struct{
+	Cluster *string
+	Server  *string
+{{- if .HasProject }}
+	Project *string
+{{- end }}
+}

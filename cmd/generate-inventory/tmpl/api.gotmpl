@@ -1,0 +1,266 @@
+package api
+
+import (
+	"fmt"
+	"net/http"
+	"strconv"
+
+	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/internal/response"
+	"github.com/FuturFusion/operations-center/shared/api"
+)
+
+type {{ .Name | camelcase }}Handler struct {
+	service inventory.{{ .Name | pascalcase }}Service
+}
+
+func registerInventory{{ .Name | pascalcase }}Handler(router *http.ServeMux, service inventory.{{ .Name | pascalcase }}Service) {
+	handler := &{{ .Name | camelcase }}Handler{
+		service: service,
+	}
+
+	router.HandleFunc("GET /{$}", response.With(handler.{{ .PluralName | camelcase }}Get))
+	router.HandleFunc("GET /{id}", response.With(handler.{{ .Name | camelcase }}Get))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.{{ .Name | camelcase }}ResyncPost))
+	router.HandleFunc("POST /force-sync", response.With(handler.forceSyncPost))
+}
+
+// swagger:operation GET /1.0/inventory/{{ .PluralName }} {{ .PluralName }} {{ .PluralName }}_get
+//
+//		Get the {{ .Name }}
+//
+//		Returns a list of {{ .Name }} (list of relative URLs).
+//
+//		---
+//		produces:
+//		  - application/json
+//		parameters:
+//		  - in: query
+//		    name: cluster
+//		    description: Cluster name
+//		    type: string
+//		    example: cluster
+//		  - in: query
+//		    name: server
+//		    description: Server name
+//		    type: string
+//		    example: localhost
+//		  - in: query
+//		    name: project
+//		    description: Project name
+//		    type: string
+//		    example: default
+//		responses:
+//		  "200":
+//		    description: API {{ .Name }}
+//		    schema:
+//		      type: object
+//		      description: Sync response
+//		      properties:
+//		        type:
+//		          type: string
+//		          description: Response type
+//		          example: sync
+//		        status:
+//		          type: string
+//		          description: Status description
+//		          example: Success
+//		        status_code:
+//		          type: integer
+//		          description: Status code
+//		          example: 200
+//		        metadata:
+//		          type: array
+//		          description: List of {{ .Name }}
+//	               items:
+//	                 type: string
+//	               example: |-
+//	                 [
+//	                   "/1.0/inventory/{{ .PluralName }}/1",
+//	                   "/1.0/inventory/{{ .PluralName }}/2"
+//	                 ]
+//		  "403":
+//		    $ref: "#/responses/Forbidden"
+//		  "500":
+//		    $ref: "#/responses/InternalServerError"
+func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *http.Request) response.Response {
+	var filter inventory.{{ .Name | pascalcase }}Filter
+
+	if r.URL.Query().Get("cluster") != "" {
+		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+	}
+
+	if r.URL.Query().Get("server") != "" {
+		filter.Server = ptr.To(r.URL.Query().Get("server"))
+	}
+
+{{ if .HasProject }}
+	if r.URL.Query().Get("project") != "" {
+		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	}
+{{ end }}
+
+	{{ .Name | camelcase }}IDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	result := make([]string, 0, len({{ .Name | camelcase }}IDs))
+	for _, id := range {{ .Name | camelcase }}IDs {
+		result = append(result, fmt.Sprintf("/%s/{{ .Name }}/%d", api.APIVersion, id))
+	}
+
+	return response.SyncResponse(true, result)
+}
+
+// swagger:operation GET /1.0/inventory/{{ .PluralName }}/{id} {{ .PluralName }} {{ .Name }}_get
+//
+//	Get the {{ .Name }}
+//
+//	Gets a specific {{ .Name }}.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: {{ .Name | pascalcase }}
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          $ref: "#/definitions/{{ .Name | pascalcase }}"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}Get(r *http.Request) response.Response {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	{{ .Name | camelcase }}, err := i.service.GetByID(r.Context(), id)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponse(
+		true,
+		api.{{ .Name | pascalcase }}{
+			ID:          {{ .Name | camelcase }}.ID,
+			ClusterID:   {{ .Name | camelcase }}.ClusterID,
+			ServerID:    {{ .Name | camelcase }}.ServerID,
+{{- if .HasProject }}
+			ProjectName: {{ .Name | camelcase }}.ProjectName,
+{{- end }}
+{{- if .HasParent }}
+			{{ .ParentName | pascalcase }}Name: {{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name,
+{{- end }}
+			Name:        {{ .Name | camelcase }}.Name,
+			Object:      {{ .Name | camelcase }}.Object,
+			LastUpdated: {{ .Name | camelcase }}.LastUpdated,
+		},
+	)
+}
+
+// swagger:operation POST /1.0/inventory/{{ .PluralName }}/{id}/resync {{ .PluralName }} {{ .Name }}_get_resync_post
+//
+//	Resync the {{ .Name }}
+//
+//	Resync a specific {{ .Name }}.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Empty response
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}ResyncPost(r *http.Request) response.Response {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	err = i.service.ResyncByID(r.Context(), id)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to resync {{ .Name }}: %w", err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/inventory/{{ .PluralName }}/force-sync {{ .PluralName }} {{ .PluralName }}_force_sync_post
+//
+//	Force sync all
+//
+//	Force sync of {{ .PluralName }} for all servers in all clusters.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Empty response
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (i *{{ .Name | camelcase }}Handler) forceSyncPost(r *http.Request) response.Response {
+	err := i.service.SyncAll(r.Context())
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to sync {{ .PluralName }}: %w", err))
+	}
+
+	return response.EmptySyncResponse
+}

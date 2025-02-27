@@ -71,7 +71,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db))
+	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), nil)
 
 	server := sqlite.NewServer(db)
 

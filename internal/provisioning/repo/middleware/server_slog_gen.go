@@ -8,6 +8,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/FuturFusion/operations-center/internal/logger"
 	_sourceProvisioning "github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
@@ -27,15 +28,26 @@ func NewServerRepoWithSlog(base _sourceProvisioning.ServerRepo, log *slog.Logger
 
 // Create implements _sourceProvisioning.ServerRepo
 func (_d ServerRepoWithSlog) Create(ctx context.Context, server _sourceProvisioning.Server) (s1 _sourceProvisioning.Server, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("server", server),
-	).Debug("ServerRepoWithSlog: calling Create")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("s1", s1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
 		)
+	}
+	log.Debug("ServerRepoWithSlog: calling Create")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("s1", s1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ServerRepoWithSlog: method Create returned an error")
 		} else {
@@ -47,14 +59,25 @@ func (_d ServerRepoWithSlog) Create(ctx context.Context, server _sourceProvision
 
 // DeleteByID implements _sourceProvisioning.ServerRepo
 func (_d ServerRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-	).Debug("ServerRepoWithSlog: calling DeleteByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
 		)
+	}
+	log.Debug("ServerRepoWithSlog: calling DeleteByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ServerRepoWithSlog: method DeleteByID returned an error")
 		} else {
@@ -66,14 +89,25 @@ func (_d ServerRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error)
 
 // GetAll implements _sourceProvisioning.ServerRepo
 func (_d ServerRepoWithSlog) GetAll(ctx context.Context) (s1 _sourceProvisioning.Servers, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-	).Debug("ServerRepoWithSlog: calling GetAll")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("s1", s1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
 		)
+	}
+	log.Debug("ServerRepoWithSlog: calling GetAll")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("s1", s1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ServerRepoWithSlog: method GetAll returned an error")
 		} else {
@@ -85,15 +119,26 @@ func (_d ServerRepoWithSlog) GetAll(ctx context.Context) (s1 _sourceProvisioning
 
 // GetAllByClusterID implements _sourceProvisioning.ServerRepo
 func (_d ServerRepoWithSlog) GetAllByClusterID(ctx context.Context, clusterID int) (s1 _sourceProvisioning.Servers, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("clusterID", clusterID),
-	).Debug("ServerRepoWithSlog: calling GetAllByClusterID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("s1", s1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("clusterID", clusterID),
 		)
+	}
+	log.Debug("ServerRepoWithSlog: calling GetAllByClusterID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("s1", s1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ServerRepoWithSlog: method GetAllByClusterID returned an error")
 		} else {
@@ -105,14 +150,25 @@ func (_d ServerRepoWithSlog) GetAllByClusterID(ctx context.Context, clusterID in
 
 // GetAllHostnames implements _sourceProvisioning.ServerRepo
 func (_d ServerRepoWithSlog) GetAllHostnames(ctx context.Context) (sa1 []string, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-	).Debug("ServerRepoWithSlog: calling GetAllHostnames")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("sa1", sa1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
 		)
+	}
+	log.Debug("ServerRepoWithSlog: calling GetAllHostnames")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("sa1", sa1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ServerRepoWithSlog: method GetAllHostnames returned an error")
 		} else {
@@ -124,15 +180,26 @@ func (_d ServerRepoWithSlog) GetAllHostnames(ctx context.Context) (sa1 []string,
 
 // GetByHostname implements _sourceProvisioning.ServerRepo
 func (_d ServerRepoWithSlog) GetByHostname(ctx context.Context, name string) (s1 _sourceProvisioning.Server, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("name", name),
-	).Debug("ServerRepoWithSlog: calling GetByHostname")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("s1", s1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
 		)
+	}
+	log.Debug("ServerRepoWithSlog: calling GetByHostname")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("s1", s1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ServerRepoWithSlog: method GetByHostname returned an error")
 		} else {
@@ -144,15 +211,26 @@ func (_d ServerRepoWithSlog) GetByHostname(ctx context.Context, name string) (s1
 
 // GetByID implements _sourceProvisioning.ServerRepo
 func (_d ServerRepoWithSlog) GetByID(ctx context.Context, id int) (s1 _sourceProvisioning.Server, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-	).Debug("ServerRepoWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("s1", s1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
 		)
+	}
+	log.Debug("ServerRepoWithSlog: calling GetByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("s1", s1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ServerRepoWithSlog: method GetByID returned an error")
 		} else {
@@ -164,15 +242,26 @@ func (_d ServerRepoWithSlog) GetByID(ctx context.Context, id int) (s1 _sourcePro
 
 // UpdateByID implements _sourceProvisioning.ServerRepo
 func (_d ServerRepoWithSlog) UpdateByID(ctx context.Context, server _sourceProvisioning.Server) (s1 _sourceProvisioning.Server, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("server", server),
-	).Debug("ServerRepoWithSlog: calling UpdateByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("s1", s1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
 		)
+	}
+	log.Debug("ServerRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("s1", s1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ServerRepoWithSlog: method UpdateByID returned an error")
 		} else {

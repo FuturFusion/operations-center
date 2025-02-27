@@ -1,0 +1,125 @@
+package inventory_test
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/inventory"
+)
+
+func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
+	tests := []struct {
+		name  string
+		image inventory.{{ .Name | pascalcase }}
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "valid",
+			image: inventory.{{ .Name | pascalcase }}{
+				ID:          1,
+				ClusterID:   1,
+				ServerID:    1,
+{{- if .HasProject }}
+				ProjectName: "project one",
+{{- end }}
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase }} one",
+{{- end }}
+				Name:        "one",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - invalid server ID",
+			image: inventory.{{ .Name | pascalcase }}{
+				ID:          1,
+				ClusterID:   1,
+				ServerID:    0, // invalid
+{{- if .HasProject }}
+				ProjectName: "project one",
+{{- end }}
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase }} one",
+{{- end }}
+				Name:        "one",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+{{- if .HasProject }}
+		{
+			name: "error - invalid project name",
+			image: inventory.{{ .Name | pascalcase }}{
+				ID:          1,
+				ClusterID:   1,
+				ServerID:    1,
+				ProjectName: "", // invalid
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase }} one",
+{{- end }}
+				Name:        "one",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+{{- end }}
+{{- if .HasParent }}
+		{
+			name: "error - invalid project name",
+			image: inventory.{{ .Name | pascalcase }}{
+				ID:          1,
+				ClusterID:   1,
+				ServerID:    1,
+{{- if .HasProject }}
+				ProjectName: "project one",
+{{- end }}
+				{{ .ParentName | pascalcase }}Name: "", // invalid
+				Name:        "one",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+{{- end }}
+		{
+			name: "error - invalid name",
+			image: inventory.{{ .Name | pascalcase }}{
+				ID:          1,
+				ClusterID:   1,
+				ServerID:    1,
+{{- if .HasProject }}
+				ProjectName: "project one",
+{{- end }}
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase }} one",
+{{- end }}
+				Name:        "", // invalid
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.image.Validate()
+
+			tc.assertErr(t, err)
+		})
+	}
+}

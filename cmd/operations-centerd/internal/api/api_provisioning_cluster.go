@@ -27,6 +27,7 @@ func registerProvisioningClusterHandler(router *http.ServeMux, service provision
 	router.HandleFunc("PUT /{name}", response.With(handler.clusterPut))
 	router.HandleFunc("DELETE /{name}", response.With(handler.clusterDelete))
 	router.HandleFunc("POST /{name}", response.With(handler.clusterPost))
+	router.HandleFunc("POST /{name}/resync-inventory", response.With(handler.clusterResyncInventoryPost))
 }
 
 // swagger:operation GET /1.0/provisioning/clusters clusters clusters_get
@@ -435,4 +436,47 @@ func (c *clusterHandler) clusterPost(r *http.Request) response.Response {
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/clusters/"+cluster.Name)
+}
+
+// swagger:operation POST /1.0/provisioning/clusters/{name}/resync-inventory clusters cluster_resync_inventory_post
+//
+//	Resync the cluster's inventory
+//
+//	Resync the inventory of a specific cluster.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Empty response
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (c *clusterHandler) clusterResyncInventoryPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	err := c.service.ResyncInventoryByName(r.Context(), name)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to resync inventory for cluster: %w", err))
+	}
+
+	return response.EmptySyncResponse
 }
