@@ -8,6 +8,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/FuturFusion/operations-center/internal/logger"
 	_sourceProvisioning "github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
@@ -27,15 +28,26 @@ func NewClusterRepoWithSlog(base _sourceProvisioning.ClusterRepo, log *slog.Logg
 
 // Create implements _sourceProvisioning.ClusterRepo
 func (_d ClusterRepoWithSlog) Create(ctx context.Context, cluster _sourceProvisioning.Cluster) (c2 _sourceProvisioning.Cluster, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("cluster", cluster),
-	).Debug("ClusterRepoWithSlog: calling Create")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("c2", c2),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("cluster", cluster),
 		)
+	}
+	log.Debug("ClusterRepoWithSlog: calling Create")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("c2", c2),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ClusterRepoWithSlog: method Create returned an error")
 		} else {
@@ -47,14 +59,25 @@ func (_d ClusterRepoWithSlog) Create(ctx context.Context, cluster _sourceProvisi
 
 // DeleteByID implements _sourceProvisioning.ClusterRepo
 func (_d ClusterRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-	).Debug("ClusterRepoWithSlog: calling DeleteByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
 		)
+	}
+	log.Debug("ClusterRepoWithSlog: calling DeleteByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ClusterRepoWithSlog: method DeleteByID returned an error")
 		} else {
@@ -66,14 +89,25 @@ func (_d ClusterRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error
 
 // GetAll implements _sourceProvisioning.ClusterRepo
 func (_d ClusterRepoWithSlog) GetAll(ctx context.Context) (c2 _sourceProvisioning.Clusters, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-	).Debug("ClusterRepoWithSlog: calling GetAll")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("c2", c2),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
 		)
+	}
+	log.Debug("ClusterRepoWithSlog: calling GetAll")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("c2", c2),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ClusterRepoWithSlog: method GetAll returned an error")
 		} else {
@@ -85,14 +119,25 @@ func (_d ClusterRepoWithSlog) GetAll(ctx context.Context) (c2 _sourceProvisionin
 
 // GetAllNames implements _sourceProvisioning.ClusterRepo
 func (_d ClusterRepoWithSlog) GetAllNames(ctx context.Context) (sa1 []string, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-	).Debug("ClusterRepoWithSlog: calling GetAllNames")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("sa1", sa1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
 		)
+	}
+	log.Debug("ClusterRepoWithSlog: calling GetAllNames")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("sa1", sa1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ClusterRepoWithSlog: method GetAllNames returned an error")
 		} else {
@@ -104,15 +149,26 @@ func (_d ClusterRepoWithSlog) GetAllNames(ctx context.Context) (sa1 []string, er
 
 // GetByID implements _sourceProvisioning.ClusterRepo
 func (_d ClusterRepoWithSlog) GetByID(ctx context.Context, id int) (c2 _sourceProvisioning.Cluster, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-	).Debug("ClusterRepoWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("c2", c2),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
 		)
+	}
+	log.Debug("ClusterRepoWithSlog: calling GetByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("c2", c2),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ClusterRepoWithSlog: method GetByID returned an error")
 		} else {
@@ -124,15 +180,26 @@ func (_d ClusterRepoWithSlog) GetByID(ctx context.Context, id int) (c2 _sourcePr
 
 // GetByName implements _sourceProvisioning.ClusterRepo
 func (_d ClusterRepoWithSlog) GetByName(ctx context.Context, name string) (c2 _sourceProvisioning.Cluster, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("name", name),
-	).Debug("ClusterRepoWithSlog: calling GetByName")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("c2", c2),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
 		)
+	}
+	log.Debug("ClusterRepoWithSlog: calling GetByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("c2", c2),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ClusterRepoWithSlog: method GetByName returned an error")
 		} else {
@@ -144,15 +211,26 @@ func (_d ClusterRepoWithSlog) GetByName(ctx context.Context, name string) (c2 _s
 
 // UpdateByID implements _sourceProvisioning.ClusterRepo
 func (_d ClusterRepoWithSlog) UpdateByID(ctx context.Context, cluster _sourceProvisioning.Cluster) (c2 _sourceProvisioning.Cluster, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("cluster", cluster),
-	).Debug("ClusterRepoWithSlog: calling UpdateByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("c2", c2),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("cluster", cluster),
 		)
+	}
+	log.Debug("ClusterRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("c2", c2),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ClusterRepoWithSlog: method UpdateByID returned an error")
 		} else {

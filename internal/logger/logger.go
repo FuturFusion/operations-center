@@ -7,6 +7,8 @@ import (
 	"os"
 )
 
+const LevelTrace slog.Level = -8
+
 type Logger interface {
 	Debug(msg string, args ...any)
 	DebugContext(ctx context.Context, msg string, args ...any)
@@ -27,6 +29,10 @@ func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) err
 
 	if debug {
 		level = slog.LevelDebug
+	}
+
+	if verbose && debug {
+		level = LevelTrace
 	}
 
 	if filepath != "" {

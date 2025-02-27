@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -28,16 +29,27 @@ func NewProfileServerClientWithSlog(base _sourceInventory.ProfileServerClient, l
 
 // GetProfileByName implements _sourceInventory.ProfileServerClient
 func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, connectionURL string, profileName string) (p1 incusapi.Profile, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("profileName", profileName),
-	).Debug("ProfileServerClientWithSlog: calling GetProfileByName")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("p1", p1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("profileName", profileName),
 		)
+	}
+	log.Debug("ProfileServerClientWithSlog: calling GetProfileByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("p1", p1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ProfileServerClientWithSlog: method GetProfileByName returned an error")
 		} else {
@@ -49,15 +61,26 @@ func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, conn
 
 // GetProfiles implements _sourceInventory.ProfileServerClient
 func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, connectionURL string) (pa1 []incusapi.Profile, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-	).Debug("ProfileServerClientWithSlog: calling GetProfiles")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("pa1", pa1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
 		)
+	}
+	log.Debug("ProfileServerClientWithSlog: calling GetProfiles")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("pa1", pa1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ProfileServerClientWithSlog: method GetProfiles returned an error")
 		} else {

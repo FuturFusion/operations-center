@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 )
 
 // NetworkPeerRepoWithSlog implements _sourceInventory.NetworkPeerRepo that is instrumented with slog logger
@@ -27,15 +28,26 @@ func NewNetworkPeerRepoWithSlog(base _sourceInventory.NetworkPeerRepo, log *slog
 
 // Create implements _sourceInventory.NetworkPeerRepo
 func (_d NetworkPeerRepoWithSlog) Create(ctx context.Context, networkPeer _sourceInventory.NetworkPeer) (n1 _sourceInventory.NetworkPeer, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("networkPeer", networkPeer),
-	).Debug("NetworkPeerRepoWithSlog: calling Create")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("networkPeer", networkPeer),
 		)
+	}
+	log.Debug("NetworkPeerRepoWithSlog: calling Create")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkPeerRepoWithSlog: method Create returned an error")
 		} else {
@@ -47,14 +59,25 @@ func (_d NetworkPeerRepoWithSlog) Create(ctx context.Context, networkPeer _sourc
 
 // DeleteByServerID implements _sourceInventory.NetworkPeerRepo
 func (_d NetworkPeerRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("serverID", serverID),
-	).Debug("NetworkPeerRepoWithSlog: calling DeleteByServerID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("serverID", serverID),
 		)
+	}
+	log.Debug("NetworkPeerRepoWithSlog: calling DeleteByServerID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkPeerRepoWithSlog: method DeleteByServerID returned an error")
 		} else {
@@ -66,15 +89,26 @@ func (_d NetworkPeerRepoWithSlog) DeleteByServerID(ctx context.Context, serverID
 
 // GetAllIDsWithFilter implements _sourceInventory.NetworkPeerRepo
 func (_d NetworkPeerRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sourceInventory.NetworkPeerFilter) (ia1 []int, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("filter", filter),
-	).Debug("NetworkPeerRepoWithSlog: calling GetAllIDsWithFilter")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("ia1", ia1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
 		)
+	}
+	log.Debug("NetworkPeerRepoWithSlog: calling GetAllIDsWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("ia1", ia1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkPeerRepoWithSlog: method GetAllIDsWithFilter returned an error")
 		} else {
@@ -86,15 +120,26 @@ func (_d NetworkPeerRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filte
 
 // GetByID implements _sourceInventory.NetworkPeerRepo
 func (_d NetworkPeerRepoWithSlog) GetByID(ctx context.Context, id int) (n1 _sourceInventory.NetworkPeer, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-	).Debug("NetworkPeerRepoWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
 		)
+	}
+	log.Debug("NetworkPeerRepoWithSlog: calling GetByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkPeerRepoWithSlog: method GetByID returned an error")
 		} else {
@@ -106,15 +151,26 @@ func (_d NetworkPeerRepoWithSlog) GetByID(ctx context.Context, id int) (n1 _sour
 
 // UpdateByID implements _sourceInventory.NetworkPeerRepo
 func (_d NetworkPeerRepoWithSlog) UpdateByID(ctx context.Context, networkPeer _sourceInventory.NetworkPeer) (n1 _sourceInventory.NetworkPeer, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("networkPeer", networkPeer),
-	).Debug("NetworkPeerRepoWithSlog: calling UpdateByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("networkPeer", networkPeer),
 		)
+	}
+	log.Debug("NetworkPeerRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkPeerRepoWithSlog: method UpdateByID returned an error")
 		} else {

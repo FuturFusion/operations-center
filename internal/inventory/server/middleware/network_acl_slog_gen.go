@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -28,16 +29,27 @@ func NewNetworkACLServerClientWithSlog(base _sourceInventory.NetworkACLServerCli
 
 // GetNetworkACLByName implements _sourceInventory.NetworkACLServerClient
 func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context, connectionURL string, networkACLName string) (n1 incusapi.NetworkACL, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("networkACLName", networkACLName),
-	).Debug("NetworkACLServerClientWithSlog: calling GetNetworkACLByName")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("networkACLName", networkACLName),
 		)
+	}
+	log.Debug("NetworkACLServerClientWithSlog: calling GetNetworkACLByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkACLServerClientWithSlog: method GetNetworkACLByName returned an error")
 		} else {
@@ -49,15 +61,26 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context
 
 // GetNetworkACLs implements _sourceInventory.NetworkACLServerClient
 func (_d NetworkACLServerClientWithSlog) GetNetworkACLs(ctx context.Context, connectionURL string) (na1 []incusapi.NetworkACL, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-	).Debug("NetworkACLServerClientWithSlog: calling GetNetworkACLs")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("na1", na1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
 		)
+	}
+	log.Debug("NetworkACLServerClientWithSlog: calling GetNetworkACLs")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("na1", na1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkACLServerClientWithSlog: method GetNetworkACLs returned an error")
 		} else {

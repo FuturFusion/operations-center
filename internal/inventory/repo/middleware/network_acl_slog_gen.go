@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 )
 
 // NetworkACLRepoWithSlog implements _sourceInventory.NetworkACLRepo that is instrumented with slog logger
@@ -27,15 +28,26 @@ func NewNetworkACLRepoWithSlog(base _sourceInventory.NetworkACLRepo, log *slog.L
 
 // Create implements _sourceInventory.NetworkACLRepo
 func (_d NetworkACLRepoWithSlog) Create(ctx context.Context, networkACL _sourceInventory.NetworkACL) (n1 _sourceInventory.NetworkACL, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("networkACL", networkACL),
-	).Debug("NetworkACLRepoWithSlog: calling Create")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("networkACL", networkACL),
 		)
+	}
+	log.Debug("NetworkACLRepoWithSlog: calling Create")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkACLRepoWithSlog: method Create returned an error")
 		} else {
@@ -47,14 +59,25 @@ func (_d NetworkACLRepoWithSlog) Create(ctx context.Context, networkACL _sourceI
 
 // DeleteByServerID implements _sourceInventory.NetworkACLRepo
 func (_d NetworkACLRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("serverID", serverID),
-	).Debug("NetworkACLRepoWithSlog: calling DeleteByServerID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("serverID", serverID),
 		)
+	}
+	log.Debug("NetworkACLRepoWithSlog: calling DeleteByServerID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkACLRepoWithSlog: method DeleteByServerID returned an error")
 		} else {
@@ -66,15 +89,26 @@ func (_d NetworkACLRepoWithSlog) DeleteByServerID(ctx context.Context, serverID 
 
 // GetAllIDsWithFilter implements _sourceInventory.NetworkACLRepo
 func (_d NetworkACLRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sourceInventory.NetworkACLFilter) (ia1 []int, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("filter", filter),
-	).Debug("NetworkACLRepoWithSlog: calling GetAllIDsWithFilter")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("ia1", ia1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
 		)
+	}
+	log.Debug("NetworkACLRepoWithSlog: calling GetAllIDsWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("ia1", ia1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkACLRepoWithSlog: method GetAllIDsWithFilter returned an error")
 		} else {
@@ -86,15 +120,26 @@ func (_d NetworkACLRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter
 
 // GetByID implements _sourceInventory.NetworkACLRepo
 func (_d NetworkACLRepoWithSlog) GetByID(ctx context.Context, id int) (n1 _sourceInventory.NetworkACL, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-	).Debug("NetworkACLRepoWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
 		)
+	}
+	log.Debug("NetworkACLRepoWithSlog: calling GetByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkACLRepoWithSlog: method GetByID returned an error")
 		} else {
@@ -106,15 +151,26 @@ func (_d NetworkACLRepoWithSlog) GetByID(ctx context.Context, id int) (n1 _sourc
 
 // UpdateByID implements _sourceInventory.NetworkACLRepo
 func (_d NetworkACLRepoWithSlog) UpdateByID(ctx context.Context, networkACL _sourceInventory.NetworkACL) (n1 _sourceInventory.NetworkACL, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("networkACL", networkACL),
-	).Debug("NetworkACLRepoWithSlog: calling UpdateByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("networkACL", networkACL),
 		)
+	}
+	log.Debug("NetworkACLRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkACLRepoWithSlog: method UpdateByID returned an error")
 		} else {

@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -28,17 +29,28 @@ func NewNetworkPeerServerClientWithSlog(base _sourceInventory.NetworkPeerServerC
 
 // GetNetworkPeerByName implements _sourceInventory.NetworkPeerServerClient
 func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (n1 incusapi.NetworkPeer, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("networkName", networkName),
-		slog.String("networkPeerName", networkPeerName),
-	).Debug("NetworkPeerServerClientWithSlog: calling GetNetworkPeerByName")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("networkName", networkName),
+			slog.String("networkPeerName", networkPeerName),
 		)
+	}
+	log.Debug("NetworkPeerServerClientWithSlog: calling GetNetworkPeerByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkPeerServerClientWithSlog: method GetNetworkPeerByName returned an error")
 		} else {
@@ -50,16 +62,27 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Conte
 
 // GetNetworkPeers implements _sourceInventory.NetworkPeerServerClient
 func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, connectionURL string, networkName string) (na1 []incusapi.NetworkPeer, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("networkName", networkName),
-	).Debug("NetworkPeerServerClientWithSlog: calling GetNetworkPeers")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("na1", na1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("networkName", networkName),
 		)
+	}
+	log.Debug("NetworkPeerServerClientWithSlog: calling GetNetworkPeers")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("na1", na1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkPeerServerClientWithSlog: method GetNetworkPeers returned an error")
 		} else {

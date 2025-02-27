@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 )
 
 // StorageVolumeRepoWithSlog implements _sourceInventory.StorageVolumeRepo that is instrumented with slog logger
@@ -27,15 +28,26 @@ func NewStorageVolumeRepoWithSlog(base _sourceInventory.StorageVolumeRepo, log *
 
 // Create implements _sourceInventory.StorageVolumeRepo
 func (_d StorageVolumeRepoWithSlog) Create(ctx context.Context, storageVolume _sourceInventory.StorageVolume) (s1 _sourceInventory.StorageVolume, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("storageVolume", storageVolume),
-	).Debug("StorageVolumeRepoWithSlog: calling Create")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("s1", s1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("storageVolume", storageVolume),
 		)
+	}
+	log.Debug("StorageVolumeRepoWithSlog: calling Create")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("s1", s1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("StorageVolumeRepoWithSlog: method Create returned an error")
 		} else {
@@ -47,14 +59,25 @@ func (_d StorageVolumeRepoWithSlog) Create(ctx context.Context, storageVolume _s
 
 // DeleteByServerID implements _sourceInventory.StorageVolumeRepo
 func (_d StorageVolumeRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("serverID", serverID),
-	).Debug("StorageVolumeRepoWithSlog: calling DeleteByServerID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("serverID", serverID),
 		)
+	}
+	log.Debug("StorageVolumeRepoWithSlog: calling DeleteByServerID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("StorageVolumeRepoWithSlog: method DeleteByServerID returned an error")
 		} else {
@@ -66,15 +89,26 @@ func (_d StorageVolumeRepoWithSlog) DeleteByServerID(ctx context.Context, server
 
 // GetAllIDsWithFilter implements _sourceInventory.StorageVolumeRepo
 func (_d StorageVolumeRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sourceInventory.StorageVolumeFilter) (ia1 []int, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("filter", filter),
-	).Debug("StorageVolumeRepoWithSlog: calling GetAllIDsWithFilter")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("ia1", ia1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
 		)
+	}
+	log.Debug("StorageVolumeRepoWithSlog: calling GetAllIDsWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("ia1", ia1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("StorageVolumeRepoWithSlog: method GetAllIDsWithFilter returned an error")
 		} else {
@@ -86,15 +120,26 @@ func (_d StorageVolumeRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, fil
 
 // GetByID implements _sourceInventory.StorageVolumeRepo
 func (_d StorageVolumeRepoWithSlog) GetByID(ctx context.Context, id int) (s1 _sourceInventory.StorageVolume, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-	).Debug("StorageVolumeRepoWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("s1", s1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
 		)
+	}
+	log.Debug("StorageVolumeRepoWithSlog: calling GetByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("s1", s1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("StorageVolumeRepoWithSlog: method GetByID returned an error")
 		} else {
@@ -106,15 +151,26 @@ func (_d StorageVolumeRepoWithSlog) GetByID(ctx context.Context, id int) (s1 _so
 
 // UpdateByID implements _sourceInventory.StorageVolumeRepo
 func (_d StorageVolumeRepoWithSlog) UpdateByID(ctx context.Context, storageVolume _sourceInventory.StorageVolume) (s1 _sourceInventory.StorageVolume, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("storageVolume", storageVolume),
-	).Debug("StorageVolumeRepoWithSlog: calling UpdateByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("s1", s1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("storageVolume", storageVolume),
 		)
+	}
+	log.Debug("StorageVolumeRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("s1", s1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("StorageVolumeRepoWithSlog: method UpdateByID returned an error")
 		} else {

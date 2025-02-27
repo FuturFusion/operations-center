@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 )
 
 // ProfileRepoWithSlog implements _sourceInventory.ProfileRepo that is instrumented with slog logger
@@ -27,15 +28,26 @@ func NewProfileRepoWithSlog(base _sourceInventory.ProfileRepo, log *slog.Logger)
 
 // Create implements _sourceInventory.ProfileRepo
 func (_d ProfileRepoWithSlog) Create(ctx context.Context, profile _sourceInventory.Profile) (p1 _sourceInventory.Profile, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("profile", profile),
-	).Debug("ProfileRepoWithSlog: calling Create")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("p1", p1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("profile", profile),
 		)
+	}
+	log.Debug("ProfileRepoWithSlog: calling Create")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("p1", p1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ProfileRepoWithSlog: method Create returned an error")
 		} else {
@@ -47,14 +59,25 @@ func (_d ProfileRepoWithSlog) Create(ctx context.Context, profile _sourceInvento
 
 // DeleteByServerID implements _sourceInventory.ProfileRepo
 func (_d ProfileRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("serverID", serverID),
-	).Debug("ProfileRepoWithSlog: calling DeleteByServerID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("serverID", serverID),
 		)
+	}
+	log.Debug("ProfileRepoWithSlog: calling DeleteByServerID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ProfileRepoWithSlog: method DeleteByServerID returned an error")
 		} else {
@@ -66,15 +89,26 @@ func (_d ProfileRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int
 
 // GetAllIDsWithFilter implements _sourceInventory.ProfileRepo
 func (_d ProfileRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sourceInventory.ProfileFilter) (ia1 []int, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("filter", filter),
-	).Debug("ProfileRepoWithSlog: calling GetAllIDsWithFilter")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("ia1", ia1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
 		)
+	}
+	log.Debug("ProfileRepoWithSlog: calling GetAllIDsWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("ia1", ia1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ProfileRepoWithSlog: method GetAllIDsWithFilter returned an error")
 		} else {
@@ -86,15 +120,26 @@ func (_d ProfileRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _s
 
 // GetByID implements _sourceInventory.ProfileRepo
 func (_d ProfileRepoWithSlog) GetByID(ctx context.Context, id int) (p1 _sourceInventory.Profile, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-	).Debug("ProfileRepoWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("p1", p1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
 		)
+	}
+	log.Debug("ProfileRepoWithSlog: calling GetByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("p1", p1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ProfileRepoWithSlog: method GetByID returned an error")
 		} else {
@@ -106,15 +151,26 @@ func (_d ProfileRepoWithSlog) GetByID(ctx context.Context, id int) (p1 _sourceIn
 
 // UpdateByID implements _sourceInventory.ProfileRepo
 func (_d ProfileRepoWithSlog) UpdateByID(ctx context.Context, profile _sourceInventory.Profile) (p1 _sourceInventory.Profile, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("profile", profile),
-	).Debug("ProfileRepoWithSlog: calling UpdateByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("p1", p1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("profile", profile),
 		)
+	}
+	log.Debug("ProfileRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("p1", p1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ProfileRepoWithSlog: method UpdateByID returned an error")
 		} else {

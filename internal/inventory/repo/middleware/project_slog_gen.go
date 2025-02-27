@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 )
 
 // ProjectRepoWithSlog implements _sourceInventory.ProjectRepo that is instrumented with slog logger
@@ -27,15 +28,26 @@ func NewProjectRepoWithSlog(base _sourceInventory.ProjectRepo, log *slog.Logger)
 
 // Create implements _sourceInventory.ProjectRepo
 func (_d ProjectRepoWithSlog) Create(ctx context.Context, project _sourceInventory.Project) (p1 _sourceInventory.Project, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("project", project),
-	).Debug("ProjectRepoWithSlog: calling Create")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("p1", p1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("project", project),
 		)
+	}
+	log.Debug("ProjectRepoWithSlog: calling Create")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("p1", p1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ProjectRepoWithSlog: method Create returned an error")
 		} else {
@@ -47,14 +59,25 @@ func (_d ProjectRepoWithSlog) Create(ctx context.Context, project _sourceInvento
 
 // DeleteByServerID implements _sourceInventory.ProjectRepo
 func (_d ProjectRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("serverID", serverID),
-	).Debug("ProjectRepoWithSlog: calling DeleteByServerID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("serverID", serverID),
 		)
+	}
+	log.Debug("ProjectRepoWithSlog: calling DeleteByServerID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ProjectRepoWithSlog: method DeleteByServerID returned an error")
 		} else {
@@ -66,15 +89,26 @@ func (_d ProjectRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int
 
 // GetAllIDsWithFilter implements _sourceInventory.ProjectRepo
 func (_d ProjectRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sourceInventory.ProjectFilter) (ia1 []int, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("filter", filter),
-	).Debug("ProjectRepoWithSlog: calling GetAllIDsWithFilter")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("ia1", ia1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
 		)
+	}
+	log.Debug("ProjectRepoWithSlog: calling GetAllIDsWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("ia1", ia1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ProjectRepoWithSlog: method GetAllIDsWithFilter returned an error")
 		} else {
@@ -86,15 +120,26 @@ func (_d ProjectRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _s
 
 // GetByID implements _sourceInventory.ProjectRepo
 func (_d ProjectRepoWithSlog) GetByID(ctx context.Context, id int) (p1 _sourceInventory.Project, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-	).Debug("ProjectRepoWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("p1", p1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
 		)
+	}
+	log.Debug("ProjectRepoWithSlog: calling GetByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("p1", p1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ProjectRepoWithSlog: method GetByID returned an error")
 		} else {
@@ -106,15 +151,26 @@ func (_d ProjectRepoWithSlog) GetByID(ctx context.Context, id int) (p1 _sourceIn
 
 // UpdateByID implements _sourceInventory.ProjectRepo
 func (_d ProjectRepoWithSlog) UpdateByID(ctx context.Context, project _sourceInventory.Project) (p1 _sourceInventory.Project, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("project", project),
-	).Debug("ProjectRepoWithSlog: calling UpdateByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("p1", p1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("project", project),
 		)
+	}
+	log.Debug("ProjectRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("p1", p1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ProjectRepoWithSlog: method UpdateByID returned an error")
 		} else {

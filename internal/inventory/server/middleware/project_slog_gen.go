@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -28,16 +29,27 @@ func NewProjectServerClientWithSlog(base _sourceInventory.ProjectServerClient, l
 
 // GetProjectByName implements _sourceInventory.ProjectServerClient
 func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, connectionURL string, projectName string) (p1 incusapi.Project, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("projectName", projectName),
-	).Debug("ProjectServerClientWithSlog: calling GetProjectByName")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("p1", p1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("projectName", projectName),
 		)
+	}
+	log.Debug("ProjectServerClientWithSlog: calling GetProjectByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("p1", p1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ProjectServerClientWithSlog: method GetProjectByName returned an error")
 		} else {
@@ -49,15 +61,26 @@ func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, conn
 
 // GetProjects implements _sourceInventory.ProjectServerClient
 func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, connectionURL string) (pa1 []incusapi.Project, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-	).Debug("ProjectServerClientWithSlog: calling GetProjects")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("pa1", pa1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
 		)
+	}
+	log.Debug("ProjectServerClientWithSlog: calling GetProjects")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("pa1", pa1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ProjectServerClientWithSlog: method GetProjects returned an error")
 		} else {

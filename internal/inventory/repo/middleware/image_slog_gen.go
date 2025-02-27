@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 )
 
 // ImageRepoWithSlog implements _sourceInventory.ImageRepo that is instrumented with slog logger
@@ -27,15 +28,26 @@ func NewImageRepoWithSlog(base _sourceInventory.ImageRepo, log *slog.Logger) Ima
 
 // Create implements _sourceInventory.ImageRepo
 func (_d ImageRepoWithSlog) Create(ctx context.Context, image _sourceInventory.Image) (i1 _sourceInventory.Image, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("image", image),
-	).Debug("ImageRepoWithSlog: calling Create")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("i1", i1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("image", image),
 		)
+	}
+	log.Debug("ImageRepoWithSlog: calling Create")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("i1", i1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ImageRepoWithSlog: method Create returned an error")
 		} else {
@@ -47,14 +59,25 @@ func (_d ImageRepoWithSlog) Create(ctx context.Context, image _sourceInventory.I
 
 // DeleteByServerID implements _sourceInventory.ImageRepo
 func (_d ImageRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("serverID", serverID),
-	).Debug("ImageRepoWithSlog: calling DeleteByServerID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("serverID", serverID),
 		)
+	}
+	log.Debug("ImageRepoWithSlog: calling DeleteByServerID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ImageRepoWithSlog: method DeleteByServerID returned an error")
 		} else {
@@ -66,15 +89,26 @@ func (_d ImageRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) 
 
 // GetAllIDsWithFilter implements _sourceInventory.ImageRepo
 func (_d ImageRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sourceInventory.ImageFilter) (ia1 []int, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("filter", filter),
-	).Debug("ImageRepoWithSlog: calling GetAllIDsWithFilter")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("ia1", ia1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
 		)
+	}
+	log.Debug("ImageRepoWithSlog: calling GetAllIDsWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("ia1", ia1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ImageRepoWithSlog: method GetAllIDsWithFilter returned an error")
 		} else {
@@ -86,15 +120,26 @@ func (_d ImageRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sou
 
 // GetByID implements _sourceInventory.ImageRepo
 func (_d ImageRepoWithSlog) GetByID(ctx context.Context, id int) (i1 _sourceInventory.Image, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-	).Debug("ImageRepoWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("i1", i1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
 		)
+	}
+	log.Debug("ImageRepoWithSlog: calling GetByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("i1", i1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ImageRepoWithSlog: method GetByID returned an error")
 		} else {
@@ -106,15 +151,26 @@ func (_d ImageRepoWithSlog) GetByID(ctx context.Context, id int) (i1 _sourceInve
 
 // UpdateByID implements _sourceInventory.ImageRepo
 func (_d ImageRepoWithSlog) UpdateByID(ctx context.Context, image _sourceInventory.Image) (i1 _sourceInventory.Image, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("image", image),
-	).Debug("ImageRepoWithSlog: calling UpdateByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("i1", i1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("image", image),
 		)
+	}
+	log.Debug("ImageRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("i1", i1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ImageRepoWithSlog: method UpdateByID returned an error")
 		} else {

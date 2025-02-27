@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -28,17 +29,28 @@ func NewNetworkLoadBalancerServerClientWithSlog(base _sourceInventory.NetworkLoa
 
 // GetNetworkLoadBalancerByName implements _sourceInventory.NetworkLoadBalancerServerClient
 func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context, connectionURL string, networkName string, networkLoadBalancerName string) (n1 incusapi.NetworkLoadBalancer, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("networkName", networkName),
-		slog.String("networkLoadBalancerName", networkLoadBalancerName),
-	).Debug("NetworkLoadBalancerServerClientWithSlog: calling GetNetworkLoadBalancerByName")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("networkName", networkName),
+			slog.String("networkLoadBalancerName", networkLoadBalancerName),
 		)
+	}
+	log.Debug("NetworkLoadBalancerServerClientWithSlog: calling GetNetworkLoadBalancerByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkLoadBalancerServerClientWithSlog: method GetNetworkLoadBalancerByName returned an error")
 		} else {
@@ -50,16 +62,27 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(c
 
 // GetNetworkLoadBalancers implements _sourceInventory.NetworkLoadBalancerServerClient
 func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, connectionURL string, networkName string) (na1 []incusapi.NetworkLoadBalancer, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("networkName", networkName),
-	).Debug("NetworkLoadBalancerServerClientWithSlog: calling GetNetworkLoadBalancers")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("na1", na1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("networkName", networkName),
 		)
+	}
+	log.Debug("NetworkLoadBalancerServerClientWithSlog: calling GetNetworkLoadBalancers")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("na1", na1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkLoadBalancerServerClientWithSlog: method GetNetworkLoadBalancers returned an error")
 		} else {

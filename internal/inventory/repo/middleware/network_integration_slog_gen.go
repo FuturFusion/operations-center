@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 )
 
 // NetworkIntegrationRepoWithSlog implements _sourceInventory.NetworkIntegrationRepo that is instrumented with slog logger
@@ -27,15 +28,26 @@ func NewNetworkIntegrationRepoWithSlog(base _sourceInventory.NetworkIntegrationR
 
 // Create implements _sourceInventory.NetworkIntegrationRepo
 func (_d NetworkIntegrationRepoWithSlog) Create(ctx context.Context, networkIntegration _sourceInventory.NetworkIntegration) (n1 _sourceInventory.NetworkIntegration, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("networkIntegration", networkIntegration),
-	).Debug("NetworkIntegrationRepoWithSlog: calling Create")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("networkIntegration", networkIntegration),
 		)
+	}
+	log.Debug("NetworkIntegrationRepoWithSlog: calling Create")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkIntegrationRepoWithSlog: method Create returned an error")
 		} else {
@@ -47,14 +59,25 @@ func (_d NetworkIntegrationRepoWithSlog) Create(ctx context.Context, networkInte
 
 // DeleteByServerID implements _sourceInventory.NetworkIntegrationRepo
 func (_d NetworkIntegrationRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("serverID", serverID),
-	).Debug("NetworkIntegrationRepoWithSlog: calling DeleteByServerID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("serverID", serverID),
 		)
+	}
+	log.Debug("NetworkIntegrationRepoWithSlog: calling DeleteByServerID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkIntegrationRepoWithSlog: method DeleteByServerID returned an error")
 		} else {
@@ -66,15 +89,26 @@ func (_d NetworkIntegrationRepoWithSlog) DeleteByServerID(ctx context.Context, s
 
 // GetAllIDsWithFilter implements _sourceInventory.NetworkIntegrationRepo
 func (_d NetworkIntegrationRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sourceInventory.NetworkIntegrationFilter) (ia1 []int, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("filter", filter),
-	).Debug("NetworkIntegrationRepoWithSlog: calling GetAllIDsWithFilter")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("ia1", ia1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
 		)
+	}
+	log.Debug("NetworkIntegrationRepoWithSlog: calling GetAllIDsWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("ia1", ia1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkIntegrationRepoWithSlog: method GetAllIDsWithFilter returned an error")
 		} else {
@@ -86,15 +120,26 @@ func (_d NetworkIntegrationRepoWithSlog) GetAllIDsWithFilter(ctx context.Context
 
 // GetByID implements _sourceInventory.NetworkIntegrationRepo
 func (_d NetworkIntegrationRepoWithSlog) GetByID(ctx context.Context, id int) (n1 _sourceInventory.NetworkIntegration, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-	).Debug("NetworkIntegrationRepoWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
 		)
+	}
+	log.Debug("NetworkIntegrationRepoWithSlog: calling GetByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkIntegrationRepoWithSlog: method GetByID returned an error")
 		} else {
@@ -106,15 +151,26 @@ func (_d NetworkIntegrationRepoWithSlog) GetByID(ctx context.Context, id int) (n
 
 // UpdateByID implements _sourceInventory.NetworkIntegrationRepo
 func (_d NetworkIntegrationRepoWithSlog) UpdateByID(ctx context.Context, networkIntegration _sourceInventory.NetworkIntegration) (n1 _sourceInventory.NetworkIntegration, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("networkIntegration", networkIntegration),
-	).Debug("NetworkIntegrationRepoWithSlog: calling UpdateByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("networkIntegration", networkIntegration),
 		)
+	}
+	log.Debug("NetworkIntegrationRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkIntegrationRepoWithSlog: method UpdateByID returned an error")
 		} else {

@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -28,17 +29,28 @@ func NewNetworkForwardServerClientWithSlog(base _sourceInventory.NetworkForwardS
 
 // GetNetworkForwardByName implements _sourceInventory.NetworkForwardServerClient
 func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (n1 incusapi.NetworkForward, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("networkName", networkName),
-		slog.String("networkForwardName", networkForwardName),
-	).Debug("NetworkForwardServerClientWithSlog: calling GetNetworkForwardByName")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("networkName", networkName),
+			slog.String("networkForwardName", networkForwardName),
 		)
+	}
+	log.Debug("NetworkForwardServerClientWithSlog: calling GetNetworkForwardByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkForwardServerClientWithSlog: method GetNetworkForwardByName returned an error")
 		} else {
@@ -50,16 +62,27 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context
 
 // GetNetworkForwards implements _sourceInventory.NetworkForwardServerClient
 func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Context, connectionURL string, networkName string) (na1 []incusapi.NetworkForward, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("networkName", networkName),
-	).Debug("NetworkForwardServerClientWithSlog: calling GetNetworkForwards")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("na1", na1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("networkName", networkName),
 		)
+	}
+	log.Debug("NetworkForwardServerClientWithSlog: calling GetNetworkForwards")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("na1", na1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkForwardServerClientWithSlog: method GetNetworkForwards returned an error")
 		} else {

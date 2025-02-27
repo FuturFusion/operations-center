@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -28,17 +29,28 @@ func NewStorageVolumeServerClientWithSlog(base _sourceInventory.StorageVolumeSer
 
 // GetStorageVolumeByName implements _sourceInventory.StorageVolumeServerClient
 func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string) (s1 incusapi.StorageVolume, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("storagePoolName", storagePoolName),
-		slog.String("storageVolumeName", storageVolumeName),
-	).Debug("StorageVolumeServerClientWithSlog: calling GetStorageVolumeByName")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("s1", s1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("storagePoolName", storagePoolName),
+			slog.String("storageVolumeName", storageVolumeName),
 		)
+	}
+	log.Debug("StorageVolumeServerClientWithSlog: calling GetStorageVolumeByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("s1", s1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("StorageVolumeServerClientWithSlog: method GetStorageVolumeByName returned an error")
 		} else {
@@ -50,16 +62,27 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.C
 
 // GetStorageVolumes implements _sourceInventory.StorageVolumeServerClient
 func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Context, connectionURL string, storagePoolName string) (sa1 []incusapi.StorageVolume, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("storagePoolName", storagePoolName),
-	).Debug("StorageVolumeServerClientWithSlog: calling GetStorageVolumes")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("sa1", sa1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("storagePoolName", storagePoolName),
 		)
+	}
+	log.Debug("StorageVolumeServerClientWithSlog: calling GetStorageVolumes")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("sa1", sa1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("StorageVolumeServerClientWithSlog: method GetStorageVolumes returned an error")
 		} else {

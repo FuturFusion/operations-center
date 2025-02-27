@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -28,16 +29,27 @@ func NewNetworkIntegrationServerClientWithSlog(base _sourceInventory.NetworkInte
 
 // GetNetworkIntegrationByName implements _sourceInventory.NetworkIntegrationServerClient
 func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, connectionURL string, networkIntegrationName string) (n1 incusapi.NetworkIntegration, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("networkIntegrationName", networkIntegrationName),
-	).Debug("NetworkIntegrationServerClientWithSlog: calling GetNetworkIntegrationByName")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("networkIntegrationName", networkIntegrationName),
 		)
+	}
+	log.Debug("NetworkIntegrationServerClientWithSlog: calling GetNetworkIntegrationByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkIntegrationServerClientWithSlog: method GetNetworkIntegrationByName returned an error")
 		} else {
@@ -49,15 +61,26 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx
 
 // GetNetworkIntegrations implements _sourceInventory.NetworkIntegrationServerClient
 func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, connectionURL string) (na1 []incusapi.NetworkIntegration, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-	).Debug("NetworkIntegrationServerClientWithSlog: calling GetNetworkIntegrations")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("na1", na1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
 		)
+	}
+	log.Debug("NetworkIntegrationServerClientWithSlog: calling GetNetworkIntegrations")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("na1", na1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkIntegrationServerClientWithSlog: method GetNetworkIntegrations returned an error")
 		} else {

@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -28,16 +29,27 @@ func NewNetworkZoneServerClientWithSlog(base _sourceInventory.NetworkZoneServerC
 
 // GetNetworkZoneByName implements _sourceInventory.NetworkZoneServerClient
 func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, connectionURL string, networkZoneName string) (n1 incusapi.NetworkZone, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("networkZoneName", networkZoneName),
-	).Debug("NetworkZoneServerClientWithSlog: calling GetNetworkZoneByName")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("networkZoneName", networkZoneName),
 		)
+	}
+	log.Debug("NetworkZoneServerClientWithSlog: calling GetNetworkZoneByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkZoneServerClientWithSlog: method GetNetworkZoneByName returned an error")
 		} else {
@@ -49,15 +61,26 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Conte
 
 // GetNetworkZones implements _sourceInventory.NetworkZoneServerClient
 func (_d NetworkZoneServerClientWithSlog) GetNetworkZones(ctx context.Context, connectionURL string) (na1 []incusapi.NetworkZone, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-	).Debug("NetworkZoneServerClientWithSlog: calling GetNetworkZones")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("na1", na1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
 		)
+	}
+	log.Debug("NetworkZoneServerClientWithSlog: calling GetNetworkZones")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("na1", na1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkZoneServerClientWithSlog: method GetNetworkZones returned an error")
 		} else {

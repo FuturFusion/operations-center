@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/FuturFusion/operations-center/internal/logger"
 	_sourceProvisioning "github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
@@ -28,14 +29,25 @@ func NewUpdateRepoWithSlog(base _sourceProvisioning.UpdateRepo, log *slog.Logger
 
 // GetAll implements _sourceProvisioning.UpdateRepo
 func (_d UpdateRepoWithSlog) GetAll(ctx context.Context) (u1 _sourceProvisioning.Updates, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-	).Debug("UpdateRepoWithSlog: calling GetAll")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("u1", u1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
 		)
+	}
+	log.Debug("UpdateRepoWithSlog: calling GetAll")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("u1", u1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("UpdateRepoWithSlog: method GetAll returned an error")
 		} else {
@@ -47,14 +59,25 @@ func (_d UpdateRepoWithSlog) GetAll(ctx context.Context) (u1 _sourceProvisioning
 
 // GetAllIDs implements _sourceProvisioning.UpdateRepo
 func (_d UpdateRepoWithSlog) GetAllIDs(ctx context.Context) (sa1 []string, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-	).Debug("UpdateRepoWithSlog: calling GetAllIDs")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("sa1", sa1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
 		)
+	}
+	log.Debug("UpdateRepoWithSlog: calling GetAllIDs")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("sa1", sa1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("UpdateRepoWithSlog: method GetAllIDs returned an error")
 		} else {
@@ -66,15 +89,26 @@ func (_d UpdateRepoWithSlog) GetAllIDs(ctx context.Context) (sa1 []string, err e
 
 // GetByID implements _sourceProvisioning.UpdateRepo
 func (_d UpdateRepoWithSlog) GetByID(ctx context.Context, id string) (u1 _sourceProvisioning.Update, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("id", id),
-	).Debug("UpdateRepoWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("u1", u1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("id", id),
 		)
+	}
+	log.Debug("UpdateRepoWithSlog: calling GetByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("u1", u1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("UpdateRepoWithSlog: method GetByID returned an error")
 		} else {
@@ -86,15 +120,26 @@ func (_d UpdateRepoWithSlog) GetByID(ctx context.Context, id string) (u1 _source
 
 // GetUpdateAllFiles implements _sourceProvisioning.UpdateRepo
 func (_d UpdateRepoWithSlog) GetUpdateAllFiles(ctx context.Context, updateID string) (u1 _sourceProvisioning.UpdateFiles, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("updateID", updateID),
-	).Debug("UpdateRepoWithSlog: calling GetUpdateAllFiles")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("u1", u1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("updateID", updateID),
 		)
+	}
+	log.Debug("UpdateRepoWithSlog: calling GetUpdateAllFiles")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("u1", u1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("UpdateRepoWithSlog: method GetUpdateAllFiles returned an error")
 		} else {
@@ -106,17 +151,28 @@ func (_d UpdateRepoWithSlog) GetUpdateAllFiles(ctx context.Context, updateID str
 
 // GetUpdateFileByFilename implements _sourceProvisioning.UpdateRepo
 func (_d UpdateRepoWithSlog) GetUpdateFileByFilename(ctx context.Context, updateID string, filename string) (r1 io.ReadCloser, i1 int, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("updateID", updateID),
-		slog.String("filename", filename),
-	).Debug("UpdateRepoWithSlog: calling GetUpdateFileByFilename")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("r1", r1),
-			slog.Int("i1", i1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("updateID", updateID),
+			slog.String("filename", filename),
 		)
+	}
+	log.Debug("UpdateRepoWithSlog: calling GetUpdateFileByFilename")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("r1", r1),
+				slog.Int("i1", i1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("UpdateRepoWithSlog: method GetUpdateFileByFilename returned an error")
 		} else {

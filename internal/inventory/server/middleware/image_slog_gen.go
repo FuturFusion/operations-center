@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -28,16 +29,27 @@ func NewImageServerClientWithSlog(base _sourceInventory.ImageServerClient, log *
 
 // GetImageByName implements _sourceInventory.ImageServerClient
 func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, connectionURL string, imageName string) (i1 incusapi.Image, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("imageName", imageName),
-	).Debug("ImageServerClientWithSlog: calling GetImageByName")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("i1", i1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("imageName", imageName),
 		)
+	}
+	log.Debug("ImageServerClientWithSlog: calling GetImageByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("i1", i1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ImageServerClientWithSlog: method GetImageByName returned an error")
 		} else {
@@ -49,15 +61,26 @@ func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, connecti
 
 // GetImages implements _sourceInventory.ImageServerClient
 func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, connectionURL string) (ia1 []incusapi.Image, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-	).Debug("ImageServerClientWithSlog: calling GetImages")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("ia1", ia1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
 		)
+	}
+	log.Debug("ImageServerClientWithSlog: calling GetImages")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("ia1", ia1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("ImageServerClientWithSlog: method GetImages returned an error")
 		} else {

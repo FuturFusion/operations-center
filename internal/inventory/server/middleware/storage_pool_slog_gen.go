@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -28,16 +29,27 @@ func NewStoragePoolServerClientWithSlog(base _sourceInventory.StoragePoolServerC
 
 // GetStoragePoolByName implements _sourceInventory.StoragePoolServerClient
 func (_d StoragePoolServerClientWithSlog) GetStoragePoolByName(ctx context.Context, connectionURL string, storagePoolName string) (s1 incusapi.StoragePool, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("storagePoolName", storagePoolName),
-	).Debug("StoragePoolServerClientWithSlog: calling GetStoragePoolByName")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("s1", s1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("storagePoolName", storagePoolName),
 		)
+	}
+	log.Debug("StoragePoolServerClientWithSlog: calling GetStoragePoolByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("s1", s1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("StoragePoolServerClientWithSlog: method GetStoragePoolByName returned an error")
 		} else {
@@ -49,15 +61,26 @@ func (_d StoragePoolServerClientWithSlog) GetStoragePoolByName(ctx context.Conte
 
 // GetStoragePools implements _sourceInventory.StoragePoolServerClient
 func (_d StoragePoolServerClientWithSlog) GetStoragePools(ctx context.Context, connectionURL string) (sa1 []incusapi.StoragePool, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-	).Debug("StoragePoolServerClientWithSlog: calling GetStoragePools")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("sa1", sa1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
 		)
+	}
+	log.Debug("StoragePoolServerClientWithSlog: calling GetStoragePools")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("sa1", sa1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("StoragePoolServerClientWithSlog: method GetStoragePools returned an error")
 		} else {

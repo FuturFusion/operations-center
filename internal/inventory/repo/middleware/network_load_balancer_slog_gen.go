@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 )
 
 // NetworkLoadBalancerRepoWithSlog implements _sourceInventory.NetworkLoadBalancerRepo that is instrumented with slog logger
@@ -27,15 +28,26 @@ func NewNetworkLoadBalancerRepoWithSlog(base _sourceInventory.NetworkLoadBalance
 
 // Create implements _sourceInventory.NetworkLoadBalancerRepo
 func (_d NetworkLoadBalancerRepoWithSlog) Create(ctx context.Context, networkLoadBalancer _sourceInventory.NetworkLoadBalancer) (n1 _sourceInventory.NetworkLoadBalancer, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("networkLoadBalancer", networkLoadBalancer),
-	).Debug("NetworkLoadBalancerRepoWithSlog: calling Create")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("networkLoadBalancer", networkLoadBalancer),
 		)
+	}
+	log.Debug("NetworkLoadBalancerRepoWithSlog: calling Create")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkLoadBalancerRepoWithSlog: method Create returned an error")
 		} else {
@@ -47,14 +59,25 @@ func (_d NetworkLoadBalancerRepoWithSlog) Create(ctx context.Context, networkLoa
 
 // DeleteByServerID implements _sourceInventory.NetworkLoadBalancerRepo
 func (_d NetworkLoadBalancerRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("serverID", serverID),
-	).Debug("NetworkLoadBalancerRepoWithSlog: calling DeleteByServerID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("serverID", serverID),
 		)
+	}
+	log.Debug("NetworkLoadBalancerRepoWithSlog: calling DeleteByServerID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkLoadBalancerRepoWithSlog: method DeleteByServerID returned an error")
 		} else {
@@ -66,15 +89,26 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteByServerID(ctx context.Context, 
 
 // GetAllIDsWithFilter implements _sourceInventory.NetworkLoadBalancerRepo
 func (_d NetworkLoadBalancerRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter _sourceInventory.NetworkLoadBalancerFilter) (ia1 []int, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("filter", filter),
-	).Debug("NetworkLoadBalancerRepoWithSlog: calling GetAllIDsWithFilter")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("ia1", ia1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
 		)
+	}
+	log.Debug("NetworkLoadBalancerRepoWithSlog: calling GetAllIDsWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("ia1", ia1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkLoadBalancerRepoWithSlog: method GetAllIDsWithFilter returned an error")
 		} else {
@@ -86,15 +120,26 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetAllIDsWithFilter(ctx context.Contex
 
 // GetByID implements _sourceInventory.NetworkLoadBalancerRepo
 func (_d NetworkLoadBalancerRepoWithSlog) GetByID(ctx context.Context, id int) (n1 _sourceInventory.NetworkLoadBalancer, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-	).Debug("NetworkLoadBalancerRepoWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("id", id),
 		)
+	}
+	log.Debug("NetworkLoadBalancerRepoWithSlog: calling GetByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkLoadBalancerRepoWithSlog: method GetByID returned an error")
 		} else {
@@ -106,15 +151,26 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetByID(ctx context.Context, id int) (
 
 // UpdateByID implements _sourceInventory.NetworkLoadBalancerRepo
 func (_d NetworkLoadBalancerRepoWithSlog) UpdateByID(ctx context.Context, networkLoadBalancer _sourceInventory.NetworkLoadBalancer) (n1 _sourceInventory.NetworkLoadBalancer, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("networkLoadBalancer", networkLoadBalancer),
-	).Debug("NetworkLoadBalancerRepoWithSlog: calling UpdateByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("networkLoadBalancer", networkLoadBalancer),
 		)
+	}
+	log.Debug("NetworkLoadBalancerRepoWithSlog: calling UpdateByID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkLoadBalancerRepoWithSlog: method UpdateByID returned an error")
 		} else {

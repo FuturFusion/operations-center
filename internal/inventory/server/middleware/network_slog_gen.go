@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -28,16 +29,27 @@ func NewNetworkServerClientWithSlog(base _sourceInventory.NetworkServerClient, l
 
 // GetNetworkByName implements _sourceInventory.NetworkServerClient
 func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, connectionURL string, networkName string) (n1 incusapi.Network, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("networkName", networkName),
-	).Debug("NetworkServerClientWithSlog: calling GetNetworkByName")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("networkName", networkName),
 		)
+	}
+	log.Debug("NetworkServerClientWithSlog: calling GetNetworkByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("n1", n1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkServerClientWithSlog: method GetNetworkByName returned an error")
 		} else {
@@ -49,15 +61,26 @@ func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, conn
 
 // GetNetworks implements _sourceInventory.NetworkServerClient
 func (_d NetworkServerClientWithSlog) GetNetworks(ctx context.Context, connectionURL string) (na1 []incusapi.Network, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-	).Debug("NetworkServerClientWithSlog: calling GetNetworks")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("na1", na1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
 		)
+	}
+	log.Debug("NetworkServerClientWithSlog: calling GetNetworks")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("na1", na1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("NetworkServerClientWithSlog: method GetNetworks returned an error")
 		} else {

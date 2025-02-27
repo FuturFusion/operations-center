@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -28,16 +29,27 @@ func NewInstanceServerClientWithSlog(base _sourceInventory.InstanceServerClient,
 
 // GetInstanceByName implements _sourceInventory.InstanceServerClient
 func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, connectionURL string, instanceName string) (i1 incusapi.InstanceFull, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("instanceName", instanceName),
-	).Debug("InstanceServerClientWithSlog: calling GetInstanceByName")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("i1", i1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("instanceName", instanceName),
 		)
+	}
+	log.Debug("InstanceServerClientWithSlog: calling GetInstanceByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("i1", i1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("InstanceServerClientWithSlog: method GetInstanceByName returned an error")
 		} else {
@@ -49,15 +61,26 @@ func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, co
 
 // GetInstances implements _sourceInventory.InstanceServerClient
 func (_d InstanceServerClientWithSlog) GetInstances(ctx context.Context, connectionURL string) (ia1 []incusapi.InstanceFull, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-	).Debug("InstanceServerClientWithSlog: calling GetInstances")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("ia1", ia1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
 		)
+	}
+	log.Debug("InstanceServerClientWithSlog: calling GetInstances")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("ia1", ia1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("InstanceServerClientWithSlog: method GetInstances returned an error")
 		} else {

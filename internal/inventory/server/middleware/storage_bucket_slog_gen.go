@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceInventory "github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -28,17 +29,28 @@ func NewStorageBucketServerClientWithSlog(base _sourceInventory.StorageBucketSer
 
 // GetStorageBucketByName implements _sourceInventory.StorageBucketServerClient
 func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (s1 incusapi.StorageBucket, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("storagePoolName", storagePoolName),
-		slog.String("storageBucketName", storageBucketName),
-	).Debug("StorageBucketServerClientWithSlog: calling GetStorageBucketByName")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("s1", s1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("storagePoolName", storagePoolName),
+			slog.String("storageBucketName", storageBucketName),
 		)
+	}
+	log.Debug("StorageBucketServerClientWithSlog: calling GetStorageBucketByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("s1", s1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("StorageBucketServerClientWithSlog: method GetStorageBucketByName returned an error")
 		} else {
@@ -50,16 +62,27 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.C
 
 // GetStorageBuckets implements _sourceInventory.StorageBucketServerClient
 func (_d StorageBucketServerClientWithSlog) GetStorageBuckets(ctx context.Context, connectionURL string, storagePoolName string) (sa1 []incusapi.StorageBucket, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("connectionURL", connectionURL),
-		slog.String("storagePoolName", storagePoolName),
-	).Debug("StorageBucketServerClientWithSlog: calling GetStorageBuckets")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("sa1", sa1),
-			slog.Any("err", err),
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("storagePoolName", storagePoolName),
 		)
+	}
+	log.Debug("StorageBucketServerClientWithSlog: calling GetStorageBuckets")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("sa1", sa1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
 		if err != nil {
 			log.Error("StorageBucketServerClientWithSlog: method GetStorageBuckets returned an error")
 		} else {
