@@ -43,16 +43,6 @@ func registerInventoryNetworkForwardHandler(router *http.ServeMux, service inven
 //		    description: Cluster name
 //		    type: string
 //		    example: cluster
-//		  - in: query
-//		    name: server
-//		    description: Server name
-//		    type: string
-//		    example: localhost
-//		  - in: query
-//		    name: project
-//		    description: Project name
-//		    type: string
-//		    example: default
 //		responses:
 //		  "200":
 //		    description: API network_forward
@@ -91,10 +81,6 @@ func (i *networkForwardHandler) networkForwardsGet(r *http.Request) response.Res
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
-	}
-
-	if r.URL.Query().Get("server") != "" {
-		filter.Server = ptr.To(r.URL.Query().Get("server"))
 	}
 
 	networkForwardIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
@@ -160,7 +146,6 @@ func (i *networkForwardHandler) networkForwardGet(r *http.Request) response.Resp
 		api.NetworkForward{
 			ID:          networkForward.ID,
 			ClusterID:   networkForward.ClusterID,
-			ServerID:    networkForward.ServerID,
 			NetworkName: networkForward.NetworkName,
 			Name:        networkForward.Name,
 			Object:      networkForward.Object,

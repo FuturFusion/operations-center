@@ -16,7 +16,9 @@ import (
 type {{ .Name | camelcase }}Service struct {
 	repo                   {{ .Name | pascalcase }}Repo
 	clusterSvc             ClusterService
+{{- if .IsServerResource }}
 	serverSvc              ServerService
+{{- end }}
 
 {{- if .HasParent }}
 	{{ .ParentName | camelcase }}Client {{ .ParentObjectType | pascalcase }}ServerClient
@@ -42,11 +44,13 @@ func {{ .Name | pascalcase }}WithParentFilter(f func(incusapi.{{ .ParentObjectTy
 }
 {{- end }}
 
-func New{{ .Name | pascalcase }}Service(repo {{ .Name | pascalcase }}Repo, clusterSvc ClusterService, serverSvc ServerService, client {{ .Name | pascalcase }}ServerClient, {{ if .HasParent }}parentClient {{ .ParentName | pascalcase }}ServerClient, {{ end -}} opts ...{{ .Name | pascalcase }}ServiceOption) {{ .Name | camelcase }}Service {
+func New{{ .Name | pascalcase }}Service(repo {{ .Name | pascalcase }}Repo, clusterSvc ClusterService, {{ if .IsServerResource }}serverSvc ServerService, {{ end -}} client {{ .Name | pascalcase }}ServerClient, {{ if .HasParent }}parentClient {{ .ParentName | pascalcase }}ServerClient, {{ end -}} opts ...{{ .Name | pascalcase }}ServiceOption) {{ .Name | camelcase }}Service {
 	{{ .Name | camelcase }}Svc := {{ .Name | camelcase }}Service{
 		repo:                   repo,
 		clusterSvc:             clusterSvc,
+{{- if .IsServerResource }}
 		serverSvc:              serverSvc,
+{{- end }}
 
 {{- if .HasParent }}
 		{{ .ParentName | camelcase }}Client: parentClient,
@@ -84,12 +88,12 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 			return err
 		}
 
-		server, err := s.serverSvc.GetByID(ctx, {{ .Name | camelcase }}.ServerID)
+		{{ .ResourceForeignKey }}, err := s.{{ .ResourceForeignKey }}Svc.GetByID(ctx, {{ .Name | camelcase }}.{{ .ResourceForeignKey | pascalcase }}ID)
 		if err != nil {
 			return err
 		}
 
-		server{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, server.ConnectionURL, {{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name)
+		retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, {{ .ResourceForeignKey }}.ConnectionURL, {{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, {{ .Name | camelcase }}.ID)
 			if err != nil {
@@ -104,9 +108,9 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 		}
 
 {{ if .HasProject }}
-		{{ .Name | camelcase }}.ProjectName = server{{ .Name | pascalcase }}.Project
+		{{ .Name | camelcase }}.ProjectName = retrieved{{ .Name | pascalcase }}.Project
 {{- end }}
-		{{ .Name | camelcase }}.Object = server{{ .Name | pascalcase }}
+		{{ .Name | camelcase }}.Object = retrieved{{ .Name | pascalcase }}
 		{{ .Name | camelcase }}.LastUpdated = s.now()
 
 		err = {{ .Name | camelcase }}.Validate()
@@ -144,6 +148,7 @@ func (s {{ .Name | camelcase }}Service) SyncAll(ctx context.Context) error {
 	return nil
 }
 
+{{ if .IsServerResource }}
 func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, clusterID int) error {
 	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
 	if err != nil {
@@ -159,56 +164,59 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, cluster
 
 	return nil
 }
+{{ end }}
 
-func (s {{ .Name | camelcase }}Service) SyncServer(ctx context.Context, serverID int) error {
-	server, err := s.serverSvc.GetByID(ctx, serverID)
+func (s {{ .Name | camelcase }}Service) Sync{{ .ResourceForeignKey | pascalcase }}(ctx context.Context, {{ .ResourceForeignKey }}ID int) error {
+	{{ .ResourceForeignKey }}, err := s.{{ .ResourceForeignKey }}Svc.GetByID(ctx, {{ .ResourceForeignKey }}ID)
 	if err != nil {
 		return err
 	}
 
 {{ if .HasParent }}
-	server{{ .ParentName | pascalcase }}s, err := s.{{ .ParentName | camelcase }}Client.Get{{ .ParentName | pascalcase }}s(ctx, server.ConnectionURL)
+	retrieved{{ .ParentPluralName | pascalcase }}, err := s.{{ .ParentName | camelcase }}Client.Get{{ .ParentName | pascalcase }}s(ctx, {{ .ResourceForeignKey }}.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
-	for _, {{ .ParentName | camelcase }} := range server{{ .ParentName | pascalcase }}s {
+	for _, {{ .ParentName | camelcase }} := range retrieved{{ .ParentPluralName | pascalcase }} {
 {{- if .HasParent }}
 		if s.isParentFilted({{ .ParentName | camelcase }}) {
 			continue
 		}
 {{- end }}
 
-		server{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, server.ConnectionURL, {{ .ParentName | camelcase }}.Name)
+		retrieved{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, {{ .ResourceForeignKey }}.ConnectionURL, {{ .ParentName | camelcase }}.Name)
 		if err != nil {
 			return err
 		}
 
 {{ else }}
-	server{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, server.ConnectionURL)
+	retrieved{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, {{ .ResourceForeignKey }}.ConnectionURL)
 	if err != nil {
 		return err
 	}
 {{ end }}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByServerID(ctx, serverID)
+		err = s.repo.DeleteBy{{ .ResourceForeignKey | pascalcase }}ID(ctx, {{ .ResourceForeignKey }}ID)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
-		for _, server{{ .Name | pascalcase }} := range server{{ .PluralName | pascalcase }} {
+		for _, retrieved{{ .Name | pascalcase }} := range retrieved{{ .PluralName | pascalcase }} {
 			{{ .Name | camelcase }} := {{ .Name | pascalcase }}{
-				ClusterID:   server.ClusterID,
-				ServerID:    serverID,
+{{- if .IsServerResource }}
+				ClusterID:   {{ .ResourceForeignKey }}.ClusterID,
+{{- end }}
+				{{ .ResourceForeignKey | pascalcase }}ID:    {{ .ResourceForeignKey }}ID,
 {{- if .HasProject }}
-				ProjectName: server{{ .Name | pascalcase }}.Project,
+				ProjectName: retrieved{{ .Name | pascalcase }}.Project,
 {{- end }}
 {{- if .HasParent }}
 				{{ .ParentName | pascalcase }}Name:  {{ .ParentName | camelcase }}.Name,
 {{- end }}
-				Name:        server{{ .Name | pascalcase }}.{{ .ObjectNamePropertyName | pascalcase }},
-				Object:      server{{ .Name | pascalcase }},
+				Name:        retrieved{{ .Name | pascalcase }}.{{ .ObjectNamePropertyName | pascalcase }},
+				Object:      retrieved{{ .Name | pascalcase }},
 				LastUpdated: s.now(),
 			}
 

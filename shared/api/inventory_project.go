@@ -11,7 +11,6 @@ import (
 type Project struct {
 	ID          int              `json:"id" yaml:"id"`
 	ClusterID   int              `json:"cluster_id" yaml:"cluster_id"`
-	ServerID    int              `json:"server_id" yaml:"server_id"`
 	Name        string           `json:"name" yaml:"name"`
 	Object      incusapi.Project `json:"object" yaml:"object"`
 	LastUpdated time.Time        `json:"last_updated" yaml:"last_updated"`

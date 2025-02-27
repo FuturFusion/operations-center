@@ -43,16 +43,6 @@ func registerInventoryNetworkIntegrationHandler(router *http.ServeMux, service i
 //		    description: Cluster name
 //		    type: string
 //		    example: cluster
-//		  - in: query
-//		    name: server
-//		    description: Server name
-//		    type: string
-//		    example: localhost
-//		  - in: query
-//		    name: project
-//		    description: Project name
-//		    type: string
-//		    example: default
 //		responses:
 //		  "200":
 //		    description: API network_integration
@@ -91,10 +81,6 @@ func (i *networkIntegrationHandler) networkIntegrationsGet(r *http.Request) resp
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
-	}
-
-	if r.URL.Query().Get("server") != "" {
-		filter.Server = ptr.To(r.URL.Query().Get("server"))
 	}
 
 	networkIntegrationIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
@@ -160,7 +146,6 @@ func (i *networkIntegrationHandler) networkIntegrationGet(r *http.Request) respo
 		api.NetworkIntegration{
 			ID:          networkIntegration.ID,
 			ClusterID:   networkIntegration.ClusterID,
-			ServerID:    networkIntegration.ServerID,
 			Name:        networkIntegration.Name,
 			Object:      networkIntegration.Object,
 			LastUpdated: networkIntegration.LastUpdated,

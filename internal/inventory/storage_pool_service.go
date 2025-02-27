@@ -14,7 +14,6 @@ import (
 type storagePoolService struct {
 	repo              StoragePoolRepo
 	clusterSvc        ClusterService
-	serverSvc         ServerService
 	storagePoolClient StoragePoolServerClient
 
 	now func() time.Time
@@ -24,11 +23,10 @@ var _ StoragePoolService = &storagePoolService{}
 
 type StoragePoolServiceOption func(s *storagePoolService)
 
-func NewStoragePoolService(repo StoragePoolRepo, clusterSvc ClusterService, serverSvc ServerService, client StoragePoolServerClient, opts ...StoragePoolServiceOption) storagePoolService {
+func NewStoragePoolService(repo StoragePoolRepo, clusterSvc ClusterService, client StoragePoolServerClient, opts ...StoragePoolServiceOption) storagePoolService {
 	storagePoolSvc := storagePoolService{
 		repo:              repo,
 		clusterSvc:        clusterSvc,
-		serverSvc:         serverSvc,
 		storagePoolClient: client,
 
 		now: time.Now,
@@ -56,12 +54,12 @@ func (s storagePoolService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		server, err := s.serverSvc.GetByID(ctx, storagePool.ServerID)
+		cluster, err := s.clusterSvc.GetByID(ctx, storagePool.ClusterID)
 		if err != nil {
 			return err
 		}
 
-		serverStoragePool, err := s.storagePoolClient.GetStoragePoolByName(ctx, server.ConnectionURL, storagePool.Name)
+		retrievedStoragePool, err := s.storagePoolClient.GetStoragePoolByName(ctx, cluster.ConnectionURL, storagePool.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, storagePool.ID)
 			if err != nil {
@@ -75,7 +73,7 @@ func (s storagePoolService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		storagePool.Object = serverStoragePool
+		storagePool.Object = retrievedStoragePool
 		storagePool.LastUpdated = s.now()
 
 		err = storagePool.Validate()
@@ -114,44 +112,27 @@ func (s storagePoolService) SyncAll(ctx context.Context) error {
 }
 
 func (s storagePoolService) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
 	if err != nil {
 		return err
 	}
 
-	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s storagePoolService) SyncServer(ctx context.Context, serverID int) error {
-	server, err := s.serverSvc.GetByID(ctx, serverID)
-	if err != nil {
-		return err
-	}
-
-	serverStoragePools, err := s.storagePoolClient.GetStoragePools(ctx, server.ConnectionURL)
+	retrievedStoragePools, err := s.storagePoolClient.GetStoragePools(ctx, cluster.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByServerID(ctx, serverID)
+		err = s.repo.DeleteByClusterID(ctx, clusterID)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
-		for _, serverStoragePool := range serverStoragePools {
+		for _, retrievedStoragePool := range retrievedStoragePools {
 			storagePool := StoragePool{
-				ClusterID:   server.ClusterID,
-				ServerID:    serverID,
-				Name:        serverStoragePool.Name,
-				Object:      serverStoragePool,
+				ClusterID:   clusterID,
+				Name:        retrievedStoragePool.Name,
+				Object:      retrievedStoragePool,
 				LastUpdated: s.now(),
 			}
 

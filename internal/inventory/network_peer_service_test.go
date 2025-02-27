@@ -55,7 +55,7 @@ func TestNetworkPeerService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			networkPeerSvc := inventory.NewNetworkPeerService(repo, nil, nil, nil, nil, inventory.NetworkPeerWithNow(func() time.Time {
+			networkPeerSvc := inventory.NewNetworkPeerService(repo, nil, nil, nil, inventory.NetworkPeerWithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -83,7 +83,7 @@ func TestNetworkPeerService_GetByID(t *testing.T) {
 			idArg: 1,
 			repoGetByIDNetworkPeer: inventory.NetworkPeer{
 				ID:          1,
-				ServerID:    1,
+				ClusterID:   1,
 				NetworkName: "parent one",
 				Name:        "one",
 				Object:      incusapi.NetworkPeer{},
@@ -110,7 +110,7 @@ func TestNetworkPeerService_GetByID(t *testing.T) {
 				},
 			}
 
-			networkPeerSvc := inventory.NewNetworkPeerService(repo, nil, nil, nil, nil, inventory.NetworkPeerWithNow(func() time.Time {
+			networkPeerSvc := inventory.NewNetworkPeerService(repo, nil, nil, nil, inventory.NetworkPeerWithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -127,8 +127,8 @@ func TestNetworkPeerService_GetByID(t *testing.T) {
 func TestNetworkPeerService_ResyncByID(t *testing.T) {
 	tests := []struct {
 		name                                     string
-		serverSvcGetByIDServer                   provisioning.Server
-		serverSvcGetByIDErr                      error
+		clusterSvcGetByIDCluster                 provisioning.Cluster
+		clusterSvcGetByIDErr                     error
 		networkPeerClientGetNetworkPeerByName    incusapi.NetworkPeer
 		networkPeerClientGetNetworkPeerByNameErr error
 		repoGetByIDNetworkPeer                   inventory.NetworkPeer
@@ -142,14 +142,13 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 			name: "success",
 			repoGetByIDNetworkPeer: inventory.NetworkPeer{
 				ID:          1,
-				ServerID:    1,
+				ClusterID:   1,
 				Name:        "one",
 				NetworkName: "network",
 			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkPeerClientGetNetworkPeerByName: incusapi.NetworkPeer{
 				Name: "networkPeer one",
@@ -161,14 +160,13 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 			name: "success - networkPeer get by name - not found",
 			repoGetByIDNetworkPeer: inventory.NetworkPeer{
 				ID:          1,
-				ServerID:    1,
+				ClusterID:   1,
 				Name:        "one",
 				NetworkName: "network",
 			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkPeerClientGetNetworkPeerByNameErr: domain.ErrNotFound,
 
@@ -181,14 +179,14 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - server get by ID",
+			name: "error - cluster get by ID",
 			repoGetByIDNetworkPeer: inventory.NetworkPeer{
 				ID:          1,
-				ServerID:    1,
+				ClusterID:   1,
 				Name:        "one",
 				NetworkName: "network",
 			},
-			serverSvcGetByIDErr: boom.Error,
+			clusterSvcGetByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -196,14 +194,13 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 			name: "error - networkPeer get by name",
 			repoGetByIDNetworkPeer: inventory.NetworkPeer{
 				ID:          1,
-				ServerID:    1,
+				ClusterID:   1,
 				Name:        "one",
 				NetworkName: "network",
 			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkPeerClientGetNetworkPeerByNameErr: boom.Error,
 
@@ -213,14 +210,13 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 			name: "error - networkPeer get by name - not found - delete by id",
 			repoGetByIDNetworkPeer: inventory.NetworkPeer{
 				ID:          1,
-				ServerID:    1,
+				ClusterID:   1,
 				Name:        "one",
 				NetworkName: "network",
 			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkPeerClientGetNetworkPeerByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr:                        boom.Error,
@@ -231,14 +227,13 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 			name: "error - validate",
 			repoGetByIDNetworkPeer: inventory.NetworkPeer{
 				ID:          1,
-				ServerID:    1,
+				ClusterID:   1,
 				Name:        "", // invalid
 				NetworkName: "network",
 			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkPeerClientGetNetworkPeerByName: incusapi.NetworkPeer{
 				Name: "networkPeer one",
@@ -253,14 +248,13 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 			name: "error - update by ID",
 			repoGetByIDNetworkPeer: inventory.NetworkPeer{
 				ID:          1,
-				ServerID:    1,
+				ClusterID:   1,
 				Name:        "one",
 				NetworkName: "network",
 			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkPeerClientGetNetworkPeerByName: incusapi.NetworkPeer{
 				Name: "networkPeer one",
@@ -287,10 +281,10 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			serverSvc := &serviceMock.ServerServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+			clusterSvc := &serviceMock.ClusterServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
 					require.Equal(t, 1, id)
-					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
 
@@ -302,7 +296,7 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			networkPeerSvc := inventory.NewNetworkPeerService(repo, nil, serverSvc, networkPeerClient, nil, inventory.NetworkPeerWithNow(func() time.Time {
+			networkPeerSvc := inventory.NewNetworkPeerService(repo, clusterSvc, networkPeerClient, nil, inventory.NetworkPeerWithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -321,15 +315,13 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 		name                                string
 		clusterSvcGetAllClusters            provisioning.Clusters
 		clusterSvcGetAllErr                 error
-		serverSvcGetAllByClusterIDServers   provisioning.Servers
-		serverSvcGetAllByClusterIDErr       error
-		serverSvcGetByIDServer              provisioning.Server
-		serverSvcGetByIDErr                 error
+		clusterSvcGetByIDCluster            provisioning.Cluster
+		clusterSvcGetByIDErr                error
 		networkClientGetNetworks            []incusapi.Network
 		networkClientGetNetworksErr         error
 		networkPeerClientGetNetworkPeers    []incusapi.NetworkPeer
 		networkPeerClientGetNetworkPeersErr error
-		repoDeleteByServerIDErr             error
+		repoDeleteByClusterIDErr            error
 		repoCreateErr                       error
 		serviceOptions                      []inventory.NetworkPeerServiceOption
 
@@ -343,17 +335,9 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -383,33 +367,14 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - server service get all by cluster ID",
+			name: "error - cluster service get by ID",
 			clusterSvcGetAllClusters: provisioning.Clusters{
 				{
 					ID:   1,
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - server service get by ID",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDErr: boom.Error,
+			clusterSvcGetByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -421,17 +386,9 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworksErr: boom.Error,
 
@@ -445,17 +402,9 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -467,24 +416,16 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - network_peers delete by server ID",
+			name: "error - network_peers delete by cluster ID",
 			clusterSvcGetAllClusters: provisioning.Clusters{
 				{
 					ID:   1,
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -496,7 +437,7 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 					Name: "networkPeer one",
 				},
 			},
-			repoDeleteByServerIDErr: boom.Error,
+			repoDeleteByClusterIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -508,17 +449,9 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -544,17 +477,9 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -576,8 +501,8 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkPeerRepoMock{
-				DeleteByServerIDFunc: func(ctx context.Context, serverID int) error {
-					return tc.repoDeleteByServerIDErr
+				DeleteByClusterIDFunc: func(ctx context.Context, clusterID int) error {
+					return tc.repoDeleteByClusterIDErr
 				},
 				CreateFunc: func(ctx context.Context, networkPeer inventory.NetworkPeer) (inventory.NetworkPeer, error) {
 					return inventory.NetworkPeer{}, tc.repoCreateErr
@@ -588,14 +513,8 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
 					return tc.clusterSvcGetAllClusters, tc.clusterSvcGetAllErr
 				},
-			}
-
-			serverSvc := &serviceMock.ServerServiceMock{
-				GetAllByClusterIDFunc: func(ctx context.Context, clusterID int) (provisioning.Servers, error) {
-					return tc.serverSvcGetAllByClusterIDServers, tc.serverSvcGetAllByClusterIDErr
-				},
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
-					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
+					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
 
@@ -611,7 +530,7 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkPeerSvc := inventory.NewNetworkPeerService(repo, clusterSvc, serverSvc, networkPeerClient, networkClient,
+			networkPeerSvc := inventory.NewNetworkPeerService(repo, clusterSvc, networkPeerClient, networkClient,
 				append(
 					tc.serviceOptions,
 					inventory.NetworkPeerWithNow(func() time.Time {

@@ -77,7 +77,7 @@ func (s storageBucketService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		serverStorageBucket, err := s.storageBucketClient.GetStorageBucketByName(ctx, server.ConnectionURL, storageBucket.StoragePoolName, storageBucket.Name)
+		retrievedStorageBucket, err := s.storageBucketClient.GetStorageBucketByName(ctx, server.ConnectionURL, storageBucket.StoragePoolName, storageBucket.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, storageBucket.ID)
 			if err != nil {
@@ -91,8 +91,8 @@ func (s storageBucketService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		storageBucket.ProjectName = serverStorageBucket.Project
-		storageBucket.Object = serverStorageBucket
+		storageBucket.ProjectName = retrievedStorageBucket.Project
+		storageBucket.Object = retrievedStorageBucket
 		storageBucket.LastUpdated = s.now()
 
 		err = storageBucket.Validate()
@@ -152,17 +152,17 @@ func (s storageBucketService) SyncServer(ctx context.Context, serverID int) erro
 		return err
 	}
 
-	serverStoragePools, err := s.storagePoolClient.GetStoragePools(ctx, server.ConnectionURL)
+	retrievedStoragePools, err := s.storagePoolClient.GetStoragePools(ctx, server.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
-	for _, storagePool := range serverStoragePools {
+	for _, storagePool := range retrievedStoragePools {
 		if s.isParentFilted(storagePool) {
 			continue
 		}
 
-		serverStorageBuckets, err := s.storageBucketClient.GetStorageBuckets(ctx, server.ConnectionURL, storagePool.Name)
+		retrievedStorageBuckets, err := s.storageBucketClient.GetStorageBuckets(ctx, server.ConnectionURL, storagePool.Name)
 		if err != nil {
 			return err
 		}
@@ -173,14 +173,14 @@ func (s storageBucketService) SyncServer(ctx context.Context, serverID int) erro
 				return err
 			}
 
-			for _, serverStorageBucket := range serverStorageBuckets {
+			for _, retrievedStorageBucket := range retrievedStorageBuckets {
 				storageBucket := StorageBucket{
 					ClusterID:       server.ClusterID,
 					ServerID:        serverID,
-					ProjectName:     serverStorageBucket.Project,
+					ProjectName:     retrievedStorageBucket.Project,
 					StoragePoolName: storagePool.Name,
-					Name:            serverStorageBucket.Name,
-					Object:          serverStorageBucket,
+					Name:            retrievedStorageBucket.Name,
+					Object:          retrievedStorageBucket,
 					LastUpdated:     s.now(),
 				}
 

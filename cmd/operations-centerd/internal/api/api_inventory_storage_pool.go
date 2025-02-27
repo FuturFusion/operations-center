@@ -43,16 +43,6 @@ func registerInventoryStoragePoolHandler(router *http.ServeMux, service inventor
 //		    description: Cluster name
 //		    type: string
 //		    example: cluster
-//		  - in: query
-//		    name: server
-//		    description: Server name
-//		    type: string
-//		    example: localhost
-//		  - in: query
-//		    name: project
-//		    description: Project name
-//		    type: string
-//		    example: default
 //		responses:
 //		  "200":
 //		    description: API storage_pool
@@ -91,10 +81,6 @@ func (i *storagePoolHandler) storagePoolsGet(r *http.Request) response.Response 
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
-	}
-
-	if r.URL.Query().Get("server") != "" {
-		filter.Server = ptr.To(r.URL.Query().Get("server"))
 	}
 
 	storagePoolIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
@@ -160,7 +146,6 @@ func (i *storagePoolHandler) storagePoolGet(r *http.Request) response.Response {
 		api.StoragePool{
 			ID:          storagePool.ID,
 			ClusterID:   storagePool.ClusterID,
-			ServerID:    storagePool.ServerID,
 			Name:        storagePool.Name,
 			Object:      storagePool.Object,
 			LastUpdated: storagePool.LastUpdated,

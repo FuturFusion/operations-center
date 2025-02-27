@@ -16,7 +16,6 @@ import (
 type networkForwardService struct {
 	repo                 NetworkForwardRepo
 	clusterSvc           ClusterService
-	serverSvc            ServerService
 	networkClient        NetworkServerClient
 	networkForwardClient NetworkForwardServerClient
 
@@ -35,11 +34,10 @@ func NetworkForwardWithParentFilter(f func(incusapi.Network) bool) NetworkForwar
 	}
 }
 
-func NewNetworkForwardService(repo NetworkForwardRepo, clusterSvc ClusterService, serverSvc ServerService, client NetworkForwardServerClient, parentClient NetworkServerClient, opts ...NetworkForwardServiceOption) networkForwardService {
+func NewNetworkForwardService(repo NetworkForwardRepo, clusterSvc ClusterService, client NetworkForwardServerClient, parentClient NetworkServerClient, opts ...NetworkForwardServiceOption) networkForwardService {
 	networkForwardSvc := networkForwardService{
 		repo:                 repo,
 		clusterSvc:           clusterSvc,
-		serverSvc:            serverSvc,
 		networkClient:        parentClient,
 		networkForwardClient: client,
 
@@ -72,12 +70,12 @@ func (s networkForwardService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		server, err := s.serverSvc.GetByID(ctx, networkForward.ServerID)
+		cluster, err := s.clusterSvc.GetByID(ctx, networkForward.ClusterID)
 		if err != nil {
 			return err
 		}
 
-		serverNetworkForward, err := s.networkForwardClient.GetNetworkForwardByName(ctx, server.ConnectionURL, networkForward.NetworkName, networkForward.Name)
+		retrievedNetworkForward, err := s.networkForwardClient.GetNetworkForwardByName(ctx, cluster.ConnectionURL, networkForward.NetworkName, networkForward.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, networkForward.ID)
 			if err != nil {
@@ -91,7 +89,7 @@ func (s networkForwardService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		networkForward.Object = serverNetworkForward
+		networkForward.Object = retrievedNetworkForward
 		networkForward.LastUpdated = s.now()
 
 		err = networkForward.Validate()
@@ -130,55 +128,38 @@ func (s networkForwardService) SyncAll(ctx context.Context) error {
 }
 
 func (s networkForwardService) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
 	if err != nil {
 		return err
 	}
 
-	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s networkForwardService) SyncServer(ctx context.Context, serverID int) error {
-	server, err := s.serverSvc.GetByID(ctx, serverID)
+	retrievedNetworks, err := s.networkClient.GetNetworks(ctx, cluster.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
-	serverNetworks, err := s.networkClient.GetNetworks(ctx, server.ConnectionURL)
-	if err != nil {
-		return err
-	}
-
-	for _, network := range serverNetworks {
+	for _, network := range retrievedNetworks {
 		if s.isParentFilted(network) {
 			continue
 		}
 
-		serverNetworkForwards, err := s.networkForwardClient.GetNetworkForwards(ctx, server.ConnectionURL, network.Name)
+		retrievedNetworkForwards, err := s.networkForwardClient.GetNetworkForwards(ctx, cluster.ConnectionURL, network.Name)
 		if err != nil {
 			return err
 		}
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
-			err = s.repo.DeleteByServerID(ctx, serverID)
+			err = s.repo.DeleteByClusterID(ctx, clusterID)
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
 			}
 
-			for _, serverNetworkForward := range serverNetworkForwards {
+			for _, retrievedNetworkForward := range retrievedNetworkForwards {
 				networkForward := NetworkForward{
-					ClusterID:   server.ClusterID,
-					ServerID:    serverID,
+					ClusterID:   clusterID,
 					NetworkName: network.Name,
-					Name:        serverNetworkForward.ListenAddress,
-					Object:      serverNetworkForward,
+					Name:        retrievedNetworkForward.ListenAddress,
+					Object:      retrievedNetworkForward,
 					LastUpdated: s.now(),
 				}
 

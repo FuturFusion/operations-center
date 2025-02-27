@@ -44,11 +44,6 @@ func registerInventoryImageHandler(router *http.ServeMux, service inventory.Imag
 //		    type: string
 //		    example: cluster
 //		  - in: query
-//		    name: server
-//		    description: Server name
-//		    type: string
-//		    example: localhost
-//		  - in: query
 //		    name: project
 //		    description: Project name
 //		    type: string
@@ -91,10 +86,6 @@ func (i *imageHandler) imagesGet(r *http.Request) response.Response {
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
-	}
-
-	if r.URL.Query().Get("server") != "" {
-		filter.Server = ptr.To(r.URL.Query().Get("server"))
 	}
 
 	if r.URL.Query().Get("project") != "" {
@@ -164,7 +155,6 @@ func (i *imageHandler) imageGet(r *http.Request) response.Response {
 		api.Image{
 			ID:          image.ID,
 			ClusterID:   image.ClusterID,
-			ServerID:    image.ServerID,
 			ProjectName: image.ProjectName,
 			Name:        image.Name,
 			Object:      image.Object,

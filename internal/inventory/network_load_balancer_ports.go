@@ -17,7 +17,6 @@ type NetworkLoadBalancerService interface {
 	ResyncByID(ctx context.Context, id int) error
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
-	SyncServer(ctx context.Context, serverID int) error
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/network_load_balancer_repo_mock_gen.go -rm . NetworkLoadBalancerRepo
@@ -29,7 +28,7 @@ type NetworkLoadBalancerRepo interface {
 	GetByID(ctx context.Context, id int) (NetworkLoadBalancer, error)
 	Create(ctx context.Context, networkLoadBalancer NetworkLoadBalancer) (NetworkLoadBalancer, error)
 	DeleteByID(ctx context.Context, id int) error
-	DeleteByServerID(ctx context.Context, serverID int) error
+	DeleteByClusterID(ctx context.Context, clusterID int) error
 	UpdateByID(ctx context.Context, networkLoadBalancer NetworkLoadBalancer) (NetworkLoadBalancer, error)
 }
 

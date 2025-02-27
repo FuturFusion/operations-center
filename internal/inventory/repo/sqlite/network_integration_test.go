@@ -4,7 +4,6 @@ package sqlite_test
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
-	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestNetworkIntegrationDatabaseActions(t *testing.T) {
@@ -31,37 +29,23 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
-	testServerA := provisioning.Server{
-		ID:            1,
-		ClusterID:     1,
-		Name:          "one",
-		Type:          api.ServerTypeIncus,
-		ConnectionURL: "https://one/",
-		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
-	}
-
-	testServerB := provisioning.Server{
-		ID:            2,
-		ClusterID:     1,
-		Name:          "two",
-		Type:          api.ServerTypeIncus,
-		ConnectionURL: "https://one/",
-		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	testClusterB := provisioning.Cluster{
+		ID:              2,
+		Name:            "two",
+		ConnectionURL:   "https://cluster-two/",
+		ServerHostnames: []string{"three", "four"},
+		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	networkIntegrationA := inventory.NetworkIntegration{
-		ServerID:    1,
+		ClusterID:   1,
 		Name:        "one",
 		Object:      incusapi.NetworkIntegration{},
 		LastUpdated: time.Now(),
 	}
 
 	networkIntegrationB := inventory.NetworkIntegration{
-		ServerID:    2,
+		ClusterID:   2,
 		Name:        "two",
 		Object:      incusapi.NetworkIntegration{},
 		LastUpdated: time.Now(),
@@ -83,7 +67,6 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), nil)
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
 
 	networkIntegration := inventorySqlite.NewNetworkIntegration(db)
 
@@ -91,14 +74,10 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	_, err = networkIntegration.Create(ctx, networkIntegrationA)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
-	// Add dummy clusters
+	// Add dummy clusters.
 	_, err = clusterSvc.Create(ctx, testClusterA)
 	require.NoError(t, err)
-
-	// Add dummy servers.
-	_, err = serverSvc.Create(ctx, testServerA)
-	require.NoError(t, err)
-	_, err = serverSvc.Create(ctx, testServerB)
+	_, err = clusterSvc.Create(ctx, testClusterB)
 	require.NoError(t, err)
 
 	// Add network_integrations
@@ -108,7 +87,7 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 
 	networkIntegrationB, err = networkIntegration.Create(ctx, networkIntegrationB)
 	require.NoError(t, err)
-	require.Equal(t, 1, networkIntegrationB.ClusterID)
+	require.Equal(t, 2, networkIntegrationB.ClusterID)
 
 	// Ensure we have two entries without filter
 	networkIntegrationIDs, err := networkIntegration.GetAllIDsWithFilter(ctx, inventory.NetworkIntegrationFilter{})
@@ -119,7 +98,6 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	// Ensure we have one entry with filter for cluster, server and project
 	networkIntegrationIDs, err = networkIntegration.GetAllIDsWithFilter(ctx, inventory.NetworkIntegrationFilter{
 		Cluster: ptr.To("one"),
-		Server:  ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkIntegrationIDs, 1)
@@ -140,8 +118,8 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	err = networkIntegration.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete network_integrations by server ID.
-	err = networkIntegration.DeleteByServerID(ctx, 2)
+	// Delete network_integrations by cluster ID.
+	err = networkIntegration.DeleteByClusterID(ctx, 2)
 	require.NoError(t, err)
 
 	_, err = networkIntegration.GetByID(ctx, networkIntegrationA.ID)

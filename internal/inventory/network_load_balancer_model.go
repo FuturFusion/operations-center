@@ -13,7 +13,6 @@ import (
 type NetworkLoadBalancer struct {
 	ID          int
 	ClusterID   int
-	ServerID    int
 	NetworkName string
 	Name        string
 	Object      incusapi.NetworkLoadBalancer
@@ -21,8 +20,8 @@ type NetworkLoadBalancer struct {
 }
 
 func (m NetworkLoadBalancer) Validate() error {
-	if m.ServerID < 1 {
-		return domain.NewValidationErrf("Invalid NetworkLoadBalancer, server id can not be less than 1")
+	if m.ClusterID < 1 {
+		return domain.NewValidationErrf("Invalid NetworkLoadBalancer, cluster id can not be less than 1")
 	}
 
 	if m.Name == "" {
@@ -40,5 +39,4 @@ type NetworkLoadBalancers []NetworkLoadBalancer
 
 type NetworkLoadBalancerFilter struct {
 	Cluster *string
-	Server  *string
 }

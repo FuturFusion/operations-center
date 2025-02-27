@@ -4,7 +4,6 @@ package sqlite_test
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
-	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestStoragePoolDatabaseActions(t *testing.T) {
@@ -31,37 +29,23 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
-	testServerA := provisioning.Server{
-		ID:            1,
-		ClusterID:     1,
-		Name:          "one",
-		Type:          api.ServerTypeIncus,
-		ConnectionURL: "https://one/",
-		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
-	}
-
-	testServerB := provisioning.Server{
-		ID:            2,
-		ClusterID:     1,
-		Name:          "two",
-		Type:          api.ServerTypeIncus,
-		ConnectionURL: "https://one/",
-		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	testClusterB := provisioning.Cluster{
+		ID:              2,
+		Name:            "two",
+		ConnectionURL:   "https://cluster-two/",
+		ServerHostnames: []string{"three", "four"},
+		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	storagePoolA := inventory.StoragePool{
-		ServerID:    1,
+		ClusterID:   1,
 		Name:        "one",
 		Object:      incusapi.StoragePool{},
 		LastUpdated: time.Now(),
 	}
 
 	storagePoolB := inventory.StoragePool{
-		ServerID:    2,
+		ClusterID:   2,
 		Name:        "two",
 		Object:      incusapi.StoragePool{},
 		LastUpdated: time.Now(),
@@ -83,7 +67,6 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), nil)
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
 
 	storagePool := inventorySqlite.NewStoragePool(db)
 
@@ -91,14 +74,10 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	_, err = storagePool.Create(ctx, storagePoolA)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
-	// Add dummy clusters
+	// Add dummy clusters.
 	_, err = clusterSvc.Create(ctx, testClusterA)
 	require.NoError(t, err)
-
-	// Add dummy servers.
-	_, err = serverSvc.Create(ctx, testServerA)
-	require.NoError(t, err)
-	_, err = serverSvc.Create(ctx, testServerB)
+	_, err = clusterSvc.Create(ctx, testClusterB)
 	require.NoError(t, err)
 
 	// Add storage_pools
@@ -108,7 +87,7 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 
 	storagePoolB, err = storagePool.Create(ctx, storagePoolB)
 	require.NoError(t, err)
-	require.Equal(t, 1, storagePoolB.ClusterID)
+	require.Equal(t, 2, storagePoolB.ClusterID)
 
 	// Ensure we have two entries without filter
 	storagePoolIDs, err := storagePool.GetAllIDsWithFilter(ctx, inventory.StoragePoolFilter{})
@@ -119,7 +98,6 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	// Ensure we have one entry with filter for cluster, server and project
 	storagePoolIDs, err = storagePool.GetAllIDsWithFilter(ctx, inventory.StoragePoolFilter{
 		Cluster: ptr.To("one"),
-		Server:  ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, storagePoolIDs, 1)
@@ -140,8 +118,8 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	err = storagePool.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete storage_pools by server ID.
-	err = storagePool.DeleteByServerID(ctx, 2)
+	// Delete storage_pools by cluster ID.
+	err = storagePool.DeleteByClusterID(ctx, 2)
 	require.NoError(t, err)
 
 	_, err = storagePool.GetByID(ctx, storagePoolA.ID)

@@ -325,8 +325,8 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 		name                                    string
 		clusterSvcGetAllClusters                provisioning.Clusters
 		clusterSvcGetAllErr                     error
-		serverSvcGetAllByClusterIDServers       provisioning.Servers
-		serverSvcGetAllByClusterIDErr           error
+		serverSvcGetAllByServerIDServers        provisioning.Servers
+		serverSvcGetAllByServerIDErr            error
 		serverSvcGetByIDServer                  provisioning.Server
 		serverSvcGetByIDErr                     error
 		storagePoolClientGetStoragePools        []incusapi.StoragePool
@@ -347,7 +347,7 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
 					ClusterID: 1,
@@ -395,7 +395,7 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDErr: boom.Error,
+			serverSvcGetAllByServerIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -407,7 +407,7 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
 					ClusterID: 1,
@@ -426,7 +426,7 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
 					ClusterID: 1,
@@ -450,7 +450,7 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
 					ClusterID: 1,
@@ -479,7 +479,7 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
 					ClusterID: 1,
@@ -514,7 +514,7 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
 					ClusterID: 1,
@@ -551,7 +551,7 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
 					ClusterID: 1,
@@ -600,7 +600,7 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 
 			serverSvc := &serviceMock.ServerServiceMock{
 				GetAllByClusterIDFunc: func(ctx context.Context, clusterID int) (provisioning.Servers, error) {
-					return tc.serverSvcGetAllByClusterIDServers, tc.serverSvcGetAllByClusterIDErr
+					return tc.serverSvcGetAllByServerIDServers, tc.serverSvcGetAllByServerIDErr
 				},
 				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
 					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr

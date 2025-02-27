@@ -55,7 +55,7 @@ func TestProjectService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			projectSvc := inventory.NewProjectService(repo, nil, nil, nil, inventory.ProjectWithNow(func() time.Time {
+			projectSvc := inventory.NewProjectService(repo, nil, nil, inventory.ProjectWithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -83,7 +83,7 @@ func TestProjectService_GetByID(t *testing.T) {
 			idArg: 1,
 			repoGetByIDProject: inventory.Project{
 				ID:          1,
-				ServerID:    1,
+				ClusterID:   1,
 				Name:        "one",
 				Object:      incusapi.Project{},
 				LastUpdated: time.Now(),
@@ -109,7 +109,7 @@ func TestProjectService_GetByID(t *testing.T) {
 				},
 			}
 
-			projectSvc := inventory.NewProjectService(repo, nil, nil, nil, inventory.ProjectWithNow(func() time.Time {
+			projectSvc := inventory.NewProjectService(repo, nil, nil, inventory.ProjectWithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -126,8 +126,8 @@ func TestProjectService_GetByID(t *testing.T) {
 func TestProjectService_ResyncByID(t *testing.T) {
 	tests := []struct {
 		name                             string
-		serverSvcGetByIDServer           provisioning.Server
-		serverSvcGetByIDErr              error
+		clusterSvcGetByIDCluster         provisioning.Cluster
+		clusterSvcGetByIDErr             error
 		projectClientGetProjectByName    incusapi.Project
 		projectClientGetProjectByNameErr error
 		repoGetByIDProject               inventory.Project
@@ -140,14 +140,13 @@ func TestProjectService_ResyncByID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByIDProject: inventory.Project{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			projectClientGetProjectByName: incusapi.Project{
 				Name: "project one",
@@ -158,14 +157,13 @@ func TestProjectService_ResyncByID(t *testing.T) {
 		{
 			name: "success - project get by name - not found",
 			repoGetByIDProject: inventory.Project{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			projectClientGetProjectByNameErr: domain.ErrNotFound,
 
@@ -178,27 +176,26 @@ func TestProjectService_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - server get by ID",
+			name: "error - cluster get by ID",
 			repoGetByIDProject: inventory.Project{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
+				ID:        1,
+				ClusterID: 1,
+				Name:      "one",
 			},
-			serverSvcGetByIDErr: boom.Error,
+			clusterSvcGetByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - project get by name",
 			repoGetByIDProject: inventory.Project{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			projectClientGetProjectByNameErr: boom.Error,
 
@@ -207,14 +204,13 @@ func TestProjectService_ResyncByID(t *testing.T) {
 		{
 			name: "error - project get by name - not found - delete by id",
 			repoGetByIDProject: inventory.Project{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			projectClientGetProjectByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr:                boom.Error,
@@ -224,14 +220,13 @@ func TestProjectService_ResyncByID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByIDProject: inventory.Project{
-				ID:       1,
-				ServerID: 1,
-				Name:     "", // invalid
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "", // invalid
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			projectClientGetProjectByName: incusapi.Project{
 				Name: "project one",
@@ -245,14 +240,13 @@ func TestProjectService_ResyncByID(t *testing.T) {
 		{
 			name: "error - update by ID",
 			repoGetByIDProject: inventory.Project{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			projectClientGetProjectByName: incusapi.Project{
 				Name: "project one",
@@ -279,10 +273,10 @@ func TestProjectService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			serverSvc := &serviceMock.ServerServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+			clusterSvc := &serviceMock.ClusterServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
 					require.Equal(t, 1, id)
-					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
 
@@ -293,7 +287,7 @@ func TestProjectService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			projectSvc := inventory.NewProjectService(repo, nil, serverSvc, projectClient, inventory.ProjectWithNow(func() time.Time {
+			projectSvc := inventory.NewProjectService(repo, clusterSvc, projectClient, inventory.ProjectWithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -309,18 +303,16 @@ func TestProjectService_ResyncByID(t *testing.T) {
 func TestProjectService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {
-		name                              string
-		clusterSvcGetAllClusters          provisioning.Clusters
-		clusterSvcGetAllErr               error
-		serverSvcGetAllByClusterIDServers provisioning.Servers
-		serverSvcGetAllByClusterIDErr     error
-		serverSvcGetByIDServer            provisioning.Server
-		serverSvcGetByIDErr               error
-		projectClientGetProjects          []incusapi.Project
-		projectClientGetProjectsErr       error
-		repoDeleteByServerIDErr           error
-		repoCreateErr                     error
-		serviceOptions                    []inventory.ProjectServiceOption
+		name                        string
+		clusterSvcGetAllClusters    provisioning.Clusters
+		clusterSvcGetAllErr         error
+		clusterSvcGetByIDCluster    provisioning.Cluster
+		clusterSvcGetByIDErr        error
+		projectClientGetProjects    []incusapi.Project
+		projectClientGetProjectsErr error
+		repoDeleteByClusterIDErr    error
+		repoCreateErr               error
+		serviceOptions              []inventory.ProjectServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -332,17 +324,9 @@ func TestProjectService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			projectClientGetProjects: []incusapi.Project{
 				{
@@ -359,33 +343,14 @@ func TestProjectService_SyncAll(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - server service get all by cluster ID",
+			name: "error - cluster service get by ID",
 			clusterSvcGetAllClusters: provisioning.Clusters{
 				{
 					ID:   1,
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - server service get by ID",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDErr: boom.Error,
+			clusterSvcGetByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -397,48 +362,32 @@ func TestProjectService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			projectClientGetProjectsErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - projects delete by server ID",
+			name: "error - projects delete by cluster ID",
 			clusterSvcGetAllClusters: provisioning.Clusters{
 				{
 					ID:   1,
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			projectClientGetProjects: []incusapi.Project{
 				{
 					Name: "project one",
 				},
 			},
-			repoDeleteByServerIDErr: boom.Error,
+			repoDeleteByClusterIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -450,17 +399,9 @@ func TestProjectService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			projectClientGetProjects: []incusapi.Project{
 				{
@@ -481,17 +422,9 @@ func TestProjectService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			projectClientGetProjects: []incusapi.Project{
 				{
@@ -508,8 +441,8 @@ func TestProjectService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ProjectRepoMock{
-				DeleteByServerIDFunc: func(ctx context.Context, serverID int) error {
-					return tc.repoDeleteByServerIDErr
+				DeleteByClusterIDFunc: func(ctx context.Context, clusterID int) error {
+					return tc.repoDeleteByClusterIDErr
 				},
 				CreateFunc: func(ctx context.Context, project inventory.Project) (inventory.Project, error) {
 					return inventory.Project{}, tc.repoCreateErr
@@ -520,14 +453,8 @@ func TestProjectService_SyncAll(t *testing.T) {
 				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
 					return tc.clusterSvcGetAllClusters, tc.clusterSvcGetAllErr
 				},
-			}
-
-			serverSvc := &serviceMock.ServerServiceMock{
-				GetAllByClusterIDFunc: func(ctx context.Context, clusterID int) (provisioning.Servers, error) {
-					return tc.serverSvcGetAllByClusterIDServers, tc.serverSvcGetAllByClusterIDErr
-				},
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
-					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
+					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
 
@@ -537,7 +464,7 @@ func TestProjectService_SyncAll(t *testing.T) {
 				},
 			}
 
-			projectSvc := inventory.NewProjectService(repo, clusterSvc, serverSvc, projectClient,
+			projectSvc := inventory.NewProjectService(repo, clusterSvc, projectClient,
 				append(
 					tc.serviceOptions,
 					inventory.ProjectWithNow(func() time.Time {

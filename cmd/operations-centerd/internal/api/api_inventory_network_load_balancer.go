@@ -43,16 +43,6 @@ func registerInventoryNetworkLoadBalancerHandler(router *http.ServeMux, service 
 //		    description: Cluster name
 //		    type: string
 //		    example: cluster
-//		  - in: query
-//		    name: server
-//		    description: Server name
-//		    type: string
-//		    example: localhost
-//		  - in: query
-//		    name: project
-//		    description: Project name
-//		    type: string
-//		    example: default
 //		responses:
 //		  "200":
 //		    description: API network_load_balancer
@@ -91,10 +81,6 @@ func (i *networkLoadBalancerHandler) networkLoadBalancersGet(r *http.Request) re
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
-	}
-
-	if r.URL.Query().Get("server") != "" {
-		filter.Server = ptr.To(r.URL.Query().Get("server"))
 	}
 
 	networkLoadBalancerIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
@@ -160,7 +146,6 @@ func (i *networkLoadBalancerHandler) networkLoadBalancerGet(r *http.Request) res
 		api.NetworkLoadBalancer{
 			ID:          networkLoadBalancer.ID,
 			ClusterID:   networkLoadBalancer.ClusterID,
-			ServerID:    networkLoadBalancer.ServerID,
 			NetworkName: networkLoadBalancer.NetworkName,
 			Name:        networkLoadBalancer.Name,
 			Object:      networkLoadBalancer.Object,

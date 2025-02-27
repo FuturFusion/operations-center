@@ -14,7 +14,6 @@ import (
 type profileService struct {
 	repo          ProfileRepo
 	clusterSvc    ClusterService
-	serverSvc     ServerService
 	profileClient ProfileServerClient
 
 	now func() time.Time
@@ -24,11 +23,10 @@ var _ ProfileService = &profileService{}
 
 type ProfileServiceOption func(s *profileService)
 
-func NewProfileService(repo ProfileRepo, clusterSvc ClusterService, serverSvc ServerService, client ProfileServerClient, opts ...ProfileServiceOption) profileService {
+func NewProfileService(repo ProfileRepo, clusterSvc ClusterService, client ProfileServerClient, opts ...ProfileServiceOption) profileService {
 	profileSvc := profileService{
 		repo:          repo,
 		clusterSvc:    clusterSvc,
-		serverSvc:     serverSvc,
 		profileClient: client,
 
 		now: time.Now,
@@ -56,12 +54,12 @@ func (s profileService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		server, err := s.serverSvc.GetByID(ctx, profile.ServerID)
+		cluster, err := s.clusterSvc.GetByID(ctx, profile.ClusterID)
 		if err != nil {
 			return err
 		}
 
-		serverProfile, err := s.profileClient.GetProfileByName(ctx, server.ConnectionURL, profile.Name)
+		retrievedProfile, err := s.profileClient.GetProfileByName(ctx, cluster.ConnectionURL, profile.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, profile.ID)
 			if err != nil {
@@ -75,8 +73,8 @@ func (s profileService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		profile.ProjectName = serverProfile.Project
-		profile.Object = serverProfile
+		profile.ProjectName = retrievedProfile.Project
+		profile.Object = retrievedProfile
 		profile.LastUpdated = s.now()
 
 		err = profile.Validate()
@@ -115,45 +113,28 @@ func (s profileService) SyncAll(ctx context.Context) error {
 }
 
 func (s profileService) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
 	if err != nil {
 		return err
 	}
 
-	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s profileService) SyncServer(ctx context.Context, serverID int) error {
-	server, err := s.serverSvc.GetByID(ctx, serverID)
-	if err != nil {
-		return err
-	}
-
-	serverProfiles, err := s.profileClient.GetProfiles(ctx, server.ConnectionURL)
+	retrievedProfiles, err := s.profileClient.GetProfiles(ctx, cluster.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByServerID(ctx, serverID)
+		err = s.repo.DeleteByClusterID(ctx, clusterID)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
-		for _, serverProfile := range serverProfiles {
+		for _, retrievedProfile := range retrievedProfiles {
 			profile := Profile{
-				ClusterID:   server.ClusterID,
-				ServerID:    serverID,
-				ProjectName: serverProfile.Project,
-				Name:        serverProfile.Name,
-				Object:      serverProfile,
+				ClusterID:   clusterID,
+				ProjectName: retrievedProfile.Project,
+				Name:        retrievedProfile.Name,
+				Object:      retrievedProfile,
 				LastUpdated: s.now(),
 			}
 

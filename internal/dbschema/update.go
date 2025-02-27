@@ -35,16 +35,13 @@ CREATE TABLE servers (
 
 CREATE TABLE images (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, project_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE instances (
@@ -55,134 +52,104 @@ CREATE TABLE instances (
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (server_id, project_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 
 CREATE TABLE networks (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, project_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE network_acls (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, project_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE network_forwards (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, network_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, network_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE network_integrations (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE network_load_balancers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, network_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, network_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE network_peers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, network_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, network_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE network_zones (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, project_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE profiles (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, project_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE projects (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE storage_buckets (
@@ -194,23 +161,17 @@ CREATE TABLE storage_buckets (
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (server_id, project_name, storage_pool_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 
 CREATE TABLE storage_pools (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE storage_volumes (
@@ -222,9 +183,6 @@ CREATE TABLE storage_volumes (
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (server_id, project_name, storage_pool_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 
@@ -292,16 +250,13 @@ CREATE TABLE servers (
 
 CREATE TABLE images (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, project_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE instances (
@@ -312,134 +267,104 @@ CREATE TABLE instances (
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (server_id, project_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 
 CREATE TABLE networks (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, project_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE network_acls (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, project_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE network_forwards (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, network_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, network_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE network_integrations (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE network_load_balancers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, network_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, network_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE network_peers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, network_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, network_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE network_zones (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, project_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE profiles (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, project_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE projects (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE storage_buckets (
@@ -451,23 +376,17 @@ CREATE TABLE storage_buckets (
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (server_id, project_name, storage_pool_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 
 CREATE TABLE storage_pools (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE storage_volumes (
@@ -479,9 +398,6 @@ CREATE TABLE storage_volumes (
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (server_id, project_name, storage_pool_name, name),
-  -- // FIXME: Not sure about this foreign key constraint, since inventory and provisioning do life in separate domains
-  -- and constraints should not cross domain boundaries.
-  -- Or is it wrong to assume these to be separate domains in the first place?
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 `

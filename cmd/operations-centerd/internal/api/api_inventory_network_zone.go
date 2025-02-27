@@ -44,11 +44,6 @@ func registerInventoryNetworkZoneHandler(router *http.ServeMux, service inventor
 //		    type: string
 //		    example: cluster
 //		  - in: query
-//		    name: server
-//		    description: Server name
-//		    type: string
-//		    example: localhost
-//		  - in: query
 //		    name: project
 //		    description: Project name
 //		    type: string
@@ -91,10 +86,6 @@ func (i *networkZoneHandler) networkZonesGet(r *http.Request) response.Response 
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
-	}
-
-	if r.URL.Query().Get("server") != "" {
-		filter.Server = ptr.To(r.URL.Query().Get("server"))
 	}
 
 	if r.URL.Query().Get("project") != "" {
@@ -164,7 +155,6 @@ func (i *networkZoneHandler) networkZoneGet(r *http.Request) response.Response {
 		api.NetworkZone{
 			ID:          networkZone.ID,
 			ClusterID:   networkZone.ClusterID,
-			ServerID:    networkZone.ServerID,
 			ProjectName: networkZone.ProjectName,
 			Name:        networkZone.Name,
 			Object:      networkZone.Object,

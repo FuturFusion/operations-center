@@ -16,7 +16,6 @@ import (
 type networkLoadBalancerService struct {
 	repo                      NetworkLoadBalancerRepo
 	clusterSvc                ClusterService
-	serverSvc                 ServerService
 	networkClient             NetworkServerClient
 	networkLoadBalancerClient NetworkLoadBalancerServerClient
 
@@ -35,11 +34,10 @@ func NetworkLoadBalancerWithParentFilter(f func(incusapi.Network) bool) NetworkL
 	}
 }
 
-func NewNetworkLoadBalancerService(repo NetworkLoadBalancerRepo, clusterSvc ClusterService, serverSvc ServerService, client NetworkLoadBalancerServerClient, parentClient NetworkServerClient, opts ...NetworkLoadBalancerServiceOption) networkLoadBalancerService {
+func NewNetworkLoadBalancerService(repo NetworkLoadBalancerRepo, clusterSvc ClusterService, client NetworkLoadBalancerServerClient, parentClient NetworkServerClient, opts ...NetworkLoadBalancerServiceOption) networkLoadBalancerService {
 	networkLoadBalancerSvc := networkLoadBalancerService{
 		repo:                      repo,
 		clusterSvc:                clusterSvc,
-		serverSvc:                 serverSvc,
 		networkClient:             parentClient,
 		networkLoadBalancerClient: client,
 
@@ -72,12 +70,12 @@ func (s networkLoadBalancerService) ResyncByID(ctx context.Context, id int) erro
 			return err
 		}
 
-		server, err := s.serverSvc.GetByID(ctx, networkLoadBalancer.ServerID)
+		cluster, err := s.clusterSvc.GetByID(ctx, networkLoadBalancer.ClusterID)
 		if err != nil {
 			return err
 		}
 
-		serverNetworkLoadBalancer, err := s.networkLoadBalancerClient.GetNetworkLoadBalancerByName(ctx, server.ConnectionURL, networkLoadBalancer.NetworkName, networkLoadBalancer.Name)
+		retrievedNetworkLoadBalancer, err := s.networkLoadBalancerClient.GetNetworkLoadBalancerByName(ctx, cluster.ConnectionURL, networkLoadBalancer.NetworkName, networkLoadBalancer.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, networkLoadBalancer.ID)
 			if err != nil {
@@ -91,7 +89,7 @@ func (s networkLoadBalancerService) ResyncByID(ctx context.Context, id int) erro
 			return err
 		}
 
-		networkLoadBalancer.Object = serverNetworkLoadBalancer
+		networkLoadBalancer.Object = retrievedNetworkLoadBalancer
 		networkLoadBalancer.LastUpdated = s.now()
 
 		err = networkLoadBalancer.Validate()
@@ -130,55 +128,38 @@ func (s networkLoadBalancerService) SyncAll(ctx context.Context) error {
 }
 
 func (s networkLoadBalancerService) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
 	if err != nil {
 		return err
 	}
 
-	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s networkLoadBalancerService) SyncServer(ctx context.Context, serverID int) error {
-	server, err := s.serverSvc.GetByID(ctx, serverID)
+	retrievedNetworks, err := s.networkClient.GetNetworks(ctx, cluster.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
-	serverNetworks, err := s.networkClient.GetNetworks(ctx, server.ConnectionURL)
-	if err != nil {
-		return err
-	}
-
-	for _, network := range serverNetworks {
+	for _, network := range retrievedNetworks {
 		if s.isParentFilted(network) {
 			continue
 		}
 
-		serverNetworkLoadBalancers, err := s.networkLoadBalancerClient.GetNetworkLoadBalancers(ctx, server.ConnectionURL, network.Name)
+		retrievedNetworkLoadBalancers, err := s.networkLoadBalancerClient.GetNetworkLoadBalancers(ctx, cluster.ConnectionURL, network.Name)
 		if err != nil {
 			return err
 		}
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
-			err = s.repo.DeleteByServerID(ctx, serverID)
+			err = s.repo.DeleteByClusterID(ctx, clusterID)
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
 			}
 
-			for _, serverNetworkLoadBalancer := range serverNetworkLoadBalancers {
+			for _, retrievedNetworkLoadBalancer := range retrievedNetworkLoadBalancers {
 				networkLoadBalancer := NetworkLoadBalancer{
-					ClusterID:   server.ClusterID,
-					ServerID:    serverID,
+					ClusterID:   clusterID,
 					NetworkName: network.Name,
-					Name:        serverNetworkLoadBalancer.ListenAddress,
-					Object:      serverNetworkLoadBalancer,
+					Name:        retrievedNetworkLoadBalancer.ListenAddress,
+					Object:      retrievedNetworkLoadBalancer,
 					LastUpdated: s.now(),
 				}
 

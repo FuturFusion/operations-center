@@ -57,6 +57,36 @@ func (_d ImageRepoWithSlog) Create(ctx context.Context, image _sourceInventory.I
 	return _d._base.Create(ctx, image)
 }
 
+// DeleteByClusterID implements _sourceInventory.ImageRepo
+func (_d ImageRepoWithSlog) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("clusterID", clusterID),
+		)
+	}
+	log.Debug("ImageRepoWithSlog: calling DeleteByClusterID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("ImageRepoWithSlog: method DeleteByClusterID returned an error")
+		} else {
+			log.Debug("ImageRepoWithSlog: method DeleteByClusterID finished")
+		}
+	}()
+	return _d._base.DeleteByClusterID(ctx, clusterID)
+}
+
 // DeleteByID implements _sourceInventory.ImageRepo
 func (_d ImageRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
@@ -85,36 +115,6 @@ func (_d ImageRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) 
 		}
 	}()
 	return _d._base.DeleteByID(ctx, id)
-}
-
-// DeleteByServerID implements _sourceInventory.ImageRepo
-func (_d ImageRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-			slog.Int("serverID", serverID),
-		)
-	}
-	log.Debug("ImageRepoWithSlog: calling DeleteByServerID")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("ImageRepoWithSlog: method DeleteByServerID returned an error")
-		} else {
-			log.Debug("ImageRepoWithSlog: method DeleteByServerID finished")
-		}
-	}()
-	return _d._base.DeleteByServerID(ctx, serverID)
 }
 
 // GetAllIDsWithFilter implements _sourceInventory.ImageRepo

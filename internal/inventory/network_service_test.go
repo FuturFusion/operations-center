@@ -55,7 +55,7 @@ func TestNetworkService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			networkSvc := inventory.NewNetworkService(repo, nil, nil, nil, inventory.NetworkWithNow(func() time.Time {
+			networkSvc := inventory.NewNetworkService(repo, nil, nil, inventory.NetworkWithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -83,7 +83,7 @@ func TestNetworkService_GetByID(t *testing.T) {
 			idArg: 1,
 			repoGetByIDNetwork: inventory.Network{
 				ID:          1,
-				ServerID:    1,
+				ClusterID:   1,
 				ProjectName: "one",
 				Name:        "one",
 				Object:      incusapi.Network{},
@@ -110,7 +110,7 @@ func TestNetworkService_GetByID(t *testing.T) {
 				},
 			}
 
-			networkSvc := inventory.NewNetworkService(repo, nil, nil, nil, inventory.NetworkWithNow(func() time.Time {
+			networkSvc := inventory.NewNetworkService(repo, nil, nil, inventory.NetworkWithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -127,8 +127,8 @@ func TestNetworkService_GetByID(t *testing.T) {
 func TestNetworkService_ResyncByID(t *testing.T) {
 	tests := []struct {
 		name                             string
-		serverSvcGetByIDServer           provisioning.Server
-		serverSvcGetByIDErr              error
+		clusterSvcGetByIDCluster         provisioning.Cluster
+		clusterSvcGetByIDErr             error
 		networkClientGetNetworkByName    incusapi.Network
 		networkClientGetNetworkByNameErr error
 		repoGetByIDNetwork               inventory.Network
@@ -141,14 +141,13 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByIDNetwork: inventory.Network{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworkByName: incusapi.Network{
 				Name:    "network one",
@@ -160,14 +159,13 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 		{
 			name: "success - network get by name - not found",
 			repoGetByIDNetwork: inventory.Network{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworkByNameErr: domain.ErrNotFound,
 
@@ -180,27 +178,26 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - server get by ID",
+			name: "error - cluster get by ID",
 			repoGetByIDNetwork: inventory.Network{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
+				ID:        1,
+				ClusterID: 1,
+				Name:      "one",
 			},
-			serverSvcGetByIDErr: boom.Error,
+			clusterSvcGetByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - network get by name",
 			repoGetByIDNetwork: inventory.Network{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworkByNameErr: boom.Error,
 
@@ -209,14 +206,13 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 		{
 			name: "error - network get by name - not found - delete by id",
 			repoGetByIDNetwork: inventory.Network{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworkByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr:                boom.Error,
@@ -226,14 +222,13 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByIDNetwork: inventory.Network{
-				ID:       1,
-				ServerID: 1,
-				Name:     "", // invalid
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "", // invalid
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworkByName: incusapi.Network{
 				Name:    "network one",
@@ -248,14 +243,13 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 		{
 			name: "error - update by ID",
 			repoGetByIDNetwork: inventory.Network{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworkByName: incusapi.Network{
 				Name:    "network one",
@@ -283,10 +277,10 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			serverSvc := &serviceMock.ServerServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+			clusterSvc := &serviceMock.ClusterServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
 					require.Equal(t, 1, id)
-					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
 
@@ -297,7 +291,7 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			networkSvc := inventory.NewNetworkService(repo, nil, serverSvc, networkClient, inventory.NetworkWithNow(func() time.Time {
+			networkSvc := inventory.NewNetworkService(repo, clusterSvc, networkClient, inventory.NetworkWithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -313,18 +307,16 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 func TestNetworkService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {
-		name                              string
-		clusterSvcGetAllClusters          provisioning.Clusters
-		clusterSvcGetAllErr               error
-		serverSvcGetAllByClusterIDServers provisioning.Servers
-		serverSvcGetAllByClusterIDErr     error
-		serverSvcGetByIDServer            provisioning.Server
-		serverSvcGetByIDErr               error
-		networkClientGetNetworks          []incusapi.Network
-		networkClientGetNetworksErr       error
-		repoDeleteByServerIDErr           error
-		repoCreateErr                     error
-		serviceOptions                    []inventory.NetworkServiceOption
+		name                        string
+		clusterSvcGetAllClusters    provisioning.Clusters
+		clusterSvcGetAllErr         error
+		clusterSvcGetByIDCluster    provisioning.Cluster
+		clusterSvcGetByIDErr        error
+		networkClientGetNetworks    []incusapi.Network
+		networkClientGetNetworksErr error
+		repoDeleteByClusterIDErr    error
+		repoCreateErr               error
+		serviceOptions              []inventory.NetworkServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -336,17 +328,9 @@ func TestNetworkService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -364,33 +348,14 @@ func TestNetworkService_SyncAll(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - server service get all by cluster ID",
+			name: "error - cluster service get by ID",
 			clusterSvcGetAllClusters: provisioning.Clusters{
 				{
 					ID:   1,
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - server service get by ID",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDErr: boom.Error,
+			clusterSvcGetByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -402,41 +367,25 @@ func TestNetworkService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworksErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - networks delete by server ID",
+			name: "error - networks delete by cluster ID",
 			clusterSvcGetAllClusters: provisioning.Clusters{
 				{
 					ID:   1,
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -444,7 +393,7 @@ func TestNetworkService_SyncAll(t *testing.T) {
 					Project: "project one",
 				},
 			},
-			repoDeleteByServerIDErr: boom.Error,
+			repoDeleteByClusterIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -456,17 +405,9 @@ func TestNetworkService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -488,17 +429,9 @@ func TestNetworkService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -516,8 +449,8 @@ func TestNetworkService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkRepoMock{
-				DeleteByServerIDFunc: func(ctx context.Context, serverID int) error {
-					return tc.repoDeleteByServerIDErr
+				DeleteByClusterIDFunc: func(ctx context.Context, clusterID int) error {
+					return tc.repoDeleteByClusterIDErr
 				},
 				CreateFunc: func(ctx context.Context, network inventory.Network) (inventory.Network, error) {
 					return inventory.Network{}, tc.repoCreateErr
@@ -528,14 +461,8 @@ func TestNetworkService_SyncAll(t *testing.T) {
 				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
 					return tc.clusterSvcGetAllClusters, tc.clusterSvcGetAllErr
 				},
-			}
-
-			serverSvc := &serviceMock.ServerServiceMock{
-				GetAllByClusterIDFunc: func(ctx context.Context, clusterID int) (provisioning.Servers, error) {
-					return tc.serverSvcGetAllByClusterIDServers, tc.serverSvcGetAllByClusterIDErr
-				},
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
-					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
+					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
 
@@ -545,7 +472,7 @@ func TestNetworkService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkSvc := inventory.NewNetworkService(repo, clusterSvc, serverSvc, networkClient,
+			networkSvc := inventory.NewNetworkService(repo, clusterSvc, networkClient,
 				append(
 					tc.serviceOptions,
 					inventory.NetworkWithNow(func() time.Time {

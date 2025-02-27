@@ -28,12 +28,9 @@ func NewProject(db sqlite.DBTX) *project {
 
 func (r project) Create(ctx context.Context, in inventory.Project) (inventory.Project, error) {
 	const sqlStmt = `
-WITH _server AS (
-  SELECT cluster_id FROM servers WHERE server_id = :server_id
-)
-INSERT INTO projects (server_id, name, object, last_updated)
-VALUES(:server_id, :name, :object, :last_updated)
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, object, last_updated;
+INSERT INTO projects (cluster_id, name, object, last_updated)
+VALUES(:cluster_id, :name, :object, :last_updated)
+RETURNING id, cluster_id, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -42,7 +39,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, o
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("server_id", in.ServerID),
+		sql.Named("cluster_id", in.ClusterID),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
 		sql.Named("last_updated", in.LastUpdated),
@@ -58,8 +55,7 @@ func (r project) GetAllIDsWithFilter(ctx context.Context, filter inventory.Proje
 	const sqlStmt = `
 SELECT projects.id
 FROM projects
-  INNER JOIN servers ON projects.server_id = servers.id
-  INNER JOIN clusters ON servers.cluster_id = clusters.id
+  INNER JOIN clusters ON projects.cluster_id = clusters.id
 WHERE true
 %s
 ORDER BY projects.id
@@ -71,11 +67,6 @@ ORDER BY projects.id
 	if filter.Cluster != nil {
 		whereClause = append(whereClause, ` AND clusters.name = :cluster`)
 		args = append(args, sql.Named("cluster", filter.Cluster))
-	}
-
-	if filter.Server != nil {
-		whereClause = append(whereClause, ` AND servers.name = :server`)
-		args = append(args, sql.Named("server", filter.Server))
 	}
 
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
@@ -108,10 +99,9 @@ ORDER BY projects.id
 func (r project) GetByID(ctx context.Context, id int) (inventory.Project, error) {
 	const sqlStmt = `
 SELECT
-  projects.id, servers.cluster_id as cluster_id, projects.server_id, projects.name, projects.object, projects.last_updated
+  projects.id, projects.cluster_id, projects.name, projects.object, projects.last_updated
 FROM
   projects
-  INNER JOIN servers ON projects.server_id = servers.id
 WHERE projects.id=:id;
 `
 
@@ -143,10 +133,10 @@ func (r project) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r project) DeleteByServerID(ctx context.Context, serverID int) error {
-	const sqlStmt = `DELETE FROM projects WHERE server_id=:serverID;`
+func (r project) DeleteByClusterID(ctx context.Context, clusterID int) error {
+	const sqlStmt = `DELETE FROM projects WHERE cluster_id=:clusterID;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("clusterID", clusterID))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -165,12 +155,9 @@ func (r project) DeleteByServerID(ctx context.Context, serverID int) error {
 
 func (r project) UpdateByID(ctx context.Context, in inventory.Project) (inventory.Project, error) {
 	const sqlStmt = `
-WITH _server AS (
-  SELECT cluster_id FROM servers WHERE server_id = :server_id
-)
-UPDATE projects SET server_id=:server_id, name=:name, object=:object, last_updated=:last_updated
+UPDATE projects SET cluster_id=:cluster_id, name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, object, last_updated;
+RETURNING id, cluster_id, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -180,7 +167,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, o
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
-		sql.Named("server_id", in.ServerID),
+		sql.Named("cluster_id", in.ClusterID),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
 		sql.Named("last_updated", in.LastUpdated),
@@ -199,7 +186,6 @@ func scanProject(row interface{ Scan(dest ...any) error }) (inventory.Project, e
 	err := row.Scan(
 		&project.ID,
 		&project.ClusterID,
-		&project.ServerID,
 		&project.Name,
 		&object,
 		&project.LastUpdated,

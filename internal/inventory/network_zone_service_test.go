@@ -55,7 +55,7 @@ func TestNetworkZoneService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			networkZoneSvc := inventory.NewNetworkZoneService(repo, nil, nil, nil, inventory.NetworkZoneWithNow(func() time.Time {
+			networkZoneSvc := inventory.NewNetworkZoneService(repo, nil, nil, inventory.NetworkZoneWithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -83,7 +83,7 @@ func TestNetworkZoneService_GetByID(t *testing.T) {
 			idArg: 1,
 			repoGetByIDNetworkZone: inventory.NetworkZone{
 				ID:          1,
-				ServerID:    1,
+				ClusterID:   1,
 				ProjectName: "one",
 				Name:        "one",
 				Object:      incusapi.NetworkZone{},
@@ -110,7 +110,7 @@ func TestNetworkZoneService_GetByID(t *testing.T) {
 				},
 			}
 
-			networkZoneSvc := inventory.NewNetworkZoneService(repo, nil, nil, nil, inventory.NetworkZoneWithNow(func() time.Time {
+			networkZoneSvc := inventory.NewNetworkZoneService(repo, nil, nil, inventory.NetworkZoneWithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -127,8 +127,8 @@ func TestNetworkZoneService_GetByID(t *testing.T) {
 func TestNetworkZoneService_ResyncByID(t *testing.T) {
 	tests := []struct {
 		name                                     string
-		serverSvcGetByIDServer                   provisioning.Server
-		serverSvcGetByIDErr                      error
+		clusterSvcGetByIDCluster                 provisioning.Cluster
+		clusterSvcGetByIDErr                     error
 		networkZoneClientGetNetworkZoneByName    incusapi.NetworkZone
 		networkZoneClientGetNetworkZoneByNameErr error
 		repoGetByIDNetworkZone                   inventory.NetworkZone
@@ -141,14 +141,13 @@ func TestNetworkZoneService_ResyncByID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByIDNetworkZone: inventory.NetworkZone{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkZoneClientGetNetworkZoneByName: incusapi.NetworkZone{
 				Name:    "networkZone one",
@@ -160,14 +159,13 @@ func TestNetworkZoneService_ResyncByID(t *testing.T) {
 		{
 			name: "success - networkZone get by name - not found",
 			repoGetByIDNetworkZone: inventory.NetworkZone{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkZoneClientGetNetworkZoneByNameErr: domain.ErrNotFound,
 
@@ -180,27 +178,26 @@ func TestNetworkZoneService_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - server get by ID",
+			name: "error - cluster get by ID",
 			repoGetByIDNetworkZone: inventory.NetworkZone{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
+				ID:        1,
+				ClusterID: 1,
+				Name:      "one",
 			},
-			serverSvcGetByIDErr: boom.Error,
+			clusterSvcGetByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - networkZone get by name",
 			repoGetByIDNetworkZone: inventory.NetworkZone{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkZoneClientGetNetworkZoneByNameErr: boom.Error,
 
@@ -209,14 +206,13 @@ func TestNetworkZoneService_ResyncByID(t *testing.T) {
 		{
 			name: "error - networkZone get by name - not found - delete by id",
 			repoGetByIDNetworkZone: inventory.NetworkZone{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkZoneClientGetNetworkZoneByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr:                        boom.Error,
@@ -226,14 +222,13 @@ func TestNetworkZoneService_ResyncByID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByIDNetworkZone: inventory.NetworkZone{
-				ID:       1,
-				ServerID: 1,
-				Name:     "", // invalid
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "", // invalid
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkZoneClientGetNetworkZoneByName: incusapi.NetworkZone{
 				Name:    "networkZone one",
@@ -248,14 +243,13 @@ func TestNetworkZoneService_ResyncByID(t *testing.T) {
 		{
 			name: "error - update by ID",
 			repoGetByIDNetworkZone: inventory.NetworkZone{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Name:      "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkZoneClientGetNetworkZoneByName: incusapi.NetworkZone{
 				Name:    "networkZone one",
@@ -283,10 +277,10 @@ func TestNetworkZoneService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			serverSvc := &serviceMock.ServerServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+			clusterSvc := &serviceMock.ClusterServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
 					require.Equal(t, 1, id)
-					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
 
@@ -297,7 +291,7 @@ func TestNetworkZoneService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			networkZoneSvc := inventory.NewNetworkZoneService(repo, nil, serverSvc, networkZoneClient, inventory.NetworkZoneWithNow(func() time.Time {
+			networkZoneSvc := inventory.NewNetworkZoneService(repo, clusterSvc, networkZoneClient, inventory.NetworkZoneWithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -316,13 +310,11 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 		name                                string
 		clusterSvcGetAllClusters            provisioning.Clusters
 		clusterSvcGetAllErr                 error
-		serverSvcGetAllByClusterIDServers   provisioning.Servers
-		serverSvcGetAllByClusterIDErr       error
-		serverSvcGetByIDServer              provisioning.Server
-		serverSvcGetByIDErr                 error
+		clusterSvcGetByIDCluster            provisioning.Cluster
+		clusterSvcGetByIDErr                error
 		networkZoneClientGetNetworkZones    []incusapi.NetworkZone
 		networkZoneClientGetNetworkZonesErr error
-		repoDeleteByServerIDErr             error
+		repoDeleteByClusterIDErr            error
 		repoCreateErr                       error
 		serviceOptions                      []inventory.NetworkZoneServiceOption
 
@@ -336,17 +328,9 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkZoneClientGetNetworkZones: []incusapi.NetworkZone{
 				{
@@ -364,33 +348,14 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - server service get all by cluster ID",
+			name: "error - cluster service get by ID",
 			clusterSvcGetAllClusters: provisioning.Clusters{
 				{
 					ID:   1,
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - server service get by ID",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDErr: boom.Error,
+			clusterSvcGetByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -402,41 +367,25 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkZoneClientGetNetworkZonesErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - network_zones delete by server ID",
+			name: "error - network_zones delete by cluster ID",
 			clusterSvcGetAllClusters: provisioning.Clusters{
 				{
 					ID:   1,
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkZoneClientGetNetworkZones: []incusapi.NetworkZone{
 				{
@@ -444,7 +393,7 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 					Project: "project one",
 				},
 			},
-			repoDeleteByServerIDErr: boom.Error,
+			repoDeleteByClusterIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -456,17 +405,9 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkZoneClientGetNetworkZones: []incusapi.NetworkZone{
 				{
@@ -488,17 +429,9 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:      "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkZoneClientGetNetworkZones: []incusapi.NetworkZone{
 				{
@@ -516,8 +449,8 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkZoneRepoMock{
-				DeleteByServerIDFunc: func(ctx context.Context, serverID int) error {
-					return tc.repoDeleteByServerIDErr
+				DeleteByClusterIDFunc: func(ctx context.Context, clusterID int) error {
+					return tc.repoDeleteByClusterIDErr
 				},
 				CreateFunc: func(ctx context.Context, networkZone inventory.NetworkZone) (inventory.NetworkZone, error) {
 					return inventory.NetworkZone{}, tc.repoCreateErr
@@ -528,14 +461,8 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
 					return tc.clusterSvcGetAllClusters, tc.clusterSvcGetAllErr
 				},
-			}
-
-			serverSvc := &serviceMock.ServerServiceMock{
-				GetAllByClusterIDFunc: func(ctx context.Context, clusterID int) (provisioning.Servers, error) {
-					return tc.serverSvcGetAllByClusterIDServers, tc.serverSvcGetAllByClusterIDErr
-				},
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
-					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
+					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
 
@@ -545,7 +472,7 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkZoneSvc := inventory.NewNetworkZoneService(repo, clusterSvc, serverSvc, networkZoneClient,
+			networkZoneSvc := inventory.NewNetworkZoneService(repo, clusterSvc, networkZoneClient,
 				append(
 					tc.serviceOptions,
 					inventory.NetworkZoneWithNow(func() time.Time {

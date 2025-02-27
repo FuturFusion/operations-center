@@ -5,6 +5,7 @@ package sqlite_test
 import (
 	"context"
 	"encoding/json"
+
 	"testing"
 	"time"
 
@@ -28,6 +29,14 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
+		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
+	testClusterB := provisioning.Cluster{
+		ID:              2,
+		Name:            "two",
+		ConnectionURL:   "https://cluster-two/",
+		ServerHostnames: []string{"three", "four"},
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
@@ -95,8 +104,10 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	_, err = storageBucket.Create(ctx, storageBucketA)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
-	// Add dummy clusters
+	// Add dummy clusters.
 	_, err = clusterSvc.Create(ctx, testClusterA)
+	require.NoError(t, err)
+	_, err = clusterSvc.Create(ctx, testClusterB)
 	require.NoError(t, err)
 
 	// Add dummy servers.
@@ -108,11 +119,11 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	// Add storage_buckets
 	storageBucketA, err = storageBucket.Create(ctx, storageBucketA)
 	require.NoError(t, err)
-	require.Equal(t, 1, storageBucketA.ClusterID)
+	require.Equal(t, 1, storageBucketA.ServerID)
 
 	storageBucketB, err = storageBucket.Create(ctx, storageBucketB)
 	require.NoError(t, err)
-	require.Equal(t, 1, storageBucketB.ClusterID)
+	require.Equal(t, 2, storageBucketB.ServerID)
 
 	// Ensure we have two entries without filter
 	storageBucketIDs, err := storageBucket.GetAllIDsWithFilter(ctx, inventory.StorageBucketFilter{})

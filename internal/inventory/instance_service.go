@@ -61,7 +61,7 @@ func (s instanceService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		serverInstance, err := s.instanceClient.GetInstanceByName(ctx, server.ConnectionURL, instance.Name)
+		retrievedInstance, err := s.instanceClient.GetInstanceByName(ctx, server.ConnectionURL, instance.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, instance.ID)
 			if err != nil {
@@ -75,8 +75,8 @@ func (s instanceService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		instance.ProjectName = serverInstance.Project
-		instance.Object = serverInstance
+		instance.ProjectName = retrievedInstance.Project
+		instance.Object = retrievedInstance
 		instance.LastUpdated = s.now()
 
 		err = instance.Validate()
@@ -136,7 +136,7 @@ func (s instanceService) SyncServer(ctx context.Context, serverID int) error {
 		return err
 	}
 
-	serverInstances, err := s.instanceClient.GetInstances(ctx, server.ConnectionURL)
+	retrievedInstances, err := s.instanceClient.GetInstances(ctx, server.ConnectionURL)
 	if err != nil {
 		return err
 	}
@@ -147,13 +147,13 @@ func (s instanceService) SyncServer(ctx context.Context, serverID int) error {
 			return err
 		}
 
-		for _, serverInstance := range serverInstances {
+		for _, retrievedInstance := range retrievedInstances {
 			instance := Instance{
 				ClusterID:   server.ClusterID,
 				ServerID:    serverID,
-				ProjectName: serverInstance.Project,
-				Name:        serverInstance.Name,
-				Object:      serverInstance,
+				ProjectName: retrievedInstance.Project,
+				Name:        retrievedInstance.Name,
+				Object:      retrievedInstance,
 				LastUpdated: s.now(),
 			}
 

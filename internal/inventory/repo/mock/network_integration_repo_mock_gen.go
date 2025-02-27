@@ -23,11 +23,11 @@ var _ inventory.NetworkIntegrationRepo = &NetworkIntegrationRepoMock{}
 //			CreateFunc: func(ctx context.Context, networkIntegration inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
 //				panic("mock out the Create method")
 //			},
+//			DeleteByClusterIDFunc: func(ctx context.Context, clusterID int) error {
+//				panic("mock out the DeleteByClusterID method")
+//			},
 //			DeleteByIDFunc: func(ctx context.Context, id int) error {
 //				panic("mock out the DeleteByID method")
-//			},
-//			DeleteByServerIDFunc: func(ctx context.Context, serverID int) error {
-//				panic("mock out the DeleteByServerID method")
 //			},
 //			GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]int, error) {
 //				panic("mock out the GetAllIDsWithFilter method")
@@ -48,11 +48,11 @@ type NetworkIntegrationRepoMock struct {
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, networkIntegration inventory.NetworkIntegration) (inventory.NetworkIntegration, error)
 
+	// DeleteByClusterIDFunc mocks the DeleteByClusterID method.
+	DeleteByClusterIDFunc func(ctx context.Context, clusterID int) error
+
 	// DeleteByIDFunc mocks the DeleteByID method.
 	DeleteByIDFunc func(ctx context.Context, id int) error
-
-	// DeleteByServerIDFunc mocks the DeleteByServerID method.
-	DeleteByServerIDFunc func(ctx context.Context, serverID int) error
 
 	// GetAllIDsWithFilterFunc mocks the GetAllIDsWithFilter method.
 	GetAllIDsWithFilterFunc func(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]int, error)
@@ -72,19 +72,19 @@ type NetworkIntegrationRepoMock struct {
 			// NetworkIntegration is the networkIntegration argument value.
 			NetworkIntegration inventory.NetworkIntegration
 		}
+		// DeleteByClusterID holds details about calls to the DeleteByClusterID method.
+		DeleteByClusterID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterID is the clusterID argument value.
+			ClusterID int
+		}
 		// DeleteByID holds details about calls to the DeleteByID method.
 		DeleteByID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
 			ID int
-		}
-		// DeleteByServerID holds details about calls to the DeleteByServerID method.
-		DeleteByServerID []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// ServerID is the serverID argument value.
-			ServerID int
 		}
 		// GetAllIDsWithFilter holds details about calls to the GetAllIDsWithFilter method.
 		GetAllIDsWithFilter []struct {
@@ -109,8 +109,8 @@ type NetworkIntegrationRepoMock struct {
 		}
 	}
 	lockCreate              sync.RWMutex
+	lockDeleteByClusterID   sync.RWMutex
 	lockDeleteByID          sync.RWMutex
-	lockDeleteByServerID    sync.RWMutex
 	lockGetAllIDsWithFilter sync.RWMutex
 	lockGetByID             sync.RWMutex
 	lockUpdateByID          sync.RWMutex
@@ -152,6 +152,42 @@ func (mock *NetworkIntegrationRepoMock) CreateCalls() []struct {
 	return calls
 }
 
+// DeleteByClusterID calls DeleteByClusterIDFunc.
+func (mock *NetworkIntegrationRepoMock) DeleteByClusterID(ctx context.Context, clusterID int) error {
+	if mock.DeleteByClusterIDFunc == nil {
+		panic("NetworkIntegrationRepoMock.DeleteByClusterIDFunc: method is nil but NetworkIntegrationRepo.DeleteByClusterID was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		ClusterID int
+	}{
+		Ctx:       ctx,
+		ClusterID: clusterID,
+	}
+	mock.lockDeleteByClusterID.Lock()
+	mock.calls.DeleteByClusterID = append(mock.calls.DeleteByClusterID, callInfo)
+	mock.lockDeleteByClusterID.Unlock()
+	return mock.DeleteByClusterIDFunc(ctx, clusterID)
+}
+
+// DeleteByClusterIDCalls gets all the calls that were made to DeleteByClusterID.
+// Check the length with:
+//
+//	len(mockedNetworkIntegrationRepo.DeleteByClusterIDCalls())
+func (mock *NetworkIntegrationRepoMock) DeleteByClusterIDCalls() []struct {
+	Ctx       context.Context
+	ClusterID int
+} {
+	var calls []struct {
+		Ctx       context.Context
+		ClusterID int
+	}
+	mock.lockDeleteByClusterID.RLock()
+	calls = mock.calls.DeleteByClusterID
+	mock.lockDeleteByClusterID.RUnlock()
+	return calls
+}
+
 // DeleteByID calls DeleteByIDFunc.
 func (mock *NetworkIntegrationRepoMock) DeleteByID(ctx context.Context, id int) error {
 	if mock.DeleteByIDFunc == nil {
@@ -185,42 +221,6 @@ func (mock *NetworkIntegrationRepoMock) DeleteByIDCalls() []struct {
 	mock.lockDeleteByID.RLock()
 	calls = mock.calls.DeleteByID
 	mock.lockDeleteByID.RUnlock()
-	return calls
-}
-
-// DeleteByServerID calls DeleteByServerIDFunc.
-func (mock *NetworkIntegrationRepoMock) DeleteByServerID(ctx context.Context, serverID int) error {
-	if mock.DeleteByServerIDFunc == nil {
-		panic("NetworkIntegrationRepoMock.DeleteByServerIDFunc: method is nil but NetworkIntegrationRepo.DeleteByServerID was just called")
-	}
-	callInfo := struct {
-		Ctx      context.Context
-		ServerID int
-	}{
-		Ctx:      ctx,
-		ServerID: serverID,
-	}
-	mock.lockDeleteByServerID.Lock()
-	mock.calls.DeleteByServerID = append(mock.calls.DeleteByServerID, callInfo)
-	mock.lockDeleteByServerID.Unlock()
-	return mock.DeleteByServerIDFunc(ctx, serverID)
-}
-
-// DeleteByServerIDCalls gets all the calls that were made to DeleteByServerID.
-// Check the length with:
-//
-//	len(mockedNetworkIntegrationRepo.DeleteByServerIDCalls())
-func (mock *NetworkIntegrationRepoMock) DeleteByServerIDCalls() []struct {
-	Ctx      context.Context
-	ServerID int
-} {
-	var calls []struct {
-		Ctx      context.Context
-		ServerID int
-	}
-	mock.lockDeleteByServerID.RLock()
-	calls = mock.calls.DeleteByServerID
-	mock.lockDeleteByServerID.RUnlock()
 	return calls
 }
 

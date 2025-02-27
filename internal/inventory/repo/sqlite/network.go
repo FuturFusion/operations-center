@@ -28,12 +28,9 @@ func NewNetwork(db sqlite.DBTX) *network {
 
 func (r network) Create(ctx context.Context, in inventory.Network) (inventory.Network, error) {
 	const sqlStmt = `
-WITH _server AS (
-  SELECT cluster_id FROM servers WHERE server_id = :server_id
-)
-INSERT INTO networks (server_id, project_name, name, object, last_updated)
-VALUES(:server_id, :project_name, :name, :object, :last_updated)
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project_name, name, object, last_updated;
+INSERT INTO networks (cluster_id, project_name, name, object, last_updated)
+VALUES(:cluster_id, :project_name, :name, :object, :last_updated)
+RETURNING id, cluster_id, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -42,7 +39,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("server_id", in.ServerID),
+		sql.Named("cluster_id", in.ClusterID),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -59,8 +56,7 @@ func (r network) GetAllIDsWithFilter(ctx context.Context, filter inventory.Netwo
 	const sqlStmt = `
 SELECT networks.id
 FROM networks
-  INNER JOIN servers ON networks.server_id = servers.id
-  INNER JOIN clusters ON servers.cluster_id = clusters.id
+  INNER JOIN clusters ON networks.cluster_id = clusters.id
 WHERE true
 %s
 ORDER BY networks.id
@@ -72,11 +68,6 @@ ORDER BY networks.id
 	if filter.Cluster != nil {
 		whereClause = append(whereClause, ` AND clusters.name = :cluster`)
 		args = append(args, sql.Named("cluster", filter.Cluster))
-	}
-
-	if filter.Server != nil {
-		whereClause = append(whereClause, ` AND servers.name = :server`)
-		args = append(args, sql.Named("server", filter.Server))
 	}
 
 	if filter.Project != nil {
@@ -114,10 +105,9 @@ ORDER BY networks.id
 func (r network) GetByID(ctx context.Context, id int) (inventory.Network, error) {
 	const sqlStmt = `
 SELECT
-  networks.id, servers.cluster_id as cluster_id, networks.server_id, networks.project_name, networks.name, networks.object, networks.last_updated
+  networks.id, networks.cluster_id, networks.project_name, networks.name, networks.object, networks.last_updated
 FROM
   networks
-  INNER JOIN servers ON networks.server_id = servers.id
 WHERE networks.id=:id;
 `
 
@@ -149,10 +139,10 @@ func (r network) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r network) DeleteByServerID(ctx context.Context, serverID int) error {
-	const sqlStmt = `DELETE FROM networks WHERE server_id=:serverID;`
+func (r network) DeleteByClusterID(ctx context.Context, clusterID int) error {
+	const sqlStmt = `DELETE FROM networks WHERE cluster_id=:clusterID;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("clusterID", clusterID))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -171,12 +161,9 @@ func (r network) DeleteByServerID(ctx context.Context, serverID int) error {
 
 func (r network) UpdateByID(ctx context.Context, in inventory.Network) (inventory.Network, error) {
 	const sqlStmt = `
-WITH _server AS (
-  SELECT cluster_id FROM servers WHERE server_id = :server_id
-)
-UPDATE networks SET server_id=:server_id, project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
+UPDATE networks SET cluster_id=:cluster_id, project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project_name, name, object, last_updated;
+RETURNING id, cluster_id, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -186,7 +173,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
-		sql.Named("server_id", in.ServerID),
+		sql.Named("cluster_id", in.ClusterID),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -206,7 +193,6 @@ func scanNetwork(row interface{ Scan(dest ...any) error }) (inventory.Network, e
 	err := row.Scan(
 		&network.ID,
 		&network.ClusterID,
-		&network.ServerID,
 		&network.ProjectName,
 		&network.Name,
 		&object,

@@ -5,6 +5,7 @@ package sqlite_test
 import (
 	"context"
 	"encoding/json"
+
 	"testing"
 	"time"
 
@@ -28,6 +29,14 @@ func TestInstanceDatabaseActions(t *testing.T) {
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
+		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
+	testClusterB := provisioning.Cluster{
+		ID:              2,
+		Name:            "two",
+		ConnectionURL:   "https://cluster-two/",
+		ServerHostnames: []string{"three", "four"},
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
@@ -93,8 +102,10 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	_, err = instance.Create(ctx, instanceA)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
-	// Add dummy clusters
+	// Add dummy clusters.
 	_, err = clusterSvc.Create(ctx, testClusterA)
+	require.NoError(t, err)
+	_, err = clusterSvc.Create(ctx, testClusterB)
 	require.NoError(t, err)
 
 	// Add dummy servers.
@@ -106,11 +117,11 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	// Add instances
 	instanceA, err = instance.Create(ctx, instanceA)
 	require.NoError(t, err)
-	require.Equal(t, 1, instanceA.ClusterID)
+	require.Equal(t, 1, instanceA.ServerID)
 
 	instanceB, err = instance.Create(ctx, instanceB)
 	require.NoError(t, err)
-	require.Equal(t, 1, instanceB.ClusterID)
+	require.Equal(t, 2, instanceB.ServerID)
 
 	// Ensure we have two entries without filter
 	instanceIDs, err := instance.GetAllIDsWithFilter(ctx, inventory.InstanceFilter{})

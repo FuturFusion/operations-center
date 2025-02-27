@@ -44,11 +44,6 @@ func registerInventoryProfileHandler(router *http.ServeMux, service inventory.Pr
 //		    type: string
 //		    example: cluster
 //		  - in: query
-//		    name: server
-//		    description: Server name
-//		    type: string
-//		    example: localhost
-//		  - in: query
 //		    name: project
 //		    description: Project name
 //		    type: string
@@ -91,10 +86,6 @@ func (i *profileHandler) profilesGet(r *http.Request) response.Response {
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
-	}
-
-	if r.URL.Query().Get("server") != "" {
-		filter.Server = ptr.To(r.URL.Query().Get("server"))
 	}
 
 	if r.URL.Query().Get("project") != "" {
@@ -164,7 +155,6 @@ func (i *profileHandler) profileGet(r *http.Request) response.Response {
 		api.Profile{
 			ID:          profile.ID,
 			ClusterID:   profile.ClusterID,
-			ServerID:    profile.ServerID,
 			ProjectName: profile.ProjectName,
 			Name:        profile.Name,
 			Object:      profile.Object,
