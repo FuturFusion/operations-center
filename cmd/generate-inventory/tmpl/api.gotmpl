@@ -23,7 +23,6 @@ func registerInventory{{ .Name | pascalcase }}Handler(router *http.ServeMux, ser
 	router.HandleFunc("GET /{$}", response.With(handler.{{ .PluralName | camelcase }}Get))
 	router.HandleFunc("GET /{id}", response.With(handler.{{ .Name | camelcase }}Get))
 	router.HandleFunc("POST /{id}/resync", response.With(handler.{{ .Name | camelcase }}ResyncPost))
-	router.HandleFunc("POST /force-sync", response.With(handler.forceSyncPost))
 }
 
 // swagger:operation GET /1.0/inventory/{{ .PluralName }} {{ .PluralName }} {{ .PluralName }}_get
@@ -227,47 +226,6 @@ func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}ResyncPost(r *ht
 	err = i.service.ResyncByID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync {{ .Name }}: %w", err))
-	}
-
-	return response.EmptySyncResponse
-}
-
-// swagger:operation POST /1.0/inventory/{{ .PluralName }}/force-sync {{ .PluralName }} {{ .PluralName }}_force_sync_post
-//
-//	Force sync all
-//
-//	Force sync of {{ .PluralName }} for all servers in all clusters.
-//
-//	---
-//	produces:
-//	  - application/json
-//	responses:
-//	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
-func (i *{{ .Name | camelcase }}Handler) forceSyncPost(r *http.Request) response.Response {
-	err := i.service.SyncAll(r.Context())
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to sync {{ .PluralName }}: %w", err))
 	}
 
 	return response.EmptySyncResponse

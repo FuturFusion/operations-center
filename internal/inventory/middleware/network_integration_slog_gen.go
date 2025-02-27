@@ -118,35 +118,6 @@ func (_d NetworkIntegrationServiceWithSlog) ResyncByID(ctx context.Context, id i
 	return _d._base.ResyncByID(ctx, id)
 }
 
-// SyncAll implements _sourceInventory.NetworkIntegrationService
-func (_d NetworkIntegrationServiceWithSlog) SyncAll(ctx context.Context) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-		)
-	}
-	log.Debug("NetworkIntegrationServiceWithSlog: calling SyncAll")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("NetworkIntegrationServiceWithSlog: method SyncAll returned an error")
-		} else {
-			log.Debug("NetworkIntegrationServiceWithSlog: method SyncAll finished")
-		}
-	}()
-	return _d._base.SyncAll(ctx)
-}
-
 // SyncCluster implements _sourceInventory.NetworkIntegrationService
 func (_d NetworkIntegrationServiceWithSlog) SyncCluster(ctx context.Context, clusterID int) (err error) {
 	log := _d._log.With()

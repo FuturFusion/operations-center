@@ -304,8 +304,6 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {
 		name                                              string
-		clusterSvcGetAllClusters                          provisioning.Clusters
-		clusterSvcGetAllErr                               error
 		clusterSvcGetByIDCluster                          provisioning.Cluster
 		clusterSvcGetByIDErr                              error
 		networkIntegrationClientGetNetworkIntegrations    []incusapi.NetworkIntegration
@@ -318,12 +316,6 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 	}{
 		{
 			name: "success",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:   1,
 				Name: "cluster-one",
@@ -337,31 +329,13 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:                "error - cluster service get all",
-			clusterSvcGetAllErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - cluster service get by ID",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
+			name:                 "error - cluster service get by ID",
 			clusterSvcGetByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - networkIntegration client get NetworkIntegrations",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:   1,
 				Name: "cluster-one",
@@ -372,12 +346,6 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - network_integrations delete by cluster ID",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:   1,
 				Name: "cluster-one",
@@ -393,12 +361,6 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - validate",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:   1,
 				Name: "cluster-one",
@@ -416,12 +378,6 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - networkIntegration create",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:   1,
 				Name: "cluster-one",
@@ -450,9 +406,6 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ClusterServiceMock{
-				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
-					return tc.clusterSvcGetAllClusters, tc.clusterSvcGetAllErr
-				},
 				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
 					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
@@ -474,7 +427,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			)
 
 			// Run test
-			err := networkIntegrationSvc.SyncAll(context.Background())
+			err := networkIntegrationSvc.SyncCluster(context.Background(), 1)
 
 			// Assert
 			tc.assertErr(t, err)

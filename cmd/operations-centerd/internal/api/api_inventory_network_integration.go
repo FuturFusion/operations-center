@@ -25,7 +25,6 @@ func registerInventoryNetworkIntegrationHandler(router *http.ServeMux, service i
 	router.HandleFunc("GET /{$}", response.With(handler.networkIntegrationsGet))
 	router.HandleFunc("GET /{id}", response.With(handler.networkIntegrationGet))
 	router.HandleFunc("POST /{id}/resync", response.With(handler.networkIntegrationResyncPost))
-	router.HandleFunc("POST /force-sync", response.With(handler.forceSyncPost))
 }
 
 // swagger:operation GET /1.0/inventory/network_integrations network_integrations network_integrations_get
@@ -194,47 +193,6 @@ func (i *networkIntegrationHandler) networkIntegrationResyncPost(r *http.Request
 	err = i.service.ResyncByID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync network_integration: %w", err))
-	}
-
-	return response.EmptySyncResponse
-}
-
-// swagger:operation POST /1.0/inventory/network_integrations/force-sync network_integrations network_integrations_force_sync_post
-//
-//	Force sync all
-//
-//	Force sync of network_integrations for all servers in all clusters.
-//
-//	---
-//	produces:
-//	  - application/json
-//	responses:
-//	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
-func (i *networkIntegrationHandler) forceSyncPost(r *http.Request) response.Response {
-	err := i.service.SyncAll(r.Context())
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to sync network_integrations: %w", err))
 	}
 
 	return response.EmptySyncResponse

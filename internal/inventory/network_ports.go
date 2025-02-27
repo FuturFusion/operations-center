@@ -15,7 +15,6 @@ type NetworkService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Network, error)
 	ResyncByID(ctx context.Context, id int) error
-	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 }
 

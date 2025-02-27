@@ -15,7 +15,6 @@ type StorageBucketService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter StorageBucketFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StorageBucket, error)
 	ResyncByID(ctx context.Context, id int) error
-	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 	SyncServer(ctx context.Context, serverID int) error
 }

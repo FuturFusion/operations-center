@@ -25,7 +25,6 @@ func registerInventoryStoragePoolHandler(router *http.ServeMux, service inventor
 	router.HandleFunc("GET /{$}", response.With(handler.storagePoolsGet))
 	router.HandleFunc("GET /{id}", response.With(handler.storagePoolGet))
 	router.HandleFunc("POST /{id}/resync", response.With(handler.storagePoolResyncPost))
-	router.HandleFunc("POST /force-sync", response.With(handler.forceSyncPost))
 }
 
 // swagger:operation GET /1.0/inventory/storage_pools storage_pools storage_pools_get
@@ -194,47 +193,6 @@ func (i *storagePoolHandler) storagePoolResyncPost(r *http.Request) response.Res
 	err = i.service.ResyncByID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync storage_pool: %w", err))
-	}
-
-	return response.EmptySyncResponse
-}
-
-// swagger:operation POST /1.0/inventory/storage_pools/force-sync storage_pools storage_pools_force_sync_post
-//
-//	Force sync all
-//
-//	Force sync of storage_pools for all servers in all clusters.
-//
-//	---
-//	produces:
-//	  - application/json
-//	responses:
-//	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
-func (i *storagePoolHandler) forceSyncPost(r *http.Request) response.Response {
-	err := i.service.SyncAll(r.Context())
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to sync storage_pools: %w", err))
 	}
 
 	return response.EmptySyncResponse

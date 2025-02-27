@@ -118,35 +118,6 @@ func (_d ImageServiceWithSlog) ResyncByID(ctx context.Context, id int) (err erro
 	return _d._base.ResyncByID(ctx, id)
 }
 
-// SyncAll implements _sourceInventory.ImageService
-func (_d ImageServiceWithSlog) SyncAll(ctx context.Context) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-		)
-	}
-	log.Debug("ImageServiceWithSlog: calling SyncAll")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("ImageServiceWithSlog: method SyncAll returned an error")
-		} else {
-			log.Debug("ImageServiceWithSlog: method SyncAll finished")
-		}
-	}()
-	return _d._base.SyncAll(ctx)
-}
-
 // SyncCluster implements _sourceInventory.ImageService
 func (_d ImageServiceWithSlog) SyncCluster(ctx context.Context, clusterID int) (err error) {
 	log := _d._log.With()

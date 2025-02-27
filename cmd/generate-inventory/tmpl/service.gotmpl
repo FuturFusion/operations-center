@@ -132,22 +132,6 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 	return nil
 }
 
-func (s {{ .Name | camelcase }}Service) SyncAll(ctx context.Context) error {
-	clusters, err := s.clusterSvc.GetAll(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, cluster := range clusters {
-		err = s.SyncCluster(ctx, cluster.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 {{ if .IsServerResource }}
 func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, clusterID int) error {
 	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)

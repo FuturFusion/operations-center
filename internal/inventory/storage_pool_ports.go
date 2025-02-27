@@ -15,7 +15,6 @@ type StoragePoolService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StoragePool, error)
 	ResyncByID(ctx context.Context, id int) error
-	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 }
 

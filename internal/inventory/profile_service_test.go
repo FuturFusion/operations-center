@@ -308,8 +308,6 @@ func TestProfileService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {
 		name                        string
-		clusterSvcGetAllClusters    provisioning.Clusters
-		clusterSvcGetAllErr         error
 		clusterSvcGetByIDCluster    provisioning.Cluster
 		clusterSvcGetByIDErr        error
 		profileClientGetProfiles    []incusapi.Profile
@@ -322,12 +320,6 @@ func TestProfileService_SyncAll(t *testing.T) {
 	}{
 		{
 			name: "success",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:   1,
 				Name: "cluster-one",
@@ -342,31 +334,13 @@ func TestProfileService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:                "error - cluster service get all",
-			clusterSvcGetAllErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - cluster service get by ID",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
+			name:                 "error - cluster service get by ID",
 			clusterSvcGetByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - profile client get Profiles",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:   1,
 				Name: "cluster-one",
@@ -377,12 +351,6 @@ func TestProfileService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - profiles delete by cluster ID",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:   1,
 				Name: "cluster-one",
@@ -399,12 +367,6 @@ func TestProfileService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - validate",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:   1,
 				Name: "cluster-one",
@@ -423,12 +385,6 @@ func TestProfileService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - profile create",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:   1,
 				Name: "cluster-one",
@@ -458,9 +414,6 @@ func TestProfileService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ClusterServiceMock{
-				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
-					return tc.clusterSvcGetAllClusters, tc.clusterSvcGetAllErr
-				},
 				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
 					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
@@ -482,7 +435,7 @@ func TestProfileService_SyncAll(t *testing.T) {
 			)
 
 			// Run test
-			err := profileSvc.SyncAll(context.Background())
+			err := profileSvc.SyncCluster(context.Background(), 1)
 
 			// Assert
 			tc.assertErr(t, err)

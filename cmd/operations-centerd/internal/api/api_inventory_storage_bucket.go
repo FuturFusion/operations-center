@@ -25,7 +25,6 @@ func registerInventoryStorageBucketHandler(router *http.ServeMux, service invent
 	router.HandleFunc("GET /{$}", response.With(handler.storageBucketsGet))
 	router.HandleFunc("GET /{id}", response.With(handler.storageBucketGet))
 	router.HandleFunc("POST /{id}/resync", response.With(handler.storageBucketResyncPost))
-	router.HandleFunc("POST /force-sync", response.With(handler.forceSyncPost))
 }
 
 // swagger:operation GET /1.0/inventory/storage_buckets storage_buckets storage_buckets_get
@@ -215,47 +214,6 @@ func (i *storageBucketHandler) storageBucketResyncPost(r *http.Request) response
 	err = i.service.ResyncByID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync storage_bucket: %w", err))
-	}
-
-	return response.EmptySyncResponse
-}
-
-// swagger:operation POST /1.0/inventory/storage_buckets/force-sync storage_buckets storage_buckets_force_sync_post
-//
-//	Force sync all
-//
-//	Force sync of storage_buckets for all servers in all clusters.
-//
-//	---
-//	produces:
-//	  - application/json
-//	responses:
-//	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
-func (i *storageBucketHandler) forceSyncPost(r *http.Request) response.Response {
-	err := i.service.SyncAll(r.Context())
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to sync storage_buckets: %w", err))
 	}
 
 	return response.EmptySyncResponse

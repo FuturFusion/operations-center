@@ -95,22 +95,6 @@ func (s storagePoolService) ResyncByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s storagePoolService) SyncAll(ctx context.Context) error {
-	clusters, err := s.clusterSvc.GetAll(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, cluster := range clusters {
-		err = s.SyncCluster(ctx, cluster.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (s storagePoolService) SyncCluster(ctx context.Context, clusterID int) error {
 	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
 	if err != nil {

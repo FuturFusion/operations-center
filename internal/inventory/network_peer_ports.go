@@ -15,7 +15,6 @@ type NetworkPeerService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkPeer, error)
 	ResyncByID(ctx context.Context, id int) error
-	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 }
 
