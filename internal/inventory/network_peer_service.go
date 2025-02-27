@@ -16,7 +16,6 @@ import (
 type networkPeerService struct {
 	repo              NetworkPeerRepo
 	clusterSvc        ClusterService
-	serverSvc         ServerService
 	networkClient     NetworkServerClient
 	networkPeerClient NetworkPeerServerClient
 
@@ -35,11 +34,10 @@ func NetworkPeerWithParentFilter(f func(incusapi.Network) bool) NetworkPeerServi
 	}
 }
 
-func NewNetworkPeerService(repo NetworkPeerRepo, clusterSvc ClusterService, serverSvc ServerService, client NetworkPeerServerClient, parentClient NetworkServerClient, opts ...NetworkPeerServiceOption) networkPeerService {
+func NewNetworkPeerService(repo NetworkPeerRepo, clusterSvc ClusterService, client NetworkPeerServerClient, parentClient NetworkServerClient, opts ...NetworkPeerServiceOption) networkPeerService {
 	networkPeerSvc := networkPeerService{
 		repo:              repo,
 		clusterSvc:        clusterSvc,
-		serverSvc:         serverSvc,
 		networkClient:     parentClient,
 		networkPeerClient: client,
 
@@ -72,12 +70,12 @@ func (s networkPeerService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		server, err := s.serverSvc.GetByID(ctx, networkPeer.ServerID)
+		cluster, err := s.clusterSvc.GetByID(ctx, networkPeer.ClusterID)
 		if err != nil {
 			return err
 		}
 
-		serverNetworkPeer, err := s.networkPeerClient.GetNetworkPeerByName(ctx, server.ConnectionURL, networkPeer.NetworkName, networkPeer.Name)
+		retrievedNetworkPeer, err := s.networkPeerClient.GetNetworkPeerByName(ctx, cluster.ConnectionURL, networkPeer.NetworkName, networkPeer.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, networkPeer.ID)
 			if err != nil {
@@ -91,7 +89,7 @@ func (s networkPeerService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		networkPeer.Object = serverNetworkPeer
+		networkPeer.Object = retrievedNetworkPeer
 		networkPeer.LastUpdated = s.now()
 
 		err = networkPeer.Validate()
@@ -130,55 +128,38 @@ func (s networkPeerService) SyncAll(ctx context.Context) error {
 }
 
 func (s networkPeerService) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
 	if err != nil {
 		return err
 	}
 
-	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s networkPeerService) SyncServer(ctx context.Context, serverID int) error {
-	server, err := s.serverSvc.GetByID(ctx, serverID)
+	retrievedNetworks, err := s.networkClient.GetNetworks(ctx, cluster.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
-	serverNetworks, err := s.networkClient.GetNetworks(ctx, server.ConnectionURL)
-	if err != nil {
-		return err
-	}
-
-	for _, network := range serverNetworks {
+	for _, network := range retrievedNetworks {
 		if s.isParentFilted(network) {
 			continue
 		}
 
-		serverNetworkPeers, err := s.networkPeerClient.GetNetworkPeers(ctx, server.ConnectionURL, network.Name)
+		retrievedNetworkPeers, err := s.networkPeerClient.GetNetworkPeers(ctx, cluster.ConnectionURL, network.Name)
 		if err != nil {
 			return err
 		}
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
-			err = s.repo.DeleteByServerID(ctx, serverID)
+			err = s.repo.DeleteByClusterID(ctx, clusterID)
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
 			}
 
-			for _, serverNetworkPeer := range serverNetworkPeers {
+			for _, retrievedNetworkPeer := range retrievedNetworkPeers {
 				networkPeer := NetworkPeer{
-					ClusterID:   server.ClusterID,
-					ServerID:    serverID,
+					ClusterID:   clusterID,
 					NetworkName: network.Name,
-					Name:        serverNetworkPeer.Name,
-					Object:      serverNetworkPeer,
+					Name:        retrievedNetworkPeer.Name,
+					Object:      retrievedNetworkPeer,
 					LastUpdated: s.now(),
 				}
 

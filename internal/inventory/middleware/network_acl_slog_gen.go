@@ -176,33 +176,3 @@ func (_d NetworkACLServiceWithSlog) SyncCluster(ctx context.Context, clusterID i
 	}()
 	return _d._base.SyncCluster(ctx, clusterID)
 }
-
-// SyncServer implements _sourceInventory.NetworkACLService
-func (_d NetworkACLServiceWithSlog) SyncServer(ctx context.Context, serverID int) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-			slog.Int("serverID", serverID),
-		)
-	}
-	log.Debug("NetworkACLServiceWithSlog: calling SyncServer")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("NetworkACLServiceWithSlog: method SyncServer returned an error")
-		} else {
-			log.Debug("NetworkACLServiceWithSlog: method SyncServer finished")
-		}
-	}()
-	return _d._base.SyncServer(ctx, serverID)
-}

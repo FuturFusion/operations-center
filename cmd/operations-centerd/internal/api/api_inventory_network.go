@@ -44,11 +44,6 @@ func registerInventoryNetworkHandler(router *http.ServeMux, service inventory.Ne
 //		    type: string
 //		    example: cluster
 //		  - in: query
-//		    name: server
-//		    description: Server name
-//		    type: string
-//		    example: localhost
-//		  - in: query
 //		    name: project
 //		    description: Project name
 //		    type: string
@@ -91,10 +86,6 @@ func (i *networkHandler) networksGet(r *http.Request) response.Response {
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
-	}
-
-	if r.URL.Query().Get("server") != "" {
-		filter.Server = ptr.To(r.URL.Query().Get("server"))
 	}
 
 	if r.URL.Query().Get("project") != "" {
@@ -164,7 +155,6 @@ func (i *networkHandler) networkGet(r *http.Request) response.Response {
 		api.Network{
 			ID:          network.ID,
 			ClusterID:   network.ClusterID,
-			ServerID:    network.ServerID,
 			ProjectName: network.ProjectName,
 			Name:        network.Name,
 			Object:      network.Object,

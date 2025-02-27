@@ -23,18 +23,16 @@ func TestNetworkIntegration_Validate(t *testing.T) {
 			image: inventory.NetworkIntegration{
 				ID:        1,
 				ClusterID: 1,
-				ServerID:  1,
 				Name:      "one",
 			},
 
 			assertErr: require.NoError,
 		},
 		{
-			name: "error - invalid server ID",
+			name: "error - invalid cluster ID",
 			image: inventory.NetworkIntegration{
 				ID:        1,
-				ClusterID: 1,
-				ServerID:  0, // invalid
+				ClusterID: 0, // invalid
 				Name:      "one",
 			},
 
@@ -48,7 +46,6 @@ func TestNetworkIntegration_Validate(t *testing.T) {
 			image: inventory.NetworkIntegration{
 				ID:        1,
 				ClusterID: 1,
-				ServerID:  1,
 				Name:      "", // invalid
 			},
 

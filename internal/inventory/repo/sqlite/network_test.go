@@ -4,7 +4,6 @@ package sqlite_test
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
-	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestNetworkDatabaseActions(t *testing.T) {
@@ -31,30 +29,16 @@ func TestNetworkDatabaseActions(t *testing.T) {
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
-	testServerA := provisioning.Server{
-		ID:            1,
-		ClusterID:     1,
-		Hostname:      "one",
-		Type:          api.ServerTypeIncus,
-		ConnectionURL: "https://one/",
-		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
-	}
-
-	testServerB := provisioning.Server{
-		ID:            2,
-		ClusterID:     1,
-		Hostname:      "two",
-		Type:          api.ServerTypeIncus,
-		ConnectionURL: "https://one/",
-		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	testClusterB := provisioning.Cluster{
+		ID:              2,
+		Name:            "two",
+		ConnectionURL:   "https://cluster-two/",
+		ServerHostnames: []string{"three", "four"},
+		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	networkA := inventory.Network{
-		ServerID:    1,
+		ClusterID:   1,
 		ProjectName: "one",
 		Name:        "one",
 		Object:      incusapi.Network{},
@@ -62,7 +46,7 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	}
 
 	networkB := inventory.Network{
-		ServerID:    2,
+		ClusterID:   2,
 		ProjectName: "two",
 		Name:        "two",
 		Object:      incusapi.Network{},
@@ -85,7 +69,6 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), nil)
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
 
 	network := inventorySqlite.NewNetwork(db)
 
@@ -93,14 +76,10 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	_, err = network.Create(ctx, networkA)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
-	// Add dummy clusters
+	// Add dummy clusters.
 	_, err = clusterSvc.Create(ctx, testClusterA)
 	require.NoError(t, err)
-
-	// Add dummy servers.
-	_, err = serverSvc.Create(ctx, testServerA)
-	require.NoError(t, err)
-	_, err = serverSvc.Create(ctx, testServerB)
+	_, err = clusterSvc.Create(ctx, testClusterB)
 	require.NoError(t, err)
 
 	// Add networks
@@ -110,7 +89,7 @@ func TestNetworkDatabaseActions(t *testing.T) {
 
 	networkB, err = network.Create(ctx, networkB)
 	require.NoError(t, err)
-	require.Equal(t, 1, networkB.ClusterID)
+	require.Equal(t, 2, networkB.ClusterID)
 
 	// Ensure we have two entries without filter
 	networkIDs, err := network.GetAllIDsWithFilter(ctx, inventory.NetworkFilter{})
@@ -121,7 +100,6 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	// Ensure we have one entry with filter for cluster, server and project
 	networkIDs, err = network.GetAllIDsWithFilter(ctx, inventory.NetworkFilter{
 		Cluster: ptr.To("one"),
-		Server:  ptr.To("one"),
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
@@ -143,8 +121,8 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	err = network.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete networks by server ID.
-	err = network.DeleteByServerID(ctx, 2)
+	// Delete networks by cluster ID.
+	err = network.DeleteByClusterID(ctx, 2)
 	require.NoError(t, err)
 
 	_, err = network.GetByID(ctx, networkA.ID)

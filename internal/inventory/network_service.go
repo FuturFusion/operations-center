@@ -14,7 +14,6 @@ import (
 type networkService struct {
 	repo          NetworkRepo
 	clusterSvc    ClusterService
-	serverSvc     ServerService
 	networkClient NetworkServerClient
 
 	now func() time.Time
@@ -24,11 +23,10 @@ var _ NetworkService = &networkService{}
 
 type NetworkServiceOption func(s *networkService)
 
-func NewNetworkService(repo NetworkRepo, clusterSvc ClusterService, serverSvc ServerService, client NetworkServerClient, opts ...NetworkServiceOption) networkService {
+func NewNetworkService(repo NetworkRepo, clusterSvc ClusterService, client NetworkServerClient, opts ...NetworkServiceOption) networkService {
 	networkSvc := networkService{
 		repo:          repo,
 		clusterSvc:    clusterSvc,
-		serverSvc:     serverSvc,
 		networkClient: client,
 
 		now: time.Now,
@@ -56,12 +54,12 @@ func (s networkService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		server, err := s.serverSvc.GetByID(ctx, network.ServerID)
+		cluster, err := s.clusterSvc.GetByID(ctx, network.ClusterID)
 		if err != nil {
 			return err
 		}
 
-		serverNetwork, err := s.networkClient.GetNetworkByName(ctx, server.ConnectionURL, network.Name)
+		retrievedNetwork, err := s.networkClient.GetNetworkByName(ctx, cluster.ConnectionURL, network.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, network.ID)
 			if err != nil {
@@ -75,8 +73,8 @@ func (s networkService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		network.ProjectName = serverNetwork.Project
-		network.Object = serverNetwork
+		network.ProjectName = retrievedNetwork.Project
+		network.Object = retrievedNetwork
 		network.LastUpdated = s.now()
 
 		err = network.Validate()
@@ -115,45 +113,28 @@ func (s networkService) SyncAll(ctx context.Context) error {
 }
 
 func (s networkService) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
 	if err != nil {
 		return err
 	}
 
-	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s networkService) SyncServer(ctx context.Context, serverID int) error {
-	server, err := s.serverSvc.GetByID(ctx, serverID)
-	if err != nil {
-		return err
-	}
-
-	serverNetworks, err := s.networkClient.GetNetworks(ctx, server.ConnectionURL)
+	retrievedNetworks, err := s.networkClient.GetNetworks(ctx, cluster.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByServerID(ctx, serverID)
+		err = s.repo.DeleteByClusterID(ctx, clusterID)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
-		for _, serverNetwork := range serverNetworks {
+		for _, retrievedNetwork := range retrievedNetworks {
 			network := Network{
-				ClusterID:   server.ClusterID,
-				ServerID:    serverID,
-				ProjectName: serverNetwork.Project,
-				Name:        serverNetwork.Name,
-				Object:      serverNetwork,
+				ClusterID:   clusterID,
+				ProjectName: retrievedNetwork.Project,
+				Name:        retrievedNetwork.Name,
+				Object:      retrievedNetwork,
 				LastUpdated: s.now(),
 			}
 

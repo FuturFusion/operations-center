@@ -148,15 +148,15 @@ func (_d ServerRepoWithSlog) GetAllByClusterID(ctx context.Context, clusterID in
 	return _d._base.GetAllByClusterID(ctx, clusterID)
 }
 
-// GetAllHostnames implements _sourceProvisioning.ServerRepo
-func (_d ServerRepoWithSlog) GetAllHostnames(ctx context.Context) (sa1 []string, err error) {
+// GetAllNames implements _sourceProvisioning.ServerRepo
+func (_d ServerRepoWithSlog) GetAllNames(ctx context.Context) (sa1 []string, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("ServerRepoWithSlog: calling GetAllHostnames")
+	log.Debug("ServerRepoWithSlog: calling GetAllNames")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -170,43 +170,12 @@ func (_d ServerRepoWithSlog) GetAllHostnames(ctx context.Context) (sa1 []string,
 			}
 		}
 		if err != nil {
-			log.Error("ServerRepoWithSlog: method GetAllHostnames returned an error")
+			log.Error("ServerRepoWithSlog: method GetAllNames returned an error")
 		} else {
-			log.Debug("ServerRepoWithSlog: method GetAllHostnames finished")
+			log.Debug("ServerRepoWithSlog: method GetAllNames finished")
 		}
 	}()
-	return _d._base.GetAllHostnames(ctx)
-}
-
-// GetByHostname implements _sourceProvisioning.ServerRepo
-func (_d ServerRepoWithSlog) GetByHostname(ctx context.Context, name string) (s1 _sourceProvisioning.Server, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-			slog.String("name", name),
-		)
-	}
-	log.Debug("ServerRepoWithSlog: calling GetByHostname")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("s1", s1),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("ServerRepoWithSlog: method GetByHostname returned an error")
-		} else {
-			log.Debug("ServerRepoWithSlog: method GetByHostname finished")
-		}
-	}()
-	return _d._base.GetByHostname(ctx, name)
+	return _d._base.GetAllNames(ctx)
 }
 
 // GetByID implements _sourceProvisioning.ServerRepo
@@ -238,6 +207,37 @@ func (_d ServerRepoWithSlog) GetByID(ctx context.Context, id int) (s1 _sourcePro
 		}
 	}()
 	return _d._base.GetByID(ctx, id)
+}
+
+// GetByName implements _sourceProvisioning.ServerRepo
+func (_d ServerRepoWithSlog) GetByName(ctx context.Context, name string) (s1 _sourceProvisioning.Server, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.Debug("ServerRepoWithSlog: calling GetByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("s1", s1),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("ServerRepoWithSlog: method GetByName returned an error")
+		} else {
+			log.Debug("ServerRepoWithSlog: method GetByName finished")
+		}
+	}()
+	return _d._base.GetByName(ctx, name)
 }
 
 // UpdateByID implements _sourceProvisioning.ServerRepo

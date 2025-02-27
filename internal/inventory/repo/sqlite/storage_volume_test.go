@@ -5,6 +5,7 @@ package sqlite_test
 import (
 	"context"
 	"encoding/json"
+
 	"testing"
 	"time"
 
@@ -31,10 +32,18 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
+	testClusterB := provisioning.Cluster{
+		ID:              2,
+		Name:            "two",
+		ConnectionURL:   "https://cluster-two/",
+		ServerHostnames: []string{"three", "four"},
+		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
 	testServerA := provisioning.Server{
 		ID:            1,
 		ClusterID:     1,
-		Hostname:      "one",
+		Name:          "one",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
 		HardwareData:  incusapi.Resources{},
@@ -45,7 +54,7 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	testServerB := provisioning.Server{
 		ID:            2,
 		ClusterID:     1,
-		Hostname:      "two",
+		Name:          "two",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
 		HardwareData:  incusapi.Resources{},
@@ -95,8 +104,10 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	_, err = storageVolume.Create(ctx, storageVolumeA)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
-	// Add dummy clusters
+	// Add dummy clusters.
 	_, err = clusterSvc.Create(ctx, testClusterA)
+	require.NoError(t, err)
+	_, err = clusterSvc.Create(ctx, testClusterB)
 	require.NoError(t, err)
 
 	// Add dummy servers.
@@ -108,11 +119,11 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	// Add storage_volumes
 	storageVolumeA, err = storageVolume.Create(ctx, storageVolumeA)
 	require.NoError(t, err)
-	require.Equal(t, 1, storageVolumeA.ClusterID)
+	require.Equal(t, 1, storageVolumeA.ServerID)
 
 	storageVolumeB, err = storageVolume.Create(ctx, storageVolumeB)
 	require.NoError(t, err)
-	require.Equal(t, 1, storageVolumeB.ClusterID)
+	require.Equal(t, 2, storageVolumeB.ServerID)
 
 	// Ensure we have two entries without filter
 	storageVolumeIDs, err := storageVolume.GetAllIDsWithFilter(ctx, inventory.StorageVolumeFilter{})

@@ -37,7 +37,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	serverA := provisioning.Server{
 		ID:            1,
 		ClusterID:     1,
-		Hostname:      "one",
+		Name:          "one",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
 		HardwareData:  incusapi.Resources{},
@@ -48,7 +48,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	serverB := provisioning.Server{
 		ID:            2,
 		ClusterID:     2,
-		Hostname:      "two",
+		Name:          "two",
 		Type:          api.ServerTypeMigrationManager,
 		ConnectionURL: "https://two/",
 		HardwareData:  incusapi.Resources{},
@@ -96,7 +96,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, servers, 2)
 
-	serverIDs, err := server.GetAllHostnames(ctx)
+	serverIDs, err := server.GetAllNames(ctx)
 	require.NoError(t, err)
 	require.Len(t, serverIDs, 2)
 	require.ElementsMatch(t, []string{"one", "two"}, serverIDs)
@@ -106,7 +106,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, serverA, dbServerA)
 
-	dbServerA, err = server.GetByHostname(ctx, serverA.Hostname)
+	dbServerA, err = server.GetByName(ctx, serverA.Name)
 	require.NoError(t, err)
 	require.Equal(t, serverA, dbServerA)
 

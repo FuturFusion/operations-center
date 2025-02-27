@@ -14,7 +14,6 @@ import (
 type projectService struct {
 	repo          ProjectRepo
 	clusterSvc    ClusterService
-	serverSvc     ServerService
 	projectClient ProjectServerClient
 
 	now func() time.Time
@@ -24,11 +23,10 @@ var _ ProjectService = &projectService{}
 
 type ProjectServiceOption func(s *projectService)
 
-func NewProjectService(repo ProjectRepo, clusterSvc ClusterService, serverSvc ServerService, client ProjectServerClient, opts ...ProjectServiceOption) projectService {
+func NewProjectService(repo ProjectRepo, clusterSvc ClusterService, client ProjectServerClient, opts ...ProjectServiceOption) projectService {
 	projectSvc := projectService{
 		repo:          repo,
 		clusterSvc:    clusterSvc,
-		serverSvc:     serverSvc,
 		projectClient: client,
 
 		now: time.Now,
@@ -56,12 +54,12 @@ func (s projectService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		server, err := s.serverSvc.GetByID(ctx, project.ServerID)
+		cluster, err := s.clusterSvc.GetByID(ctx, project.ClusterID)
 		if err != nil {
 			return err
 		}
 
-		serverProject, err := s.projectClient.GetProjectByName(ctx, server.ConnectionURL, project.Name)
+		retrievedProject, err := s.projectClient.GetProjectByName(ctx, cluster.ConnectionURL, project.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, project.ID)
 			if err != nil {
@@ -75,7 +73,7 @@ func (s projectService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		project.Object = serverProject
+		project.Object = retrievedProject
 		project.LastUpdated = s.now()
 
 		err = project.Validate()
@@ -114,44 +112,27 @@ func (s projectService) SyncAll(ctx context.Context) error {
 }
 
 func (s projectService) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
 	if err != nil {
 		return err
 	}
 
-	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s projectService) SyncServer(ctx context.Context, serverID int) error {
-	server, err := s.serverSvc.GetByID(ctx, serverID)
-	if err != nil {
-		return err
-	}
-
-	serverProjects, err := s.projectClient.GetProjects(ctx, server.ConnectionURL)
+	retrievedProjects, err := s.projectClient.GetProjects(ctx, cluster.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByServerID(ctx, serverID)
+		err = s.repo.DeleteByClusterID(ctx, clusterID)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
-		for _, serverProject := range serverProjects {
+		for _, retrievedProject := range retrievedProjects {
 			project := Project{
-				ClusterID:   server.ClusterID,
-				ServerID:    serverID,
-				Name:        serverProject.Name,
-				Object:      serverProject,
+				ClusterID:   clusterID,
+				Name:        retrievedProject.Name,
+				Object:      retrievedProject,
 				LastUpdated: s.now(),
 			}
 

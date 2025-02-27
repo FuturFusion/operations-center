@@ -60,11 +60,11 @@ func TestStorageVolumeService_GetAllIDs(t *testing.T) {
 			}))
 
 			// Run test
-			storageVolumeHostnames, err := storageVolumeSvc.GetAllIDsWithFilter(context.Background(), inventory.StorageVolumeFilter{})
+			storageVolumeIDs, err := storageVolumeSvc.GetAllIDsWithFilter(context.Background(), inventory.StorageVolumeFilter{})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, storageVolumeHostnames, tc.count)
+			require.Len(t, storageVolumeIDs, tc.count)
 		})
 	}
 }
@@ -150,7 +150,7 @@ func TestStorageVolumeService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
 				Name:    "storageVolume one",
@@ -170,7 +170,7 @@ func TestStorageVolumeService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			storageVolumeClientGetStorageVolumeByNameErr: domain.ErrNotFound,
 
@@ -205,7 +205,7 @@ func TestStorageVolumeService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			storageVolumeClientGetStorageVolumeByNameErr: boom.Error,
 
@@ -222,7 +222,7 @@ func TestStorageVolumeService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			storageVolumeClientGetStorageVolumeByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr: boom.Error,
@@ -240,7 +240,7 @@ func TestStorageVolumeService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
 				Name:    "storageVolume one",
@@ -263,7 +263,7 @@ func TestStorageVolumeService_ResyncByID(t *testing.T) {
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
 				Name:    "storageVolume one",
@@ -325,8 +325,8 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 		name                                    string
 		clusterSvcGetAllClusters                provisioning.Clusters
 		clusterSvcGetAllErr                     error
-		serverSvcGetAllByClusterIDServers       provisioning.Servers
-		serverSvcGetAllByClusterIDErr           error
+		serverSvcGetAllByServerIDServers        provisioning.Servers
+		serverSvcGetAllByServerIDErr            error
 		serverSvcGetByIDServer                  provisioning.Server
 		serverSvcGetByIDErr                     error
 		storagePoolClientGetStoragePools        []incusapi.StoragePool
@@ -347,17 +347,17 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -395,7 +395,7 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDErr: boom.Error,
+			serverSvcGetAllByServerIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -407,11 +407,11 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDErr: boom.Error,
@@ -426,17 +426,17 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			storagePoolClientGetStoragePoolsErr: boom.Error,
 
@@ -450,17 +450,17 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -479,17 +479,17 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -514,17 +514,17 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -551,17 +551,17 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
+			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
 					ClusterID: 1,
-					Hostname:  "server-one",
+					Name:      "server-one",
 				},
 			},
 			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "server-one",
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -600,7 +600,7 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 
 			serverSvc := &serviceMock.ServerServiceMock{
 				GetAllByClusterIDFunc: func(ctx context.Context, clusterID int) (provisioning.Servers, error) {
-					return tc.serverSvcGetAllByClusterIDServers, tc.serverSvcGetAllByClusterIDErr
+					return tc.serverSvcGetAllByServerIDServers, tc.serverSvcGetAllByServerIDErr
 				},
 				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
 					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr

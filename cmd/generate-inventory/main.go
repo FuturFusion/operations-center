@@ -78,6 +78,7 @@ func main() {
 	objectType := pflag.String("object-type", "", "Go type used for object in model")
 	omitProject := pflag.Bool("omit-project", false, "if omit-project is provided, the entity does not have a relation to a project")
 	usesEmbeddedPostType := pflag.Bool("uses-embedded-post-type", false, "if uses-embedded-post-type is provided, the name property is part of an embedded Post type")
+	serverResource := pflag.Bool("server-resource", false, "if server-resource is provided, the resource is bound to a server instead of the whole cluster")
 	incusGetAllMethod := pflag.String("incus-get-all-method", "", "method of the Incus client to get all the entities, e.g. GetStoragePoolBucketsAllProjects")
 	incusGetMethod := pflag.String("incus-get-method", "", "method of the Incus client to get the entities, e.g. GetStoragePoolBucketsAllProjects")
 	parentName := pflag.String("parent", "", "name of the parent entity, if any")
@@ -132,6 +133,8 @@ func main() {
 		ObjectNamePropertyName string
 		HasProject             bool
 		UsesEmbeddedPostType   bool
+		IsServerResource       bool
+		ResourceForeignKey     string
 		IncusGetAllMethod      string
 		IncusGetMethod         string
 		HasParent              bool
@@ -146,6 +149,8 @@ func main() {
 		ObjectNamePropertyName: *objectNamePropertyName,
 		HasProject:             !*omitProject,
 		UsesEmbeddedPostType:   *usesEmbeddedPostType,
+		IsServerResource:       *serverResource,
+		ResourceForeignKey:     iif(*serverResource, "server", "cluster"),
 		IncusGetAllMethod:      *incusGetAllMethod,
 		IncusGetMethod:         *incusGetMethod,
 		HasParent:              *parentName != "",
@@ -187,4 +192,12 @@ func die(err error) {
 		slog.Error("generate-inventory failed", slog.Any("err", err))
 		panic("die")
 	}
+}
+
+func iif[T any](condition bool, valueA T, valueB T) T {
+	if condition {
+		return valueA
+	}
+
+	return valueB
 }

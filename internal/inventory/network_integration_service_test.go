@@ -55,16 +55,16 @@ func TestNetworkIntegrationService_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, nil, nil, nil, inventory.NetworkIntegrationWithNow(func() time.Time {
+			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, nil, nil, inventory.NetworkIntegrationWithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
 			// Run test
-			networkIntegrationHostnames, err := networkIntegrationSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkIntegrationFilter{})
+			networkIntegrationIDs, err := networkIntegrationSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkIntegrationFilter{})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, networkIntegrationHostnames, tc.count)
+			require.Len(t, networkIntegrationIDs, tc.count)
 		})
 	}
 }
@@ -83,7 +83,7 @@ func TestNetworkIntegrationService_GetByID(t *testing.T) {
 			idArg: 1,
 			repoGetByIDNetworkIntegration: inventory.NetworkIntegration{
 				ID:          1,
-				ServerID:    1,
+				ClusterID:   1,
 				Name:        "one",
 				Object:      incusapi.NetworkIntegration{},
 				LastUpdated: time.Now(),
@@ -109,7 +109,7 @@ func TestNetworkIntegrationService_GetByID(t *testing.T) {
 				},
 			}
 
-			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, nil, nil, nil, inventory.NetworkIntegrationWithNow(func() time.Time {
+			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, nil, nil, inventory.NetworkIntegrationWithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -126,8 +126,8 @@ func TestNetworkIntegrationService_GetByID(t *testing.T) {
 func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 	tests := []struct {
 		name                                                   string
-		serverSvcGetByIDServer                                 provisioning.Server
-		serverSvcGetByIDErr                                    error
+		clusterSvcGetByIDCluster                               provisioning.Cluster
+		clusterSvcGetByIDErr                                   error
 		networkIntegrationClientGetNetworkIntegrationByName    incusapi.NetworkIntegration
 		networkIntegrationClientGetNetworkIntegrationByNameErr error
 		repoGetByIDNetworkIntegration                          inventory.NetworkIntegration
@@ -140,14 +140,13 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByIDNetworkIntegration: inventory.NetworkIntegration{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
 				Name: "networkIntegration one",
@@ -158,14 +157,13 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 		{
 			name: "success - networkIntegration get by name - not found",
 			repoGetByIDNetworkIntegration: inventory.NetworkIntegration{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkIntegrationClientGetNetworkIntegrationByNameErr: domain.ErrNotFound,
 
@@ -178,27 +176,26 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - server get by ID",
+			name: "error - cluster get by ID",
 			repoGetByIDNetworkIntegration: inventory.NetworkIntegration{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
+				ID:        1,
+				ClusterID: 1,
+				Name:      "one",
 			},
-			serverSvcGetByIDErr: boom.Error,
+			clusterSvcGetByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - networkIntegration get by name",
 			repoGetByIDNetworkIntegration: inventory.NetworkIntegration{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkIntegrationClientGetNetworkIntegrationByNameErr: boom.Error,
 
@@ -207,14 +204,13 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 		{
 			name: "error - networkIntegration get by name - not found - delete by id",
 			repoGetByIDNetworkIntegration: inventory.NetworkIntegration{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkIntegrationClientGetNetworkIntegrationByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr: boom.Error,
@@ -224,14 +220,13 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByIDNetworkIntegration: inventory.NetworkIntegration{
-				ID:       1,
-				ServerID: 1,
-				Name:     "", // invalid
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "", // invalid
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
 				Name: "networkIntegration one",
@@ -245,14 +240,13 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 		{
 			name: "error - update by ID",
 			repoGetByIDNetworkIntegration: inventory.NetworkIntegration{
-				ID:       1,
-				ServerID: 1,
-				Name:     "one",
-			},
-			serverSvcGetByIDServer: provisioning.Server{
 				ID:        1,
 				ClusterID: 1,
-				Hostname:  "server-one",
+				Name:      "one",
+			},
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
 				Name: "networkIntegration one",
@@ -279,10 +273,10 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			serverSvc := &serviceMock.ServerServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
+			clusterSvc := &serviceMock.ClusterServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
 					require.Equal(t, 1, id)
-					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
 
@@ -293,7 +287,7 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, nil, serverSvc, networkIntegrationClient, inventory.NetworkIntegrationWithNow(func() time.Time {
+			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, clusterSvc, networkIntegrationClient, inventory.NetworkIntegrationWithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -312,13 +306,11 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 		name                                              string
 		clusterSvcGetAllClusters                          provisioning.Clusters
 		clusterSvcGetAllErr                               error
-		serverSvcGetAllByClusterIDServers                 provisioning.Servers
-		serverSvcGetAllByClusterIDErr                     error
-		serverSvcGetByIDServer                            provisioning.Server
-		serverSvcGetByIDErr                               error
+		clusterSvcGetByIDCluster                          provisioning.Cluster
+		clusterSvcGetByIDErr                              error
 		networkIntegrationClientGetNetworkIntegrations    []incusapi.NetworkIntegration
 		networkIntegrationClientGetNetworkIntegrationsErr error
-		repoDeleteByServerIDErr                           error
+		repoDeleteByClusterIDErr                          error
 		repoCreateErr                                     error
 		serviceOptions                                    []inventory.NetworkIntegrationServiceOption
 
@@ -332,17 +324,9 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Hostname:  "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Hostname:  "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
 				{
@@ -359,33 +343,14 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - server service get all by cluster ID",
+			name: "error - cluster service get by ID",
 			clusterSvcGetAllClusters: provisioning.Clusters{
 				{
 					ID:   1,
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - server service get by ID",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Hostname:  "server-one",
-				},
-			},
-			serverSvcGetByIDErr: boom.Error,
+			clusterSvcGetByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -397,48 +362,32 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Hostname:  "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Hostname:  "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkIntegrationClientGetNetworkIntegrationsErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - network_integrations delete by server ID",
+			name: "error - network_integrations delete by cluster ID",
 			clusterSvcGetAllClusters: provisioning.Clusters{
 				{
 					ID:   1,
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Hostname:  "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Hostname:  "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
 				{
 					Name: "networkIntegration one",
 				},
 			},
-			repoDeleteByServerIDErr: boom.Error,
+			repoDeleteByClusterIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -450,17 +399,9 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Hostname:  "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Hostname:  "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
 				{
@@ -481,17 +422,9 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 					Name: "cluster one",
 				},
 			},
-			serverSvcGetAllByClusterIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Hostname:  "server-one",
-				},
-			},
-			serverSvcGetByIDServer: provisioning.Server{
-				ID:        1,
-				ClusterID: 1,
-				Hostname:  "server-one",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				ID:   1,
+				Name: "cluster-one",
 			},
 			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
 				{
@@ -508,8 +441,8 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkIntegrationRepoMock{
-				DeleteByServerIDFunc: func(ctx context.Context, serverID int) error {
-					return tc.repoDeleteByServerIDErr
+				DeleteByClusterIDFunc: func(ctx context.Context, clusterID int) error {
+					return tc.repoDeleteByClusterIDErr
 				},
 				CreateFunc: func(ctx context.Context, networkIntegration inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
 					return inventory.NetworkIntegration{}, tc.repoCreateErr
@@ -520,14 +453,8 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
 					return tc.clusterSvcGetAllClusters, tc.clusterSvcGetAllErr
 				},
-			}
-
-			serverSvc := &serviceMock.ServerServiceMock{
-				GetAllByClusterIDFunc: func(ctx context.Context, clusterID int) (provisioning.Servers, error) {
-					return tc.serverSvcGetAllByClusterIDServers, tc.serverSvcGetAllByClusterIDErr
-				},
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
-					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
+					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
 
@@ -537,7 +464,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, clusterSvc, serverSvc, networkIntegrationClient,
+			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, clusterSvc, networkIntegrationClient,
 				append(
 					tc.serviceOptions,
 					inventory.NetworkIntegrationWithNow(func() time.Time {

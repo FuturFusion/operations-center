@@ -13,7 +13,6 @@ import (
 type Image struct {
 	ID          int
 	ClusterID   int
-	ServerID    int
 	ProjectName string
 	Name        string
 	Object      incusapi.Image
@@ -21,8 +20,8 @@ type Image struct {
 }
 
 func (m Image) Validate() error {
-	if m.ServerID < 1 {
-		return domain.NewValidationErrf("Invalid Image, server id can not be less than 1")
+	if m.ClusterID < 1 {
+		return domain.NewValidationErrf("Invalid Image, cluster id can not be less than 1")
 	}
 
 	if m.Name == "" {
@@ -40,6 +39,5 @@ type Images []Image
 
 type ImageFilter struct {
 	Cluster *string
-	Server  *string
 	Project *string
 }

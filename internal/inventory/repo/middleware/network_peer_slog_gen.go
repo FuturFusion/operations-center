@@ -57,6 +57,36 @@ func (_d NetworkPeerRepoWithSlog) Create(ctx context.Context, networkPeer _sourc
 	return _d._base.Create(ctx, networkPeer)
 }
 
+// DeleteByClusterID implements _sourceInventory.NetworkPeerRepo
+func (_d NetworkPeerRepoWithSlog) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("clusterID", clusterID),
+		)
+	}
+	log.Debug("NetworkPeerRepoWithSlog: calling DeleteByClusterID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("NetworkPeerRepoWithSlog: method DeleteByClusterID returned an error")
+		} else {
+			log.Debug("NetworkPeerRepoWithSlog: method DeleteByClusterID finished")
+		}
+	}()
+	return _d._base.DeleteByClusterID(ctx, clusterID)
+}
+
 // DeleteByID implements _sourceInventory.NetworkPeerRepo
 func (_d NetworkPeerRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
@@ -85,36 +115,6 @@ func (_d NetworkPeerRepoWithSlog) DeleteByID(ctx context.Context, id int) (err e
 		}
 	}()
 	return _d._base.DeleteByID(ctx, id)
-}
-
-// DeleteByServerID implements _sourceInventory.NetworkPeerRepo
-func (_d NetworkPeerRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-			slog.Int("serverID", serverID),
-		)
-	}
-	log.Debug("NetworkPeerRepoWithSlog: calling DeleteByServerID")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("NetworkPeerRepoWithSlog: method DeleteByServerID returned an error")
-		} else {
-			log.Debug("NetworkPeerRepoWithSlog: method DeleteByServerID finished")
-		}
-	}()
-	return _d._base.DeleteByServerID(ctx, serverID)
 }
 
 // GetAllIDsWithFilter implements _sourceInventory.NetworkPeerRepo

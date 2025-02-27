@@ -28,12 +28,9 @@ func NewStoragePool(db sqlite.DBTX) *storagePool {
 
 func (r storagePool) Create(ctx context.Context, in inventory.StoragePool) (inventory.StoragePool, error) {
 	const sqlStmt = `
-WITH _server AS (
-  SELECT cluster_id FROM servers WHERE server_id = :server_id
-)
-INSERT INTO storage_pools (server_id, name, object, last_updated)
-VALUES(:server_id, :name, :object, :last_updated)
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, object, last_updated;
+INSERT INTO storage_pools (cluster_id, name, object, last_updated)
+VALUES(:cluster_id, :name, :object, :last_updated)
+RETURNING id, cluster_id, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -42,7 +39,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, o
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("server_id", in.ServerID),
+		sql.Named("cluster_id", in.ClusterID),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
 		sql.Named("last_updated", in.LastUpdated),
@@ -58,8 +55,7 @@ func (r storagePool) GetAllIDsWithFilter(ctx context.Context, filter inventory.S
 	const sqlStmt = `
 SELECT storage_pools.id
 FROM storage_pools
-  INNER JOIN servers ON storage_pools.server_id = servers.id
-  INNER JOIN clusters ON servers.cluster_id = clusters.id
+  INNER JOIN clusters ON storage_pools.cluster_id = clusters.id
 WHERE true
 %s
 ORDER BY storage_pools.id
@@ -71,11 +67,6 @@ ORDER BY storage_pools.id
 	if filter.Cluster != nil {
 		whereClause = append(whereClause, ` AND clusters.name = :cluster`)
 		args = append(args, sql.Named("cluster", filter.Cluster))
-	}
-
-	if filter.Server != nil {
-		whereClause = append(whereClause, ` AND servers.hostname = :server`)
-		args = append(args, sql.Named("server", filter.Server))
 	}
 
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
@@ -108,10 +99,9 @@ ORDER BY storage_pools.id
 func (r storagePool) GetByID(ctx context.Context, id int) (inventory.StoragePool, error) {
 	const sqlStmt = `
 SELECT
-  storage_pools.id, servers.cluster_id as cluster_id, storage_pools.server_id, storage_pools.name, storage_pools.object, storage_pools.last_updated
+  storage_pools.id, storage_pools.cluster_id, storage_pools.name, storage_pools.object, storage_pools.last_updated
 FROM
   storage_pools
-  INNER JOIN servers ON storage_pools.server_id = servers.id
 WHERE storage_pools.id=:id;
 `
 
@@ -143,10 +133,10 @@ func (r storagePool) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r storagePool) DeleteByServerID(ctx context.Context, serverID int) error {
-	const sqlStmt = `DELETE FROM storage_pools WHERE server_id=:serverID;`
+func (r storagePool) DeleteByClusterID(ctx context.Context, clusterID int) error {
+	const sqlStmt = `DELETE FROM storage_pools WHERE cluster_id=:clusterID;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("clusterID", clusterID))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -165,12 +155,9 @@ func (r storagePool) DeleteByServerID(ctx context.Context, serverID int) error {
 
 func (r storagePool) UpdateByID(ctx context.Context, in inventory.StoragePool) (inventory.StoragePool, error) {
 	const sqlStmt = `
-WITH _server AS (
-  SELECT cluster_id FROM servers WHERE server_id = :server_id
-)
-UPDATE storage_pools SET server_id=:server_id, name=:name, object=:object, last_updated=:last_updated
+UPDATE storage_pools SET cluster_id=:cluster_id, name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, object, last_updated;
+RETURNING id, cluster_id, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -180,7 +167,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, name, o
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
-		sql.Named("server_id", in.ServerID),
+		sql.Named("cluster_id", in.ClusterID),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
 		sql.Named("last_updated", in.LastUpdated),
@@ -199,7 +186,6 @@ func scanStoragePool(row interface{ Scan(dest ...any) error }) (inventory.Storag
 	err := row.Scan(
 		&storagePool.ID,
 		&storagePool.ClusterID,
-		&storagePool.ServerID,
 		&storagePool.Name,
 		&object,
 		&storagePool.LastUpdated,

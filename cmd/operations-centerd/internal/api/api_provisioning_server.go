@@ -23,10 +23,10 @@ func registerProvisioningServerHandler(router *http.ServeMux, service provisioni
 
 	router.HandleFunc("GET /{$}", response.With(handler.serversGet))
 	router.HandleFunc("POST /{$}", response.With(handler.serversPost))
-	router.HandleFunc("GET /{hostname}", response.With(handler.serverGet))
-	router.HandleFunc("PUT /{hostname}", response.With(handler.serverPut))
-	router.HandleFunc("DELETE /{hostname}", response.With(handler.serverDelete))
-	router.HandleFunc("POST /{hostname}", response.With(handler.serverPost))
+	router.HandleFunc("GET /{name}", response.With(handler.serverGet))
+	router.HandleFunc("PUT /{name}", response.With(handler.serverPut))
+	router.HandleFunc("DELETE /{name}", response.With(handler.serverDelete))
+	router.HandleFunc("POST /{name}", response.With(handler.serverPost))
 }
 
 // swagger:operation GET /1.0/provisioning/servers servers servers_get
@@ -127,7 +127,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 			result = append(result, api.Server{
 				ID:            server.ID,
 				ClusterID:     server.ClusterID,
-				Hostname:      server.Hostname,
+				Name:          server.Name,
 				Type:          server.Type,
 				ConnectionURL: server.ConnectionURL,
 				HardwareData:  server.HardwareData,
@@ -139,14 +139,14 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	serverHostnames, err := s.service.GetAllHostnames(r.Context())
+	serverNames, err := s.service.GetAllNames(r.Context())
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(serverHostnames))
-	for _, hostname := range serverHostnames {
-		result = append(result, fmt.Sprintf("/%s/servers/%s", api.APIVersion, hostname))
+	result := make([]string, 0, len(serverNames))
+	for _, name := range serverNames {
+		result = append(result, fmt.Sprintf("/%s/servers/%s", api.APIVersion, name))
 	}
 
 	return response.SyncResponse(true, result)
@@ -191,7 +191,7 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 	_, err = s.service.Create(r.Context(), provisioning.Server{
 		ID:            server.ID,
 		ClusterID:     server.ClusterID,
-		Hostname:      server.Hostname,
+		Name:          server.Name,
 		Type:          server.Type,
 		ConnectionURL: server.ConnectionURL,
 		HardwareData:  server.HardwareData,
@@ -202,10 +202,10 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed creating server: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/servers/"+server.Hostname)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/servers/"+server.Name)
 }
 
-// swagger:operation GET /1.0/provisioning/servers/{hostname} servers server_get
+// swagger:operation GET /1.0/provisioning/servers/{name} servers server_get
 //
 //	Get the server
 //
@@ -240,9 +240,9 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverGet(r *http.Request) response.Response {
-	hostname := r.PathValue("hostname")
+	name := r.PathValue("name")
 
-	server, err := s.service.GetByHostname(r.Context(), hostname)
+	server, err := s.service.GetByName(r.Context(), name)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -252,7 +252,7 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 		api.Server{
 			ID:            server.ID,
 			ClusterID:     server.ClusterID,
-			Hostname:      server.Hostname,
+			Name:          server.Name,
 			Type:          server.Type,
 			ConnectionURL: server.ConnectionURL,
 			HardwareData:  server.HardwareData,
@@ -263,7 +263,7 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation PUT /1.0/provisioning/servers/{hostname} servers server_put
+// swagger:operation PUT /1.0/provisioning/servers/{name} servers server_put
 //
 //	Update the server
 //
@@ -293,7 +293,7 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverPut(r *http.Request) response.Response {
-	hostname := r.PathValue("hostname")
+	name := r.PathValue("name")
 
 	var server api.Server
 
@@ -310,9 +310,9 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 		}
 	}()
 
-	currentServer, err := s.service.GetByHostname(ctx, hostname)
+	currentServer, err := s.service.GetByName(ctx, name)
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to get server %q: %w", hostname, err))
+		return response.SmartError(fmt.Errorf("Failed to get server %q: %w", name, err))
 	}
 
 	// Validate ETag
@@ -321,10 +321,10 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = s.service.UpdateByHostname(ctx, hostname, provisioning.Server{
+	_, err = s.service.UpdateByName(ctx, name, provisioning.Server{
 		ID:            server.ID,
 		ClusterID:     server.ClusterID,
-		Hostname:      server.Hostname,
+		Name:          server.Name,
 		Type:          server.Type,
 		ConnectionURL: server.ConnectionURL,
 		HardwareData:  server.HardwareData,
@@ -332,7 +332,7 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 		LastUpdated:   server.LastUpdated,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating server %q: %w", hostname, err))
+		return response.SmartError(fmt.Errorf("Failed updating server %q: %w", name, err))
 	}
 
 	err = trans.Commit()
@@ -340,10 +340,10 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/servers/"+hostname)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/servers/"+name)
 }
 
-// swagger:operation DELETE /1.0/provisioning/servers/{hostname} servers server_delete
+// swagger:operation DELETE /1.0/provisioning/servers/{name} servers server_delete
 //
 //	Delete the server
 //
@@ -362,9 +362,9 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverDelete(r *http.Request) response.Response {
-	hostname := r.PathValue("hostname")
+	name := r.PathValue("name")
 
-	err := s.service.DeleteByHostname(r.Context(), hostname)
+	err := s.service.DeleteByName(r.Context(), name)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -372,7 +372,7 @@ func (s *serverHandler) serverDelete(r *http.Request) response.Response {
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/provisioning/servers/{hostname} servers server_post
+// swagger:operation POST /1.0/provisioning/servers/{name} servers server_post
 //
 //	Rename the server
 //
@@ -402,7 +402,7 @@ func (s *serverHandler) serverDelete(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverPost(r *http.Request) response.Response {
-	hostname := r.PathValue("hostname")
+	name := r.PathValue("name")
 
 	var server api.Server
 
@@ -419,9 +419,9 @@ func (s *serverHandler) serverPost(r *http.Request) response.Response {
 		}
 	}()
 
-	currentServer, err := s.service.GetByHostname(ctx, hostname)
+	currentServer, err := s.service.GetByName(ctx, name)
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to get server %q: %w", hostname, err))
+		return response.SmartError(fmt.Errorf("Failed to get server %q: %w", name, err))
 	}
 
 	// Validate ETag
@@ -430,10 +430,10 @@ func (s *serverHandler) serverPost(r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = s.service.RenameByHostname(ctx, hostname, provisioning.Server{
+	_, err = s.service.RenameByName(ctx, name, provisioning.Server{
 		ID:            server.ID,
 		ClusterID:     server.ClusterID,
-		Hostname:      server.Hostname,
+		Name:          server.Name,
 		Type:          server.Type,
 		ConnectionURL: server.ConnectionURL,
 		HardwareData:  server.HardwareData,
@@ -441,7 +441,7 @@ func (s *serverHandler) serverPost(r *http.Request) response.Response {
 		LastUpdated:   server.LastUpdated,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed renaming server %q: %w", hostname, err))
+		return response.SmartError(fmt.Errorf("Failed renaming server %q: %w", name, err))
 	}
 
 	err = trans.Commit()
@@ -449,5 +449,5 @@ func (s *serverHandler) serverPost(r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/servers/"+server.Hostname)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/servers/"+server.Name)
 }

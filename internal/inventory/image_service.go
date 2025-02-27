@@ -14,7 +14,6 @@ import (
 type imageService struct {
 	repo        ImageRepo
 	clusterSvc  ClusterService
-	serverSvc   ServerService
 	imageClient ImageServerClient
 
 	now func() time.Time
@@ -24,11 +23,10 @@ var _ ImageService = &imageService{}
 
 type ImageServiceOption func(s *imageService)
 
-func NewImageService(repo ImageRepo, clusterSvc ClusterService, serverSvc ServerService, client ImageServerClient, opts ...ImageServiceOption) imageService {
+func NewImageService(repo ImageRepo, clusterSvc ClusterService, client ImageServerClient, opts ...ImageServiceOption) imageService {
 	imageSvc := imageService{
 		repo:        repo,
 		clusterSvc:  clusterSvc,
-		serverSvc:   serverSvc,
 		imageClient: client,
 
 		now: time.Now,
@@ -56,12 +54,12 @@ func (s imageService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		server, err := s.serverSvc.GetByID(ctx, image.ServerID)
+		cluster, err := s.clusterSvc.GetByID(ctx, image.ClusterID)
 		if err != nil {
 			return err
 		}
 
-		serverImage, err := s.imageClient.GetImageByName(ctx, server.ConnectionURL, image.Name)
+		retrievedImage, err := s.imageClient.GetImageByName(ctx, cluster.ConnectionURL, image.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, image.ID)
 			if err != nil {
@@ -75,8 +73,8 @@ func (s imageService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		image.ProjectName = serverImage.Project
-		image.Object = serverImage
+		image.ProjectName = retrievedImage.Project
+		image.Object = retrievedImage
 		image.LastUpdated = s.now()
 
 		err = image.Validate()
@@ -115,45 +113,28 @@ func (s imageService) SyncAll(ctx context.Context) error {
 }
 
 func (s imageService) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
 	if err != nil {
 		return err
 	}
 
-	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s imageService) SyncServer(ctx context.Context, serverID int) error {
-	server, err := s.serverSvc.GetByID(ctx, serverID)
-	if err != nil {
-		return err
-	}
-
-	serverImages, err := s.imageClient.GetImages(ctx, server.ConnectionURL)
+	retrievedImages, err := s.imageClient.GetImages(ctx, cluster.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByServerID(ctx, serverID)
+		err = s.repo.DeleteByClusterID(ctx, clusterID)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
-		for _, serverImage := range serverImages {
+		for _, retrievedImage := range retrievedImages {
 			image := Image{
-				ClusterID:   server.ClusterID,
-				ServerID:    serverID,
-				ProjectName: serverImage.Project,
-				Name:        serverImage.Filename,
-				Object:      serverImage,
+				ClusterID:   clusterID,
+				ProjectName: retrievedImage.Project,
+				Name:        retrievedImage.Filename,
+				Object:      retrievedImage,
 				LastUpdated: s.now(),
 			}
 

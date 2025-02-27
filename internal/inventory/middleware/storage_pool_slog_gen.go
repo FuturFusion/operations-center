@@ -176,33 +176,3 @@ func (_d StoragePoolServiceWithSlog) SyncCluster(ctx context.Context, clusterID 
 	}()
 	return _d._base.SyncCluster(ctx, clusterID)
 }
-
-// SyncServer implements _sourceInventory.StoragePoolService
-func (_d StoragePoolServiceWithSlog) SyncServer(ctx context.Context, serverID int) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-			slog.Int("serverID", serverID),
-		)
-	}
-	log.Debug("StoragePoolServiceWithSlog: calling SyncServer")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("StoragePoolServiceWithSlog: method SyncServer returned an error")
-		} else {
-			log.Debug("StoragePoolServiceWithSlog: method SyncServer finished")
-		}
-	}()
-	return _d._base.SyncServer(ctx, serverID)
-}

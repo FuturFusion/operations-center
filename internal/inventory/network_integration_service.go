@@ -14,7 +14,6 @@ import (
 type networkIntegrationService struct {
 	repo                     NetworkIntegrationRepo
 	clusterSvc               ClusterService
-	serverSvc                ServerService
 	networkIntegrationClient NetworkIntegrationServerClient
 
 	now func() time.Time
@@ -24,11 +23,10 @@ var _ NetworkIntegrationService = &networkIntegrationService{}
 
 type NetworkIntegrationServiceOption func(s *networkIntegrationService)
 
-func NewNetworkIntegrationService(repo NetworkIntegrationRepo, clusterSvc ClusterService, serverSvc ServerService, client NetworkIntegrationServerClient, opts ...NetworkIntegrationServiceOption) networkIntegrationService {
+func NewNetworkIntegrationService(repo NetworkIntegrationRepo, clusterSvc ClusterService, client NetworkIntegrationServerClient, opts ...NetworkIntegrationServiceOption) networkIntegrationService {
 	networkIntegrationSvc := networkIntegrationService{
 		repo:                     repo,
 		clusterSvc:               clusterSvc,
-		serverSvc:                serverSvc,
 		networkIntegrationClient: client,
 
 		now: time.Now,
@@ -56,12 +54,12 @@ func (s networkIntegrationService) ResyncByID(ctx context.Context, id int) error
 			return err
 		}
 
-		server, err := s.serverSvc.GetByID(ctx, networkIntegration.ServerID)
+		cluster, err := s.clusterSvc.GetByID(ctx, networkIntegration.ClusterID)
 		if err != nil {
 			return err
 		}
 
-		serverNetworkIntegration, err := s.networkIntegrationClient.GetNetworkIntegrationByName(ctx, server.ConnectionURL, networkIntegration.Name)
+		retrievedNetworkIntegration, err := s.networkIntegrationClient.GetNetworkIntegrationByName(ctx, cluster.ConnectionURL, networkIntegration.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, networkIntegration.ID)
 			if err != nil {
@@ -75,7 +73,7 @@ func (s networkIntegrationService) ResyncByID(ctx context.Context, id int) error
 			return err
 		}
 
-		networkIntegration.Object = serverNetworkIntegration
+		networkIntegration.Object = retrievedNetworkIntegration
 		networkIntegration.LastUpdated = s.now()
 
 		err = networkIntegration.Validate()
@@ -114,44 +112,27 @@ func (s networkIntegrationService) SyncAll(ctx context.Context) error {
 }
 
 func (s networkIntegrationService) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
 	if err != nil {
 		return err
 	}
 
-	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s networkIntegrationService) SyncServer(ctx context.Context, serverID int) error {
-	server, err := s.serverSvc.GetByID(ctx, serverID)
-	if err != nil {
-		return err
-	}
-
-	serverNetworkIntegrations, err := s.networkIntegrationClient.GetNetworkIntegrations(ctx, server.ConnectionURL)
+	retrievedNetworkIntegrations, err := s.networkIntegrationClient.GetNetworkIntegrations(ctx, cluster.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByServerID(ctx, serverID)
+		err = s.repo.DeleteByClusterID(ctx, clusterID)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
-		for _, serverNetworkIntegration := range serverNetworkIntegrations {
+		for _, retrievedNetworkIntegration := range retrievedNetworkIntegrations {
 			networkIntegration := NetworkIntegration{
-				ClusterID:   server.ClusterID,
-				ServerID:    serverID,
-				Name:        serverNetworkIntegration.Name,
-				Object:      serverNetworkIntegration,
+				ClusterID:   clusterID,
+				Name:        retrievedNetworkIntegration.Name,
+				Object:      retrievedNetworkIntegration,
 				LastUpdated: s.now(),
 			}
 

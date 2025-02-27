@@ -23,11 +23,11 @@ var _ inventory.StoragePoolRepo = &StoragePoolRepoMock{}
 //			CreateFunc: func(ctx context.Context, storagePool inventory.StoragePool) (inventory.StoragePool, error) {
 //				panic("mock out the Create method")
 //			},
+//			DeleteByClusterIDFunc: func(ctx context.Context, clusterID int) error {
+//				panic("mock out the DeleteByClusterID method")
+//			},
 //			DeleteByIDFunc: func(ctx context.Context, id int) error {
 //				panic("mock out the DeleteByID method")
-//			},
-//			DeleteByServerIDFunc: func(ctx context.Context, serverID int) error {
-//				panic("mock out the DeleteByServerID method")
 //			},
 //			GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.StoragePoolFilter) ([]int, error) {
 //				panic("mock out the GetAllIDsWithFilter method")
@@ -48,11 +48,11 @@ type StoragePoolRepoMock struct {
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, storagePool inventory.StoragePool) (inventory.StoragePool, error)
 
+	// DeleteByClusterIDFunc mocks the DeleteByClusterID method.
+	DeleteByClusterIDFunc func(ctx context.Context, clusterID int) error
+
 	// DeleteByIDFunc mocks the DeleteByID method.
 	DeleteByIDFunc func(ctx context.Context, id int) error
-
-	// DeleteByServerIDFunc mocks the DeleteByServerID method.
-	DeleteByServerIDFunc func(ctx context.Context, serverID int) error
 
 	// GetAllIDsWithFilterFunc mocks the GetAllIDsWithFilter method.
 	GetAllIDsWithFilterFunc func(ctx context.Context, filter inventory.StoragePoolFilter) ([]int, error)
@@ -72,19 +72,19 @@ type StoragePoolRepoMock struct {
 			// StoragePool is the storagePool argument value.
 			StoragePool inventory.StoragePool
 		}
+		// DeleteByClusterID holds details about calls to the DeleteByClusterID method.
+		DeleteByClusterID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterID is the clusterID argument value.
+			ClusterID int
+		}
 		// DeleteByID holds details about calls to the DeleteByID method.
 		DeleteByID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
 			ID int
-		}
-		// DeleteByServerID holds details about calls to the DeleteByServerID method.
-		DeleteByServerID []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// ServerID is the serverID argument value.
-			ServerID int
 		}
 		// GetAllIDsWithFilter holds details about calls to the GetAllIDsWithFilter method.
 		GetAllIDsWithFilter []struct {
@@ -109,8 +109,8 @@ type StoragePoolRepoMock struct {
 		}
 	}
 	lockCreate              sync.RWMutex
+	lockDeleteByClusterID   sync.RWMutex
 	lockDeleteByID          sync.RWMutex
-	lockDeleteByServerID    sync.RWMutex
 	lockGetAllIDsWithFilter sync.RWMutex
 	lockGetByID             sync.RWMutex
 	lockUpdateByID          sync.RWMutex
@@ -152,6 +152,42 @@ func (mock *StoragePoolRepoMock) CreateCalls() []struct {
 	return calls
 }
 
+// DeleteByClusterID calls DeleteByClusterIDFunc.
+func (mock *StoragePoolRepoMock) DeleteByClusterID(ctx context.Context, clusterID int) error {
+	if mock.DeleteByClusterIDFunc == nil {
+		panic("StoragePoolRepoMock.DeleteByClusterIDFunc: method is nil but StoragePoolRepo.DeleteByClusterID was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		ClusterID int
+	}{
+		Ctx:       ctx,
+		ClusterID: clusterID,
+	}
+	mock.lockDeleteByClusterID.Lock()
+	mock.calls.DeleteByClusterID = append(mock.calls.DeleteByClusterID, callInfo)
+	mock.lockDeleteByClusterID.Unlock()
+	return mock.DeleteByClusterIDFunc(ctx, clusterID)
+}
+
+// DeleteByClusterIDCalls gets all the calls that were made to DeleteByClusterID.
+// Check the length with:
+//
+//	len(mockedStoragePoolRepo.DeleteByClusterIDCalls())
+func (mock *StoragePoolRepoMock) DeleteByClusterIDCalls() []struct {
+	Ctx       context.Context
+	ClusterID int
+} {
+	var calls []struct {
+		Ctx       context.Context
+		ClusterID int
+	}
+	mock.lockDeleteByClusterID.RLock()
+	calls = mock.calls.DeleteByClusterID
+	mock.lockDeleteByClusterID.RUnlock()
+	return calls
+}
+
 // DeleteByID calls DeleteByIDFunc.
 func (mock *StoragePoolRepoMock) DeleteByID(ctx context.Context, id int) error {
 	if mock.DeleteByIDFunc == nil {
@@ -185,42 +221,6 @@ func (mock *StoragePoolRepoMock) DeleteByIDCalls() []struct {
 	mock.lockDeleteByID.RLock()
 	calls = mock.calls.DeleteByID
 	mock.lockDeleteByID.RUnlock()
-	return calls
-}
-
-// DeleteByServerID calls DeleteByServerIDFunc.
-func (mock *StoragePoolRepoMock) DeleteByServerID(ctx context.Context, serverID int) error {
-	if mock.DeleteByServerIDFunc == nil {
-		panic("StoragePoolRepoMock.DeleteByServerIDFunc: method is nil but StoragePoolRepo.DeleteByServerID was just called")
-	}
-	callInfo := struct {
-		Ctx      context.Context
-		ServerID int
-	}{
-		Ctx:      ctx,
-		ServerID: serverID,
-	}
-	mock.lockDeleteByServerID.Lock()
-	mock.calls.DeleteByServerID = append(mock.calls.DeleteByServerID, callInfo)
-	mock.lockDeleteByServerID.Unlock()
-	return mock.DeleteByServerIDFunc(ctx, serverID)
-}
-
-// DeleteByServerIDCalls gets all the calls that were made to DeleteByServerID.
-// Check the length with:
-//
-//	len(mockedStoragePoolRepo.DeleteByServerIDCalls())
-func (mock *StoragePoolRepoMock) DeleteByServerIDCalls() []struct {
-	Ctx      context.Context
-	ServerID int
-} {
-	var calls []struct {
-		Ctx      context.Context
-		ServerID int
-	}
-	mock.lockDeleteByServerID.RLock()
-	calls = mock.calls.DeleteByServerID
-	mock.lockDeleteByServerID.RUnlock()
 	return calls
 }
 

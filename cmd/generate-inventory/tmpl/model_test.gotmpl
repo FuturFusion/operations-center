@@ -20,8 +20,10 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			name: "valid",
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
-				ClusterID:   1,
-				ServerID:    1,
+				{{ .ResourceForeignKey | pascalcase }}ID:   1,
+{{- if .IsServerResource }}
+				ClusterID:    1,
+{{- end }}
 {{- if .HasProject }}
 				ProjectName: "project one",
 {{- end }}
@@ -34,11 +36,13 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "error - invalid server ID",
+			name: "error - invalid {{ .ResourceForeignKey }} ID",
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
-				ClusterID:   1,
-				ServerID:    0, // invalid
+				{{ .ResourceForeignKey | pascalcase }}ID: 0, // invalid
+{{- if .IsServerResource }}
+				ClusterID:    0,
+{{- end }}
 {{- if .HasProject }}
 				ProjectName: "project one",
 {{- end }}
@@ -58,8 +62,10 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			name: "error - invalid project name",
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
-				ClusterID:   1,
-				ServerID:    1,
+				{{ .ResourceForeignKey | pascalcase }}ID:   1,
+{{- if .IsServerResource }}
+				ClusterID:    1,
+{{- end }}
 				ProjectName: "", // invalid
 {{- if .HasParent }}
 				{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase }} one",
@@ -78,8 +84,10 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			name: "error - invalid project name",
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
-				ClusterID:   1,
-				ServerID:    1,
+				{{ .ResourceForeignKey | pascalcase }}ID:   1,
+{{- if .IsServerResource }}
+				ClusterID:    1,
+{{- end }}
 {{- if .HasProject }}
 				ProjectName: "project one",
 {{- end }}
@@ -97,8 +105,10 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			name: "error - invalid name",
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
-				ClusterID:   1,
-				ServerID:    1,
+				{{ .ResourceForeignKey | pascalcase }}ID:   1,
+{{- if .IsServerResource }}
+				ClusterID:    1,
+{{- end }}
 {{- if .HasProject }}
 				ProjectName: "project one",
 {{- end }}

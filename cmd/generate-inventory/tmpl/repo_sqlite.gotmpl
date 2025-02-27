@@ -26,12 +26,14 @@ func New{{ .Name | pascalcase }}(db sqlite.DBTX) *{{ .Name | camelcase }} {
 
 func (r {{ .Name | camelcase }}) Create(ctx context.Context, in inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
 	const sqlStmt = `
+{{- if .IsServerResource }}
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
 )
-INSERT INTO {{ .PluralName }} (server_id, {{ if .HasProject }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name, object, last_updated)
-VALUES(:server_id, {{ if .HasProject }}:project_name, {{ end -}}{{ if .HasParent }}:{{ .ParentName }}_name, {{ end -}} :name, :object, :last_updated)
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, {{ if .HasProject }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name, object, last_updated;
+{{- end }}
+INSERT INTO {{ .PluralName }} ({{ .ResourceForeignKey }}_id, {{ if .HasProject }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name, object, last_updated)
+VALUES(:{{ .ResourceForeignKey }}_id, {{ if .HasProject }}:project_name, {{ end -}}{{ if .HasParent }}:{{ .ParentName }}_name, {{ end -}} :name, :object, :last_updated)
+RETURNING id, {{ if .IsServerResource }}(SELECT cluster_id FROM _server) as cluster_id, {{ end -}} {{ .ResourceForeignKey }}_id, {{ if .HasProject }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -40,7 +42,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, {{ if .
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("server_id", in.ServerID),
+		sql.Named("{{ .ResourceForeignKey }}_id", in.{{ .ResourceForeignKey | pascalcase }}ID),
 {{- if .HasProject }}
 		sql.Named("project_name", in.ProjectName),
 {{- end }}
@@ -62,8 +64,10 @@ func (r {{ .Name | camelcase }}) GetAllIDsWithFilter(ctx context.Context, filter
 	const sqlStmt = `
 SELECT {{ .PluralName }}.id
 FROM {{ .PluralName }}
-  INNER JOIN servers ON {{ .PluralName }}.server_id = servers.id
+  INNER JOIN {{ .ResourceForeignKey }}s ON {{ .PluralName }}.{{ .ResourceForeignKey }}_id = {{ .ResourceForeignKey }}s.id
+{{- if .IsServerResource }}
   INNER JOIN clusters ON servers.cluster_id = clusters.id
+{{- end }}
 WHERE true
 %s
 ORDER BY {{ .PluralName }}.id
@@ -77,10 +81,12 @@ ORDER BY {{ .PluralName }}.id
 		args = append(args, sql.Named("cluster", filter.Cluster))
 	}
 
+{{ if .IsServerResource }}
 	if filter.Server != nil {
-		whereClause = append(whereClause, ` AND servers.hostname = :server`)
+		whereClause = append(whereClause, ` AND servers.name = :server`)
 		args = append(args, sql.Named("server", filter.Server))
 	}
+{{ end }}
 
 {{ if .HasProject }}
 	if filter.Project != nil {
@@ -119,10 +125,12 @@ ORDER BY {{ .PluralName }}.id
 func (r {{ .Name | camelcase }}) GetByID(ctx context.Context, id int) (inventory.{{ .Name | pascalcase }}, error) {
 	const sqlStmt = `
 SELECT
-  {{ .PluralName }}.id, servers.cluster_id as cluster_id, {{ .PluralName }}.server_id, {{ if .HasProject }}{{ .PluralName }}.project_name, {{ end -}}{{ if .HasParent }}{{ .PluralName }}.{{ .ParentName }}_name, {{ end -}} {{ .PluralName }}.name, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
+  {{ .PluralName }}.id, {{ if .IsServerResource }}servers.cluster_id as cluster_id, {{ end -}} {{ .PluralName }}.{{ .ResourceForeignKey }}_id, {{ if .HasProject }}{{ .PluralName }}.project_name, {{ end -}}{{ if .HasParent }}{{ .PluralName }}.{{ .ParentName }}_name, {{ end -}} {{ .PluralName }}.name, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
 FROM
   {{ .PluralName }}
+{{- if .IsServerResource }}
   INNER JOIN servers ON {{ .PluralName }}.server_id = servers.id
+{{- end }}
 WHERE {{ .PluralName }}.id=:id;
 `
 
@@ -154,10 +162,10 @@ func (r {{ .Name | camelcase }}) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r {{ .Name | camelcase }}) DeleteByServerID(ctx context.Context, serverID int) error {
-	const sqlStmt = `DELETE FROM {{ .PluralName }} WHERE server_id=:serverID;`
+func (r {{ .Name | camelcase }}) DeleteBy{{ .ResourceForeignKey | pascalcase }}ID(ctx context.Context, {{ .ResourceForeignKey }}ID int) error {
+	const sqlStmt = `DELETE FROM {{ .PluralName }} WHERE {{ .ResourceForeignKey }}_id=:{{ .ResourceForeignKey }}ID;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("{{ .ResourceForeignKey }}ID", {{ .ResourceForeignKey }}ID))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -176,12 +184,14 @@ func (r {{ .Name | camelcase }}) DeleteByServerID(ctx context.Context, serverID 
 
 func (r {{ .Name | camelcase }}) UpdateByID(ctx context.Context, in inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
 	const sqlStmt = `
+{{- if .IsServerResource }}
 WITH _server AS (
   SELECT cluster_id FROM servers WHERE server_id = :server_id
 )
-UPDATE {{ .PluralName }} SET server_id=:server_id, {{ if .HasProject }}project_name=:project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name=:{{ .ParentName }}_name, {{ end -}} name=:name, object=:object, last_updated=:last_updated
+{{- end }}
+UPDATE {{ .PluralName }} SET {{ .ResourceForeignKey }}_id=:{{ .ResourceForeignKey }}_id, {{ if .HasProject }}project_name=:project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name=:{{ .ParentName }}_name, {{ end -}} name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, {{ if .HasProject }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name, object, last_updated;
+RETURNING id, {{ if .IsServerResource }}(SELECT cluster_id FROM _server) as cluster_id, {{ end -}} {{ .ResourceForeignKey }}_id, {{ if .HasProject }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -191,7 +201,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, {{ if .
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
-		sql.Named("server_id", in.ServerID),
+		sql.Named("{{ .ResourceForeignKey }}_id", in.{{ .ResourceForeignKey | pascalcase }}ID),
 {{- if .HasProject }}
 		sql.Named("project_name", in.ProjectName),
 {{- end }}
@@ -215,8 +225,10 @@ func scan{{ .Name | pascalcase }}(row interface{ Scan(dest ...any) error }) (inv
 
 	err := row.Scan(
 		&{{ .Name | camelcase }}.ID,
+{{- if .IsServerResource }}
 		&{{ .Name | camelcase }}.ClusterID,
-		&{{ .Name | camelcase }}.ServerID,
+{{- end }}
+		&{{ .Name | camelcase }}.{{ .ResourceForeignKey | pascalcase }}ID,
 {{- if .HasProject }}
 		&{{ .Name | camelcase }}.ProjectName,
 {{- end }}

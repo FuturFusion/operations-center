@@ -17,7 +17,6 @@ type ImageService interface {
 	ResyncByID(ctx context.Context, id int) error
 	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
-	SyncServer(ctx context.Context, serverID int) error
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/image_repo_mock_gen.go -rm . ImageRepo
@@ -29,7 +28,7 @@ type ImageRepo interface {
 	GetByID(ctx context.Context, id int) (Image, error)
 	Create(ctx context.Context, image Image) (Image, error)
 	DeleteByID(ctx context.Context, id int) error
-	DeleteByServerID(ctx context.Context, serverID int) error
+	DeleteByClusterID(ctx context.Context, clusterID int) error
 	UpdateByID(ctx context.Context, image Image) (Image, error)
 }
 

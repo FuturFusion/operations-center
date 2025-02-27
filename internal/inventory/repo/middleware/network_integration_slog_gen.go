@@ -57,6 +57,36 @@ func (_d NetworkIntegrationRepoWithSlog) Create(ctx context.Context, networkInte
 	return _d._base.Create(ctx, networkIntegration)
 }
 
+// DeleteByClusterID implements _sourceInventory.NetworkIntegrationRepo
+func (_d NetworkIntegrationRepoWithSlog) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("clusterID", clusterID),
+		)
+	}
+	log.Debug("NetworkIntegrationRepoWithSlog: calling DeleteByClusterID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("NetworkIntegrationRepoWithSlog: method DeleteByClusterID returned an error")
+		} else {
+			log.Debug("NetworkIntegrationRepoWithSlog: method DeleteByClusterID finished")
+		}
+	}()
+	return _d._base.DeleteByClusterID(ctx, clusterID)
+}
+
 // DeleteByID implements _sourceInventory.NetworkIntegrationRepo
 func (_d NetworkIntegrationRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
@@ -85,36 +115,6 @@ func (_d NetworkIntegrationRepoWithSlog) DeleteByID(ctx context.Context, id int)
 		}
 	}()
 	return _d._base.DeleteByID(ctx, id)
-}
-
-// DeleteByServerID implements _sourceInventory.NetworkIntegrationRepo
-func (_d NetworkIntegrationRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-			slog.Int("serverID", serverID),
-		)
-	}
-	log.Debug("NetworkIntegrationRepoWithSlog: calling DeleteByServerID")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("NetworkIntegrationRepoWithSlog: method DeleteByServerID returned an error")
-		} else {
-			log.Debug("NetworkIntegrationRepoWithSlog: method DeleteByServerID finished")
-		}
-	}()
-	return _d._base.DeleteByServerID(ctx, serverID)
 }
 
 // GetAllIDsWithFilter implements _sourceInventory.NetworkIntegrationRepo

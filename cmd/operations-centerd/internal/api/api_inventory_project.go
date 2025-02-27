@@ -43,16 +43,6 @@ func registerInventoryProjectHandler(router *http.ServeMux, service inventory.Pr
 //		    description: Cluster name
 //		    type: string
 //		    example: cluster
-//		  - in: query
-//		    name: server
-//		    description: Server name
-//		    type: string
-//		    example: localhost
-//		  - in: query
-//		    name: project
-//		    description: Project name
-//		    type: string
-//		    example: default
 //		responses:
 //		  "200":
 //		    description: API project
@@ -91,10 +81,6 @@ func (i *projectHandler) projectsGet(r *http.Request) response.Response {
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
-	}
-
-	if r.URL.Query().Get("server") != "" {
-		filter.Server = ptr.To(r.URL.Query().Get("server"))
 	}
 
 	projectIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
@@ -160,7 +146,6 @@ func (i *projectHandler) projectGet(r *http.Request) response.Response {
 		api.Project{
 			ID:          project.ID,
 			ClusterID:   project.ClusterID,
-			ServerID:    project.ServerID,
 			Name:        project.Name,
 			Object:      project.Object,
 			LastUpdated: project.LastUpdated,

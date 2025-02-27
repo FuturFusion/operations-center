@@ -57,6 +57,36 @@ func (_d ProfileRepoWithSlog) Create(ctx context.Context, profile _sourceInvento
 	return _d._base.Create(ctx, profile)
 }
 
+// DeleteByClusterID implements _sourceInventory.ProfileRepo
+func (_d ProfileRepoWithSlog) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Int("clusterID", clusterID),
+		)
+	}
+	log.Debug("ProfileRepoWithSlog: calling DeleteByClusterID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("ProfileRepoWithSlog: method DeleteByClusterID returned an error")
+		} else {
+			log.Debug("ProfileRepoWithSlog: method DeleteByClusterID finished")
+		}
+	}()
+	return _d._base.DeleteByClusterID(ctx, clusterID)
+}
+
 // DeleteByID implements _sourceInventory.ProfileRepo
 func (_d ProfileRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
@@ -85,36 +115,6 @@ func (_d ProfileRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error
 		}
 	}()
 	return _d._base.DeleteByID(ctx, id)
-}
-
-// DeleteByServerID implements _sourceInventory.ProfileRepo
-func (_d ProfileRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-			slog.Int("serverID", serverID),
-		)
-	}
-	log.Debug("ProfileRepoWithSlog: calling DeleteByServerID")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("ProfileRepoWithSlog: method DeleteByServerID returned an error")
-		} else {
-			log.Debug("ProfileRepoWithSlog: method DeleteByServerID finished")
-		}
-	}()
-	return _d._base.DeleteByServerID(ctx, serverID)
 }
 
 // GetAllIDsWithFilter implements _sourceInventory.ProfileRepo

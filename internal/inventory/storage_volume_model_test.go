@@ -22,8 +22,8 @@ func TestStorageVolume_Validate(t *testing.T) {
 			name: "valid",
 			image: inventory.StorageVolume{
 				ID:              1,
-				ClusterID:       1,
 				ServerID:        1,
+				ClusterID:       1,
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "one",
@@ -35,8 +35,8 @@ func TestStorageVolume_Validate(t *testing.T) {
 			name: "error - invalid server ID",
 			image: inventory.StorageVolume{
 				ID:              1,
-				ClusterID:       1,
 				ServerID:        0, // invalid
+				ClusterID:       0,
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "one",
@@ -51,8 +51,8 @@ func TestStorageVolume_Validate(t *testing.T) {
 			name: "error - invalid project name",
 			image: inventory.StorageVolume{
 				ID:              1,
-				ClusterID:       1,
 				ServerID:        1,
+				ClusterID:       1,
 				ProjectName:     "", // invalid
 				StoragePoolName: "storagePool one",
 				Name:            "one",
@@ -67,8 +67,8 @@ func TestStorageVolume_Validate(t *testing.T) {
 			name: "error - invalid project name",
 			image: inventory.StorageVolume{
 				ID:              1,
-				ClusterID:       1,
 				ServerID:        1,
+				ClusterID:       1,
 				ProjectName:     "project one",
 				StoragePoolName: "", // invalid
 				Name:            "one",
@@ -83,8 +83,8 @@ func TestStorageVolume_Validate(t *testing.T) {
 			name: "error - invalid name",
 			image: inventory.StorageVolume{
 				ID:              1,
-				ClusterID:       1,
 				ServerID:        1,
+				ClusterID:       1,
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "", // invalid

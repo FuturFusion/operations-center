@@ -14,7 +14,6 @@ import (
 type networkZoneService struct {
 	repo              NetworkZoneRepo
 	clusterSvc        ClusterService
-	serverSvc         ServerService
 	networkZoneClient NetworkZoneServerClient
 
 	now func() time.Time
@@ -24,11 +23,10 @@ var _ NetworkZoneService = &networkZoneService{}
 
 type NetworkZoneServiceOption func(s *networkZoneService)
 
-func NewNetworkZoneService(repo NetworkZoneRepo, clusterSvc ClusterService, serverSvc ServerService, client NetworkZoneServerClient, opts ...NetworkZoneServiceOption) networkZoneService {
+func NewNetworkZoneService(repo NetworkZoneRepo, clusterSvc ClusterService, client NetworkZoneServerClient, opts ...NetworkZoneServiceOption) networkZoneService {
 	networkZoneSvc := networkZoneService{
 		repo:              repo,
 		clusterSvc:        clusterSvc,
-		serverSvc:         serverSvc,
 		networkZoneClient: client,
 
 		now: time.Now,
@@ -56,12 +54,12 @@ func (s networkZoneService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		server, err := s.serverSvc.GetByID(ctx, networkZone.ServerID)
+		cluster, err := s.clusterSvc.GetByID(ctx, networkZone.ClusterID)
 		if err != nil {
 			return err
 		}
 
-		serverNetworkZone, err := s.networkZoneClient.GetNetworkZoneByName(ctx, server.ConnectionURL, networkZone.Name)
+		retrievedNetworkZone, err := s.networkZoneClient.GetNetworkZoneByName(ctx, cluster.ConnectionURL, networkZone.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, networkZone.ID)
 			if err != nil {
@@ -75,8 +73,8 @@ func (s networkZoneService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		networkZone.ProjectName = serverNetworkZone.Project
-		networkZone.Object = serverNetworkZone
+		networkZone.ProjectName = retrievedNetworkZone.Project
+		networkZone.Object = retrievedNetworkZone
 		networkZone.LastUpdated = s.now()
 
 		err = networkZone.Validate()
@@ -115,45 +113,28 @@ func (s networkZoneService) SyncAll(ctx context.Context) error {
 }
 
 func (s networkZoneService) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
 	if err != nil {
 		return err
 	}
 
-	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s networkZoneService) SyncServer(ctx context.Context, serverID int) error {
-	server, err := s.serverSvc.GetByID(ctx, serverID)
-	if err != nil {
-		return err
-	}
-
-	serverNetworkZones, err := s.networkZoneClient.GetNetworkZones(ctx, server.ConnectionURL)
+	retrievedNetworkZones, err := s.networkZoneClient.GetNetworkZones(ctx, cluster.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByServerID(ctx, serverID)
+		err = s.repo.DeleteByClusterID(ctx, clusterID)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
-		for _, serverNetworkZone := range serverNetworkZones {
+		for _, retrievedNetworkZone := range retrievedNetworkZones {
 			networkZone := NetworkZone{
-				ClusterID:   server.ClusterID,
-				ServerID:    serverID,
-				ProjectName: serverNetworkZone.Project,
-				Name:        serverNetworkZone.Name,
-				Object:      serverNetworkZone,
+				ClusterID:   clusterID,
+				ProjectName: retrievedNetworkZone.Project,
+				Name:        retrievedNetworkZone.Name,
+				Object:      retrievedNetworkZone,
 				LastUpdated: s.now(),
 			}
 

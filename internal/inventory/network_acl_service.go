@@ -14,7 +14,6 @@ import (
 type networkACLService struct {
 	repo             NetworkACLRepo
 	clusterSvc       ClusterService
-	serverSvc        ServerService
 	networkACLClient NetworkACLServerClient
 
 	now func() time.Time
@@ -24,11 +23,10 @@ var _ NetworkACLService = &networkACLService{}
 
 type NetworkACLServiceOption func(s *networkACLService)
 
-func NewNetworkACLService(repo NetworkACLRepo, clusterSvc ClusterService, serverSvc ServerService, client NetworkACLServerClient, opts ...NetworkACLServiceOption) networkACLService {
+func NewNetworkACLService(repo NetworkACLRepo, clusterSvc ClusterService, client NetworkACLServerClient, opts ...NetworkACLServiceOption) networkACLService {
 	networkACLSvc := networkACLService{
 		repo:             repo,
 		clusterSvc:       clusterSvc,
-		serverSvc:        serverSvc,
 		networkACLClient: client,
 
 		now: time.Now,
@@ -56,12 +54,12 @@ func (s networkACLService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		server, err := s.serverSvc.GetByID(ctx, networkACL.ServerID)
+		cluster, err := s.clusterSvc.GetByID(ctx, networkACL.ClusterID)
 		if err != nil {
 			return err
 		}
 
-		serverNetworkACL, err := s.networkACLClient.GetNetworkACLByName(ctx, server.ConnectionURL, networkACL.Name)
+		retrievedNetworkACL, err := s.networkACLClient.GetNetworkACLByName(ctx, cluster.ConnectionURL, networkACL.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, networkACL.ID)
 			if err != nil {
@@ -75,8 +73,8 @@ func (s networkACLService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		networkACL.ProjectName = serverNetworkACL.Project
-		networkACL.Object = serverNetworkACL
+		networkACL.ProjectName = retrievedNetworkACL.Project
+		networkACL.Object = retrievedNetworkACL
 		networkACL.LastUpdated = s.now()
 
 		err = networkACL.Validate()
@@ -115,45 +113,28 @@ func (s networkACLService) SyncAll(ctx context.Context) error {
 }
 
 func (s networkACLService) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
 	if err != nil {
 		return err
 	}
 
-	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s networkACLService) SyncServer(ctx context.Context, serverID int) error {
-	server, err := s.serverSvc.GetByID(ctx, serverID)
-	if err != nil {
-		return err
-	}
-
-	serverNetworkACLs, err := s.networkACLClient.GetNetworkACLs(ctx, server.ConnectionURL)
+	retrievedNetworkACLs, err := s.networkACLClient.GetNetworkACLs(ctx, cluster.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByServerID(ctx, serverID)
+		err = s.repo.DeleteByClusterID(ctx, clusterID)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
-		for _, serverNetworkACL := range serverNetworkACLs {
+		for _, retrievedNetworkACL := range retrievedNetworkACLs {
 			networkACL := NetworkACL{
-				ClusterID:   server.ClusterID,
-				ServerID:    serverID,
-				ProjectName: serverNetworkACL.Project,
-				Name:        serverNetworkACL.Name,
-				Object:      serverNetworkACL,
+				ClusterID:   clusterID,
+				ProjectName: retrievedNetworkACL.Project,
+				Name:        retrievedNetworkACL.Name,
+				Object:      retrievedNetworkACL,
 				LastUpdated: s.now(),
 			}
 

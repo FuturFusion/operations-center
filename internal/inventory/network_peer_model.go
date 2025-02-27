@@ -13,7 +13,6 @@ import (
 type NetworkPeer struct {
 	ID          int
 	ClusterID   int
-	ServerID    int
 	NetworkName string
 	Name        string
 	Object      incusapi.NetworkPeer
@@ -21,8 +20,8 @@ type NetworkPeer struct {
 }
 
 func (m NetworkPeer) Validate() error {
-	if m.ServerID < 1 {
-		return domain.NewValidationErrf("Invalid NetworkPeer, server id can not be less than 1")
+	if m.ClusterID < 1 {
+		return domain.NewValidationErrf("Invalid NetworkPeer, cluster id can not be less than 1")
 	}
 
 	if m.Name == "" {
@@ -40,5 +39,4 @@ type NetworkPeers []NetworkPeer
 
 type NetworkPeerFilter struct {
 	Cluster *string
-	Server  *string
 }

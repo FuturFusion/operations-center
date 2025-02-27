@@ -77,7 +77,7 @@ func (s storageVolumeService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		serverStorageVolume, err := s.storageVolumeClient.GetStorageVolumeByName(ctx, server.ConnectionURL, storageVolume.StoragePoolName, storageVolume.Name)
+		retrievedStorageVolume, err := s.storageVolumeClient.GetStorageVolumeByName(ctx, server.ConnectionURL, storageVolume.StoragePoolName, storageVolume.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, storageVolume.ID)
 			if err != nil {
@@ -91,8 +91,8 @@ func (s storageVolumeService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		storageVolume.ProjectName = serverStorageVolume.Project
-		storageVolume.Object = serverStorageVolume
+		storageVolume.ProjectName = retrievedStorageVolume.Project
+		storageVolume.Object = retrievedStorageVolume
 		storageVolume.LastUpdated = s.now()
 
 		err = storageVolume.Validate()
@@ -152,17 +152,17 @@ func (s storageVolumeService) SyncServer(ctx context.Context, serverID int) erro
 		return err
 	}
 
-	serverStoragePools, err := s.storagePoolClient.GetStoragePools(ctx, server.ConnectionURL)
+	retrievedStoragePools, err := s.storagePoolClient.GetStoragePools(ctx, server.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
-	for _, storagePool := range serverStoragePools {
+	for _, storagePool := range retrievedStoragePools {
 		if s.isParentFilted(storagePool) {
 			continue
 		}
 
-		serverStorageVolumes, err := s.storageVolumeClient.GetStorageVolumes(ctx, server.ConnectionURL, storagePool.Name)
+		retrievedStorageVolumes, err := s.storageVolumeClient.GetStorageVolumes(ctx, server.ConnectionURL, storagePool.Name)
 		if err != nil {
 			return err
 		}
@@ -173,14 +173,14 @@ func (s storageVolumeService) SyncServer(ctx context.Context, serverID int) erro
 				return err
 			}
 
-			for _, serverStorageVolume := range serverStorageVolumes {
+			for _, retrievedStorageVolume := range retrievedStorageVolumes {
 				storageVolume := StorageVolume{
 					ClusterID:       server.ClusterID,
 					ServerID:        serverID,
-					ProjectName:     serverStorageVolume.Project,
+					ProjectName:     retrievedStorageVolume.Project,
 					StoragePoolName: storagePool.Name,
-					Name:            serverStorageVolume.Name,
-					Object:          serverStorageVolume,
+					Name:            retrievedStorageVolume.Name,
+					Object:          retrievedStorageVolume,
 					LastUpdated:     s.now(),
 				}
 

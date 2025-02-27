@@ -23,7 +23,6 @@ func TestNetworkACL_Validate(t *testing.T) {
 			image: inventory.NetworkACL{
 				ID:          1,
 				ClusterID:   1,
-				ServerID:    1,
 				ProjectName: "project one",
 				Name:        "one",
 			},
@@ -31,11 +30,10 @@ func TestNetworkACL_Validate(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "error - invalid server ID",
+			name: "error - invalid cluster ID",
 			image: inventory.NetworkACL{
 				ID:          1,
-				ClusterID:   1,
-				ServerID:    0, // invalid
+				ClusterID:   0, // invalid
 				ProjectName: "project one",
 				Name:        "one",
 			},
@@ -50,7 +48,6 @@ func TestNetworkACL_Validate(t *testing.T) {
 			image: inventory.NetworkACL{
 				ID:          1,
 				ClusterID:   1,
-				ServerID:    1,
 				ProjectName: "", // invalid
 				Name:        "one",
 			},
@@ -65,7 +62,6 @@ func TestNetworkACL_Validate(t *testing.T) {
 			image: inventory.NetworkACL{
 				ID:          1,
 				ClusterID:   1,
-				ServerID:    1,
 				ProjectName: "project one",
 				Name:        "", // invalid
 			},

@@ -13,7 +13,6 @@ import (
 type NetworkZone struct {
 	ID          int
 	ClusterID   int
-	ServerID    int
 	ProjectName string
 	Name        string
 	Object      incusapi.NetworkZone
@@ -21,8 +20,8 @@ type NetworkZone struct {
 }
 
 func (m NetworkZone) Validate() error {
-	if m.ServerID < 1 {
-		return domain.NewValidationErrf("Invalid NetworkZone, server id can not be less than 1")
+	if m.ClusterID < 1 {
+		return domain.NewValidationErrf("Invalid NetworkZone, cluster id can not be less than 1")
 	}
 
 	if m.Name == "" {
@@ -40,6 +39,5 @@ type NetworkZones []NetworkZone
 
 type NetworkZoneFilter struct {
 	Cluster *string
-	Server  *string
 	Project *string
 }

@@ -9,12 +9,12 @@ type ServerService interface {
 	Create(ctx context.Context, server Server) (Server, error)
 	GetAll(ctx context.Context) (Servers, error)
 	GetAllByClusterID(ctx context.Context, clusterID int) (Servers, error)
-	GetAllHostnames(ctx context.Context) ([]string, error)
+	GetAllNames(ctx context.Context) ([]string, error)
 	GetByID(ctx context.Context, id int) (Server, error)
-	GetByHostname(ctx context.Context, name string) (Server, error)
-	UpdateByHostname(ctx context.Context, name string, server Server) (Server, error)
-	RenameByHostname(ctx context.Context, name string, server Server) (Server, error)
-	DeleteByHostname(ctx context.Context, name string) error
+	GetByName(ctx context.Context, name string) (Server, error)
+	UpdateByName(ctx context.Context, name string, server Server) (Server, error)
+	RenameByName(ctx context.Context, name string, server Server) (Server, error)
+	DeleteByName(ctx context.Context, name string) error
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/server_repo_mock_gen.go -rm . ServerRepo
@@ -25,9 +25,9 @@ type ServerRepo interface {
 	Create(ctx context.Context, server Server) (Server, error)
 	GetAll(ctx context.Context) (Servers, error)
 	GetAllByClusterID(ctx context.Context, clusterID int) (Servers, error)
-	GetAllHostnames(ctx context.Context) ([]string, error)
+	GetAllNames(ctx context.Context) ([]string, error)
 	GetByID(ctx context.Context, id int) (Server, error)
-	GetByHostname(ctx context.Context, name string) (Server, error)
+	GetByName(ctx context.Context, name string) (Server, error)
 	UpdateByID(ctx context.Context, server Server) (Server, error)
 	DeleteByID(ctx context.Context, id int) error
 }

@@ -4,7 +4,6 @@ package sqlite_test
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
-	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestProjectDatabaseActions(t *testing.T) {
@@ -31,37 +29,23 @@ func TestProjectDatabaseActions(t *testing.T) {
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
-	testServerA := provisioning.Server{
-		ID:            1,
-		ClusterID:     1,
-		Hostname:      "one",
-		Type:          api.ServerTypeIncus,
-		ConnectionURL: "https://one/",
-		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
-	}
-
-	testServerB := provisioning.Server{
-		ID:            2,
-		ClusterID:     1,
-		Hostname:      "two",
-		Type:          api.ServerTypeIncus,
-		ConnectionURL: "https://one/",
-		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	testClusterB := provisioning.Cluster{
+		ID:              2,
+		Name:            "two",
+		ConnectionURL:   "https://cluster-two/",
+		ServerHostnames: []string{"three", "four"},
+		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	projectA := inventory.Project{
-		ServerID:    1,
+		ClusterID:   1,
 		Name:        "one",
 		Object:      incusapi.Project{},
 		LastUpdated: time.Now(),
 	}
 
 	projectB := inventory.Project{
-		ServerID:    2,
+		ClusterID:   2,
 		Name:        "two",
 		Object:      incusapi.Project{},
 		LastUpdated: time.Now(),
@@ -83,7 +67,6 @@ func TestProjectDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), nil)
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
 
 	project := inventorySqlite.NewProject(db)
 
@@ -91,14 +74,10 @@ func TestProjectDatabaseActions(t *testing.T) {
 	_, err = project.Create(ctx, projectA)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
-	// Add dummy clusters
+	// Add dummy clusters.
 	_, err = clusterSvc.Create(ctx, testClusterA)
 	require.NoError(t, err)
-
-	// Add dummy servers.
-	_, err = serverSvc.Create(ctx, testServerA)
-	require.NoError(t, err)
-	_, err = serverSvc.Create(ctx, testServerB)
+	_, err = clusterSvc.Create(ctx, testClusterB)
 	require.NoError(t, err)
 
 	// Add projects
@@ -108,7 +87,7 @@ func TestProjectDatabaseActions(t *testing.T) {
 
 	projectB, err = project.Create(ctx, projectB)
 	require.NoError(t, err)
-	require.Equal(t, 1, projectB.ClusterID)
+	require.Equal(t, 2, projectB.ClusterID)
 
 	// Ensure we have two entries without filter
 	projectIDs, err := project.GetAllIDsWithFilter(ctx, inventory.ProjectFilter{})
@@ -119,7 +98,6 @@ func TestProjectDatabaseActions(t *testing.T) {
 	// Ensure we have one entry with filter for cluster, server and project
 	projectIDs, err = project.GetAllIDsWithFilter(ctx, inventory.ProjectFilter{
 		Cluster: ptr.To("one"),
-		Server:  ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, projectIDs, 1)
@@ -140,8 +118,8 @@ func TestProjectDatabaseActions(t *testing.T) {
 	err = project.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete projects by server ID.
-	err = project.DeleteByServerID(ctx, 2)
+	// Delete projects by cluster ID.
+	err = project.DeleteByClusterID(ctx, 2)
 	require.NoError(t, err)
 
 	_, err = project.GetByID(ctx, projectA.ID)

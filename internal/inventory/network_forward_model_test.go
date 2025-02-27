@@ -23,7 +23,6 @@ func TestNetworkForward_Validate(t *testing.T) {
 			image: inventory.NetworkForward{
 				ID:          1,
 				ClusterID:   1,
-				ServerID:    1,
 				NetworkName: "network one",
 				Name:        "one",
 			},
@@ -31,11 +30,10 @@ func TestNetworkForward_Validate(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "error - invalid server ID",
+			name: "error - invalid cluster ID",
 			image: inventory.NetworkForward{
 				ID:          1,
-				ClusterID:   1,
-				ServerID:    0, // invalid
+				ClusterID:   0, // invalid
 				NetworkName: "network one",
 				Name:        "one",
 			},
@@ -50,7 +48,6 @@ func TestNetworkForward_Validate(t *testing.T) {
 			image: inventory.NetworkForward{
 				ID:          1,
 				ClusterID:   1,
-				ServerID:    1,
 				NetworkName: "", // invalid
 				Name:        "one",
 			},
@@ -65,7 +62,6 @@ func TestNetworkForward_Validate(t *testing.T) {
 			image: inventory.NetworkForward{
 				ID:          1,
 				ClusterID:   1,
-				ServerID:    1,
 				NetworkName: "network one",
 				Name:        "", // invalid
 			},

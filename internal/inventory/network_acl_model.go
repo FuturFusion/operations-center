@@ -13,7 +13,6 @@ import (
 type NetworkACL struct {
 	ID          int
 	ClusterID   int
-	ServerID    int
 	ProjectName string
 	Name        string
 	Object      incusapi.NetworkACL
@@ -21,8 +20,8 @@ type NetworkACL struct {
 }
 
 func (m NetworkACL) Validate() error {
-	if m.ServerID < 1 {
-		return domain.NewValidationErrf("Invalid NetworkACL, server id can not be less than 1")
+	if m.ClusterID < 1 {
+		return domain.NewValidationErrf("Invalid NetworkACL, cluster id can not be less than 1")
 	}
 
 	if m.Name == "" {
@@ -40,6 +39,5 @@ type NetworkACLs []NetworkACL
 
 type NetworkACLFilter struct {
 	Cluster *string
-	Server  *string
 	Project *string
 }

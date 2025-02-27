@@ -28,12 +28,9 @@ func NewNetworkACL(db sqlite.DBTX) *networkACL {
 
 func (r networkACL) Create(ctx context.Context, in inventory.NetworkACL) (inventory.NetworkACL, error) {
 	const sqlStmt = `
-WITH _server AS (
-  SELECT cluster_id FROM servers WHERE server_id = :server_id
-)
-INSERT INTO network_acls (server_id, project_name, name, object, last_updated)
-VALUES(:server_id, :project_name, :name, :object, :last_updated)
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project_name, name, object, last_updated;
+INSERT INTO network_acls (cluster_id, project_name, name, object, last_updated)
+VALUES(:cluster_id, :project_name, :name, :object, :last_updated)
+RETURNING id, cluster_id, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -42,7 +39,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("server_id", in.ServerID),
+		sql.Named("cluster_id", in.ClusterID),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -59,8 +56,7 @@ func (r networkACL) GetAllIDsWithFilter(ctx context.Context, filter inventory.Ne
 	const sqlStmt = `
 SELECT network_acls.id
 FROM network_acls
-  INNER JOIN servers ON network_acls.server_id = servers.id
-  INNER JOIN clusters ON servers.cluster_id = clusters.id
+  INNER JOIN clusters ON network_acls.cluster_id = clusters.id
 WHERE true
 %s
 ORDER BY network_acls.id
@@ -72,11 +68,6 @@ ORDER BY network_acls.id
 	if filter.Cluster != nil {
 		whereClause = append(whereClause, ` AND clusters.name = :cluster`)
 		args = append(args, sql.Named("cluster", filter.Cluster))
-	}
-
-	if filter.Server != nil {
-		whereClause = append(whereClause, ` AND servers.hostname = :server`)
-		args = append(args, sql.Named("server", filter.Server))
 	}
 
 	if filter.Project != nil {
@@ -114,10 +105,9 @@ ORDER BY network_acls.id
 func (r networkACL) GetByID(ctx context.Context, id int) (inventory.NetworkACL, error) {
 	const sqlStmt = `
 SELECT
-  network_acls.id, servers.cluster_id as cluster_id, network_acls.server_id, network_acls.project_name, network_acls.name, network_acls.object, network_acls.last_updated
+  network_acls.id, network_acls.cluster_id, network_acls.project_name, network_acls.name, network_acls.object, network_acls.last_updated
 FROM
   network_acls
-  INNER JOIN servers ON network_acls.server_id = servers.id
 WHERE network_acls.id=:id;
 `
 
@@ -149,10 +139,10 @@ func (r networkACL) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r networkACL) DeleteByServerID(ctx context.Context, serverID int) error {
-	const sqlStmt = `DELETE FROM network_acls WHERE server_id=:serverID;`
+func (r networkACL) DeleteByClusterID(ctx context.Context, clusterID int) error {
+	const sqlStmt = `DELETE FROM network_acls WHERE cluster_id=:clusterID;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("clusterID", clusterID))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -171,12 +161,9 @@ func (r networkACL) DeleteByServerID(ctx context.Context, serverID int) error {
 
 func (r networkACL) UpdateByID(ctx context.Context, in inventory.NetworkACL) (inventory.NetworkACL, error) {
 	const sqlStmt = `
-WITH _server AS (
-  SELECT cluster_id FROM servers WHERE server_id = :server_id
-)
-UPDATE network_acls SET server_id=:server_id, project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
+UPDATE network_acls SET cluster_id=:cluster_id, project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project_name, name, object, last_updated;
+RETURNING id, cluster_id, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -186,7 +173,7 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
-		sql.Named("server_id", in.ServerID),
+		sql.Named("cluster_id", in.ClusterID),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -206,7 +193,6 @@ func scanNetworkACL(row interface{ Scan(dest ...any) error }) (inventory.Network
 	err := row.Scan(
 		&networkACL.ID,
 		&networkACL.ClusterID,
-		&networkACL.ServerID,
 		&networkACL.ProjectName,
 		&networkACL.Name,
 		&object,
