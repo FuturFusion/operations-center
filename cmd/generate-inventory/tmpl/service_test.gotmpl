@@ -395,8 +395,6 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {
 		name                              string
-		clusterSvcGetAllClusters          provisioning.Clusters
-		clusterSvcGetAllErr               error
 {{- if .IsServerResource }}
 		serverSvcGetAllByServerIDServers provisioning.Servers
 		serverSvcGetAllByServerIDErr     error
@@ -417,12 +415,6 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 	}{
 		{
 			name: "success",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 {{- if .IsServerResource }}
 			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
@@ -479,21 +471,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 
 			assertErr: require.NoError,
 		},
-		{
-			name:                "error - cluster service get all",
-			clusterSvcGetAllErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
 {{- if .IsServerResource }}
 		{
 			name: "error - {{ .ResourceForeignKey }} service get all by cluster ID",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			serverSvcGetAllByServerIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -501,12 +481,6 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- end }}
 		{
 			name: "error - {{ .ResourceForeignKey }} service get by ID",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 {{- if .IsServerResource }}
 			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
@@ -523,12 +497,6 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- if .HasParent }}
 		{
 			name: "error - {{ .ParentName | camelcase }} client get {{ .ParentPluralName | pascalcase }}",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 {{- if .IsServerResource }}
 			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
@@ -552,12 +520,6 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- end }}
 		{
 			name: "error - {{ .Name | camelcase }} client get {{ .PluralName | pascalcase }}",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 {{- if .IsServerResource }}
 			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
@@ -587,12 +549,6 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - {{ .PluralName }} delete by {{ .ResourceForeignKey }} ID",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 {{- if .IsServerResource }}
 			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
@@ -642,12 +598,6 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - validate",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 {{- if .IsServerResource }}
 			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
@@ -699,12 +649,6 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - {{ .Name | camelcase }} create",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 {{- if .IsServerResource }}
 			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
@@ -766,22 +710,19 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				},
 			}
 
-			clusterSvc := &serviceMock.ClusterServiceMock{
-				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
-					return tc.clusterSvcGetAllClusters, tc.clusterSvcGetAllErr
-				},
-{{- if not .IsServerResource }}
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.{{ .ResourceForeignKey | pascalcase }}, error) {
-					return tc.{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}, tc.{{ .ResourceForeignKey }}SvcGetByIDErr
-				},
-{{- end}}
-			}
-
 {{ if .IsServerResource }}
+			var clusterSvc *serviceMock.ClusterServiceMock
+
 			serverSvc := &serviceMock.{{ .ResourceForeignKey | pascalcase }}ServiceMock{
 				GetAllByClusterIDFunc: func(ctx context.Context, clusterID int) (provisioning.{{ .ResourceForeignKey | pascalcase }}s, error) {
 					return tc.{{ .ResourceForeignKey }}SvcGetAllBy{{ .ResourceForeignKey | pascalcase }}IDServers, tc.{{ .ResourceForeignKey }}SvcGetAllBy{{ .ResourceForeignKey | pascalcase }}IDErr
 				},
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.{{ .ResourceForeignKey | pascalcase }}, error) {
+					return tc.{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}, tc.{{ .ResourceForeignKey }}SvcGetByIDErr
+				},
+			}
+{{ else }}
+			clusterSvc := &serviceMock.ClusterServiceMock{
 				GetByIDFunc: func(ctx context.Context, id int) (provisioning.{{ .ResourceForeignKey | pascalcase }}, error) {
 					return tc.{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}, tc.{{ .ResourceForeignKey }}SvcGetByIDErr
 				},
@@ -812,7 +753,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			)
 
 			// Run test
-			err := {{ .Name | camelcase }}Svc.SyncAll(context.Background())
+			err := {{ .Name | camelcase }}Svc.SyncCluster(context.Background(), 1)
 
 			// Assert
 			tc.assertErr(t, err)

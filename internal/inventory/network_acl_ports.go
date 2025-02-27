@@ -15,7 +15,6 @@ type NetworkACLService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkACL, error)
 	ResyncByID(ctx context.Context, id int) error
-	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 }
 

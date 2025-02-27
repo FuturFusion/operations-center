@@ -25,7 +25,6 @@ func registerInventoryNetworkPeerHandler(router *http.ServeMux, service inventor
 	router.HandleFunc("GET /{$}", response.With(handler.networkPeersGet))
 	router.HandleFunc("GET /{id}", response.With(handler.networkPeerGet))
 	router.HandleFunc("POST /{id}/resync", response.With(handler.networkPeerResyncPost))
-	router.HandleFunc("POST /force-sync", response.With(handler.forceSyncPost))
 }
 
 // swagger:operation GET /1.0/inventory/network_peers network_peers network_peers_get
@@ -195,47 +194,6 @@ func (i *networkPeerHandler) networkPeerResyncPost(r *http.Request) response.Res
 	err = i.service.ResyncByID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync network_peer: %w", err))
-	}
-
-	return response.EmptySyncResponse
-}
-
-// swagger:operation POST /1.0/inventory/network_peers/force-sync network_peers network_peers_force_sync_post
-//
-//	Force sync all
-//
-//	Force sync of network_peers for all servers in all clusters.
-//
-//	---
-//	produces:
-//	  - application/json
-//	responses:
-//	  "200":
-//	    description: Empty response
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
-func (i *networkPeerHandler) forceSyncPost(r *http.Request) response.Response {
-	err := i.service.SyncAll(r.Context())
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to sync network_peers: %w", err))
 	}
 
 	return response.EmptySyncResponse

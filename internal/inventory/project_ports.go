@@ -15,7 +15,6 @@ type ProjectService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter ProjectFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Project, error)
 	ResyncByID(ctx context.Context, id int) error
-	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 }
 

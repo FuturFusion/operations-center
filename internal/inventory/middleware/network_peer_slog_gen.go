@@ -118,35 +118,6 @@ func (_d NetworkPeerServiceWithSlog) ResyncByID(ctx context.Context, id int) (er
 	return _d._base.ResyncByID(ctx, id)
 }
 
-// SyncAll implements _sourceInventory.NetworkPeerService
-func (_d NetworkPeerServiceWithSlog) SyncAll(ctx context.Context) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-		)
-	}
-	log.Debug("NetworkPeerServiceWithSlog: calling SyncAll")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("NetworkPeerServiceWithSlog: method SyncAll returned an error")
-		} else {
-			log.Debug("NetworkPeerServiceWithSlog: method SyncAll finished")
-		}
-	}()
-	return _d._base.SyncAll(ctx)
-}
-
 // SyncCluster implements _sourceInventory.NetworkPeerService
 func (_d NetworkPeerServiceWithSlog) SyncCluster(ctx context.Context, clusterID int) (err error) {
 	log := _d._log.With()

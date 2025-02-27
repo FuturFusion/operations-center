@@ -323,8 +323,6 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster and SyncServer
 	tests := []struct {
 		name                                    string
-		clusterSvcGetAllClusters                provisioning.Clusters
-		clusterSvcGetAllErr                     error
 		serverSvcGetAllByServerIDServers        provisioning.Servers
 		serverSvcGetAllByServerIDErr            error
 		serverSvcGetByIDServer                  provisioning.Server
@@ -341,12 +339,6 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 	}{
 		{
 			name: "success",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
@@ -382,31 +374,13 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:                "error - cluster service get all",
-			clusterSvcGetAllErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - server service get all by cluster ID",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
+			name:                         "error - server service get all by cluster ID",
 			serverSvcGetAllByServerIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - server service get by ID",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
@@ -420,12 +394,6 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - storagePool client get StoragePools",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
@@ -444,12 +412,6 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - storageVolume client get StorageVolumes",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
@@ -473,12 +435,6 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - storage_volumes delete by server ID",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
@@ -508,12 +464,6 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - validate",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
@@ -545,12 +495,6 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - storageVolume create",
-			clusterSvcGetAllClusters: provisioning.Clusters{
-				{
-					ID:   1,
-					Name: "cluster one",
-				},
-			},
 			serverSvcGetAllByServerIDServers: provisioning.Servers{
 				{
 					ID:        1,
@@ -592,11 +536,7 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 				},
 			}
 
-			clusterSvc := &serviceMock.ClusterServiceMock{
-				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
-					return tc.clusterSvcGetAllClusters, tc.clusterSvcGetAllErr
-				},
-			}
+			var clusterSvc *serviceMock.ClusterServiceMock
 
 			serverSvc := &serviceMock.ServerServiceMock{
 				GetAllByClusterIDFunc: func(ctx context.Context, clusterID int) (provisioning.Servers, error) {
@@ -629,7 +569,7 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 			)
 
 			// Run test
-			err := storageVolumeSvc.SyncAll(context.Background())
+			err := storageVolumeSvc.SyncCluster(context.Background(), 1)
 
 			// Assert
 			tc.assertErr(t, err)

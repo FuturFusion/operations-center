@@ -118,35 +118,6 @@ func (_d StorageVolumeServiceWithSlog) ResyncByID(ctx context.Context, id int) (
 	return _d._base.ResyncByID(ctx, id)
 }
 
-// SyncAll implements _sourceInventory.StorageVolumeService
-func (_d StorageVolumeServiceWithSlog) SyncAll(ctx context.Context) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-		)
-	}
-	log.Debug("StorageVolumeServiceWithSlog: calling SyncAll")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("StorageVolumeServiceWithSlog: method SyncAll returned an error")
-		} else {
-			log.Debug("StorageVolumeServiceWithSlog: method SyncAll finished")
-		}
-	}()
-	return _d._base.SyncAll(ctx)
-}
-
 // SyncCluster implements _sourceInventory.StorageVolumeService
 func (_d StorageVolumeServiceWithSlog) SyncCluster(ctx context.Context, clusterID int) (err error) {
 	log := _d._log.With()

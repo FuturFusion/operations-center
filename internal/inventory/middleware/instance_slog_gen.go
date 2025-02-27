@@ -118,35 +118,6 @@ func (_d InstanceServiceWithSlog) ResyncByID(ctx context.Context, id int) (err e
 	return _d._base.ResyncByID(ctx, id)
 }
 
-// SyncAll implements _sourceInventory.InstanceService
-func (_d InstanceServiceWithSlog) SyncAll(ctx context.Context) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-		)
-	}
-	log.Debug("InstanceServiceWithSlog: calling SyncAll")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("InstanceServiceWithSlog: method SyncAll returned an error")
-		} else {
-			log.Debug("InstanceServiceWithSlog: method SyncAll finished")
-		}
-	}()
-	return _d._base.SyncAll(ctx)
-}
-
 // SyncCluster implements _sourceInventory.InstanceService
 func (_d InstanceServiceWithSlog) SyncCluster(ctx context.Context, clusterID int) (err error) {
 	log := _d._log.With()

@@ -15,7 +15,6 @@ type StorageVolumeService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter StorageVolumeFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StorageVolume, error)
 	ResyncByID(ctx context.Context, id int) error
-	SyncAll(ctx context.Context) error
 	SyncCluster(ctx context.Context, clusterID int) error
 	SyncServer(ctx context.Context, serverID int) error
 }
