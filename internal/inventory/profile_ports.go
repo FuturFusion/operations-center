@@ -17,7 +17,7 @@ type ProfileService interface {
 	SyncServer(ctx context.Context, serverID int) error
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/profile_repo_mock_gen.go -rm . ProfileRepo
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/profile_repo_mock_gen.go -rm . ProfileRepo
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProfileRepo -t ../logger/slog.gotmpl -o ./repo/middleware/profile_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProfileRepo -t prometheus -o ./repo/middleware/profile_prometheus_gen.go
 
@@ -29,7 +29,9 @@ type ProfileRepo interface {
 	UpdateByID(ctx context.Context, profile Profile) (Profile, error)
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/profile_server_client_mock_gen.go -rm . ProfileServerClient
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/profile_server_client_mock_gen.go -rm . ProfileServerClient
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProfileServerClient -t ../logger/slog.gotmpl -o ./server/middleware/profile_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProfileServerClient -t prometheus -o ./server/middleware/profile_prometheus_gen.go
 
 type ProfileServerClient interface {
 	GetProfiles(ctx context.Context, connectionURL string) ([]incusapi.Profile, error)

@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
+	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
@@ -254,7 +255,7 @@ func TestNetworkPeerService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			networkPeerClient := &serviceMock.NetworkPeerServerClientMock{
+			networkPeerClient := &serverMock.NetworkPeerServerClientMock{
 				GetNetworkPeerByNameFunc: func(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
 					require.Equal(t, tc.repoGetByIDNetworkPeer.Name, networkPeerName)
 					require.Equal(t, "network", networkName)
@@ -550,13 +551,13 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkClient := &serviceMock.NetworkServerClientMock{
+			networkClient := &serverMock.NetworkServerClientMock{
 				GetNetworksFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Network, error) {
 					return tc.networkClientGetNetworks, tc.networkClientGetNetworksErr
 				},
 			}
 
-			networkPeerClient := &serviceMock.NetworkPeerServerClientMock{
+			networkPeerClient := &serverMock.NetworkPeerServerClientMock{
 				GetNetworkPeersFunc: func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkPeer, error) {
 					return tc.networkPeerClientGetNetworkPeers, tc.networkPeerClientGetNetworkPeersErr
 				},

@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
+	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
@@ -254,7 +255,7 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			networkLoadBalancerClient := &serviceMock.NetworkLoadBalancerServerClientMock{
+			networkLoadBalancerClient := &serverMock.NetworkLoadBalancerServerClientMock{
 				GetNetworkLoadBalancerByNameFunc: func(ctx context.Context, connectionURL string, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
 					require.Equal(t, tc.repoGetByIDNetworkLoadBalancer.Name, networkLoadBalancerName)
 					require.Equal(t, "network", networkName)
@@ -550,13 +551,13 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkClient := &serviceMock.NetworkServerClientMock{
+			networkClient := &serverMock.NetworkServerClientMock{
 				GetNetworksFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Network, error) {
 					return tc.networkClientGetNetworks, tc.networkClientGetNetworksErr
 				},
 			}
 
-			networkLoadBalancerClient := &serviceMock.NetworkLoadBalancerServerClientMock{
+			networkLoadBalancerClient := &serverMock.NetworkLoadBalancerServerClientMock{
 				GetNetworkLoadBalancersFunc: func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkLoadBalancer, error) {
 					return tc.networkLoadBalancerClientGetNetworkLoadBalancers, tc.networkLoadBalancerClientGetNetworkLoadBalancersErr
 				},

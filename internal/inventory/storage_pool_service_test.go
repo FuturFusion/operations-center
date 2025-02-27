@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
+	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
@@ -248,7 +249,7 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			storagePoolClient := &serviceMock.StoragePoolServerClientMock{
+			storagePoolClient := &serverMock.StoragePoolServerClientMock{
 				GetStoragePoolByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string) (incusapi.StoragePool, error) {
 					require.Equal(t, tc.repoGetByIDStoragePool.Name, storagePoolName)
 					return tc.storagePoolClientGetStoragePoolByName, tc.storagePoolClientGetStoragePoolByNameErr
@@ -492,7 +493,7 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 				},
 			}
 
-			storagePoolClient := &serviceMock.StoragePoolServerClientMock{
+			storagePoolClient := &serverMock.StoragePoolServerClientMock{
 				GetStoragePoolsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.StoragePool, error) {
 					return tc.storagePoolClientGetStoragePools, tc.storagePoolClientGetStoragePoolsErr
 				},

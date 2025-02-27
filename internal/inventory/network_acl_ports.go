@@ -17,7 +17,7 @@ type NetworkACLService interface {
 	SyncServer(ctx context.Context, serverID int) error
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/network_acl_repo_mock_gen.go -rm . NetworkACLRepo
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/network_acl_repo_mock_gen.go -rm . NetworkACLRepo
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkACLRepo -t ../logger/slog.gotmpl -o ./repo/middleware/network_acl_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkACLRepo -t prometheus -o ./repo/middleware/network_acl_prometheus_gen.go
 
@@ -29,7 +29,9 @@ type NetworkACLRepo interface {
 	UpdateByID(ctx context.Context, networkACL NetworkACL) (NetworkACL, error)
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/network_acl_server_client_mock_gen.go -rm . NetworkACLServerClient
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/network_acl_server_client_mock_gen.go -rm . NetworkACLServerClient
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkACLServerClient -t ../logger/slog.gotmpl -o ./server/middleware/network_acl_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkACLServerClient -t prometheus -o ./server/middleware/network_acl_prometheus_gen.go
 
 type NetworkACLServerClient interface {
 	GetNetworkACLs(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error)

@@ -17,7 +17,7 @@ type NetworkZoneService interface {
 	SyncServer(ctx context.Context, serverID int) error
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/network_zone_repo_mock_gen.go -rm . NetworkZoneRepo
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/network_zone_repo_mock_gen.go -rm . NetworkZoneRepo
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkZoneRepo -t ../logger/slog.gotmpl -o ./repo/middleware/network_zone_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkZoneRepo -t prometheus -o ./repo/middleware/network_zone_prometheus_gen.go
 
@@ -29,7 +29,9 @@ type NetworkZoneRepo interface {
 	UpdateByID(ctx context.Context, networkZone NetworkZone) (NetworkZone, error)
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/network_zone_server_client_mock_gen.go -rm . NetworkZoneServerClient
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/network_zone_server_client_mock_gen.go -rm . NetworkZoneServerClient
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkZoneServerClient -t ../logger/slog.gotmpl -o ./server/middleware/network_zone_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkZoneServerClient -t prometheus -o ./server/middleware/network_zone_prometheus_gen.go
 
 type NetworkZoneServerClient interface {
 	GetNetworkZones(ctx context.Context, connectionURL string) ([]incusapi.NetworkZone, error)

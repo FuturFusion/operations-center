@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
+	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
@@ -252,7 +253,7 @@ func TestProfileService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			profileClient := &serviceMock.ProfileServerClientMock{
+			profileClient := &serverMock.ProfileServerClientMock{
 				GetProfileByNameFunc: func(ctx context.Context, connectionURL string, profileName string) (incusapi.Profile, error) {
 					require.Equal(t, tc.repoGetByIDProfile.Name, profileName)
 					return tc.profileClientGetProfileByName, tc.profileClientGetProfileByNameErr
@@ -500,7 +501,7 @@ func TestProfileService_SyncAll(t *testing.T) {
 				},
 			}
 
-			profileClient := &serviceMock.ProfileServerClientMock{
+			profileClient := &serverMock.ProfileServerClientMock{
 				GetProfilesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Profile, error) {
 					return tc.profileClientGetProfiles, tc.profileClientGetProfilesErr
 				},

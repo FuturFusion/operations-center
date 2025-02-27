@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
+	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
@@ -258,7 +259,7 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			instanceClient := &serviceMock.InstanceServerClientMock{
+			instanceClient := &serverMock.InstanceServerClientMock{
 				GetInstanceByNameFunc: func(ctx context.Context, connectionURL string, instanceName string) (incusapi.InstanceFull, error) {
 					require.Equal(t, tc.repoGetByIDInstance.Name, instanceName)
 					return tc.instanceClientGetInstanceByName, tc.instanceClientGetInstanceByNameErr
@@ -514,7 +515,7 @@ func TestInstanceService_SyncAll(t *testing.T) {
 				},
 			}
 
-			instanceClient := &serviceMock.InstanceServerClientMock{
+			instanceClient := &serverMock.InstanceServerClientMock{
 				GetInstancesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error) {
 					return tc.instanceClientGetInstances, tc.instanceClientGetInstancesErr
 				},

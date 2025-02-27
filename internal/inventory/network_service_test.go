@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
+	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
@@ -252,7 +253,7 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			networkClient := &serviceMock.NetworkServerClientMock{
+			networkClient := &serverMock.NetworkServerClientMock{
 				GetNetworkByNameFunc: func(ctx context.Context, connectionURL string, networkName string) (incusapi.Network, error) {
 					require.Equal(t, tc.repoGetByIDNetwork.Name, networkName)
 					return tc.networkClientGetNetworkByName, tc.networkClientGetNetworkByNameErr
@@ -500,7 +501,7 @@ func TestNetworkService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkClient := &serviceMock.NetworkServerClientMock{
+			networkClient := &serverMock.NetworkServerClientMock{
 				GetNetworksFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Network, error) {
 					return tc.networkClientGetNetworks, tc.networkClientGetNetworksErr
 				},

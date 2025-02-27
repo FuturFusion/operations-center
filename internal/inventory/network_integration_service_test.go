@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
+	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
@@ -248,7 +249,7 @@ func TestNetworkIntegrationService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			networkIntegrationClient := &serviceMock.NetworkIntegrationServerClientMock{
+			networkIntegrationClient := &serverMock.NetworkIntegrationServerClientMock{
 				GetNetworkIntegrationByNameFunc: func(ctx context.Context, connectionURL string, networkIntegrationName string) (incusapi.NetworkIntegration, error) {
 					require.Equal(t, tc.repoGetByIDNetworkIntegration.Name, networkIntegrationName)
 					return tc.networkIntegrationClientGetNetworkIntegrationByName, tc.networkIntegrationClientGetNetworkIntegrationByNameErr
@@ -492,7 +493,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkIntegrationClient := &serviceMock.NetworkIntegrationServerClientMock{
+			networkIntegrationClient := &serverMock.NetworkIntegrationServerClientMock{
 				GetNetworkIntegrationsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error) {
 					return tc.networkIntegrationClientGetNetworkIntegrations, tc.networkIntegrationClientGetNetworkIntegrationsErr
 				},

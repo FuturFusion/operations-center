@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
+	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
@@ -258,7 +259,7 @@ func TestStorageBucketService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			storageBucketClient := &serviceMock.StorageBucketServerClientMock{
+			storageBucketClient := &serverMock.StorageBucketServerClientMock{
 				GetStorageBucketByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
 					require.Equal(t, tc.repoGetByIDStorageBucket.Name, storageBucketName)
 					require.Equal(t, "storage_pool", storagePoolName)
@@ -558,13 +559,13 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 				},
 			}
 
-			storagePoolClient := &serviceMock.StoragePoolServerClientMock{
+			storagePoolClient := &serverMock.StoragePoolServerClientMock{
 				GetStoragePoolsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.StoragePool, error) {
 					return tc.storagePoolClientGetStoragePools, tc.storagePoolClientGetStoragePoolsErr
 				},
 			}
 
-			storageBucketClient := &serviceMock.StorageBucketServerClientMock{
+			storageBucketClient := &serverMock.StorageBucketServerClientMock{
 				GetStorageBucketsFunc: func(ctx context.Context, connectionURL string, storagePoolName string) ([]incusapi.StorageBucket, error) {
 					return tc.storageBucketClientGetStorageBuckets, tc.storageBucketClientGetStorageBucketsErr
 				},

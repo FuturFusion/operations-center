@@ -44,7 +44,7 @@ var targets = []struct {
 	},
 	{
 		TemplateName: "repo_incus.gotmpl",
-		TargetName:   "internal/inventory/repo/incus/{{ .Name }}.go",
+		TargetName:   "internal/inventory/server/incus/{{ .Name }}.go",
 	},
 	{
 		TemplateName: "repo_sqlite_test.gotmpl",

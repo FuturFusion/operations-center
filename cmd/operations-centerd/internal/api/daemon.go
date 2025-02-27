@@ -20,7 +20,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
-	incusRepo "github.com/FuturFusion/operations-center/internal/inventory/repo/incus"
+	incusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/github"
@@ -93,7 +93,7 @@ func (d *Daemon) Start() error {
 	// being hit by the Github rate limiting.
 	gh := ghClient.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
 
-	serverClientProvider := incusRepo.New(
+	serverClientProvider := incusAdapter.New(
 		d.clientCertificate,
 		d.clientKey,
 	)

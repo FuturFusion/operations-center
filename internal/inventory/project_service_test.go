@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
+	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
@@ -248,7 +249,7 @@ func TestProjectService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			projectClient := &serviceMock.ProjectServerClientMock{
+			projectClient := &serverMock.ProjectServerClientMock{
 				GetProjectByNameFunc: func(ctx context.Context, connectionURL string, projectName string) (incusapi.Project, error) {
 					require.Equal(t, tc.repoGetByIDProject.Name, projectName)
 					return tc.projectClientGetProjectByName, tc.projectClientGetProjectByNameErr
@@ -492,7 +493,7 @@ func TestProjectService_SyncAll(t *testing.T) {
 				},
 			}
 
-			projectClient := &serviceMock.ProjectServerClientMock{
+			projectClient := &serverMock.ProjectServerClientMock{
 				GetProjectsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Project, error) {
 					return tc.projectClientGetProjects, tc.projectClientGetProjectsErr
 				},

@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
+	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
@@ -252,7 +253,7 @@ func TestNetworkZoneService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			networkZoneClient := &serviceMock.NetworkZoneServerClientMock{
+			networkZoneClient := &serverMock.NetworkZoneServerClientMock{
 				GetNetworkZoneByNameFunc: func(ctx context.Context, connectionURL string, networkZoneName string) (incusapi.NetworkZone, error) {
 					require.Equal(t, tc.repoGetByIDNetworkZone.Name, networkZoneName)
 					return tc.networkZoneClientGetNetworkZoneByName, tc.networkZoneClientGetNetworkZoneByNameErr
@@ -500,7 +501,7 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkZoneClient := &serviceMock.NetworkZoneServerClientMock{
+			networkZoneClient := &serverMock.NetworkZoneServerClientMock{
 				GetNetworkZonesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkZone, error) {
 					return tc.networkZoneClientGetNetworkZones, tc.networkZoneClientGetNetworkZonesErr
 				},

@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
+	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
@@ -252,7 +253,7 @@ func TestImageService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			imageClient := &serviceMock.ImageServerClientMock{
+			imageClient := &serverMock.ImageServerClientMock{
 				GetImageByNameFunc: func(ctx context.Context, connectionURL string, imageName string) (incusapi.Image, error) {
 					require.Equal(t, tc.repoGetByIDImage.Name, imageName)
 					return tc.imageClientGetImageByName, tc.imageClientGetImageByNameErr
@@ -500,7 +501,7 @@ func TestImageService_SyncAll(t *testing.T) {
 				},
 			}
 
-			imageClient := &serviceMock.ImageServerClientMock{
+			imageClient := &serverMock.ImageServerClientMock{
 				GetImagesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Image, error) {
 					return tc.imageClientGetImages, tc.imageClientGetImagesErr
 				},

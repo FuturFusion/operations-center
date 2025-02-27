@@ -17,7 +17,7 @@ type StorageBucketService interface {
 	SyncServer(ctx context.Context, serverID int) error
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/storage_bucket_repo_mock_gen.go -rm . StorageBucketRepo
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/storage_bucket_repo_mock_gen.go -rm . StorageBucketRepo
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageBucketRepo -t ../logger/slog.gotmpl -o ./repo/middleware/storage_bucket_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageBucketRepo -t prometheus -o ./repo/middleware/storage_bucket_prometheus_gen.go
 
@@ -29,7 +29,9 @@ type StorageBucketRepo interface {
 	UpdateByID(ctx context.Context, storageBucket StorageBucket) (StorageBucket, error)
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/storage_bucket_server_client_mock_gen.go -rm . StorageBucketServerClient
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/storage_bucket_server_client_mock_gen.go -rm . StorageBucketServerClient
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageBucketServerClient -t ../logger/slog.gotmpl -o ./server/middleware/storage_bucket_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageBucketServerClient -t prometheus -o ./server/middleware/storage_bucket_prometheus_gen.go
 
 type StorageBucketServerClient interface {
 	GetStorageBuckets(ctx context.Context, connectionURL string, storagePoolName string) ([]incusapi.StorageBucket, error)

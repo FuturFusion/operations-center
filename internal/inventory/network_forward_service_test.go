@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
+	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
@@ -254,7 +255,7 @@ func TestNetworkForwardService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			networkForwardClient := &serviceMock.NetworkForwardServerClientMock{
+			networkForwardClient := &serverMock.NetworkForwardServerClientMock{
 				GetNetworkForwardByNameFunc: func(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
 					require.Equal(t, tc.repoGetByIDNetworkForward.Name, networkForwardName)
 					require.Equal(t, "network", networkName)
@@ -550,13 +551,13 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkClient := &serviceMock.NetworkServerClientMock{
+			networkClient := &serverMock.NetworkServerClientMock{
 				GetNetworksFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Network, error) {
 					return tc.networkClientGetNetworks, tc.networkClientGetNetworksErr
 				},
 			}
 
-			networkForwardClient := &serviceMock.NetworkForwardServerClientMock{
+			networkForwardClient := &serverMock.NetworkForwardServerClientMock{
 				GetNetworkForwardsFunc: func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkForward, error) {
 					return tc.networkForwardClientGetNetworkForwards, tc.networkForwardClientGetNetworkForwardsErr
 				},

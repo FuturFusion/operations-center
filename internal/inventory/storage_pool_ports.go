@@ -17,7 +17,7 @@ type StoragePoolService interface {
 	SyncServer(ctx context.Context, serverID int) error
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/storage_pool_repo_mock_gen.go -rm . StoragePoolRepo
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/storage_pool_repo_mock_gen.go -rm . StoragePoolRepo
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StoragePoolRepo -t ../logger/slog.gotmpl -o ./repo/middleware/storage_pool_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StoragePoolRepo -t prometheus -o ./repo/middleware/storage_pool_prometheus_gen.go
 
@@ -29,7 +29,9 @@ type StoragePoolRepo interface {
 	UpdateByID(ctx context.Context, storagePool StoragePool) (StoragePool, error)
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/storage_pool_server_client_mock_gen.go -rm . StoragePoolServerClient
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/storage_pool_server_client_mock_gen.go -rm . StoragePoolServerClient
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StoragePoolServerClient -t ../logger/slog.gotmpl -o ./server/middleware/storage_pool_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StoragePoolServerClient -t prometheus -o ./server/middleware/storage_pool_prometheus_gen.go
 
 type StoragePoolServerClient interface {
 	GetStoragePools(ctx context.Context, connectionURL string) ([]incusapi.StoragePool, error)

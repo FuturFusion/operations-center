@@ -12,6 +12,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
+	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
@@ -312,7 +313,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 				},
 			}
 
-			{{ .Name | camelcase }}Client := &serviceMock.{{ .Name | pascalcase }}ServerClientMock{
+			{{ .Name | camelcase }}Client := &serverMock.{{ .Name | pascalcase }}ServerClientMock{
 				Get{{ .Name | pascalcase }}ByNameFunc: func(ctx context.Context, connectionURL string, {{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string) (incusapi.{{ .ObjectType | pascalcase }}, error) {
 					require.Equal(t, tc.repoGetByID{{ .Name | pascalcase }}.Name, {{ .Name | camelcase }}Name)
 {{- if .HasParent }}
@@ -685,14 +686,14 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			}
 {{- if .HasParent }}
 
-			{{ .ParentName | camelcase }}Client := &serviceMock.{{ .ParentName | pascalcase }}ServerClientMock{
+			{{ .ParentName | camelcase }}Client := &serverMock.{{ .ParentName | pascalcase }}ServerClientMock{
 				Get{{ .ParentPluralName | pascalcase }}Func: func(ctx context.Context, connectionURL string) ([]incusapi.{{ .ParentObjectType | pascalcase }}, error) {
 					return tc.{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}, tc.{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}Err
 				},
 			}
 {{- end }}
 
-			{{ .Name | camelcase }}Client := &serviceMock.{{ .Name | pascalcase }}ServerClientMock{
+			{{ .Name | camelcase }}Client := &serverMock.{{ .Name | pascalcase }}ServerClientMock{
 				Get{{ .PluralName | pascalcase }}Func: func(ctx context.Context, connectionURL string {{- if .HasParent }}, {{ .ParentName | camelcase }}Name string {{ end }}) ([]incusapi.{{ .ObjectType | pascalcase }}, error) {
 					return tc.{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}, tc.{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}Err
 				},

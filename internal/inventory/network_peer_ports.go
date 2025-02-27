@@ -17,7 +17,7 @@ type NetworkPeerService interface {
 	SyncServer(ctx context.Context, serverID int) error
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/network_peer_repo_mock_gen.go -rm . NetworkPeerRepo
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/network_peer_repo_mock_gen.go -rm . NetworkPeerRepo
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkPeerRepo -t ../logger/slog.gotmpl -o ./repo/middleware/network_peer_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkPeerRepo -t prometheus -o ./repo/middleware/network_peer_prometheus_gen.go
 
@@ -29,7 +29,9 @@ type NetworkPeerRepo interface {
 	UpdateByID(ctx context.Context, networkPeer NetworkPeer) (NetworkPeer, error)
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out mock/network_peer_server_client_mock_gen.go -rm . NetworkPeerServerClient
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/network_peer_server_client_mock_gen.go -rm . NetworkPeerServerClient
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkPeerServerClient -t ../logger/slog.gotmpl -o ./server/middleware/network_peer_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkPeerServerClient -t prometheus -o ./server/middleware/network_peer_prometheus_gen.go
 
 type NetworkPeerServerClient interface {
 	GetNetworkPeers(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkPeer, error)

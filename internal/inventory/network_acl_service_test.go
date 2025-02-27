@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	serviceMock "github.com/FuturFusion/operations-center/internal/inventory/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
+	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
@@ -258,7 +259,7 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			networkACLClient := &serviceMock.NetworkACLServerClientMock{
+			networkACLClient := &serverMock.NetworkACLServerClientMock{
 				GetNetworkACLByNameFunc: func(ctx context.Context, connectionURL string, networkACLName string) (incusapi.NetworkACL, error) {
 					require.Equal(t, tc.repoGetByIDNetworkACL.Name, networkACLName)
 					return tc.networkACLClientGetNetworkACLByName, tc.networkACLClientGetNetworkACLByNameErr
@@ -514,7 +515,7 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 				},
 			}
 
-			networkACLClient := &serviceMock.NetworkACLServerClientMock{
+			networkACLClient := &serverMock.NetworkACLServerClientMock{
 				GetNetworkACLsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error) {
 					return tc.networkACLClientGetNetworkACLs, tc.networkACLClientGetNetworkACLsErr
 				},
