@@ -21,9 +21,12 @@ import (
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
 	incusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
+	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	provisioningServiceMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/github"
+	provisioningRepoMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/repo/middleware"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/response"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
@@ -93,16 +96,51 @@ func (d *Daemon) Start() error {
 	// being hit by the Github rate limiting.
 	gh := ghClient.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
 
-	serverClientProvider := incusAdapter.New(
-		d.clientCertificate,
-		d.clientKey,
+	serverClientProvider := serverMiddleware.NewServerClientWithSlog(
+		incusAdapter.New(
+			d.clientCertificate,
+			d.clientKey,
+		),
+		slog.Default(),
 	)
 
 	// Setup Services
-	tokenSvc := provisioning.NewTokenService(provisioningSqlite.NewToken(dbWithTransaction))
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(dbWithTransaction))
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(dbWithTransaction))
-	updateSvc := provisioning.NewUpdateService(github.NewUpdate(gh))
+	tokenSvc := provisioningServiceMiddleware.NewTokenServiceWithSlog(
+		provisioning.NewTokenService(
+			provisioningRepoMiddleware.NewTokenRepoWithSlog(
+				provisioningSqlite.NewToken(dbWithTransaction),
+				slog.Default(),
+			),
+		),
+		slog.Default(),
+	)
+	clusterSvc := provisioningServiceMiddleware.NewClusterServiceWithSlog(
+		provisioning.NewClusterService(
+			provisioningRepoMiddleware.NewClusterRepoWithSlog(
+				provisioningSqlite.NewCluster(dbWithTransaction),
+				slog.Default(),
+			),
+		),
+		slog.Default(),
+	)
+	serverSvc := provisioningServiceMiddleware.NewServerServiceWithSlog(
+		provisioning.NewServerService(
+			provisioningRepoMiddleware.NewServerRepoWithSlog(
+				provisioningSqlite.NewServer(dbWithTransaction),
+				slog.Default(),
+			),
+		),
+		slog.Default(),
+	)
+	updateSvc := provisioningServiceMiddleware.NewUpdateServiceWithSlog(
+		provisioning.NewUpdateService(
+			provisioningRepoMiddleware.NewUpdateRepoWithSlog(
+				github.NewUpdate(gh),
+				slog.Default(),
+			),
+		),
+		slog.Default(),
+	)
 
 	// Setup Routes
 	router := http.NewServeMux()

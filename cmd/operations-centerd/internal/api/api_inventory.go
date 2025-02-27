@@ -1,9 +1,12 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	inventoryServiceMiddleware "github.com/FuturFusion/operations-center/internal/inventory/middleware"
+	inventoryRepoMiddleware "github.com/FuturFusion/operations-center/internal/inventory/repo/middleware"
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
@@ -11,107 +14,191 @@ import (
 
 func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverSvc provisioning.ServerService, serverClient inventory.ServerClient, inventoryRouter *http.ServeMux) {
 	// Service
-	inventoryImageSvc := inventory.NewImageService(
-		inventorySqlite.NewImage(db),
-		clusterSvc,
-		serverSvc,
-		serverClient,
+	inventoryImageSvc := inventoryServiceMiddleware.NewImageServiceWithSlog(
+		inventory.NewImageService(
+			inventoryRepoMiddleware.NewImageRepoWithSlog(
+				inventorySqlite.NewImage(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverSvc,
+			serverClient,
+		),
+		slog.Default(),
 	)
 
-	inventoryInstanceSvc := inventory.NewInstanceService(
-		inventorySqlite.NewInstance(db),
-		clusterSvc,
-		serverSvc,
-		serverClient,
+	inventoryInstanceSvc := inventoryServiceMiddleware.NewInstanceServiceWithSlog(
+		inventory.NewInstanceService(
+			inventoryRepoMiddleware.NewInstanceRepoWithSlog(
+				inventorySqlite.NewInstance(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverSvc,
+			serverClient,
+		),
+		slog.Default(),
 	)
 
-	inventoryNetworkSvc := inventory.NewNetworkService(
-		inventorySqlite.NewNetwork(db),
-		clusterSvc,
-		serverSvc,
-		serverClient,
+	inventoryNetworkSvc := inventoryServiceMiddleware.NewNetworkServiceWithSlog(
+		inventory.NewNetworkService(
+			inventoryRepoMiddleware.NewNetworkRepoWithSlog(
+				inventorySqlite.NewNetwork(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverSvc,
+			serverClient,
+		),
+		slog.Default(),
 	)
 
-	inventoryNetworkACLSvc := inventory.NewNetworkACLService(
-		inventorySqlite.NewNetworkACL(db),
-		clusterSvc,
-		serverSvc,
-		serverClient,
+	inventoryNetworkACLSvc := inventoryServiceMiddleware.NewNetworkACLServiceWithSlog(
+		inventory.NewNetworkACLService(
+			inventoryRepoMiddleware.NewNetworkACLRepoWithSlog(
+				inventorySqlite.NewNetworkACL(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverSvc,
+			serverClient,
+		),
+		slog.Default(),
 	)
 
-	inventoryNetworkForwardSvc := inventory.NewNetworkForwardService(
-		inventorySqlite.NewNetworkForward(db),
-		clusterSvc,
-		serverSvc,
-		serverClient,
-		serverClient,
+	inventoryNetworkForwardSvc := inventoryServiceMiddleware.NewNetworkForwardServiceWithSlog(
+		inventory.NewNetworkForwardService(
+			inventoryRepoMiddleware.NewNetworkForwardRepoWithSlog(
+				inventorySqlite.NewNetworkForward(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverSvc,
+			serverClient,
+			serverClient,
+		),
+		slog.Default(),
 	)
 
-	inventoryNetworkIntegrationSvc := inventory.NewNetworkIntegrationService(
-		inventorySqlite.NewNetworkIntegration(db),
-		clusterSvc,
-		serverSvc,
-		serverClient,
+	inventoryNetworkIntegrationSvc := inventoryServiceMiddleware.NewNetworkIntegrationServiceWithSlog(
+		inventory.NewNetworkIntegrationService(
+			inventoryRepoMiddleware.NewNetworkIntegrationRepoWithSlog(
+				inventorySqlite.NewNetworkIntegration(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverSvc,
+			serverClient,
+		),
+		slog.Default(),
 	)
 
-	inventoryNetworkLoadBalancerSvc := inventory.NewNetworkLoadBalancerService(
-		inventorySqlite.NewNetworkLoadBalancer(db),
-		clusterSvc,
-		serverSvc,
-		serverClient,
-		serverClient,
+	inventoryNetworkLoadBalancerSvc := inventoryServiceMiddleware.NewNetworkLoadBalancerServiceWithSlog(
+		inventory.NewNetworkLoadBalancerService(
+			inventoryRepoMiddleware.NewNetworkLoadBalancerRepoWithSlog(
+				inventorySqlite.NewNetworkLoadBalancer(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverSvc,
+			serverClient,
+			serverClient,
+		),
+		slog.Default(),
 	)
 
-	inventoryNetworkPeerSvc := inventory.NewNetworkPeerService(
-		inventorySqlite.NewNetworkPeer(db),
-		clusterSvc,
-		serverSvc,
-		serverClient,
-		serverClient,
+	inventoryNetworkPeerSvc := inventoryServiceMiddleware.NewNetworkPeerServiceWithSlog(
+		inventory.NewNetworkPeerService(
+			inventoryRepoMiddleware.NewNetworkPeerRepoWithSlog(
+				inventorySqlite.NewNetworkPeer(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverSvc,
+			serverClient,
+			serverClient,
+		),
+		slog.Default(),
 	)
 
-	inventoryNetworkZoneSvc := inventory.NewNetworkZoneService(
-		inventorySqlite.NewNetworkZone(db),
-		clusterSvc,
-		serverSvc,
-		serverClient,
+	inventoryNetworkZoneSvc := inventoryServiceMiddleware.NewNetworkZoneServiceWithSlog(
+		inventory.NewNetworkZoneService(
+			inventoryRepoMiddleware.NewNetworkZoneRepoWithSlog(
+				inventorySqlite.NewNetworkZone(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverSvc,
+			serverClient,
+		),
+		slog.Default(),
 	)
 
-	inventoryProfileSvc := inventory.NewProfileService(
-		inventorySqlite.NewProfile(db),
-		clusterSvc,
-		serverSvc,
-		serverClient,
+	inventoryProfileSvc := inventoryServiceMiddleware.NewProfileServiceWithSlog(
+		inventory.NewProfileService(
+			inventoryRepoMiddleware.NewProfileRepoWithSlog(
+				inventorySqlite.NewProfile(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverSvc,
+			serverClient,
+		),
+		slog.Default(),
 	)
 
-	inventoryProjectSvc := inventory.NewProjectService(
-		inventorySqlite.NewProject(db),
-		clusterSvc,
-		serverSvc,
-		serverClient,
+	inventoryProjectSvc := inventoryServiceMiddleware.NewProjectServiceWithSlog(
+		inventory.NewProjectService(
+			inventoryRepoMiddleware.NewProjectRepoWithSlog(
+				inventorySqlite.NewProject(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverSvc,
+			serverClient,
+		),
+		slog.Default(),
 	)
 
-	inventoryStorageBucketSvc := inventory.NewStorageBucketService(
-		inventorySqlite.NewStorageBucket(db),
-		clusterSvc,
-		serverSvc,
-		serverClient,
-		serverClient,
+	inventoryStorageBucketSvc := inventoryServiceMiddleware.NewStorageBucketServiceWithSlog(
+		inventory.NewStorageBucketService(
+			inventoryRepoMiddleware.NewStorageBucketRepoWithSlog(
+				inventorySqlite.NewStorageBucket(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverSvc,
+			serverClient,
+			serverClient,
+		),
+		slog.Default(),
 	)
 
-	inventoryStoragePoolSvc := inventory.NewStoragePoolService(
-		inventorySqlite.NewStoragePool(db),
-		clusterSvc,
-		serverSvc,
-		serverClient,
+	inventoryStoragePoolSvc := inventoryServiceMiddleware.NewStoragePoolServiceWithSlog(
+		inventory.NewStoragePoolService(
+			inventoryRepoMiddleware.NewStoragePoolRepoWithSlog(
+				inventorySqlite.NewStoragePool(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverSvc,
+			serverClient,
+		),
+		slog.Default(),
 	)
 
-	inventoryStorageVolumeSvc := inventory.NewStorageVolumeService(
-		inventorySqlite.NewStorageVolume(db),
-		clusterSvc,
-		serverSvc,
-		serverClient,
-		serverClient,
+	inventoryStorageVolumeSvc := inventoryServiceMiddleware.NewStorageVolumeServiceWithSlog(
+		inventory.NewStorageVolumeService(
+			inventoryRepoMiddleware.NewStorageVolumeRepoWithSlog(
+				inventorySqlite.NewStorageVolume(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverSvc,
+			serverClient,
+			serverClient,
+		),
+		slog.Default(),
 	)
 
 	// API routes
