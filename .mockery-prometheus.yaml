@@ -1,0 +1,23 @@
+---
+
+all: False
+template: file://./internal/metrics/prometheus.gotmpl
+force-file-write: true
+include-regex: "(.+Repo|.*ServerClient|.+Service)"
+exclude-regex: "Provisioning.+Service"
+dir: >-
+  {{- $targetDir := "middleware" -}}
+  {{- if and (.InterfaceName | hasSuffix "ServerClient") -}}
+  {{- $targetDir = "server/middleware" -}}
+  {{- end -}}
+  {{- if .InterfaceName | hasSuffix "Repo" -}}
+  {{- $targetDir = "repo/middleware" -}}
+  {{- end -}}
+  {{- .InterfaceDir -}}/{{- $targetDir -}}
+filename: >-
+  {{ .InterfaceName | snakecase }}_prometheus_gen.go
+mockname: "{{ .InterfaceName }}WithPrometheus"
+pkgname: middleware
+packages:
+  github.com/FuturFusion/operations-center/internal/inventory:
+  github.com/FuturFusion/operations-center/internal/provisioning:

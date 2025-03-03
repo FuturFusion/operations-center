@@ -15,3 +15,7 @@ package tools
 //go:generate generate-inventory --server-resource --parent storage_pool --incus-get-all-method GetStoragePoolBucketsAllProjects --incus-get-method GetStoragePoolBucket storage_bucket
 //go:generate generate-inventory --omit-project --incus-get-all-method GetStoragePools --incus-get-method GetStoragePool storage_pool
 //go:generate generate-inventory --server-resource --parent storage_pool --incus-get-all-method GetStoragePoolVolumesAllProjects --incus-get-method GetStoragePoolVolume storage_volume
+
+//go:generate go run github.com/vektra/mockery/v3 --log-level WARN
+//go:generate go run github.com/vektra/mockery/v3 --log-level WARN --config .mockery-slog.yaml
+//go:generate go run github.com/vektra/mockery/v3 --log-level WARN --config .mockery-prometheus.yaml

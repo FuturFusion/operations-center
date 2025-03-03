@@ -8,19 +8,12 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkLoadBalancerService -t ../logger/slog.gotmpl -o ./middleware/network_load_balancer_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkLoadBalancerService -t prometheus -o ./middleware/network_load_balancer_prometheus_gen.go
-
 type NetworkLoadBalancerService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkLoadBalancer, error)
 	ResyncByID(ctx context.Context, id int) error
 	SyncCluster(ctx context.Context, clusterID int) error
 }
-
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/network_load_balancer_repo_mock_gen.go -rm . NetworkLoadBalancerRepo
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkLoadBalancerRepo -t ../logger/slog.gotmpl -o ./repo/middleware/network_load_balancer_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkLoadBalancerRepo -t prometheus -o ./repo/middleware/network_load_balancer_prometheus_gen.go
 
 type NetworkLoadBalancerRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]int, error)
@@ -30,10 +23,6 @@ type NetworkLoadBalancerRepo interface {
 	DeleteByClusterID(ctx context.Context, clusterID int) error
 	UpdateByID(ctx context.Context, networkLoadBalancer NetworkLoadBalancer) (NetworkLoadBalancer, error)
 }
-
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/network_load_balancer_server_client_mock_gen.go -rm . NetworkLoadBalancerServerClient
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkLoadBalancerServerClient -t ../logger/slog.gotmpl -o ./server/middleware/network_load_balancer_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkLoadBalancerServerClient -t prometheus -o ./server/middleware/network_load_balancer_prometheus_gen.go
 
 type NetworkLoadBalancerServerClient interface {
 	GetNetworkLoadBalancers(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkLoadBalancer, error)

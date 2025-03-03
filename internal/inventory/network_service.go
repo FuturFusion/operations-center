@@ -13,7 +13,7 @@ import (
 
 type networkService struct {
 	repo          NetworkRepo
-	clusterSvc    ClusterService
+	clusterSvc    ProvisioningClusterService
 	networkClient NetworkServerClient
 
 	now func() time.Time
@@ -23,7 +23,7 @@ var _ NetworkService = &networkService{}
 
 type NetworkServiceOption func(s *networkService)
 
-func NewNetworkService(repo NetworkRepo, clusterSvc ClusterService, client NetworkServerClient, opts ...NetworkServiceOption) networkService {
+func NewNetworkService(repo NetworkRepo, clusterSvc ProvisioningClusterService, client NetworkServerClient, opts ...NetworkServiceOption) networkService {
 	networkSvc := networkService{
 		repo:          repo,
 		clusterSvc:    clusterSvc,

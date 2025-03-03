@@ -2,9 +2,6 @@ package provisioning
 
 import "context"
 
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ServerService -t ../logger/slog.gotmpl -o ./middleware/server_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ServerService -t prometheus -o ./middleware/server_prometheus_gen.go
-
 type ServerService interface {
 	Create(ctx context.Context, server Server) (Server, error)
 	GetAll(ctx context.Context) (Servers, error)
@@ -16,10 +13,6 @@ type ServerService interface {
 	RenameByName(ctx context.Context, name string, server Server) (Server, error)
 	DeleteByName(ctx context.Context, name string) error
 }
-
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/server_repo_mock_gen.go -rm . ServerRepo
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ServerRepo -t ../logger/slog.gotmpl -o ./repo/middleware/server_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ServerRepo -t prometheus -o ./repo/middleware/server_prometheus_gen.go
 
 type ServerRepo interface {
 	Create(ctx context.Context, server Server) (Server, error)

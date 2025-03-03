@@ -13,7 +13,7 @@ import (
 
 type networkACLService struct {
 	repo             NetworkACLRepo
-	clusterSvc       ClusterService
+	clusterSvc       ProvisioningClusterService
 	networkACLClient NetworkACLServerClient
 
 	now func() time.Time
@@ -23,7 +23,7 @@ var _ NetworkACLService = &networkACLService{}
 
 type NetworkACLServiceOption func(s *networkACLService)
 
-func NewNetworkACLService(repo NetworkACLRepo, clusterSvc ClusterService, client NetworkACLServerClient, opts ...NetworkACLServiceOption) networkACLService {
+func NewNetworkACLService(repo NetworkACLRepo, clusterSvc ProvisioningClusterService, client NetworkACLServerClient, opts ...NetworkACLServiceOption) networkACLService {
 	networkACLSvc := networkACLService{
 		repo:             repo,
 		clusterSvc:       clusterSvc,

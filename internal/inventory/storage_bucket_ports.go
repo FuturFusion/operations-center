@@ -8,9 +8,6 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageBucketService -t ../logger/slog.gotmpl -o ./middleware/storage_bucket_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageBucketService -t prometheus -o ./middleware/storage_bucket_prometheus_gen.go
-
 type StorageBucketService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter StorageBucketFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StorageBucket, error)
@@ -18,10 +15,6 @@ type StorageBucketService interface {
 	SyncCluster(ctx context.Context, clusterID int) error
 	SyncServer(ctx context.Context, serverID int) error
 }
-
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/storage_bucket_repo_mock_gen.go -rm . StorageBucketRepo
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageBucketRepo -t ../logger/slog.gotmpl -o ./repo/middleware/storage_bucket_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageBucketRepo -t prometheus -o ./repo/middleware/storage_bucket_prometheus_gen.go
 
 type StorageBucketRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter StorageBucketFilter) ([]int, error)
@@ -31,10 +24,6 @@ type StorageBucketRepo interface {
 	DeleteByServerID(ctx context.Context, serverID int) error
 	UpdateByID(ctx context.Context, storageBucket StorageBucket) (StorageBucket, error)
 }
-
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/storage_bucket_server_client_mock_gen.go -rm . StorageBucketServerClient
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageBucketServerClient -t ../logger/slog.gotmpl -o ./server/middleware/storage_bucket_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageBucketServerClient -t prometheus -o ./server/middleware/storage_bucket_prometheus_gen.go
 
 type StorageBucketServerClient interface {
 	GetStorageBuckets(ctx context.Context, connectionURL string, storagePoolName string) ([]incusapi.StorageBucket, error)

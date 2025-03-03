@@ -1,0 +1,22 @@
+---
+
+all: False
+template: file://./internal/logger/slog.gotmpl
+force-file-write: true
+include-regex: "(.+Repo|.*ServerClient|.+Service)"
+dir: >-
+  {{- $targetDir := "middleware" -}}
+  {{- if and (.InterfaceName | hasSuffix "ServerClient") -}}
+  {{- $targetDir = "server/middleware" -}}
+  {{- end -}}
+  {{- if .InterfaceName | hasSuffix "Repo" -}}
+  {{- $targetDir = "repo/middleware" -}}
+  {{- end -}}
+  {{- .InterfaceDir -}}/{{- $targetDir -}}
+filename: >-
+  {{ .InterfaceName | snakecase }}_slog_gen.go
+mockname: "{{ .InterfaceName }}WithSlog"
+pkgname: middleware
+packages:
+  github.com/FuturFusion/operations-center/internal/inventory:
+  github.com/FuturFusion/operations-center/internal/provisioning:

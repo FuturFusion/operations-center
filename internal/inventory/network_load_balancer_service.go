@@ -15,7 +15,7 @@ import (
 
 type networkLoadBalancerService struct {
 	repo                      NetworkLoadBalancerRepo
-	clusterSvc                ClusterService
+	clusterSvc                ProvisioningClusterService
 	networkClient             NetworkServerClient
 	networkLoadBalancerClient NetworkLoadBalancerServerClient
 
@@ -34,7 +34,7 @@ func NetworkLoadBalancerWithParentFilter(f func(incusapi.Network) bool) NetworkL
 	}
 }
 
-func NewNetworkLoadBalancerService(repo NetworkLoadBalancerRepo, clusterSvc ClusterService, client NetworkLoadBalancerServerClient, parentClient NetworkServerClient, opts ...NetworkLoadBalancerServiceOption) networkLoadBalancerService {
+func NewNetworkLoadBalancerService(repo NetworkLoadBalancerRepo, clusterSvc ProvisioningClusterService, client NetworkLoadBalancerServerClient, parentClient NetworkServerClient, opts ...NetworkLoadBalancerServiceOption) networkLoadBalancerService {
 	networkLoadBalancerSvc := networkLoadBalancerService{
 		repo:                      repo,
 		clusterSvc:                clusterSvc,

@@ -8,9 +8,6 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageVolumeService -t ../logger/slog.gotmpl -o ./middleware/storage_volume_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageVolumeService -t prometheus -o ./middleware/storage_volume_prometheus_gen.go
-
 type StorageVolumeService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter StorageVolumeFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StorageVolume, error)
@@ -18,10 +15,6 @@ type StorageVolumeService interface {
 	SyncCluster(ctx context.Context, clusterID int) error
 	SyncServer(ctx context.Context, serverID int) error
 }
-
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/storage_volume_repo_mock_gen.go -rm . StorageVolumeRepo
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageVolumeRepo -t ../logger/slog.gotmpl -o ./repo/middleware/storage_volume_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageVolumeRepo -t prometheus -o ./repo/middleware/storage_volume_prometheus_gen.go
 
 type StorageVolumeRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter StorageVolumeFilter) ([]int, error)
@@ -31,10 +24,6 @@ type StorageVolumeRepo interface {
 	DeleteByServerID(ctx context.Context, serverID int) error
 	UpdateByID(ctx context.Context, storageVolume StorageVolume) (StorageVolume, error)
 }
-
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/storage_volume_server_client_mock_gen.go -rm . StorageVolumeServerClient
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageVolumeServerClient -t ../logger/slog.gotmpl -o ./server/middleware/storage_volume_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageVolumeServerClient -t prometheus -o ./server/middleware/storage_volume_prometheus_gen.go
 
 type StorageVolumeServerClient interface {
 	GetStorageVolumes(ctx context.Context, connectionURL string, storagePoolName string) ([]incusapi.StorageVolume, error)

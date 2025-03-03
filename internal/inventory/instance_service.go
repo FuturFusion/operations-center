@@ -13,8 +13,8 @@ import (
 
 type instanceService struct {
 	repo           InstanceRepo
-	clusterSvc     ClusterService
-	serverSvc      ServerService
+	clusterSvc     ProvisioningClusterService
+	serverSvc      ProvisioningServerService
 	instanceClient InstanceServerClient
 
 	now func() time.Time
@@ -24,7 +24,7 @@ var _ InstanceService = &instanceService{}
 
 type InstanceServiceOption func(s *instanceService)
 
-func NewInstanceService(repo InstanceRepo, clusterSvc ClusterService, serverSvc ServerService, client InstanceServerClient, opts ...InstanceServiceOption) instanceService {
+func NewInstanceService(repo InstanceRepo, clusterSvc ProvisioningClusterService, serverSvc ProvisioningServerService, client InstanceServerClient, opts ...InstanceServiceOption) instanceService {
 	instanceSvc := instanceService{
 		repo:           repo,
 		clusterSvc:     clusterSvc,

@@ -8,19 +8,12 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkForwardService -t ../logger/slog.gotmpl -o ./middleware/network_forward_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkForwardService -t prometheus -o ./middleware/network_forward_prometheus_gen.go
-
 type NetworkForwardService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkForwardFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkForward, error)
 	ResyncByID(ctx context.Context, id int) error
 	SyncCluster(ctx context.Context, clusterID int) error
 }
-
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/network_forward_repo_mock_gen.go -rm . NetworkForwardRepo
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkForwardRepo -t ../logger/slog.gotmpl -o ./repo/middleware/network_forward_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkForwardRepo -t prometheus -o ./repo/middleware/network_forward_prometheus_gen.go
 
 type NetworkForwardRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkForwardFilter) ([]int, error)
@@ -30,10 +23,6 @@ type NetworkForwardRepo interface {
 	DeleteByClusterID(ctx context.Context, clusterID int) error
 	UpdateByID(ctx context.Context, networkForward NetworkForward) (NetworkForward, error)
 }
-
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/network_forward_server_client_mock_gen.go -rm . NetworkForwardServerClient
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkForwardServerClient -t ../logger/slog.gotmpl -o ./server/middleware/network_forward_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkForwardServerClient -t prometheus -o ./server/middleware/network_forward_prometheus_gen.go
 
 type NetworkForwardServerClient interface {
 	GetNetworkForwards(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkForward, error)

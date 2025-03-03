@@ -8,19 +8,12 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkIntegrationService -t ../logger/slog.gotmpl -o ./middleware/network_integration_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkIntegrationService -t prometheus -o ./middleware/network_integration_prometheus_gen.go
-
 type NetworkIntegrationService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkIntegrationFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkIntegration, error)
 	ResyncByID(ctx context.Context, id int) error
 	SyncCluster(ctx context.Context, clusterID int) error
 }
-
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/network_integration_repo_mock_gen.go -rm . NetworkIntegrationRepo
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkIntegrationRepo -t ../logger/slog.gotmpl -o ./repo/middleware/network_integration_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkIntegrationRepo -t prometheus -o ./repo/middleware/network_integration_prometheus_gen.go
 
 type NetworkIntegrationRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkIntegrationFilter) ([]int, error)
@@ -30,10 +23,6 @@ type NetworkIntegrationRepo interface {
 	DeleteByClusterID(ctx context.Context, clusterID int) error
 	UpdateByID(ctx context.Context, networkIntegration NetworkIntegration) (NetworkIntegration, error)
 }
-
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/network_integration_server_client_mock_gen.go -rm . NetworkIntegrationServerClient
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkIntegrationServerClient -t ../logger/slog.gotmpl -o ./server/middleware/network_integration_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkIntegrationServerClient -t prometheus -o ./server/middleware/network_integration_prometheus_gen.go
 
 type NetworkIntegrationServerClient interface {
 	GetNetworkIntegrations(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error)

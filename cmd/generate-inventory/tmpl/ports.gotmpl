@@ -6,9 +6,6 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i {{ .Name | pascalcase }}Service -t ../logger/slog.gotmpl -o ./middleware/{{ .Name }}_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i {{ .Name | pascalcase }}Service -t prometheus -o ./middleware/{{ .Name }}_prometheus_gen.go
-
 type {{ .Name | pascalcase }}Service interface {
 	GetAllIDsWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) ([]int, error)
 	GetByID(ctx context.Context, id int) ({{ .Name | pascalcase }}, error)
@@ -19,10 +16,6 @@ type {{ .Name | pascalcase }}Service interface {
 {{- end }}
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/{{ .Name }}_repo_mock_gen.go -rm . {{ .Name | pascalcase }}Repo
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i {{ .Name | pascalcase }}Repo -t ../logger/slog.gotmpl -o ./repo/middleware/{{ .Name }}_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i {{ .Name | pascalcase }}Repo -t prometheus -o ./repo/middleware/{{ .Name }}_prometheus_gen.go
-
 type {{ .Name | pascalcase }}Repo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) ([]int, error)
 	GetByID(ctx context.Context, id int) ({{ .Name | pascalcase }}, error)
@@ -31,10 +24,6 @@ type {{ .Name | pascalcase }}Repo interface {
 	DeleteBy{{ .ResourceForeignKey | pascalcase }}ID(ctx context.Context, {{ .ResourceForeignKey }}ID int) error
 	UpdateByID(ctx context.Context, {{ .Name | camelcase }} {{ .Name | pascalcase }}) ({{ .Name | pascalcase }}, error)
 }
-
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/{{ .Name }}_server_client_mock_gen.go -rm . {{ .Name | pascalcase }}ServerClient
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i {{ .Name | pascalcase }}ServerClient -t ../logger/slog.gotmpl -o ./server/middleware/{{ .Name }}_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i {{ .Name | pascalcase }}ServerClient -t prometheus -o ./server/middleware/{{ .Name }}_prometheus_gen.go
 
 type {{ .Name | pascalcase }}ServerClient interface {
 	Get{{ .PluralName | pascalcase }}(ctx context.Context, connectionURL string {{- if .HasParent }}, {{ .ParentName | camelcase }}Name string {{ end }}) ([]incusapi.{{ .ObjectType | pascalcase }}, error)

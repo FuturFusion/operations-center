@@ -15,7 +15,7 @@ import (
 
 type networkPeerService struct {
 	repo              NetworkPeerRepo
-	clusterSvc        ClusterService
+	clusterSvc        ProvisioningClusterService
 	networkClient     NetworkServerClient
 	networkPeerClient NetworkPeerServerClient
 
@@ -34,7 +34,7 @@ func NetworkPeerWithParentFilter(f func(incusapi.Network) bool) NetworkPeerServi
 	}
 }
 
-func NewNetworkPeerService(repo NetworkPeerRepo, clusterSvc ClusterService, client NetworkPeerServerClient, parentClient NetworkServerClient, opts ...NetworkPeerServiceOption) networkPeerService {
+func NewNetworkPeerService(repo NetworkPeerRepo, clusterSvc ProvisioningClusterService, client NetworkPeerServerClient, parentClient NetworkServerClient, opts ...NetworkPeerServiceOption) networkPeerService {
 	networkPeerSvc := networkPeerService{
 		repo:              repo,
 		clusterSvc:        clusterSvc,

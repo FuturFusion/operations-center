@@ -15,9 +15,9 @@ import (
 
 type {{ .Name | camelcase }}Service struct {
 	repo                   {{ .Name | pascalcase }}Repo
-	clusterSvc             ClusterService
+	clusterSvc             ProvisioningClusterService
 {{- if .IsServerResource }}
-	serverSvc              ServerService
+	serverSvc              ProvisioningServerService
 {{- end }}
 
 {{- if .HasParent }}
@@ -44,7 +44,7 @@ func {{ .Name | pascalcase }}WithParentFilter(f func(incusapi.{{ .ParentObjectTy
 }
 {{- end }}
 
-func New{{ .Name | pascalcase }}Service(repo {{ .Name | pascalcase }}Repo, clusterSvc ClusterService, {{ if .IsServerResource }}serverSvc ServerService, {{ end -}} client {{ .Name | pascalcase }}ServerClient, {{ if .HasParent }}parentClient {{ .ParentName | pascalcase }}ServerClient, {{ end -}} opts ...{{ .Name | pascalcase }}ServiceOption) {{ .Name | camelcase }}Service {
+func New{{ .Name | pascalcase }}Service(repo {{ .Name | pascalcase }}Repo, clusterSvc ProvisioningClusterService, {{ if .IsServerResource }}serverSvc ProvisioningServerService, {{ end -}} client {{ .Name | pascalcase }}ServerClient, {{ if .HasParent }}parentClient {{ .ParentName | pascalcase }}ServerClient, {{ end -}} opts ...{{ .Name | pascalcase }}ServiceOption) {{ .Name | camelcase }}Service {
 	{{ .Name | camelcase }}Svc := {{ .Name | camelcase }}Service{
 		repo:                   repo,
 		clusterSvc:             clusterSvc,

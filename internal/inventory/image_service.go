@@ -13,7 +13,7 @@ import (
 
 type imageService struct {
 	repo        ImageRepo
-	clusterSvc  ClusterService
+	clusterSvc  ProvisioningClusterService
 	imageClient ImageServerClient
 
 	now func() time.Time
@@ -23,7 +23,7 @@ var _ ImageService = &imageService{}
 
 type ImageServiceOption func(s *imageService)
 
-func NewImageService(repo ImageRepo, clusterSvc ClusterService, client ImageServerClient, opts ...ImageServiceOption) imageService {
+func NewImageService(repo ImageRepo, clusterSvc ProvisioningClusterService, client ImageServerClient, opts ...ImageServiceOption) imageService {
 	imageSvc := imageService{
 		repo:        repo,
 		clusterSvc:  clusterSvc,
