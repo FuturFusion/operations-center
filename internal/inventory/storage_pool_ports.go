@@ -8,18 +8,12 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StoragePoolService -t ../logger/slog.gotmpl -o ./middleware/storage_pool_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StoragePoolService -t prometheus -o ./middleware/storage_pool_prometheus_gen.go
-
 type StoragePoolService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StoragePool, error)
 	ResyncByID(ctx context.Context, id int) error
 	SyncCluster(ctx context.Context, clusterID int) error
 }
-
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StoragePoolRepo -t ../logger/slog.gotmpl -o ./repo/middleware/storage_pool_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StoragePoolRepo -t prometheus -o ./repo/middleware/storage_pool_prometheus_gen.go
 
 type StoragePoolRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]int, error)
@@ -29,9 +23,6 @@ type StoragePoolRepo interface {
 	DeleteByClusterID(ctx context.Context, clusterID int) error
 	UpdateByID(ctx context.Context, storagePool StoragePool) (StoragePool, error)
 }
-
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StoragePoolServerClient -t ../logger/slog.gotmpl -o ./server/middleware/storage_pool_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StoragePoolServerClient -t prometheus -o ./server/middleware/storage_pool_prometheus_gen.go
 
 type StoragePoolServerClient interface {
 	GetStoragePools(ctx context.Context, connectionURL string) ([]incusapi.StoragePool, error)

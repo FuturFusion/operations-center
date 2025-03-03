@@ -16,9 +16,6 @@ type ServerService interface {
 	GetByID(ctx context.Context, id int) (provisioning.Server, error)
 }
 
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ServerClient -t ../logger/slog.gotmpl -o ./server/middleware/server_client_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ServerClient -t prometheus -o ./server/middleware/server_client_prometheus_gen.go
-
 type ServerClient interface {
 	ImageServerClient
 	InstanceServerClient

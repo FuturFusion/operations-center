@@ -8,18 +8,12 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkPeerService -t ../logger/slog.gotmpl -o ./middleware/network_peer_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkPeerService -t prometheus -o ./middleware/network_peer_prometheus_gen.go
-
 type NetworkPeerService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkPeer, error)
 	ResyncByID(ctx context.Context, id int) error
 	SyncCluster(ctx context.Context, clusterID int) error
 }
-
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkPeerRepo -t ../logger/slog.gotmpl -o ./repo/middleware/network_peer_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkPeerRepo -t prometheus -o ./repo/middleware/network_peer_prometheus_gen.go
 
 type NetworkPeerRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]int, error)
@@ -29,9 +23,6 @@ type NetworkPeerRepo interface {
 	DeleteByClusterID(ctx context.Context, clusterID int) error
 	UpdateByID(ctx context.Context, networkPeer NetworkPeer) (NetworkPeer, error)
 }
-
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkPeerServerClient -t ../logger/slog.gotmpl -o ./server/middleware/network_peer_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkPeerServerClient -t prometheus -o ./server/middleware/network_peer_prometheus_gen.go
 
 type NetworkPeerServerClient interface {
 	GetNetworkPeers(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkPeer, error)

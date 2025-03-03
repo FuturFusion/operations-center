@@ -8,9 +8,6 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i InstanceService -t ../logger/slog.gotmpl -o ./middleware/instance_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i InstanceService -t prometheus -o ./middleware/instance_prometheus_gen.go
-
 type InstanceService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Instance, error)
@@ -18,9 +15,6 @@ type InstanceService interface {
 	SyncCluster(ctx context.Context, clusterID int) error
 	SyncServer(ctx context.Context, serverID int) error
 }
-
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i InstanceRepo -t ../logger/slog.gotmpl -o ./repo/middleware/instance_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i InstanceRepo -t prometheus -o ./repo/middleware/instance_prometheus_gen.go
 
 type InstanceRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]int, error)
@@ -30,9 +24,6 @@ type InstanceRepo interface {
 	DeleteByServerID(ctx context.Context, serverID int) error
 	UpdateByID(ctx context.Context, instance Instance) (Instance, error)
 }
-
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i InstanceServerClient -t ../logger/slog.gotmpl -o ./server/middleware/instance_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i InstanceServerClient -t prometheus -o ./server/middleware/instance_prometheus_gen.go
 
 type InstanceServerClient interface {
 	GetInstances(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error)

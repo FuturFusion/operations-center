@@ -8,18 +8,12 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkACLService -t ../logger/slog.gotmpl -o ./middleware/network_acl_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkACLService -t prometheus -o ./middleware/network_acl_prometheus_gen.go
-
 type NetworkACLService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkACL, error)
 	ResyncByID(ctx context.Context, id int) error
 	SyncCluster(ctx context.Context, clusterID int) error
 }
-
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkACLRepo -t ../logger/slog.gotmpl -o ./repo/middleware/network_acl_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkACLRepo -t prometheus -o ./repo/middleware/network_acl_prometheus_gen.go
 
 type NetworkACLRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]int, error)
@@ -29,9 +23,6 @@ type NetworkACLRepo interface {
 	DeleteByClusterID(ctx context.Context, clusterID int) error
 	UpdateByID(ctx context.Context, networkACL NetworkACL) (NetworkACL, error)
 }
-
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkACLServerClient -t ../logger/slog.gotmpl -o ./server/middleware/network_acl_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkACLServerClient -t prometheus -o ./server/middleware/network_acl_prometheus_gen.go
 
 type NetworkACLServerClient interface {
 	GetNetworkACLs(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error)

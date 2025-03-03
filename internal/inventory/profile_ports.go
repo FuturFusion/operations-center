@@ -8,18 +8,12 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProfileService -t ../logger/slog.gotmpl -o ./middleware/profile_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProfileService -t prometheus -o ./middleware/profile_prometheus_gen.go
-
 type ProfileService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Profile, error)
 	ResyncByID(ctx context.Context, id int) error
 	SyncCluster(ctx context.Context, clusterID int) error
 }
-
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProfileRepo -t ../logger/slog.gotmpl -o ./repo/middleware/profile_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProfileRepo -t prometheus -o ./repo/middleware/profile_prometheus_gen.go
 
 type ProfileRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]int, error)
@@ -29,9 +23,6 @@ type ProfileRepo interface {
 	DeleteByClusterID(ctx context.Context, clusterID int) error
 	UpdateByID(ctx context.Context, profile Profile) (Profile, error)
 }
-
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProfileServerClient -t ../logger/slog.gotmpl -o ./server/middleware/profile_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProfileServerClient -t prometheus -o ./server/middleware/profile_prometheus_gen.go
 
 type ProfileServerClient interface {
 	GetProfiles(ctx context.Context, connectionURL string) ([]incusapi.Profile, error)

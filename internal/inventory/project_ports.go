@@ -8,18 +8,12 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProjectService -t ../logger/slog.gotmpl -o ./middleware/project_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProjectService -t prometheus -o ./middleware/project_prometheus_gen.go
-
 type ProjectService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter ProjectFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Project, error)
 	ResyncByID(ctx context.Context, id int) error
 	SyncCluster(ctx context.Context, clusterID int) error
 }
-
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProjectRepo -t ../logger/slog.gotmpl -o ./repo/middleware/project_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProjectRepo -t prometheus -o ./repo/middleware/project_prometheus_gen.go
 
 type ProjectRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter ProjectFilter) ([]int, error)
@@ -29,9 +23,6 @@ type ProjectRepo interface {
 	DeleteByClusterID(ctx context.Context, clusterID int) error
 	UpdateByID(ctx context.Context, project Project) (Project, error)
 }
-
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProjectServerClient -t ../logger/slog.gotmpl -o ./server/middleware/project_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProjectServerClient -t prometheus -o ./server/middleware/project_prometheus_gen.go
 
 type ProjectServerClient interface {
 	GetProjects(ctx context.Context, connectionURL string) ([]incusapi.Project, error)

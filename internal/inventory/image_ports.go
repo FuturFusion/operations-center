@@ -8,18 +8,12 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ImageService -t ../logger/slog.gotmpl -o ./middleware/image_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ImageService -t prometheus -o ./middleware/image_prometheus_gen.go
-
 type ImageService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter ImageFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Image, error)
 	ResyncByID(ctx context.Context, id int) error
 	SyncCluster(ctx context.Context, clusterID int) error
 }
-
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ImageRepo -t ../logger/slog.gotmpl -o ./repo/middleware/image_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ImageRepo -t prometheus -o ./repo/middleware/image_prometheus_gen.go
 
 type ImageRepo interface {
 	GetAllIDsWithFilter(ctx context.Context, filter ImageFilter) ([]int, error)
@@ -29,9 +23,6 @@ type ImageRepo interface {
 	DeleteByClusterID(ctx context.Context, clusterID int) error
 	UpdateByID(ctx context.Context, image Image) (Image, error)
 }
-
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ImageServerClient -t ../logger/slog.gotmpl -o ./server/middleware/image_slog_gen.go
-// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ImageServerClient -t prometheus -o ./server/middleware/image_prometheus_gen.go
 
 type ImageServerClient interface {
 	GetImages(ctx context.Context, connectionURL string) ([]incusapi.Image, error)
