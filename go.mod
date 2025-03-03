@@ -38,7 +38,6 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/muhlemmer/gu v0.3.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/sftp v1.13.7 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
@@ -69,7 +68,6 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/google/go-github/v69 v69.0.0
 	github.com/google/uuid v1.6.0
-	github.com/hexdigest/gowrap v1.4.1
 	github.com/lxc/incus/v6 v6.9.0
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/prometheus/client_golang v1.21.0
