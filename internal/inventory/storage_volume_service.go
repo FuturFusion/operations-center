@@ -15,8 +15,8 @@ import (
 
 type storageVolumeService struct {
 	repo                StorageVolumeRepo
-	clusterSvc          ClusterService
-	serverSvc           ServerService
+	clusterSvc          ProvisioningClusterService
+	serverSvc           ProvisioningServerService
 	storagePoolClient   StoragePoolServerClient
 	storageVolumeClient StorageVolumeServerClient
 
@@ -35,7 +35,7 @@ func StorageVolumeWithParentFilter(f func(incusapi.StoragePool) bool) StorageVol
 	}
 }
 
-func NewStorageVolumeService(repo StorageVolumeRepo, clusterSvc ClusterService, serverSvc ServerService, client StorageVolumeServerClient, parentClient StoragePoolServerClient, opts ...StorageVolumeServiceOption) storageVolumeService {
+func NewStorageVolumeService(repo StorageVolumeRepo, clusterSvc ProvisioningClusterService, serverSvc ProvisioningServerService, client StorageVolumeServerClient, parentClient StoragePoolServerClient, opts ...StorageVolumeServiceOption) storageVolumeService {
 	storageVolumeSvc := storageVolumeService{
 		repo:                repo,
 		clusterSvc:          clusterSvc,

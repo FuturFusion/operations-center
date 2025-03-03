@@ -15,7 +15,7 @@ import (
 
 type networkForwardService struct {
 	repo                 NetworkForwardRepo
-	clusterSvc           ClusterService
+	clusterSvc           ProvisioningClusterService
 	networkClient        NetworkServerClient
 	networkForwardClient NetworkForwardServerClient
 
@@ -34,7 +34,7 @@ func NetworkForwardWithParentFilter(f func(incusapi.Network) bool) NetworkForwar
 	}
 }
 
-func NewNetworkForwardService(repo NetworkForwardRepo, clusterSvc ClusterService, client NetworkForwardServerClient, parentClient NetworkServerClient, opts ...NetworkForwardServiceOption) networkForwardService {
+func NewNetworkForwardService(repo NetworkForwardRepo, clusterSvc ProvisioningClusterService, client NetworkForwardServerClient, parentClient NetworkServerClient, opts ...NetworkForwardServiceOption) networkForwardService {
 	networkForwardSvc := networkForwardService{
 		repo:                 repo,
 		clusterSvc:           clusterSvc,

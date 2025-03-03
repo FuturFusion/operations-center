@@ -15,8 +15,8 @@ import (
 
 type storageBucketService struct {
 	repo                StorageBucketRepo
-	clusterSvc          ClusterService
-	serverSvc           ServerService
+	clusterSvc          ProvisioningClusterService
+	serverSvc           ProvisioningServerService
 	storagePoolClient   StoragePoolServerClient
 	storageBucketClient StorageBucketServerClient
 
@@ -35,7 +35,7 @@ func StorageBucketWithParentFilter(f func(incusapi.StoragePool) bool) StorageBuc
 	}
 }
 
-func NewStorageBucketService(repo StorageBucketRepo, clusterSvc ClusterService, serverSvc ServerService, client StorageBucketServerClient, parentClient StoragePoolServerClient, opts ...StorageBucketServiceOption) storageBucketService {
+func NewStorageBucketService(repo StorageBucketRepo, clusterSvc ProvisioningClusterService, serverSvc ProvisioningServerService, client StorageBucketServerClient, parentClient StoragePoolServerClient, opts ...StorageBucketServiceOption) storageBucketService {
 	storageBucketSvc := storageBucketService{
 		repo:                repo,
 		clusterSvc:          clusterSvc,

@@ -11,16 +11,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-// Ensure, that ServerServiceMock does implement inventory.ServerService.
+// Ensure, that ProvisioningServerServiceMock does implement inventory.ProvisioningServerService.
 // If this is not the case, regenerate this file with moq.
-var _ inventory.ServerService = &ServerServiceMock{}
+var _ inventory.ProvisioningServerService = &ProvisioningServerServiceMock{}
 
-// ServerServiceMock is a mock implementation of inventory.ServerService.
+// ProvisioningServerServiceMock is a mock implementation of inventory.ProvisioningServerService.
 //
-//	func TestSomethingThatUsesServerService(t *testing.T) {
+//	func TestSomethingThatUsesProvisioningServerService(t *testing.T) {
 //
-//		// make and configure a mocked inventory.ServerService
-//		mockedServerService := &ServerServiceMock{
+//		// make and configure a mocked inventory.ProvisioningServerService
+//		mockedProvisioningServerService := &ProvisioningServerServiceMock{
 //			GetAllByClusterIDFunc: func(ctx context.Context, clusterID int) (provisioning.Servers, error) {
 //				panic("mock out the GetAllByClusterID method")
 //			},
@@ -29,11 +29,11 @@ var _ inventory.ServerService = &ServerServiceMock{}
 //			},
 //		}
 //
-//		// use mockedServerService in code that requires inventory.ServerService
+//		// use mockedProvisioningServerService in code that requires inventory.ProvisioningServerService
 //		// and then make assertions.
 //
 //	}
-type ServerServiceMock struct {
+type ProvisioningServerServiceMock struct {
 	// GetAllByClusterIDFunc mocks the GetAllByClusterID method.
 	GetAllByClusterIDFunc func(ctx context.Context, clusterID int) (provisioning.Servers, error)
 
@@ -62,9 +62,9 @@ type ServerServiceMock struct {
 }
 
 // GetAllByClusterID calls GetAllByClusterIDFunc.
-func (mock *ServerServiceMock) GetAllByClusterID(ctx context.Context, clusterID int) (provisioning.Servers, error) {
+func (mock *ProvisioningServerServiceMock) GetAllByClusterID(ctx context.Context, clusterID int) (provisioning.Servers, error) {
 	if mock.GetAllByClusterIDFunc == nil {
-		panic("ServerServiceMock.GetAllByClusterIDFunc: method is nil but ServerService.GetAllByClusterID was just called")
+		panic("ProvisioningServerServiceMock.GetAllByClusterIDFunc: method is nil but ProvisioningServerService.GetAllByClusterID was just called")
 	}
 	callInfo := struct {
 		Ctx       context.Context
@@ -82,8 +82,8 @@ func (mock *ServerServiceMock) GetAllByClusterID(ctx context.Context, clusterID 
 // GetAllByClusterIDCalls gets all the calls that were made to GetAllByClusterID.
 // Check the length with:
 //
-//	len(mockedServerService.GetAllByClusterIDCalls())
-func (mock *ServerServiceMock) GetAllByClusterIDCalls() []struct {
+//	len(mockedProvisioningServerService.GetAllByClusterIDCalls())
+func (mock *ProvisioningServerServiceMock) GetAllByClusterIDCalls() []struct {
 	Ctx       context.Context
 	ClusterID int
 } {
@@ -98,9 +98,9 @@ func (mock *ServerServiceMock) GetAllByClusterIDCalls() []struct {
 }
 
 // GetByID calls GetByIDFunc.
-func (mock *ServerServiceMock) GetByID(ctx context.Context, id int) (provisioning.Server, error) {
+func (mock *ProvisioningServerServiceMock) GetByID(ctx context.Context, id int) (provisioning.Server, error) {
 	if mock.GetByIDFunc == nil {
-		panic("ServerServiceMock.GetByIDFunc: method is nil but ServerService.GetByID was just called")
+		panic("ProvisioningServerServiceMock.GetByIDFunc: method is nil but ProvisioningServerService.GetByID was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -118,8 +118,8 @@ func (mock *ServerServiceMock) GetByID(ctx context.Context, id int) (provisionin
 // GetByIDCalls gets all the calls that were made to GetByID.
 // Check the length with:
 //
-//	len(mockedServerService.GetByIDCalls())
-func (mock *ServerServiceMock) GetByIDCalls() []struct {
+//	len(mockedProvisioningServerService.GetByIDCalls())
+func (mock *ProvisioningServerServiceMock) GetByIDCalls() []struct {
 	Ctx context.Context
 	ID  int
 } {

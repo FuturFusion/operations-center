@@ -13,7 +13,7 @@ import (
 
 type networkZoneService struct {
 	repo              NetworkZoneRepo
-	clusterSvc        ClusterService
+	clusterSvc        ProvisioningClusterService
 	networkZoneClient NetworkZoneServerClient
 
 	now func() time.Time
@@ -23,7 +23,7 @@ var _ NetworkZoneService = &networkZoneService{}
 
 type NetworkZoneServiceOption func(s *networkZoneService)
 
-func NewNetworkZoneService(repo NetworkZoneRepo, clusterSvc ClusterService, client NetworkZoneServerClient, opts ...NetworkZoneServiceOption) networkZoneService {
+func NewNetworkZoneService(repo NetworkZoneRepo, clusterSvc ProvisioningClusterService, client NetworkZoneServerClient, opts ...NetworkZoneServiceOption) networkZoneService {
 	networkZoneSvc := networkZoneService{
 		repo:              repo,
 		clusterSvc:        clusterSvc,

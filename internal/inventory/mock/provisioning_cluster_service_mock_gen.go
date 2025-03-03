@@ -11,16 +11,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-// Ensure, that ClusterServiceMock does implement inventory.ClusterService.
+// Ensure, that ProvisioningClusterServiceMock does implement inventory.ProvisioningClusterService.
 // If this is not the case, regenerate this file with moq.
-var _ inventory.ClusterService = &ClusterServiceMock{}
+var _ inventory.ProvisioningClusterService = &ProvisioningClusterServiceMock{}
 
-// ClusterServiceMock is a mock implementation of inventory.ClusterService.
+// ProvisioningClusterServiceMock is a mock implementation of inventory.ProvisioningClusterService.
 //
-//	func TestSomethingThatUsesClusterService(t *testing.T) {
+//	func TestSomethingThatUsesProvisioningClusterService(t *testing.T) {
 //
-//		// make and configure a mocked inventory.ClusterService
-//		mockedClusterService := &ClusterServiceMock{
+//		// make and configure a mocked inventory.ProvisioningClusterService
+//		mockedProvisioningClusterService := &ProvisioningClusterServiceMock{
 //			GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
 //				panic("mock out the GetAll method")
 //			},
@@ -29,11 +29,11 @@ var _ inventory.ClusterService = &ClusterServiceMock{}
 //			},
 //		}
 //
-//		// use mockedClusterService in code that requires inventory.ClusterService
+//		// use mockedProvisioningClusterService in code that requires inventory.ProvisioningClusterService
 //		// and then make assertions.
 //
 //	}
-type ClusterServiceMock struct {
+type ProvisioningClusterServiceMock struct {
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Clusters, error)
 
@@ -60,9 +60,9 @@ type ClusterServiceMock struct {
 }
 
 // GetAll calls GetAllFunc.
-func (mock *ClusterServiceMock) GetAll(ctx context.Context) (provisioning.Clusters, error) {
+func (mock *ProvisioningClusterServiceMock) GetAll(ctx context.Context) (provisioning.Clusters, error) {
 	if mock.GetAllFunc == nil {
-		panic("ClusterServiceMock.GetAllFunc: method is nil but ClusterService.GetAll was just called")
+		panic("ProvisioningClusterServiceMock.GetAllFunc: method is nil but ProvisioningClusterService.GetAll was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -78,8 +78,8 @@ func (mock *ClusterServiceMock) GetAll(ctx context.Context) (provisioning.Cluste
 // GetAllCalls gets all the calls that were made to GetAll.
 // Check the length with:
 //
-//	len(mockedClusterService.GetAllCalls())
-func (mock *ClusterServiceMock) GetAllCalls() []struct {
+//	len(mockedProvisioningClusterService.GetAllCalls())
+func (mock *ProvisioningClusterServiceMock) GetAllCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {
@@ -92,9 +92,9 @@ func (mock *ClusterServiceMock) GetAllCalls() []struct {
 }
 
 // GetByID calls GetByIDFunc.
-func (mock *ClusterServiceMock) GetByID(ctx context.Context, id int) (provisioning.Cluster, error) {
+func (mock *ProvisioningClusterServiceMock) GetByID(ctx context.Context, id int) (provisioning.Cluster, error) {
 	if mock.GetByIDFunc == nil {
-		panic("ClusterServiceMock.GetByIDFunc: method is nil but ClusterService.GetByID was just called")
+		panic("ProvisioningClusterServiceMock.GetByIDFunc: method is nil but ProvisioningClusterService.GetByID was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -112,8 +112,8 @@ func (mock *ClusterServiceMock) GetByID(ctx context.Context, id int) (provisioni
 // GetByIDCalls gets all the calls that were made to GetByID.
 // Check the length with:
 //
-//	len(mockedClusterService.GetByIDCalls())
-func (mock *ClusterServiceMock) GetByIDCalls() []struct {
+//	len(mockedProvisioningClusterService.GetByIDCalls())
+func (mock *ProvisioningClusterServiceMock) GetByIDCalls() []struct {
 	Ctx context.Context
 	ID  int
 } {

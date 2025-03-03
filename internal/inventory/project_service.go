@@ -13,7 +13,7 @@ import (
 
 type projectService struct {
 	repo          ProjectRepo
-	clusterSvc    ClusterService
+	clusterSvc    ProvisioningClusterService
 	projectClient ProjectServerClient
 
 	now func() time.Time
@@ -23,7 +23,7 @@ var _ ProjectService = &projectService{}
 
 type ProjectServiceOption func(s *projectService)
 
-func NewProjectService(repo ProjectRepo, clusterSvc ClusterService, client ProjectServerClient, opts ...ProjectServiceOption) projectService {
+func NewProjectService(repo ProjectRepo, clusterSvc ProvisioningClusterService, client ProjectServerClient, opts ...ProjectServiceOption) projectService {
 	projectSvc := projectService{
 		repo:          repo,
 		clusterSvc:    clusterSvc,

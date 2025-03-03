@@ -13,7 +13,7 @@ import (
 
 type networkIntegrationService struct {
 	repo                     NetworkIntegrationRepo
-	clusterSvc               ClusterService
+	clusterSvc               ProvisioningClusterService
 	networkIntegrationClient NetworkIntegrationServerClient
 
 	now func() time.Time
@@ -23,7 +23,7 @@ var _ NetworkIntegrationService = &networkIntegrationService{}
 
 type NetworkIntegrationServiceOption func(s *networkIntegrationService)
 
-func NewNetworkIntegrationService(repo NetworkIntegrationRepo, clusterSvc ClusterService, client NetworkIntegrationServerClient, opts ...NetworkIntegrationServiceOption) networkIntegrationService {
+func NewNetworkIntegrationService(repo NetworkIntegrationRepo, clusterSvc ProvisioningClusterService, client NetworkIntegrationServerClient, opts ...NetworkIntegrationServiceOption) networkIntegrationService {
 	networkIntegrationSvc := networkIntegrationService{
 		repo:                     repo,
 		clusterSvc:               clusterSvc,

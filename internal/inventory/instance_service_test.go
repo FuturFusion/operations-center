@@ -289,7 +289,7 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			serverSvc := &serviceMock.ServerServiceMock{
+			serverSvc := &serviceMock.ProvisioningServerServiceMock{
 				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Server, error) {
 					require.Equal(t, 1, id)
 					return tc.serverSvcGetByIDServer, tc.serverSvcGetByIDErr
@@ -488,9 +488,9 @@ func TestInstanceService_SyncAll(t *testing.T) {
 				},
 			}
 
-			var clusterSvc *serviceMock.ClusterServiceMock
+			var clusterSvc *serviceMock.ProvisioningClusterServiceMock
 
-			serverSvc := &serviceMock.ServerServiceMock{
+			serverSvc := &serviceMock.ProvisioningServerServiceMock{
 				GetAllByClusterIDFunc: func(ctx context.Context, clusterID int) (provisioning.Servers, error) {
 					return tc.serverSvcGetAllByServerIDServers, tc.serverSvcGetAllByServerIDErr
 				},

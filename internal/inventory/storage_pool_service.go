@@ -13,7 +13,7 @@ import (
 
 type storagePoolService struct {
 	repo              StoragePoolRepo
-	clusterSvc        ClusterService
+	clusterSvc        ProvisioningClusterService
 	storagePoolClient StoragePoolServerClient
 
 	now func() time.Time
@@ -23,7 +23,7 @@ var _ StoragePoolService = &storagePoolService{}
 
 type StoragePoolServiceOption func(s *storagePoolService)
 
-func NewStoragePoolService(repo StoragePoolRepo, clusterSvc ClusterService, client StoragePoolServerClient, opts ...StoragePoolServiceOption) storagePoolService {
+func NewStoragePoolService(repo StoragePoolRepo, clusterSvc ProvisioningClusterService, client StoragePoolServerClient, opts ...StoragePoolServiceOption) storagePoolService {
 	storagePoolSvc := storagePoolService{
 		repo:              repo,
 		clusterSvc:        clusterSvc,

@@ -361,7 +361,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 				},
 			}
 
-			{{ .ResourceForeignKey }}Svc := &serviceMock.{{ .ResourceForeignKey | pascalcase }}ServiceMock{
+			{{ .ResourceForeignKey }}Svc := &serviceMock.Provisioning{{ .ResourceForeignKey | pascalcase }}ServiceMock{
 				GetByIDFunc: func(ctx context.Context, id int) (provisioning.{{ .ResourceForeignKey | pascalcase }}, error) {
 					require.Equal(t, 1, id)
 					return tc.{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}, tc.{{ .ResourceForeignKey }}SvcGetByIDErr
@@ -711,9 +711,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			}
 
 {{ if .IsServerResource }}
-			var clusterSvc *serviceMock.ClusterServiceMock
+			var clusterSvc *serviceMock.ProvisioningClusterServiceMock
 
-			serverSvc := &serviceMock.{{ .ResourceForeignKey | pascalcase }}ServiceMock{
+			serverSvc := &serviceMock.Provisioning{{ .ResourceForeignKey | pascalcase }}ServiceMock{
 				GetAllByClusterIDFunc: func(ctx context.Context, clusterID int) (provisioning.{{ .ResourceForeignKey | pascalcase }}s, error) {
 					return tc.{{ .ResourceForeignKey }}SvcGetAllBy{{ .ResourceForeignKey | pascalcase }}IDServers, tc.{{ .ResourceForeignKey }}SvcGetAllBy{{ .ResourceForeignKey | pascalcase }}IDErr
 				},
@@ -722,7 +722,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				},
 			}
 {{ else }}
-			clusterSvc := &serviceMock.ClusterServiceMock{
+			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
 				GetByIDFunc: func(ctx context.Context, id int) (provisioning.{{ .ResourceForeignKey | pascalcase }}, error) {
 					return tc.{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}, tc.{{ .ResourceForeignKey }}SvcGetByIDErr
 				},

@@ -13,7 +13,7 @@ import (
 
 type profileService struct {
 	repo          ProfileRepo
-	clusterSvc    ClusterService
+	clusterSvc    ProvisioningClusterService
 	profileClient ProfileServerClient
 
 	now func() time.Time
@@ -23,7 +23,7 @@ var _ ProfileService = &profileService{}
 
 type ProfileServiceOption func(s *profileService)
 
-func NewProfileService(repo ProfileRepo, clusterSvc ClusterService, client ProfileServerClient, opts ...ProfileServiceOption) profileService {
+func NewProfileService(repo ProfileRepo, clusterSvc ProvisioningClusterService, client ProfileServerClient, opts ...ProfileServiceOption) profileService {
 	profileSvc := profileService{
 		repo:          repo,
 		clusterSvc:    clusterSvc,

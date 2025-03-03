@@ -281,7 +281,7 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 				},
 			}
 
-			clusterSvc := &serviceMock.ClusterServiceMock{
+			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
 				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
 					require.Equal(t, 1, id)
 					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
@@ -459,7 +459,7 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 				},
 			}
 
-			clusterSvc := &serviceMock.ClusterServiceMock{
+			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
 				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
 					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
