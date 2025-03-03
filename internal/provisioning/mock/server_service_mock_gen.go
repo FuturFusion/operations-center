@@ -10,21 +10,21 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-// Ensure, that ServerRepoMock does implement provisioning.ServerRepo.
+// Ensure, that ServerServiceMock does implement provisioning.ServerService.
 // If this is not the case, regenerate this file with moq.
-var _ provisioning.ServerRepo = &ServerRepoMock{}
+var _ provisioning.ServerService = &ServerServiceMock{}
 
-// ServerRepoMock is a mock implementation of provisioning.ServerRepo.
+// ServerServiceMock is a mock implementation of provisioning.ServerService.
 //
-//	func TestSomethingThatUsesServerRepo(t *testing.T) {
+//	func TestSomethingThatUsesServerService(t *testing.T) {
 //
-//		// make and configure a mocked provisioning.ServerRepo
-//		mockedServerRepo := &ServerRepoMock{
+//		// make and configure a mocked provisioning.ServerService
+//		mockedServerService := &ServerServiceMock{
 //			CreateFunc: func(ctx context.Context, server provisioning.Server) (provisioning.Server, error) {
 //				panic("mock out the Create method")
 //			},
-//			DeleteByIDFunc: func(ctx context.Context, id int) error {
-//				panic("mock out the DeleteByID method")
+//			DeleteByNameFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the DeleteByName method")
 //			},
 //			GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
 //				panic("mock out the GetAll method")
@@ -41,21 +41,24 @@ var _ provisioning.ServerRepo = &ServerRepoMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (provisioning.Server, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			UpdateByIDFunc: func(ctx context.Context, server provisioning.Server) (provisioning.Server, error) {
-//				panic("mock out the UpdateByID method")
+//			RenameByNameFunc: func(ctx context.Context, name string, server provisioning.Server) (provisioning.Server, error) {
+//				panic("mock out the RenameByName method")
+//			},
+//			UpdateByNameFunc: func(ctx context.Context, name string, server provisioning.Server) (provisioning.Server, error) {
+//				panic("mock out the UpdateByName method")
 //			},
 //		}
 //
-//		// use mockedServerRepo in code that requires provisioning.ServerRepo
+//		// use mockedServerService in code that requires provisioning.ServerService
 //		// and then make assertions.
 //
 //	}
-type ServerRepoMock struct {
+type ServerServiceMock struct {
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, server provisioning.Server) (provisioning.Server, error)
 
-	// DeleteByIDFunc mocks the DeleteByID method.
-	DeleteByIDFunc func(ctx context.Context, id int) error
+	// DeleteByNameFunc mocks the DeleteByName method.
+	DeleteByNameFunc func(ctx context.Context, name string) error
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Servers, error)
@@ -72,8 +75,11 @@ type ServerRepoMock struct {
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (provisioning.Server, error)
 
-	// UpdateByIDFunc mocks the UpdateByID method.
-	UpdateByIDFunc func(ctx context.Context, server provisioning.Server) (provisioning.Server, error)
+	// RenameByNameFunc mocks the RenameByName method.
+	RenameByNameFunc func(ctx context.Context, name string, server provisioning.Server) (provisioning.Server, error)
+
+	// UpdateByNameFunc mocks the UpdateByName method.
+	UpdateByNameFunc func(ctx context.Context, name string, server provisioning.Server) (provisioning.Server, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -84,12 +90,12 @@ type ServerRepoMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
-		// DeleteByID holds details about calls to the DeleteByID method.
-		DeleteByID []struct {
+		// DeleteByName holds details about calls to the DeleteByName method.
+		DeleteByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ID is the id argument value.
-			ID int
+			// Name is the name argument value.
+			Name string
 		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
@@ -122,28 +128,40 @@ type ServerRepoMock struct {
 			// Name is the name argument value.
 			Name string
 		}
-		// UpdateByID holds details about calls to the UpdateByID method.
-		UpdateByID []struct {
+		// RenameByName holds details about calls to the RenameByName method.
+		RenameByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
+		// UpdateByName holds details about calls to the UpdateByName method.
+		UpdateByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
 	}
 	lockCreate            sync.RWMutex
-	lockDeleteByID        sync.RWMutex
+	lockDeleteByName      sync.RWMutex
 	lockGetAll            sync.RWMutex
 	lockGetAllByClusterID sync.RWMutex
 	lockGetAllNames       sync.RWMutex
 	lockGetByID           sync.RWMutex
 	lockGetByName         sync.RWMutex
-	lockUpdateByID        sync.RWMutex
+	lockRenameByName      sync.RWMutex
+	lockUpdateByName      sync.RWMutex
 }
 
 // Create calls CreateFunc.
-func (mock *ServerRepoMock) Create(ctx context.Context, server provisioning.Server) (provisioning.Server, error) {
+func (mock *ServerServiceMock) Create(ctx context.Context, server provisioning.Server) (provisioning.Server, error) {
 	if mock.CreateFunc == nil {
-		panic("ServerRepoMock.CreateFunc: method is nil but ServerRepo.Create was just called")
+		panic("ServerServiceMock.CreateFunc: method is nil but ServerService.Create was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
@@ -161,8 +179,8 @@ func (mock *ServerRepoMock) Create(ctx context.Context, server provisioning.Serv
 // CreateCalls gets all the calls that were made to Create.
 // Check the length with:
 //
-//	len(mockedServerRepo.CreateCalls())
-func (mock *ServerRepoMock) CreateCalls() []struct {
+//	len(mockedServerService.CreateCalls())
+func (mock *ServerServiceMock) CreateCalls() []struct {
 	Ctx    context.Context
 	Server provisioning.Server
 } {
@@ -176,46 +194,46 @@ func (mock *ServerRepoMock) CreateCalls() []struct {
 	return calls
 }
 
-// DeleteByID calls DeleteByIDFunc.
-func (mock *ServerRepoMock) DeleteByID(ctx context.Context, id int) error {
-	if mock.DeleteByIDFunc == nil {
-		panic("ServerRepoMock.DeleteByIDFunc: method is nil but ServerRepo.DeleteByID was just called")
+// DeleteByName calls DeleteByNameFunc.
+func (mock *ServerServiceMock) DeleteByName(ctx context.Context, name string) error {
+	if mock.DeleteByNameFunc == nil {
+		panic("ServerServiceMock.DeleteByNameFunc: method is nil but ServerService.DeleteByName was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
-		ID  int
+		Ctx  context.Context
+		Name string
 	}{
-		Ctx: ctx,
-		ID:  id,
+		Ctx:  ctx,
+		Name: name,
 	}
-	mock.lockDeleteByID.Lock()
-	mock.calls.DeleteByID = append(mock.calls.DeleteByID, callInfo)
-	mock.lockDeleteByID.Unlock()
-	return mock.DeleteByIDFunc(ctx, id)
+	mock.lockDeleteByName.Lock()
+	mock.calls.DeleteByName = append(mock.calls.DeleteByName, callInfo)
+	mock.lockDeleteByName.Unlock()
+	return mock.DeleteByNameFunc(ctx, name)
 }
 
-// DeleteByIDCalls gets all the calls that were made to DeleteByID.
+// DeleteByNameCalls gets all the calls that were made to DeleteByName.
 // Check the length with:
 //
-//	len(mockedServerRepo.DeleteByIDCalls())
-func (mock *ServerRepoMock) DeleteByIDCalls() []struct {
-	Ctx context.Context
-	ID  int
+//	len(mockedServerService.DeleteByNameCalls())
+func (mock *ServerServiceMock) DeleteByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
 } {
 	var calls []struct {
-		Ctx context.Context
-		ID  int
+		Ctx  context.Context
+		Name string
 	}
-	mock.lockDeleteByID.RLock()
-	calls = mock.calls.DeleteByID
-	mock.lockDeleteByID.RUnlock()
+	mock.lockDeleteByName.RLock()
+	calls = mock.calls.DeleteByName
+	mock.lockDeleteByName.RUnlock()
 	return calls
 }
 
 // GetAll calls GetAllFunc.
-func (mock *ServerRepoMock) GetAll(ctx context.Context) (provisioning.Servers, error) {
+func (mock *ServerServiceMock) GetAll(ctx context.Context) (provisioning.Servers, error) {
 	if mock.GetAllFunc == nil {
-		panic("ServerRepoMock.GetAllFunc: method is nil but ServerRepo.GetAll was just called")
+		panic("ServerServiceMock.GetAllFunc: method is nil but ServerService.GetAll was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -231,8 +249,8 @@ func (mock *ServerRepoMock) GetAll(ctx context.Context) (provisioning.Servers, e
 // GetAllCalls gets all the calls that were made to GetAll.
 // Check the length with:
 //
-//	len(mockedServerRepo.GetAllCalls())
-func (mock *ServerRepoMock) GetAllCalls() []struct {
+//	len(mockedServerService.GetAllCalls())
+func (mock *ServerServiceMock) GetAllCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {
@@ -245,9 +263,9 @@ func (mock *ServerRepoMock) GetAllCalls() []struct {
 }
 
 // GetAllByClusterID calls GetAllByClusterIDFunc.
-func (mock *ServerRepoMock) GetAllByClusterID(ctx context.Context, clusterID int) (provisioning.Servers, error) {
+func (mock *ServerServiceMock) GetAllByClusterID(ctx context.Context, clusterID int) (provisioning.Servers, error) {
 	if mock.GetAllByClusterIDFunc == nil {
-		panic("ServerRepoMock.GetAllByClusterIDFunc: method is nil but ServerRepo.GetAllByClusterID was just called")
+		panic("ServerServiceMock.GetAllByClusterIDFunc: method is nil but ServerService.GetAllByClusterID was just called")
 	}
 	callInfo := struct {
 		Ctx       context.Context
@@ -265,8 +283,8 @@ func (mock *ServerRepoMock) GetAllByClusterID(ctx context.Context, clusterID int
 // GetAllByClusterIDCalls gets all the calls that were made to GetAllByClusterID.
 // Check the length with:
 //
-//	len(mockedServerRepo.GetAllByClusterIDCalls())
-func (mock *ServerRepoMock) GetAllByClusterIDCalls() []struct {
+//	len(mockedServerService.GetAllByClusterIDCalls())
+func (mock *ServerServiceMock) GetAllByClusterIDCalls() []struct {
 	Ctx       context.Context
 	ClusterID int
 } {
@@ -281,9 +299,9 @@ func (mock *ServerRepoMock) GetAllByClusterIDCalls() []struct {
 }
 
 // GetAllNames calls GetAllNamesFunc.
-func (mock *ServerRepoMock) GetAllNames(ctx context.Context) ([]string, error) {
+func (mock *ServerServiceMock) GetAllNames(ctx context.Context) ([]string, error) {
 	if mock.GetAllNamesFunc == nil {
-		panic("ServerRepoMock.GetAllNamesFunc: method is nil but ServerRepo.GetAllNames was just called")
+		panic("ServerServiceMock.GetAllNamesFunc: method is nil but ServerService.GetAllNames was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -299,8 +317,8 @@ func (mock *ServerRepoMock) GetAllNames(ctx context.Context) ([]string, error) {
 // GetAllNamesCalls gets all the calls that were made to GetAllNames.
 // Check the length with:
 //
-//	len(mockedServerRepo.GetAllNamesCalls())
-func (mock *ServerRepoMock) GetAllNamesCalls() []struct {
+//	len(mockedServerService.GetAllNamesCalls())
+func (mock *ServerServiceMock) GetAllNamesCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {
@@ -313,9 +331,9 @@ func (mock *ServerRepoMock) GetAllNamesCalls() []struct {
 }
 
 // GetByID calls GetByIDFunc.
-func (mock *ServerRepoMock) GetByID(ctx context.Context, id int) (provisioning.Server, error) {
+func (mock *ServerServiceMock) GetByID(ctx context.Context, id int) (provisioning.Server, error) {
 	if mock.GetByIDFunc == nil {
-		panic("ServerRepoMock.GetByIDFunc: method is nil but ServerRepo.GetByID was just called")
+		panic("ServerServiceMock.GetByIDFunc: method is nil but ServerService.GetByID was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -333,8 +351,8 @@ func (mock *ServerRepoMock) GetByID(ctx context.Context, id int) (provisioning.S
 // GetByIDCalls gets all the calls that were made to GetByID.
 // Check the length with:
 //
-//	len(mockedServerRepo.GetByIDCalls())
-func (mock *ServerRepoMock) GetByIDCalls() []struct {
+//	len(mockedServerService.GetByIDCalls())
+func (mock *ServerServiceMock) GetByIDCalls() []struct {
 	Ctx context.Context
 	ID  int
 } {
@@ -349,9 +367,9 @@ func (mock *ServerRepoMock) GetByIDCalls() []struct {
 }
 
 // GetByName calls GetByNameFunc.
-func (mock *ServerRepoMock) GetByName(ctx context.Context, name string) (provisioning.Server, error) {
+func (mock *ServerServiceMock) GetByName(ctx context.Context, name string) (provisioning.Server, error) {
 	if mock.GetByNameFunc == nil {
-		panic("ServerRepoMock.GetByNameFunc: method is nil but ServerRepo.GetByName was just called")
+		panic("ServerServiceMock.GetByNameFunc: method is nil but ServerService.GetByName was just called")
 	}
 	callInfo := struct {
 		Ctx  context.Context
@@ -369,8 +387,8 @@ func (mock *ServerRepoMock) GetByName(ctx context.Context, name string) (provisi
 // GetByNameCalls gets all the calls that were made to GetByName.
 // Check the length with:
 //
-//	len(mockedServerRepo.GetByNameCalls())
-func (mock *ServerRepoMock) GetByNameCalls() []struct {
+//	len(mockedServerService.GetByNameCalls())
+func (mock *ServerServiceMock) GetByNameCalls() []struct {
 	Ctx  context.Context
 	Name string
 } {
@@ -384,38 +402,82 @@ func (mock *ServerRepoMock) GetByNameCalls() []struct {
 	return calls
 }
 
-// UpdateByID calls UpdateByIDFunc.
-func (mock *ServerRepoMock) UpdateByID(ctx context.Context, server provisioning.Server) (provisioning.Server, error) {
-	if mock.UpdateByIDFunc == nil {
-		panic("ServerRepoMock.UpdateByIDFunc: method is nil but ServerRepo.UpdateByID was just called")
+// RenameByName calls RenameByNameFunc.
+func (mock *ServerServiceMock) RenameByName(ctx context.Context, name string, server provisioning.Server) (provisioning.Server, error) {
+	if mock.RenameByNameFunc == nil {
+		panic("ServerServiceMock.RenameByNameFunc: method is nil but ServerService.RenameByName was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
+		Name   string
 		Server provisioning.Server
 	}{
 		Ctx:    ctx,
+		Name:   name,
 		Server: server,
 	}
-	mock.lockUpdateByID.Lock()
-	mock.calls.UpdateByID = append(mock.calls.UpdateByID, callInfo)
-	mock.lockUpdateByID.Unlock()
-	return mock.UpdateByIDFunc(ctx, server)
+	mock.lockRenameByName.Lock()
+	mock.calls.RenameByName = append(mock.calls.RenameByName, callInfo)
+	mock.lockRenameByName.Unlock()
+	return mock.RenameByNameFunc(ctx, name, server)
 }
 
-// UpdateByIDCalls gets all the calls that were made to UpdateByID.
+// RenameByNameCalls gets all the calls that were made to RenameByName.
 // Check the length with:
 //
-//	len(mockedServerRepo.UpdateByIDCalls())
-func (mock *ServerRepoMock) UpdateByIDCalls() []struct {
+//	len(mockedServerService.RenameByNameCalls())
+func (mock *ServerServiceMock) RenameByNameCalls() []struct {
 	Ctx    context.Context
+	Name   string
 	Server provisioning.Server
 } {
 	var calls []struct {
 		Ctx    context.Context
+		Name   string
 		Server provisioning.Server
 	}
-	mock.lockUpdateByID.RLock()
-	calls = mock.calls.UpdateByID
-	mock.lockUpdateByID.RUnlock()
+	mock.lockRenameByName.RLock()
+	calls = mock.calls.RenameByName
+	mock.lockRenameByName.RUnlock()
+	return calls
+}
+
+// UpdateByName calls UpdateByNameFunc.
+func (mock *ServerServiceMock) UpdateByName(ctx context.Context, name string, server provisioning.Server) (provisioning.Server, error) {
+	if mock.UpdateByNameFunc == nil {
+		panic("ServerServiceMock.UpdateByNameFunc: method is nil but ServerService.UpdateByName was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Name   string
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Name:   name,
+		Server: server,
+	}
+	mock.lockUpdateByName.Lock()
+	mock.calls.UpdateByName = append(mock.calls.UpdateByName, callInfo)
+	mock.lockUpdateByName.Unlock()
+	return mock.UpdateByNameFunc(ctx, name, server)
+}
+
+// UpdateByNameCalls gets all the calls that were made to UpdateByName.
+// Check the length with:
+//
+//	len(mockedServerService.UpdateByNameCalls())
+func (mock *ServerServiceMock) UpdateByNameCalls() []struct {
+	Ctx    context.Context
+	Name   string
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Name   string
+		Server provisioning.Server
+	}
+	mock.lockUpdateByName.RLock()
+	calls = mock.calls.UpdateByName
+	mock.lockUpdateByName.RUnlock()
 	return calls
 }

@@ -18,7 +18,6 @@ type NetworkLoadBalancerService interface {
 	SyncCluster(ctx context.Context, clusterID int) error
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/network_load_balancer_repo_mock_gen.go -rm . NetworkLoadBalancerRepo
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkLoadBalancerRepo -t ../logger/slog.gotmpl -o ./repo/middleware/network_load_balancer_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkLoadBalancerRepo -t prometheus -o ./repo/middleware/network_load_balancer_prometheus_gen.go
 
@@ -31,7 +30,6 @@ type NetworkLoadBalancerRepo interface {
 	UpdateByID(ctx context.Context, networkLoadBalancer NetworkLoadBalancer) (NetworkLoadBalancer, error)
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/network_load_balancer_server_client_mock_gen.go -rm . NetworkLoadBalancerServerClient
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkLoadBalancerServerClient -t ../logger/slog.gotmpl -o ./server/middleware/network_load_balancer_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkLoadBalancerServerClient -t prometheus -o ./server/middleware/network_load_balancer_prometheus_gen.go
 

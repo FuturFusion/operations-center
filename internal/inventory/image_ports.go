@@ -18,7 +18,6 @@ type ImageService interface {
 	SyncCluster(ctx context.Context, clusterID int) error
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/image_repo_mock_gen.go -rm . ImageRepo
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ImageRepo -t ../logger/slog.gotmpl -o ./repo/middleware/image_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ImageRepo -t prometheus -o ./repo/middleware/image_prometheus_gen.go
 
@@ -31,7 +30,6 @@ type ImageRepo interface {
 	UpdateByID(ctx context.Context, image Image) (Image, error)
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/image_server_client_mock_gen.go -rm . ImageServerClient
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ImageServerClient -t ../logger/slog.gotmpl -o ./server/middleware/image_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ImageServerClient -t prometheus -o ./server/middleware/image_prometheus_gen.go
 

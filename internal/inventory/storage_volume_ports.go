@@ -19,7 +19,6 @@ type StorageVolumeService interface {
 	SyncServer(ctx context.Context, serverID int) error
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/storage_volume_repo_mock_gen.go -rm . StorageVolumeRepo
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageVolumeRepo -t ../logger/slog.gotmpl -o ./repo/middleware/storage_volume_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageVolumeRepo -t prometheus -o ./repo/middleware/storage_volume_prometheus_gen.go
 
@@ -32,7 +31,6 @@ type StorageVolumeRepo interface {
 	UpdateByID(ctx context.Context, storageVolume StorageVolume) (StorageVolume, error)
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/storage_volume_server_client_mock_gen.go -rm . StorageVolumeServerClient
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageVolumeServerClient -t ../logger/slog.gotmpl -o ./server/middleware/storage_volume_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i StorageVolumeServerClient -t prometheus -o ./server/middleware/storage_volume_prometheus_gen.go
 

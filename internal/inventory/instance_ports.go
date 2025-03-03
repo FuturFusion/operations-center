@@ -19,7 +19,6 @@ type InstanceService interface {
 	SyncServer(ctx context.Context, serverID int) error
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/instance_repo_mock_gen.go -rm . InstanceRepo
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i InstanceRepo -t ../logger/slog.gotmpl -o ./repo/middleware/instance_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i InstanceRepo -t prometheus -o ./repo/middleware/instance_prometheus_gen.go
 
@@ -32,7 +31,6 @@ type InstanceRepo interface {
 	UpdateByID(ctx context.Context, instance Instance) (Instance, error)
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/instance_server_client_mock_gen.go -rm . InstanceServerClient
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i InstanceServerClient -t ../logger/slog.gotmpl -o ./server/middleware/instance_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i InstanceServerClient -t prometheus -o ./server/middleware/instance_prometheus_gen.go
 

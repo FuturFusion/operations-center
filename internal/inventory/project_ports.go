@@ -18,7 +18,6 @@ type ProjectService interface {
 	SyncCluster(ctx context.Context, clusterID int) error
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/project_repo_mock_gen.go -rm . ProjectRepo
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProjectRepo -t ../logger/slog.gotmpl -o ./repo/middleware/project_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProjectRepo -t prometheus -o ./repo/middleware/project_prometheus_gen.go
 
@@ -31,7 +30,6 @@ type ProjectRepo interface {
 	UpdateByID(ctx context.Context, project Project) (Project, error)
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/project_server_client_mock_gen.go -rm . ProjectServerClient
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProjectServerClient -t ../logger/slog.gotmpl -o ./server/middleware/project_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i ProjectServerClient -t prometheus -o ./server/middleware/project_prometheus_gen.go
 

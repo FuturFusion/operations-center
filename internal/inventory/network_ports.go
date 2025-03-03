@@ -18,7 +18,6 @@ type NetworkService interface {
 	SyncCluster(ctx context.Context, clusterID int) error
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./repo/mock/network_repo_mock_gen.go -rm . NetworkRepo
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkRepo -t ../logger/slog.gotmpl -o ./repo/middleware/network_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkRepo -t prometheus -o ./repo/middleware/network_prometheus_gen.go
 
@@ -31,7 +30,6 @@ type NetworkRepo interface {
 	UpdateByID(ctx context.Context, network Network) (Network, error)
 }
 
-//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out ./server/mock/network_server_client_mock_gen.go -rm . NetworkServerClient
 //go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkServerClient -t ../logger/slog.gotmpl -o ./server/middleware/network_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkServerClient -t prometheus -o ./server/middleware/network_prometheus_gen.go
 

@@ -1,0 +1,21 @@
+---
+
+all: False
+template: matryer
+force-file-write: true
+include-regex: "(.+Repo|.*ServerClient|ClusterService|ServerService|InventorySyncer)"
+dir: >-
+  {{- $targetDir := "mock" -}}
+  {{- if and (.InterfaceName | hasSuffix "ServerClient") -}}
+  {{- $targetDir = "server/mock" -}}
+  {{- end -}}
+  {{- if .InterfaceName | hasSuffix "Repo" -}}
+  {{- $targetDir = "repo/mock" -}}
+  {{- end -}}
+  {{- .InterfaceDir -}}/{{- $targetDir -}}
+filename: "{{ .InterfaceName | snakecase }}_mock_gen.go"
+mockname: "{{ .InterfaceName }}Mock"
+pkgname: mock
+packages:
+  github.com/FuturFusion/operations-center/internal/inventory:
+  github.com/FuturFusion/operations-center/internal/provisioning:
