@@ -54,7 +54,7 @@ func (s networkZoneService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByID(ctx, networkZone.ClusterID)
+		cluster, err := s.clusterSvc.GetByName(ctx, networkZone.Cluster)
 		if err != nil {
 			return err
 		}
@@ -96,8 +96,8 @@ func (s networkZoneService) ResyncByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s networkZoneService) SyncCluster(ctx context.Context, clusterID int) error {
-	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
+func (s networkZoneService) SyncCluster(ctx context.Context, clusterName string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, clusterName)
 	if err != nil {
 		return err
 	}
@@ -108,14 +108,14 @@ func (s networkZoneService) SyncCluster(ctx context.Context, clusterID int) erro
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByClusterID(ctx, clusterID)
+		err = s.repo.DeleteByCluster(ctx, clusterName)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
 		for _, retrievedNetworkZone := range retrievedNetworkZones {
 			networkZone := NetworkZone{
-				ClusterID:   clusterID,
+				Cluster:     clusterName,
 				ProjectName: retrievedNetworkZone.Project,
 				Name:        retrievedNetworkZone.Name,
 				Object:      retrievedNetworkZone,

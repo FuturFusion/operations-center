@@ -12,7 +12,7 @@ type NetworkZoneService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkZoneFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkZone, error)
 	ResyncByID(ctx context.Context, id int) error
-	SyncCluster(ctx context.Context, clusterID int) error
+	SyncCluster(ctx context.Context, cluster string) error
 }
 
 type NetworkZoneRepo interface {
@@ -20,7 +20,7 @@ type NetworkZoneRepo interface {
 	GetByID(ctx context.Context, id int) (NetworkZone, error)
 	Create(ctx context.Context, networkZone NetworkZone) (NetworkZone, error)
 	DeleteByID(ctx context.Context, id int) error
-	DeleteByClusterID(ctx context.Context, clusterID int) error
+	DeleteByCluster(ctx context.Context, cluster string) error
 	UpdateByID(ctx context.Context, networkZone NetworkZone) (NetworkZone, error)
 }
 

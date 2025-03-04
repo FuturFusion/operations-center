@@ -12,7 +12,7 @@ type NetworkLoadBalancerService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkLoadBalancer, error)
 	ResyncByID(ctx context.Context, id int) error
-	SyncCluster(ctx context.Context, clusterID int) error
+	SyncCluster(ctx context.Context, cluster string) error
 }
 
 type NetworkLoadBalancerRepo interface {
@@ -20,7 +20,7 @@ type NetworkLoadBalancerRepo interface {
 	GetByID(ctx context.Context, id int) (NetworkLoadBalancer, error)
 	Create(ctx context.Context, networkLoadBalancer NetworkLoadBalancer) (NetworkLoadBalancer, error)
 	DeleteByID(ctx context.Context, id int) error
-	DeleteByClusterID(ctx context.Context, clusterID int) error
+	DeleteByCluster(ctx context.Context, cluster string) error
 	UpdateByID(ctx context.Context, networkLoadBalancer NetworkLoadBalancer) (NetworkLoadBalancer, error)
 }
 

@@ -28,9 +28,9 @@ func NewStoragePool(db sqlite.DBTX) *storagePool {
 
 func (r storagePool) Create(ctx context.Context, in inventory.StoragePool) (inventory.StoragePool, error) {
 	const sqlStmt = `
-INSERT INTO storage_pools (cluster_id, name, object, last_updated)
-VALUES(:cluster_id, :name, :object, :last_updated)
-RETURNING id, cluster_id, name, object, last_updated;
+INSERT INTO storage_pools (cluster_name, name, object, last_updated)
+VALUES(:cluster_name, :name, :object, :last_updated)
+RETURNING id, cluster_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -39,7 +39,7 @@ RETURNING id, cluster_id, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
 		sql.Named("last_updated", in.LastUpdated),
@@ -55,7 +55,7 @@ func (r storagePool) GetAllIDsWithFilter(ctx context.Context, filter inventory.S
 	const sqlStmt = `
 SELECT storage_pools.id
 FROM storage_pools
-  INNER JOIN clusters ON storage_pools.cluster_id = clusters.id
+  INNER JOIN clusters ON storage_pools.cluster_name = clusters.name
 WHERE true
 %s
 ORDER BY storage_pools.id
@@ -99,7 +99,7 @@ ORDER BY storage_pools.id
 func (r storagePool) GetByID(ctx context.Context, id int) (inventory.StoragePool, error) {
 	const sqlStmt = `
 SELECT
-  storage_pools.id, storage_pools.cluster_id, storage_pools.name, storage_pools.object, storage_pools.last_updated
+  storage_pools.id, storage_pools.cluster_name, storage_pools.name, storage_pools.object, storage_pools.last_updated
 FROM
   storage_pools
 WHERE storage_pools.id=:id;
@@ -133,10 +133,10 @@ func (r storagePool) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r storagePool) DeleteByClusterID(ctx context.Context, clusterID int) error {
-	const sqlStmt = `DELETE FROM storage_pools WHERE cluster_id=:clusterID;`
+func (r storagePool) DeleteByCluster(ctx context.Context, cluster string) error {
+	const sqlStmt = `DELETE FROM storage_pools WHERE cluster_name=:cluster;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("clusterID", clusterID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster", cluster))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -155,9 +155,9 @@ func (r storagePool) DeleteByClusterID(ctx context.Context, clusterID int) error
 
 func (r storagePool) UpdateByID(ctx context.Context, in inventory.StoragePool) (inventory.StoragePool, error) {
 	const sqlStmt = `
-UPDATE storage_pools SET cluster_id=:cluster_id, name=:name, object=:object, last_updated=:last_updated
+UPDATE storage_pools SET cluster_name=:cluster_name, name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, cluster_id, name, object, last_updated;
+RETURNING id, cluster_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -167,7 +167,7 @@ RETURNING id, cluster_id, name, object, last_updated;
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
 		sql.Named("last_updated", in.LastUpdated),
@@ -185,7 +185,7 @@ func scanStoragePool(row interface{ Scan(dest ...any) error }) (inventory.Storag
 
 	err := row.Scan(
 		&storagePool.ID,
-		&storagePool.ClusterID,
+		&storagePool.Cluster,
 		&storagePool.Name,
 		&object,
 		&storagePool.LastUpdated,

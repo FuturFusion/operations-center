@@ -22,7 +22,7 @@ func TestNetworkPeer_Validate(t *testing.T) {
 			name: "valid",
 			image: inventory.NetworkPeer{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "cluster-one",
 				NetworkName: "network one",
 				Name:        "one",
 			},
@@ -30,10 +30,10 @@ func TestNetworkPeer_Validate(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "error - invalid cluster ID",
+			name: "error - invalid cluster Name",
 			image: inventory.NetworkPeer{
 				ID:          1,
-				ClusterID:   0, // invalid
+				Cluster:     "", // invalid
 				NetworkName: "network one",
 				Name:        "one",
 			},
@@ -47,7 +47,7 @@ func TestNetworkPeer_Validate(t *testing.T) {
 			name: "error - invalid project name",
 			image: inventory.NetworkPeer{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "cluster-one",
 				NetworkName: "", // invalid
 				Name:        "one",
 			},
@@ -61,7 +61,7 @@ func TestNetworkPeer_Validate(t *testing.T) {
 			name: "error - invalid name",
 			image: inventory.NetworkPeer{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "cluster-one",
 				NetworkName: "network one",
 				Name:        "", // invalid
 			},

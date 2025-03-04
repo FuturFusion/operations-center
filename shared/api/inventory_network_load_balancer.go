@@ -10,7 +10,7 @@ import (
 
 type NetworkLoadBalancer struct {
 	ID          int                          `json:"id" yaml:"id"`
-	Cluster     string                       `json:"cluster_id" yaml:"cluster_id"`
+	Cluster     string                       `json:"cluster" yaml:"cluster"`
 	NetworkName string                       `json:"parent_name" yaml:"parent_name"`
 	Name        string                       `json:"name" yaml:"name"`
 	Object      incusapi.NetworkLoadBalancer `json:"object" yaml:"object"`

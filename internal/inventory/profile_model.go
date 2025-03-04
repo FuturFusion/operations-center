@@ -12,7 +12,7 @@ import (
 
 type Profile struct {
 	ID          int
-	ClusterID   int
+	Cluster     string
 	ProjectName string
 	Name        string
 	Object      incusapi.Profile
@@ -20,7 +20,7 @@ type Profile struct {
 }
 
 func (m Profile) Validate() error {
-	if m.ClusterID < 1 {
+	if m.Cluster == "" {
 		return domain.NewValidationErrf("Invalid Profile, cluster id can not be less than 1")
 	}
 

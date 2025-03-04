@@ -10,8 +10,8 @@ import (
 
 type StorageBucket struct {
 	ID              int                    `json:"id" yaml:"id"`
-	Cluster         string                 `json:"cluster_id" yaml:"cluster_id"`
-	Server          string                 `json:"server_id" yaml:"server_id"`
+	Cluster         string                 `json:"cluster" yaml:"cluster"`
+	Server          string                 `json:"server" yaml:"server"`
 	ProjectName     string                 `json:"project_name" yaml:"project_name"`
 	StoragePoolName string                 `json:"parent_name" yaml:"parent_name"`
 	Name            string                 `json:"name" yaml:"name"`

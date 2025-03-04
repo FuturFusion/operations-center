@@ -22,7 +22,6 @@ import (
 
 func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -30,7 +29,6 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
@@ -38,7 +36,7 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	}
 
 	networkLoadBalancerA := inventory.NetworkLoadBalancer{
-		ClusterID:   1,
+		Cluster:     "one",
 		NetworkName: "parent one",
 		Name:        "one",
 		Object:      incusapi.NetworkLoadBalancer{},
@@ -46,7 +44,7 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	}
 
 	networkLoadBalancerB := inventory.NetworkLoadBalancer{
-		ClusterID:   2,
+		Cluster:     "two",
 		NetworkName: "parent one",
 		Name:        "two",
 		Object:      incusapi.NetworkLoadBalancer{},
@@ -68,7 +66,10 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), nil)
+	clusterRepo, err := provisioningSqlite.NewCluster(db)
+	require.NoError(t, err)
+
+	clusterSvc := provisioning.NewClusterService(clusterRepo, nil)
 
 	networkLoadBalancer := inventorySqlite.NewNetworkLoadBalancer(db)
 
@@ -85,11 +86,11 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	// Add network_load_balancers
 	networkLoadBalancerA, err = networkLoadBalancer.Create(ctx, networkLoadBalancerA)
 	require.NoError(t, err)
-	require.Equal(t, 1, networkLoadBalancerA.ClusterID)
+	require.Equal(t, "one", networkLoadBalancerA.Cluster)
 
 	networkLoadBalancerB, err = networkLoadBalancer.Create(ctx, networkLoadBalancerB)
 	require.NoError(t, err)
-	require.Equal(t, 2, networkLoadBalancerB.ClusterID)
+	require.Equal(t, "two", networkLoadBalancerB.Cluster)
 
 	// Ensure we have two entries without filter
 	networkLoadBalancerIDs, err := networkLoadBalancer.GetAllIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{})
@@ -106,7 +107,7 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []int{1}, networkLoadBalancerIDs)
 
 	// Should get back networkLoadBalancerA unchanged.
-	networkLoadBalancerA.ClusterID = 1
+	networkLoadBalancerA.Cluster = "one"
 	dbNetworkLoadBalancerA, err := networkLoadBalancer.GetByID(ctx, networkLoadBalancerA.ID)
 	require.NoError(t, err)
 	require.Equal(t, networkLoadBalancerA, dbNetworkLoadBalancerA)
@@ -121,7 +122,7 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Delete network_load_balancers by cluster ID.
-	err = networkLoadBalancer.DeleteByClusterID(ctx, 2)
+	err = networkLoadBalancer.DeleteByCluster(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = networkLoadBalancer.GetByID(ctx, networkLoadBalancerA.ID)

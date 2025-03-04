@@ -22,7 +22,6 @@ import (
 
 func TestProjectDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -30,7 +29,6 @@ func TestProjectDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
@@ -38,14 +36,14 @@ func TestProjectDatabaseActions(t *testing.T) {
 	}
 
 	projectA := inventory.Project{
-		ClusterID:   1,
+		Cluster:     "one",
 		Name:        "one",
 		Object:      incusapi.Project{},
 		LastUpdated: time.Now(),
 	}
 
 	projectB := inventory.Project{
-		ClusterID:   2,
+		Cluster:     "two",
 		Name:        "two",
 		Object:      incusapi.Project{},
 		LastUpdated: time.Now(),
@@ -66,7 +64,10 @@ func TestProjectDatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), nil)
+	clusterRepo, err := provisioningSqlite.NewCluster(db)
+	require.NoError(t, err)
+
+	clusterSvc := provisioning.NewClusterService(clusterRepo, nil)
 
 	project := inventorySqlite.NewProject(db)
 
@@ -83,11 +84,11 @@ func TestProjectDatabaseActions(t *testing.T) {
 	// Add projects
 	projectA, err = project.Create(ctx, projectA)
 	require.NoError(t, err)
-	require.Equal(t, 1, projectA.ClusterID)
+	require.Equal(t, "one", projectA.Cluster)
 
 	projectB, err = project.Create(ctx, projectB)
 	require.NoError(t, err)
-	require.Equal(t, 2, projectB.ClusterID)
+	require.Equal(t, "two", projectB.Cluster)
 
 	// Ensure we have two entries without filter
 	projectIDs, err := project.GetAllIDsWithFilter(ctx, inventory.ProjectFilter{})
@@ -104,7 +105,7 @@ func TestProjectDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []int{1}, projectIDs)
 
 	// Should get back projectA unchanged.
-	projectA.ClusterID = 1
+	projectA.Cluster = "one"
 	dbProjectA, err := project.GetByID(ctx, projectA.ID)
 	require.NoError(t, err)
 	require.Equal(t, projectA, dbProjectA)
@@ -119,7 +120,7 @@ func TestProjectDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Delete projects by cluster ID.
-	err = project.DeleteByClusterID(ctx, 2)
+	err = project.DeleteByCluster(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = project.GetByID(ctx, projectA.ID)

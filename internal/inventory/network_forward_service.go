@@ -70,7 +70,7 @@ func (s networkForwardService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByID(ctx, networkForward.ClusterID)
+		cluster, err := s.clusterSvc.GetByName(ctx, networkForward.Cluster)
 		if err != nil {
 			return err
 		}
@@ -111,8 +111,8 @@ func (s networkForwardService) ResyncByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s networkForwardService) SyncCluster(ctx context.Context, clusterID int) error {
-	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
+func (s networkForwardService) SyncCluster(ctx context.Context, clusterName string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, clusterName)
 	if err != nil {
 		return err
 	}
@@ -133,14 +133,14 @@ func (s networkForwardService) SyncCluster(ctx context.Context, clusterID int) e
 		}
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
-			err = s.repo.DeleteByClusterID(ctx, clusterID)
+			err = s.repo.DeleteByCluster(ctx, clusterName)
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
 			}
 
 			for _, retrievedNetworkForward := range retrievedNetworkForwards {
 				networkForward := NetworkForward{
-					ClusterID:   clusterID,
+					Cluster:     clusterName,
 					NetworkName: network.Name,
 					Name:        retrievedNetworkForward.ListenAddress,
 					Object:      retrievedNetworkForward,

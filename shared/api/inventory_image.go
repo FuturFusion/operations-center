@@ -10,7 +10,7 @@ import (
 
 type Image struct {
 	ID          int            `json:"id" yaml:"id"`
-	Cluster     string         `json:"cluster_id" yaml:"cluster_id"`
+	Cluster     string         `json:"cluster" yaml:"cluster"`
 	ProjectName string         `json:"project_name" yaml:"project_name"`
 	Name        string         `json:"name" yaml:"name"`
 	Object      incusapi.Image `json:"object" yaml:"object"`

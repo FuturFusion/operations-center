@@ -83,7 +83,7 @@ func TestNetworkService_GetByID(t *testing.T) {
 			idArg: 1,
 			repoGetByIDNetwork: inventory.Network{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "cluster-one",
 				ProjectName: "one",
 				Name:        "one",
 				Object:      incusapi.Network{},
@@ -141,12 +141,11 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByIDNetwork: inventory.Network{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "cluster-one",
+				Name:    "cluster-one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworkByName: incusapi.Network{
@@ -159,12 +158,11 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 		{
 			name: "success - network get by name - not found",
 			repoGetByIDNetwork: inventory.Network{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "cluster-one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworkByNameErr: domain.ErrNotFound,
@@ -180,9 +178,9 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 		{
 			name: "error - cluster get by ID",
 			repoGetByIDNetwork: inventory.Network{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "cluster-one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDErr: boom.Error,
 
@@ -191,12 +189,11 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 		{
 			name: "error - network get by name",
 			repoGetByIDNetwork: inventory.Network{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "cluster-one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworkByNameErr: boom.Error,
@@ -206,12 +203,11 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 		{
 			name: "error - network get by name - not found - delete by id",
 			repoGetByIDNetwork: inventory.Network{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "cluster-one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworkByNameErr: domain.ErrNotFound,
@@ -222,12 +218,11 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByIDNetwork: inventory.Network{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "", // invalid
+				ID:      1,
+				Cluster: "cluster-one",
+				Name:    "", // invalid
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworkByName: incusapi.Network{
@@ -243,12 +238,11 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 		{
 			name: "error - update by ID",
 			repoGetByIDNetwork: inventory.Network{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "cluster-one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworkByName: incusapi.Network{
@@ -278,8 +272,8 @@ func TestNetworkService_ResyncByID(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
-					require.Equal(t, 1, id)
+				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
+					require.Equal(t, "cluster-one", name)
 					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
@@ -321,7 +315,6 @@ func TestNetworkService_SyncAll(t *testing.T) {
 		{
 			name: "success",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
@@ -342,7 +335,6 @@ func TestNetworkService_SyncAll(t *testing.T) {
 		{
 			name: "error - network client get Networks",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworksErr: boom.Error,
@@ -352,7 +344,6 @@ func TestNetworkService_SyncAll(t *testing.T) {
 		{
 			name: "error - networks delete by cluster ID",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
@@ -368,7 +359,6 @@ func TestNetworkService_SyncAll(t *testing.T) {
 		{
 			name: "error - validate",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
@@ -386,7 +376,6 @@ func TestNetworkService_SyncAll(t *testing.T) {
 		{
 			name: "error - network create",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
@@ -405,7 +394,7 @@ func TestNetworkService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkRepoMock{
-				DeleteByClusterIDFunc: func(ctx context.Context, clusterID int) error {
+				DeleteByClusterFunc: func(ctx context.Context, cluster string) error {
 					return tc.repoDeleteByClusterIDErr
 				},
 				CreateFunc: func(ctx context.Context, network inventory.Network) (inventory.Network, error) {
@@ -414,7 +403,7 @@ func TestNetworkService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
 					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
@@ -435,7 +424,7 @@ func TestNetworkService_SyncAll(t *testing.T) {
 			)
 
 			// Run test
-			err := networkSvc.SyncCluster(context.Background(), 1)
+			err := networkSvc.SyncCluster(context.Background(), "one")
 
 			// Assert
 			tc.assertErr(t, err)

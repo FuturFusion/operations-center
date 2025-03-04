@@ -70,7 +70,7 @@ func (s networkLoadBalancerService) ResyncByID(ctx context.Context, id int) erro
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByID(ctx, networkLoadBalancer.ClusterID)
+		cluster, err := s.clusterSvc.GetByName(ctx, networkLoadBalancer.Cluster)
 		if err != nil {
 			return err
 		}
@@ -111,8 +111,8 @@ func (s networkLoadBalancerService) ResyncByID(ctx context.Context, id int) erro
 	return nil
 }
 
-func (s networkLoadBalancerService) SyncCluster(ctx context.Context, clusterID int) error {
-	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
+func (s networkLoadBalancerService) SyncCluster(ctx context.Context, clusterName string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, clusterName)
 	if err != nil {
 		return err
 	}
@@ -133,14 +133,14 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, clusterID i
 		}
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
-			err = s.repo.DeleteByClusterID(ctx, clusterID)
+			err = s.repo.DeleteByCluster(ctx, clusterName)
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
 			}
 
 			for _, retrievedNetworkLoadBalancer := range retrievedNetworkLoadBalancers {
 				networkLoadBalancer := NetworkLoadBalancer{
-					ClusterID:   clusterID,
+					Cluster:     clusterName,
 					NetworkName: network.Name,
 					Name:        retrievedNetworkLoadBalancer.ListenAddress,
 					Object:      retrievedNetworkLoadBalancer,

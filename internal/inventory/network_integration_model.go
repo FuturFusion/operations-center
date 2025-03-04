@@ -12,14 +12,14 @@ import (
 
 type NetworkIntegration struct {
 	ID          int
-	ClusterID   int
+	Cluster     string
 	Name        string
 	Object      incusapi.NetworkIntegration
 	LastUpdated time.Time
 }
 
 func (m NetworkIntegration) Validate() error {
-	if m.ClusterID < 1 {
+	if m.Cluster == "" {
 		return domain.NewValidationErrf("Invalid NetworkIntegration, cluster id can not be less than 1")
 	}
 

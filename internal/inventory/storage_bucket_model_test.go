@@ -22,8 +22,8 @@ func TestStorageBucket_Validate(t *testing.T) {
 			name: "valid",
 			image: inventory.StorageBucket{
 				ID:              1,
-				ServerID:        1,
-				ClusterID:       1,
+				Server:          "server-one",
+				Cluster:         "cluster-one",
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "one",
@@ -32,11 +32,11 @@ func TestStorageBucket_Validate(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "error - invalid server ID",
+			name: "error - invalid server Name",
 			image: inventory.StorageBucket{
 				ID:              1,
-				ServerID:        0, // invalid
-				ClusterID:       0,
+				Server:          "", // invalid
+				Cluster:         "",
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "one",
@@ -51,8 +51,8 @@ func TestStorageBucket_Validate(t *testing.T) {
 			name: "error - invalid project name",
 			image: inventory.StorageBucket{
 				ID:              1,
-				ServerID:        1,
-				ClusterID:       1,
+				Server:          "server-one",
+				Cluster:         "cluster-one",
 				ProjectName:     "", // invalid
 				StoragePoolName: "storagePool one",
 				Name:            "one",
@@ -67,8 +67,8 @@ func TestStorageBucket_Validate(t *testing.T) {
 			name: "error - invalid project name",
 			image: inventory.StorageBucket{
 				ID:              1,
-				ServerID:        1,
-				ClusterID:       1,
+				Server:          "server-one",
+				Cluster:         "cluster-one",
 				ProjectName:     "project one",
 				StoragePoolName: "", // invalid
 				Name:            "one",
@@ -83,8 +83,8 @@ func TestStorageBucket_Validate(t *testing.T) {
 			name: "error - invalid name",
 			image: inventory.StorageBucket{
 				ID:              1,
-				ServerID:        1,
-				ClusterID:       1,
+				Server:          "server-one",
+				Cluster:         "cluster-one",
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "", // invalid

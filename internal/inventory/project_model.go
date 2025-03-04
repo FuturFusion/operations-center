@@ -12,14 +12,14 @@ import (
 
 type Project struct {
 	ID          int
-	ClusterID   int
+	Cluster     string
 	Name        string
 	Object      incusapi.Project
 	LastUpdated time.Time
 }
 
 func (m Project) Validate() error {
-	if m.ClusterID < 1 {
+	if m.Cluster == "" {
 		return domain.NewValidationErrf("Invalid Project, cluster id can not be less than 1")
 	}
 

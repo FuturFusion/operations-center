@@ -28,9 +28,9 @@ func NewNetworkIntegration(db sqlite.DBTX) *networkIntegration {
 
 func (r networkIntegration) Create(ctx context.Context, in inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
 	const sqlStmt = `
-INSERT INTO network_integrations (cluster_id, name, object, last_updated)
-VALUES(:cluster_id, :name, :object, :last_updated)
-RETURNING id, cluster_id, name, object, last_updated;
+INSERT INTO network_integrations (cluster_name, name, object, last_updated)
+VALUES(:cluster_name, :name, :object, :last_updated)
+RETURNING id, cluster_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -39,7 +39,7 @@ RETURNING id, cluster_id, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
 		sql.Named("last_updated", in.LastUpdated),
@@ -55,7 +55,7 @@ func (r networkIntegration) GetAllIDsWithFilter(ctx context.Context, filter inve
 	const sqlStmt = `
 SELECT network_integrations.id
 FROM network_integrations
-  INNER JOIN clusters ON network_integrations.cluster_id = clusters.id
+  INNER JOIN clusters ON network_integrations.cluster_name = clusters.name
 WHERE true
 %s
 ORDER BY network_integrations.id
@@ -99,7 +99,7 @@ ORDER BY network_integrations.id
 func (r networkIntegration) GetByID(ctx context.Context, id int) (inventory.NetworkIntegration, error) {
 	const sqlStmt = `
 SELECT
-  network_integrations.id, network_integrations.cluster_id, network_integrations.name, network_integrations.object, network_integrations.last_updated
+  network_integrations.id, network_integrations.cluster_name, network_integrations.name, network_integrations.object, network_integrations.last_updated
 FROM
   network_integrations
 WHERE network_integrations.id=:id;
@@ -133,10 +133,10 @@ func (r networkIntegration) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r networkIntegration) DeleteByClusterID(ctx context.Context, clusterID int) error {
-	const sqlStmt = `DELETE FROM network_integrations WHERE cluster_id=:clusterID;`
+func (r networkIntegration) DeleteByCluster(ctx context.Context, cluster string) error {
+	const sqlStmt = `DELETE FROM network_integrations WHERE cluster_name=:cluster;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("clusterID", clusterID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster", cluster))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -155,9 +155,9 @@ func (r networkIntegration) DeleteByClusterID(ctx context.Context, clusterID int
 
 func (r networkIntegration) UpdateByID(ctx context.Context, in inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
 	const sqlStmt = `
-UPDATE network_integrations SET cluster_id=:cluster_id, name=:name, object=:object, last_updated=:last_updated
+UPDATE network_integrations SET cluster_name=:cluster_name, name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, cluster_id, name, object, last_updated;
+RETURNING id, cluster_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -167,7 +167,7 @@ RETURNING id, cluster_id, name, object, last_updated;
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
 		sql.Named("last_updated", in.LastUpdated),
@@ -185,7 +185,7 @@ func scanNetworkIntegration(row interface{ Scan(dest ...any) error }) (inventory
 
 	err := row.Scan(
 		&networkIntegration.ID,
-		&networkIntegration.ClusterID,
+		&networkIntegration.Cluster,
 		&networkIntegration.Name,
 		&object,
 		&networkIntegration.LastUpdated,

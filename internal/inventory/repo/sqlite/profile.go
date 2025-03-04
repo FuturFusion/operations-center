@@ -28,9 +28,9 @@ func NewProfile(db sqlite.DBTX) *profile {
 
 func (r profile) Create(ctx context.Context, in inventory.Profile) (inventory.Profile, error) {
 	const sqlStmt = `
-INSERT INTO profiles (cluster_id, project_name, name, object, last_updated)
-VALUES(:cluster_id, :project_name, :name, :object, :last_updated)
-RETURNING id, cluster_id, project_name, name, object, last_updated;
+INSERT INTO profiles (cluster_name, project_name, name, object, last_updated)
+VALUES(:cluster_name, :project_name, :name, :object, :last_updated)
+RETURNING id, cluster_name, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -39,7 +39,7 @@ RETURNING id, cluster_id, project_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -56,7 +56,7 @@ func (r profile) GetAllIDsWithFilter(ctx context.Context, filter inventory.Profi
 	const sqlStmt = `
 SELECT profiles.id
 FROM profiles
-  INNER JOIN clusters ON profiles.cluster_id = clusters.id
+  INNER JOIN clusters ON profiles.cluster_name = clusters.name
 WHERE true
 %s
 ORDER BY profiles.id
@@ -105,7 +105,7 @@ ORDER BY profiles.id
 func (r profile) GetByID(ctx context.Context, id int) (inventory.Profile, error) {
 	const sqlStmt = `
 SELECT
-  profiles.id, profiles.cluster_id, profiles.project_name, profiles.name, profiles.object, profiles.last_updated
+  profiles.id, profiles.cluster_name, profiles.project_name, profiles.name, profiles.object, profiles.last_updated
 FROM
   profiles
 WHERE profiles.id=:id;
@@ -139,10 +139,10 @@ func (r profile) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r profile) DeleteByClusterID(ctx context.Context, clusterID int) error {
-	const sqlStmt = `DELETE FROM profiles WHERE cluster_id=:clusterID;`
+func (r profile) DeleteByCluster(ctx context.Context, cluster string) error {
+	const sqlStmt = `DELETE FROM profiles WHERE cluster_name=:cluster;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("clusterID", clusterID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster", cluster))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -161,9 +161,9 @@ func (r profile) DeleteByClusterID(ctx context.Context, clusterID int) error {
 
 func (r profile) UpdateByID(ctx context.Context, in inventory.Profile) (inventory.Profile, error) {
 	const sqlStmt = `
-UPDATE profiles SET cluster_id=:cluster_id, project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
+UPDATE profiles SET cluster_name=:cluster_name, project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, cluster_id, project_name, name, object, last_updated;
+RETURNING id, cluster_name, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -173,7 +173,7 @@ RETURNING id, cluster_id, project_name, name, object, last_updated;
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -192,7 +192,7 @@ func scanProfile(row interface{ Scan(dest ...any) error }) (inventory.Profile, e
 
 	err := row.Scan(
 		&profile.ID,
-		&profile.ClusterID,
+		&profile.Cluster,
 		&profile.ProjectName,
 		&profile.Name,
 		&object,

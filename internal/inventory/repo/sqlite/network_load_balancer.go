@@ -28,9 +28,9 @@ func NewNetworkLoadBalancer(db sqlite.DBTX) *networkLoadBalancer {
 
 func (r networkLoadBalancer) Create(ctx context.Context, in inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
 	const sqlStmt = `
-INSERT INTO network_load_balancers (cluster_id, network_name, name, object, last_updated)
-VALUES(:cluster_id, :network_name, :name, :object, :last_updated)
-RETURNING id, cluster_id, network_name, name, object, last_updated;
+INSERT INTO network_load_balancers (cluster_name, network_name, name, object, last_updated)
+VALUES(:cluster_name, :network_name, :name, :object, :last_updated)
+RETURNING id, cluster_name, network_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -39,7 +39,7 @@ RETURNING id, cluster_id, network_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
 		sql.Named("network_name", in.NetworkName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -56,7 +56,7 @@ func (r networkLoadBalancer) GetAllIDsWithFilter(ctx context.Context, filter inv
 	const sqlStmt = `
 SELECT network_load_balancers.id
 FROM network_load_balancers
-  INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
+  INNER JOIN clusters ON network_load_balancers.cluster_name = clusters.name
 WHERE true
 %s
 ORDER BY network_load_balancers.id
@@ -100,7 +100,7 @@ ORDER BY network_load_balancers.id
 func (r networkLoadBalancer) GetByID(ctx context.Context, id int) (inventory.NetworkLoadBalancer, error) {
 	const sqlStmt = `
 SELECT
-  network_load_balancers.id, network_load_balancers.cluster_id, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
+  network_load_balancers.id, network_load_balancers.cluster_name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
 FROM
   network_load_balancers
 WHERE network_load_balancers.id=:id;
@@ -134,10 +134,10 @@ func (r networkLoadBalancer) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r networkLoadBalancer) DeleteByClusterID(ctx context.Context, clusterID int) error {
-	const sqlStmt = `DELETE FROM network_load_balancers WHERE cluster_id=:clusterID;`
+func (r networkLoadBalancer) DeleteByCluster(ctx context.Context, cluster string) error {
+	const sqlStmt = `DELETE FROM network_load_balancers WHERE cluster_name=:cluster;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("clusterID", clusterID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster", cluster))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -156,9 +156,9 @@ func (r networkLoadBalancer) DeleteByClusterID(ctx context.Context, clusterID in
 
 func (r networkLoadBalancer) UpdateByID(ctx context.Context, in inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
 	const sqlStmt = `
-UPDATE network_load_balancers SET cluster_id=:cluster_id, network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
+UPDATE network_load_balancers SET cluster_name=:cluster_name, network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, cluster_id, network_name, name, object, last_updated;
+RETURNING id, cluster_name, network_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -168,7 +168,7 @@ RETURNING id, cluster_id, network_name, name, object, last_updated;
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
 		sql.Named("network_name", in.NetworkName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -187,7 +187,7 @@ func scanNetworkLoadBalancer(row interface{ Scan(dest ...any) error }) (inventor
 
 	err := row.Scan(
 		&networkLoadBalancer.ID,
-		&networkLoadBalancer.ClusterID,
+		&networkLoadBalancer.Cluster,
 		&networkLoadBalancer.NetworkName,
 		&networkLoadBalancer.Name,
 		&object,

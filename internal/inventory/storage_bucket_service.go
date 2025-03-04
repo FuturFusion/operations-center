@@ -72,7 +72,7 @@ func (s storageBucketService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		server, err := s.serverSvc.GetByID(ctx, storageBucket.ServerID)
+		server, err := s.serverSvc.GetByName(ctx, storageBucket.Server)
 		if err != nil {
 			return err
 		}
@@ -114,14 +114,14 @@ func (s storageBucketService) ResyncByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s storageBucketService) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+func (s storageBucketService) SyncCluster(ctx context.Context, cluster string) error {
+	servers, err := s.serverSvc.GetAllByCluster(ctx, cluster)
 	if err != nil {
 		return err
 	}
 
 	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
+		err = s.SyncServer(ctx, server.Name)
 		if err != nil {
 			return err
 		}
@@ -130,8 +130,8 @@ func (s storageBucketService) SyncCluster(ctx context.Context, clusterID int) er
 	return nil
 }
 
-func (s storageBucketService) SyncServer(ctx context.Context, serverID int) error {
-	server, err := s.serverSvc.GetByID(ctx, serverID)
+func (s storageBucketService) SyncServer(ctx context.Context, serverName string) error {
+	server, err := s.serverSvc.GetByName(ctx, serverName)
 	if err != nil {
 		return err
 	}
@@ -152,15 +152,15 @@ func (s storageBucketService) SyncServer(ctx context.Context, serverID int) erro
 		}
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
-			err = s.repo.DeleteByServerID(ctx, serverID)
+			err = s.repo.DeleteByServer(ctx, serverName)
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
 			}
 
 			for _, retrievedStorageBucket := range retrievedStorageBuckets {
 				storageBucket := StorageBucket{
-					ClusterID:       server.ClusterID,
-					ServerID:        serverID,
+					Cluster:         server.Cluster,
+					Server:          serverName,
 					ProjectName:     retrievedStorageBucket.Project,
 					StoragePoolName: storagePool.Name,
 					Name:            retrievedStorageBucket.Name,

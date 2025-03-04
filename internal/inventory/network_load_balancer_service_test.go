@@ -83,7 +83,7 @@ func TestNetworkLoadBalancerService_GetByID(t *testing.T) {
 			idArg: 1,
 			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "cluster-one",
 				NetworkName: "parent one",
 				Name:        "one",
 				Object:      incusapi.NetworkLoadBalancer{},
@@ -142,12 +142,11 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 			name: "success",
 			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
 				ID:          1,
-				ClusterID:   1,
-				Name:        "one",
+				Cluster:     "cluster-one",
+				Name:        "cluster-one",
 				NetworkName: "network",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByName: incusapi.NetworkLoadBalancer{
@@ -160,12 +159,11 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 			name: "success - networkLoadBalancer get by name - not found",
 			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "cluster-one",
 				Name:        "one",
 				NetworkName: "network",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByNameErr: domain.ErrNotFound,
@@ -182,7 +180,7 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 			name: "error - cluster get by ID",
 			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "cluster-one",
 				Name:        "one",
 				NetworkName: "network",
 			},
@@ -194,12 +192,11 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 			name: "error - networkLoadBalancer get by name",
 			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "cluster-one",
 				Name:        "one",
 				NetworkName: "network",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByNameErr: boom.Error,
@@ -210,12 +207,11 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 			name: "error - networkLoadBalancer get by name - not found - delete by id",
 			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "cluster-one",
 				Name:        "one",
 				NetworkName: "network",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByNameErr: domain.ErrNotFound,
@@ -227,12 +223,11 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 			name: "error - validate",
 			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "cluster-one",
 				Name:        "", // invalid
 				NetworkName: "network",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByName: incusapi.NetworkLoadBalancer{
@@ -248,12 +243,11 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 			name: "error - update by ID",
 			repoGetByIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "cluster-one",
 				Name:        "one",
 				NetworkName: "network",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByName: incusapi.NetworkLoadBalancer{
@@ -282,8 +276,8 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
-					require.Equal(t, 1, id)
+				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
+					require.Equal(t, "cluster-one", name)
 					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
@@ -328,7 +322,6 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		{
 			name: "success",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
@@ -361,7 +354,6 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		{
 			name: "error - network client get Networks",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworksErr: boom.Error,
@@ -371,7 +363,6 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		{
 			name: "error - networkLoadBalancer client get NetworkLoadBalancers",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
@@ -386,7 +377,6 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		{
 			name: "error - network_load_balancers delete by cluster ID",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
@@ -406,7 +396,6 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		{
 			name: "error - validate",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
@@ -428,7 +417,6 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		{
 			name: "error - networkLoadBalancer create",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
@@ -451,7 +439,7 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkLoadBalancerRepoMock{
-				DeleteByClusterIDFunc: func(ctx context.Context, clusterID int) error {
+				DeleteByClusterFunc: func(ctx context.Context, cluster string) error {
 					return tc.repoDeleteByClusterIDErr
 				},
 				CreateFunc: func(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
@@ -460,7 +448,7 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
 					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
@@ -487,7 +475,7 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			)
 
 			// Run test
-			err := networkLoadBalancerSvc.SyncCluster(context.Background(), 1)
+			err := networkLoadBalancerSvc.SyncCluster(context.Background(), "one")
 
 			// Assert
 			tc.assertErr(t, err)

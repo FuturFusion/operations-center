@@ -25,7 +25,6 @@ import (
 
 func TestStorageVolumeDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -33,7 +32,6 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
@@ -41,29 +39,27 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	}
 
 	testServerA := provisioning.Server{
-		ID:            1,
-		ClusterID:     1,
+		Cluster:       "one",
 		Name:          "one",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
 		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
+		VersionData:   json.RawMessage(""),
 		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	testServerB := provisioning.Server{
-		ID:            2,
-		ClusterID:     1,
+		Cluster:       "one",
 		Name:          "two",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
 		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
+		VersionData:   json.RawMessage(""),
 		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	storageVolumeA := inventory.StorageVolume{
-		ServerID:        1,
+		Server:          "one",
 		ProjectName:     "one",
 		StoragePoolName: "parent one",
 		Name:            "one",
@@ -73,7 +69,7 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	}
 
 	storageVolumeB := inventory.StorageVolume{
-		ServerID:        2,
+		Server:          "two",
 		ProjectName:     "two",
 		StoragePoolName: "parent one",
 		Name:            "two",
@@ -97,8 +93,14 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), nil)
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
+	clusterRepo, err := provisioningSqlite.NewCluster(db)
+	require.NoError(t, err)
+
+	clusterSvc := provisioning.NewClusterService(clusterRepo, nil)
+	serverRepo, err := provisioningSqlite.NewServer(db)
+	require.NoError(t, err)
+
+	serverSvc := provisioning.NewServerService(serverRepo)
 
 	storageVolume := inventorySqlite.NewStorageVolume(db)
 
@@ -121,11 +123,11 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	// Add storage_volumes
 	storageVolumeA, err = storageVolume.Create(ctx, storageVolumeA)
 	require.NoError(t, err)
-	require.Equal(t, 1, storageVolumeA.ServerID)
+	require.Equal(t, "one", storageVolumeA.Server)
 
 	storageVolumeB, err = storageVolume.Create(ctx, storageVolumeB)
 	require.NoError(t, err)
-	require.Equal(t, 2, storageVolumeB.ServerID)
+	require.Equal(t, "two", storageVolumeB.Server)
 
 	// Ensure we have two entries without filter
 	storageVolumeIDs, err := storageVolume.GetAllIDsWithFilter(ctx, inventory.StorageVolumeFilter{})
@@ -144,7 +146,7 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []int{1}, storageVolumeIDs)
 
 	// Should get back storageVolumeA unchanged.
-	storageVolumeA.ClusterID = 1
+	storageVolumeA.Cluster = "one"
 	dbStorageVolumeA, err := storageVolume.GetByID(ctx, storageVolumeA.ID)
 	require.NoError(t, err)
 	require.Equal(t, storageVolumeA, dbStorageVolumeA)
@@ -159,7 +161,7 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Delete storage_volumes by server ID.
-	err = storageVolume.DeleteByServerID(ctx, 2)
+	err = storageVolume.DeleteByServer(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = storageVolume.GetByID(ctx, storageVolumeA.ID)

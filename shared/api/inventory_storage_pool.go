@@ -10,7 +10,7 @@ import (
 
 type StoragePool struct {
 	ID          int                  `json:"id" yaml:"id"`
-	Cluster     string               `json:"cluster_id" yaml:"cluster_id"`
+	Cluster     string               `json:"cluster" yaml:"cluster"`
 	Name        string               `json:"name" yaml:"name"`
 	Object      incusapi.StoragePool `json:"object" yaml:"object"`
 	LastUpdated time.Time            `json:"last_updated" yaml:"last_updated"`

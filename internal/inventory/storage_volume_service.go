@@ -72,7 +72,7 @@ func (s storageVolumeService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		server, err := s.serverSvc.GetByID(ctx, storageVolume.ServerID)
+		server, err := s.serverSvc.GetByName(ctx, storageVolume.Server)
 		if err != nil {
 			return err
 		}
@@ -115,14 +115,14 @@ func (s storageVolumeService) ResyncByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s storageVolumeService) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+func (s storageVolumeService) SyncCluster(ctx context.Context, cluster string) error {
+	servers, err := s.serverSvc.GetAllByCluster(ctx, cluster)
 	if err != nil {
 		return err
 	}
 
 	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
+		err = s.SyncServer(ctx, server.Name)
 		if err != nil {
 			return err
 		}
@@ -131,8 +131,8 @@ func (s storageVolumeService) SyncCluster(ctx context.Context, clusterID int) er
 	return nil
 }
 
-func (s storageVolumeService) SyncServer(ctx context.Context, serverID int) error {
-	server, err := s.serverSvc.GetByID(ctx, serverID)
+func (s storageVolumeService) SyncServer(ctx context.Context, serverName string) error {
+	server, err := s.serverSvc.GetByName(ctx, serverName)
 	if err != nil {
 		return err
 	}
@@ -153,15 +153,15 @@ func (s storageVolumeService) SyncServer(ctx context.Context, serverID int) erro
 		}
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
-			err = s.repo.DeleteByServerID(ctx, serverID)
+			err = s.repo.DeleteByServer(ctx, serverName)
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
 			}
 
 			for _, retrievedStorageVolume := range retrievedStorageVolumes {
 				storageVolume := StorageVolume{
-					ClusterID:       server.ClusterID,
-					ServerID:        serverID,
+					Cluster:         server.Cluster,
+					Server:          serverName,
 					ProjectName:     retrievedStorageVolume.Project,
 					StoragePoolName: storagePool.Name,
 					Name:            retrievedStorageVolume.Name,

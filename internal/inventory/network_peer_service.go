@@ -70,7 +70,7 @@ func (s networkPeerService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByID(ctx, networkPeer.ClusterID)
+		cluster, err := s.clusterSvc.GetByName(ctx, networkPeer.Cluster)
 		if err != nil {
 			return err
 		}
@@ -111,8 +111,8 @@ func (s networkPeerService) ResyncByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s networkPeerService) SyncCluster(ctx context.Context, clusterID int) error {
-	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
+func (s networkPeerService) SyncCluster(ctx context.Context, clusterName string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, clusterName)
 	if err != nil {
 		return err
 	}
@@ -133,14 +133,14 @@ func (s networkPeerService) SyncCluster(ctx context.Context, clusterID int) erro
 		}
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
-			err = s.repo.DeleteByClusterID(ctx, clusterID)
+			err = s.repo.DeleteByCluster(ctx, clusterName)
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
 			}
 
 			for _, retrievedNetworkPeer := range retrievedNetworkPeers {
 				networkPeer := NetworkPeer{
-					ClusterID:   clusterID,
+					Cluster:     clusterName,
 					NetworkName: network.Name,
 					Name:        retrievedNetworkPeer.Name,
 					Object:      retrievedNetworkPeer,

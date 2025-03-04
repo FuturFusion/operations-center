@@ -12,14 +12,14 @@ import (
 
 type StoragePool struct {
 	ID          int
-	ClusterID   int
+	Cluster     string
 	Name        string
 	Object      incusapi.StoragePool
 	LastUpdated time.Time
 }
 
 func (m StoragePool) Validate() error {
-	if m.ClusterID < 1 {
+	if m.Cluster == "" {
 		return domain.NewValidationErrf("Invalid StoragePool, cluster id can not be less than 1")
 	}
 

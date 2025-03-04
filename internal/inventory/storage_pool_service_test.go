@@ -83,7 +83,7 @@ func TestStoragePoolService_GetByID(t *testing.T) {
 			idArg: 1,
 			repoGetByIDStoragePool: inventory.StoragePool{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "cluster-one",
 				Name:        "one",
 				Object:      incusapi.StoragePool{},
 				LastUpdated: time.Now(),
@@ -140,12 +140,11 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByIDStoragePool: inventory.StoragePool{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "cluster-one",
+				Name:    "cluster-one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			storagePoolClientGetStoragePoolByName: incusapi.StoragePool{
@@ -157,12 +156,11 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 		{
 			name: "success - storagePool get by name - not found",
 			repoGetByIDStoragePool: inventory.StoragePool{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "cluster-one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			storagePoolClientGetStoragePoolByNameErr: domain.ErrNotFound,
@@ -178,9 +176,9 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 		{
 			name: "error - cluster get by ID",
 			repoGetByIDStoragePool: inventory.StoragePool{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "cluster-one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDErr: boom.Error,
 
@@ -189,12 +187,11 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 		{
 			name: "error - storagePool get by name",
 			repoGetByIDStoragePool: inventory.StoragePool{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "cluster-one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			storagePoolClientGetStoragePoolByNameErr: boom.Error,
@@ -204,12 +201,11 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 		{
 			name: "error - storagePool get by name - not found - delete by id",
 			repoGetByIDStoragePool: inventory.StoragePool{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "cluster-one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			storagePoolClientGetStoragePoolByNameErr: domain.ErrNotFound,
@@ -220,12 +216,11 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByIDStoragePool: inventory.StoragePool{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "", // invalid
+				ID:      1,
+				Cluster: "cluster-one",
+				Name:    "", // invalid
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			storagePoolClientGetStoragePoolByName: incusapi.StoragePool{
@@ -240,12 +235,11 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 		{
 			name: "error - update by ID",
 			repoGetByIDStoragePool: inventory.StoragePool{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "cluster-one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			storagePoolClientGetStoragePoolByName: incusapi.StoragePool{
@@ -274,8 +268,8 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
-					require.Equal(t, 1, id)
+				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
+					require.Equal(t, "cluster-one", name)
 					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
@@ -317,7 +311,6 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 		{
 			name: "success",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
@@ -337,7 +330,6 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 		{
 			name: "error - storagePool client get StoragePools",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			storagePoolClientGetStoragePoolsErr: boom.Error,
@@ -347,7 +339,6 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 		{
 			name: "error - storage_pools delete by cluster ID",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
@@ -362,7 +353,6 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 		{
 			name: "error - validate",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
@@ -379,7 +369,6 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 		{
 			name: "error - storagePool create",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
@@ -397,7 +386,7 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.StoragePoolRepoMock{
-				DeleteByClusterIDFunc: func(ctx context.Context, clusterID int) error {
+				DeleteByClusterFunc: func(ctx context.Context, cluster string) error {
 					return tc.repoDeleteByClusterIDErr
 				},
 				CreateFunc: func(ctx context.Context, storagePool inventory.StoragePool) (inventory.StoragePool, error) {
@@ -406,7 +395,7 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
 					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
@@ -427,7 +416,7 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 			)
 
 			// Run test
-			err := storagePoolSvc.SyncCluster(context.Background(), 1)
+			err := storagePoolSvc.SyncCluster(context.Background(), "one")
 
 			// Assert
 			tc.assertErr(t, err)

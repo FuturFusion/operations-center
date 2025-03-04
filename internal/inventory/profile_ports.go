@@ -12,7 +12,7 @@ type ProfileService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Profile, error)
 	ResyncByID(ctx context.Context, id int) error
-	SyncCluster(ctx context.Context, clusterID int) error
+	SyncCluster(ctx context.Context, cluster string) error
 }
 
 type ProfileRepo interface {
@@ -20,7 +20,7 @@ type ProfileRepo interface {
 	GetByID(ctx context.Context, id int) (Profile, error)
 	Create(ctx context.Context, profile Profile) (Profile, error)
 	DeleteByID(ctx context.Context, id int) error
-	DeleteByClusterID(ctx context.Context, clusterID int) error
+	DeleteByCluster(ctx context.Context, cluster string) error
 	UpdateByID(ctx context.Context, profile Profile) (Profile, error)
 }
 

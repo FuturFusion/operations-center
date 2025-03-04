@@ -22,7 +22,6 @@ import (
 
 func TestNetworkACLDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -30,7 +29,6 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
@@ -38,7 +36,7 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 	}
 
 	networkACLA := inventory.NetworkACL{
-		ClusterID:   1,
+		Cluster:     "one",
 		ProjectName: "one",
 		Name:        "one",
 		Object:      incusapi.NetworkACL{},
@@ -46,7 +44,7 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 	}
 
 	networkACLB := inventory.NetworkACL{
-		ClusterID:   2,
+		Cluster:     "two",
 		ProjectName: "two",
 		Name:        "two",
 		Object:      incusapi.NetworkACL{},
@@ -68,7 +66,10 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), nil)
+	clusterRepo, err := provisioningSqlite.NewCluster(db)
+	require.NoError(t, err)
+
+	clusterSvc := provisioning.NewClusterService(clusterRepo, nil)
 
 	networkACL := inventorySqlite.NewNetworkACL(db)
 
@@ -85,11 +86,11 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 	// Add network_acls
 	networkACLA, err = networkACL.Create(ctx, networkACLA)
 	require.NoError(t, err)
-	require.Equal(t, 1, networkACLA.ClusterID)
+	require.Equal(t, "one", networkACLA.Cluster)
 
 	networkACLB, err = networkACL.Create(ctx, networkACLB)
 	require.NoError(t, err)
-	require.Equal(t, 2, networkACLB.ClusterID)
+	require.Equal(t, "two", networkACLB.Cluster)
 
 	// Ensure we have two entries without filter
 	networkACLIDs, err := networkACL.GetAllIDsWithFilter(ctx, inventory.NetworkACLFilter{})
@@ -107,7 +108,7 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []int{1}, networkACLIDs)
 
 	// Should get back networkACLA unchanged.
-	networkACLA.ClusterID = 1
+	networkACLA.Cluster = "one"
 	dbNetworkACLA, err := networkACL.GetByID(ctx, networkACLA.ID)
 	require.NoError(t, err)
 	require.Equal(t, networkACLA, dbNetworkACLA)
@@ -122,7 +123,7 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Delete network_acls by cluster ID.
-	err = networkACL.DeleteByClusterID(ctx, 2)
+	err = networkACL.DeleteByCluster(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = networkACL.GetByID(ctx, networkACLA.ID)

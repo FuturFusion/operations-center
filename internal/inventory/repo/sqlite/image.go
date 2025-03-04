@@ -28,9 +28,9 @@ func NewImage(db sqlite.DBTX) *image {
 
 func (r image) Create(ctx context.Context, in inventory.Image) (inventory.Image, error) {
 	const sqlStmt = `
-INSERT INTO images (cluster_id, project_name, name, object, last_updated)
-VALUES(:cluster_id, :project_name, :name, :object, :last_updated)
-RETURNING id, cluster_id, project_name, name, object, last_updated;
+INSERT INTO images (cluster_name, project_name, name, object, last_updated)
+VALUES(:cluster_name, :project_name, :name, :object, :last_updated)
+RETURNING id, cluster_name, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -39,7 +39,7 @@ RETURNING id, cluster_id, project_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -56,7 +56,7 @@ func (r image) GetAllIDsWithFilter(ctx context.Context, filter inventory.ImageFi
 	const sqlStmt = `
 SELECT images.id
 FROM images
-  INNER JOIN clusters ON images.cluster_id = clusters.id
+  INNER JOIN clusters ON images.cluster_name = clusters.name
 WHERE true
 %s
 ORDER BY images.id
@@ -105,7 +105,7 @@ ORDER BY images.id
 func (r image) GetByID(ctx context.Context, id int) (inventory.Image, error) {
 	const sqlStmt = `
 SELECT
-  images.id, images.cluster_id, images.project_name, images.name, images.object, images.last_updated
+  images.id, images.cluster_name, images.project_name, images.name, images.object, images.last_updated
 FROM
   images
 WHERE images.id=:id;
@@ -139,10 +139,10 @@ func (r image) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r image) DeleteByClusterID(ctx context.Context, clusterID int) error {
-	const sqlStmt = `DELETE FROM images WHERE cluster_id=:clusterID;`
+func (r image) DeleteByCluster(ctx context.Context, cluster string) error {
+	const sqlStmt = `DELETE FROM images WHERE cluster_name=:cluster;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("clusterID", clusterID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster", cluster))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -161,9 +161,9 @@ func (r image) DeleteByClusterID(ctx context.Context, clusterID int) error {
 
 func (r image) UpdateByID(ctx context.Context, in inventory.Image) (inventory.Image, error) {
 	const sqlStmt = `
-UPDATE images SET cluster_id=:cluster_id, project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
+UPDATE images SET cluster_name=:cluster_name, project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, cluster_id, project_name, name, object, last_updated;
+RETURNING id, cluster_name, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -173,7 +173,7 @@ RETURNING id, cluster_id, project_name, name, object, last_updated;
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -192,7 +192,7 @@ func scanImage(row interface{ Scan(dest ...any) error }) (inventory.Image, error
 
 	err := row.Scan(
 		&image.ID,
-		&image.ClusterID,
+		&image.Cluster,
 		&image.ProjectName,
 		&image.Name,
 		&object,

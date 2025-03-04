@@ -12,8 +12,8 @@ import (
 
 type StorageBucket struct {
 	ID              int
-	ClusterID       int
-	ServerID        int
+	Cluster         string
+	Server          string
 	ProjectName     string
 	StoragePoolName string
 	Name            string
@@ -22,7 +22,7 @@ type StorageBucket struct {
 }
 
 func (m StorageBucket) Validate() error {
-	if m.ServerID < 1 {
+	if m.Server == "" {
 		return domain.NewValidationErrf("Invalid StorageBucket, server id can not be less than 1")
 	}
 
