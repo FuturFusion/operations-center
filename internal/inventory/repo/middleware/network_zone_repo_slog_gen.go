@@ -56,16 +56,16 @@ func (_d NetworkZoneRepoWithSlog) Create(ctx context.Context, networkZone invent
 	return _d._base.Create(ctx, networkZone)
 }
 
-// DeleteByClusterID implements inventory.NetworkZoneRepo.
-func (_d NetworkZoneRepoWithSlog) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+// DeleteByCluster implements inventory.NetworkZoneRepo.
+func (_d NetworkZoneRepoWithSlog) DeleteByCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("clusterID", clusterID),
+			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("NetworkZoneRepoWithSlog: calling DeleteByClusterID")
+	log.Debug("NetworkZoneRepoWithSlog: calling DeleteByCluster")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,12 +78,12 @@ func (_d NetworkZoneRepoWithSlog) DeleteByClusterID(ctx context.Context, cluster
 			}
 		}
 		if err != nil {
-			log.Error("NetworkZoneRepoWithSlog: method DeleteByClusterID returned an error")
+			log.Error("NetworkZoneRepoWithSlog: method DeleteByCluster returned an error")
 		} else {
-			log.Debug("NetworkZoneRepoWithSlog: method DeleteByClusterID finished")
+			log.Debug("NetworkZoneRepoWithSlog: method DeleteByCluster finished")
 		}
 	}()
-	return _d._base.DeleteByClusterID(ctx, clusterID)
+	return _d._base.DeleteByCluster(ctx, cluster)
 }
 
 // DeleteByID implements inventory.NetworkZoneRepo.

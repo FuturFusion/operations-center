@@ -51,8 +51,8 @@ func (_d NetworkLoadBalancerRepoWithPrometheus) Create(ctx context.Context, netw
 	return _d.base.Create(ctx, networkLoadBalancer)
 }
 
-// DeleteByClusterID implements inventory.NetworkLoadBalancerRepo.
-func (_d NetworkLoadBalancerRepoWithPrometheus) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+// DeleteByCluster implements inventory.NetworkLoadBalancerRepo.
+func (_d NetworkLoadBalancerRepoWithPrometheus) DeleteByCluster(ctx context.Context, cluster string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -60,9 +60,9 @@ func (_d NetworkLoadBalancerRepoWithPrometheus) DeleteByClusterID(ctx context.Co
 			result = "error"
 		}
 
-		networkLoadBalancerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterID", result).Observe(time.Since(_since).Seconds())
+		networkLoadBalancerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByCluster", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByClusterID(ctx, clusterID)
+	return _d.base.DeleteByCluster(ctx, cluster)
 }
 
 // DeleteByID implements inventory.NetworkLoadBalancerRepo.

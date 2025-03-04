@@ -56,16 +56,16 @@ func (_d NetworkRepoWithSlog) Create(ctx context.Context, network inventory.Netw
 	return _d._base.Create(ctx, network)
 }
 
-// DeleteByClusterID implements inventory.NetworkRepo.
-func (_d NetworkRepoWithSlog) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+// DeleteByCluster implements inventory.NetworkRepo.
+func (_d NetworkRepoWithSlog) DeleteByCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("clusterID", clusterID),
+			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("NetworkRepoWithSlog: calling DeleteByClusterID")
+	log.Debug("NetworkRepoWithSlog: calling DeleteByCluster")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,12 +78,12 @@ func (_d NetworkRepoWithSlog) DeleteByClusterID(ctx context.Context, clusterID i
 			}
 		}
 		if err != nil {
-			log.Error("NetworkRepoWithSlog: method DeleteByClusterID returned an error")
+			log.Error("NetworkRepoWithSlog: method DeleteByCluster returned an error")
 		} else {
-			log.Debug("NetworkRepoWithSlog: method DeleteByClusterID finished")
+			log.Debug("NetworkRepoWithSlog: method DeleteByCluster finished")
 		}
 	}()
-	return _d._base.DeleteByClusterID(ctx, clusterID)
+	return _d._base.DeleteByCluster(ctx, cluster)
 }
 
 // DeleteByID implements inventory.NetworkRepo.

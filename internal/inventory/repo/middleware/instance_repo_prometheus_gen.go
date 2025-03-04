@@ -65,8 +65,8 @@ func (_d InstanceRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (er
 	return _d.base.DeleteByID(ctx, id)
 }
 
-// DeleteByServerID implements inventory.InstanceRepo.
-func (_d InstanceRepoWithPrometheus) DeleteByServerID(ctx context.Context, serverID int) (err error) {
+// DeleteByServer implements inventory.InstanceRepo.
+func (_d InstanceRepoWithPrometheus) DeleteByServer(ctx context.Context, server string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,9 +74,9 @@ func (_d InstanceRepoWithPrometheus) DeleteByServerID(ctx context.Context, serve
 			result = "error"
 		}
 
-		instanceRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByServerID", result).Observe(time.Since(_since).Seconds())
+		instanceRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByServer", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByServerID(ctx, serverID)
+	return _d.base.DeleteByServer(ctx, server)
 }
 
 // GetAllIDsWithFilter implements inventory.InstanceRepo.

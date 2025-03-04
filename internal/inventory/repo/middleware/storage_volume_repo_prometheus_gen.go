@@ -65,8 +65,8 @@ func (_d StorageVolumeRepoWithPrometheus) DeleteByID(ctx context.Context, id int
 	return _d.base.DeleteByID(ctx, id)
 }
 
-// DeleteByServerID implements inventory.StorageVolumeRepo.
-func (_d StorageVolumeRepoWithPrometheus) DeleteByServerID(ctx context.Context, serverID int) (err error) {
+// DeleteByServer implements inventory.StorageVolumeRepo.
+func (_d StorageVolumeRepoWithPrometheus) DeleteByServer(ctx context.Context, server string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,9 +74,9 @@ func (_d StorageVolumeRepoWithPrometheus) DeleteByServerID(ctx context.Context, 
 			result = "error"
 		}
 
-		storageVolumeRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByServerID", result).Observe(time.Since(_since).Seconds())
+		storageVolumeRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByServer", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByServerID(ctx, serverID)
+	return _d.base.DeleteByServer(ctx, server)
 }
 
 // GetAllIDsWithFilter implements inventory.StorageVolumeRepo.

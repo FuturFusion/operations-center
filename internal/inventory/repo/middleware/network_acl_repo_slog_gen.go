@@ -56,16 +56,16 @@ func (_d NetworkACLRepoWithSlog) Create(ctx context.Context, networkACL inventor
 	return _d._base.Create(ctx, networkACL)
 }
 
-// DeleteByClusterID implements inventory.NetworkACLRepo.
-func (_d NetworkACLRepoWithSlog) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+// DeleteByCluster implements inventory.NetworkACLRepo.
+func (_d NetworkACLRepoWithSlog) DeleteByCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("clusterID", clusterID),
+			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("NetworkACLRepoWithSlog: calling DeleteByClusterID")
+	log.Debug("NetworkACLRepoWithSlog: calling DeleteByCluster")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,12 +78,12 @@ func (_d NetworkACLRepoWithSlog) DeleteByClusterID(ctx context.Context, clusterI
 			}
 		}
 		if err != nil {
-			log.Error("NetworkACLRepoWithSlog: method DeleteByClusterID returned an error")
+			log.Error("NetworkACLRepoWithSlog: method DeleteByCluster returned an error")
 		} else {
-			log.Debug("NetworkACLRepoWithSlog: method DeleteByClusterID finished")
+			log.Debug("NetworkACLRepoWithSlog: method DeleteByCluster finished")
 		}
 	}()
-	return _d._base.DeleteByClusterID(ctx, clusterID)
+	return _d._base.DeleteByCluster(ctx, cluster)
 }
 
 // DeleteByID implements inventory.NetworkACLRepo.

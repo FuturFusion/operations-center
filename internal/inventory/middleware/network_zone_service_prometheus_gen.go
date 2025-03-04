@@ -80,7 +80,7 @@ func (_d NetworkZoneServiceWithPrometheus) ResyncByID(ctx context.Context, id in
 }
 
 // SyncCluster implements inventory.NetworkZoneService.
-func (_d NetworkZoneServiceWithPrometheus) SyncCluster(ctx context.Context, clusterID int) (err error) {
+func (_d NetworkZoneServiceWithPrometheus) SyncCluster(ctx context.Context, cluster string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -90,5 +90,5 @@ func (_d NetworkZoneServiceWithPrometheus) SyncCluster(ctx context.Context, clus
 
 		networkZoneServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SyncCluster", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.SyncCluster(ctx, clusterID)
+	return _d.base.SyncCluster(ctx, cluster)
 }

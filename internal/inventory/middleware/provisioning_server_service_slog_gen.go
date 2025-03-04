@@ -26,16 +26,16 @@ func NewProvisioningServerServiceWithSlog(base inventory.ProvisioningServerServi
 	}
 }
 
-// GetAllByClusterID implements inventory.ProvisioningServerService.
-func (_d ProvisioningServerServiceWithSlog) GetAllByClusterID(ctx context.Context, clusterID int) (servers provisioning.Servers, err error) {
+// GetAllByCluster implements inventory.ProvisioningServerService.
+func (_d ProvisioningServerServiceWithSlog) GetAllByCluster(ctx context.Context, cluster string) (servers provisioning.Servers, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("clusterID", clusterID),
+			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("ProvisioningServerServiceWithSlog: calling GetAllByClusterID")
+	log.Debug("ProvisioningServerServiceWithSlog: calling GetAllByCluster")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -49,24 +49,24 @@ func (_d ProvisioningServerServiceWithSlog) GetAllByClusterID(ctx context.Contex
 			}
 		}
 		if err != nil {
-			log.Error("ProvisioningServerServiceWithSlog: method GetAllByClusterID returned an error")
+			log.Error("ProvisioningServerServiceWithSlog: method GetAllByCluster returned an error")
 		} else {
-			log.Debug("ProvisioningServerServiceWithSlog: method GetAllByClusterID finished")
+			log.Debug("ProvisioningServerServiceWithSlog: method GetAllByCluster finished")
 		}
 	}()
-	return _d._base.GetAllByClusterID(ctx, clusterID)
+	return _d._base.GetAllByCluster(ctx, cluster)
 }
 
-// GetByID implements inventory.ProvisioningServerService.
-func (_d ProvisioningServerServiceWithSlog) GetByID(ctx context.Context, id int) (server provisioning.Server, err error) {
+// GetByName implements inventory.ProvisioningServerService.
+func (_d ProvisioningServerServiceWithSlog) GetByName(ctx context.Context, name string) (server provisioning.Server, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("id", id),
+			slog.String("name", name),
 		)
 	}
-	log.Debug("ProvisioningServerServiceWithSlog: calling GetByID")
+	log.Debug("ProvisioningServerServiceWithSlog: calling GetByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -80,10 +80,10 @@ func (_d ProvisioningServerServiceWithSlog) GetByID(ctx context.Context, id int)
 			}
 		}
 		if err != nil {
-			log.Error("ProvisioningServerServiceWithSlog: method GetByID returned an error")
+			log.Error("ProvisioningServerServiceWithSlog: method GetByName returned an error")
 		} else {
-			log.Debug("ProvisioningServerServiceWithSlog: method GetByID finished")
+			log.Debug("ProvisioningServerServiceWithSlog: method GetByName finished")
 		}
 	}()
-	return _d._base.GetByID(ctx, id)
+	return _d._base.GetByName(ctx, name)
 }

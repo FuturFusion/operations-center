@@ -86,16 +86,16 @@ func (_d StorageBucketRepoWithSlog) DeleteByID(ctx context.Context, id int) (err
 	return _d._base.DeleteByID(ctx, id)
 }
 
-// DeleteByServerID implements inventory.StorageBucketRepo.
-func (_d StorageBucketRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
+// DeleteByServer implements inventory.StorageBucketRepo.
+func (_d StorageBucketRepoWithSlog) DeleteByServer(ctx context.Context, server string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("serverID", serverID),
+			slog.String("server", server),
 		)
 	}
-	log.Debug("StorageBucketRepoWithSlog: calling DeleteByServerID")
+	log.Debug("StorageBucketRepoWithSlog: calling DeleteByServer")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -108,12 +108,12 @@ func (_d StorageBucketRepoWithSlog) DeleteByServerID(ctx context.Context, server
 			}
 		}
 		if err != nil {
-			log.Error("StorageBucketRepoWithSlog: method DeleteByServerID returned an error")
+			log.Error("StorageBucketRepoWithSlog: method DeleteByServer returned an error")
 		} else {
-			log.Debug("StorageBucketRepoWithSlog: method DeleteByServerID finished")
+			log.Debug("StorageBucketRepoWithSlog: method DeleteByServer finished")
 		}
 	}()
-	return _d._base.DeleteByServerID(ctx, serverID)
+	return _d._base.DeleteByServer(ctx, server)
 }
 
 // GetAllIDsWithFilter implements inventory.StorageBucketRepo.

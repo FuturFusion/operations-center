@@ -26,8 +26,8 @@ var _ inventory.StorageVolumeRepo = &StorageVolumeRepoMock{}
 //			DeleteByIDFunc: func(ctx context.Context, id int) error {
 //				panic("mock out the DeleteByID method")
 //			},
-//			DeleteByServerIDFunc: func(ctx context.Context, serverID int) error {
-//				panic("mock out the DeleteByServerID method")
+//			DeleteByServerFunc: func(ctx context.Context, server string) error {
+//				panic("mock out the DeleteByServer method")
 //			},
 //			GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.StorageVolumeFilter) ([]int, error) {
 //				panic("mock out the GetAllIDsWithFilter method")
@@ -51,8 +51,8 @@ type StorageVolumeRepoMock struct {
 	// DeleteByIDFunc mocks the DeleteByID method.
 	DeleteByIDFunc func(ctx context.Context, id int) error
 
-	// DeleteByServerIDFunc mocks the DeleteByServerID method.
-	DeleteByServerIDFunc func(ctx context.Context, serverID int) error
+	// DeleteByServerFunc mocks the DeleteByServer method.
+	DeleteByServerFunc func(ctx context.Context, server string) error
 
 	// GetAllIDsWithFilterFunc mocks the GetAllIDsWithFilter method.
 	GetAllIDsWithFilterFunc func(ctx context.Context, filter inventory.StorageVolumeFilter) ([]int, error)
@@ -79,12 +79,12 @@ type StorageVolumeRepoMock struct {
 			// ID is the id argument value.
 			ID int
 		}
-		// DeleteByServerID holds details about calls to the DeleteByServerID method.
-		DeleteByServerID []struct {
+		// DeleteByServer holds details about calls to the DeleteByServer method.
+		DeleteByServer []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ServerID is the serverID argument value.
-			ServerID int
+			// Server is the server argument value.
+			Server string
 		}
 		// GetAllIDsWithFilter holds details about calls to the GetAllIDsWithFilter method.
 		GetAllIDsWithFilter []struct {
@@ -110,7 +110,7 @@ type StorageVolumeRepoMock struct {
 	}
 	lockCreate              sync.RWMutex
 	lockDeleteByID          sync.RWMutex
-	lockDeleteByServerID    sync.RWMutex
+	lockDeleteByServer      sync.RWMutex
 	lockGetAllIDsWithFilter sync.RWMutex
 	lockGetByID             sync.RWMutex
 	lockUpdateByID          sync.RWMutex
@@ -188,39 +188,39 @@ func (mock *StorageVolumeRepoMock) DeleteByIDCalls() []struct {
 	return calls
 }
 
-// DeleteByServerID calls DeleteByServerIDFunc.
-func (mock *StorageVolumeRepoMock) DeleteByServerID(ctx context.Context, serverID int) error {
-	if mock.DeleteByServerIDFunc == nil {
-		panic("StorageVolumeRepoMock.DeleteByServerIDFunc: method is nil but StorageVolumeRepo.DeleteByServerID was just called")
+// DeleteByServer calls DeleteByServerFunc.
+func (mock *StorageVolumeRepoMock) DeleteByServer(ctx context.Context, server string) error {
+	if mock.DeleteByServerFunc == nil {
+		panic("StorageVolumeRepoMock.DeleteByServerFunc: method is nil but StorageVolumeRepo.DeleteByServer was just called")
 	}
 	callInfo := struct {
-		Ctx      context.Context
-		ServerID int
+		Ctx    context.Context
+		Server string
 	}{
-		Ctx:      ctx,
-		ServerID: serverID,
+		Ctx:    ctx,
+		Server: server,
 	}
-	mock.lockDeleteByServerID.Lock()
-	mock.calls.DeleteByServerID = append(mock.calls.DeleteByServerID, callInfo)
-	mock.lockDeleteByServerID.Unlock()
-	return mock.DeleteByServerIDFunc(ctx, serverID)
+	mock.lockDeleteByServer.Lock()
+	mock.calls.DeleteByServer = append(mock.calls.DeleteByServer, callInfo)
+	mock.lockDeleteByServer.Unlock()
+	return mock.DeleteByServerFunc(ctx, server)
 }
 
-// DeleteByServerIDCalls gets all the calls that were made to DeleteByServerID.
+// DeleteByServerCalls gets all the calls that were made to DeleteByServer.
 // Check the length with:
 //
-//	len(mockedStorageVolumeRepo.DeleteByServerIDCalls())
-func (mock *StorageVolumeRepoMock) DeleteByServerIDCalls() []struct {
-	Ctx      context.Context
-	ServerID int
+//	len(mockedStorageVolumeRepo.DeleteByServerCalls())
+func (mock *StorageVolumeRepoMock) DeleteByServerCalls() []struct {
+	Ctx    context.Context
+	Server string
 } {
 	var calls []struct {
-		Ctx      context.Context
-		ServerID int
+		Ctx    context.Context
+		Server string
 	}
-	mock.lockDeleteByServerID.RLock()
-	calls = mock.calls.DeleteByServerID
-	mock.lockDeleteByServerID.RUnlock()
+	mock.lockDeleteByServer.RLock()
+	calls = mock.calls.DeleteByServer
+	mock.lockDeleteByServer.RUnlock()
 	return calls
 }
 

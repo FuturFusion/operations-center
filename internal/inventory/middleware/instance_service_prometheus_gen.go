@@ -80,7 +80,7 @@ func (_d InstanceServiceWithPrometheus) ResyncByID(ctx context.Context, id int) 
 }
 
 // SyncCluster implements inventory.InstanceService.
-func (_d InstanceServiceWithPrometheus) SyncCluster(ctx context.Context, clusterID int) (err error) {
+func (_d InstanceServiceWithPrometheus) SyncCluster(ctx context.Context, cluster string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -90,11 +90,11 @@ func (_d InstanceServiceWithPrometheus) SyncCluster(ctx context.Context, cluster
 
 		instanceServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SyncCluster", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.SyncCluster(ctx, clusterID)
+	return _d.base.SyncCluster(ctx, cluster)
 }
 
 // SyncServer implements inventory.InstanceService.
-func (_d InstanceServiceWithPrometheus) SyncServer(ctx context.Context, serverID int) (err error) {
+func (_d InstanceServiceWithPrometheus) SyncServer(ctx context.Context, server string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -104,5 +104,5 @@ func (_d InstanceServiceWithPrometheus) SyncServer(ctx context.Context, serverID
 
 		instanceServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SyncServer", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.SyncServer(ctx, serverID)
+	return _d.base.SyncServer(ctx, server)
 }

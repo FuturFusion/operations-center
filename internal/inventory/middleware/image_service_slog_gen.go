@@ -118,12 +118,12 @@ func (_d ImageServiceWithSlog) ResyncByID(ctx context.Context, id int) (err erro
 }
 
 // SyncCluster implements inventory.ImageService.
-func (_d ImageServiceWithSlog) SyncCluster(ctx context.Context, clusterID int) (err error) {
+func (_d ImageServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("clusterID", clusterID),
+			slog.String("cluster", cluster),
 		)
 	}
 	log.Debug("ImageServiceWithSlog: calling SyncCluster")
@@ -144,5 +144,5 @@ func (_d ImageServiceWithSlog) SyncCluster(ctx context.Context, clusterID int) (
 			log.Debug("ImageServiceWithSlog: method SyncCluster finished")
 		}
 	}()
-	return _d._base.SyncCluster(ctx, clusterID)
+	return _d._base.SyncCluster(ctx, cluster)
 }

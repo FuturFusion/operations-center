@@ -23,8 +23,8 @@ var _ inventory.NetworkZoneRepo = &NetworkZoneRepoMock{}
 //			CreateFunc: func(ctx context.Context, networkZone inventory.NetworkZone) (inventory.NetworkZone, error) {
 //				panic("mock out the Create method")
 //			},
-//			DeleteByClusterIDFunc: func(ctx context.Context, clusterID int) error {
-//				panic("mock out the DeleteByClusterID method")
+//			DeleteByClusterFunc: func(ctx context.Context, cluster string) error {
+//				panic("mock out the DeleteByCluster method")
 //			},
 //			DeleteByIDFunc: func(ctx context.Context, id int) error {
 //				panic("mock out the DeleteByID method")
@@ -48,8 +48,8 @@ type NetworkZoneRepoMock struct {
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, networkZone inventory.NetworkZone) (inventory.NetworkZone, error)
 
-	// DeleteByClusterIDFunc mocks the DeleteByClusterID method.
-	DeleteByClusterIDFunc func(ctx context.Context, clusterID int) error
+	// DeleteByClusterFunc mocks the DeleteByCluster method.
+	DeleteByClusterFunc func(ctx context.Context, cluster string) error
 
 	// DeleteByIDFunc mocks the DeleteByID method.
 	DeleteByIDFunc func(ctx context.Context, id int) error
@@ -72,12 +72,12 @@ type NetworkZoneRepoMock struct {
 			// NetworkZone is the networkZone argument value.
 			NetworkZone inventory.NetworkZone
 		}
-		// DeleteByClusterID holds details about calls to the DeleteByClusterID method.
-		DeleteByClusterID []struct {
+		// DeleteByCluster holds details about calls to the DeleteByCluster method.
+		DeleteByCluster []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ClusterID is the clusterID argument value.
-			ClusterID int
+			// Cluster is the cluster argument value.
+			Cluster string
 		}
 		// DeleteByID holds details about calls to the DeleteByID method.
 		DeleteByID []struct {
@@ -109,7 +109,7 @@ type NetworkZoneRepoMock struct {
 		}
 	}
 	lockCreate              sync.RWMutex
-	lockDeleteByClusterID   sync.RWMutex
+	lockDeleteByCluster     sync.RWMutex
 	lockDeleteByID          sync.RWMutex
 	lockGetAllIDsWithFilter sync.RWMutex
 	lockGetByID             sync.RWMutex
@@ -152,39 +152,39 @@ func (mock *NetworkZoneRepoMock) CreateCalls() []struct {
 	return calls
 }
 
-// DeleteByClusterID calls DeleteByClusterIDFunc.
-func (mock *NetworkZoneRepoMock) DeleteByClusterID(ctx context.Context, clusterID int) error {
-	if mock.DeleteByClusterIDFunc == nil {
-		panic("NetworkZoneRepoMock.DeleteByClusterIDFunc: method is nil but NetworkZoneRepo.DeleteByClusterID was just called")
+// DeleteByCluster calls DeleteByClusterFunc.
+func (mock *NetworkZoneRepoMock) DeleteByCluster(ctx context.Context, cluster string) error {
+	if mock.DeleteByClusterFunc == nil {
+		panic("NetworkZoneRepoMock.DeleteByClusterFunc: method is nil but NetworkZoneRepo.DeleteByCluster was just called")
 	}
 	callInfo := struct {
-		Ctx       context.Context
-		ClusterID int
+		Ctx     context.Context
+		Cluster string
 	}{
-		Ctx:       ctx,
-		ClusterID: clusterID,
+		Ctx:     ctx,
+		Cluster: cluster,
 	}
-	mock.lockDeleteByClusterID.Lock()
-	mock.calls.DeleteByClusterID = append(mock.calls.DeleteByClusterID, callInfo)
-	mock.lockDeleteByClusterID.Unlock()
-	return mock.DeleteByClusterIDFunc(ctx, clusterID)
+	mock.lockDeleteByCluster.Lock()
+	mock.calls.DeleteByCluster = append(mock.calls.DeleteByCluster, callInfo)
+	mock.lockDeleteByCluster.Unlock()
+	return mock.DeleteByClusterFunc(ctx, cluster)
 }
 
-// DeleteByClusterIDCalls gets all the calls that were made to DeleteByClusterID.
+// DeleteByClusterCalls gets all the calls that were made to DeleteByCluster.
 // Check the length with:
 //
-//	len(mockedNetworkZoneRepo.DeleteByClusterIDCalls())
-func (mock *NetworkZoneRepoMock) DeleteByClusterIDCalls() []struct {
-	Ctx       context.Context
-	ClusterID int
+//	len(mockedNetworkZoneRepo.DeleteByClusterCalls())
+func (mock *NetworkZoneRepoMock) DeleteByClusterCalls() []struct {
+	Ctx     context.Context
+	Cluster string
 } {
 	var calls []struct {
-		Ctx       context.Context
-		ClusterID int
+		Ctx     context.Context
+		Cluster string
 	}
-	mock.lockDeleteByClusterID.RLock()
-	calls = mock.calls.DeleteByClusterID
-	mock.lockDeleteByClusterID.RUnlock()
+	mock.lockDeleteByCluster.RLock()
+	calls = mock.calls.DeleteByCluster
+	mock.lockDeleteByCluster.RUnlock()
 	return calls
 }
 

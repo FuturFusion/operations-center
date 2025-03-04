@@ -51,8 +51,8 @@ func (_d NetworkACLRepoWithPrometheus) Create(ctx context.Context, networkACL in
 	return _d.base.Create(ctx, networkACL)
 }
 
-// DeleteByClusterID implements inventory.NetworkACLRepo.
-func (_d NetworkACLRepoWithPrometheus) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+// DeleteByCluster implements inventory.NetworkACLRepo.
+func (_d NetworkACLRepoWithPrometheus) DeleteByCluster(ctx context.Context, cluster string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -60,9 +60,9 @@ func (_d NetworkACLRepoWithPrometheus) DeleteByClusterID(ctx context.Context, cl
 			result = "error"
 		}
 
-		networkACLRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterID", result).Observe(time.Since(_since).Seconds())
+		networkACLRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByCluster", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByClusterID(ctx, clusterID)
+	return _d.base.DeleteByCluster(ctx, cluster)
 }
 
 // DeleteByID implements inventory.NetworkACLRepo.

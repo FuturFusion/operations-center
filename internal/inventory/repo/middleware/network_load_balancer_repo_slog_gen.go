@@ -56,16 +56,16 @@ func (_d NetworkLoadBalancerRepoWithSlog) Create(ctx context.Context, networkLoa
 	return _d._base.Create(ctx, networkLoadBalancer)
 }
 
-// DeleteByClusterID implements inventory.NetworkLoadBalancerRepo.
-func (_d NetworkLoadBalancerRepoWithSlog) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+// DeleteByCluster implements inventory.NetworkLoadBalancerRepo.
+func (_d NetworkLoadBalancerRepoWithSlog) DeleteByCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("clusterID", clusterID),
+			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("NetworkLoadBalancerRepoWithSlog: calling DeleteByClusterID")
+	log.Debug("NetworkLoadBalancerRepoWithSlog: calling DeleteByCluster")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,12 +78,12 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteByClusterID(ctx context.Context,
 			}
 		}
 		if err != nil {
-			log.Error("NetworkLoadBalancerRepoWithSlog: method DeleteByClusterID returned an error")
+			log.Error("NetworkLoadBalancerRepoWithSlog: method DeleteByCluster returned an error")
 		} else {
-			log.Debug("NetworkLoadBalancerRepoWithSlog: method DeleteByClusterID finished")
+			log.Debug("NetworkLoadBalancerRepoWithSlog: method DeleteByCluster finished")
 		}
 	}()
-	return _d._base.DeleteByClusterID(ctx, clusterID)
+	return _d._base.DeleteByCluster(ctx, cluster)
 }
 
 // DeleteByID implements inventory.NetworkLoadBalancerRepo.

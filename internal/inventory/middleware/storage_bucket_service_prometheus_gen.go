@@ -80,7 +80,7 @@ func (_d StorageBucketServiceWithPrometheus) ResyncByID(ctx context.Context, id 
 }
 
 // SyncCluster implements inventory.StorageBucketService.
-func (_d StorageBucketServiceWithPrometheus) SyncCluster(ctx context.Context, clusterID int) (err error) {
+func (_d StorageBucketServiceWithPrometheus) SyncCluster(ctx context.Context, cluster string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -90,11 +90,11 @@ func (_d StorageBucketServiceWithPrometheus) SyncCluster(ctx context.Context, cl
 
 		storageBucketServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SyncCluster", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.SyncCluster(ctx, clusterID)
+	return _d.base.SyncCluster(ctx, cluster)
 }
 
 // SyncServer implements inventory.StorageBucketService.
-func (_d StorageBucketServiceWithPrometheus) SyncServer(ctx context.Context, serverID int) (err error) {
+func (_d StorageBucketServiceWithPrometheus) SyncServer(ctx context.Context, server string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -104,5 +104,5 @@ func (_d StorageBucketServiceWithPrometheus) SyncServer(ctx context.Context, ser
 
 		storageBucketServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SyncServer", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.SyncServer(ctx, serverID)
+	return _d.base.SyncServer(ctx, server)
 }

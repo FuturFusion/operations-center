@@ -51,8 +51,8 @@ func (_d NetworkForwardRepoWithPrometheus) Create(ctx context.Context, networkFo
 	return _d.base.Create(ctx, networkForward)
 }
 
-// DeleteByClusterID implements inventory.NetworkForwardRepo.
-func (_d NetworkForwardRepoWithPrometheus) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+// DeleteByCluster implements inventory.NetworkForwardRepo.
+func (_d NetworkForwardRepoWithPrometheus) DeleteByCluster(ctx context.Context, cluster string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -60,9 +60,9 @@ func (_d NetworkForwardRepoWithPrometheus) DeleteByClusterID(ctx context.Context
 			result = "error"
 		}
 
-		networkForwardRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterID", result).Observe(time.Since(_since).Seconds())
+		networkForwardRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByCluster", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByClusterID(ctx, clusterID)
+	return _d.base.DeleteByCluster(ctx, cluster)
 }
 
 // DeleteByID implements inventory.NetworkForwardRepo.

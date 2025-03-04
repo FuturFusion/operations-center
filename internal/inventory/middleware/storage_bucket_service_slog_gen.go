@@ -118,12 +118,12 @@ func (_d StorageBucketServiceWithSlog) ResyncByID(ctx context.Context, id int) (
 }
 
 // SyncCluster implements inventory.StorageBucketService.
-func (_d StorageBucketServiceWithSlog) SyncCluster(ctx context.Context, clusterID int) (err error) {
+func (_d StorageBucketServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("clusterID", clusterID),
+			slog.String("cluster", cluster),
 		)
 	}
 	log.Debug("StorageBucketServiceWithSlog: calling SyncCluster")
@@ -144,16 +144,16 @@ func (_d StorageBucketServiceWithSlog) SyncCluster(ctx context.Context, clusterI
 			log.Debug("StorageBucketServiceWithSlog: method SyncCluster finished")
 		}
 	}()
-	return _d._base.SyncCluster(ctx, clusterID)
+	return _d._base.SyncCluster(ctx, cluster)
 }
 
 // SyncServer implements inventory.StorageBucketService.
-func (_d StorageBucketServiceWithSlog) SyncServer(ctx context.Context, serverID int) (err error) {
+func (_d StorageBucketServiceWithSlog) SyncServer(ctx context.Context, server string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("serverID", serverID),
+			slog.String("server", server),
 		)
 	}
 	log.Debug("StorageBucketServiceWithSlog: calling SyncServer")
@@ -174,5 +174,5 @@ func (_d StorageBucketServiceWithSlog) SyncServer(ctx context.Context, serverID 
 			log.Debug("StorageBucketServiceWithSlog: method SyncServer finished")
 		}
 	}()
-	return _d._base.SyncServer(ctx, serverID)
+	return _d._base.SyncServer(ctx, server)
 }

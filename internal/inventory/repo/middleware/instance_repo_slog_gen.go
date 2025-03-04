@@ -86,16 +86,16 @@ func (_d InstanceRepoWithSlog) DeleteByID(ctx context.Context, id int) (err erro
 	return _d._base.DeleteByID(ctx, id)
 }
 
-// DeleteByServerID implements inventory.InstanceRepo.
-func (_d InstanceRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
+// DeleteByServer implements inventory.InstanceRepo.
+func (_d InstanceRepoWithSlog) DeleteByServer(ctx context.Context, server string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("serverID", serverID),
+			slog.String("server", server),
 		)
 	}
-	log.Debug("InstanceRepoWithSlog: calling DeleteByServerID")
+	log.Debug("InstanceRepoWithSlog: calling DeleteByServer")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -108,12 +108,12 @@ func (_d InstanceRepoWithSlog) DeleteByServerID(ctx context.Context, serverID in
 			}
 		}
 		if err != nil {
-			log.Error("InstanceRepoWithSlog: method DeleteByServerID returned an error")
+			log.Error("InstanceRepoWithSlog: method DeleteByServer returned an error")
 		} else {
-			log.Debug("InstanceRepoWithSlog: method DeleteByServerID finished")
+			log.Debug("InstanceRepoWithSlog: method DeleteByServer finished")
 		}
 	}()
-	return _d._base.DeleteByServerID(ctx, serverID)
+	return _d._base.DeleteByServer(ctx, server)
 }
 
 // GetAllIDsWithFilter implements inventory.InstanceRepo.
