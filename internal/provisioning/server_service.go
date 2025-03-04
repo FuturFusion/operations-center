@@ -33,16 +33,12 @@ func (s serverService) GetAll(ctx context.Context) (Servers, error) {
 	return s.repo.GetAll(ctx)
 }
 
-func (s serverService) GetAllByClusterID(ctx context.Context, clusterID int) (Servers, error) {
-	return s.repo.GetAllByClusterID(ctx, clusterID)
+func (s serverService) GetAllByCluster(ctx context.Context, cluster string) (Servers, error) {
+	return s.repo.GetAllByCluster(ctx, cluster)
 }
 
 func (s serverService) GetAllNames(ctx context.Context) ([]string, error) {
 	return s.repo.GetAllNames(ctx)
-}
-
-func (s serverService) GetByID(ctx context.Context, id int) (Server, error) {
-	return s.repo.GetByID(ctx, id)
 }
 
 func (s serverService) GetByName(ctx context.Context, name string) (Server, error) {
@@ -74,9 +70,7 @@ func (s serverService) UpdateByName(ctx context.Context, name string, newServer 
 			return err
 		}
 
-		newServer.ID = server.ID
-
-		server, err = s.repo.UpdateByID(ctx, newServer)
+		server, err = s.repo.UpdateByName(ctx, name, newServer)
 		return err
 	})
 	if err != nil {
@@ -86,33 +80,16 @@ func (s serverService) UpdateByName(ctx context.Context, name string, newServer 
 	return server, nil
 }
 
-func (s serverService) RenameByName(ctx context.Context, name string, newServer Server) (Server, error) {
+func (s serverService) Rename(ctx context.Context, name string, to string) error {
 	if name == "" {
-		return Server{}, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	if newServer.Name == "" {
-		return Server{}, domain.NewValidationErrf("Invalid server, name cannot by empty")
+	if to == "" {
+		return domain.NewValidationErrf("New server name cannot by empty")
 	}
 
-	var server Server
-	var err error
-	err = transaction.Do(ctx, func(ctx context.Context) error {
-		server, err = s.repo.GetByName(ctx, name)
-		if err != nil {
-			return err
-		}
-
-		server.Name = newServer.Name
-
-		server, err = s.repo.UpdateByID(ctx, server)
-		return err
-	})
-	if err != nil {
-		return Server{}, err
-	}
-
-	return server, nil
+	return s.repo.Rename(ctx, name, to)
 }
 
 func (s serverService) DeleteByName(ctx context.Context, name string) error {
@@ -120,14 +97,5 @@ func (s serverService) DeleteByName(ctx context.Context, name string) error {
 		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	return transaction.Do(ctx, func(ctx context.Context) error {
-		server, err := s.repo.GetByName(ctx, name)
-		if err != nil {
-			return err
-		}
-
-		// FIXME: deleteting a server also requires to delete all the inventory.
-
-		return s.repo.DeleteByID(ctx, server.ID)
-	})
+	return s.repo.DeleteByName(ctx, name)
 }
