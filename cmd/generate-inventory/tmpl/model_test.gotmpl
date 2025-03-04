@@ -20,9 +20,9 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			name: "valid",
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
-				{{ .ResourceForeignKey | pascalcase }}ID:   1,
+				{{ .ResourceForeignKey | pascalcase }}: "{{ .ResourceForeignKey }}-one",
 {{- if .IsServerResource }}
-				ClusterID:    1,
+				Cluster: "cluster-one",
 {{- end }}
 {{- if .HasProject }}
 				ProjectName: "project one",
@@ -36,12 +36,12 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "error - invalid {{ .ResourceForeignKey }} ID",
+			name: "error - invalid {{ .ResourceForeignKey }} Name",
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
-				{{ .ResourceForeignKey | pascalcase }}ID: 0, // invalid
+				{{ .ResourceForeignKey | pascalcase }}: "", // invalid
 {{- if .IsServerResource }}
-				ClusterID:    0,
+				Cluster: "",
 {{- end }}
 {{- if .HasProject }}
 				ProjectName: "project one",
@@ -62,9 +62,9 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			name: "error - invalid project name",
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
-				{{ .ResourceForeignKey | pascalcase }}ID:   1,
+				{{ .ResourceForeignKey | pascalcase }}: "{{ .ResourceForeignKey }}-one",
 {{- if .IsServerResource }}
-				ClusterID:    1,
+				Cluster: "cluster-one",
 {{- end }}
 				ProjectName: "", // invalid
 {{- if .HasParent }}
@@ -84,9 +84,9 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			name: "error - invalid project name",
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
-				{{ .ResourceForeignKey | pascalcase }}ID:   1,
+				{{ .ResourceForeignKey | pascalcase }}: "{{ .ResourceForeignKey }}-one",
 {{- if .IsServerResource }}
-				ClusterID:    1,
+				Cluster: "cluster-one",
 {{- end }}
 {{- if .HasProject }}
 				ProjectName: "project one",
@@ -105,9 +105,9 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			name: "error - invalid name",
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
-				{{ .ResourceForeignKey | pascalcase }}ID:   1,
+				{{ .ResourceForeignKey | pascalcase }}: "{{ .ResourceForeignKey }}-one",
 {{- if .IsServerResource }}
-				ClusterID:    1,
+				Cluster: "cluster-one",
 {{- end }}
 {{- if .HasProject }}
 				ProjectName: "project one",

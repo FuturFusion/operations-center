@@ -10,9 +10,9 @@ import (
 
 type {{ .Name | pascalcase }} struct {
 	ID          int
-	ClusterID   int
+	Cluster     string
 {{- if .IsServerResource }}
-	ServerID    int
+	Server      string
 {{- end }}
 {{- if .HasProject }}
 	ProjectName string
@@ -29,7 +29,7 @@ type {{ .Name | pascalcase }} struct {
 }
 
 func (m {{ .Name | pascalcase }}) Validate() error {
-	if m.{{ .ResourceForeignKey | pascalcase }}ID < 1{
+	if m.{{ .ResourceForeignKey | pascalcase }} == "" {
 		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, {{ .ResourceForeignKey }} id can not be less than 1")
 	}
 

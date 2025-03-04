@@ -168,9 +168,9 @@ func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}Get(r *http.Requ
 		true,
 		api.{{ .Name | pascalcase }}{
 			ID:          {{ .Name | camelcase }}.ID,
-			ClusterID:   {{ .Name | camelcase }}.ClusterID,
+			Cluster:   {{ .Name | camelcase }}.Cluster,
 {{- if .IsServerResource }}
-			ServerID:    {{ .Name | camelcase }}.ServerID,
+			Server:    {{ .Name | camelcase }}.Server,
 {{- end }}
 {{- if .HasProject }}
 			ProjectName: {{ .Name | camelcase }}.ProjectName,

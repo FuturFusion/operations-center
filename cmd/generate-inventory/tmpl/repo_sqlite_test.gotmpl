@@ -26,7 +26,6 @@ import (
 
 func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -34,7 +33,6 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
@@ -43,30 +41,28 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 
 {{ if .IsServerResource }}
 	testServerA := provisioning.Server{
-		ID:            1,
-		ClusterID:     1,
+		Cluster:       "one",
 		Name:          "one",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
 		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
+		VersionData:   json.RawMessage(""),
 		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	testServerB := provisioning.Server{
-		ID:            2,
-		ClusterID:     1,
+		Cluster:     "one",
 		Name:          "two",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
 		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
+		VersionData:   json.RawMessage(""),
 		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 {{- end }}
 
 	{{ .Name | camelcase }}A := inventory.{{ .Name | pascalcase }}{
-		{{ .ResourceForeignKey | pascalcase }}ID: 1,
+		{{ .ResourceForeignKey | pascalcase }}: "one",
 {{- if .HasProject }}
 		ProjectName: "one",
 {{- end }}
@@ -82,7 +78,7 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	}
 
 	{{ .Name | camelcase }}B := inventory.{{ .Name | pascalcase }}{
-		{{ .ResourceForeignKey | pascalcase }}ID: 2,
+		{{ .ResourceForeignKey | pascalcase }}: "two",
 {{- if .HasProject }}
 		ProjectName: "two",
 {{- end }}
@@ -112,9 +108,15 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), nil)
+	clusterRepo, err := provisioningSqlite.NewCluster(db)
+	require.NoError(t, err)
+
+	clusterSvc := provisioning.NewClusterService(clusterRepo, nil)
 {{- if .IsServerResource }}
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
+	serverRepo, err := provisioningSqlite.NewServer(db)
+	require.NoError(t, err)
+
+	serverSvc := provisioning.NewServerService(serverRepo)
 {{- end }}
 
 	{{ .Name | camelcase }} := inventorySqlite.New{{ .Name | pascalcase }}(db)
@@ -140,11 +142,11 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	// Add {{ .PluralName }}
 	{{ .Name | camelcase }}A, err = {{ .Name | camelcase }}.Create(ctx, {{ .Name | camelcase }}A)
 	require.NoError(t, err)
-	require.Equal(t, 1, {{ .Name | camelcase }}A.{{ .ResourceForeignKey | pascalcase }}ID)
+	require.Equal(t, "one", {{ .Name | camelcase }}A.{{ .ResourceForeignKey | pascalcase }})
 
 	{{ .Name | camelcase }}B, err = {{ .Name | camelcase }}.Create(ctx, {{ .Name | camelcase }}B)
 	require.NoError(t, err)
-	require.Equal(t, 2, {{ .Name | camelcase }}B.{{ .ResourceForeignKey | pascalcase }}ID)
+	require.Equal(t, "two", {{ .Name | camelcase }}B.{{ .ResourceForeignKey | pascalcase }})
 
 	// Ensure we have two entries without filter
 	{{ .Name | camelcase }}IDs, err := {{ .Name | camelcase }}.GetAllIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{})
@@ -167,7 +169,7 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []int{1}, {{ .Name | camelcase }}IDs)
 
 	// Should get back {{ .Name | camelcase }}A unchanged.
-	{{ .Name | camelcase }}A.ClusterID = 1
+	{{ .Name | camelcase }}A.Cluster = "one"
 	db{{ .Name | camelcase | pascalcase }}A, err := {{ .Name | camelcase }}.GetByID(ctx, {{ .Name | camelcase }}A.ID)
 	require.NoError(t, err)
 	require.Equal(t, {{ .Name | camelcase }}A, db{{ .Name | pascalcase }}A)
@@ -182,7 +184,7 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Delete {{ .PluralName }} by {{ .ResourceForeignKey }} ID.
-	err = {{ .Name | camelcase }}.DeleteBy{{ .ResourceForeignKey | pascalcase }}ID(ctx, 2)
+	err = {{ .Name | camelcase }}.DeleteBy{{ .ResourceForeignKey | pascalcase }}(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = {{ .Name | camelcase }}.GetByID(ctx, {{ .Name | camelcase }}A.ID)

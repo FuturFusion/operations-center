@@ -88,7 +88,7 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 			return err
 		}
 
-		{{ .ResourceForeignKey }}, err := s.{{ .ResourceForeignKey }}Svc.GetByID(ctx, {{ .Name | camelcase }}.{{ .ResourceForeignKey | pascalcase }}ID)
+		{{ .ResourceForeignKey }}, err := s.{{ .ResourceForeignKey }}Svc.GetByName(ctx, {{ .Name | camelcase }}.{{ .ResourceForeignKey | pascalcase }})
 		if err != nil {
 			return err
 		}
@@ -136,14 +136,14 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 }
 
 {{ if .IsServerResource }}
-func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, cluster string) error {
+	servers, err := s.serverSvc.GetAllByCluster(ctx, cluster)
 	if err != nil {
 		return err
 	}
 
 	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
+		err = s.SyncServer(ctx, server.Name)
 		if err != nil {
 			return err
 		}
@@ -153,8 +153,8 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, cluster
 }
 {{ end }}
 
-func (s {{ .Name | camelcase }}Service) Sync{{ .ResourceForeignKey | pascalcase }}(ctx context.Context, {{ .ResourceForeignKey }}ID int) error {
-	{{ .ResourceForeignKey }}, err := s.{{ .ResourceForeignKey }}Svc.GetByID(ctx, {{ .ResourceForeignKey }}ID)
+func (s {{ .Name | camelcase }}Service) Sync{{ .ResourceForeignKey | pascalcase }}(ctx context.Context, {{ .ResourceForeignKey }}Name string) error {
+	{{ .ResourceForeignKey }}, err := s.{{ .ResourceForeignKey }}Svc.GetByName(ctx, {{ .ResourceForeignKey }}Name)
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (s {{ .Name | camelcase }}Service) Sync{{ .ResourceForeignKey | pascalcase 
 {{ end }}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteBy{{ .ResourceForeignKey | pascalcase }}ID(ctx, {{ .ResourceForeignKey }}ID)
+		err = s.repo.DeleteBy{{ .ResourceForeignKey | pascalcase }}(ctx, {{ .ResourceForeignKey }}Name)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
@@ -193,9 +193,9 @@ func (s {{ .Name | camelcase }}Service) Sync{{ .ResourceForeignKey | pascalcase 
 		for _, retrieved{{ .Name | pascalcase }} := range retrieved{{ .PluralName | pascalcase }} {
 			{{ .Name | camelcase }} := {{ .Name | pascalcase }}{
 {{- if .IsServerResource }}
-				ClusterID:   {{ .ResourceForeignKey }}.ClusterID,
+				Cluster:   {{ .ResourceForeignKey }}.Cluster,
 {{- end }}
-				{{ .ResourceForeignKey | pascalcase }}ID:    {{ .ResourceForeignKey }}ID,
+				{{ .ResourceForeignKey | pascalcase }}:    {{ .ResourceForeignKey }}Name,
 {{- if .HasProject }}
 				ProjectName: retrieved{{ .Name | pascalcase }}.Project,
 {{- end }}

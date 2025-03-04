@@ -10,9 +10,9 @@ type {{ .Name | pascalcase }}Service interface {
 	GetAllIDsWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) ([]int, error)
 	GetByID(ctx context.Context, id int) ({{ .Name | pascalcase }}, error)
 	ResyncByID(ctx context.Context, id int) error
-	SyncCluster(ctx context.Context, clusterID int) error
+	SyncCluster(ctx context.Context, cluster string) error
 {{- if .IsServerResource }}
-	SyncServer(ctx context.Context, serverID int) error
+	SyncServer(ctx context.Context, server string) error
 {{- end }}
 }
 
@@ -21,7 +21,7 @@ type {{ .Name | pascalcase }}Repo interface {
 	GetByID(ctx context.Context, id int) ({{ .Name | pascalcase }}, error)
 	Create(ctx context.Context, {{ .Name | camelcase }} {{ .Name | pascalcase }}) ({{ .Name | pascalcase }}, error)
 	DeleteByID(ctx context.Context, id int) error
-	DeleteBy{{ .ResourceForeignKey | pascalcase }}ID(ctx context.Context, {{ .ResourceForeignKey }}ID int) error
+	DeleteBy{{ .ResourceForeignKey | pascalcase }}(ctx context.Context, {{ .ResourceForeignKey }} string) error
 	UpdateByID(ctx context.Context, {{ .Name | camelcase }} {{ .Name | pascalcase }}) ({{ .Name | pascalcase }}, error)
 }
 
