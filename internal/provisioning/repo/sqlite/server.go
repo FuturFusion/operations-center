@@ -3,9 +3,13 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
-	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/lxc/incus/v6/shared/api"
+
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
 )
 
@@ -15,200 +19,188 @@ type server struct {
 
 var _ provisioning.ServerRepo = &server{}
 
-func NewServer(db sqlite.DBTX) *server {
+func NewServer(db sqlite.DBTX) (*server, error) {
+	dbprepare, ok := db.(interface {
+		Prepare(query string) (*sql.Stmt, error)
+	})
+	if !ok {
+		return nil, fmt.Errorf("Provided db does not support prepare")
+	}
+
+	stmts, err := entities.PrepareStmts(dbprepare, false)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to prepare statements: %w", err)
+	}
+
+	entities.PreparedStmts = stmts
+
 	return &server{
 		db: db,
-	}
+	}, nil
 }
 
-func (c server) Create(ctx context.Context, in provisioning.Server) (provisioning.Server, error) {
-	const sqlStmt = `
-INSERT INTO servers (cluster_id, name, type, connection_url, last_updated)
-VALUES(:cluster_id, :name, :type, :connection_url, :last_updated)
-RETURNING id, cluster_id, name, type, connection_url, last_updated;
-`
-
-	row := c.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("cluster_id", in.ClusterID),
-		sql.Named("name", in.Name),
-		sql.Named("type", in.Type),
-		sql.Named("connection_url", in.ConnectionURL),
-		sql.Named("last_updated", in.LastUpdated),
-	)
-	if row.Err() != nil {
-		return provisioning.Server{}, sqlite.MapErr(row.Err())
-	}
-
-	return scanServer(row)
-}
-
-func (c server) GetAll(ctx context.Context) (provisioning.Servers, error) {
-	const sqlStmt = `SELECT id, cluster_id, name, type, connection_url, last_updated FROM servers;`
-
-	rows, err := c.db.QueryContext(ctx, sqlStmt)
+func (s server) Create(ctx context.Context, in provisioning.Server) (provisioning.Server, error) {
+	_, err := entities.CreateServer(ctx, s.db, entities.Server{
+		Cluster:       in.Cluster,
+		Name:          in.Name,
+		Type:          in.Type,
+		ConnectionURL: in.ConnectionURL,
+		HardwareData: entities.MarshalableResource{
+			CPU:     in.HardwareData.CPU,
+			Memory:  in.HardwareData.Memory,
+			GPU:     in.HardwareData.GPU,
+			Network: in.HardwareData.Network,
+			Storage: in.HardwareData.Storage,
+			USB:     in.HardwareData.USB,
+			PCI:     in.HardwareData.PCI,
+			System:  in.HardwareData.System,
+			Load:    in.HardwareData.Load,
+		},
+		VersionData: in.VersionData,
+		LastUpdated: in.LastUpdated,
+	})
 	if err != nil {
-		return nil, sqlite.MapErr(err)
+		return provisioning.Server{}, err
 	}
 
-	defer func() { _ = rows.Close() }()
+	return in, nil
+}
 
-	var servers provisioning.Servers
-	for rows.Next() {
-		server, err := scanServer(rows)
-		if err != nil {
-			return nil, sqlite.MapErr(err)
-		}
-
-		servers = append(servers, server)
+func (s server) GetAll(ctx context.Context) (provisioning.Servers, error) {
+	dbServers, err := entities.GetServers(ctx, s.db)
+	if err != nil {
+		return nil, err
 	}
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
+	servers := make(provisioning.Servers, 0, len(dbServers))
+	for _, dbServer := range dbServers {
+		servers = append(servers, provisioning.Server{
+			Cluster:       dbServer.Cluster,
+			Name:          dbServer.Name,
+			Type:          dbServer.Type,
+			ConnectionURL: dbServer.ConnectionURL,
+			HardwareData: api.Resources{
+				CPU:     dbServer.HardwareData.CPU,
+				Memory:  dbServer.HardwareData.Memory,
+				GPU:     dbServer.HardwareData.GPU,
+				Network: dbServer.HardwareData.Network,
+				Storage: dbServer.HardwareData.Storage,
+				USB:     dbServer.HardwareData.USB,
+				PCI:     dbServer.HardwareData.PCI,
+				System:  dbServer.HardwareData.System,
+				Load:    dbServer.HardwareData.Load,
+			},
+			VersionData: dbServer.VersionData,
+			LastUpdated: dbServer.LastUpdated,
+		})
 	}
 
 	return servers, nil
 }
 
-func (c server) GetAllByClusterID(ctx context.Context, clusterID int) (provisioning.Servers, error) {
-	const sqlStmt = `
-SELECT
-  id, cluster_id, name, type, connection_url, last_updated
-FROM servers
-WHERE
-  cluster_id = :cluster_id;
-`
-
-	rows, err := c.db.QueryContext(ctx, sqlStmt,
-		sql.Named("cluster_id", clusterID),
-	)
+func (s server) GetAllByCluster(ctx context.Context, cluster string) (provisioning.Servers, error) {
+	// TODO: handling somewhat redundant with GetAll
+	dbServers, err := entities.GetServers(ctx, s.db, entities.ServerFilter{Cluster: ptr.To(cluster)})
 	if err != nil {
-		return nil, sqlite.MapErr(err)
+		return nil, err
 	}
 
-	defer func() { _ = rows.Close() }()
-
-	var servers provisioning.Servers
-	for rows.Next() {
-		server, err := scanServer(rows)
-		if err != nil {
-			return nil, sqlite.MapErr(err)
-		}
-
-		servers = append(servers, server)
-	}
-
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
+	servers := make(provisioning.Servers, 0, len(dbServers))
+	for _, dbServer := range dbServers {
+		servers = append(servers, provisioning.Server{
+			Cluster:       dbServer.Cluster,
+			Name:          dbServer.Name,
+			Type:          dbServer.Type,
+			ConnectionURL: dbServer.ConnectionURL,
+			HardwareData: api.Resources{
+				CPU:     dbServer.HardwareData.CPU,
+				Memory:  dbServer.HardwareData.Memory,
+				GPU:     dbServer.HardwareData.GPU,
+				Network: dbServer.HardwareData.Network,
+				Storage: dbServer.HardwareData.Storage,
+				USB:     dbServer.HardwareData.USB,
+				PCI:     dbServer.HardwareData.PCI,
+				System:  dbServer.HardwareData.System,
+				Load:    dbServer.HardwareData.Load,
+			},
+			VersionData: dbServer.VersionData,
+			LastUpdated: dbServer.LastUpdated,
+		})
 	}
 
 	return servers, nil
 }
 
-func (c server) GetAllNames(ctx context.Context) ([]string, error) {
-	const sqlStmt = `SELECT name FROM servers ORDER BY id`
-
-	rows, err := c.db.QueryContext(ctx, sqlStmt)
+func (s server) GetAllNames(ctx context.Context) ([]string, error) {
+	// TODO: fix overfetching, we don't need all the servers, we only need the names
+	dbServers, err := entities.GetServers(ctx, s.db)
 	if err != nil {
-		return nil, sqlite.MapErr(err)
+		return nil, err
 	}
 
-	defer func() { _ = rows.Close() }()
-
-	var serverNames []string
-	for rows.Next() {
-		var serverName string
-		err := rows.Scan(&serverName)
-		if err != nil {
-			return nil, sqlite.MapErr(err)
-		}
-
-		serverNames = append(serverNames, serverName)
+	names := make([]string, 0, len(dbServers))
+	for _, cluster := range dbServers {
+		names = append(names, cluster.Name)
 	}
 
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
-
-	return serverNames, nil
+	return names, nil
 }
 
-func (c server) GetByID(ctx context.Context, id int) (provisioning.Server, error) {
-	const sqlStmt = `SELECT id, cluster_id, name, type, connection_url, last_updated FROM servers WHERE id=:id;`
-
-	row := c.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
-	if row.Err() != nil {
-		return provisioning.Server{}, sqlite.MapErr(row.Err())
-	}
-
-	return scanServer(row)
-}
-
-func (c server) GetByName(ctx context.Context, name string) (provisioning.Server, error) {
-	const sqlStmt = `SELECT id, cluster_id, name, type, connection_url, last_updated FROM servers WHERE name=:name;`
-
-	row := c.db.QueryRowContext(ctx, sqlStmt, sql.Named("name", name))
-	if row.Err() != nil {
-		return provisioning.Server{}, sqlite.MapErr(row.Err())
-	}
-
-	return scanServer(row)
-}
-
-func (c server) UpdateByID(ctx context.Context, in provisioning.Server) (provisioning.Server, error) {
-	const sqlStmt = `
-UPDATE servers SET cluster_id=:cluster_id, type=:type, connection_url=:connection_url, last_updated=:last_updated
-WHERE id=:id
-RETURNING id, cluster_id, name, type, connection_url, last_updated;
-`
-
-	row := c.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("id", in.ID),
-		sql.Named("cluster_id", in.ClusterID),
-		sql.Named("type", in.Type),
-		sql.Named("connection_url", in.ConnectionURL),
-		sql.Named("last_updated", in.LastUpdated),
-	)
-	if row.Err() != nil {
-		return provisioning.Server{}, sqlite.MapErr(row.Err())
-	}
-
-	return scanServer(row)
-}
-
-func (c server) DeleteByID(ctx context.Context, id int) error {
-	const sqlStmt = `DELETE FROM servers WHERE id=:id;`
-
-	result, err := c.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+func (s server) GetByName(ctx context.Context, name string) (provisioning.Server, error) {
+	dbServer, err := entities.GetServer(ctx, s.db, name)
 	if err != nil {
-		return sqlite.MapErr(err)
+		return provisioning.Server{}, err
 	}
 
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
-
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
-
-	return nil
+	return provisioning.Server{
+		Cluster:       dbServer.Cluster,
+		Name:          dbServer.Name,
+		Type:          dbServer.Type,
+		ConnectionURL: dbServer.ConnectionURL,
+		HardwareData: api.Resources{
+			CPU:     dbServer.HardwareData.CPU,
+			Memory:  dbServer.HardwareData.Memory,
+			GPU:     dbServer.HardwareData.GPU,
+			Network: dbServer.HardwareData.Network,
+			Storage: dbServer.HardwareData.Storage,
+			USB:     dbServer.HardwareData.USB,
+			PCI:     dbServer.HardwareData.PCI,
+			System:  dbServer.HardwareData.System,
+			Load:    dbServer.HardwareData.Load,
+		},
+		VersionData: dbServer.VersionData,
+		LastUpdated: dbServer.LastUpdated,
+	}, nil
 }
 
-func scanServer(row interface{ Scan(dest ...any) error }) (provisioning.Server, error) {
-	var server provisioning.Server
+func (s server) UpdateByName(ctx context.Context, name string, in provisioning.Server) (provisioning.Server, error) {
+	err := entities.UpdateServer(ctx, s.db, name, entities.Server{
+		Cluster: in.Cluster,
+		Name:    in.Name,
+		Type:    in.Type,
+		HardwareData: entities.MarshalableResource{
+			CPU:     in.HardwareData.CPU,
+			Memory:  in.HardwareData.Memory,
+			GPU:     in.HardwareData.GPU,
+			Network: in.HardwareData.Network,
+			Storage: in.HardwareData.Storage,
+			USB:     in.HardwareData.USB,
+			PCI:     in.HardwareData.PCI,
+			System:  in.HardwareData.System,
+			Load:    in.HardwareData.Load,
+		},
+		VersionData:   in.VersionData,
+		ConnectionURL: in.ConnectionURL,
+		LastUpdated:   in.LastUpdated,
+	})
+	in.Name = name
+	return in, err
+}
 
-	err := row.Scan(
-		&server.ID,
-		&server.ClusterID,
-		&server.Name,
-		&server.Type,
-		&server.ConnectionURL,
-		&server.LastUpdated,
-	)
-	if err != nil {
-		return provisioning.Server{}, sqlite.MapErr(err)
-	}
+func (s server) Rename(ctx context.Context, name string, to string) error {
+	return entities.RenameCluster(ctx, s.db, name, to)
+}
 
-	return server, nil
+func (s server) DeleteByName(ctx context.Context, name string) error {
+	return entities.DeleteServer(ctx, s.db, name)
 }

@@ -19,7 +19,6 @@ import (
 
 func TestServerDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -27,7 +26,6 @@ func TestServerDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"one", "two"},
@@ -35,24 +33,22 @@ func TestServerDatabaseActions(t *testing.T) {
 	}
 
 	serverA := provisioning.Server{
-		ID:            1,
-		ClusterID:     1,
+		Cluster:       "one",
 		Name:          "one",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
 		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
+		VersionData:   json.RawMessage(""),
 		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	serverB := provisioning.Server{
-		ID:            2,
-		ClusterID:     2,
+		Cluster:       "two",
 		Name:          "two",
 		Type:          api.ServerTypeMigrationManager,
 		ConnectionURL: "https://two/",
 		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
+		VersionData:   json.RawMessage(""),
 		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
@@ -71,9 +67,13 @@ func TestServerDatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), nil)
+	clusterRepo, err := sqlite.NewCluster(db)
+	require.NoError(t, err)
 
-	server := sqlite.NewServer(db)
+	clusterSvc := provisioning.NewClusterService(clusterRepo, nil)
+
+	server, err := sqlite.NewServer(db)
+	require.NoError(t, err)
 
 	// Cannot add a server with an invalid cluster.
 	_, err = server.Create(ctx, serverA)
@@ -102,7 +102,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []string{"one", "two"}, serverIDs)
 
 	// Should get back serverA unchanged.
-	dbServerA, err := server.GetByID(ctx, serverA.ID)
+	dbServerA, err := server.GetByName(ctx, serverA.Name)
 	require.NoError(t, err)
 	require.Equal(t, serverA, dbServerA)
 
@@ -111,18 +111,17 @@ func TestServerDatabaseActions(t *testing.T) {
 	require.Equal(t, serverA, dbServerA)
 
 	// Test updating a server.
-	serverB.ClusterID = 2
-	dbServerB, err := server.UpdateByID(ctx, serverB)
+	dbServerB, err := server.UpdateByName(ctx, serverB.Name, serverB)
 	require.NoError(t, err)
 	require.Equal(t, serverB, dbServerB)
-	dbServerB, err = server.GetByID(ctx, serverB.ID)
+	dbServerB, err = server.GetByName(ctx, serverB.Name)
 	require.NoError(t, err)
 	require.Equal(t, serverB, dbServerB)
 
 	// Delete a server.
-	err = server.DeleteByID(ctx, serverA.ID)
+	err = server.DeleteByName(ctx, serverA.Name)
 	require.NoError(t, err)
-	_, err = server.GetByID(ctx, serverA.ID)
+	_, err = server.GetByName(ctx, serverA.Name)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have two servers remaining.
@@ -131,11 +130,11 @@ func TestServerDatabaseActions(t *testing.T) {
 	require.Len(t, servers, 1)
 
 	// Can't delete a server that doesn't exist.
-	err = server.DeleteByID(ctx, 3)
+	err = server.DeleteByName(ctx, "three")
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Can't update a server that doesn't exist.
-	_, err = server.UpdateByID(ctx, serverA)
+	_, err = server.UpdateByName(ctx, serverA.Name, serverA)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Can't add a duplicate a server.

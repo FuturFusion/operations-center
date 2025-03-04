@@ -16,7 +16,6 @@ import (
 
 func TestClusterDatabaseActions(t *testing.T) {
 	clusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"server1", "server2"},
@@ -24,7 +23,6 @@ func TestClusterDatabaseActions(t *testing.T) {
 	}
 
 	clusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"server10", "server11"},
@@ -46,7 +44,8 @@ func TestClusterDatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	cluster := sqlite.NewCluster(db)
+	cluster, err := sqlite.NewCluster(db)
+	require.NoError(t, err)
 
 	// Add cluster
 	_, err = cluster.Create(ctx, clusterA)
@@ -65,7 +64,7 @@ func TestClusterDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []string{"one", "two"}, clusterIDs)
 
 	// Should get back clusterA unchanged.
-	dbClusterA, err := cluster.GetByID(ctx, clusterA.ID)
+	dbClusterA, err := cluster.GetByName(ctx, clusterA.Name)
 	require.NoError(t, err)
 	require.Equal(t, clusterA, dbClusterA)
 
@@ -75,17 +74,17 @@ func TestClusterDatabaseActions(t *testing.T) {
 
 	// Test updating a cluster.
 	clusterB.ServerHostnames = []string{"server100"}
-	dbClusterB, err := cluster.UpdateByID(ctx, clusterB)
+	dbClusterB, err := cluster.UpdateByName(ctx, clusterB.Name, clusterB)
 	require.NoError(t, err)
 	require.Equal(t, clusterB, dbClusterB)
-	dbClusterB, err = cluster.GetByID(ctx, clusterB.ID)
+	dbClusterB, err = cluster.GetByName(ctx, clusterB.Name)
 	require.NoError(t, err)
 	require.Equal(t, clusterB, dbClusterB)
 
 	// Delete a cluster.
-	err = cluster.DeleteByID(ctx, clusterA.ID)
+	err = cluster.DeleteByName(ctx, clusterA.Name)
 	require.NoError(t, err)
-	_, err = cluster.GetByID(ctx, clusterA.ID)
+	_, err = cluster.GetByName(ctx, clusterA.Name)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have two clusters remaining.
@@ -94,11 +93,11 @@ func TestClusterDatabaseActions(t *testing.T) {
 	require.Len(t, clusters, 1)
 
 	// Can't delete a cluster that doesn't exist.
-	err = cluster.DeleteByID(ctx, 3)
+	err = cluster.DeleteByName(ctx, clusterA.Name)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Can't update a cluster that doesn't exist.
-	_, err = cluster.UpdateByID(ctx, clusterA)
+	_, err = cluster.UpdateByName(ctx, clusterA.Name, clusterA)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Can't add a duplicate a cluster.

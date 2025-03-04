@@ -1,3 +1,5 @@
+// FIXME: Remove when https://github.com/lxc/incus/pull/1725 is merged
+
 package main
 
 import "os"
@@ -36,8 +38,8 @@ func RegisterStmt(sqlStmt string) int {
 	return code
 }
 
-// Replacement for PrepareStmts from mapper_boilerplate.go
-// FIXME: update generate-database in Incus
+// PrepareStmts prepares all registered statements and returns an index from
+// statement code to prepared statement object.
 func PrepareStmts(db preparer, skipErrors bool) (map[int]*sql.Stmt, error) {
 	index := map[int]*sql.Stmt{}
 
