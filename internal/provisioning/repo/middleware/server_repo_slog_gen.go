@@ -56,16 +56,16 @@ func (_d ServerRepoWithSlog) Create(ctx context.Context, server provisioning.Ser
 	return _d._base.Create(ctx, server)
 }
 
-// DeleteByID implements provisioning.ServerRepo.
-func (_d ServerRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByName implements provisioning.ServerRepo.
+func (_d ServerRepoWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("id", id),
+			slog.String("name", name),
 		)
 	}
-	log.Debug("ServerRepoWithSlog: calling DeleteByID")
+	log.Debug("ServerRepoWithSlog: calling DeleteByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,12 +78,12 @@ func (_d ServerRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error)
 			}
 		}
 		if err != nil {
-			log.Error("ServerRepoWithSlog: method DeleteByID returned an error")
+			log.Error("ServerRepoWithSlog: method DeleteByName returned an error")
 		} else {
-			log.Debug("ServerRepoWithSlog: method DeleteByID finished")
+			log.Debug("ServerRepoWithSlog: method DeleteByName finished")
 		}
 	}()
-	return _d._base.DeleteByID(ctx, id)
+	return _d._base.DeleteByName(ctx, name)
 }
 
 // GetAll implements provisioning.ServerRepo.
@@ -116,16 +116,16 @@ func (_d ServerRepoWithSlog) GetAll(ctx context.Context) (servers provisioning.S
 	return _d._base.GetAll(ctx)
 }
 
-// GetAllByClusterID implements provisioning.ServerRepo.
-func (_d ServerRepoWithSlog) GetAllByClusterID(ctx context.Context, clusterID int) (servers provisioning.Servers, err error) {
+// GetAllByCluster implements provisioning.ServerRepo.
+func (_d ServerRepoWithSlog) GetAllByCluster(ctx context.Context, cluster string) (servers provisioning.Servers, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("clusterID", clusterID),
+			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("ServerRepoWithSlog: calling GetAllByClusterID")
+	log.Debug("ServerRepoWithSlog: calling GetAllByCluster")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,12 +139,12 @@ func (_d ServerRepoWithSlog) GetAllByClusterID(ctx context.Context, clusterID in
 			}
 		}
 		if err != nil {
-			log.Error("ServerRepoWithSlog: method GetAllByClusterID returned an error")
+			log.Error("ServerRepoWithSlog: method GetAllByCluster returned an error")
 		} else {
-			log.Debug("ServerRepoWithSlog: method GetAllByClusterID finished")
+			log.Debug("ServerRepoWithSlog: method GetAllByCluster finished")
 		}
 	}()
-	return _d._base.GetAllByClusterID(ctx, clusterID)
+	return _d._base.GetAllByCluster(ctx, cluster)
 }
 
 // GetAllNames implements provisioning.ServerRepo.
@@ -175,37 +175,6 @@ func (_d ServerRepoWithSlog) GetAllNames(ctx context.Context) (strings []string,
 		}
 	}()
 	return _d._base.GetAllNames(ctx)
-}
-
-// GetByID implements provisioning.ServerRepo.
-func (_d ServerRepoWithSlog) GetByID(ctx context.Context, id int) (server provisioning.Server, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-			slog.Int("id", id),
-		)
-	}
-	log.Debug("ServerRepoWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("server", server),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("ServerRepoWithSlog: method GetByID returned an error")
-		} else {
-			log.Debug("ServerRepoWithSlog: method GetByID finished")
-		}
-	}()
-	return _d._base.GetByID(ctx, id)
 }
 
 // GetByName implements provisioning.ServerRepo.
@@ -239,16 +208,48 @@ func (_d ServerRepoWithSlog) GetByName(ctx context.Context, name string) (server
 	return _d._base.GetByName(ctx, name)
 }
 
-// UpdateByID implements provisioning.ServerRepo.
-func (_d ServerRepoWithSlog) UpdateByID(ctx context.Context, server provisioning.Server) (server1 provisioning.Server, err error) {
+// Rename implements provisioning.ServerRepo.
+func (_d ServerRepoWithSlog) Rename(ctx context.Context, name string, to string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.String("to", to),
+		)
+	}
+	log.Debug("ServerRepoWithSlog: calling Rename")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("ServerRepoWithSlog: method Rename returned an error")
+		} else {
+			log.Debug("ServerRepoWithSlog: method Rename finished")
+		}
+	}()
+	return _d._base.Rename(ctx, name, to)
+}
+
+// UpdateByName implements provisioning.ServerRepo.
+func (_d ServerRepoWithSlog) UpdateByName(ctx context.Context, name string, server provisioning.Server) (server1 provisioning.Server, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
 			slog.Any("server", server),
 		)
 	}
-	log.Debug("ServerRepoWithSlog: calling UpdateByID")
+	log.Debug("ServerRepoWithSlog: calling UpdateByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -262,10 +263,10 @@ func (_d ServerRepoWithSlog) UpdateByID(ctx context.Context, server provisioning
 			}
 		}
 		if err != nil {
-			log.Error("ServerRepoWithSlog: method UpdateByID returned an error")
+			log.Error("ServerRepoWithSlog: method UpdateByName returned an error")
 		} else {
-			log.Debug("ServerRepoWithSlog: method UpdateByID finished")
+			log.Debug("ServerRepoWithSlog: method UpdateByName finished")
 		}
 	}()
-	return _d._base.UpdateByID(ctx, server)
+	return _d._base.UpdateByName(ctx, name, server)
 }

@@ -56,16 +56,16 @@ func (_d ClusterRepoWithSlog) Create(ctx context.Context, cluster provisioning.C
 	return _d._base.Create(ctx, cluster)
 }
 
-// DeleteByID implements provisioning.ClusterRepo.
-func (_d ClusterRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByName implements provisioning.ClusterRepo.
+func (_d ClusterRepoWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("id", id),
+			slog.String("name", name),
 		)
 	}
-	log.Debug("ClusterRepoWithSlog: calling DeleteByID")
+	log.Debug("ClusterRepoWithSlog: calling DeleteByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,12 +78,12 @@ func (_d ClusterRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error
 			}
 		}
 		if err != nil {
-			log.Error("ClusterRepoWithSlog: method DeleteByID returned an error")
+			log.Error("ClusterRepoWithSlog: method DeleteByName returned an error")
 		} else {
-			log.Debug("ClusterRepoWithSlog: method DeleteByID finished")
+			log.Debug("ClusterRepoWithSlog: method DeleteByName finished")
 		}
 	}()
-	return _d._base.DeleteByID(ctx, id)
+	return _d._base.DeleteByName(ctx, name)
 }
 
 // GetAll implements provisioning.ClusterRepo.
@@ -146,37 +146,6 @@ func (_d ClusterRepoWithSlog) GetAllNames(ctx context.Context) (strings []string
 	return _d._base.GetAllNames(ctx)
 }
 
-// GetByID implements provisioning.ClusterRepo.
-func (_d ClusterRepoWithSlog) GetByID(ctx context.Context, id int) (cluster provisioning.Cluster, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-			slog.Int("id", id),
-		)
-	}
-	log.Debug("ClusterRepoWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("cluster", cluster),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("ClusterRepoWithSlog: method GetByID returned an error")
-		} else {
-			log.Debug("ClusterRepoWithSlog: method GetByID finished")
-		}
-	}()
-	return _d._base.GetByID(ctx, id)
-}
-
 // GetByName implements provisioning.ClusterRepo.
 func (_d ClusterRepoWithSlog) GetByName(ctx context.Context, name string) (cluster provisioning.Cluster, err error) {
 	log := _d._log.With()
@@ -208,16 +177,48 @@ func (_d ClusterRepoWithSlog) GetByName(ctx context.Context, name string) (clust
 	return _d._base.GetByName(ctx, name)
 }
 
-// UpdateByID implements provisioning.ClusterRepo.
-func (_d ClusterRepoWithSlog) UpdateByID(ctx context.Context, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
+// Rename implements provisioning.ClusterRepo.
+func (_d ClusterRepoWithSlog) Rename(ctx context.Context, name string, to string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.String("to", to),
+		)
+	}
+	log.Debug("ClusterRepoWithSlog: calling Rename")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("ClusterRepoWithSlog: method Rename returned an error")
+		} else {
+			log.Debug("ClusterRepoWithSlog: method Rename finished")
+		}
+	}()
+	return _d._base.Rename(ctx, name, to)
+}
+
+// UpdateByName implements provisioning.ClusterRepo.
+func (_d ClusterRepoWithSlog) UpdateByName(ctx context.Context, name string, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
 			slog.Any("cluster", cluster),
 		)
 	}
-	log.Debug("ClusterRepoWithSlog: calling UpdateByID")
+	log.Debug("ClusterRepoWithSlog: calling UpdateByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -231,10 +232,10 @@ func (_d ClusterRepoWithSlog) UpdateByID(ctx context.Context, cluster provisioni
 			}
 		}
 		if err != nil {
-			log.Error("ClusterRepoWithSlog: method UpdateByID returned an error")
+			log.Error("ClusterRepoWithSlog: method UpdateByName returned an error")
 		} else {
-			log.Debug("ClusterRepoWithSlog: method UpdateByID finished")
+			log.Debug("ClusterRepoWithSlog: method UpdateByName finished")
 		}
 	}()
-	return _d._base.UpdateByID(ctx, cluster)
+	return _d._base.UpdateByName(ctx, name, cluster)
 }

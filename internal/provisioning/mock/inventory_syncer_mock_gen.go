@@ -20,7 +20,7 @@ var _ provisioning.InventorySyncer = &InventorySyncerMock{}
 //
 //		// make and configure a mocked provisioning.InventorySyncer
 //		mockedInventorySyncer := &InventorySyncerMock{
-//			SyncClusterFunc: func(ctx context.Context, clusterID int) error {
+//			SyncClusterFunc: func(ctx context.Context, cluster string) error {
 //				panic("mock out the SyncCluster method")
 //			},
 //		}
@@ -31,7 +31,7 @@ var _ provisioning.InventorySyncer = &InventorySyncerMock{}
 //	}
 type InventorySyncerMock struct {
 	// SyncClusterFunc mocks the SyncCluster method.
-	SyncClusterFunc func(ctx context.Context, clusterID int) error
+	SyncClusterFunc func(ctx context.Context, cluster string) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -39,29 +39,29 @@ type InventorySyncerMock struct {
 		SyncCluster []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ClusterID is the clusterID argument value.
-			ClusterID int
+			// Cluster is the cluster argument value.
+			Cluster string
 		}
 	}
 	lockSyncCluster sync.RWMutex
 }
 
 // SyncCluster calls SyncClusterFunc.
-func (mock *InventorySyncerMock) SyncCluster(ctx context.Context, clusterID int) error {
+func (mock *InventorySyncerMock) SyncCluster(ctx context.Context, cluster string) error {
 	if mock.SyncClusterFunc == nil {
 		panic("InventorySyncerMock.SyncClusterFunc: method is nil but InventorySyncer.SyncCluster was just called")
 	}
 	callInfo := struct {
-		Ctx       context.Context
-		ClusterID int
+		Ctx     context.Context
+		Cluster string
 	}{
-		Ctx:       ctx,
-		ClusterID: clusterID,
+		Ctx:     ctx,
+		Cluster: cluster,
 	}
 	mock.lockSyncCluster.Lock()
 	mock.calls.SyncCluster = append(mock.calls.SyncCluster, callInfo)
 	mock.lockSyncCluster.Unlock()
-	return mock.SyncClusterFunc(ctx, clusterID)
+	return mock.SyncClusterFunc(ctx, cluster)
 }
 
 // SyncClusterCalls gets all the calls that were made to SyncCluster.
@@ -69,12 +69,12 @@ func (mock *InventorySyncerMock) SyncCluster(ctx context.Context, clusterID int)
 //
 //	len(mockedInventorySyncer.SyncClusterCalls())
 func (mock *InventorySyncerMock) SyncClusterCalls() []struct {
-	Ctx       context.Context
-	ClusterID int
+	Ctx     context.Context
+	Cluster string
 } {
 	var calls []struct {
-		Ctx       context.Context
-		ClusterID int
+		Ctx     context.Context
+		Cluster string
 	}
 	mock.lockSyncCluster.RLock()
 	calls = mock.calls.SyncCluster

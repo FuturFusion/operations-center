@@ -32,14 +32,11 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
 //				panic("mock out the GetAllNames method")
 //			},
-//			GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
-//				panic("mock out the GetByID method")
-//			},
 //			GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			RenameByNameFunc: func(ctx context.Context, name string, cluster provisioning.Cluster) (provisioning.Cluster, error) {
-//				panic("mock out the RenameByName method")
+//			RenameFunc: func(ctx context.Context, name string, to string) error {
+//				panic("mock out the Rename method")
 //			},
 //			ResyncInventoryByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the ResyncInventoryByName method")
@@ -66,14 +63,11 @@ type ClusterServiceMock struct {
 	// GetAllNamesFunc mocks the GetAllNames method.
 	GetAllNamesFunc func(ctx context.Context) ([]string, error)
 
-	// GetByIDFunc mocks the GetByID method.
-	GetByIDFunc func(ctx context.Context, id int) (provisioning.Cluster, error)
-
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (provisioning.Cluster, error)
 
-	// RenameByNameFunc mocks the RenameByName method.
-	RenameByNameFunc func(ctx context.Context, name string, cluster provisioning.Cluster) (provisioning.Cluster, error)
+	// RenameFunc mocks the Rename method.
+	RenameFunc func(ctx context.Context, name string, to string) error
 
 	// ResyncInventoryByNameFunc mocks the ResyncInventoryByName method.
 	ResyncInventoryByNameFunc func(ctx context.Context, name string) error
@@ -107,13 +101,6 @@ type ClusterServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetByID holds details about calls to the GetByID method.
-		GetByID []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// ID is the id argument value.
-			ID int
-		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
 			// Ctx is the ctx argument value.
@@ -121,14 +108,14 @@ type ClusterServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
-		// RenameByName holds details about calls to the RenameByName method.
-		RenameByName []struct {
+		// Rename holds details about calls to the Rename method.
+		Rename []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// To is the to argument value.
+			To string
 		}
 		// ResyncInventoryByName holds details about calls to the ResyncInventoryByName method.
 		ResyncInventoryByName []struct {
@@ -151,9 +138,8 @@ type ClusterServiceMock struct {
 	lockDeleteByName          sync.RWMutex
 	lockGetAll                sync.RWMutex
 	lockGetAllNames           sync.RWMutex
-	lockGetByID               sync.RWMutex
 	lockGetByName             sync.RWMutex
-	lockRenameByName          sync.RWMutex
+	lockRename                sync.RWMutex
 	lockResyncInventoryByName sync.RWMutex
 	lockUpdateByName          sync.RWMutex
 }
@@ -294,42 +280,6 @@ func (mock *ClusterServiceMock) GetAllNamesCalls() []struct {
 	return calls
 }
 
-// GetByID calls GetByIDFunc.
-func (mock *ClusterServiceMock) GetByID(ctx context.Context, id int) (provisioning.Cluster, error) {
-	if mock.GetByIDFunc == nil {
-		panic("ClusterServiceMock.GetByIDFunc: method is nil but ClusterService.GetByID was just called")
-	}
-	callInfo := struct {
-		Ctx context.Context
-		ID  int
-	}{
-		Ctx: ctx,
-		ID:  id,
-	}
-	mock.lockGetByID.Lock()
-	mock.calls.GetByID = append(mock.calls.GetByID, callInfo)
-	mock.lockGetByID.Unlock()
-	return mock.GetByIDFunc(ctx, id)
-}
-
-// GetByIDCalls gets all the calls that were made to GetByID.
-// Check the length with:
-//
-//	len(mockedClusterService.GetByIDCalls())
-func (mock *ClusterServiceMock) GetByIDCalls() []struct {
-	Ctx context.Context
-	ID  int
-} {
-	var calls []struct {
-		Ctx context.Context
-		ID  int
-	}
-	mock.lockGetByID.RLock()
-	calls = mock.calls.GetByID
-	mock.lockGetByID.RUnlock()
-	return calls
-}
-
 // GetByName calls GetByNameFunc.
 func (mock *ClusterServiceMock) GetByName(ctx context.Context, name string) (provisioning.Cluster, error) {
 	if mock.GetByNameFunc == nil {
@@ -366,43 +316,43 @@ func (mock *ClusterServiceMock) GetByNameCalls() []struct {
 	return calls
 }
 
-// RenameByName calls RenameByNameFunc.
-func (mock *ClusterServiceMock) RenameByName(ctx context.Context, name string, cluster provisioning.Cluster) (provisioning.Cluster, error) {
-	if mock.RenameByNameFunc == nil {
-		panic("ClusterServiceMock.RenameByNameFunc: method is nil but ClusterService.RenameByName was just called")
+// Rename calls RenameFunc.
+func (mock *ClusterServiceMock) Rename(ctx context.Context, name string, to string) error {
+	if mock.RenameFunc == nil {
+		panic("ClusterServiceMock.RenameFunc: method is nil but ClusterService.Rename was just called")
 	}
 	callInfo := struct {
-		Ctx     context.Context
-		Name    string
-		Cluster provisioning.Cluster
+		Ctx  context.Context
+		Name string
+		To   string
 	}{
-		Ctx:     ctx,
-		Name:    name,
-		Cluster: cluster,
+		Ctx:  ctx,
+		Name: name,
+		To:   to,
 	}
-	mock.lockRenameByName.Lock()
-	mock.calls.RenameByName = append(mock.calls.RenameByName, callInfo)
-	mock.lockRenameByName.Unlock()
-	return mock.RenameByNameFunc(ctx, name, cluster)
+	mock.lockRename.Lock()
+	mock.calls.Rename = append(mock.calls.Rename, callInfo)
+	mock.lockRename.Unlock()
+	return mock.RenameFunc(ctx, name, to)
 }
 
-// RenameByNameCalls gets all the calls that were made to RenameByName.
+// RenameCalls gets all the calls that were made to Rename.
 // Check the length with:
 //
-//	len(mockedClusterService.RenameByNameCalls())
-func (mock *ClusterServiceMock) RenameByNameCalls() []struct {
-	Ctx     context.Context
-	Name    string
-	Cluster provisioning.Cluster
+//	len(mockedClusterService.RenameCalls())
+func (mock *ClusterServiceMock) RenameCalls() []struct {
+	Ctx  context.Context
+	Name string
+	To   string
 } {
 	var calls []struct {
-		Ctx     context.Context
-		Name    string
-		Cluster provisioning.Cluster
+		Ctx  context.Context
+		Name string
+		To   string
 	}
-	mock.lockRenameByName.RLock()
-	calls = mock.calls.RenameByName
-	mock.lockRenameByName.RUnlock()
+	mock.lockRename.RLock()
+	calls = mock.calls.Rename
+	mock.lockRename.RUnlock()
 	return calls
 }
 

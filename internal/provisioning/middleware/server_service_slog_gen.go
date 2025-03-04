@@ -116,16 +116,16 @@ func (_d ServerServiceWithSlog) GetAll(ctx context.Context) (servers provisionin
 	return _d._base.GetAll(ctx)
 }
 
-// GetAllByClusterID implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) GetAllByClusterID(ctx context.Context, clusterID int) (servers provisioning.Servers, err error) {
+// GetAllByCluster implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) GetAllByCluster(ctx context.Context, cluster string) (servers provisioning.Servers, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("clusterID", clusterID),
+			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("ServerServiceWithSlog: calling GetAllByClusterID")
+	log.Debug("ServerServiceWithSlog: calling GetAllByCluster")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,12 +139,12 @@ func (_d ServerServiceWithSlog) GetAllByClusterID(ctx context.Context, clusterID
 			}
 		}
 		if err != nil {
-			log.Error("ServerServiceWithSlog: method GetAllByClusterID returned an error")
+			log.Error("ServerServiceWithSlog: method GetAllByCluster returned an error")
 		} else {
-			log.Debug("ServerServiceWithSlog: method GetAllByClusterID finished")
+			log.Debug("ServerServiceWithSlog: method GetAllByCluster finished")
 		}
 	}()
-	return _d._base.GetAllByClusterID(ctx, clusterID)
+	return _d._base.GetAllByCluster(ctx, cluster)
 }
 
 // GetAllNames implements provisioning.ServerService.
@@ -175,37 +175,6 @@ func (_d ServerServiceWithSlog) GetAllNames(ctx context.Context) (strings []stri
 		}
 	}()
 	return _d._base.GetAllNames(ctx)
-}
-
-// GetByID implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) GetByID(ctx context.Context, id int) (server provisioning.Server, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-			slog.Int("id", id),
-		)
-	}
-	log.Debug("ServerServiceWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("server", server),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("ServerServiceWithSlog: method GetByID returned an error")
-		} else {
-			log.Debug("ServerServiceWithSlog: method GetByID finished")
-		}
-	}()
-	return _d._base.GetByID(ctx, id)
 }
 
 // GetByName implements provisioning.ServerService.
@@ -239,22 +208,21 @@ func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (ser
 	return _d._base.GetByName(ctx, name)
 }
 
-// RenameByName implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) RenameByName(ctx context.Context, name string, server provisioning.Server) (server1 provisioning.Server, err error) {
+// Rename implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) Rename(ctx context.Context, name string, to string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
-			slog.Any("server", server),
+			slog.String("to", to),
 		)
 	}
-	log.Debug("ServerServiceWithSlog: calling RenameByName")
+	log.Debug("ServerServiceWithSlog: calling Rename")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("server1", server1),
 				slog.Any("err", err),
 			)
 		} else {
@@ -263,12 +231,12 @@ func (_d ServerServiceWithSlog) RenameByName(ctx context.Context, name string, s
 			}
 		}
 		if err != nil {
-			log.Error("ServerServiceWithSlog: method RenameByName returned an error")
+			log.Error("ServerServiceWithSlog: method Rename returned an error")
 		} else {
-			log.Debug("ServerServiceWithSlog: method RenameByName finished")
+			log.Debug("ServerServiceWithSlog: method Rename finished")
 		}
 	}()
-	return _d._base.RenameByName(ctx, name, server)
+	return _d._base.Rename(ctx, name, to)
 }
 
 // UpdateByName implements provisioning.ServerService.
