@@ -31,6 +31,10 @@ func (t transaction) ExecContext(ctx context.Context, query string, args ...any)
 	return db.ExecContext(ctx, query, args...)
 }
 
+func (t transaction) Prepare(query string) (*sql.Stmt, error) {
+	return t.db.PrepareContext(context.Background(), query)
+}
+
 func (t transaction) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
 	db, err := t.getDBTX(ctx)
 	if err != nil {

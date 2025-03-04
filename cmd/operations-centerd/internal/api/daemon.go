@@ -115,9 +115,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.Default(),
 	)
 
+	clusterRepo, err := provisioningSqlite.NewCluster(dbWithTransaction)
+	if err != nil {
+		return err
+	}
+
 	clusterSvc := provisioning.NewClusterService(
 		provisioningRepoMiddleware.NewClusterRepoWithSlog(
-			provisioningSqlite.NewCluster(dbWithTransaction),
+			clusterRepo,
 			slog.Default(),
 		),
 		nil,
@@ -127,10 +132,15 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.Default(),
 	)
 
+	serverRepo, err := provisioningSqlite.NewServer(dbWithTransaction)
+	if err != nil {
+		return err
+	}
+
 	serverSvc := provisioningServiceMiddleware.NewServerServiceWithSlog(
 		provisioning.NewServerService(
 			provisioningRepoMiddleware.NewServerRepoWithSlog(
-				provisioningSqlite.NewServer(dbWithTransaction),
+				serverRepo,
 				slog.Default(),
 			),
 		),
