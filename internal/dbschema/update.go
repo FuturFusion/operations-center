@@ -28,6 +28,8 @@ CREATE TABLE servers (
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   connection_url TEXT NOT NULL,
+  hardware_data TEXT NOT NULL,
+  version_data TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (name),
   FOREIGN KEY(cluster_id) REFERENCES clusters(id)
@@ -35,156 +37,156 @@ CREATE TABLE servers (
 
 CREATE TABLE images (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, project_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE instances (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  server_name INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (server_name, project_name, name),
+  FOREIGN KEY (server_name) REFERENCES servers(name)
 );
 
 CREATE TABLE networks (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, project_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE network_acls (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, project_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE network_forwards (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, network_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, network_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE network_integrations (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE network_load_balancers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, network_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, network_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE network_peers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, network_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, network_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE network_zones (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, project_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE profiles (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, project_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE projects (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE storage_buckets (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  server_name INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, storage_pool_name, name),
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (server_name, project_name, storage_pool_name, name),
+  FOREIGN KEY (server_name) REFERENCES servers(name)
 );
 
 CREATE TABLE storage_pools (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE storage_volumes (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  server_name INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, storage_pool_name, name, type),
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (server_name, project_name, storage_pool_name, name, type),
+  FOREIGN KEY (server_name) REFERENCES servers(name)
 );
 
 INSERT INTO schema (version, updated_at) VALUES (2, strftime("%s"))
@@ -244,6 +246,8 @@ CREATE TABLE servers (
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   connection_url TEXT NOT NULL,
+  hardware_data TEXT NOT NULL,
+  version_data TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (name),
   FOREIGN KEY(cluster_id) REFERENCES clusters(id)
@@ -251,156 +255,156 @@ CREATE TABLE servers (
 
 CREATE TABLE images (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, project_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE instances (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  server_name INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (server_name, project_name, name),
+  FOREIGN KEY (server_name) REFERENCES servers(name)
 );
 
 CREATE TABLE networks (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, project_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE network_acls (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, project_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE network_forwards (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, network_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, network_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE network_integrations (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE network_load_balancers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, network_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, network_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE network_peers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   network_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, network_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, network_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE network_zones (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, project_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE profiles (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, project_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE projects (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE storage_buckets (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  server_name INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, storage_pool_name, name),
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (server_name, project_name, storage_pool_name, name),
+  FOREIGN KEY (server_name) REFERENCES servers(name)
 );
 
 CREATE TABLE storage_pools (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_name INTEGER NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (cluster_id, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  UNIQUE (cluster_name, name),
+  FOREIGN KEY (cluster_name) REFERENCES clusters(name)
 );
 
 CREATE TABLE storage_volumes (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  server_name INTEGER NOT NULL,
   project_name TEXT NOT NULL,
   storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, storage_pool_name, name, type),
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (server_name, project_name, storage_pool_name, name, type),
+  FOREIGN KEY (server_name) REFERENCES servers(name)
 );
 `
 	_, err := tx.Exec(stmt)
