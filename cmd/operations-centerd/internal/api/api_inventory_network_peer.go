@@ -144,7 +144,7 @@ func (i *networkPeerHandler) networkPeerGet(r *http.Request) response.Response {
 		true,
 		api.NetworkPeer{
 			ID:          networkPeer.ID,
-			ClusterID:   networkPeer.ClusterID,
+			Cluster:     networkPeer.Cluster,
 			NetworkName: networkPeer.NetworkName,
 			Name:        networkPeer.Name,
 			Object:      networkPeer.Object,

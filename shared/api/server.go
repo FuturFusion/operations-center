@@ -67,13 +67,9 @@ func (s *ServerType) Scan(value any) error {
 //
 // swagger:model
 type Server struct {
-	// An opaque integer identifier for the server.
-	// Example: 1
-	ID int `json:"id" yaml:"id"`
-
-	// The custer ID of the cluster the server is part of.
-	// Example: 1
-	ClusterID int `json:"cluster_id" yaml:"cluster_id"`
+	// The name of the cluster the server is part of.
+	// Example: one
+	Cluster string `json:"cluster" yaml:"cluster"`
 
 	// Name or name of the server.
 	// Example: incus.local

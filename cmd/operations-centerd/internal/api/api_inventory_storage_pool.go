@@ -144,7 +144,7 @@ func (i *storagePoolHandler) storagePoolGet(r *http.Request) response.Response {
 		true,
 		api.StoragePool{
 			ID:          storagePool.ID,
-			ClusterID:   storagePool.ClusterID,
+			Cluster:     storagePool.Cluster,
 			Name:        storagePool.Name,
 			Object:      storagePool.Object,
 			LastUpdated: storagePool.LastUpdated,

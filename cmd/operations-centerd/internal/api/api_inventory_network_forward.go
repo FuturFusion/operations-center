@@ -144,7 +144,7 @@ func (i *networkForwardHandler) networkForwardGet(r *http.Request) response.Resp
 		true,
 		api.NetworkForward{
 			ID:          networkForward.ID,
-			ClusterID:   networkForward.ClusterID,
+			Cluster:     networkForward.Cluster,
 			NetworkName: networkForward.NetworkName,
 			Name:        networkForward.Name,
 			Object:      networkForward.Object,

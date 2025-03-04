@@ -153,7 +153,7 @@ func (i *networkHandler) networkGet(r *http.Request) response.Response {
 		true,
 		api.Network{
 			ID:          network.ID,
-			ClusterID:   network.ClusterID,
+			Cluster:     network.Cluster,
 			ProjectName: network.ProjectName,
 			Name:        network.Name,
 			Object:      network.Object,

@@ -144,7 +144,7 @@ func (i *projectHandler) projectGet(r *http.Request) response.Response {
 		true,
 		api.Project{
 			ID:          project.ID,
-			ClusterID:   project.ClusterID,
+			Cluster:     project.Cluster,
 			Name:        project.Name,
 			Object:      project.Object,
 			LastUpdated: project.LastUpdated,

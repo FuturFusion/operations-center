@@ -153,7 +153,7 @@ func (i *networkZoneHandler) networkZoneGet(r *http.Request) response.Response {
 		true,
 		api.NetworkZone{
 			ID:          networkZone.ID,
-			ClusterID:   networkZone.ClusterID,
+			Cluster:     networkZone.Cluster,
 			ProjectName: networkZone.ProjectName,
 			Name:        networkZone.Name,
 			Object:      networkZone.Object,
