@@ -44,7 +44,8 @@
         "search.exclude": {
           "**/.git": true,
           "**/bin": true,
-          "**/dist": true
+          "**/dist": true,
+          "**/_gen.go": true
         },
         "terminal.integrated.profiles.linux": {
           "bash": {
