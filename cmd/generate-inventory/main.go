@@ -2,11 +2,14 @@ package main
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"embed"
 	"go/format"
+	"iter"
 	"log/slog"
 	"os"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -74,48 +77,49 @@ var targets = []struct {
 }
 
 func main() {
-	pluralName := pflag.String("plural", "", "plural form of the entity")
-	objectNamePropertyName := pflag.String("object-name-property-name", "Name", "Name property of the object")
-	objectType := pflag.String("object-type", "", "Go type used for object in model")
-	omitProject := pflag.Bool("omit-project", false, "if omit-project is provided, the entity does not have a relation to a project")
-	usesEmbeddedPostType := pflag.Bool("uses-embedded-post-type", false, "if uses-embedded-post-type is provided, the name property is part of an embedded Post type")
-	serverResource := pflag.Bool("server-resource", false, "if server-resource is provided, the resource is bound to a server instead of the whole cluster")
-	incusGetAllMethod := pflag.String("incus-get-all-method", "", "method of the Incus client to get all the entities, e.g. GetStoragePoolBucketsAllProjects")
-	incusGetMethod := pflag.String("incus-get-method", "", "method of the Incus client to get the entities, e.g. GetStoragePoolBucketsAllProjects")
-	parentName := pflag.String("parent", "", "name of the parent entity, if any")
-	parentPluralName := pflag.String("parent-plural", "", "plural form of the parent entity")
-	parentObjectType := pflag.String("parent-object-type", "", "Go type used for object in model for the parent entity")
+	ctx := context.Background()
 
+	flagConfigFile := pflag.String("config", "generate-inventory.yaml", "filename of the configfile")
 	flagLogDebug := pflag.BoolP("debug", "d", false, "Show all debug messages")
 	flagLogVerbose := pflag.BoolP("verbose", "v", false, "Show all information messages")
-
 	pflag.Parse()
-
-	name := pflag.Args()[0]
-	objectEmbedded := false
-
-	if *pluralName == "" {
-		*pluralName = name + "s"
-	}
-
-	if *objectType != "" {
-		objectEmbedded = true
-	}
-
-	if *objectType == "" {
-		*objectType = name
-	}
-
-	if *parentPluralName == "" {
-		*parentPluralName = *parentName + "s"
-	}
-
-	if *parentObjectType == "" {
-		*parentObjectType = *parentName
-	}
 
 	err := logger.InitLogger(os.Stderr, "", *flagLogVerbose, *flagLogDebug)
 	die(err)
+
+	slog.DebugContext(ctx, "config file", slog.String("filename", *flagConfigFile))
+
+	var cfg Config
+	err = cfg.LoadConfig(*flagConfigFile)
+	die(err)
+
+	for name, entity := range orderedByKey(cfg) {
+		if entity.PluralName == "" {
+			cfg[name].PluralName = name + "s"
+		}
+
+		if entity.ObjectNamePropertyName == "" {
+			cfg[name].ObjectNamePropertyName = "Name"
+		}
+
+		if entity.ObjectType != "" {
+			cfg[name].ObjectEmbedded = true
+		}
+
+		if entity.ObjectType == "" {
+			cfg[name].ObjectType = name
+		}
+
+		if entity.ParentPluralName == "" {
+			cfg[name].ParentPluralName = entity.ParentName + "s"
+		}
+
+		if entity.ParentObjectType == "" {
+			cfg[name].ParentObjectType = entity.ParentName
+		}
+
+		slog.DebugContext(ctx, "entity config", slog.String("name", name), slog.Any("config", entity))
+	}
 
 	funcsMap := sprig.FuncMap()
 	funcsMap["pascalcase"] = PascalCase
@@ -126,68 +130,74 @@ func main() {
 	t, err = t.ParseFS(templateFS, "tmpl/*.gotmpl")
 	die(err)
 
-	args := struct {
-		Name                   string
-		PluralName             string
-		ObjectType             string
-		ObjectEmbedded         bool
-		ObjectNamePropertyName string
-		HasProject             bool
-		UsesEmbeddedPostType   bool
-		IsServerResource       bool
-		ResourceForeignKey     string
-		IncusGetAllMethod      string
-		IncusGetMethod         string
-		HasParent              bool
-		ParentName             string
-		ParentPluralName       string
-		ParentObjectType       string
-	}{
-		Name:                   name,
-		PluralName:             *pluralName,
-		ObjectType:             *objectType,
-		ObjectEmbedded:         objectEmbedded,
-		ObjectNamePropertyName: *objectNamePropertyName,
-		HasProject:             !*omitProject,
-		UsesEmbeddedPostType:   *usesEmbeddedPostType,
-		IsServerResource:       *serverResource,
-		ResourceForeignKey:     iif(*serverResource, "server", "cluster"),
-		IncusGetAllMethod:      *incusGetAllMethod,
-		IncusGetMethod:         *incusGetMethod,
-		HasParent:              *parentName != "",
-		ParentName:             *parentName,
-		ParentPluralName:       *parentPluralName,
-		ParentObjectType:       *parentObjectType,
-	}
+	for name, entity := range orderedByKey(cfg) {
+		args := struct {
+			Name                   string
+			PluralName             string
+			ObjectType             string
+			ObjectEmbedded         bool
+			ObjectNamePropertyName string
+			HasProject             bool
+			UsesEmbeddedPostType   bool
+			IsServerResource       bool
+			ResourceForeignKey     string
+			IncusGetAllMethod      string
+			IncusGetMethod         string
+			HasParent              bool
+			ParentName             string
+			ParentPluralName       string
+			ParentObjectType       string
+		}{
+			Name:                   name,
+			PluralName:             entity.PluralName,
+			ObjectType:             entity.ObjectType,
+			ObjectEmbedded:         entity.ObjectEmbedded,
+			ObjectNamePropertyName: entity.ObjectNamePropertyName,
+			HasProject:             !entity.OmitProject,
+			UsesEmbeddedPostType:   entity.UsesEmbeddedPostType,
+			IsServerResource:       entity.ServerResource,
+			ResourceForeignKey:     iif(entity.ServerResource, "server", "cluster"),
+			IncusGetAllMethod:      entity.IncusGetAllMethod,
+			IncusGetMethod:         entity.IncusGetMethod,
+			HasParent:              entity.ParentName != "",
+			ParentName:             entity.ParentName,
+			ParentPluralName:       entity.ParentPluralName,
+			ParentObjectType:       entity.ParentObjectType,
+		}
 
-	for _, target := range targets {
-		slog.InfoContext(context.Background(), "generating", slog.String("name", args.Name), slog.String("template", target.TemplateName))
-		func() {
-			filename := strings.Builder{}
+		for _, target := range targets {
+			slog.InfoContext(ctx, "generating", slog.String("name", args.Name), slog.String("template", target.TemplateName))
+			func() {
+				filename := strings.Builder{}
 
-			filenameTmpl, err := template.New("name").Funcs(funcsMap).Parse(target.TargetName)
-			die(err)
+				filenameTmpl, err := template.New("name").Funcs(funcsMap).Parse(target.TargetName)
+				die(err)
 
-			err = filenameTmpl.Execute(&filename, args)
-			die(err)
+				err = filenameTmpl.Execute(&filename, args)
+				die(err)
 
-			buf := bytes.Buffer{}
+				buf := bytes.Buffer{}
 
-			_, err = buf.WriteString(generatedByPreamble)
-			die(err)
+				_, err = buf.WriteString(generatedByPreamble)
+				die(err)
 
-			err = t.ExecuteTemplate(&buf, target.TemplateName, args)
-			die(err)
+				err = t.ExecuteTemplate(&buf, target.TemplateName, args)
+				die(err)
 
-			formattedSource, err := format.Source(buf.Bytes())
-			die(err)
+				formattedSource, err := format.Source(buf.Bytes())
+				if err != nil {
+					formattedSource = buf.Bytes()
+					slog.ErrorContext(ctx, "failed to format source", slog.Any("err", err), slog.String("target_filename", filename.String()))
+				}
 
-			err = os.WriteFile(filename.String(), formattedSource, 0o600)
-			die(err)
-		}()
+				err = os.WriteFile(filename.String(), formattedSource, 0o600)
+				die(err)
+			}()
+		}
 	}
 }
 
+// die is a convenience function to end the processing with a panic in the case of an error.
 func die(err error) {
 	if err != nil {
 		slog.ErrorContext(context.Background(), "generate-inventory failed", slog.Any("err", err))
@@ -195,10 +205,31 @@ func die(err error) {
 	}
 }
 
+// iff is short for inline if.
 func iif[T any](condition bool, valueA T, valueB T) T {
 	if condition {
 		return valueA
 	}
 
 	return valueB
+}
+
+// orderedByKey returns an iterator to traverse a map ordered by key.
+func orderedByKey[K cmp.Ordered, E any](m map[K]E) iter.Seq2[K, E] {
+	return func(yield func(K, E) bool) {
+		keys := make([]K, 0, len(m))
+		for k := range m {
+			keys = append(keys, k)
+		}
+
+		sort.Slice(keys, func(i, j int) bool {
+			return keys[i] < keys[j]
+		})
+
+		for _, k := range keys {
+			if !yield(k, m[k]) {
+				return
+			}
+		}
+	}
 }
