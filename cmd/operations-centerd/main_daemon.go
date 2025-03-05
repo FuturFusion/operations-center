@@ -65,29 +65,29 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	)
 	defer stop()
 
-	d := api.NewDaemon(c.env, cfg)
+	d := api.NewDaemon(cmd.Context(), c.env, cfg)
 
-	err = d.Start()
+	err = d.Start(cmd.Context())
 	if err != nil {
-		slog.Error("Failed to start daemon", logger.Err(err))
+		slog.ErrorContext(cmd.Context(), "Failed to start daemon", logger.Err(err))
 		return fmt.Errorf("Failed to start daemon: %v", err)
 	}
 
-	slog.Info("Daemon started")
+	slog.InfoContext(cmd.Context(), "Daemon started")
 
 	<-rootCtx.Done()
-	slog.Info("Shutting down")
+	slog.InfoContext(cmd.Context(), "Shutting down")
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 
 	err = d.Stop(shutdownCtx)
 	if err != nil {
-		slog.Error("Error occurred during shutdown of daemon", logger.Err(err))
+		slog.ErrorContext(cmd.Context(), "Error occurred during shutdown of daemon", logger.Err(err))
 		return fmt.Errorf("Error occurred during shutdown of daemon: %v", err)
 	}
 
-	slog.Info("Daemon shutdown completed successfully")
+	slog.InfoContext(cmd.Context(), "Daemon shutdown completed successfully")
 
 	return nil
 }

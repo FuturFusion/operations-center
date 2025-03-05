@@ -50,15 +50,15 @@ type Daemon struct {
 	errgroup *errgroup.Group
 }
 
-func NewDaemon(env environment, cfg *config.Config) *Daemon {
+func NewDaemon(ctx context.Context, env environment, cfg *config.Config) *Daemon {
 	clientCert, err := os.ReadFile(cfg.ClientCertificateFilename)
 	if err != nil {
-		slog.Warn("failed to read client certificate", slog.String("file", cfg.ClientCertificateFilename), logger.Err(err))
+		slog.WarnContext(ctx, "failed to read client certificate", slog.String("file", cfg.ClientCertificateFilename), logger.Err(err))
 	}
 
 	clientKey, err := os.ReadFile(cfg.ClientKeyFilename)
 	if err != nil {
-		slog.Warn("failed to read client key", slog.String("file", cfg.ClientKeyFilename), logger.Err(err))
+		slog.WarnContext(ctx, "failed to read client key", slog.String("file", cfg.ClientKeyFilename), logger.Err(err))
 	}
 
 	d := &Daemon{
@@ -71,8 +71,8 @@ func NewDaemon(env environment, cfg *config.Config) *Daemon {
 	return d
 }
 
-func (d *Daemon) Start() error {
-	slog.Info("Starting up", slog.String("version", version.Version))
+func (d *Daemon) Start(ctx context.Context) error {
+	slog.InfoContext(ctx, "Starting up", slog.String("version", version.Version))
 
 	db, err := dbdriver.Open(d.env.VarDir())
 	if err != nil {
@@ -183,7 +183,11 @@ func (d *Daemon) Start() error {
 
 	// Setup web server
 	d.server = &http.Server{
-		Handler:     router,
+		Handler: logger.RequestIDMiddleware(
+			logger.AccessLogMiddleware(
+				router,
+			),
+		),
 		IdleTimeout: 30 * time.Second,
 		Addr:        fmt.Sprintf("%s:%d", d.config.RestServerAddr, d.config.RestServerPort),
 		ErrorLog:    errorLogger,
@@ -201,7 +205,7 @@ func (d *Daemon) Start() error {
 			return err
 		}
 
-		slog.Info("Start unix socket listener", slog.Any("addr", unixListener.Addr()))
+		slog.InfoContext(ctx, "Start unix socket listener", slog.Any("addr", unixListener.Addr()))
 
 		err = d.server.Serve(unixListener)
 		if errors.Is(err, http.ErrServerClosed) {
@@ -213,7 +217,7 @@ func (d *Daemon) Start() error {
 	})
 
 	group.Go(func() error {
-		slog.Info("Start https listener", slog.Any("addr", d.server.Addr))
+		slog.InfoContext(ctx, "Start https listener", slog.Any("addr", d.server.Addr))
 
 		certFile := filepath.Join(d.env.VarDir(), "server.crt")
 		keyFile := filepath.Join(d.env.VarDir(), "server.key")
@@ -311,6 +315,6 @@ func handleRootPath(h http.Handler, ignoreTrailingSlash bool) http.Handler {
 type httpErrorLogger struct{}
 
 func (httpErrorLogger) Write(p []byte) (n int, err error) {
-	slog.Error(string(p)) //nolint:sloglint // error message coming from the http server is the message.
+	slog.ErrorContext(context.Background(), string(p)) //nolint:sloglint // error message coming from the http server is the message.
 	return len(p), nil
 }

@@ -24,7 +24,7 @@ func Ensure(ctx context.Context, db *sql.DB, dir string) (int, error) {
 	schema.fresh(freshSchema)
 	schema.hook(func(ctx context.Context, version int, tx *sql.Tx) error {
 		if !backupDone {
-			slog.Info(`Updating the database schema. Backup made as "local.db.bak"`)
+			slog.InfoContext(ctx, `Updating the database schema. Backup made as "local.db.bak"`)
 			path := filepath.Join(dir, "local.db")
 			err := file.Copy(path, path+".bak")
 			if err != nil {
@@ -35,9 +35,9 @@ func Ensure(ctx context.Context, db *sql.DB, dir string) (int, error) {
 		}
 
 		if version == -1 {
-			slog.Debug("Running pre-update queries from file for local DB schema")
+			slog.DebugContext(ctx, "Running pre-update queries from file for local DB schema")
 		} else {
-			slog.Debug("Updating DB schema", slog.Int("from_version", version), slog.Int("to_version", version+1))
+			slog.DebugContext(ctx, "Updating DB schema", slog.Int("from_version", version), slog.Int("to_version", version+1))
 		}
 
 		return nil
