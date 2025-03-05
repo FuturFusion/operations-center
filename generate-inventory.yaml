@@ -1,0 +1,76 @@
+---
+
+image:
+  object-name-property-name: filename
+  incus-get-all-method: GetImagesAllProjects
+  incus-get-method: GetImage
+
+instance:
+  object-type: InstanceFull
+  server-resource: true
+  incus-get-all-method: GetInstancesFullAllProjects
+  incus-get-method: GetInstanceFull
+
+network:
+  incus-get-all-method: GetNetworksAllProjects
+  incus-get-method: GetNetwork
+
+network_acl:
+  uses-embedded-post-type: true
+  incus-get-all-method: GetNetworkACLsAllProjects
+  incus-get-method: GetNetworkACL
+
+network_forward:
+  object-name-property-name: listen_address
+  omit-project: true
+  parent: network
+  incus-get-all-method: GetNetworkForwards
+  incus-get-method: GetNetworkForward
+
+network_integration:
+  omit-project: true
+  incus-get-all-method: GetNetworkIntegrations
+  incus-get-method: GetNetworkIntegration
+
+network_load_balancer:
+  object-name-property-name: listen_address
+  omit-project: true
+  parent: network
+  incus-get-all-method: GetNetworkLoadBalancers
+  incus-get-method: GetNetworkLoadBalancer
+
+network_peer:
+  omit-project: true
+  parent: network
+  incus-get-all-method: GetNetworkPeers
+  incus-get-method: GetNetworkPeer
+
+network_zone:
+  incus-get-all-method: GetNetworkZonesAllProjects
+  incus-get-method: GetNetworkZone
+
+profile:
+  incus-get-all-method: GetProfilesAllProjects
+  incus-get-method: GetProfile
+
+project:
+  omit-project: true
+  incus-get-all-method: GetProjects
+  incus-get-method: GetProject
+
+storage_bucket:
+  server-resource: true
+  parent: storage_pool
+  incus-get-all-method: GetStoragePoolBucketsAllProjects
+  incus-get-method: GetStoragePoolBucket
+
+storage_pool:
+  omit-project: true
+  incus-get-all-method: GetStoragePools
+  incus-get-method: GetStoragePool
+
+storage_volume:
+  server-resource: true
+  parent: storage_pool
+  incus-get-all-method: GetStoragePoolVolumesAllProjects
+  incus-get-method: GetStoragePoolVolume
