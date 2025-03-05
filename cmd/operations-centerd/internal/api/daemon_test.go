@@ -113,7 +113,9 @@ func TestStartAndStop(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
 			d := api.NewDaemon(
+				ctx,
 				mockEnv{
 					unixSocket: tc.unixSocket,
 					varDir:     tmpDir,
@@ -123,7 +125,7 @@ func TestStartAndStop(t *testing.T) {
 				},
 			)
 
-			err := d.Start()
+			err := d.Start(ctx)
 			tc.assertStartErr(t, err)
 			t.Cleanup(func() {
 				err = d.Stop(context.Background())

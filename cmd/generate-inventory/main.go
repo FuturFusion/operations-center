@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"embed"
 	"go/format"
 	"log/slog"
@@ -160,7 +161,7 @@ func main() {
 	}
 
 	for _, target := range targets {
-		slog.Info("generating", slog.String("name", args.Name), slog.String("template", target.TemplateName))
+		slog.InfoContext(context.Background(), "generating", slog.String("name", args.Name), slog.String("template", target.TemplateName))
 		func() {
 			filename := strings.Builder{}
 
@@ -189,7 +190,7 @@ func main() {
 
 func die(err error) {
 	if err != nil {
-		slog.Error("generate-inventory failed", slog.Any("err", err))
+		slog.ErrorContext(context.Background(), "generate-inventory failed", slog.Any("err", err))
 		panic("die")
 	}
 }
