@@ -39,7 +39,7 @@ func NewStorageVolumeServerClientWithPrometheus(base inventory.StorageVolumeServ
 }
 
 // GetStorageVolumeByName implements inventory.StorageVolumeServerClient.
-func (_d StorageVolumeServerClientWithPrometheus) GetStorageVolumeByName(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string) (storageVolume api.StorageVolume, err error) {
+func (_d StorageVolumeServerClientWithPrometheus) GetStorageVolumeByName(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,7 +49,7 @@ func (_d StorageVolumeServerClientWithPrometheus) GetStorageVolumeByName(ctx con
 
 		storageVolumeServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetStorageVolumeByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetStorageVolumeByName(ctx, connectionURL, storagePoolName, storageVolumeName)
+	return _d.base.GetStorageVolumeByName(ctx, connectionURL, storagePoolName, storageVolumeName, storageVolumeType)
 }
 
 // GetStorageVolumes implements inventory.StorageVolumeServerClient.

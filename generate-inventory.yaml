@@ -74,3 +74,8 @@ storage_volume:
   parent: storage_pool
   incus-get-all-method: GetStoragePoolVolumesAllProjects
   incus-get-method: GetStoragePoolVolume
+  extra-attributes:
+    - name: type
+      type: string
+      test-dummy-value: >-
+        "custom"

@@ -17,6 +17,7 @@ type StorageVolume struct {
 	ProjectName     string
 	StoragePoolName string
 	Name            string
+	Type            string
 	Object          incusapi.StorageVolume
 	LastUpdated     time.Time
 }

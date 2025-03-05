@@ -67,6 +67,7 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 		ProjectName:     "one",
 		StoragePoolName: "parent one",
 		Name:            "one",
+		Type:            "custom",
 		Object:          incusapi.StorageVolume{},
 		LastUpdated:     time.Now(),
 	}
@@ -76,6 +77,7 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 		ProjectName:     "two",
 		StoragePoolName: "parent one",
 		Name:            "two",
+		Type:            "custom",
 		Object:          incusapi.StorageVolume{},
 		LastUpdated:     time.Now(),
 	}
