@@ -82,6 +82,10 @@ func main() {
 	flagConfigFile := pflag.String("config", "generate-inventory.yaml", "filename of the configfile")
 	flagLogDebug := pflag.BoolP("debug", "d", false, "Show all debug messages")
 	flagLogVerbose := pflag.BoolP("verbose", "v", false, "Show all information messages")
+
+	flagOnlyTemplate := pflag.String("only-template", "", "limit code generation to this template")
+	flagOnlyEntity := pflag.String("only-entity", "", "limit code generateion to this entity")
+
 	pflag.Parse()
 
 	err := logger.InitLogger(os.Stderr, "", *flagLogVerbose, *flagLogDebug)
@@ -131,6 +135,10 @@ func main() {
 	die(err)
 
 	for name, entity := range orderedByKey(cfg) {
+		if *flagOnlyEntity != "" && *flagOnlyEntity != name {
+			continue
+		}
+
 		args := struct {
 			Name                   string
 			PluralName             string
@@ -166,6 +174,10 @@ func main() {
 		}
 
 		for _, target := range targets {
+			if *flagOnlyTemplate != "" && *flagOnlyTemplate != target.TemplateName {
+				continue
+			}
+
 			slog.InfoContext(ctx, "generating", slog.String("name", args.Name), slog.String("template", target.TemplateName))
 			func() {
 				filename := strings.Builder{}
