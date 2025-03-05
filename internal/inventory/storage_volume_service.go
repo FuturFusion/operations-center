@@ -77,7 +77,7 @@ func (s storageVolumeService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		retrievedStorageVolume, err := s.storageVolumeClient.GetStorageVolumeByName(ctx, server.ConnectionURL, storageVolume.StoragePoolName, storageVolume.Name)
+		retrievedStorageVolume, err := s.storageVolumeClient.GetStorageVolumeByName(ctx, server.ConnectionURL, storageVolume.StoragePoolName, storageVolume.Name, storageVolume.Type)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, storageVolume.ID)
 			if err != nil {
@@ -92,6 +92,7 @@ func (s storageVolumeService) ResyncByID(ctx context.Context, id int) error {
 		}
 
 		storageVolume.ProjectName = retrievedStorageVolume.Project
+		storageVolume.Type = retrievedStorageVolume.Type
 		storageVolume.Object = retrievedStorageVolume
 		storageVolume.LastUpdated = s.now()
 

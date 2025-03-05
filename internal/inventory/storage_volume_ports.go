@@ -27,5 +27,5 @@ type StorageVolumeRepo interface {
 
 type StorageVolumeServerClient interface {
 	GetStorageVolumes(ctx context.Context, connectionURL string, storagePoolName string) ([]incusapi.StorageVolume, error)
-	GetStorageVolumeByName(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string) (incusapi.StorageVolume, error)
+	GetStorageVolumeByName(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error)
 }

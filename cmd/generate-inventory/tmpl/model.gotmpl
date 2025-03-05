@@ -21,6 +21,9 @@ type {{ .Name | pascalcase }} struct {
 	{{ .ParentName | pascalcase }}Name string
 {{- end }}
 	Name        string
+{{- range .ExtraAttributes }}
+	{{ .Name | pascalcase }} {{ .Type }}
+{{- end }}
 	Object      incusapi.{{ .ObjectType | pascalcase }}
 	LastUpdated time.Time
 }

@@ -299,7 +299,7 @@ func TestStorageVolumeService_ResyncByID(t *testing.T) {
 			}
 
 			storageVolumeClient := &serverMock.StorageVolumeServerClientMock{
-				GetStorageVolumeByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string) (incusapi.StorageVolume, error) {
+				GetStorageVolumeByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error) {
 					require.Equal(t, tc.repoGetByIDStorageVolume.Name, storageVolumeName)
 					require.Equal(t, "storage_pool", storagePoolName)
 					return tc.storageVolumeClientGetStorageVolumeByName, tc.storageVolumeClientGetStorageVolumeByNameErr

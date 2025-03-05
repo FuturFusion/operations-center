@@ -99,7 +99,7 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //			GetStoragePoolsFunc: func(ctx context.Context, connectionURL string) ([]api.StoragePool, error) {
 //				panic("mock out the GetStoragePools method")
 //			},
-//			GetStorageVolumeByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string) (api.StorageVolume, error) {
+//			GetStorageVolumeByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string, storageVolumeType string) (api.StorageVolume, error) {
 //				panic("mock out the GetStorageVolumeByName method")
 //			},
 //			GetStorageVolumesFunc: func(ctx context.Context, connectionURL string, storagePoolName string) ([]api.StorageVolume, error) {
@@ -191,7 +191,7 @@ type ServerClientMock struct {
 	GetStoragePoolsFunc func(ctx context.Context, connectionURL string) ([]api.StoragePool, error)
 
 	// GetStorageVolumeByNameFunc mocks the GetStorageVolumeByName method.
-	GetStorageVolumeByNameFunc func(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string) (api.StorageVolume, error)
+	GetStorageVolumeByNameFunc func(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string, storageVolumeType string) (api.StorageVolume, error)
 
 	// GetStorageVolumesFunc mocks the GetStorageVolumes method.
 	GetStorageVolumesFunc func(ctx context.Context, connectionURL string, storagePoolName string) ([]api.StorageVolume, error)
@@ -432,6 +432,8 @@ type ServerClientMock struct {
 			StoragePoolName string
 			// StorageVolumeName is the storageVolumeName argument value.
 			StorageVolumeName string
+			// StorageVolumeType is the storageVolumeType argument value.
+			StorageVolumeType string
 		}
 		// GetStorageVolumes holds details about calls to the GetStorageVolumes method.
 		GetStorageVolumes []struct {
@@ -1494,7 +1496,7 @@ func (mock *ServerClientMock) GetStoragePoolsCalls() []struct {
 }
 
 // GetStorageVolumeByName calls GetStorageVolumeByNameFunc.
-func (mock *ServerClientMock) GetStorageVolumeByName(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string) (api.StorageVolume, error) {
+func (mock *ServerClientMock) GetStorageVolumeByName(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string, storageVolumeType string) (api.StorageVolume, error) {
 	if mock.GetStorageVolumeByNameFunc == nil {
 		panic("ServerClientMock.GetStorageVolumeByNameFunc: method is nil but ServerClient.GetStorageVolumeByName was just called")
 	}
@@ -1503,16 +1505,18 @@ func (mock *ServerClientMock) GetStorageVolumeByName(ctx context.Context, connec
 		ConnectionURL     string
 		StoragePoolName   string
 		StorageVolumeName string
+		StorageVolumeType string
 	}{
 		Ctx:               ctx,
 		ConnectionURL:     connectionURL,
 		StoragePoolName:   storagePoolName,
 		StorageVolumeName: storageVolumeName,
+		StorageVolumeType: storageVolumeType,
 	}
 	mock.lockGetStorageVolumeByName.Lock()
 	mock.calls.GetStorageVolumeByName = append(mock.calls.GetStorageVolumeByName, callInfo)
 	mock.lockGetStorageVolumeByName.Unlock()
-	return mock.GetStorageVolumeByNameFunc(ctx, connectionURL, storagePoolName, storageVolumeName)
+	return mock.GetStorageVolumeByNameFunc(ctx, connectionURL, storagePoolName, storageVolumeName, storageVolumeType)
 }
 
 // GetStorageVolumeByNameCalls gets all the calls that were made to GetStorageVolumeByName.
@@ -1524,12 +1528,14 @@ func (mock *ServerClientMock) GetStorageVolumeByNameCalls() []struct {
 	ConnectionURL     string
 	StoragePoolName   string
 	StorageVolumeName string
+	StorageVolumeType string
 } {
 	var calls []struct {
 		Ctx               context.Context
 		ConnectionURL     string
 		StoragePoolName   string
 		StorageVolumeName string
+		StorageVolumeType string
 	}
 	mock.lockGetStorageVolumeByName.RLock()
 	calls = mock.calls.GetStorageVolumeByName

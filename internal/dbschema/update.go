@@ -180,9 +180,10 @@ CREATE TABLE storage_volumes (
   project_name TEXT NOT NULL,
   storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,
+  type TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, storage_pool_name, name),
+  UNIQUE (server_id, project_name, storage_pool_name, name, type),
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 
@@ -395,9 +396,10 @@ CREATE TABLE storage_volumes (
   project_name TEXT NOT NULL,
   storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,
+  type TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, storage_pool_name, name),
+  UNIQUE (server_id, project_name, storage_pool_name, name, type),
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 `
