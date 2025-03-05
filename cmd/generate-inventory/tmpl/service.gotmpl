@@ -93,7 +93,7 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 			return err
 		}
 
-		retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, {{ .ResourceForeignKey }}.ConnectionURL, {{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name)
+		retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, {{ .ResourceForeignKey }}.ConnectionURL, {{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}.{{ .Name | pascalcase }} {{- end}})
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, {{ .Name | camelcase }}.ID)
 			if err != nil {
@@ -109,6 +109,9 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 
 {{ if .HasProject }}
 		{{ .Name | camelcase }}.ProjectName = retrieved{{ .Name | pascalcase }}.Project
+{{- end }}
+{{- range .ExtraAttributes }}
+		{{ $.Name | camelcase }}. {{ .Name | pascalcase }} = retrieved{{ $.Name | pascalcase }}.{{ .Name | pascalcase }}
 {{- end }}
 		{{ .Name | camelcase }}.Object = retrieved{{ .Name | pascalcase }}
 		{{ .Name | camelcase }}.LastUpdated = s.now()

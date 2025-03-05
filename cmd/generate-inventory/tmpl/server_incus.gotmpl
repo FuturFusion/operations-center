@@ -23,14 +23,13 @@ func (s serverClient) Get{{ .PluralName | pascalcase }}(ctx context.Context, con
 	return server{{ .PluralName | pascalcase }}, nil
 }
 
-func (s serverClient) Get{{ .Name | pascalcase }}ByName(ctx context.Context, connectionURL string, {{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string) (incusapi.{{ .ObjectType | pascalcase }}, error) {
+func (s serverClient) Get{{ .Name | pascalcase }}ByName(ctx context.Context, connectionURL string, {{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }}{{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error) {
 	client, err := s.getClient(ctx, connectionURL)
 	if err != nil {
 		return incusapi.{{ .ObjectType | pascalcase }}{}, err
 	}
 
-	{{ if eq .IncusGetMethod "GetStoragePoolVolume" }}// FIXME: currently we just pass empty string ("") for the type, which is obviously wrong and needs to be fixed.{{ end }}
-	server{{ .Name | pascalcase }}, _, err := client.{{ .IncusGetMethod }}({{ if .HasParent }}{{ .ParentName | camelcase }}Name, {{ end -}} {{ if eq .IncusGetMethod "GetStoragePoolVolume" }}"", {{ end }}{{ .Name | camelcase }}Name)
+	server{{ .Name | pascalcase }}, _, err := client.{{ .IncusGetMethod }}({{ if .HasParent }}{{ .ParentName | camelcase }}Name, {{- end -}} {{- range .ExtraAttributes }} {{ $.Name | camelcase }}{{ .Name | pascalcase }}, {{- end}} {{ .Name | camelcase }}Name)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
 		return incusapi.{{ .ObjectType | pascalcase }}{}, domain.ErrNotFound
 	}

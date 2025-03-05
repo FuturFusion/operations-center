@@ -155,6 +155,7 @@ func main() {
 			ParentName             string
 			ParentPluralName       string
 			ParentObjectType       string
+			ExtraAttributes        []ExtraAttribute
 		}{
 			Name:                   name,
 			PluralName:             entity.PluralName,
@@ -171,6 +172,7 @@ func main() {
 			ParentName:             entity.ParentName,
 			ParentPluralName:       entity.ParentPluralName,
 			ParentObjectType:       entity.ParentObjectType,
+			ExtraAttributes:        entity.ExtraAttributes,
 		}
 
 		for _, target := range targets {

@@ -74,6 +74,9 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 		{{ .ParentName | pascalcase }}Name:  "parent one",
 {{- end }}
 		Name:        "one",
+{{- range .ExtraAttributes }}
+		{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
 		Object:      incusapi.{{ .ObjectType | pascalcase }}{},
 		LastUpdated: time.Now(),
 	}
@@ -87,6 +90,9 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 		{{ .ParentName | pascalcase }}Name:  "parent one",
 {{- end }}
 		Name:        "two",
+{{- range .ExtraAttributes }}
+		{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
 		Object:      incusapi.{{ .ObjectType | pascalcase }}{},
 		LastUpdated: time.Now(),
 	}
