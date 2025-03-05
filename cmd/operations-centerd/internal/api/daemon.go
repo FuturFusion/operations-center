@@ -183,7 +183,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Setup web server
 	d.server = &http.Server{
-		Handler:     logger.RequestIDMiddleware(router),
+		Handler: logger.RequestIDMiddleware(
+			logger.AccessLogMiddleware(
+				router,
+			),
+		),
 		IdleTimeout: 30 * time.Second,
 		Addr:        fmt.Sprintf("%s:%d", d.config.RestServerAddr, d.config.RestServerPort),
 		ErrorLog:    errorLogger,
