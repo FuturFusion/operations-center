@@ -7,7 +7,7 @@ image:
 
 instance:
   object-type: InstanceFull
-  server-resource: true
+  has-location: true
   incus-get-all-method: GetInstancesFullAllProjects
   incus-get-method: GetInstanceFull
 
@@ -59,7 +59,7 @@ project:
   incus-get-method: GetProject
 
 storage_bucket:
-  server-resource: true
+  has-location: true
   parent: storage_pool
   incus-get-all-method: GetStoragePoolBucketsAllProjects
   incus-get-method: GetStoragePoolBucket
@@ -70,7 +70,7 @@ storage_pool:
   incus-get-method: GetStoragePool
 
 storage_volume:
-  server-resource: true
+  has-location: true
   parent: storage_pool
   incus-get-all-method: GetStoragePoolVolumesAllProjects
   incus-get-method: GetStoragePoolVolume

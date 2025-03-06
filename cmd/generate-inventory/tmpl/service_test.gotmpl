@@ -53,7 +53,7 @@ func Test{{ .Name | pascalcase }}Service_GetAllIDs(t *testing.T) {
 				},
 			}
 
-			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, {{ if .IsServerResource }}nil, {{ end -}} nil, nil, {{ if .HasParent }}nil, {{ end -}} inventory.{{ .Name | pascalcase }}WithNow(func() time.Time {
+			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, nil, nil, {{ if .HasParent }}nil, {{ end -}} inventory.{{ .Name | pascalcase }}WithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -81,7 +81,7 @@ func Test{{ .Name | pascalcase }}Service_GetByID(t *testing.T) {
 			idArg: 1,
 			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
-				{{ .ResourceForeignKey | pascalcase }}ID:    1,
+				ClusterID:    1,
 {{- if .HasProject }}
 				ProjectName: "one",
 {{- end }}
@@ -113,7 +113,7 @@ func Test{{ .Name | pascalcase }}Service_GetByID(t *testing.T) {
 				},
 			}
 
-			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, {{ if .IsServerResource }}nil, {{ end -}} nil, nil, {{ if .HasParent }}nil, {{ end -}} inventory.{{ .Name | pascalcase }}WithNow(func() time.Time {
+			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, nil, nil, {{ if .HasParent }}nil, {{ end -}} inventory.{{ .Name | pascalcase }}WithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -130,8 +130,8 @@ func Test{{ .Name | pascalcase }}Service_GetByID(t *testing.T) {
 func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 	tests := []struct {
 		name                   string
-		{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }} provisioning.{{ .ResourceForeignKey | pascalcase }}
-		{{ .ResourceForeignKey }}SvcGetByIDErr    error
+		clusterSvcGetByIDCluster provisioning.Cluster
+		clusterSvcGetByIDErr    error
 		{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName    incusapi.{{ .ObjectType | pascalcase }}
 		{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr error
 		repoGetByID{{ .Name | pascalcase }} inventory.{{ .Name | pascalcase }}
@@ -145,18 +145,15 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			name: "success",
 			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
 				ID:       1,
-				{{ .ResourceForeignKey | pascalcase }}ID: 1,
+				ClusterID: 1,
 				Name:     "one",
 {{- if .HasParent }}
 				{{ .ParentName | pascalcase }}Name: "{{ .ParentName }}",
 {{- end }}
 			},
-			{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}: provisioning.{{ .ResourceForeignKey | pascalcase }}{
+			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:        1,
-{{- if .IsServerResource }}
-				ClusterID: 1,
-{{- end}}
-				Name:  "{{ .ResourceForeignKey }}-one",
+				Name:  "cluster-one",
 			},
 			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
 {{- if .ObjectEmbedded }}
@@ -183,18 +180,15 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			name: "success - {{ .Name | camelcase }} get by name - not found",
 			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
 				ID:       1,
-				{{ .ResourceForeignKey | pascalcase }}ID: 1,
+				ClusterID: 1,
 				Name:     "one",
 {{- if .HasParent }}
 				{{ .ParentName | pascalcase }}Name: "{{ .ParentName }}",
 {{- end }}
 			},
-			{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}: provisioning.{{ .ResourceForeignKey | pascalcase }}{
+			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:        1,
-{{- if .IsServerResource }}
-				ClusterID: 1,
-{{- end}}
-				Name:  "{{ .ResourceForeignKey }}-one",
+				Name:  "cluster-one",
 			},
 			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr: domain.ErrNotFound,
 
@@ -207,16 +201,16 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - {{ .ResourceForeignKey }} get by ID",
+			name: "error - cluster get by ID",
 			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
 				ID:       1,
-				{{ .ResourceForeignKey | pascalcase }}ID: 1,
+				ClusterID: 1,
 				Name:     "one",
 {{- if .HasParent }}
 				{{ .ParentName | pascalcase }}Name: "{{ .ParentName }}",
 {{- end }}
 			},
-			{{ .ResourceForeignKey }}SvcGetByIDErr: boom.Error,
+			clusterSvcGetByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -224,18 +218,15 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			name: "error - {{ .Name | camelcase }} get by name",
 			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
 				ID:       1,
-				{{ .ResourceForeignKey | pascalcase }}ID: 1,
+				ClusterID: 1,
 				Name:     "one",
 {{- if .HasParent }}
 				{{ .ParentName | pascalcase }}Name: "{{ .ParentName }}",
 {{- end }}
 			},
-			{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}: provisioning.{{ .ResourceForeignKey | pascalcase }}{
+			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:        1,
-{{- if .IsServerResource }}
-				ClusterID: 1,
-{{- end}}
-				Name:  "{{ .ResourceForeignKey }}-one",
+				Name:  "cluster-one",
 			},
 			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr: boom.Error,
 
@@ -245,18 +236,15 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			name: "error - {{ .Name | camelcase }} get by name - not found - delete by id",
 			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
 				ID:       1,
-				{{ .ResourceForeignKey | pascalcase }}ID: 1,
+				ClusterID: 1,
 				Name:     "one",
 {{- if .HasParent }}
 				{{ .ParentName | pascalcase }}Name: "{{ .ParentName }}",
 {{- end }}
 			},
-			{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}: provisioning.{{ .ResourceForeignKey | pascalcase }}{
+			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:        1,
-{{- if .IsServerResource }}
-				ClusterID: 1,
-{{- end}}
-				Name:  "{{ .ResourceForeignKey }}-one",
+				Name:  "cluster-one",
 			},
 			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr: domain.ErrNotFound,
 			repoDeleteByIDErr: boom.Error,
@@ -267,18 +255,15 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			name: "error - validate",
 			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
 				ID:       1,
-				{{ .ResourceForeignKey | pascalcase }}ID: 1,
+				ClusterID: 1,
 				Name:     "", // invalid
 {{- if .HasParent }}
 				{{ .ParentName | pascalcase }}Name: "{{ .ParentName }}",
 {{- end }}
 			},
-			{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}: provisioning.{{ .ResourceForeignKey | pascalcase }}{
+			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:        1,
-{{- if .IsServerResource }}
-				ClusterID: 1,
-{{- end}}
-				Name:  "{{ .ResourceForeignKey }}-one",
+				Name:  "cluster-one",
 			},
 			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
 {{- if .ObjectEmbedded }}
@@ -308,18 +293,15 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			name: "error - update by ID",
 			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
 				ID:       1,
-				{{ .ResourceForeignKey | pascalcase }}ID: 1,
+				ClusterID: 1,
 				Name:     "one",
 {{- if .HasParent }}
 				{{ .ParentName | pascalcase }}Name: "{{ .ParentName }}",
 {{- end }}
 			},
-			{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}: provisioning.{{ .ResourceForeignKey | pascalcase }}{
+			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:        1,
-{{- if .IsServerResource }}
-				ClusterID: 1,
-{{- end }}
-				Name:  "{{ .ResourceForeignKey }}-one",
+				Name:  "cluster-one",
 			},
 			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
 {{- if .ObjectEmbedded }}
@@ -361,10 +343,10 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 				},
 			}
 
-			{{ .ResourceForeignKey }}Svc := &serviceMock.Provisioning{{ .ResourceForeignKey | pascalcase }}ServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.{{ .ResourceForeignKey | pascalcase }}, error) {
+			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
 					require.Equal(t, 1, id)
-					return tc.{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}, tc.{{ .ResourceForeignKey }}SvcGetByIDErr
+					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
 
@@ -378,7 +360,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 				},
 			}
 
-			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, {{ if .IsServerResource }}nil, {{ end -}} {{ .ResourceForeignKey }}Svc, {{ .Name | camelcase }}Client, {{ if .HasParent }}nil, {{ end -}} inventory.{{ .Name | pascalcase }}WithNow(func() time.Time {
+			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, clusterSvc, {{ .Name | camelcase }}Client, {{ if .HasParent }}nil, {{ end -}} inventory.{{ .Name | pascalcase }}WithNow(func() time.Time {
 				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
 			}))
 
@@ -392,22 +374,18 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 }
 
 func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
-	// Includes also SyncCluster and SyncServer
+	// Includes also SyncCluster
 	tests := []struct {
 		name                              string
-{{- if .IsServerResource }}
-		serverSvcGetAllByServerIDServers provisioning.Servers
-		serverSvcGetAllByServerIDErr     error
-{{- end }}
-		{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}            provisioning.{{ .ResourceForeignKey | pascalcase }}
-		{{ .ResourceForeignKey }}SvcGetByIDErr               error
+		clusterSvcGetByIDCluster            provisioning.Cluster
+		clusterSvcGetByIDErr               error
 {{- if .HasParent }}
 		{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }} []incusapi.{{ .ParentObjectType | pascalcase }}
 		{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}Err error
 {{- end }}
 		{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}        []incusapi.{{ .ObjectType | pascalcase }}
 		{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}Err     error
-		repoDeleteBy{{ .ResourceForeignKey | pascalcase }}IDErr           error
+		repoDeleteByClusterIDErr           error
 		repoCreateErr                     error
 		serviceOptions                    []inventory.{{ .Name | pascalcase }}ServiceOption
 
@@ -415,21 +393,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 	}{
 		{
 			name: "success",
-{{- if .IsServerResource }}
-			serverSvcGetAllByServerIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:  "server-one",
-				},
-			},
-{{- end }}
-			{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}: provisioning.{{ .ResourceForeignKey | pascalcase }}{
+			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:        1,
-{{- if .IsServerResource }}
-				ClusterID: 1,
-{{- end }}
-				Name:  "{{ .ResourceForeignKey }}-one",
+				Name:  "cluster-one",
 			},
 {{- if .HasParent }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
@@ -471,47 +437,18 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 
 			assertErr: require.NoError,
 		},
-{{- if .IsServerResource }}
 		{
-			name: "error - {{ .ResourceForeignKey }} service get all by cluster ID",
-			serverSvcGetAllByServerIDErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-{{- end }}
-		{
-			name: "error - {{ .ResourceForeignKey }} service get by ID",
-{{- if .IsServerResource }}
-			serverSvcGetAllByServerIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:  "server-one",
-				},
-			},
-{{- end }}
-			{{ .ResourceForeignKey }}SvcGetByIDErr: boom.Error,
+			name: "error - cluster service get by ID",
+			clusterSvcGetByIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 {{- if .HasParent }}
 		{
 			name: "error - {{ .ParentName | camelcase }} client get {{ .ParentPluralName | pascalcase }}",
-{{- if .IsServerResource }}
-			serverSvcGetAllByServerIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:  "server-one",
-				},
-			},
-{{- end }}
-			{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}: provisioning.{{ .ResourceForeignKey | pascalcase }}{
+			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:        1,
-{{- if .IsServerResource }}
-				ClusterID: 1,
-{{- end }}
-				Name:  "{{ .ResourceForeignKey }}-one",
+				Name:  "cluster-one",
 			},
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}Err: boom.Error,
 
@@ -520,21 +457,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- end }}
 		{
 			name: "error - {{ .Name | camelcase }} client get {{ .PluralName | pascalcase }}",
-{{- if .IsServerResource }}
-			serverSvcGetAllByServerIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:  "server-one",
-				},
-			},
-{{- end }}
-			{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}: provisioning.{{ .ResourceForeignKey | pascalcase }}{
+			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:        1,
-{{- if .IsServerResource }}
-				ClusterID: 1,
-{{- end }}
-				Name:  "{{ .ResourceForeignKey }}-one",
+				Name:  "cluster-one",
 			},
 {{- if .HasParent }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
@@ -548,22 +473,10 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - {{ .PluralName }} delete by {{ .ResourceForeignKey }} ID",
-{{- if .IsServerResource }}
-			serverSvcGetAllByServerIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:  "server-one",
-				},
-			},
-{{- end }}
-			{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}: provisioning.{{ .ResourceForeignKey | pascalcase }}{
+			name: "error - {{ .PluralName }} delete by cluster ID",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:        1,
-{{- if .IsServerResource }}
-				ClusterID: 1,
-{{- end }}
-				Name:  "{{ .ResourceForeignKey }}-one",
+				Name:  "cluster-one",
 			},
 {{- if .HasParent }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
@@ -592,27 +505,15 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- end }}
 				},
 			},
-			repoDeleteBy{{ .ResourceForeignKey | pascalcase }}IDErr: boom.Error,
+			repoDeleteByClusterIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - validate",
-{{- if .IsServerResource }}
-			serverSvcGetAllByServerIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:  "server-one",
-				},
-			},
-{{- end }}
-			{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}: provisioning.{{ .ResourceForeignKey | pascalcase }}{
+			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:        1,
-{{- if .IsServerResource }}
-				ClusterID: 1,
-{{- end }}
-				Name:  "{{ .ResourceForeignKey }}-one",
+				Name:  "cluster-one",
 			},
 {{- if .HasParent }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
@@ -649,21 +550,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - {{ .Name | camelcase }} create",
-{{- if .IsServerResource }}
-			serverSvcGetAllByServerIDServers: provisioning.Servers{
-				{
-					ID:        1,
-					ClusterID: 1,
-					Name:  "server-one",
-				},
-			},
-{{- end }}
-			{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}: provisioning.{{ .ResourceForeignKey | pascalcase }}{
+			clusterSvcGetByIDCluster: provisioning.Cluster{
 				ID:        1,
-{{- if .IsServerResource }}
-				ClusterID: 1,
-{{- end }}
-				Name:  "{{ .ResourceForeignKey }}-one",
+				Name:  "cluster-one",
 			},
 {{- if .HasParent }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
@@ -702,32 +591,19 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
-				DeleteBy{{ .ResourceForeignKey | pascalcase }}IDFunc: func(ctx context.Context, {{ .ResourceForeignKey }}ID int) error {
-					return tc.repoDeleteBy{{ .ResourceForeignKey | pascalcase }}IDErr
+				DeleteByClusterIDFunc: func(ctx context.Context, clusterID int) error {
+					return tc.repoDeleteByClusterIDErr
 				},
 				CreateFunc: func(ctx context.Context, {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
 					return inventory.{{ .Name | pascalcase }}{}, tc.repoCreateErr
 				},
 			}
 
-{{ if .IsServerResource }}
-			var clusterSvc *serviceMock.ProvisioningClusterServiceMock
-
-			serverSvc := &serviceMock.Provisioning{{ .ResourceForeignKey | pascalcase }}ServiceMock{
-				GetAllByClusterIDFunc: func(ctx context.Context, clusterID int) (provisioning.{{ .ResourceForeignKey | pascalcase }}s, error) {
-					return tc.{{ .ResourceForeignKey }}SvcGetAllBy{{ .ResourceForeignKey | pascalcase }}IDServers, tc.{{ .ResourceForeignKey }}SvcGetAllBy{{ .ResourceForeignKey | pascalcase }}IDErr
-				},
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.{{ .ResourceForeignKey | pascalcase }}, error) {
-					return tc.{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}, tc.{{ .ResourceForeignKey }}SvcGetByIDErr
-				},
-			}
-{{ else }}
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.{{ .ResourceForeignKey | pascalcase }}, error) {
-					return tc.{{ .ResourceForeignKey }}SvcGetByID{{ .ResourceForeignKey | pascalcase }}, tc.{{ .ResourceForeignKey }}SvcGetByIDErr
+				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
+					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
-{{ end }}
 {{- if .HasParent }}
 
 			{{ .ParentName | camelcase }}Client := &serverMock.{{ .ParentName | pascalcase }}ServerClientMock{
@@ -743,7 +619,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				},
 			}
 
-			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, clusterSvc, {{ if .IsServerResource }}serverSvc, {{ end -}} {{ .Name | camelcase }}Client, {{- if .HasParent }}{{ .ParentName | camelcase }}Client, {{- end }}
+			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, clusterSvc, {{ .Name | camelcase }}Client, {{- if .HasParent }}{{ .ParentName | camelcase }}Client, {{- end }}
 				append(
 					tc.serviceOptions,
 					inventory.{{ .Name | pascalcase }}WithNow(func() time.Time {

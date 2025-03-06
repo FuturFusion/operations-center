@@ -150,8 +150,7 @@ func main() {
 			ObjectNamePropertyName string
 			HasProject             bool
 			UsesEmbeddedPostType   bool
-			IsServerResource       bool
-			ResourceForeignKey     string
+			HasLocation            bool
 			IncusGetAllMethod      string
 			IncusGetMethod         string
 			HasParent              bool
@@ -167,8 +166,7 @@ func main() {
 			ObjectNamePropertyName: entity.ObjectNamePropertyName,
 			HasProject:             !entity.OmitProject,
 			UsesEmbeddedPostType:   entity.UsesEmbeddedPostType,
-			IsServerResource:       entity.ServerResource,
-			ResourceForeignKey:     iif(entity.ServerResource, "server", "cluster"),
+			HasLocation:            entity.HasLocation,
 			IncusGetAllMethod:      entity.IncusGetAllMethod,
 			IncusGetMethod:         entity.IncusGetMethod,
 			HasParent:              entity.ParentName != "",
@@ -238,15 +236,6 @@ func directoryExists(name string) bool {
 	}
 
 	return info.IsDir()
-}
-
-// iff is short for inline if.
-func iif[T any](condition bool, valueA T, valueB T) T {
-	if condition {
-		return valueA
-	}
-
-	return valueB
 }
 
 // orderedByKey returns an iterator to traverse a map ordered by key.
