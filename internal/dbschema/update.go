@@ -46,13 +46,14 @@ CREATE TABLE images (
 
 CREATE TABLE instances (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  location TEXT NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, location, project_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE networks (
@@ -154,14 +155,15 @@ CREATE TABLE projects (
 
 CREATE TABLE storage_buckets (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  location TEXT NOT NULL,
   project_name TEXT NOT NULL,
   storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, storage_pool_name, name),
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, location, project_name, storage_pool_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE storage_pools (
@@ -176,15 +178,16 @@ CREATE TABLE storage_pools (
 
 CREATE TABLE storage_volumes (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  location TEXT NOT NULL,
   project_name TEXT NOT NULL,
   storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, storage_pool_name, name, type),
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, location, project_name, storage_pool_name, name, type),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 INSERT INTO schema (version, updated_at) VALUES (2, strftime("%s"))
@@ -262,13 +265,14 @@ CREATE TABLE images (
 
 CREATE TABLE instances (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  location TEXT NOT NULL,
   project_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, name),
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, location, project_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE networks (
@@ -370,14 +374,15 @@ CREATE TABLE projects (
 
 CREATE TABLE storage_buckets (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  location TEXT NOT NULL,
   project_name TEXT NOT NULL,
   storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, storage_pool_name, name),
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, location, project_name, storage_pool_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE storage_pools (
@@ -392,15 +397,16 @@ CREATE TABLE storage_pools (
 
 CREATE TABLE storage_volumes (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  server_id INTEGER NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  location TEXT NOT NULL,
   project_name TEXT NOT NULL,
   storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (server_id, project_name, storage_pool_name, name, type),
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  UNIQUE (cluster_id, location, project_name, storage_pool_name, name, type),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 `
 	_, err := tx.Exec(stmt)
