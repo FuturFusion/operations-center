@@ -105,10 +105,10 @@ ORDER BY profiles.id
 func (r profile) GetByID(ctx context.Context, id int) (inventory.Profile, error) {
 	const sqlStmt = `
 SELECT
-  profiles.id, profiles.cluster_id, profiles.project_name, profiles.name, profiles.object, profiles.last_updated
+  id, cluster_id, project_name, name, object, last_updated
 FROM
   profiles
-WHERE profiles.id=:id;
+WHERE id=:id;
 `
 
 	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))

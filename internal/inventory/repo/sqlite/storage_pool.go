@@ -99,10 +99,10 @@ ORDER BY storage_pools.id
 func (r storagePool) GetByID(ctx context.Context, id int) (inventory.StoragePool, error) {
 	const sqlStmt = `
 SELECT
-  storage_pools.id, storage_pools.cluster_id, storage_pools.name, storage_pools.object, storage_pools.last_updated
+  id, cluster_id, name, object, last_updated
 FROM
   storage_pools
-WHERE storage_pools.id=:id;
+WHERE id=:id;
 `
 
 	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))

@@ -13,7 +13,7 @@ import (
 type StorageVolume struct {
 	ID              int
 	ClusterID       int
-	ServerID        int
+	Location        string
 	ProjectName     string
 	StoragePoolName string
 	Name            string
@@ -23,8 +23,8 @@ type StorageVolume struct {
 }
 
 func (m StorageVolume) Validate() error {
-	if m.ServerID < 1 {
-		return domain.NewValidationErrf("Invalid StorageVolume, server id can not be less than 1")
+	if m.ClusterID < 1 {
+		return domain.NewValidationErrf("Invalid StorageVolume, cluster id can not be less than 1")
 	}
 
 	if m.Name == "" {
@@ -45,7 +45,7 @@ func (m StorageVolume) Validate() error {
 type StorageVolumes []StorageVolume
 
 type StorageVolumeFilter struct {
-	Cluster *string
-	Server  *string
-	Project *string
+	Cluster  *string
+	Location *string
+	Project  *string
 }

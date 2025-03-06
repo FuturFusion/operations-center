@@ -92,17 +92,3 @@ func (_d InstanceServiceWithPrometheus) SyncCluster(ctx context.Context, cluster
 	}()
 	return _d.base.SyncCluster(ctx, clusterID)
 }
-
-// SyncServer implements inventory.InstanceService.
-func (_d InstanceServiceWithPrometheus) SyncServer(ctx context.Context, serverID int) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		instanceServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SyncServer", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.SyncServer(ctx, serverID)
-}

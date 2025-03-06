@@ -310,7 +310,7 @@ func TestNetworkLoadBalancerService_ResyncByID(t *testing.T) {
 }
 
 func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
-	// Includes also SyncCluster and SyncServer
+	// Includes also SyncCluster
 	tests := []struct {
 		name                                                string
 		clusterSvcGetByIDCluster                            provisioning.Cluster

@@ -14,7 +14,7 @@ import (
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 )
 
-func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverSvc provisioning.ServerService, serverClient inventory.ServerClient, inventoryRouter *http.ServeMux) []provisioning.InventorySyncer {
+func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverClient inventory.ServerClient, inventoryRouter *http.ServeMux) []provisioning.InventorySyncer {
 	// Service
 	inventoryImageSvc := inventoryServiceMiddleware.NewImageServiceWithSlog(
 		inventory.NewImageService(
@@ -35,7 +35,6 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 				slog.Default(),
 			),
 			clusterSvc,
-			serverSvc,
 			serverClient,
 		),
 		slog.Default(),
@@ -184,7 +183,6 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 				slog.Default(),
 			),
 			clusterSvc,
-			serverSvc,
 			serverClient,
 			serverClient,
 		),
@@ -210,7 +208,6 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 				slog.Default(),
 			),
 			clusterSvc,
-			serverSvc,
 			serverClient,
 			serverClient,
 		),

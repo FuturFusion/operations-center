@@ -51,6 +51,20 @@ func (_d StorageBucketRepoWithPrometheus) Create(ctx context.Context, storageBuc
 	return _d.base.Create(ctx, storageBucket)
 }
 
+// DeleteByClusterID implements inventory.StorageBucketRepo.
+func (_d StorageBucketRepoWithPrometheus) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		storageBucketRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterID", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteByClusterID(ctx, clusterID)
+}
+
 // DeleteByID implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
 	_since := time.Now()
@@ -63,20 +77,6 @@ func (_d StorageBucketRepoWithPrometheus) DeleteByID(ctx context.Context, id int
 		storageBucketRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.DeleteByID(ctx, id)
-}
-
-// DeleteByServerID implements inventory.StorageBucketRepo.
-func (_d StorageBucketRepoWithPrometheus) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		storageBucketRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByServerID", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.DeleteByServerID(ctx, serverID)
 }
 
 // GetAllIDsWithFilter implements inventory.StorageBucketRepo.

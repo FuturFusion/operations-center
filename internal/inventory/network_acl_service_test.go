@@ -311,7 +311,7 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 }
 
 func TestNetworkACLService_SyncAll(t *testing.T) {
-	// Includes also SyncCluster and SyncServer
+	// Includes also SyncCluster
 	tests := []struct {
 		name                              string
 		clusterSvcGetByIDCluster          provisioning.Cluster

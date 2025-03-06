@@ -105,10 +105,10 @@ ORDER BY network_zones.id
 func (r networkZone) GetByID(ctx context.Context, id int) (inventory.NetworkZone, error) {
 	const sqlStmt = `
 SELECT
-  network_zones.id, network_zones.cluster_id, network_zones.project_name, network_zones.name, network_zones.object, network_zones.last_updated
+  id, cluster_id, project_name, name, object, last_updated
 FROM
   network_zones
-WHERE network_zones.id=:id;
+WHERE id=:id;
 `
 
 	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))

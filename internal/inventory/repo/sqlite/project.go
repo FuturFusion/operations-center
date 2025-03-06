@@ -99,10 +99,10 @@ ORDER BY projects.id
 func (r project) GetByID(ctx context.Context, id int) (inventory.Project, error) {
 	const sqlStmt = `
 SELECT
-  projects.id, projects.cluster_id, projects.name, projects.object, projects.last_updated
+  id, cluster_id, name, object, last_updated
 FROM
   projects
-WHERE projects.id=:id;
+WHERE id=:id;
 `
 
 	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))

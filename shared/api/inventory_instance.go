@@ -11,7 +11,7 @@ import (
 type Instance struct {
 	ID          int                   `json:"id" yaml:"id"`
 	ClusterID   int                   `json:"cluster_id" yaml:"cluster_id"`
-	ServerID    int                   `json:"server_id" yaml:"server_id"`
+	Location    string                `json:"location" yaml:"location"`
 	ProjectName string                `json:"project_name" yaml:"project_name"`
 	Name        string                `json:"name" yaml:"name"`
 	Object      incusapi.InstanceFull `json:"object" yaml:"object"`
