@@ -11,8 +11,8 @@ import (
 type {{ .Name | pascalcase }} struct {
 	ID          int
 	ClusterID   int
-{{- if .IsServerResource }}
-	ServerID    int
+{{- if .HasLocation }}
+	Location    string
 {{- end }}
 {{- if .HasProject }}
 	ProjectName string
@@ -29,8 +29,8 @@ type {{ .Name | pascalcase }} struct {
 }
 
 func (m {{ .Name | pascalcase }}) Validate() error {
-	if m.{{ .ResourceForeignKey | pascalcase }}ID < 1{
-		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, {{ .ResourceForeignKey }} id can not be less than 1")
+	if m.ClusterID < 1{
+		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, cluster id can not be less than 1")
 	}
 
 	if m.Name == "" {
@@ -56,8 +56,8 @@ type {{ .PluralName | pascalcase }} []{{ .Name | pascalcase }}
 
 type {{ .Name | pascalcase }}Filter struct{
 	Cluster *string
-{{- if .IsServerResource }}
-	Server  *string
+{{- if .HasLocation }}
+	Location  *string
 {{- end }}
 {{- if .HasProject }}
 	Project *string

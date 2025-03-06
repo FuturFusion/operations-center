@@ -11,9 +11,6 @@ type {{ .Name | pascalcase }}Service interface {
 	GetByID(ctx context.Context, id int) ({{ .Name | pascalcase }}, error)
 	ResyncByID(ctx context.Context, id int) error
 	SyncCluster(ctx context.Context, clusterID int) error
-{{- if .IsServerResource }}
-	SyncServer(ctx context.Context, serverID int) error
-{{- end }}
 }
 
 type {{ .Name | pascalcase }}Repo interface {
@@ -21,7 +18,7 @@ type {{ .Name | pascalcase }}Repo interface {
 	GetByID(ctx context.Context, id int) ({{ .Name | pascalcase }}, error)
 	Create(ctx context.Context, {{ .Name | camelcase }} {{ .Name | pascalcase }}) ({{ .Name | pascalcase }}, error)
 	DeleteByID(ctx context.Context, id int) error
-	DeleteBy{{ .ResourceForeignKey | pascalcase }}ID(ctx context.Context, {{ .ResourceForeignKey }}ID int) error
+	DeleteByClusterID(ctx context.Context, clusterID int) error
 	UpdateByID(ctx context.Context, {{ .Name | camelcase }} {{ .Name | pascalcase }}) ({{ .Name | pascalcase }}, error)
 }
 
