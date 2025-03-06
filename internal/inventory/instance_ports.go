@@ -13,7 +13,6 @@ type InstanceService interface {
 	GetByID(ctx context.Context, id int) (Instance, error)
 	ResyncByID(ctx context.Context, id int) error
 	SyncCluster(ctx context.Context, clusterID int) error
-	SyncServer(ctx context.Context, serverID int) error
 }
 
 type InstanceRepo interface {
@@ -21,7 +20,7 @@ type InstanceRepo interface {
 	GetByID(ctx context.Context, id int) (Instance, error)
 	Create(ctx context.Context, instance Instance) (Instance, error)
 	DeleteByID(ctx context.Context, id int) error
-	DeleteByServerID(ctx context.Context, serverID int) error
+	DeleteByClusterID(ctx context.Context, clusterID int) error
 	UpdateByID(ctx context.Context, instance Instance) (Instance, error)
 }
 

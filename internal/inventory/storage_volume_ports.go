@@ -13,7 +13,6 @@ type StorageVolumeService interface {
 	GetByID(ctx context.Context, id int) (StorageVolume, error)
 	ResyncByID(ctx context.Context, id int) error
 	SyncCluster(ctx context.Context, clusterID int) error
-	SyncServer(ctx context.Context, serverID int) error
 }
 
 type StorageVolumeRepo interface {
@@ -21,7 +20,7 @@ type StorageVolumeRepo interface {
 	GetByID(ctx context.Context, id int) (StorageVolume, error)
 	Create(ctx context.Context, storageVolume StorageVolume) (StorageVolume, error)
 	DeleteByID(ctx context.Context, id int) error
-	DeleteByServerID(ctx context.Context, serverID int) error
+	DeleteByClusterID(ctx context.Context, clusterID int) error
 	UpdateByID(ctx context.Context, storageVolume StorageVolume) (StorageVolume, error)
 }
 

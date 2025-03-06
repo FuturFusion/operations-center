@@ -105,10 +105,10 @@ ORDER BY network_acls.id
 func (r networkACL) GetByID(ctx context.Context, id int) (inventory.NetworkACL, error) {
 	const sqlStmt = `
 SELECT
-  network_acls.id, network_acls.cluster_id, network_acls.project_name, network_acls.name, network_acls.object, network_acls.last_updated
+  id, cluster_id, project_name, name, object, last_updated
 FROM
   network_acls
-WHERE network_acls.id=:id;
+WHERE id=:id;
 `
 
 	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))

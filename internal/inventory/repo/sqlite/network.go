@@ -105,10 +105,10 @@ ORDER BY networks.id
 func (r network) GetByID(ctx context.Context, id int) (inventory.Network, error) {
 	const sqlStmt = `
 SELECT
-  networks.id, networks.cluster_id, networks.project_name, networks.name, networks.object, networks.last_updated
+  id, cluster_id, project_name, name, object, last_updated
 FROM
   networks
-WHERE networks.id=:id;
+WHERE id=:id;
 `
 
 	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))

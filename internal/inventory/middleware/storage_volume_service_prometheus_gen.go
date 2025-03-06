@@ -92,17 +92,3 @@ func (_d StorageVolumeServiceWithPrometheus) SyncCluster(ctx context.Context, cl
 	}()
 	return _d.base.SyncCluster(ctx, clusterID)
 }
-
-// SyncServer implements inventory.StorageVolumeService.
-func (_d StorageVolumeServiceWithPrometheus) SyncServer(ctx context.Context, serverID int) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		storageVolumeServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SyncServer", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.SyncServer(ctx, serverID)
-}

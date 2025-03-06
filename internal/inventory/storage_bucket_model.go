@@ -13,7 +13,7 @@ import (
 type StorageBucket struct {
 	ID              int
 	ClusterID       int
-	ServerID        int
+	Location        string
 	ProjectName     string
 	StoragePoolName string
 	Name            string
@@ -22,8 +22,8 @@ type StorageBucket struct {
 }
 
 func (m StorageBucket) Validate() error {
-	if m.ServerID < 1 {
-		return domain.NewValidationErrf("Invalid StorageBucket, server id can not be less than 1")
+	if m.ClusterID < 1 {
+		return domain.NewValidationErrf("Invalid StorageBucket, cluster id can not be less than 1")
 	}
 
 	if m.Name == "" {
@@ -44,7 +44,7 @@ func (m StorageBucket) Validate() error {
 type StorageBuckets []StorageBucket
 
 type StorageBucketFilter struct {
-	Cluster *string
-	Server  *string
-	Project *string
+	Cluster  *string
+	Location *string
+	Project  *string
 }

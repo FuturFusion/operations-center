@@ -100,10 +100,10 @@ ORDER BY network_forwards.id
 func (r networkForward) GetByID(ctx context.Context, id int) (inventory.NetworkForward, error) {
 	const sqlStmt = `
 SELECT
-  network_forwards.id, network_forwards.cluster_id, network_forwards.network_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
+  id, cluster_id, network_name, name, object, last_updated
 FROM
   network_forwards
-WHERE network_forwards.id=:id;
+WHERE id=:id;
 `
 
 	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))

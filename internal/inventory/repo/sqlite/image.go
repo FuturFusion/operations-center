@@ -105,10 +105,10 @@ ORDER BY images.id
 func (r image) GetByID(ctx context.Context, id int) (inventory.Image, error) {
 	const sqlStmt = `
 SELECT
-  images.id, images.cluster_id, images.project_name, images.name, images.object, images.last_updated
+  id, cluster_id, project_name, name, object, last_updated
 FROM
   images
-WHERE images.id=:id;
+WHERE id=:id;
 `
 
 	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))

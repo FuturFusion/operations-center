@@ -100,10 +100,10 @@ ORDER BY network_load_balancers.id
 func (r networkLoadBalancer) GetByID(ctx context.Context, id int) (inventory.NetworkLoadBalancer, error) {
 	const sqlStmt = `
 SELECT
-  network_load_balancers.id, network_load_balancers.cluster_id, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
+  id, cluster_id, network_name, name, object, last_updated
 FROM
   network_load_balancers
-WHERE network_load_balancers.id=:id;
+WHERE id=:id;
 `
 
 	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))

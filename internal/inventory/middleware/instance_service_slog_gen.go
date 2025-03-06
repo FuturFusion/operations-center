@@ -146,33 +146,3 @@ func (_d InstanceServiceWithSlog) SyncCluster(ctx context.Context, clusterID int
 	}()
 	return _d._base.SyncCluster(ctx, clusterID)
 }
-
-// SyncServer implements inventory.InstanceService.
-func (_d InstanceServiceWithSlog) SyncServer(ctx context.Context, serverID int) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-			slog.Int("serverID", serverID),
-		)
-	}
-	log.Debug("InstanceServiceWithSlog: calling SyncServer")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("InstanceServiceWithSlog: method SyncServer returned an error")
-		} else {
-			log.Debug("InstanceServiceWithSlog: method SyncServer finished")
-		}
-	}()
-	return _d._base.SyncServer(ctx, serverID)
-}

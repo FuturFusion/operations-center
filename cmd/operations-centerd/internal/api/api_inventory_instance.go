@@ -43,8 +43,8 @@ func registerInventoryInstanceHandler(router *http.ServeMux, service inventory.I
 //		    type: string
 //		    example: cluster
 //		  - in: query
-//		    name: server
-//		    description: Server name
+//		    name: location
+//		    description: Location is a server name
 //		    type: string
 //		    example: localhost
 //		  - in: query
@@ -92,8 +92,8 @@ func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
 	}
 
-	if r.URL.Query().Get("server") != "" {
-		filter.Server = ptr.To(r.URL.Query().Get("server"))
+	if r.URL.Query().Get("location") != "" {
+		filter.Location = ptr.To(r.URL.Query().Get("location"))
 	}
 
 	if r.URL.Query().Get("project") != "" {
@@ -163,7 +163,7 @@ func (i *instanceHandler) instanceGet(r *http.Request) response.Response {
 		api.Instance{
 			ID:          instance.ID,
 			ClusterID:   instance.ClusterID,
-			ServerID:    instance.ServerID,
+			Location:    instance.Location,
 			ProjectName: instance.ProjectName,
 			Name:        instance.Name,
 			Object:      instance.Object,

@@ -43,8 +43,8 @@ func registerInventoryStorageBucketHandler(router *http.ServeMux, service invent
 //		    type: string
 //		    example: cluster
 //		  - in: query
-//		    name: server
-//		    description: Server name
+//		    name: location
+//		    description: Location is a server name
 //		    type: string
 //		    example: localhost
 //		  - in: query
@@ -92,8 +92,8 @@ func (i *storageBucketHandler) storageBucketsGet(r *http.Request) response.Respo
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
 	}
 
-	if r.URL.Query().Get("server") != "" {
-		filter.Server = ptr.To(r.URL.Query().Get("server"))
+	if r.URL.Query().Get("location") != "" {
+		filter.Location = ptr.To(r.URL.Query().Get("location"))
 	}
 
 	if r.URL.Query().Get("project") != "" {
@@ -163,7 +163,7 @@ func (i *storageBucketHandler) storageBucketGet(r *http.Request) response.Respon
 		api.StorageBucket{
 			ID:              storageBucket.ID,
 			ClusterID:       storageBucket.ClusterID,
-			ServerID:        storageBucket.ServerID,
+			Location:        storageBucket.Location,
 			ProjectName:     storageBucket.ProjectName,
 			StoragePoolName: storageBucket.StoragePoolName,
 			Name:            storageBucket.Name,

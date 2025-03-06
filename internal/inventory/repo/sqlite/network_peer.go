@@ -100,10 +100,10 @@ ORDER BY network_peers.id
 func (r networkPeer) GetByID(ctx context.Context, id int) (inventory.NetworkPeer, error) {
 	const sqlStmt = `
 SELECT
-  network_peers.id, network_peers.cluster_id, network_peers.network_name, network_peers.name, network_peers.object, network_peers.last_updated
+  id, cluster_id, network_name, name, object, last_updated
 FROM
   network_peers
-WHERE network_peers.id=:id;
+WHERE id=:id;
 `
 
 	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))

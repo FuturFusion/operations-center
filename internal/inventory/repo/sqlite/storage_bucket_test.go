@@ -4,8 +4,6 @@ package sqlite_test
 
 import (
 	"context"
-	"encoding/json"
-
 	"testing"
 	"time"
 
@@ -20,7 +18,6 @@ import (
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
-	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestStorageBucketDatabaseActions(t *testing.T) {
@@ -40,30 +37,9 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
-	testServerA := provisioning.Server{
-		ID:            1,
-		ClusterID:     1,
-		Name:          "one",
-		Type:          api.ServerTypeIncus,
-		ConnectionURL: "https://one/",
-		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
-	}
-
-	testServerB := provisioning.Server{
-		ID:            2,
-		ClusterID:     1,
-		Name:          "two",
-		Type:          api.ServerTypeIncus,
-		ConnectionURL: "https://one/",
-		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
-	}
-
 	storageBucketA := inventory.StorageBucket{
-		ServerID:        1,
+		ClusterID:       1,
+		Location:        "one",
 		ProjectName:     "one",
 		StoragePoolName: "parent one",
 		Name:            "one",
@@ -72,7 +48,8 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	}
 
 	storageBucketB := inventory.StorageBucket{
-		ServerID:        2,
+		ClusterID:       2,
+		Location:        "two",
 		ProjectName:     "two",
 		StoragePoolName: "parent one",
 		Name:            "two",
@@ -96,7 +73,6 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), nil)
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
 
 	storageBucket := inventorySqlite.NewStorageBucket(db)
 
@@ -110,20 +86,14 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	_, err = clusterSvc.Create(ctx, testClusterB)
 	require.NoError(t, err)
 
-	// Add dummy servers.
-	_, err = serverSvc.Create(ctx, testServerA)
-	require.NoError(t, err)
-	_, err = serverSvc.Create(ctx, testServerB)
-	require.NoError(t, err)
-
 	// Add storage_buckets
 	storageBucketA, err = storageBucket.Create(ctx, storageBucketA)
 	require.NoError(t, err)
-	require.Equal(t, 1, storageBucketA.ServerID)
+	require.Equal(t, 1, storageBucketA.ClusterID)
 
 	storageBucketB, err = storageBucket.Create(ctx, storageBucketB)
 	require.NoError(t, err)
-	require.Equal(t, 2, storageBucketB.ServerID)
+	require.Equal(t, 2, storageBucketB.ClusterID)
 
 	// Ensure we have two entries without filter
 	storageBucketIDs, err := storageBucket.GetAllIDsWithFilter(ctx, inventory.StorageBucketFilter{})
@@ -133,9 +103,9 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 
 	// Ensure we have one entry with filter for cluster, server and project
 	storageBucketIDs, err = storageBucket.GetAllIDsWithFilter(ctx, inventory.StorageBucketFilter{
-		Cluster: ptr.To("one"),
-		Server:  ptr.To("one"),
-		Project: ptr.To("one"),
+		Cluster:  ptr.To("one"),
+		Location: ptr.To("one"),
+		Project:  ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, storageBucketIDs, 1)
@@ -156,8 +126,8 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	err = storageBucket.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete storage_buckets by server ID.
-	err = storageBucket.DeleteByServerID(ctx, 2)
+	// Delete storage_buckets by cluster ID.
+	err = storageBucket.DeleteByClusterID(ctx, 2)
 	require.NoError(t, err)
 
 	_, err = storageBucket.GetByID(ctx, storageBucketA.ID)

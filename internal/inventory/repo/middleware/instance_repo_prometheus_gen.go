@@ -51,6 +51,20 @@ func (_d InstanceRepoWithPrometheus) Create(ctx context.Context, instance invent
 	return _d.base.Create(ctx, instance)
 }
 
+// DeleteByClusterID implements inventory.InstanceRepo.
+func (_d InstanceRepoWithPrometheus) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		instanceRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterID", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteByClusterID(ctx, clusterID)
+}
+
 // DeleteByID implements inventory.InstanceRepo.
 func (_d InstanceRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
 	_since := time.Now()
@@ -63,20 +77,6 @@ func (_d InstanceRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (er
 		instanceRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.DeleteByID(ctx, id)
-}
-
-// DeleteByServerID implements inventory.InstanceRepo.
-func (_d InstanceRepoWithPrometheus) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		instanceRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByServerID", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.DeleteByServerID(ctx, serverID)
 }
 
 // GetAllIDsWithFilter implements inventory.InstanceRepo.
