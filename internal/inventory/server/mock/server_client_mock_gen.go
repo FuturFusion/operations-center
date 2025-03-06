@@ -21,6 +21,12 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //
 //		// make and configure a mocked inventory.ServerClient
 //		mockedServerClient := &ServerClientMock{
+//			GetClusterMemberByNameFunc: func(ctx context.Context, connectionURL string, clusterMemberName string) (api.ClusterMember, error) {
+//				panic("mock out the GetClusterMemberByName method")
+//			},
+//			GetClusterMembersFunc: func(ctx context.Context, connectionURL string) ([]api.ClusterMember, error) {
+//				panic("mock out the GetClusterMembers method")
+//			},
 //			GetImageByNameFunc: func(ctx context.Context, connectionURL string, imageName string) (api.Image, error) {
 //				panic("mock out the GetImageByName method")
 //			},
@@ -112,6 +118,12 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //
 //	}
 type ServerClientMock struct {
+	// GetClusterMemberByNameFunc mocks the GetClusterMemberByName method.
+	GetClusterMemberByNameFunc func(ctx context.Context, connectionURL string, clusterMemberName string) (api.ClusterMember, error)
+
+	// GetClusterMembersFunc mocks the GetClusterMembers method.
+	GetClusterMembersFunc func(ctx context.Context, connectionURL string) ([]api.ClusterMember, error)
+
 	// GetImageByNameFunc mocks the GetImageByName method.
 	GetImageByNameFunc func(ctx context.Context, connectionURL string, imageName string) (api.Image, error)
 
@@ -198,6 +210,22 @@ type ServerClientMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetClusterMemberByName holds details about calls to the GetClusterMemberByName method.
+		GetClusterMemberByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// ClusterMemberName is the clusterMemberName argument value.
+			ClusterMemberName string
+		}
+		// GetClusterMembers holds details about calls to the GetClusterMembers method.
+		GetClusterMembers []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+		}
 		// GetImageByName holds details about calls to the GetImageByName method.
 		GetImageByName []struct {
 			// Ctx is the ctx argument value.
@@ -445,6 +473,8 @@ type ServerClientMock struct {
 			StoragePoolName string
 		}
 	}
+	lockGetClusterMemberByName       sync.RWMutex
+	lockGetClusterMembers            sync.RWMutex
 	lockGetImageByName               sync.RWMutex
 	lockGetImages                    sync.RWMutex
 	lockGetInstanceByName            sync.RWMutex
@@ -473,6 +503,82 @@ type ServerClientMock struct {
 	lockGetStoragePools              sync.RWMutex
 	lockGetStorageVolumeByName       sync.RWMutex
 	lockGetStorageVolumes            sync.RWMutex
+}
+
+// GetClusterMemberByName calls GetClusterMemberByNameFunc.
+func (mock *ServerClientMock) GetClusterMemberByName(ctx context.Context, connectionURL string, clusterMemberName string) (api.ClusterMember, error) {
+	if mock.GetClusterMemberByNameFunc == nil {
+		panic("ServerClientMock.GetClusterMemberByNameFunc: method is nil but ServerClient.GetClusterMemberByName was just called")
+	}
+	callInfo := struct {
+		Ctx               context.Context
+		ConnectionURL     string
+		ClusterMemberName string
+	}{
+		Ctx:               ctx,
+		ConnectionURL:     connectionURL,
+		ClusterMemberName: clusterMemberName,
+	}
+	mock.lockGetClusterMemberByName.Lock()
+	mock.calls.GetClusterMemberByName = append(mock.calls.GetClusterMemberByName, callInfo)
+	mock.lockGetClusterMemberByName.Unlock()
+	return mock.GetClusterMemberByNameFunc(ctx, connectionURL, clusterMemberName)
+}
+
+// GetClusterMemberByNameCalls gets all the calls that were made to GetClusterMemberByName.
+// Check the length with:
+//
+//	len(mockedServerClient.GetClusterMemberByNameCalls())
+func (mock *ServerClientMock) GetClusterMemberByNameCalls() []struct {
+	Ctx               context.Context
+	ConnectionURL     string
+	ClusterMemberName string
+} {
+	var calls []struct {
+		Ctx               context.Context
+		ConnectionURL     string
+		ClusterMemberName string
+	}
+	mock.lockGetClusterMemberByName.RLock()
+	calls = mock.calls.GetClusterMemberByName
+	mock.lockGetClusterMemberByName.RUnlock()
+	return calls
+}
+
+// GetClusterMembers calls GetClusterMembersFunc.
+func (mock *ServerClientMock) GetClusterMembers(ctx context.Context, connectionURL string) ([]api.ClusterMember, error) {
+	if mock.GetClusterMembersFunc == nil {
+		panic("ServerClientMock.GetClusterMembersFunc: method is nil but ServerClient.GetClusterMembers was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+	}
+	mock.lockGetClusterMembers.Lock()
+	mock.calls.GetClusterMembers = append(mock.calls.GetClusterMembers, callInfo)
+	mock.lockGetClusterMembers.Unlock()
+	return mock.GetClusterMembersFunc(ctx, connectionURL)
+}
+
+// GetClusterMembersCalls gets all the calls that were made to GetClusterMembers.
+// Check the length with:
+//
+//	len(mockedServerClient.GetClusterMembersCalls())
+func (mock *ServerClientMock) GetClusterMembersCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+	}
+	mock.lockGetClusterMembers.RLock()
+	calls = mock.calls.GetClusterMembers
+	mock.lockGetClusterMembers.RUnlock()
+	return calls
 }
 
 // GetImageByName calls GetImageByNameFunc.

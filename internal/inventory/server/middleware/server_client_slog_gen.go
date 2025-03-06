@@ -26,6 +26,69 @@ func NewServerClientWithSlog(base inventory.ServerClient, log *slog.Logger) Serv
 	}
 }
 
+// GetClusterMemberByName implements inventory.ServerClient.
+func (_d ServerClientWithSlog) GetClusterMemberByName(ctx context.Context, connectionURL string, clusterMemberName string) (clusterMember api.ClusterMember, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("clusterMemberName", clusterMemberName),
+		)
+	}
+	log.Debug("ServerClientWithSlog: calling GetClusterMemberByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("clusterMember", clusterMember),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("ServerClientWithSlog: method GetClusterMemberByName returned an error")
+		} else {
+			log.Debug("ServerClientWithSlog: method GetClusterMemberByName finished")
+		}
+	}()
+	return _d._base.GetClusterMemberByName(ctx, connectionURL, clusterMemberName)
+}
+
+// GetClusterMembers implements inventory.ServerClient.
+func (_d ServerClientWithSlog) GetClusterMembers(ctx context.Context, connectionURL string) (clusterMembers []api.ClusterMember, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+		)
+	}
+	log.Debug("ServerClientWithSlog: calling GetClusterMembers")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("clusterMembers", clusterMembers),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("ServerClientWithSlog: method GetClusterMembers returned an error")
+		} else {
+			log.Debug("ServerClientWithSlog: method GetClusterMembers finished")
+		}
+	}()
+	return _d._base.GetClusterMembers(ctx, connectionURL)
+}
+
 // GetImageByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetImageByName(ctx context.Context, connectionURL string, imageName string) (image api.Image, err error) {
 	log := _d._log.With()

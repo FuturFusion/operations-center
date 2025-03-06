@@ -1,5 +1,11 @@
 ---
 
+cluster_member:
+  object-name-property-name: server_name
+  omit-project: true
+  incus-get-all-method: GetClusterMembers
+  incus-get-method: GetClusterMember
+
 image:
   object-name-property-name: filename
   incus-get-all-method: GetImagesAllProjects

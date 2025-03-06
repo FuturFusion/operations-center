@@ -16,6 +16,12 @@ func (s serverClient) Get{{ .PluralName | pascalcase }}(ctx context.Context, con
 	}
 
 	server{{ .PluralName | pascalcase }}, err := client.{{ .IncusGetAllMethod }}({{ if eq .IncusGetAllMethod "GetInstancesFullAllProjects" }}incusapi.{{ .Name | pascalcase }}TypeAny{{ end }}{{ if .HasParent }}{{ .Name | camelcase }}Name{{ end }})
+{{- if eq .Name "cluster_member" }}
+	if incusapi.StatusErrorCheck(err, http.StatusInternalServerError) && err.Error() == "Server is not clustered" {
+		return nil, nil
+	}
+
+{{ end }}
 	if err != nil {
 		return nil, err
 	}

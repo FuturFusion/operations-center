@@ -17,6 +17,7 @@ type ProvisioningServerService interface {
 }
 
 type ServerClient interface {
+	ClusterMemberServerClient
 	ImageServerClient
 	InstanceServerClient
 	NetworkServerClient

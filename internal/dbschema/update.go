@@ -33,6 +33,16 @@ CREATE TABLE servers (
   FOREIGN KEY(cluster_id) REFERENCES clusters(id)
 );
 
+CREATE TABLE cluster_members (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  object TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (cluster_id, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+);
+
 CREATE TABLE images (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -250,6 +260,16 @@ CREATE TABLE servers (
   last_updated DATETIME NOT NULL,
   UNIQUE (name),
   FOREIGN KEY(cluster_id) REFERENCES clusters(id)
+);
+
+CREATE TABLE cluster_members (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  object TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (cluster_id, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE images (

@@ -38,6 +38,34 @@ func NewServerClientWithPrometheus(base inventory.ServerClient, instanceName str
 	}
 }
 
+// GetClusterMemberByName implements inventory.ServerClient.
+func (_d ServerClientWithPrometheus) GetClusterMemberByName(ctx context.Context, connectionURL string, clusterMemberName string) (clusterMember api.ClusterMember, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetClusterMemberByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetClusterMemberByName(ctx, connectionURL, clusterMemberName)
+}
+
+// GetClusterMembers implements inventory.ServerClient.
+func (_d ServerClientWithPrometheus) GetClusterMembers(ctx context.Context, connectionURL string) (clusterMembers []api.ClusterMember, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetClusterMembers", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetClusterMembers(ctx, connectionURL)
+}
+
 // GetImageByName implements inventory.ServerClient.
 func (_d ServerClientWithPrometheus) GetImageByName(ctx context.Context, connectionURL string, imageName string) (image api.Image, err error) {
 	_since := time.Now()

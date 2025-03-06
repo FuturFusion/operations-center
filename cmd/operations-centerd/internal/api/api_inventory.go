@@ -16,6 +16,18 @@ import (
 
 func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverClient inventory.ServerClient, inventoryRouter *http.ServeMux) []provisioning.InventorySyncer {
 	// Service
+	inventoryClusterMemberSvc := inventoryServiceMiddleware.NewClusterMemberServiceWithSlog(
+		inventory.NewClusterMemberService(
+			inventoryRepoMiddleware.NewClusterMemberRepoWithSlog(
+				inventorySqlite.NewClusterMember(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverClient,
+		),
+		slog.Default(),
+	)
+
 	inventoryImageSvc := inventoryServiceMiddleware.NewImageServiceWithSlog(
 		inventory.NewImageService(
 			inventoryRepoMiddleware.NewImageRepoWithSlog(
@@ -215,6 +227,9 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 	)
 
 	// API routes
+	inventoryClusterMemberRouter := newSubRouter(inventoryRouter, "/cluster_members")
+	registerInventoryClusterMemberHandler(inventoryClusterMemberRouter, inventoryClusterMemberSvc)
+
 	inventoryImageRouter := newSubRouter(inventoryRouter, "/images")
 	registerInventoryImageHandler(inventoryImageRouter, inventoryImageSvc)
 
@@ -258,6 +273,7 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 	registerInventoryStorageVolumeHandler(inventoryStorageVolumeRouter, inventoryStorageVolumeSvc)
 
 	return []provisioning.InventorySyncer{
+		inventoryClusterMemberSvc,
 		inventoryImageSvc,
 		inventoryInstanceSvc,
 		inventoryNetworkSvc,
