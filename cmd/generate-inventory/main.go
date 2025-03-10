@@ -5,10 +5,13 @@ import (
 	"cmp"
 	"context"
 	"embed"
+	"errors"
 	"go/format"
+	"io/fs"
 	"iter"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"text/template"
@@ -190,6 +193,12 @@ func main() {
 				err = filenameTmpl.Execute(&filename, args)
 				die(err)
 
+				targetDir := filepath.Dir(filename.String())
+				if !directoryExists(targetDir) {
+					err = os.MkdirAll(targetDir, 0o700)
+					die(err)
+				}
+
 				buf := bytes.Buffer{}
 
 				_, err = buf.WriteString(generatedByPreamble)
@@ -217,6 +226,18 @@ func die(err error) {
 		slog.ErrorContext(context.Background(), "generate-inventory failed", slog.Any("err", err))
 		panic("die")
 	}
+}
+
+// directoryExists returns true, if the given path does exist and is of type
+// directory. Symlinks are resolved, sucht that the effective target is checked.
+// Otherwise false is returned.
+func directoryExists(name string) bool {
+	info, err := os.Stat(name)
+	if err != nil && errors.Is(err, fs.ErrNotExist) {
+		return false
+	}
+
+	return info.IsDir()
 }
 
 // iff is short for inline if.
