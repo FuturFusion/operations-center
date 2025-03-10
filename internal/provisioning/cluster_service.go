@@ -132,6 +132,8 @@ func (s clusterService) DeleteByName(ctx context.Context, name string) error {
 			return err
 		}
 
+		// FIXME: deleteting a server also requires to delete all the inventory.
+
 		return s.repo.DeleteByID(ctx, cluster.ID)
 	})
 }
