@@ -12,7 +12,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"text/template"
 
@@ -246,9 +246,7 @@ func orderedByKey[K cmp.Ordered, E any](m map[K]E) iter.Seq2[K, E] {
 			keys = append(keys, k)
 		}
 
-		sort.Slice(keys, func(i, j int) bool {
-			return keys[i] < keys[j]
-		})
+		slices.Sort(keys)
 
 		for _, k := range keys {
 			if !yield(k, m[k]) {
