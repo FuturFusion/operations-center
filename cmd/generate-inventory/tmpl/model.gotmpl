@@ -10,9 +10,9 @@ import (
 
 type {{ .Name | pascalcase }} struct {
 	ID          int
-	ClusterID   int
+	Cluster     string
 {{- if .HasLocation }}
-	Location    string
+	Server      string
 {{- end }}
 {{- if .HasProject }}
 	ProjectName string
@@ -29,9 +29,15 @@ type {{ .Name | pascalcase }} struct {
 }
 
 func (m {{ .Name | pascalcase }}) Validate() error {
-	if m.ClusterID < 1{
-		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, cluster id can not be less than 1")
+	if m.Cluster == "" {
+		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, cluster can not be empty")
 	}
+{{- if .HasLocation }}
+
+	if m.Server == "" {
+		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, server can not be empty")
+	}
+{{- end }}
 
 	if m.Name == "" {
 		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, name can not be empty")
@@ -57,7 +63,7 @@ type {{ .PluralName | pascalcase }} []{{ .Name | pascalcase }}
 type {{ .Name | pascalcase }}Filter struct{
 	Cluster *string
 {{- if .HasLocation }}
-	Location  *string
+	Server  *string
 {{- end }}
 {{- if .HasProject }}
 	Project *string

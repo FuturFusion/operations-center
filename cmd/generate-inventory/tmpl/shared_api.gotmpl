@@ -8,9 +8,9 @@ import (
 
 type {{ .Name | pascalcase }} struct {
 	ID          int                   `json:"id" yaml:"id"`
-	ClusterID   int                   `json:"cluster_id" yaml:"cluster_id"`
+	Cluster     string                `json:"cluster" yaml:"cluster"`
 {{- if .HasLocation }}
-	Location    string                `json:"location" yaml:"location"`
+	Server      string                `json:"server" yaml:"server"`
 {{- end }}
 {{- if .HasProject }}
 	ProjectName string                `json:"project_name" yaml:"project_name"`

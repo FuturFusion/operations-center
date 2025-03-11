@@ -23,7 +23,7 @@ type {{ .Name | camelcase }}Service struct {
 	{{ .Name | camelcase }}Client {{ .Name | pascalcase }}ServerClient
 {{- if .HasParent }}
 
-	isParentFilted func(incusapi.{{ .ParentObjectType | pascalcase }}) bool
+	isParentFiltered func(incusapi.{{ .ParentObjectType | pascalcase }}) bool
 {{- end }}
 
 	now func() time.Time
@@ -36,7 +36,7 @@ type {{ .Name | pascalcase }}ServiceOption func(s *{{ .Name | camelcase }}Servic
 
 func {{ .Name | pascalcase }}WithParentFilter(f func(incusapi.{{ .ParentObjectType | pascalcase }}) bool) {{ .Name | pascalcase }}ServiceOption {
 	return func(s *{{ .Name | camelcase }}Service) {
-		s.isParentFilted = f
+		s.isParentFiltered = f
 	}
 }
 {{- end }}
@@ -52,7 +52,7 @@ func New{{ .Name | pascalcase }}Service(repo {{ .Name | pascalcase }}Repo, clust
 		{{ .Name | camelcase }}Client: client,
 {{- if .HasParent }}
 
-	isParentFilted: func(_ incusapi.{{ .ParentObjectType | pascalcase }}) bool {
+	isParentFiltered: func(_ incusapi.{{ .ParentObjectType | pascalcase }}) bool {
 		return false
 	},
 {{- end }}
@@ -82,7 +82,7 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByID(ctx, {{ .Name | camelcase }}.ClusterID)
+		cluster, err := s.clusterSvc.GetByName(ctx, {{ .Name | camelcase }}.Cluster)
 		if err != nil {
 			return err
 		}
@@ -101,7 +101,10 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 			return err
 		}
 
-{{ if .HasProject }}
+{{ if .HasLocation }}
+		{{ .Name | camelcase }}.Server = retrieved{{ .Name | pascalcase }}.Location
+{{- end }}
+{{- if .HasProject }}
 		{{ .Name | camelcase }}.ProjectName = retrieved{{ .Name | pascalcase }}.Project
 {{- end }}
 {{- range .ExtraAttributes }}
@@ -129,8 +132,8 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 	return nil
 }
 
-func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, clusterID int) error {
-	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
+func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -143,7 +146,7 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, cluster
 
 	for _, {{ .ParentName | camelcase }} := range retrieved{{ .ParentPluralName | pascalcase }} {
 {{- if .HasParent }}
-		if s.isParentFilted({{ .ParentName | camelcase }}) {
+		if s.isParentFiltered({{ .ParentName | camelcase }}) {
 			continue
 		}
 {{- end }}
@@ -161,16 +164,16 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, cluster
 {{ end }}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByClusterID(ctx, clusterID)
+		err = s.repo.DeleteByClusterName(ctx, name)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
 		for _, retrieved{{ .Name | pascalcase }} := range retrieved{{ .PluralName | pascalcase }} {
 			{{ .Name | camelcase }} := {{ .Name | pascalcase }}{
-				ClusterID:   clusterID,
+				Cluster:   name,
 {{- if .HasLocation }}
-				Location:    retrieved{{ .Name | pascalcase }}.Location,
+				Server:      retrieved{{ .Name | pascalcase }}.Location,
 {{- end }}
 {{- if .HasProject }}
 				ProjectName: retrieved{{ .Name | pascalcase }}.Project,

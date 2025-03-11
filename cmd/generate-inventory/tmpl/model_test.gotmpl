@@ -20,9 +20,9 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			name: "valid",
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 {{- if .HasLocation }}
-				Location:    "one",
+				Server:      "one",
 {{- end }}
 {{- if .HasProject }}
 				ProjectName: "project one",
@@ -39,9 +39,9 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			name: "error - invalid cluster ID",
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
-				ClusterID: 0, // invalid
+				Cluster:     "", // invalid
 {{- if .HasLocation }}
-				Location:     "one",
+				Server:      "one",
 {{- end }}
 {{- if .HasProject }}
 				ProjectName: "project one",
@@ -57,14 +57,34 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				require.ErrorAs(tt, err, &verr, a...)
 			},
 		},
+{{- if .HasLocation }}
+		{
+			name: "error - invalid project name",
+			image: inventory.{{ .Name | pascalcase }}{
+				ID:          1,
+				Cluster:     "one",
+				Server:      "", // invalid
+				ProjectName: "project one",
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase }} one",
+{{- end }}
+				Name:        "one",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+{{- end }}
 {{- if .HasProject }}
 		{
 			name: "error - invalid project name",
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 {{- if .HasLocation }}
-				Location:    "one",
+				Server:      "one",
 {{- end }}
 				ProjectName: "", // invalid
 {{- if .HasParent }}
@@ -84,9 +104,9 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			name: "error - invalid project name",
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 {{- if .HasLocation }}
-				Location:    "one",
+				Server:      "one",
 {{- end }}
 {{- if .HasProject }}
 				ProjectName: "project one",
@@ -105,9 +125,9 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			name: "error - invalid name",
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 {{- if .HasLocation }}
-				Location:    "one",
+				Server:      "one",
 {{- end }}
 {{- if .HasProject }}
 				ProjectName: "project one",
