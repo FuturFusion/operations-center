@@ -46,7 +46,13 @@ RETURNING :cluster_name, name, type, connection_url, last_updated;
 }
 
 func (c server) GetAll(ctx context.Context) (provisioning.Servers, error) {
-	const sqlStmt = `SELECT cluster_id, name, type, connection_url, last_updated FROM servers;`
+	const sqlStmt = `
+SELECT
+  clusters.name AS cluster_name, servers.name, servers.type, servers.connection_url, servers.last_updated
+FROM
+  servers
+  LEFT JOIN clusters ON servers.cluster_id = clusters.id;
+`
 
 	rows, err := c.db.QueryContext(ctx, sqlStmt)
 	if err != nil {
@@ -75,8 +81,10 @@ func (c server) GetAll(ctx context.Context) (provisioning.Servers, error) {
 func (c server) GetAllByClusterID(ctx context.Context, clusterID int) (provisioning.Servers, error) {
 	const sqlStmt = `
 SELECT
-  cluster_id, name, type, connection_url, last_updated
-FROM servers
+  clusters.name AS cluster_name, servers.name, servers.type, servers.connection_url, servers.last_updated
+FROM
+  servers
+  LEFT JOIN clusters ON servers.cluster_id = clusters.id
 WHERE
   cluster_id = :cluster_id;
 `
@@ -108,7 +116,7 @@ WHERE
 }
 
 func (c server) GetAllNames(ctx context.Context) ([]string, error) {
-	const sqlStmt = `SELECT name FROM servers ORDER BY id`
+	const sqlStmt = `SELECT name FROM servers ORDER BY id;`
 
 	rows, err := c.db.QueryContext(ctx, sqlStmt)
 	if err != nil {
@@ -136,7 +144,14 @@ func (c server) GetAllNames(ctx context.Context) ([]string, error) {
 }
 
 func (c server) GetByName(ctx context.Context, name string) (provisioning.Server, error) {
-	const sqlStmt = `SELECT clusters.name, servers.name, servers.type, servers.connection_url, servers.last_updated FROM servers LEFT JOIN clusters ON servers.cluster_id = clusters.id WHERE servers.name=:name;`
+	const sqlStmt = `
+SELECT
+  clusters.name, servers.name, servers.type, servers.connection_url, servers.last_updated
+FROM
+  servers
+  LEFT JOIN clusters ON servers.cluster_id = clusters.id
+WHERE servers.name=:name;
+`
 
 	row := c.db.QueryRowContext(ctx, sqlStmt, sql.Named("name", name))
 	if row.Err() != nil {
@@ -193,8 +208,10 @@ func (c server) DeleteByName(ctx context.Context, name string) error {
 func scanServer(row interface{ Scan(dest ...any) error }) (provisioning.Server, error) {
 	var server provisioning.Server
 
+	var clusterName *string
+
 	err := row.Scan(
-		&server.Cluster,
+		&clusterName,
 		&server.Name,
 		&server.Type,
 		&server.ConnectionURL,
@@ -202,6 +219,10 @@ func scanServer(row interface{ Scan(dest ...any) error }) (provisioning.Server, 
 	)
 	if err != nil {
 		return provisioning.Server{}, sqlite.MapErr(err)
+	}
+
+	if clusterName != nil {
+		server.Cluster = *clusterName
 	}
 
 	return server, nil
