@@ -26,10 +26,6 @@ func (s Server) Validate() error {
 		return domain.NewValidationErrf("Invalid server, name can not be empty")
 	}
 
-	if s.Cluster == "" {
-		return domain.NewValidationErrf("Invalid server, cluster can not be empty")
-	}
-
 	if s.ConnectionURL == "" {
 		return domain.NewValidationErrf("Invalid server, connection URL can not be empty")
 	}

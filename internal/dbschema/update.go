@@ -24,7 +24,7 @@ CREATE TABLE clusters (
 
 CREATE TABLE servers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_id INTEGER,
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   connection_url TEXT NOT NULL,
@@ -246,7 +246,7 @@ CREATE TABLE clusters (
 
 CREATE TABLE servers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  cluster_id INTEGER NOT NULL,
+  cluster_id INTEGER,
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   connection_url TEXT NOT NULL,

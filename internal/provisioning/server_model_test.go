@@ -40,19 +40,6 @@ func TestServer_Validate(t *testing.T) {
 			},
 		},
 		{
-			name: "error - server cluster ID invalid",
-			server: provisioning.Server{
-				Name:          "one",
-				Cluster:       "", // invalid
-				ConnectionURL: "http://one/",
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
-		},
-		{
 			name: "error - connection URL empty",
 			server: provisioning.Server{
 				Name:          "one",
