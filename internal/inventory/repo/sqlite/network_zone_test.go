@@ -22,7 +22,6 @@ import (
 
 func TestNetworkZoneDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -30,7 +29,6 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
@@ -38,7 +36,7 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 	}
 
 	networkZoneA := inventory.NetworkZone{
-		ClusterID:   1,
+		Cluster:     "one",
 		ProjectName: "one",
 		Name:        "one",
 		Object:      incusapi.NetworkZone{},
@@ -46,7 +44,7 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 	}
 
 	networkZoneB := inventory.NetworkZone{
-		ClusterID:   2,
+		Cluster:     "two",
 		ProjectName: "two",
 		Name:        "two",
 		Object:      incusapi.NetworkZone{},
@@ -85,11 +83,11 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 	// Add network_zones
 	networkZoneA, err = networkZone.Create(ctx, networkZoneA)
 	require.NoError(t, err)
-	require.Equal(t, 1, networkZoneA.ClusterID)
+	require.Equal(t, "one", networkZoneA.Cluster)
 
 	networkZoneB, err = networkZone.Create(ctx, networkZoneB)
 	require.NoError(t, err)
-	require.Equal(t, 2, networkZoneB.ClusterID)
+	require.Equal(t, "two", networkZoneB.Cluster)
 
 	// Ensure we have two entries without filter
 	networkZoneIDs, err := networkZone.GetAllIDsWithFilter(ctx, inventory.NetworkZoneFilter{})
@@ -107,7 +105,7 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []int{1}, networkZoneIDs)
 
 	// Should get back networkZoneA unchanged.
-	networkZoneA.ClusterID = 1
+	networkZoneA.Cluster = "one"
 	dbNetworkZoneA, err := networkZone.GetByID(ctx, networkZoneA.ID)
 	require.NoError(t, err)
 	require.Equal(t, networkZoneA, dbNetworkZoneA)
@@ -121,8 +119,8 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 	err = networkZone.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete network_zones by cluster ID.
-	err = networkZone.DeleteByClusterID(ctx, 2)
+	// Delete network_zones by cluster Name.
+	err = networkZone.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = networkZone.GetByID(ctx, networkZoneA.ID)

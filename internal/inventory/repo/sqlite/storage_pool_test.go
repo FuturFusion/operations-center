@@ -22,7 +22,6 @@ import (
 
 func TestStoragePoolDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -30,7 +29,6 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
@@ -38,14 +36,14 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	}
 
 	storagePoolA := inventory.StoragePool{
-		ClusterID:   1,
+		Cluster:     "one",
 		Name:        "one",
 		Object:      incusapi.StoragePool{},
 		LastUpdated: time.Now(),
 	}
 
 	storagePoolB := inventory.StoragePool{
-		ClusterID:   2,
+		Cluster:     "two",
 		Name:        "two",
 		Object:      incusapi.StoragePool{},
 		LastUpdated: time.Now(),
@@ -83,11 +81,11 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	// Add storage_pools
 	storagePoolA, err = storagePool.Create(ctx, storagePoolA)
 	require.NoError(t, err)
-	require.Equal(t, 1, storagePoolA.ClusterID)
+	require.Equal(t, "one", storagePoolA.Cluster)
 
 	storagePoolB, err = storagePool.Create(ctx, storagePoolB)
 	require.NoError(t, err)
-	require.Equal(t, 2, storagePoolB.ClusterID)
+	require.Equal(t, "two", storagePoolB.Cluster)
 
 	// Ensure we have two entries without filter
 	storagePoolIDs, err := storagePool.GetAllIDsWithFilter(ctx, inventory.StoragePoolFilter{})
@@ -104,7 +102,7 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []int{1}, storagePoolIDs)
 
 	// Should get back storagePoolA unchanged.
-	storagePoolA.ClusterID = 1
+	storagePoolA.Cluster = "one"
 	dbStoragePoolA, err := storagePool.GetByID(ctx, storagePoolA.ID)
 	require.NoError(t, err)
 	require.Equal(t, storagePoolA, dbStoragePoolA)
@@ -118,8 +116,8 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	err = storagePool.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete storage_pools by cluster ID.
-	err = storagePool.DeleteByClusterID(ctx, 2)
+	// Delete storage_pools by cluster Name.
+	err = storagePool.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = storagePool.GetByID(ctx, storagePoolA.ID)

@@ -19,7 +19,7 @@ type networkLoadBalancerService struct {
 	networkClient             NetworkServerClient
 	networkLoadBalancerClient NetworkLoadBalancerServerClient
 
-	isParentFilted func(incusapi.Network) bool
+	isParentFiltered func(incusapi.Network) bool
 
 	now func() time.Time
 }
@@ -30,7 +30,7 @@ type NetworkLoadBalancerServiceOption func(s *networkLoadBalancerService)
 
 func NetworkLoadBalancerWithParentFilter(f func(incusapi.Network) bool) NetworkLoadBalancerServiceOption {
 	return func(s *networkLoadBalancerService) {
-		s.isParentFilted = f
+		s.isParentFiltered = f
 	}
 }
 
@@ -41,7 +41,7 @@ func NewNetworkLoadBalancerService(repo NetworkLoadBalancerRepo, clusterSvc Prov
 		networkClient:             parentClient,
 		networkLoadBalancerClient: client,
 
-		isParentFilted: func(_ incusapi.Network) bool {
+		isParentFiltered: func(_ incusapi.Network) bool {
 			return false
 		},
 
@@ -70,7 +70,7 @@ func (s networkLoadBalancerService) ResyncByID(ctx context.Context, id int) erro
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByID(ctx, networkLoadBalancer.ClusterID)
+		cluster, err := s.clusterSvc.GetByName(ctx, networkLoadBalancer.Cluster)
 		if err != nil {
 			return err
 		}
@@ -111,8 +111,8 @@ func (s networkLoadBalancerService) ResyncByID(ctx context.Context, id int) erro
 	return nil
 }
 
-func (s networkLoadBalancerService) SyncCluster(ctx context.Context, clusterID int) error {
-	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
+func (s networkLoadBalancerService) SyncCluster(ctx context.Context, name string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, clusterID i
 	}
 
 	for _, network := range retrievedNetworks {
-		if s.isParentFilted(network) {
+		if s.isParentFiltered(network) {
 			continue
 		}
 
@@ -133,14 +133,14 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, clusterID i
 		}
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
-			err = s.repo.DeleteByClusterID(ctx, clusterID)
+			err = s.repo.DeleteByClusterName(ctx, name)
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
 			}
 
 			for _, retrievedNetworkLoadBalancer := range retrievedNetworkLoadBalancers {
 				networkLoadBalancer := NetworkLoadBalancer{
-					ClusterID:   clusterID,
+					Cluster:     name,
 					NetworkName: network.Name,
 					Name:        retrievedNetworkLoadBalancer.ListenAddress,
 					Object:      retrievedNetworkLoadBalancer,

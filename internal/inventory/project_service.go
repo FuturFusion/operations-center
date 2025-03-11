@@ -54,7 +54,7 @@ func (s projectService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByID(ctx, project.ClusterID)
+		cluster, err := s.clusterSvc.GetByName(ctx, project.Cluster)
 		if err != nil {
 			return err
 		}
@@ -95,8 +95,8 @@ func (s projectService) ResyncByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s projectService) SyncCluster(ctx context.Context, clusterID int) error {
-	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
+func (s projectService) SyncCluster(ctx context.Context, name string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -107,14 +107,14 @@ func (s projectService) SyncCluster(ctx context.Context, clusterID int) error {
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByClusterID(ctx, clusterID)
+		err = s.repo.DeleteByClusterName(ctx, name)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
 		for _, retrievedProject := range retrievedProjects {
 			project := Project{
-				ClusterID:   clusterID,
+				Cluster:     name,
 				Name:        retrievedProject.Name,
 				Object:      retrievedProject,
 				LastUpdated: s.now(),

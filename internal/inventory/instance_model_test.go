@@ -22,8 +22,8 @@ func TestInstance_Validate(t *testing.T) {
 			name: "valid",
 			image: inventory.Instance{
 				ID:          1,
-				ServerID:    1,
-				ClusterID:   1,
+				Cluster:     "one",
+				Server:      "one",
 				ProjectName: "project one",
 				Name:        "one",
 			},
@@ -31,11 +31,11 @@ func TestInstance_Validate(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "error - invalid server ID",
+			name: "error - invalid cluster ID",
 			image: inventory.Instance{
 				ID:          1,
-				ServerID:    0, // invalid
-				ClusterID:   0,
+				Cluster:     "", // invalid
+				Server:      "one",
 				ProjectName: "project one",
 				Name:        "one",
 			},
@@ -49,8 +49,23 @@ func TestInstance_Validate(t *testing.T) {
 			name: "error - invalid project name",
 			image: inventory.Instance{
 				ID:          1,
-				ServerID:    1,
-				ClusterID:   1,
+				Cluster:     "one",
+				Server:      "", // invalid
+				ProjectName: "project one",
+				Name:        "one",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - invalid project name",
+			image: inventory.Instance{
+				ID:          1,
+				Cluster:     "one",
+				Server:      "one",
 				ProjectName: "", // invalid
 				Name:        "one",
 			},
@@ -64,8 +79,8 @@ func TestInstance_Validate(t *testing.T) {
 			name: "error - invalid name",
 			image: inventory.Instance{
 				ID:          1,
-				ServerID:    1,
-				ClusterID:   1,
+				Cluster:     "one",
+				Server:      "one",
 				ProjectName: "project one",
 				Name:        "", // invalid
 			},

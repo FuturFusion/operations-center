@@ -51,8 +51,8 @@ func (_d NetworkIntegrationRepoWithPrometheus) Create(ctx context.Context, netwo
 	return _d.base.Create(ctx, networkIntegration)
 }
 
-// DeleteByClusterID implements inventory.NetworkIntegrationRepo.
-func (_d NetworkIntegrationRepoWithPrometheus) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+// DeleteByClusterName implements inventory.NetworkIntegrationRepo.
+func (_d NetworkIntegrationRepoWithPrometheus) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -60,9 +60,9 @@ func (_d NetworkIntegrationRepoWithPrometheus) DeleteByClusterID(ctx context.Con
 			result = "error"
 		}
 
-		networkIntegrationRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterID", result).Observe(time.Since(_since).Seconds())
+		networkIntegrationRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByClusterID(ctx, clusterID)
+	return _d.base.DeleteByClusterName(ctx, cluster)
 }
 
 // DeleteByID implements inventory.NetworkIntegrationRepo.

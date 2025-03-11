@@ -54,7 +54,7 @@ func (s networkACLService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByID(ctx, networkACL.ClusterID)
+		cluster, err := s.clusterSvc.GetByName(ctx, networkACL.Cluster)
 		if err != nil {
 			return err
 		}
@@ -96,8 +96,8 @@ func (s networkACLService) ResyncByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s networkACLService) SyncCluster(ctx context.Context, clusterID int) error {
-	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
+func (s networkACLService) SyncCluster(ctx context.Context, name string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -108,14 +108,14 @@ func (s networkACLService) SyncCluster(ctx context.Context, clusterID int) error
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByClusterID(ctx, clusterID)
+		err = s.repo.DeleteByClusterName(ctx, name)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
 		for _, retrievedNetworkACL := range retrievedNetworkACLs {
 			networkACL := NetworkACL{
-				ClusterID:   clusterID,
+				Cluster:     name,
 				ProjectName: retrievedNetworkACL.Project,
 				Name:        retrievedNetworkACL.Name,
 				Object:      retrievedNetworkACL,

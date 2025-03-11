@@ -174,7 +174,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	inventoryRouter := newSubRouter(api10router, "/inventory")
 
-	inventorySyncers := registerInventoryRoutes(dbWithTransaction, clusterSvcWrapped, serverSvc, serverClientProvider, inventoryRouter)
+	inventorySyncers := registerInventoryRoutes(dbWithTransaction, clusterSvcWrapped, serverClientProvider, inventoryRouter)
 
 	clusterSvc.SetInventorySyncers(inventorySyncers)
 

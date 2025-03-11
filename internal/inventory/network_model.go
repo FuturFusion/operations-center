@@ -12,7 +12,7 @@ import (
 
 type Network struct {
 	ID          int
-	ClusterID   int
+	Cluster     string
 	ProjectName string
 	Name        string
 	Object      incusapi.Network
@@ -20,8 +20,8 @@ type Network struct {
 }
 
 func (m Network) Validate() error {
-	if m.ClusterID < 1 {
-		return domain.NewValidationErrf("Invalid Network, cluster id can not be less than 1")
+	if m.Cluster == "" {
+		return domain.NewValidationErrf("Invalid Network, cluster can not be empty")
 	}
 
 	if m.Name == "" {

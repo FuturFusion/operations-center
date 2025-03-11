@@ -56,16 +56,16 @@ func (_d ImageRepoWithSlog) Create(ctx context.Context, image inventory.Image) (
 	return _d._base.Create(ctx, image)
 }
 
-// DeleteByClusterID implements inventory.ImageRepo.
-func (_d ImageRepoWithSlog) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+// DeleteByClusterName implements inventory.ImageRepo.
+func (_d ImageRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("clusterID", clusterID),
+			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("ImageRepoWithSlog: calling DeleteByClusterID")
+	log.Debug("ImageRepoWithSlog: calling DeleteByClusterName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,12 +78,12 @@ func (_d ImageRepoWithSlog) DeleteByClusterID(ctx context.Context, clusterID int
 			}
 		}
 		if err != nil {
-			log.Error("ImageRepoWithSlog: method DeleteByClusterID returned an error")
+			log.Error("ImageRepoWithSlog: method DeleteByClusterName returned an error")
 		} else {
-			log.Debug("ImageRepoWithSlog: method DeleteByClusterID finished")
+			log.Debug("ImageRepoWithSlog: method DeleteByClusterName finished")
 		}
 	}()
-	return _d._base.DeleteByClusterID(ctx, clusterID)
+	return _d._base.DeleteByClusterName(ctx, cluster)
 }
 
 // DeleteByID implements inventory.ImageRepo.

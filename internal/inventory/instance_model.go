@@ -12,8 +12,8 @@ import (
 
 type Instance struct {
 	ID          int
-	ClusterID   int
-	ServerID    int
+	Cluster     string
+	Server      string
 	ProjectName string
 	Name        string
 	Object      incusapi.InstanceFull
@@ -21,8 +21,12 @@ type Instance struct {
 }
 
 func (m Instance) Validate() error {
-	if m.ServerID < 1 {
-		return domain.NewValidationErrf("Invalid Instance, server id can not be less than 1")
+	if m.Cluster == "" {
+		return domain.NewValidationErrf("Invalid Instance, cluster can not be empty")
+	}
+
+	if m.Server == "" {
+		return domain.NewValidationErrf("Invalid Instance, server can not be empty")
 	}
 
 	if m.Name == "" {

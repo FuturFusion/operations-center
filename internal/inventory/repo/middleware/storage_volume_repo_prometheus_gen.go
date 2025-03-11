@@ -51,6 +51,20 @@ func (_d StorageVolumeRepoWithPrometheus) Create(ctx context.Context, storageVol
 	return _d.base.Create(ctx, storageVolume)
 }
 
+// DeleteByClusterName implements inventory.StorageVolumeRepo.
+func (_d StorageVolumeRepoWithPrometheus) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		storageVolumeRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteByClusterName(ctx, cluster)
+}
+
 // DeleteByID implements inventory.StorageVolumeRepo.
 func (_d StorageVolumeRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
 	_since := time.Now()
@@ -63,20 +77,6 @@ func (_d StorageVolumeRepoWithPrometheus) DeleteByID(ctx context.Context, id int
 		storageVolumeRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.DeleteByID(ctx, id)
-}
-
-// DeleteByServerID implements inventory.StorageVolumeRepo.
-func (_d StorageVolumeRepoWithPrometheus) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		storageVolumeRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByServerID", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.DeleteByServerID(ctx, serverID)
 }
 
 // GetAllIDsWithFilter implements inventory.StorageVolumeRepo.

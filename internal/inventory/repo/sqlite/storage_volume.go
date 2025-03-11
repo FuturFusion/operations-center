@@ -28,12 +28,12 @@ func NewStorageVolume(db sqlite.DBTX) *storageVolume {
 
 func (r storageVolume) Create(ctx context.Context, in inventory.StorageVolume) (inventory.StorageVolume, error) {
 	const sqlStmt = `
-WITH _server AS (
-  SELECT cluster_id FROM servers WHERE server_id = :server_id
+WITH _lookup AS (
+  SELECT clusters.id AS cluster_id , servers.id AS server_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name AND servers.name = :server_name
 )
-INSERT INTO storage_volumes (server_id, project_name, storage_pool_name, name, type, object, last_updated)
-VALUES(:server_id, :project_name, :storage_pool_name, :name, :type, :object, :last_updated)
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project_name, storage_pool_name, name, type, object, last_updated;
+INSERT INTO storage_volumes (cluster_id, server_id, project_name, storage_pool_name, name, type, object, last_updated)
+VALUES ( (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :storage_pool_name, :name, :type, :object, :last_updated)
+RETURNING id, :cluster_name, :server_name, project_name, storage_pool_name, name, type, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -42,7 +42,8 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("server_id", in.ServerID),
+		sql.Named("cluster_name", in.Cluster),
+		sql.Named("server_name", in.Server),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("storage_pool_name", in.StoragePoolName),
 		sql.Named("name", in.Name),
@@ -61,8 +62,8 @@ func (r storageVolume) GetAllIDsWithFilter(ctx context.Context, filter inventory
 	const sqlStmt = `
 SELECT storage_volumes.id
 FROM storage_volumes
+  INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
   INNER JOIN servers ON storage_volumes.server_id = servers.id
-  INNER JOIN clusters ON servers.cluster_id = clusters.id
 WHERE true
 %s
 ORDER BY storage_volumes.id
@@ -72,13 +73,13 @@ ORDER BY storage_volumes.id
 	var args []any
 
 	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster`)
-		args = append(args, sql.Named("cluster", filter.Cluster))
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
 	}
 
 	if filter.Server != nil {
-		whereClause = append(whereClause, ` AND servers.name = :server`)
-		args = append(args, sql.Named("server", filter.Server))
+		whereClause = append(whereClause, ` AND servers.name = :server_name`)
+		args = append(args, sql.Named("server_name", filter.Server))
 	}
 
 	if filter.Project != nil {
@@ -116,9 +117,10 @@ ORDER BY storage_volumes.id
 func (r storageVolume) GetByID(ctx context.Context, id int) (inventory.StorageVolume, error) {
 	const sqlStmt = `
 SELECT
-  storage_volumes.id, servers.cluster_id as cluster_id, storage_volumes.server_id, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.name, storage_volumes.type, storage_volumes.object, storage_volumes.last_updated
+  storage_volumes.id, clusters.name, servers.name, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.name, storage_volumes.type, storage_volumes.object, storage_volumes.last_updated
 FROM
   storage_volumes
+  INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
   INNER JOIN servers ON storage_volumes.server_id = servers.id
 WHERE storage_volumes.id=:id;
 `
@@ -151,10 +153,14 @@ func (r storageVolume) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r storageVolume) DeleteByServerID(ctx context.Context, serverID int) error {
-	const sqlStmt = `DELETE FROM storage_volumes WHERE server_id=:serverID;`
+func (r storageVolume) DeleteByClusterName(ctx context.Context, cluster string) error {
+	const sqlStmt = `
+WITH _lookup AS (
+  SELECT id as cluster_id from clusters where name = :cluster_name
+)
+DELETE FROM storage_volumes WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster_name", cluster))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -173,12 +179,12 @@ func (r storageVolume) DeleteByServerID(ctx context.Context, serverID int) error
 
 func (r storageVolume) UpdateByID(ctx context.Context, in inventory.StorageVolume) (inventory.StorageVolume, error) {
 	const sqlStmt = `
-WITH _server AS (
-  SELECT cluster_id FROM servers WHERE server_id = :server_id
+WITH _lookup AS (
+  SELECT clusters.id AS cluster_id , servers.id AS server_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name AND servers.name = :server_name
 )
-UPDATE storage_volumes SET server_id=:server_id, project_name=:project_name, storage_pool_name=:storage_pool_name, name=:name, type=:type, object=:object, last_updated=:last_updated
+UPDATE storage_volumes SET cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, storage_pool_name=:storage_pool_name, name=:name, type=:type, object=:object, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project_name, storage_pool_name, name, type, object, last_updated;
+RETURNING id, :cluster_name, :server_name, project_name, storage_pool_name, name, type, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -188,7 +194,8 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
-		sql.Named("server_id", in.ServerID),
+		sql.Named("cluster_name", in.Cluster),
+		sql.Named("server_name", in.Server),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("storage_pool_name", in.StoragePoolName),
 		sql.Named("name", in.Name),
@@ -209,8 +216,8 @@ func scanStorageVolume(row interface{ Scan(dest ...any) error }) (inventory.Stor
 
 	err := row.Scan(
 		&storageVolume.ID,
-		&storageVolume.ClusterID,
-		&storageVolume.ServerID,
+		&storageVolume.Cluster,
+		&storageVolume.Server,
 		&storageVolume.ProjectName,
 		&storageVolume.StoragePoolName,
 		&storageVolume.Name,

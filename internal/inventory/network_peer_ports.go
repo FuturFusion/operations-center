@@ -12,7 +12,7 @@ type NetworkPeerService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkPeer, error)
 	ResyncByID(ctx context.Context, id int) error
-	SyncCluster(ctx context.Context, clusterID int) error
+	SyncCluster(ctx context.Context, cluster string) error
 }
 
 type NetworkPeerRepo interface {
@@ -20,7 +20,7 @@ type NetworkPeerRepo interface {
 	GetByID(ctx context.Context, id int) (NetworkPeer, error)
 	Create(ctx context.Context, networkPeer NetworkPeer) (NetworkPeer, error)
 	DeleteByID(ctx context.Context, id int) error
-	DeleteByClusterID(ctx context.Context, clusterID int) error
+	DeleteByClusterName(ctx context.Context, cluster string) error
 	UpdateByID(ctx context.Context, networkPeer NetworkPeer) (NetworkPeer, error)
 }
 

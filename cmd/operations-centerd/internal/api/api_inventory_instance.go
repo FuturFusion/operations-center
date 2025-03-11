@@ -162,8 +162,8 @@ func (i *instanceHandler) instanceGet(r *http.Request) response.Response {
 		true,
 		api.Instance{
 			ID:          instance.ID,
-			ClusterID:   instance.ClusterID,
-			ServerID:    instance.ServerID,
+			Cluster:     instance.Cluster,
+			Server:      instance.Server,
 			ProjectName: instance.ProjectName,
 			Name:        instance.Name,
 			Object:      instance.Object,

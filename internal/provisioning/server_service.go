@@ -41,10 +41,6 @@ func (s serverService) GetAllNames(ctx context.Context) ([]string, error) {
 	return s.repo.GetAllNames(ctx)
 }
 
-func (s serverService) GetByID(ctx context.Context, id int) (Server, error) {
-	return s.repo.GetByID(ctx, id)
-}
-
 func (s serverService) GetByName(ctx context.Context, name string) (Server, error) {
 	if name == "" {
 		return Server{}, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
@@ -67,23 +63,7 @@ func (s serverService) UpdateByName(ctx context.Context, name string, newServer 
 		return Server{}, domain.NewValidationErrf("Invalid server, name mismatch")
 	}
 
-	var server Server
-	err = transaction.Do(ctx, func(ctx context.Context) error {
-		server, err = s.repo.GetByName(ctx, name)
-		if err != nil {
-			return err
-		}
-
-		newServer.ID = server.ID
-
-		server, err = s.repo.UpdateByID(ctx, newServer)
-		return err
-	})
-	if err != nil {
-		return Server{}, err
-	}
-
-	return server, nil
+	return s.repo.UpdateByName(ctx, name, newServer)
 }
 
 func (s serverService) RenameByName(ctx context.Context, name string, newServer Server) (Server, error) {
@@ -105,7 +85,7 @@ func (s serverService) RenameByName(ctx context.Context, name string, newServer 
 
 		server.Name = newServer.Name
 
-		server, err = s.repo.UpdateByID(ctx, server)
+		server, err = s.repo.UpdateByName(ctx, name, server)
 		return err
 	})
 	if err != nil {
@@ -120,14 +100,7 @@ func (s serverService) DeleteByName(ctx context.Context, name string) error {
 		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	return transaction.Do(ctx, func(ctx context.Context) error {
-		server, err := s.repo.GetByName(ctx, name)
-		if err != nil {
-			return err
-		}
+	// FIXME: deleteting a server also requires to delete all the inventory (in a transaction).
 
-		// FIXME: deleteting a server also requires to delete all the inventory.
-
-		return s.repo.DeleteByID(ctx, server.ID)
-	})
+	return s.repo.DeleteByName(ctx, name)
 }

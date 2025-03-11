@@ -83,7 +83,7 @@ func TestImageService_GetByID(t *testing.T) {
 			idArg: 1,
 			repoGetByIDImage: inventory.Image{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 				ProjectName: "one",
 				Name:        "one",
 				Object:      incusapi.Image{},
@@ -141,12 +141,11 @@ func TestImageService_ResyncByID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByIDImage: inventory.Image{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			imageClientGetImageByName: incusapi.Image{
@@ -159,12 +158,11 @@ func TestImageService_ResyncByID(t *testing.T) {
 		{
 			name: "success - image get by name - not found",
 			repoGetByIDImage: inventory.Image{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			imageClientGetImageByNameErr: domain.ErrNotFound,
@@ -180,9 +178,9 @@ func TestImageService_ResyncByID(t *testing.T) {
 		{
 			name: "error - cluster get by ID",
 			repoGetByIDImage: inventory.Image{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDErr: boom.Error,
 
@@ -191,12 +189,11 @@ func TestImageService_ResyncByID(t *testing.T) {
 		{
 			name: "error - image get by name",
 			repoGetByIDImage: inventory.Image{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			imageClientGetImageByNameErr: boom.Error,
@@ -206,12 +203,11 @@ func TestImageService_ResyncByID(t *testing.T) {
 		{
 			name: "error - image get by name - not found - delete by id",
 			repoGetByIDImage: inventory.Image{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			imageClientGetImageByNameErr: domain.ErrNotFound,
@@ -222,12 +218,11 @@ func TestImageService_ResyncByID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByIDImage: inventory.Image{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "", // invalid
+				ID:      1,
+				Cluster: "one",
+				Name:    "", // invalid
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			imageClientGetImageByName: incusapi.Image{
@@ -243,12 +238,11 @@ func TestImageService_ResyncByID(t *testing.T) {
 		{
 			name: "error - update by ID",
 			repoGetByIDImage: inventory.Image{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			imageClientGetImageByName: incusapi.Image{
@@ -278,8 +272,8 @@ func TestImageService_ResyncByID(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
-					require.Equal(t, 1, id)
+				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
+					require.Equal(t, "one", name)
 					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
@@ -305,23 +299,22 @@ func TestImageService_ResyncByID(t *testing.T) {
 }
 
 func TestImageService_SyncAll(t *testing.T) {
-	// Includes also SyncCluster and SyncServer
+	// Includes also SyncCluster
 	tests := []struct {
-		name                     string
-		clusterSvcGetByIDCluster provisioning.Cluster
-		clusterSvcGetByIDErr     error
-		imageClientGetImages     []incusapi.Image
-		imageClientGetImagesErr  error
-		repoDeleteByClusterIDErr error
-		repoCreateErr            error
-		serviceOptions           []inventory.ImageServiceOption
+		name                       string
+		clusterSvcGetByIDCluster   provisioning.Cluster
+		clusterSvcGetByIDErr       error
+		imageClientGetImages       []incusapi.Image
+		imageClientGetImagesErr    error
+		repoDeleteByClusterNameErr error
+		repoCreateErr              error
+		serviceOptions             []inventory.ImageServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			imageClientGetImages: []incusapi.Image{
@@ -342,7 +335,6 @@ func TestImageService_SyncAll(t *testing.T) {
 		{
 			name: "error - image client get Images",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			imageClientGetImagesErr: boom.Error,
@@ -352,7 +344,6 @@ func TestImageService_SyncAll(t *testing.T) {
 		{
 			name: "error - images delete by cluster ID",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			imageClientGetImages: []incusapi.Image{
@@ -361,14 +352,13 @@ func TestImageService_SyncAll(t *testing.T) {
 					Project:  "project one",
 				},
 			},
-			repoDeleteByClusterIDErr: boom.Error,
+			repoDeleteByClusterNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - validate",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			imageClientGetImages: []incusapi.Image{
@@ -386,7 +376,6 @@ func TestImageService_SyncAll(t *testing.T) {
 		{
 			name: "error - image create",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			imageClientGetImages: []incusapi.Image{
@@ -405,8 +394,8 @@ func TestImageService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ImageRepoMock{
-				DeleteByClusterIDFunc: func(ctx context.Context, clusterID int) error {
-					return tc.repoDeleteByClusterIDErr
+				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
+					return tc.repoDeleteByClusterNameErr
 				},
 				CreateFunc: func(ctx context.Context, image inventory.Image) (inventory.Image, error) {
 					return inventory.Image{}, tc.repoCreateErr
@@ -414,7 +403,7 @@ func TestImageService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
 					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
@@ -435,7 +424,7 @@ func TestImageService_SyncAll(t *testing.T) {
 			)
 
 			// Run test
-			err := imageSvc.SyncCluster(context.Background(), 1)
+			err := imageSvc.SyncCluster(context.Background(), "one")
 
 			// Assert
 			tc.assertErr(t, err)

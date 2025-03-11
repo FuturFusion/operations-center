@@ -23,11 +23,11 @@ var _ inventory.StorageBucketRepo = &StorageBucketRepoMock{}
 //			CreateFunc: func(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error) {
 //				panic("mock out the Create method")
 //			},
+//			DeleteByClusterNameFunc: func(ctx context.Context, cluster string) error {
+//				panic("mock out the DeleteByClusterName method")
+//			},
 //			DeleteByIDFunc: func(ctx context.Context, id int) error {
 //				panic("mock out the DeleteByID method")
-//			},
-//			DeleteByServerIDFunc: func(ctx context.Context, serverID int) error {
-//				panic("mock out the DeleteByServerID method")
 //			},
 //			GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.StorageBucketFilter) ([]int, error) {
 //				panic("mock out the GetAllIDsWithFilter method")
@@ -48,11 +48,11 @@ type StorageBucketRepoMock struct {
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error)
 
+	// DeleteByClusterNameFunc mocks the DeleteByClusterName method.
+	DeleteByClusterNameFunc func(ctx context.Context, cluster string) error
+
 	// DeleteByIDFunc mocks the DeleteByID method.
 	DeleteByIDFunc func(ctx context.Context, id int) error
-
-	// DeleteByServerIDFunc mocks the DeleteByServerID method.
-	DeleteByServerIDFunc func(ctx context.Context, serverID int) error
 
 	// GetAllIDsWithFilterFunc mocks the GetAllIDsWithFilter method.
 	GetAllIDsWithFilterFunc func(ctx context.Context, filter inventory.StorageBucketFilter) ([]int, error)
@@ -72,19 +72,19 @@ type StorageBucketRepoMock struct {
 			// StorageBucket is the storageBucket argument value.
 			StorageBucket inventory.StorageBucket
 		}
+		// DeleteByClusterName holds details about calls to the DeleteByClusterName method.
+		DeleteByClusterName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Cluster is the cluster argument value.
+			Cluster string
+		}
 		// DeleteByID holds details about calls to the DeleteByID method.
 		DeleteByID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
 			ID int
-		}
-		// DeleteByServerID holds details about calls to the DeleteByServerID method.
-		DeleteByServerID []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// ServerID is the serverID argument value.
-			ServerID int
 		}
 		// GetAllIDsWithFilter holds details about calls to the GetAllIDsWithFilter method.
 		GetAllIDsWithFilter []struct {
@@ -109,8 +109,8 @@ type StorageBucketRepoMock struct {
 		}
 	}
 	lockCreate              sync.RWMutex
+	lockDeleteByClusterName sync.RWMutex
 	lockDeleteByID          sync.RWMutex
-	lockDeleteByServerID    sync.RWMutex
 	lockGetAllIDsWithFilter sync.RWMutex
 	lockGetByID             sync.RWMutex
 	lockUpdateByID          sync.RWMutex
@@ -152,6 +152,42 @@ func (mock *StorageBucketRepoMock) CreateCalls() []struct {
 	return calls
 }
 
+// DeleteByClusterName calls DeleteByClusterNameFunc.
+func (mock *StorageBucketRepoMock) DeleteByClusterName(ctx context.Context, cluster string) error {
+	if mock.DeleteByClusterNameFunc == nil {
+		panic("StorageBucketRepoMock.DeleteByClusterNameFunc: method is nil but StorageBucketRepo.DeleteByClusterName was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Cluster string
+	}{
+		Ctx:     ctx,
+		Cluster: cluster,
+	}
+	mock.lockDeleteByClusterName.Lock()
+	mock.calls.DeleteByClusterName = append(mock.calls.DeleteByClusterName, callInfo)
+	mock.lockDeleteByClusterName.Unlock()
+	return mock.DeleteByClusterNameFunc(ctx, cluster)
+}
+
+// DeleteByClusterNameCalls gets all the calls that were made to DeleteByClusterName.
+// Check the length with:
+//
+//	len(mockedStorageBucketRepo.DeleteByClusterNameCalls())
+func (mock *StorageBucketRepoMock) DeleteByClusterNameCalls() []struct {
+	Ctx     context.Context
+	Cluster string
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Cluster string
+	}
+	mock.lockDeleteByClusterName.RLock()
+	calls = mock.calls.DeleteByClusterName
+	mock.lockDeleteByClusterName.RUnlock()
+	return calls
+}
+
 // DeleteByID calls DeleteByIDFunc.
 func (mock *StorageBucketRepoMock) DeleteByID(ctx context.Context, id int) error {
 	if mock.DeleteByIDFunc == nil {
@@ -185,42 +221,6 @@ func (mock *StorageBucketRepoMock) DeleteByIDCalls() []struct {
 	mock.lockDeleteByID.RLock()
 	calls = mock.calls.DeleteByID
 	mock.lockDeleteByID.RUnlock()
-	return calls
-}
-
-// DeleteByServerID calls DeleteByServerIDFunc.
-func (mock *StorageBucketRepoMock) DeleteByServerID(ctx context.Context, serverID int) error {
-	if mock.DeleteByServerIDFunc == nil {
-		panic("StorageBucketRepoMock.DeleteByServerIDFunc: method is nil but StorageBucketRepo.DeleteByServerID was just called")
-	}
-	callInfo := struct {
-		Ctx      context.Context
-		ServerID int
-	}{
-		Ctx:      ctx,
-		ServerID: serverID,
-	}
-	mock.lockDeleteByServerID.Lock()
-	mock.calls.DeleteByServerID = append(mock.calls.DeleteByServerID, callInfo)
-	mock.lockDeleteByServerID.Unlock()
-	return mock.DeleteByServerIDFunc(ctx, serverID)
-}
-
-// DeleteByServerIDCalls gets all the calls that were made to DeleteByServerID.
-// Check the length with:
-//
-//	len(mockedStorageBucketRepo.DeleteByServerIDCalls())
-func (mock *StorageBucketRepoMock) DeleteByServerIDCalls() []struct {
-	Ctx      context.Context
-	ServerID int
-} {
-	var calls []struct {
-		Ctx      context.Context
-		ServerID int
-	}
-	mock.lockDeleteByServerID.RLock()
-	calls = mock.calls.DeleteByServerID
-	mock.lockDeleteByServerID.RUnlock()
 	return calls
 }
 

@@ -12,7 +12,7 @@ import (
 
 type NetworkACL struct {
 	ID          int
-	ClusterID   int
+	Cluster     string
 	ProjectName string
 	Name        string
 	Object      incusapi.NetworkACL
@@ -20,8 +20,8 @@ type NetworkACL struct {
 }
 
 func (m NetworkACL) Validate() error {
-	if m.ClusterID < 1 {
-		return domain.NewValidationErrf("Invalid NetworkACL, cluster id can not be less than 1")
+	if m.Cluster == "" {
+		return domain.NewValidationErrf("Invalid NetworkACL, cluster can not be empty")
 	}
 
 	if m.Name == "" {

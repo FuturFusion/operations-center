@@ -28,12 +28,12 @@ func NewInstance(db sqlite.DBTX) *instance {
 
 func (r instance) Create(ctx context.Context, in inventory.Instance) (inventory.Instance, error) {
 	const sqlStmt = `
-WITH _server AS (
-  SELECT cluster_id FROM servers WHERE server_id = :server_id
+WITH _lookup AS (
+  SELECT clusters.id AS cluster_id , servers.id AS server_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name AND servers.name = :server_name
 )
-INSERT INTO instances (server_id, project_name, name, object, last_updated)
-VALUES(:server_id, :project_name, :name, :object, :last_updated)
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project_name, name, object, last_updated;
+INSERT INTO instances (cluster_id, server_id, project_name, name, object, last_updated)
+VALUES ( (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :name, :object, :last_updated)
+RETURNING id, :cluster_name, :server_name, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -42,7 +42,8 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("server_id", in.ServerID),
+		sql.Named("cluster_name", in.Cluster),
+		sql.Named("server_name", in.Server),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -59,8 +60,8 @@ func (r instance) GetAllIDsWithFilter(ctx context.Context, filter inventory.Inst
 	const sqlStmt = `
 SELECT instances.id
 FROM instances
+  INNER JOIN clusters ON instances.cluster_id = clusters.id
   INNER JOIN servers ON instances.server_id = servers.id
-  INNER JOIN clusters ON servers.cluster_id = clusters.id
 WHERE true
 %s
 ORDER BY instances.id
@@ -70,13 +71,13 @@ ORDER BY instances.id
 	var args []any
 
 	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster`)
-		args = append(args, sql.Named("cluster", filter.Cluster))
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
 	}
 
 	if filter.Server != nil {
-		whereClause = append(whereClause, ` AND servers.name = :server`)
-		args = append(args, sql.Named("server", filter.Server))
+		whereClause = append(whereClause, ` AND servers.name = :server_name`)
+		args = append(args, sql.Named("server_name", filter.Server))
 	}
 
 	if filter.Project != nil {
@@ -114,9 +115,10 @@ ORDER BY instances.id
 func (r instance) GetByID(ctx context.Context, id int) (inventory.Instance, error) {
 	const sqlStmt = `
 SELECT
-  instances.id, servers.cluster_id as cluster_id, instances.server_id, instances.project_name, instances.name, instances.object, instances.last_updated
+  instances.id, clusters.name, servers.name, instances.project_name, instances.name, instances.object, instances.last_updated
 FROM
   instances
+  INNER JOIN clusters ON instances.cluster_id = clusters.id
   INNER JOIN servers ON instances.server_id = servers.id
 WHERE instances.id=:id;
 `
@@ -149,10 +151,14 @@ func (r instance) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r instance) DeleteByServerID(ctx context.Context, serverID int) error {
-	const sqlStmt = `DELETE FROM instances WHERE server_id=:serverID;`
+func (r instance) DeleteByClusterName(ctx context.Context, cluster string) error {
+	const sqlStmt = `
+WITH _lookup AS (
+  SELECT id as cluster_id from clusters where name = :cluster_name
+)
+DELETE FROM instances WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("serverID", serverID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster_name", cluster))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -171,12 +177,12 @@ func (r instance) DeleteByServerID(ctx context.Context, serverID int) error {
 
 func (r instance) UpdateByID(ctx context.Context, in inventory.Instance) (inventory.Instance, error) {
 	const sqlStmt = `
-WITH _server AS (
-  SELECT cluster_id FROM servers WHERE server_id = :server_id
+WITH _lookup AS (
+  SELECT clusters.id AS cluster_id , servers.id AS server_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name AND servers.name = :server_name
 )
-UPDATE instances SET server_id=:server_id, project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
+UPDATE instances SET cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project_name, name, object, last_updated;
+RETURNING id, :cluster_name, :server_name, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -186,7 +192,8 @@ RETURNING id, (SELECT cluster_id FROM _server) as cluster_id, server_id, project
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
-		sql.Named("server_id", in.ServerID),
+		sql.Named("cluster_name", in.Cluster),
+		sql.Named("server_name", in.Server),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -205,8 +212,8 @@ func scanInstance(row interface{ Scan(dest ...any) error }) (inventory.Instance,
 
 	err := row.Scan(
 		&instance.ID,
-		&instance.ClusterID,
-		&instance.ServerID,
+		&instance.Cluster,
+		&instance.Server,
 		&instance.ProjectName,
 		&instance.Name,
 		&object,

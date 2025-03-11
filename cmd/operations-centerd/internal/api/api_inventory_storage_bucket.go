@@ -162,8 +162,8 @@ func (i *storageBucketHandler) storageBucketGet(r *http.Request) response.Respon
 		true,
 		api.StorageBucket{
 			ID:              storageBucket.ID,
-			ClusterID:       storageBucket.ClusterID,
-			ServerID:        storageBucket.ServerID,
+			Cluster:         storageBucket.Cluster,
+			Server:          storageBucket.Server,
 			ProjectName:     storageBucket.ProjectName,
 			StoragePoolName: storageBucket.StoragePoolName,
 			Name:            storageBucket.Name,

@@ -56,6 +56,36 @@ func (_d StorageBucketRepoWithSlog) Create(ctx context.Context, storageBucket in
 	return _d._base.Create(ctx, storageBucket)
 }
 
+// DeleteByClusterName implements inventory.StorageBucketRepo.
+func (_d StorageBucketRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("cluster", cluster),
+		)
+	}
+	log.Debug("StorageBucketRepoWithSlog: calling DeleteByClusterName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("StorageBucketRepoWithSlog: method DeleteByClusterName returned an error")
+		} else {
+			log.Debug("StorageBucketRepoWithSlog: method DeleteByClusterName finished")
+		}
+	}()
+	return _d._base.DeleteByClusterName(ctx, cluster)
+}
+
 // DeleteByID implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
@@ -84,36 +114,6 @@ func (_d StorageBucketRepoWithSlog) DeleteByID(ctx context.Context, id int) (err
 		}
 	}()
 	return _d._base.DeleteByID(ctx, id)
-}
-
-// DeleteByServerID implements inventory.StorageBucketRepo.
-func (_d StorageBucketRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-			slog.Int("serverID", serverID),
-		)
-	}
-	log.Debug("StorageBucketRepoWithSlog: calling DeleteByServerID")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("StorageBucketRepoWithSlog: method DeleteByServerID returned an error")
-		} else {
-			log.Debug("StorageBucketRepoWithSlog: method DeleteByServerID finished")
-		}
-	}()
-	return _d._base.DeleteByServerID(ctx, serverID)
 }
 
 // GetAllIDsWithFilter implements inventory.StorageBucketRepo.

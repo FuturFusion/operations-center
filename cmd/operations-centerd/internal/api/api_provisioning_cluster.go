@@ -126,7 +126,6 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 		result := make([]api.Cluster, 0, len(clusters))
 		for _, cluster := range clusters {
 			result = append(result, api.Cluster{
-				ID:              cluster.ID,
 				Name:            cluster.Name,
 				ConnectionURL:   cluster.ConnectionURL,
 				ServerHostnames: cluster.ServerHostnames,
@@ -187,7 +186,6 @@ func (c *clusterHandler) clustersPost(r *http.Request) response.Response {
 	}
 
 	_, err = c.service.Create(r.Context(), provisioning.Cluster{
-		ID:              cluster.ID,
 		Name:            cluster.Name,
 		ConnectionURL:   cluster.ConnectionURL,
 		ServerHostnames: cluster.ServerHostnames,
@@ -245,7 +243,6 @@ func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		api.Cluster{
-			ID:              cluster.ID,
 			Name:            cluster.Name,
 			ConnectionURL:   cluster.ConnectionURL,
 			ServerHostnames: cluster.ServerHostnames,
@@ -314,7 +311,6 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 	}
 
 	_, err = c.service.UpdateByName(ctx, name, provisioning.Cluster{
-		ID:              cluster.ID,
 		Name:            cluster.Name,
 		ConnectionURL:   cluster.ConnectionURL,
 		ServerHostnames: cluster.ServerHostnames,
@@ -420,7 +416,6 @@ func (c *clusterHandler) clusterPost(r *http.Request) response.Response {
 	}
 
 	_, err = c.service.RenameByName(ctx, name, provisioning.Cluster{
-		ID:              currentCluster.ID,
 		Name:            cluster.Name,
 		ConnectionURL:   currentCluster.ConnectionURL,
 		ServerHostnames: currentCluster.ServerHostnames,

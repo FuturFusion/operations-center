@@ -22,7 +22,6 @@ import (
 
 func TestNetworkForwardDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -30,7 +29,6 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
@@ -38,7 +36,7 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 	}
 
 	networkForwardA := inventory.NetworkForward{
-		ClusterID:   1,
+		Cluster:     "one",
 		NetworkName: "parent one",
 		Name:        "one",
 		Object:      incusapi.NetworkForward{},
@@ -46,7 +44,7 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 	}
 
 	networkForwardB := inventory.NetworkForward{
-		ClusterID:   2,
+		Cluster:     "two",
 		NetworkName: "parent one",
 		Name:        "two",
 		Object:      incusapi.NetworkForward{},
@@ -85,11 +83,11 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 	// Add network_forwards
 	networkForwardA, err = networkForward.Create(ctx, networkForwardA)
 	require.NoError(t, err)
-	require.Equal(t, 1, networkForwardA.ClusterID)
+	require.Equal(t, "one", networkForwardA.Cluster)
 
 	networkForwardB, err = networkForward.Create(ctx, networkForwardB)
 	require.NoError(t, err)
-	require.Equal(t, 2, networkForwardB.ClusterID)
+	require.Equal(t, "two", networkForwardB.Cluster)
 
 	// Ensure we have two entries without filter
 	networkForwardIDs, err := networkForward.GetAllIDsWithFilter(ctx, inventory.NetworkForwardFilter{})
@@ -106,7 +104,7 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []int{1}, networkForwardIDs)
 
 	// Should get back networkForwardA unchanged.
-	networkForwardA.ClusterID = 1
+	networkForwardA.Cluster = "one"
 	dbNetworkForwardA, err := networkForward.GetByID(ctx, networkForwardA.ID)
 	require.NoError(t, err)
 	require.Equal(t, networkForwardA, dbNetworkForwardA)
@@ -120,8 +118,8 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 	err = networkForward.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete network_forwards by cluster ID.
-	err = networkForward.DeleteByClusterID(ctx, 2)
+	// Delete network_forwards by cluster Name.
+	err = networkForward.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = networkForward.GetByID(ctx, networkForwardA.ID)

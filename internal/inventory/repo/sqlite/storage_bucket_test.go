@@ -4,8 +4,6 @@ package sqlite_test
 
 import (
 	"context"
-	"encoding/json"
-
 	"testing"
 	"time"
 
@@ -25,7 +23,6 @@ import (
 
 func TestStorageBucketDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -33,7 +30,6 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
@@ -41,29 +37,24 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	}
 
 	testServerA := provisioning.Server{
-		ID:            1,
-		ClusterID:     1,
+		Cluster:       "one",
 		Name:          "one",
+		ConnectionURL: "https://server-one/",
 		Type:          api.ServerTypeIncus,
-		ConnectionURL: "https://one/",
-		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
 		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	testServerB := provisioning.Server{
-		ID:            2,
-		ClusterID:     1,
+		Cluster:       "two",
 		Name:          "two",
+		ConnectionURL: "https://server-two/",
 		Type:          api.ServerTypeIncus,
-		ConnectionURL: "https://one/",
-		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
 		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	storageBucketA := inventory.StorageBucket{
-		ServerID:        1,
+		Cluster:         "one",
+		Server:          "one",
 		ProjectName:     "one",
 		StoragePoolName: "parent one",
 		Name:            "one",
@@ -72,7 +63,8 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	}
 
 	storageBucketB := inventory.StorageBucket{
-		ServerID:        2,
+		Cluster:         "two",
+		Server:          "two",
 		ProjectName:     "two",
 		StoragePoolName: "parent one",
 		Name:            "two",
@@ -96,7 +88,6 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), nil)
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
 
 	storageBucket := inventorySqlite.NewStorageBucket(db)
 
@@ -111,6 +102,7 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add dummy servers.
+	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
 	_, err = serverSvc.Create(ctx, testServerA)
 	require.NoError(t, err)
 	_, err = serverSvc.Create(ctx, testServerB)
@@ -119,11 +111,11 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	// Add storage_buckets
 	storageBucketA, err = storageBucket.Create(ctx, storageBucketA)
 	require.NoError(t, err)
-	require.Equal(t, 1, storageBucketA.ServerID)
+	require.Equal(t, "one", storageBucketA.Cluster)
 
 	storageBucketB, err = storageBucket.Create(ctx, storageBucketB)
 	require.NoError(t, err)
-	require.Equal(t, 2, storageBucketB.ServerID)
+	require.Equal(t, "two", storageBucketB.Cluster)
 
 	// Ensure we have two entries without filter
 	storageBucketIDs, err := storageBucket.GetAllIDsWithFilter(ctx, inventory.StorageBucketFilter{})
@@ -142,7 +134,7 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []int{1}, storageBucketIDs)
 
 	// Should get back storageBucketA unchanged.
-	storageBucketA.ClusterID = 1
+	storageBucketA.Cluster = "one"
 	dbStorageBucketA, err := storageBucket.GetByID(ctx, storageBucketA.ID)
 	require.NoError(t, err)
 	require.Equal(t, storageBucketA, dbStorageBucketA)
@@ -156,8 +148,8 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	err = storageBucket.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete storage_buckets by server ID.
-	err = storageBucket.DeleteByServerID(ctx, 2)
+	// Delete storage_buckets by cluster Name.
+	err = storageBucket.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = storageBucket.GetByID(ctx, storageBucketA.ID)

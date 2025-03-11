@@ -22,7 +22,6 @@ import (
 
 func TestImageDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -30,7 +29,6 @@ func TestImageDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
@@ -38,7 +36,7 @@ func TestImageDatabaseActions(t *testing.T) {
 	}
 
 	imageA := inventory.Image{
-		ClusterID:   1,
+		Cluster:     "one",
 		ProjectName: "one",
 		Name:        "one",
 		Object:      incusapi.Image{},
@@ -46,7 +44,7 @@ func TestImageDatabaseActions(t *testing.T) {
 	}
 
 	imageB := inventory.Image{
-		ClusterID:   2,
+		Cluster:     "two",
 		ProjectName: "two",
 		Name:        "two",
 		Object:      incusapi.Image{},
@@ -85,11 +83,11 @@ func TestImageDatabaseActions(t *testing.T) {
 	// Add images
 	imageA, err = image.Create(ctx, imageA)
 	require.NoError(t, err)
-	require.Equal(t, 1, imageA.ClusterID)
+	require.Equal(t, "one", imageA.Cluster)
 
 	imageB, err = image.Create(ctx, imageB)
 	require.NoError(t, err)
-	require.Equal(t, 2, imageB.ClusterID)
+	require.Equal(t, "two", imageB.Cluster)
 
 	// Ensure we have two entries without filter
 	imageIDs, err := image.GetAllIDsWithFilter(ctx, inventory.ImageFilter{})
@@ -107,7 +105,7 @@ func TestImageDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []int{1}, imageIDs)
 
 	// Should get back imageA unchanged.
-	imageA.ClusterID = 1
+	imageA.Cluster = "one"
 	dbImageA, err := image.GetByID(ctx, imageA.ID)
 	require.NoError(t, err)
 	require.Equal(t, imageA, dbImageA)
@@ -121,8 +119,8 @@ func TestImageDatabaseActions(t *testing.T) {
 	err = image.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete images by cluster ID.
-	err = image.DeleteByClusterID(ctx, 2)
+	// Delete images by cluster Name.
+	err = image.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = image.GetByID(ctx, imageA.ID)

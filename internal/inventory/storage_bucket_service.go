@@ -16,11 +16,10 @@ import (
 type storageBucketService struct {
 	repo                StorageBucketRepo
 	clusterSvc          ProvisioningClusterService
-	serverSvc           ProvisioningServerService
 	storagePoolClient   StoragePoolServerClient
 	storageBucketClient StorageBucketServerClient
 
-	isParentFilted func(incusapi.StoragePool) bool
+	isParentFiltered func(incusapi.StoragePool) bool
 
 	now func() time.Time
 }
@@ -31,19 +30,18 @@ type StorageBucketServiceOption func(s *storageBucketService)
 
 func StorageBucketWithParentFilter(f func(incusapi.StoragePool) bool) StorageBucketServiceOption {
 	return func(s *storageBucketService) {
-		s.isParentFilted = f
+		s.isParentFiltered = f
 	}
 }
 
-func NewStorageBucketService(repo StorageBucketRepo, clusterSvc ProvisioningClusterService, serverSvc ProvisioningServerService, client StorageBucketServerClient, parentClient StoragePoolServerClient, opts ...StorageBucketServiceOption) storageBucketService {
+func NewStorageBucketService(repo StorageBucketRepo, clusterSvc ProvisioningClusterService, client StorageBucketServerClient, parentClient StoragePoolServerClient, opts ...StorageBucketServiceOption) storageBucketService {
 	storageBucketSvc := storageBucketService{
 		repo:                repo,
 		clusterSvc:          clusterSvc,
-		serverSvc:           serverSvc,
 		storagePoolClient:   parentClient,
 		storageBucketClient: client,
 
-		isParentFilted: func(_ incusapi.StoragePool) bool {
+		isParentFiltered: func(_ incusapi.StoragePool) bool {
 			return false
 		},
 
@@ -72,12 +70,12 @@ func (s storageBucketService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		server, err := s.serverSvc.GetByID(ctx, storageBucket.ServerID)
+		cluster, err := s.clusterSvc.GetByName(ctx, storageBucket.Cluster)
 		if err != nil {
 			return err
 		}
 
-		retrievedStorageBucket, err := s.storageBucketClient.GetStorageBucketByName(ctx, server.ConnectionURL, storageBucket.StoragePoolName, storageBucket.Name)
+		retrievedStorageBucket, err := s.storageBucketClient.GetStorageBucketByName(ctx, cluster.ConnectionURL, storageBucket.StoragePoolName, storageBucket.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, storageBucket.ID)
 			if err != nil {
@@ -91,6 +89,7 @@ func (s storageBucketService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
+		storageBucket.Server = retrievedStorageBucket.Location
 		storageBucket.ProjectName = retrievedStorageBucket.Project
 		storageBucket.Object = retrievedStorageBucket
 		storageBucket.LastUpdated = s.now()
@@ -114,53 +113,37 @@ func (s storageBucketService) ResyncByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s storageBucketService) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+func (s storageBucketService) SyncCluster(ctx context.Context, name string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, name)
 	if err != nil {
 		return err
 	}
 
-	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s storageBucketService) SyncServer(ctx context.Context, serverID int) error {
-	server, err := s.serverSvc.GetByID(ctx, serverID)
-	if err != nil {
-		return err
-	}
-
-	retrievedStoragePools, err := s.storagePoolClient.GetStoragePools(ctx, server.ConnectionURL)
+	retrievedStoragePools, err := s.storagePoolClient.GetStoragePools(ctx, cluster.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
 	for _, storagePool := range retrievedStoragePools {
-		if s.isParentFilted(storagePool) {
+		if s.isParentFiltered(storagePool) {
 			continue
 		}
 
-		retrievedStorageBuckets, err := s.storageBucketClient.GetStorageBuckets(ctx, server.ConnectionURL, storagePool.Name)
+		retrievedStorageBuckets, err := s.storageBucketClient.GetStorageBuckets(ctx, cluster.ConnectionURL, storagePool.Name)
 		if err != nil {
 			return err
 		}
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
-			err = s.repo.DeleteByServerID(ctx, serverID)
+			err = s.repo.DeleteByClusterName(ctx, name)
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
 			}
 
 			for _, retrievedStorageBucket := range retrievedStorageBuckets {
 				storageBucket := StorageBucket{
-					ClusterID:       server.ClusterID,
-					ServerID:        serverID,
+					Cluster:         name,
+					Server:          retrievedStorageBucket.Location,
 					ProjectName:     retrievedStorageBucket.Project,
 					StoragePoolName: storagePool.Name,
 					Name:            retrievedStorageBucket.Name,

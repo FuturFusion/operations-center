@@ -144,7 +144,7 @@ func (i *networkLoadBalancerHandler) networkLoadBalancerGet(r *http.Request) res
 		true,
 		api.NetworkLoadBalancer{
 			ID:          networkLoadBalancer.ID,
-			ClusterID:   networkLoadBalancer.ClusterID,
+			Cluster:     networkLoadBalancer.Cluster,
 			NetworkName: networkLoadBalancer.NetworkName,
 			Name:        networkLoadBalancer.Name,
 			Object:      networkLoadBalancer.Object,

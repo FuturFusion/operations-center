@@ -12,7 +12,7 @@ import (
 
 type NetworkZone struct {
 	ID          int
-	ClusterID   int
+	Cluster     string
 	ProjectName string
 	Name        string
 	Object      incusapi.NetworkZone
@@ -20,8 +20,8 @@ type NetworkZone struct {
 }
 
 func (m NetworkZone) Validate() error {
-	if m.ClusterID < 1 {
-		return domain.NewValidationErrf("Invalid NetworkZone, cluster id can not be less than 1")
+	if m.Cluster == "" {
+		return domain.NewValidationErrf("Invalid NetworkZone, cluster can not be empty")
 	}
 
 	if m.Name == "" {

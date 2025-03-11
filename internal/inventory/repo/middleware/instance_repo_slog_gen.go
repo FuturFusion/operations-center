@@ -56,6 +56,36 @@ func (_d InstanceRepoWithSlog) Create(ctx context.Context, instance inventory.In
 	return _d._base.Create(ctx, instance)
 }
 
+// DeleteByClusterName implements inventory.InstanceRepo.
+func (_d InstanceRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.String("cluster", cluster),
+		)
+	}
+	log.Debug("InstanceRepoWithSlog: calling DeleteByClusterName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("InstanceRepoWithSlog: method DeleteByClusterName returned an error")
+		} else {
+			log.Debug("InstanceRepoWithSlog: method DeleteByClusterName finished")
+		}
+	}()
+	return _d._base.DeleteByClusterName(ctx, cluster)
+}
+
 // DeleteByID implements inventory.InstanceRepo.
 func (_d InstanceRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
@@ -84,36 +114,6 @@ func (_d InstanceRepoWithSlog) DeleteByID(ctx context.Context, id int) (err erro
 		}
 	}()
 	return _d._base.DeleteByID(ctx, id)
-}
-
-// DeleteByServerID implements inventory.InstanceRepo.
-func (_d InstanceRepoWithSlog) DeleteByServerID(ctx context.Context, serverID int) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-			slog.Int("serverID", serverID),
-		)
-	}
-	log.Debug("InstanceRepoWithSlog: calling DeleteByServerID")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("InstanceRepoWithSlog: method DeleteByServerID returned an error")
-		} else {
-			log.Debug("InstanceRepoWithSlog: method DeleteByServerID finished")
-		}
-	}()
-	return _d._base.DeleteByServerID(ctx, serverID)
 }
 
 // GetAllIDsWithFilter implements inventory.InstanceRepo.

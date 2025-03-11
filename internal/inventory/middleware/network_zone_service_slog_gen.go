@@ -118,12 +118,12 @@ func (_d NetworkZoneServiceWithSlog) ResyncByID(ctx context.Context, id int) (er
 }
 
 // SyncCluster implements inventory.NetworkZoneService.
-func (_d NetworkZoneServiceWithSlog) SyncCluster(ctx context.Context, clusterID int) (err error) {
+func (_d NetworkZoneServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("clusterID", clusterID),
+			slog.String("cluster", cluster),
 		)
 	}
 	log.Debug("NetworkZoneServiceWithSlog: calling SyncCluster")
@@ -144,5 +144,5 @@ func (_d NetworkZoneServiceWithSlog) SyncCluster(ctx context.Context, clusterID 
 			log.Debug("NetworkZoneServiceWithSlog: method SyncCluster finished")
 		}
 	}()
-	return _d._base.SyncCluster(ctx, clusterID)
+	return _d._base.SyncCluster(ctx, cluster)
 }

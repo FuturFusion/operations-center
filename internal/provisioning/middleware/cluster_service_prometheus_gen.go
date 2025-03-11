@@ -93,20 +93,6 @@ func (_d ClusterServiceWithPrometheus) GetAllNames(ctx context.Context) (strings
 	return _d.base.GetAllNames(ctx)
 }
 
-// GetByID implements provisioning.ClusterService.
-func (_d ClusterServiceWithPrometheus) GetByID(ctx context.Context, id int) (cluster provisioning.Cluster, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.GetByID(ctx, id)
-}
-
 // GetByName implements provisioning.ClusterService.
 func (_d ClusterServiceWithPrometheus) GetByName(ctx context.Context, name string) (cluster provisioning.Cluster, err error) {
 	_since := time.Now()

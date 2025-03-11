@@ -22,7 +22,7 @@ func TestNetwork_Validate(t *testing.T) {
 			name: "valid",
 			image: inventory.Network{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 				ProjectName: "project one",
 				Name:        "one",
 			},
@@ -33,7 +33,7 @@ func TestNetwork_Validate(t *testing.T) {
 			name: "error - invalid cluster ID",
 			image: inventory.Network{
 				ID:          1,
-				ClusterID:   0, // invalid
+				Cluster:     "", // invalid
 				ProjectName: "project one",
 				Name:        "one",
 			},
@@ -47,7 +47,7 @@ func TestNetwork_Validate(t *testing.T) {
 			name: "error - invalid project name",
 			image: inventory.Network{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 				ProjectName: "", // invalid
 				Name:        "one",
 			},
@@ -61,7 +61,7 @@ func TestNetwork_Validate(t *testing.T) {
 			name: "error - invalid name",
 			image: inventory.Network{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 				ProjectName: "project one",
 				Name:        "", // invalid
 			},

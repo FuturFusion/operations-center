@@ -162,8 +162,8 @@ func (i *storageVolumeHandler) storageVolumeGet(r *http.Request) response.Respon
 		true,
 		api.StorageVolume{
 			ID:              storageVolume.ID,
-			ClusterID:       storageVolume.ClusterID,
-			ServerID:        storageVolume.ServerID,
+			Cluster:         storageVolume.Cluster,
+			Server:          storageVolume.Server,
 			ProjectName:     storageVolume.ProjectName,
 			StoragePoolName: storageVolume.StoragePoolName,
 			Name:            storageVolume.Name,

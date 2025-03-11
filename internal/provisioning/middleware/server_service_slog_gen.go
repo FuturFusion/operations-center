@@ -177,37 +177,6 @@ func (_d ServerServiceWithSlog) GetAllNames(ctx context.Context) (strings []stri
 	return _d._base.GetAllNames(ctx)
 }
 
-// GetByID implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) GetByID(ctx context.Context, id int) (server provisioning.Server, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
-			slog.Any("ctx", ctx),
-			slog.Int("id", id),
-		)
-	}
-	log.Debug("ServerServiceWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("server", server),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("ServerServiceWithSlog: method GetByID returned an error")
-		} else {
-			log.Debug("ServerServiceWithSlog: method GetByID finished")
-		}
-	}()
-	return _d._base.GetByID(ctx, id)
-}
-
 // GetByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (server provisioning.Server, err error) {
 	log := _d._log.With()

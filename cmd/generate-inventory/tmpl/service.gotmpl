@@ -16,9 +16,6 @@ import (
 type {{ .Name | camelcase }}Service struct {
 	repo                   {{ .Name | pascalcase }}Repo
 	clusterSvc             ProvisioningClusterService
-{{- if .IsServerResource }}
-	serverSvc              ProvisioningServerService
-{{- end }}
 
 {{- if .HasParent }}
 	{{ .ParentName | camelcase }}Client {{ .ParentObjectType | pascalcase }}ServerClient
@@ -26,7 +23,7 @@ type {{ .Name | camelcase }}Service struct {
 	{{ .Name | camelcase }}Client {{ .Name | pascalcase }}ServerClient
 {{- if .HasParent }}
 
-	isParentFilted func(incusapi.{{ .ParentObjectType | pascalcase }}) bool
+	isParentFiltered func(incusapi.{{ .ParentObjectType | pascalcase }}) bool
 {{- end }}
 
 	now func() time.Time
@@ -39,18 +36,15 @@ type {{ .Name | pascalcase }}ServiceOption func(s *{{ .Name | camelcase }}Servic
 
 func {{ .Name | pascalcase }}WithParentFilter(f func(incusapi.{{ .ParentObjectType | pascalcase }}) bool) {{ .Name | pascalcase }}ServiceOption {
 	return func(s *{{ .Name | camelcase }}Service) {
-		s.isParentFilted = f
+		s.isParentFiltered = f
 	}
 }
 {{- end }}
 
-func New{{ .Name | pascalcase }}Service(repo {{ .Name | pascalcase }}Repo, clusterSvc ProvisioningClusterService, {{ if .IsServerResource }}serverSvc ProvisioningServerService, {{ end -}} client {{ .Name | pascalcase }}ServerClient, {{ if .HasParent }}parentClient {{ .ParentName | pascalcase }}ServerClient, {{ end -}} opts ...{{ .Name | pascalcase }}ServiceOption) {{ .Name | camelcase }}Service {
+func New{{ .Name | pascalcase }}Service(repo {{ .Name | pascalcase }}Repo, clusterSvc ProvisioningClusterService, client {{ .Name | pascalcase }}ServerClient, {{ if .HasParent }}parentClient {{ .ParentName | pascalcase }}ServerClient, {{ end -}} opts ...{{ .Name | pascalcase }}ServiceOption) {{ .Name | camelcase }}Service {
 	{{ .Name | camelcase }}Svc := {{ .Name | camelcase }}Service{
 		repo:                   repo,
 		clusterSvc:             clusterSvc,
-{{- if .IsServerResource }}
-		serverSvc:              serverSvc,
-{{- end }}
 
 {{- if .HasParent }}
 		{{ .ParentName | camelcase }}Client: parentClient,
@@ -58,7 +52,7 @@ func New{{ .Name | pascalcase }}Service(repo {{ .Name | pascalcase }}Repo, clust
 		{{ .Name | camelcase }}Client: client,
 {{- if .HasParent }}
 
-	isParentFilted: func(_ incusapi.{{ .ParentObjectType | pascalcase }}) bool {
+	isParentFiltered: func(_ incusapi.{{ .ParentObjectType | pascalcase }}) bool {
 		return false
 	},
 {{- end }}
@@ -88,12 +82,12 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 			return err
 		}
 
-		{{ .ResourceForeignKey }}, err := s.{{ .ResourceForeignKey }}Svc.GetByID(ctx, {{ .Name | camelcase }}.{{ .ResourceForeignKey | pascalcase }}ID)
+		cluster, err := s.clusterSvc.GetByName(ctx, {{ .Name | camelcase }}.Cluster)
 		if err != nil {
 			return err
 		}
 
-		retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, {{ .ResourceForeignKey }}.ConnectionURL, {{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}.{{ .Name | pascalcase }} {{- end}})
+		retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, cluster.ConnectionURL, {{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}.{{ .Name | pascalcase }} {{- end}})
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, {{ .Name | camelcase }}.ID)
 			if err != nil {
@@ -107,7 +101,10 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 			return err
 		}
 
-{{ if .HasProject }}
+{{ if .HasLocation }}
+		{{ .Name | camelcase }}.Server = retrieved{{ .Name | pascalcase }}.Location
+{{- end }}
+{{- if .HasProject }}
 		{{ .Name | camelcase }}.ProjectName = retrieved{{ .Name | pascalcase }}.Project
 {{- end }}
 {{- range .ExtraAttributes }}
@@ -135,67 +132,49 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 	return nil
 }
 
-{{ if .IsServerResource }}
-func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
-	if err != nil {
-		return err
-	}
-
-	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-{{ end }}
-
-func (s {{ .Name | camelcase }}Service) Sync{{ .ResourceForeignKey | pascalcase }}(ctx context.Context, {{ .ResourceForeignKey }}ID int) error {
-	{{ .ResourceForeignKey }}, err := s.{{ .ResourceForeignKey }}Svc.GetByID(ctx, {{ .ResourceForeignKey }}ID)
+func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, name)
 	if err != nil {
 		return err
 	}
 
 {{ if .HasParent }}
-	retrieved{{ .ParentPluralName | pascalcase }}, err := s.{{ .ParentName | camelcase }}Client.Get{{ .ParentName | pascalcase }}s(ctx, {{ .ResourceForeignKey }}.ConnectionURL)
+	retrieved{{ .ParentPluralName | pascalcase }}, err := s.{{ .ParentName | camelcase }}Client.Get{{ .ParentName | pascalcase }}s(ctx, cluster.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
 	for _, {{ .ParentName | camelcase }} := range retrieved{{ .ParentPluralName | pascalcase }} {
 {{- if .HasParent }}
-		if s.isParentFilted({{ .ParentName | camelcase }}) {
+		if s.isParentFiltered({{ .ParentName | camelcase }}) {
 			continue
 		}
 {{- end }}
 
-		retrieved{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, {{ .ResourceForeignKey }}.ConnectionURL, {{ .ParentName | camelcase }}.Name)
+		retrieved{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, cluster.ConnectionURL, {{ .ParentName | camelcase }}.Name)
 		if err != nil {
 			return err
 		}
 
 {{ else }}
-	retrieved{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, {{ .ResourceForeignKey }}.ConnectionURL)
+	retrieved{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, cluster.ConnectionURL)
 	if err != nil {
 		return err
 	}
 {{ end }}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteBy{{ .ResourceForeignKey | pascalcase }}ID(ctx, {{ .ResourceForeignKey }}ID)
+		err = s.repo.DeleteByClusterName(ctx, name)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
 		for _, retrieved{{ .Name | pascalcase }} := range retrieved{{ .PluralName | pascalcase }} {
 			{{ .Name | camelcase }} := {{ .Name | pascalcase }}{
-{{- if .IsServerResource }}
-				ClusterID:   {{ .ResourceForeignKey }}.ClusterID,
+				Cluster:   name,
+{{- if .HasLocation }}
+				Server:      retrieved{{ .Name | pascalcase }}.Location,
 {{- end }}
-				{{ .ResourceForeignKey | pascalcase }}ID:    {{ .ResourceForeignKey }}ID,
 {{- if .HasProject }}
 				ProjectName: retrieved{{ .Name | pascalcase }}.Project,
 {{- end }}

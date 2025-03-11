@@ -19,7 +19,7 @@ type networkForwardService struct {
 	networkClient        NetworkServerClient
 	networkForwardClient NetworkForwardServerClient
 
-	isParentFilted func(incusapi.Network) bool
+	isParentFiltered func(incusapi.Network) bool
 
 	now func() time.Time
 }
@@ -30,7 +30,7 @@ type NetworkForwardServiceOption func(s *networkForwardService)
 
 func NetworkForwardWithParentFilter(f func(incusapi.Network) bool) NetworkForwardServiceOption {
 	return func(s *networkForwardService) {
-		s.isParentFilted = f
+		s.isParentFiltered = f
 	}
 }
 
@@ -41,7 +41,7 @@ func NewNetworkForwardService(repo NetworkForwardRepo, clusterSvc ProvisioningCl
 		networkClient:        parentClient,
 		networkForwardClient: client,
 
-		isParentFilted: func(_ incusapi.Network) bool {
+		isParentFiltered: func(_ incusapi.Network) bool {
 			return false
 		},
 
@@ -70,7 +70,7 @@ func (s networkForwardService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByID(ctx, networkForward.ClusterID)
+		cluster, err := s.clusterSvc.GetByName(ctx, networkForward.Cluster)
 		if err != nil {
 			return err
 		}
@@ -111,8 +111,8 @@ func (s networkForwardService) ResyncByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s networkForwardService) SyncCluster(ctx context.Context, clusterID int) error {
-	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
+func (s networkForwardService) SyncCluster(ctx context.Context, name string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func (s networkForwardService) SyncCluster(ctx context.Context, clusterID int) e
 	}
 
 	for _, network := range retrievedNetworks {
-		if s.isParentFilted(network) {
+		if s.isParentFiltered(network) {
 			continue
 		}
 
@@ -133,14 +133,14 @@ func (s networkForwardService) SyncCluster(ctx context.Context, clusterID int) e
 		}
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
-			err = s.repo.DeleteByClusterID(ctx, clusterID)
+			err = s.repo.DeleteByClusterName(ctx, name)
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
 			}
 
 			for _, retrievedNetworkForward := range retrievedNetworkForwards {
 				networkForward := NetworkForward{
-					ClusterID:   clusterID,
+					Cluster:     name,
 					NetworkName: network.Name,
 					Name:        retrievedNetworkForward.ListenAddress,
 					Object:      retrievedNetworkForward,

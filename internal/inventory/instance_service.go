@@ -14,7 +14,6 @@ import (
 type instanceService struct {
 	repo           InstanceRepo
 	clusterSvc     ProvisioningClusterService
-	serverSvc      ProvisioningServerService
 	instanceClient InstanceServerClient
 
 	now func() time.Time
@@ -24,11 +23,10 @@ var _ InstanceService = &instanceService{}
 
 type InstanceServiceOption func(s *instanceService)
 
-func NewInstanceService(repo InstanceRepo, clusterSvc ProvisioningClusterService, serverSvc ProvisioningServerService, client InstanceServerClient, opts ...InstanceServiceOption) instanceService {
+func NewInstanceService(repo InstanceRepo, clusterSvc ProvisioningClusterService, client InstanceServerClient, opts ...InstanceServiceOption) instanceService {
 	instanceSvc := instanceService{
 		repo:           repo,
 		clusterSvc:     clusterSvc,
-		serverSvc:      serverSvc,
 		instanceClient: client,
 
 		now: time.Now,
@@ -56,12 +54,12 @@ func (s instanceService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		server, err := s.serverSvc.GetByID(ctx, instance.ServerID)
+		cluster, err := s.clusterSvc.GetByName(ctx, instance.Cluster)
 		if err != nil {
 			return err
 		}
 
-		retrievedInstance, err := s.instanceClient.GetInstanceByName(ctx, server.ConnectionURL, instance.Name)
+		retrievedInstance, err := s.instanceClient.GetInstanceByName(ctx, cluster.ConnectionURL, instance.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByID(ctx, instance.ID)
 			if err != nil {
@@ -75,6 +73,7 @@ func (s instanceService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
+		instance.Server = retrievedInstance.Location
 		instance.ProjectName = retrievedInstance.Project
 		instance.Object = retrievedInstance
 		instance.LastUpdated = s.now()
@@ -98,43 +97,27 @@ func (s instanceService) ResyncByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s instanceService) SyncCluster(ctx context.Context, clusterID int) error {
-	servers, err := s.serverSvc.GetAllByClusterID(ctx, clusterID)
+func (s instanceService) SyncCluster(ctx context.Context, name string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, name)
 	if err != nil {
 		return err
 	}
 
-	for _, server := range servers {
-		err = s.SyncServer(ctx, server.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s instanceService) SyncServer(ctx context.Context, serverID int) error {
-	server, err := s.serverSvc.GetByID(ctx, serverID)
-	if err != nil {
-		return err
-	}
-
-	retrievedInstances, err := s.instanceClient.GetInstances(ctx, server.ConnectionURL)
+	retrievedInstances, err := s.instanceClient.GetInstances(ctx, cluster.ConnectionURL)
 	if err != nil {
 		return err
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByServerID(ctx, serverID)
+		err = s.repo.DeleteByClusterName(ctx, name)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
 		for _, retrievedInstance := range retrievedInstances {
 			instance := Instance{
-				ClusterID:   server.ClusterID,
-				ServerID:    serverID,
+				Cluster:     name,
+				Server:      retrievedInstance.Location,
 				ProjectName: retrievedInstance.Project,
 				Name:        retrievedInstance.Name,
 				Object:      retrievedInstance,

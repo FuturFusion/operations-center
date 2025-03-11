@@ -6,10 +6,6 @@ import "time"
 //
 // swagger:model
 type Cluster struct {
-	// An opaque integer identifier for the cluster.
-	// Example: 1
-	ID int `json:"id" yaml:"id"`
-
 	// A human-friendly name for this cluster.
 	// Example: MyCluster
 	Name string `json:"name" yaml:"name"`

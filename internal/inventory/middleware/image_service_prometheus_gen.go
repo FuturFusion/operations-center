@@ -80,7 +80,7 @@ func (_d ImageServiceWithPrometheus) ResyncByID(ctx context.Context, id int) (er
 }
 
 // SyncCluster implements inventory.ImageService.
-func (_d ImageServiceWithPrometheus) SyncCluster(ctx context.Context, clusterID int) (err error) {
+func (_d ImageServiceWithPrometheus) SyncCluster(ctx context.Context, cluster string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -90,5 +90,5 @@ func (_d ImageServiceWithPrometheus) SyncCluster(ctx context.Context, clusterID 
 
 		imageServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SyncCluster", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.SyncCluster(ctx, clusterID)
+	return _d.base.SyncCluster(ctx, cluster)
 }
