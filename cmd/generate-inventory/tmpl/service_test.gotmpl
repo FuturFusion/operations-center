@@ -165,7 +165,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 {{- if .UsesEmbeddedPostType }}
 					},
 {{- end }}
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 					Location:  "one",
 {{- end }}
 {{- if .HasProject }}
@@ -274,7 +274,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 {{- if .UsesEmbeddedPostType }}
 					},
 {{- end }}
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 					Location:  "one",
 {{- end }}
 {{- if .HasProject }}
@@ -314,7 +314,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 {{- if .UsesEmbeddedPostType }}
 					},
 {{- end }}
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 					Location:  "one",
 {{- end }}
 {{- if .HasProject }}
@@ -421,7 +421,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- if .UsesEmbeddedPostType }}
 						},
 {{- end }}
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 						Location:  "one",
 {{- end }}
 {{- if .HasProject }}
@@ -499,7 +499,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- if .UsesEmbeddedPostType }}
 						},
 {{- end }}
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 						Location:  "one",
 {{- end }}
 {{- if .HasProject }}
@@ -538,7 +538,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- if .UsesEmbeddedPostType }}
 						},
 {{- end }}
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 						Location:  "one",
 {{- end }}
 {{- if .HasProject }}
@@ -579,7 +579,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- if .UsesEmbeddedPostType }}
 						},
 {{- end }}
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 						Location:  "one",
 {{- end }}
 {{- if .HasProject }}

@@ -15,7 +15,7 @@ type Entity struct {
 	ObjectEmbedded         bool             `yaml:"-"`
 	OmitProject            bool             `yaml:"omit-project"`            // if omit-project is provided, the entity does not have a relation to a project
 	UsesEmbeddedPostType   bool             `yaml:"uses-embedded-post-type"` // if uses-embedded-post-type is provided, the name property is part of an embedded Post type
-	HasLocation            bool             `yaml:"has-location"`            // if a resource has a location and thouse is bound to a server instead of the whole cluster
+	ServerIDByLocation     bool             `yaml:"server-id-by-location"`   // if a resource has a location, it can be used to bind it to a server
 	IncusGetAllMethod      string           `yaml:"incus-get-all-method"`    // method of the Incus client to get all the entities, e.g. GetStoragePoolBucketsAllProjects
 	IncusGetMethod         string           `yaml:"incus-get-method"`        // method of the Incus client to get the entities, e.g. GetStoragePoolBucketsAllProjects
 	ParentName             string           `yaml:"parent"`                  // name of the parent entity, if any

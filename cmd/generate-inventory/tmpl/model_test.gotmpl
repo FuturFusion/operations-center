@@ -21,7 +21,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "one",
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 				Server:      "one",
 {{- end }}
 {{- if .HasProject }}
@@ -40,7 +40,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "", // invalid
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 				Server:      "one",
 {{- end }}
 {{- if .HasProject }}
@@ -57,7 +57,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				require.ErrorAs(tt, err, &verr, a...)
 			},
 		},
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 		{
 			name: "error - invalid project name",
 			image: inventory.{{ .Name | pascalcase }}{
@@ -83,7 +83,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "one",
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 				Server:      "one",
 {{- end }}
 				ProjectName: "", // invalid
@@ -105,7 +105,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "one",
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 				Server:      "one",
 {{- end }}
 {{- if .HasProject }}
@@ -126,7 +126,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 			image: inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "one",
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 				Server:      "one",
 {{- end }}
 {{- if .HasProject }}
