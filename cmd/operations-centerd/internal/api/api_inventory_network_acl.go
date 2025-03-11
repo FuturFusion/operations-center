@@ -153,7 +153,7 @@ func (i *networkACLHandler) networkACLGet(r *http.Request) response.Response {
 		true,
 		api.NetworkACL{
 			ID:          networkACL.ID,
-			ClusterID:   networkACL.ClusterID,
+			Cluster:     networkACL.Cluster,
 			ProjectName: networkACL.ProjectName,
 			Name:        networkACL.Name,
 			Object:      networkACL.Object,

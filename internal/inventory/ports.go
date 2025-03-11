@@ -8,12 +8,12 @@ import (
 
 type ProvisioningClusterService interface {
 	GetAll(ctx context.Context) (provisioning.Clusters, error)
-	GetByID(ctx context.Context, id int) (provisioning.Cluster, error)
+	GetByName(ctx context.Context, name string) (provisioning.Cluster, error)
 }
 
 type ProvisioningServerService interface {
-	GetAllByClusterID(ctx context.Context, clusterID int) (provisioning.Servers, error)
-	GetByID(ctx context.Context, id int) (provisioning.Server, error)
+	GetAllByClusterName(ctx context.Context, name string) (provisioning.Servers, error)
+	GetByName(ctx context.Context, name string) (provisioning.Server, error)
 }
 
 type ServerClient interface {

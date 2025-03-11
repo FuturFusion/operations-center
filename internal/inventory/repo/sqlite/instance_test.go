@@ -18,11 +18,11 @@ import (
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestInstanceDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -30,16 +30,31 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
+	testServerA := provisioning.Server{
+		Cluster:       "one",
+		Name:          "one",
+		ConnectionURL: "https://server-one/",
+		Type:          api.ServerTypeIncus,
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
+	testServerB := provisioning.Server{
+		Cluster:       "two",
+		Name:          "two",
+		ConnectionURL: "https://server-two/",
+		Type:          api.ServerTypeIncus,
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
 	instanceA := inventory.Instance{
-		ClusterID:   1,
-		Location:    "one",
+		Cluster:     "one",
+		Server:      "one",
 		ProjectName: "one",
 		Name:        "one",
 		Object:      incusapi.InstanceFull{},
@@ -47,8 +62,8 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	}
 
 	instanceB := inventory.Instance{
-		ClusterID:   2,
-		Location:    "two",
+		Cluster:     "two",
+		Server:      "two",
 		ProjectName: "two",
 		Name:        "two",
 		Object:      incusapi.InstanceFull{},
@@ -84,14 +99,21 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	_, err = clusterSvc.Create(ctx, testClusterB)
 	require.NoError(t, err)
 
+	// Add dummy servers.
+	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
+	_, err = serverSvc.Create(ctx, testServerA)
+	require.NoError(t, err)
+	_, err = serverSvc.Create(ctx, testServerB)
+	require.NoError(t, err)
+
 	// Add instances
 	instanceA, err = instance.Create(ctx, instanceA)
 	require.NoError(t, err)
-	require.Equal(t, 1, instanceA.ClusterID)
+	require.Equal(t, "one", instanceA.Cluster)
 
 	instanceB, err = instance.Create(ctx, instanceB)
 	require.NoError(t, err)
-	require.Equal(t, 2, instanceB.ClusterID)
+	require.Equal(t, "two", instanceB.Cluster)
 
 	// Ensure we have two entries without filter
 	instanceIDs, err := instance.GetAllIDsWithFilter(ctx, inventory.InstanceFilter{})
@@ -101,16 +123,16 @@ func TestInstanceDatabaseActions(t *testing.T) {
 
 	// Ensure we have one entry with filter for cluster, server and project
 	instanceIDs, err = instance.GetAllIDsWithFilter(ctx, inventory.InstanceFilter{
-		Cluster:  ptr.To("one"),
-		Location: ptr.To("one"),
-		Project:  ptr.To("one"),
+		Cluster: ptr.To("one"),
+		Server:  ptr.To("one"),
+		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, instanceIDs, 1)
 	require.ElementsMatch(t, []int{1}, instanceIDs)
 
 	// Should get back instanceA unchanged.
-	instanceA.ClusterID = 1
+	instanceA.Cluster = "one"
 	dbInstanceA, err := instance.GetByID(ctx, instanceA.ID)
 	require.NoError(t, err)
 	require.Equal(t, instanceA, dbInstanceA)
@@ -124,8 +146,8 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	err = instance.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete instances by cluster ID.
-	err = instance.DeleteByClusterID(ctx, 2)
+	// Delete instances by cluster Name.
+	err = instance.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = instance.GetByID(ctx, instanceA.ID)

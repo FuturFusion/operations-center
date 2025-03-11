@@ -19,7 +19,7 @@ type storageBucketService struct {
 	storagePoolClient   StoragePoolServerClient
 	storageBucketClient StorageBucketServerClient
 
-	isParentFilted func(incusapi.StoragePool) bool
+	isParentFiltered func(incusapi.StoragePool) bool
 
 	now func() time.Time
 }
@@ -30,7 +30,7 @@ type StorageBucketServiceOption func(s *storageBucketService)
 
 func StorageBucketWithParentFilter(f func(incusapi.StoragePool) bool) StorageBucketServiceOption {
 	return func(s *storageBucketService) {
-		s.isParentFilted = f
+		s.isParentFiltered = f
 	}
 }
 
@@ -41,7 +41,7 @@ func NewStorageBucketService(repo StorageBucketRepo, clusterSvc ProvisioningClus
 		storagePoolClient:   parentClient,
 		storageBucketClient: client,
 
-		isParentFilted: func(_ incusapi.StoragePool) bool {
+		isParentFiltered: func(_ incusapi.StoragePool) bool {
 			return false
 		},
 
@@ -70,7 +70,7 @@ func (s storageBucketService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByID(ctx, storageBucket.ClusterID)
+		cluster, err := s.clusterSvc.GetByName(ctx, storageBucket.Cluster)
 		if err != nil {
 			return err
 		}
@@ -89,6 +89,7 @@ func (s storageBucketService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
+		storageBucket.Server = retrievedStorageBucket.Location
 		storageBucket.ProjectName = retrievedStorageBucket.Project
 		storageBucket.Object = retrievedStorageBucket
 		storageBucket.LastUpdated = s.now()
@@ -112,8 +113,8 @@ func (s storageBucketService) ResyncByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s storageBucketService) SyncCluster(ctx context.Context, clusterID int) error {
-	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
+func (s storageBucketService) SyncCluster(ctx context.Context, name string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -124,7 +125,7 @@ func (s storageBucketService) SyncCluster(ctx context.Context, clusterID int) er
 	}
 
 	for _, storagePool := range retrievedStoragePools {
-		if s.isParentFilted(storagePool) {
+		if s.isParentFiltered(storagePool) {
 			continue
 		}
 
@@ -134,15 +135,15 @@ func (s storageBucketService) SyncCluster(ctx context.Context, clusterID int) er
 		}
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
-			err = s.repo.DeleteByClusterID(ctx, clusterID)
+			err = s.repo.DeleteByClusterName(ctx, name)
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
 			}
 
 			for _, retrievedStorageBucket := range retrievedStorageBuckets {
 				storageBucket := StorageBucket{
-					ClusterID:       clusterID,
-					Location:        retrievedStorageBucket.Location,
+					Cluster:         name,
+					Server:          retrievedStorageBucket.Location,
 					ProjectName:     retrievedStorageBucket.Project,
 					StoragePoolName: storagePool.Name,
 					Name:            retrievedStorageBucket.Name,

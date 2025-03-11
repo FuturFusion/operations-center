@@ -22,7 +22,6 @@ import (
 
 func TestNetworkPeerDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -30,7 +29,6 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
@@ -38,7 +36,7 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 	}
 
 	networkPeerA := inventory.NetworkPeer{
-		ClusterID:   1,
+		Cluster:     "one",
 		NetworkName: "parent one",
 		Name:        "one",
 		Object:      incusapi.NetworkPeer{},
@@ -46,7 +44,7 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 	}
 
 	networkPeerB := inventory.NetworkPeer{
-		ClusterID:   2,
+		Cluster:     "two",
 		NetworkName: "parent one",
 		Name:        "two",
 		Object:      incusapi.NetworkPeer{},
@@ -85,11 +83,11 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 	// Add network_peers
 	networkPeerA, err = networkPeer.Create(ctx, networkPeerA)
 	require.NoError(t, err)
-	require.Equal(t, 1, networkPeerA.ClusterID)
+	require.Equal(t, "one", networkPeerA.Cluster)
 
 	networkPeerB, err = networkPeer.Create(ctx, networkPeerB)
 	require.NoError(t, err)
-	require.Equal(t, 2, networkPeerB.ClusterID)
+	require.Equal(t, "two", networkPeerB.Cluster)
 
 	// Ensure we have two entries without filter
 	networkPeerIDs, err := networkPeer.GetAllIDsWithFilter(ctx, inventory.NetworkPeerFilter{})
@@ -106,7 +104,7 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []int{1}, networkPeerIDs)
 
 	// Should get back networkPeerA unchanged.
-	networkPeerA.ClusterID = 1
+	networkPeerA.Cluster = "one"
 	dbNetworkPeerA, err := networkPeer.GetByID(ctx, networkPeerA.ID)
 	require.NoError(t, err)
 	require.Equal(t, networkPeerA, dbNetworkPeerA)
@@ -120,8 +118,8 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 	err = networkPeer.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete network_peers by cluster ID.
-	err = networkPeer.DeleteByClusterID(ctx, 2)
+	// Delete network_peers by cluster Name.
+	err = networkPeer.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = networkPeer.GetByID(ctx, networkPeerA.ID)

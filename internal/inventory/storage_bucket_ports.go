@@ -12,7 +12,7 @@ type StorageBucketService interface {
 	GetAllIDsWithFilter(ctx context.Context, filter StorageBucketFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StorageBucket, error)
 	ResyncByID(ctx context.Context, id int) error
-	SyncCluster(ctx context.Context, clusterID int) error
+	SyncCluster(ctx context.Context, cluster string) error
 }
 
 type StorageBucketRepo interface {
@@ -20,7 +20,7 @@ type StorageBucketRepo interface {
 	GetByID(ctx context.Context, id int) (StorageBucket, error)
 	Create(ctx context.Context, storageBucket StorageBucket) (StorageBucket, error)
 	DeleteByID(ctx context.Context, id int) error
-	DeleteByClusterID(ctx context.Context, clusterID int) error
+	DeleteByClusterName(ctx context.Context, cluster string) error
 	UpdateByID(ctx context.Context, storageBucket StorageBucket) (StorageBucket, error)
 }
 

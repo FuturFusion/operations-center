@@ -24,8 +24,8 @@ var _ inventory.ProvisioningClusterService = &ProvisioningClusterServiceMock{}
 //			GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
 //				panic("mock out the GetAll method")
 //			},
-//			GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
-//				panic("mock out the GetByID method")
+//			GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
+//				panic("mock out the GetByName method")
 //			},
 //		}
 //
@@ -37,8 +37,8 @@ type ProvisioningClusterServiceMock struct {
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Clusters, error)
 
-	// GetByIDFunc mocks the GetByID method.
-	GetByIDFunc func(ctx context.Context, id int) (provisioning.Cluster, error)
+	// GetByNameFunc mocks the GetByName method.
+	GetByNameFunc func(ctx context.Context, name string) (provisioning.Cluster, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -47,16 +47,16 @@ type ProvisioningClusterServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetByID holds details about calls to the GetByID method.
-		GetByID []struct {
+		// GetByName holds details about calls to the GetByName method.
+		GetByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ID is the id argument value.
-			ID int
+			// Name is the name argument value.
+			Name string
 		}
 	}
-	lockGetAll  sync.RWMutex
-	lockGetByID sync.RWMutex
+	lockGetAll    sync.RWMutex
+	lockGetByName sync.RWMutex
 }
 
 // GetAll calls GetAllFunc.
@@ -91,38 +91,38 @@ func (mock *ProvisioningClusterServiceMock) GetAllCalls() []struct {
 	return calls
 }
 
-// GetByID calls GetByIDFunc.
-func (mock *ProvisioningClusterServiceMock) GetByID(ctx context.Context, id int) (provisioning.Cluster, error) {
-	if mock.GetByIDFunc == nil {
-		panic("ProvisioningClusterServiceMock.GetByIDFunc: method is nil but ProvisioningClusterService.GetByID was just called")
+// GetByName calls GetByNameFunc.
+func (mock *ProvisioningClusterServiceMock) GetByName(ctx context.Context, name string) (provisioning.Cluster, error) {
+	if mock.GetByNameFunc == nil {
+		panic("ProvisioningClusterServiceMock.GetByNameFunc: method is nil but ProvisioningClusterService.GetByName was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
-		ID  int
+		Ctx  context.Context
+		Name string
 	}{
-		Ctx: ctx,
-		ID:  id,
+		Ctx:  ctx,
+		Name: name,
 	}
-	mock.lockGetByID.Lock()
-	mock.calls.GetByID = append(mock.calls.GetByID, callInfo)
-	mock.lockGetByID.Unlock()
-	return mock.GetByIDFunc(ctx, id)
+	mock.lockGetByName.Lock()
+	mock.calls.GetByName = append(mock.calls.GetByName, callInfo)
+	mock.lockGetByName.Unlock()
+	return mock.GetByNameFunc(ctx, name)
 }
 
-// GetByIDCalls gets all the calls that were made to GetByID.
+// GetByNameCalls gets all the calls that were made to GetByName.
 // Check the length with:
 //
-//	len(mockedProvisioningClusterService.GetByIDCalls())
-func (mock *ProvisioningClusterServiceMock) GetByIDCalls() []struct {
-	Ctx context.Context
-	ID  int
+//	len(mockedProvisioningClusterService.GetByNameCalls())
+func (mock *ProvisioningClusterServiceMock) GetByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
 } {
 	var calls []struct {
-		Ctx context.Context
-		ID  int
+		Ctx  context.Context
+		Name string
 	}
-	mock.lockGetByID.RLock()
-	calls = mock.calls.GetByID
-	mock.lockGetByID.RUnlock()
+	mock.lockGetByName.RLock()
+	calls = mock.calls.GetByName
+	mock.lockGetByName.RUnlock()
 	return calls
 }

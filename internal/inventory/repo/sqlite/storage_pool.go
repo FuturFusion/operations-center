@@ -28,9 +28,12 @@ func NewStoragePool(db sqlite.DBTX) *storagePool {
 
 func (r storagePool) Create(ctx context.Context, in inventory.StoragePool) (inventory.StoragePool, error) {
 	const sqlStmt = `
+WITH _lookup AS (
+  SELECT clusters.id AS cluster_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name
+)
 INSERT INTO storage_pools (cluster_id, name, object, last_updated)
-VALUES(:cluster_id, :name, :object, :last_updated)
-RETURNING id, cluster_id, name, object, last_updated;
+VALUES ( (SELECT cluster_id FROM _lookup), :name, :object, :last_updated)
+RETURNING id, :cluster_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -39,7 +42,7 @@ RETURNING id, cluster_id, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
 		sql.Named("last_updated", in.LastUpdated),
@@ -65,8 +68,8 @@ ORDER BY storage_pools.id
 	var args []any
 
 	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster`)
-		args = append(args, sql.Named("cluster", filter.Cluster))
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
 	}
 
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
@@ -99,10 +102,11 @@ ORDER BY storage_pools.id
 func (r storagePool) GetByID(ctx context.Context, id int) (inventory.StoragePool, error) {
 	const sqlStmt = `
 SELECT
-  id, cluster_id, name, object, last_updated
+  storage_pools.id, clusters.name, storage_pools.name, storage_pools.object, storage_pools.last_updated
 FROM
   storage_pools
-WHERE id=:id;
+  INNER JOIN clusters ON storage_pools.cluster_id = clusters.id
+WHERE storage_pools.id=:id;
 `
 
 	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
@@ -133,10 +137,14 @@ func (r storagePool) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r storagePool) DeleteByClusterID(ctx context.Context, clusterID int) error {
-	const sqlStmt = `DELETE FROM storage_pools WHERE cluster_id=:clusterID;`
+func (r storagePool) DeleteByClusterName(ctx context.Context, cluster string) error {
+	const sqlStmt = `
+WITH _lookup AS (
+  SELECT id as cluster_id from clusters where name = :cluster_name
+)
+DELETE FROM storage_pools WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("clusterID", clusterID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster_name", cluster))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -155,9 +163,12 @@ func (r storagePool) DeleteByClusterID(ctx context.Context, clusterID int) error
 
 func (r storagePool) UpdateByID(ctx context.Context, in inventory.StoragePool) (inventory.StoragePool, error) {
 	const sqlStmt = `
-UPDATE storage_pools SET cluster_id=:cluster_id, name=:name, object=:object, last_updated=:last_updated
+WITH _lookup AS (
+  SELECT clusters.id AS cluster_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name
+)
+UPDATE storage_pools SET cluster_id=(SELECT cluster_id FROM _lookup), name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, cluster_id, name, object, last_updated;
+RETURNING id, :cluster_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -167,7 +178,7 @@ RETURNING id, cluster_id, name, object, last_updated;
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
 		sql.Named("last_updated", in.LastUpdated),
@@ -185,7 +196,7 @@ func scanStoragePool(row interface{ Scan(dest ...any) error }) (inventory.Storag
 
 	err := row.Scan(
 		&storagePool.ID,
-		&storagePool.ClusterID,
+		&storagePool.Cluster,
 		&storagePool.Name,
 		&object,
 		&storagePool.LastUpdated,

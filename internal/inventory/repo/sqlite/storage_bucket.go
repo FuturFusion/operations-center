@@ -28,9 +28,12 @@ func NewStorageBucket(db sqlite.DBTX) *storageBucket {
 
 func (r storageBucket) Create(ctx context.Context, in inventory.StorageBucket) (inventory.StorageBucket, error) {
 	const sqlStmt = `
-INSERT INTO storage_buckets (cluster_id, location, project_name, storage_pool_name, name, object, last_updated)
-VALUES(:cluster_id, :location, :project_name, :storage_pool_name, :name, :object, :last_updated)
-RETURNING id, cluster_id, location, project_name, storage_pool_name, name, object, last_updated;
+WITH _lookup AS (
+  SELECT clusters.id AS cluster_id , servers.id AS server_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name AND servers.name = :server_name
+)
+INSERT INTO storage_buckets (cluster_id, server_id, project_name, storage_pool_name, name, object, last_updated)
+VALUES ( (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :storage_pool_name, :name, :object, :last_updated)
+RETURNING id, :cluster_name, :server_name, project_name, storage_pool_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -39,8 +42,8 @@ RETURNING id, cluster_id, location, project_name, storage_pool_name, name, objec
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("cluster_id", in.ClusterID),
-		sql.Named("location", in.Location),
+		sql.Named("cluster_name", in.Cluster),
+		sql.Named("server_name", in.Server),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("storage_pool_name", in.StoragePoolName),
 		sql.Named("name", in.Name),
@@ -59,6 +62,7 @@ func (r storageBucket) GetAllIDsWithFilter(ctx context.Context, filter inventory
 SELECT storage_buckets.id
 FROM storage_buckets
   INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
+  INNER JOIN servers ON storage_buckets.server_id = servers.id
 WHERE true
 %s
 ORDER BY storage_buckets.id
@@ -68,13 +72,13 @@ ORDER BY storage_buckets.id
 	var args []any
 
 	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster`)
-		args = append(args, sql.Named("cluster", filter.Cluster))
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
 	}
 
-	if filter.Location != nil {
-		whereClause = append(whereClause, ` AND storage_buckets.location = :location`)
-		args = append(args, sql.Named("location", filter.Location))
+	if filter.Server != nil {
+		whereClause = append(whereClause, ` AND servers.name = :server_name`)
+		args = append(args, sql.Named("server_name", filter.Server))
 	}
 
 	if filter.Project != nil {
@@ -112,10 +116,12 @@ ORDER BY storage_buckets.id
 func (r storageBucket) GetByID(ctx context.Context, id int) (inventory.StorageBucket, error) {
 	const sqlStmt = `
 SELECT
-  id, cluster_id, location, project_name, storage_pool_name, name, object, last_updated
+  storage_buckets.id, clusters.name, servers.name, storage_buckets.project_name, storage_buckets.storage_pool_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
 FROM
   storage_buckets
-WHERE id=:id;
+  INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
+  INNER JOIN servers ON storage_buckets.server_id = servers.id
+WHERE storage_buckets.id=:id;
 `
 
 	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
@@ -146,10 +152,14 @@ func (r storageBucket) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r storageBucket) DeleteByClusterID(ctx context.Context, clusterID int) error {
-	const sqlStmt = `DELETE FROM storage_buckets WHERE cluster_id=:clusterID;`
+func (r storageBucket) DeleteByClusterName(ctx context.Context, cluster string) error {
+	const sqlStmt = `
+WITH _lookup AS (
+  SELECT id as cluster_id from clusters where name = :cluster_name
+)
+DELETE FROM storage_buckets WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("clusterID", clusterID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster_name", cluster))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -168,9 +178,12 @@ func (r storageBucket) DeleteByClusterID(ctx context.Context, clusterID int) err
 
 func (r storageBucket) UpdateByID(ctx context.Context, in inventory.StorageBucket) (inventory.StorageBucket, error) {
 	const sqlStmt = `
-UPDATE storage_buckets SET cluster_id=:cluster_id, project_name=:project_name, storage_pool_name=:storage_pool_name, name=:name, object=:object, last_updated=:last_updated
+WITH _lookup AS (
+  SELECT clusters.id AS cluster_id , servers.id AS server_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name AND servers.name = :server_name
+)
+UPDATE storage_buckets SET cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, storage_pool_name=:storage_pool_name, name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, cluster_id, location, project_name, storage_pool_name, name, object, last_updated;
+RETURNING id, :cluster_name, :server_name, project_name, storage_pool_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -180,7 +193,8 @@ RETURNING id, cluster_id, location, project_name, storage_pool_name, name, objec
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
+		sql.Named("server_name", in.Server),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("storage_pool_name", in.StoragePoolName),
 		sql.Named("name", in.Name),
@@ -200,8 +214,8 @@ func scanStorageBucket(row interface{ Scan(dest ...any) error }) (inventory.Stor
 
 	err := row.Scan(
 		&storageBucket.ID,
-		&storageBucket.ClusterID,
-		&storageBucket.Location,
+		&storageBucket.Cluster,
+		&storageBucket.Server,
 		&storageBucket.ProjectName,
 		&storageBucket.StoragePoolName,
 		&storageBucket.Name,

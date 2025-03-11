@@ -51,8 +51,8 @@ func (_d InstanceRepoWithPrometheus) Create(ctx context.Context, instance invent
 	return _d.base.Create(ctx, instance)
 }
 
-// DeleteByClusterID implements inventory.InstanceRepo.
-func (_d InstanceRepoWithPrometheus) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+// DeleteByClusterName implements inventory.InstanceRepo.
+func (_d InstanceRepoWithPrometheus) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -60,9 +60,9 @@ func (_d InstanceRepoWithPrometheus) DeleteByClusterID(ctx context.Context, clus
 			result = "error"
 		}
 
-		instanceRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterID", result).Observe(time.Since(_since).Seconds())
+		instanceRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByClusterID(ctx, clusterID)
+	return _d.base.DeleteByClusterName(ctx, cluster)
 }
 
 // DeleteByID implements inventory.InstanceRepo.

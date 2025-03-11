@@ -10,7 +10,7 @@ import (
 
 type Project struct {
 	ID          int              `json:"id" yaml:"id"`
-	ClusterID   int              `json:"cluster_id" yaml:"cluster_id"`
+	Cluster     string           `json:"cluster" yaml:"cluster"`
 	Name        string           `json:"name" yaml:"name"`
 	Object      incusapi.Project `json:"object" yaml:"object"`
 	LastUpdated time.Time        `json:"last_updated" yaml:"last_updated"`

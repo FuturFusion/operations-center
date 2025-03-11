@@ -18,11 +18,11 @@ import (
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestStorageVolumeDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -30,16 +30,31 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
+	testServerA := provisioning.Server{
+		Cluster:       "one",
+		Name:          "one",
+		ConnectionURL: "https://server-one/",
+		Type:          api.ServerTypeIncus,
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
+	testServerB := provisioning.Server{
+		Cluster:       "two",
+		Name:          "two",
+		ConnectionURL: "https://server-two/",
+		Type:          api.ServerTypeIncus,
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
 	storageVolumeA := inventory.StorageVolume{
-		ClusterID:       1,
-		Location:        "one",
+		Cluster:         "one",
+		Server:          "one",
 		ProjectName:     "one",
 		StoragePoolName: "parent one",
 		Name:            "one",
@@ -49,8 +64,8 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	}
 
 	storageVolumeB := inventory.StorageVolume{
-		ClusterID:       2,
-		Location:        "two",
+		Cluster:         "two",
+		Server:          "two",
 		ProjectName:     "two",
 		StoragePoolName: "parent one",
 		Name:            "two",
@@ -88,14 +103,21 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	_, err = clusterSvc.Create(ctx, testClusterB)
 	require.NoError(t, err)
 
+	// Add dummy servers.
+	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
+	_, err = serverSvc.Create(ctx, testServerA)
+	require.NoError(t, err)
+	_, err = serverSvc.Create(ctx, testServerB)
+	require.NoError(t, err)
+
 	// Add storage_volumes
 	storageVolumeA, err = storageVolume.Create(ctx, storageVolumeA)
 	require.NoError(t, err)
-	require.Equal(t, 1, storageVolumeA.ClusterID)
+	require.Equal(t, "one", storageVolumeA.Cluster)
 
 	storageVolumeB, err = storageVolume.Create(ctx, storageVolumeB)
 	require.NoError(t, err)
-	require.Equal(t, 2, storageVolumeB.ClusterID)
+	require.Equal(t, "two", storageVolumeB.Cluster)
 
 	// Ensure we have two entries without filter
 	storageVolumeIDs, err := storageVolume.GetAllIDsWithFilter(ctx, inventory.StorageVolumeFilter{})
@@ -105,16 +127,16 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 
 	// Ensure we have one entry with filter for cluster, server and project
 	storageVolumeIDs, err = storageVolume.GetAllIDsWithFilter(ctx, inventory.StorageVolumeFilter{
-		Cluster:  ptr.To("one"),
-		Location: ptr.To("one"),
-		Project:  ptr.To("one"),
+		Cluster: ptr.To("one"),
+		Server:  ptr.To("one"),
+		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, storageVolumeIDs, 1)
 	require.ElementsMatch(t, []int{1}, storageVolumeIDs)
 
 	// Should get back storageVolumeA unchanged.
-	storageVolumeA.ClusterID = 1
+	storageVolumeA.Cluster = "one"
 	dbStorageVolumeA, err := storageVolume.GetByID(ctx, storageVolumeA.ID)
 	require.NoError(t, err)
 	require.Equal(t, storageVolumeA, dbStorageVolumeA)
@@ -128,8 +150,8 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	err = storageVolume.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete storage_volumes by cluster ID.
-	err = storageVolume.DeleteByClusterID(ctx, 2)
+	// Delete storage_volumes by cluster Name.
+	err = storageVolume.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = storageVolume.GetByID(ctx, storageVolumeA.ID)

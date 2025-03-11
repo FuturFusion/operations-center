@@ -43,8 +43,8 @@ func registerInventoryStorageVolumeHandler(router *http.ServeMux, service invent
 //		    type: string
 //		    example: cluster
 //		  - in: query
-//		    name: location
-//		    description: Location is a server name
+//		    name: server
+//		    description: Server name
 //		    type: string
 //		    example: localhost
 //		  - in: query
@@ -92,8 +92,8 @@ func (i *storageVolumeHandler) storageVolumesGet(r *http.Request) response.Respo
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
 	}
 
-	if r.URL.Query().Get("location") != "" {
-		filter.Location = ptr.To(r.URL.Query().Get("location"))
+	if r.URL.Query().Get("server") != "" {
+		filter.Server = ptr.To(r.URL.Query().Get("server"))
 	}
 
 	if r.URL.Query().Get("project") != "" {
@@ -162,8 +162,8 @@ func (i *storageVolumeHandler) storageVolumeGet(r *http.Request) response.Respon
 		true,
 		api.StorageVolume{
 			ID:              storageVolume.ID,
-			ClusterID:       storageVolume.ClusterID,
-			Location:        storageVolume.Location,
+			Cluster:         storageVolume.Cluster,
+			Server:          storageVolume.Server,
 			ProjectName:     storageVolume.ProjectName,
 			StoragePoolName: storageVolume.StoragePoolName,
 			Name:            storageVolume.Name,

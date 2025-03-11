@@ -22,7 +22,6 @@ import (
 
 func TestNetworkDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -30,7 +29,6 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
@@ -38,7 +36,7 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	}
 
 	networkA := inventory.Network{
-		ClusterID:   1,
+		Cluster:     "one",
 		ProjectName: "one",
 		Name:        "one",
 		Object:      incusapi.Network{},
@@ -46,7 +44,7 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	}
 
 	networkB := inventory.Network{
-		ClusterID:   2,
+		Cluster:     "two",
 		ProjectName: "two",
 		Name:        "two",
 		Object:      incusapi.Network{},
@@ -85,11 +83,11 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	// Add networks
 	networkA, err = network.Create(ctx, networkA)
 	require.NoError(t, err)
-	require.Equal(t, 1, networkA.ClusterID)
+	require.Equal(t, "one", networkA.Cluster)
 
 	networkB, err = network.Create(ctx, networkB)
 	require.NoError(t, err)
-	require.Equal(t, 2, networkB.ClusterID)
+	require.Equal(t, "two", networkB.Cluster)
 
 	// Ensure we have two entries without filter
 	networkIDs, err := network.GetAllIDsWithFilter(ctx, inventory.NetworkFilter{})
@@ -107,7 +105,7 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []int{1}, networkIDs)
 
 	// Should get back networkA unchanged.
-	networkA.ClusterID = 1
+	networkA.Cluster = "one"
 	dbNetworkA, err := network.GetByID(ctx, networkA.ID)
 	require.NoError(t, err)
 	require.Equal(t, networkA, dbNetworkA)
@@ -121,8 +119,8 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	err = network.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete networks by cluster ID.
-	err = network.DeleteByClusterID(ctx, 2)
+	// Delete networks by cluster Name.
+	err = network.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = network.GetByID(ctx, networkA.ID)

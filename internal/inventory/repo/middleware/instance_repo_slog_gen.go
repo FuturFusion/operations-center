@@ -56,16 +56,16 @@ func (_d InstanceRepoWithSlog) Create(ctx context.Context, instance inventory.In
 	return _d._base.Create(ctx, instance)
 }
 
-// DeleteByClusterID implements inventory.InstanceRepo.
-func (_d InstanceRepoWithSlog) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+// DeleteByClusterName implements inventory.InstanceRepo.
+func (_d InstanceRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("clusterID", clusterID),
+			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("InstanceRepoWithSlog: calling DeleteByClusterID")
+	log.Debug("InstanceRepoWithSlog: calling DeleteByClusterName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,12 +78,12 @@ func (_d InstanceRepoWithSlog) DeleteByClusterID(ctx context.Context, clusterID 
 			}
 		}
 		if err != nil {
-			log.Error("InstanceRepoWithSlog: method DeleteByClusterID returned an error")
+			log.Error("InstanceRepoWithSlog: method DeleteByClusterName returned an error")
 		} else {
-			log.Debug("InstanceRepoWithSlog: method DeleteByClusterID finished")
+			log.Debug("InstanceRepoWithSlog: method DeleteByClusterName finished")
 		}
 	}()
-	return _d._base.DeleteByClusterID(ctx, clusterID)
+	return _d._base.DeleteByClusterName(ctx, cluster)
 }
 
 // DeleteByID implements inventory.InstanceRepo.

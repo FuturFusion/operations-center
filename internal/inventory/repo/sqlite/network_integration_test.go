@@ -22,7 +22,6 @@ import (
 
 func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -30,7 +29,6 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
@@ -38,14 +36,14 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	}
 
 	networkIntegrationA := inventory.NetworkIntegration{
-		ClusterID:   1,
+		Cluster:     "one",
 		Name:        "one",
 		Object:      incusapi.NetworkIntegration{},
 		LastUpdated: time.Now(),
 	}
 
 	networkIntegrationB := inventory.NetworkIntegration{
-		ClusterID:   2,
+		Cluster:     "two",
 		Name:        "two",
 		Object:      incusapi.NetworkIntegration{},
 		LastUpdated: time.Now(),
@@ -83,11 +81,11 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	// Add network_integrations
 	networkIntegrationA, err = networkIntegration.Create(ctx, networkIntegrationA)
 	require.NoError(t, err)
-	require.Equal(t, 1, networkIntegrationA.ClusterID)
+	require.Equal(t, "one", networkIntegrationA.Cluster)
 
 	networkIntegrationB, err = networkIntegration.Create(ctx, networkIntegrationB)
 	require.NoError(t, err)
-	require.Equal(t, 2, networkIntegrationB.ClusterID)
+	require.Equal(t, "two", networkIntegrationB.Cluster)
 
 	// Ensure we have two entries without filter
 	networkIntegrationIDs, err := networkIntegration.GetAllIDsWithFilter(ctx, inventory.NetworkIntegrationFilter{})
@@ -104,7 +102,7 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []int{1}, networkIntegrationIDs)
 
 	// Should get back networkIntegrationA unchanged.
-	networkIntegrationA.ClusterID = 1
+	networkIntegrationA.Cluster = "one"
 	dbNetworkIntegrationA, err := networkIntegration.GetByID(ctx, networkIntegrationA.ID)
 	require.NoError(t, err)
 	require.Equal(t, networkIntegrationA, dbNetworkIntegrationA)
@@ -118,8 +116,8 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	err = networkIntegration.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete network_integrations by cluster ID.
-	err = networkIntegration.DeleteByClusterID(ctx, 2)
+	// Delete network_integrations by cluster Name.
+	err = networkIntegration.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = networkIntegration.GetByID(ctx, networkIntegrationA.ID)

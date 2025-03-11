@@ -54,7 +54,7 @@ func (s storagePoolService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByID(ctx, storagePool.ClusterID)
+		cluster, err := s.clusterSvc.GetByName(ctx, storagePool.Cluster)
 		if err != nil {
 			return err
 		}
@@ -95,8 +95,8 @@ func (s storagePoolService) ResyncByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s storagePoolService) SyncCluster(ctx context.Context, clusterID int) error {
-	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
+func (s storagePoolService) SyncCluster(ctx context.Context, name string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -107,14 +107,14 @@ func (s storagePoolService) SyncCluster(ctx context.Context, clusterID int) erro
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByClusterID(ctx, clusterID)
+		err = s.repo.DeleteByClusterName(ctx, name)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
 		for _, retrievedStoragePool := range retrievedStoragePools {
 			storagePool := StoragePool{
-				ClusterID:   clusterID,
+				Cluster:     name,
 				Name:        retrievedStoragePool.Name,
 				Object:      retrievedStoragePool,
 				LastUpdated: s.now(),

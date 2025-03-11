@@ -22,7 +22,6 @@ import (
 
 func TestProfileDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -30,7 +29,6 @@ func TestProfileDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
@@ -38,7 +36,7 @@ func TestProfileDatabaseActions(t *testing.T) {
 	}
 
 	profileA := inventory.Profile{
-		ClusterID:   1,
+		Cluster:     "one",
 		ProjectName: "one",
 		Name:        "one",
 		Object:      incusapi.Profile{},
@@ -46,7 +44,7 @@ func TestProfileDatabaseActions(t *testing.T) {
 	}
 
 	profileB := inventory.Profile{
-		ClusterID:   2,
+		Cluster:     "two",
 		ProjectName: "two",
 		Name:        "two",
 		Object:      incusapi.Profile{},
@@ -85,11 +83,11 @@ func TestProfileDatabaseActions(t *testing.T) {
 	// Add profiles
 	profileA, err = profile.Create(ctx, profileA)
 	require.NoError(t, err)
-	require.Equal(t, 1, profileA.ClusterID)
+	require.Equal(t, "one", profileA.Cluster)
 
 	profileB, err = profile.Create(ctx, profileB)
 	require.NoError(t, err)
-	require.Equal(t, 2, profileB.ClusterID)
+	require.Equal(t, "two", profileB.Cluster)
 
 	// Ensure we have two entries without filter
 	profileIDs, err := profile.GetAllIDsWithFilter(ctx, inventory.ProfileFilter{})
@@ -107,7 +105,7 @@ func TestProfileDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []int{1}, profileIDs)
 
 	// Should get back profileA unchanged.
-	profileA.ClusterID = 1
+	profileA.Cluster = "one"
 	dbProfileA, err := profile.GetByID(ctx, profileA.ID)
 	require.NoError(t, err)
 	require.Equal(t, profileA, dbProfileA)
@@ -121,8 +119,8 @@ func TestProfileDatabaseActions(t *testing.T) {
 	err = profile.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete profiles by cluster ID.
-	err = profile.DeleteByClusterID(ctx, 2)
+	// Delete profiles by cluster Name.
+	err = profile.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = profile.GetByID(ctx, profileA.ID)

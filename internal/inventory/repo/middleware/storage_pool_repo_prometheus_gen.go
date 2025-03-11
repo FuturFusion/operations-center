@@ -51,8 +51,8 @@ func (_d StoragePoolRepoWithPrometheus) Create(ctx context.Context, storagePool 
 	return _d.base.Create(ctx, storagePool)
 }
 
-// DeleteByClusterID implements inventory.StoragePoolRepo.
-func (_d StoragePoolRepoWithPrometheus) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+// DeleteByClusterName implements inventory.StoragePoolRepo.
+func (_d StoragePoolRepoWithPrometheus) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -60,9 +60,9 @@ func (_d StoragePoolRepoWithPrometheus) DeleteByClusterID(ctx context.Context, c
 			result = "error"
 		}
 
-		storagePoolRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterID", result).Observe(time.Since(_since).Seconds())
+		storagePoolRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByClusterID(ctx, clusterID)
+	return _d.base.DeleteByClusterName(ctx, cluster)
 }
 
 // DeleteByID implements inventory.StoragePoolRepo.

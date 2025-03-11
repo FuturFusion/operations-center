@@ -10,7 +10,7 @@ import (
 
 type NetworkZone struct {
 	ID          int                  `json:"id" yaml:"id"`
-	ClusterID   int                  `json:"cluster_id" yaml:"cluster_id"`
+	Cluster     string               `json:"cluster" yaml:"cluster"`
 	ProjectName string               `json:"project_name" yaml:"project_name"`
 	Name        string               `json:"name" yaml:"name"`
 	Object      incusapi.NetworkZone `json:"object" yaml:"object"`

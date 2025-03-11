@@ -28,9 +28,12 @@ func NewNetworkLoadBalancer(db sqlite.DBTX) *networkLoadBalancer {
 
 func (r networkLoadBalancer) Create(ctx context.Context, in inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
 	const sqlStmt = `
+WITH _lookup AS (
+  SELECT clusters.id AS cluster_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name
+)
 INSERT INTO network_load_balancers (cluster_id, network_name, name, object, last_updated)
-VALUES(:cluster_id, :network_name, :name, :object, :last_updated)
-RETURNING id, cluster_id, network_name, name, object, last_updated;
+VALUES ( (SELECT cluster_id FROM _lookup), :network_name, :name, :object, :last_updated)
+RETURNING id, :cluster_name, network_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -39,7 +42,7 @@ RETURNING id, cluster_id, network_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
 		sql.Named("network_name", in.NetworkName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -66,8 +69,8 @@ ORDER BY network_load_balancers.id
 	var args []any
 
 	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster`)
-		args = append(args, sql.Named("cluster", filter.Cluster))
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
 	}
 
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
@@ -100,10 +103,11 @@ ORDER BY network_load_balancers.id
 func (r networkLoadBalancer) GetByID(ctx context.Context, id int) (inventory.NetworkLoadBalancer, error) {
 	const sqlStmt = `
 SELECT
-  id, cluster_id, network_name, name, object, last_updated
+  network_load_balancers.id, clusters.name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
 FROM
   network_load_balancers
-WHERE id=:id;
+  INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
+WHERE network_load_balancers.id=:id;
 `
 
 	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
@@ -134,10 +138,14 @@ func (r networkLoadBalancer) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r networkLoadBalancer) DeleteByClusterID(ctx context.Context, clusterID int) error {
-	const sqlStmt = `DELETE FROM network_load_balancers WHERE cluster_id=:clusterID;`
+func (r networkLoadBalancer) DeleteByClusterName(ctx context.Context, cluster string) error {
+	const sqlStmt = `
+WITH _lookup AS (
+  SELECT id as cluster_id from clusters where name = :cluster_name
+)
+DELETE FROM network_load_balancers WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("clusterID", clusterID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster_name", cluster))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -156,9 +164,12 @@ func (r networkLoadBalancer) DeleteByClusterID(ctx context.Context, clusterID in
 
 func (r networkLoadBalancer) UpdateByID(ctx context.Context, in inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
 	const sqlStmt = `
-UPDATE network_load_balancers SET cluster_id=:cluster_id, network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
+WITH _lookup AS (
+  SELECT clusters.id AS cluster_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name
+)
+UPDATE network_load_balancers SET cluster_id=(SELECT cluster_id FROM _lookup), network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, cluster_id, network_name, name, object, last_updated;
+RETURNING id, :cluster_name, network_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -168,7 +179,7 @@ RETURNING id, cluster_id, network_name, name, object, last_updated;
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
 		sql.Named("network_name", in.NetworkName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -187,7 +198,7 @@ func scanNetworkLoadBalancer(row interface{ Scan(dest ...any) error }) (inventor
 
 	err := row.Scan(
 		&networkLoadBalancer.ID,
-		&networkLoadBalancer.ClusterID,
+		&networkLoadBalancer.Cluster,
 		&networkLoadBalancer.NetworkName,
 		&networkLoadBalancer.Name,
 		&object,

@@ -18,11 +18,11 @@ import (
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestStorageBucketDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		ID:              1,
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
 		ServerHostnames: []string{"one", "two"},
@@ -30,16 +30,31 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	}
 
 	testClusterB := provisioning.Cluster{
-		ID:              2,
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
 		ServerHostnames: []string{"three", "four"},
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
+	testServerA := provisioning.Server{
+		Cluster:       "one",
+		Name:          "one",
+		ConnectionURL: "https://server-one/",
+		Type:          api.ServerTypeIncus,
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
+	testServerB := provisioning.Server{
+		Cluster:       "two",
+		Name:          "two",
+		ConnectionURL: "https://server-two/",
+		Type:          api.ServerTypeIncus,
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
 	storageBucketA := inventory.StorageBucket{
-		ClusterID:       1,
-		Location:        "one",
+		Cluster:         "one",
+		Server:          "one",
 		ProjectName:     "one",
 		StoragePoolName: "parent one",
 		Name:            "one",
@@ -48,8 +63,8 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	}
 
 	storageBucketB := inventory.StorageBucket{
-		ClusterID:       2,
-		Location:        "two",
+		Cluster:         "two",
+		Server:          "two",
 		ProjectName:     "two",
 		StoragePoolName: "parent one",
 		Name:            "two",
@@ -86,14 +101,21 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	_, err = clusterSvc.Create(ctx, testClusterB)
 	require.NoError(t, err)
 
+	// Add dummy servers.
+	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
+	_, err = serverSvc.Create(ctx, testServerA)
+	require.NoError(t, err)
+	_, err = serverSvc.Create(ctx, testServerB)
+	require.NoError(t, err)
+
 	// Add storage_buckets
 	storageBucketA, err = storageBucket.Create(ctx, storageBucketA)
 	require.NoError(t, err)
-	require.Equal(t, 1, storageBucketA.ClusterID)
+	require.Equal(t, "one", storageBucketA.Cluster)
 
 	storageBucketB, err = storageBucket.Create(ctx, storageBucketB)
 	require.NoError(t, err)
-	require.Equal(t, 2, storageBucketB.ClusterID)
+	require.Equal(t, "two", storageBucketB.Cluster)
 
 	// Ensure we have two entries without filter
 	storageBucketIDs, err := storageBucket.GetAllIDsWithFilter(ctx, inventory.StorageBucketFilter{})
@@ -103,16 +125,16 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 
 	// Ensure we have one entry with filter for cluster, server and project
 	storageBucketIDs, err = storageBucket.GetAllIDsWithFilter(ctx, inventory.StorageBucketFilter{
-		Cluster:  ptr.To("one"),
-		Location: ptr.To("one"),
-		Project:  ptr.To("one"),
+		Cluster: ptr.To("one"),
+		Server:  ptr.To("one"),
+		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, storageBucketIDs, 1)
 	require.ElementsMatch(t, []int{1}, storageBucketIDs)
 
 	// Should get back storageBucketA unchanged.
-	storageBucketA.ClusterID = 1
+	storageBucketA.Cluster = "one"
 	dbStorageBucketA, err := storageBucket.GetByID(ctx, storageBucketA.ID)
 	require.NoError(t, err)
 	require.Equal(t, storageBucketA, dbStorageBucketA)
@@ -126,8 +148,8 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	err = storageBucket.DeleteByID(ctx, 1)
 	require.NoError(t, err)
 
-	// Delete storage_buckets by cluster ID.
-	err = storageBucket.DeleteByClusterID(ctx, 2)
+	// Delete storage_buckets by cluster Name.
+	err = storageBucket.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
 	_, err = storageBucket.GetByID(ctx, storageBucketA.ID)

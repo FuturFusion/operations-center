@@ -56,16 +56,16 @@ func (_d StorageBucketRepoWithSlog) Create(ctx context.Context, storageBucket in
 	return _d._base.Create(ctx, storageBucket)
 }
 
-// DeleteByClusterID implements inventory.StorageBucketRepo.
-func (_d StorageBucketRepoWithSlog) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+// DeleteByClusterName implements inventory.StorageBucketRepo.
+func (_d StorageBucketRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("clusterID", clusterID),
+			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("StorageBucketRepoWithSlog: calling DeleteByClusterID")
+	log.Debug("StorageBucketRepoWithSlog: calling DeleteByClusterName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,12 +78,12 @@ func (_d StorageBucketRepoWithSlog) DeleteByClusterID(ctx context.Context, clust
 			}
 		}
 		if err != nil {
-			log.Error("StorageBucketRepoWithSlog: method DeleteByClusterID returned an error")
+			log.Error("StorageBucketRepoWithSlog: method DeleteByClusterName returned an error")
 		} else {
-			log.Debug("StorageBucketRepoWithSlog: method DeleteByClusterID finished")
+			log.Debug("StorageBucketRepoWithSlog: method DeleteByClusterName finished")
 		}
 	}()
-	return _d._base.DeleteByClusterID(ctx, clusterID)
+	return _d._base.DeleteByClusterName(ctx, cluster)
 }
 
 // DeleteByID implements inventory.StorageBucketRepo.

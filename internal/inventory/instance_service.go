@@ -54,7 +54,7 @@ func (s instanceService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByID(ctx, instance.ClusterID)
+		cluster, err := s.clusterSvc.GetByName(ctx, instance.Cluster)
 		if err != nil {
 			return err
 		}
@@ -73,6 +73,7 @@ func (s instanceService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
+		instance.Server = retrievedInstance.Location
 		instance.ProjectName = retrievedInstance.Project
 		instance.Object = retrievedInstance
 		instance.LastUpdated = s.now()
@@ -96,8 +97,8 @@ func (s instanceService) ResyncByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s instanceService) SyncCluster(ctx context.Context, clusterID int) error {
-	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
+func (s instanceService) SyncCluster(ctx context.Context, name string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -108,15 +109,15 @@ func (s instanceService) SyncCluster(ctx context.Context, clusterID int) error {
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByClusterID(ctx, clusterID)
+		err = s.repo.DeleteByClusterName(ctx, name)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
 
 		for _, retrievedInstance := range retrievedInstances {
 			instance := Instance{
-				ClusterID:   clusterID,
-				Location:    retrievedInstance.Location,
+				Cluster:     name,
+				Server:      retrievedInstance.Location,
 				ProjectName: retrievedInstance.Project,
 				Name:        retrievedInstance.Name,
 				Object:      retrievedInstance,

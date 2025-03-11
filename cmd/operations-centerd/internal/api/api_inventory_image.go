@@ -153,7 +153,7 @@ func (i *imageHandler) imageGet(r *http.Request) response.Response {
 		true,
 		api.Image{
 			ID:          image.ID,
-			ClusterID:   image.ClusterID,
+			Cluster:     image.Cluster,
 			ProjectName: image.ProjectName,
 			Name:        image.Name,
 			Object:      image.Object,

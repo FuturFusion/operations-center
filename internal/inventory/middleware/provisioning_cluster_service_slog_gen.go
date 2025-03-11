@@ -56,16 +56,16 @@ func (_d ProvisioningClusterServiceWithSlog) GetAll(ctx context.Context) (cluste
 	return _d._base.GetAll(ctx)
 }
 
-// GetByID implements inventory.ProvisioningClusterService.
-func (_d ProvisioningClusterServiceWithSlog) GetByID(ctx context.Context, id int) (cluster provisioning.Cluster, err error) {
+// GetByName implements inventory.ProvisioningClusterService.
+func (_d ProvisioningClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cluster provisioning.Cluster, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("id", id),
+			slog.String("name", name),
 		)
 	}
-	log.Debug("ProvisioningClusterServiceWithSlog: calling GetByID")
+	log.Debug("ProvisioningClusterServiceWithSlog: calling GetByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -79,10 +79,10 @@ func (_d ProvisioningClusterServiceWithSlog) GetByID(ctx context.Context, id int
 			}
 		}
 		if err != nil {
-			log.Error("ProvisioningClusterServiceWithSlog: method GetByID returned an error")
+			log.Error("ProvisioningClusterServiceWithSlog: method GetByName returned an error")
 		} else {
-			log.Debug("ProvisioningClusterServiceWithSlog: method GetByID finished")
+			log.Debug("ProvisioningClusterServiceWithSlog: method GetByName finished")
 		}
 	}()
-	return _d._base.GetByID(ctx, id)
+	return _d._base.GetByName(ctx, name)
 }

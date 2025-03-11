@@ -153,7 +153,7 @@ func (i *profileHandler) profileGet(r *http.Request) response.Response {
 		true,
 		api.Profile{
 			ID:          profile.ID,
-			ClusterID:   profile.ClusterID,
+			Cluster:     profile.Cluster,
 			ProjectName: profile.ProjectName,
 			Name:        profile.Name,
 			Object:      profile.Object,

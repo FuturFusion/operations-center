@@ -19,7 +19,7 @@ type networkPeerService struct {
 	networkClient     NetworkServerClient
 	networkPeerClient NetworkPeerServerClient
 
-	isParentFilted func(incusapi.Network) bool
+	isParentFiltered func(incusapi.Network) bool
 
 	now func() time.Time
 }
@@ -30,7 +30,7 @@ type NetworkPeerServiceOption func(s *networkPeerService)
 
 func NetworkPeerWithParentFilter(f func(incusapi.Network) bool) NetworkPeerServiceOption {
 	return func(s *networkPeerService) {
-		s.isParentFilted = f
+		s.isParentFiltered = f
 	}
 }
 
@@ -41,7 +41,7 @@ func NewNetworkPeerService(repo NetworkPeerRepo, clusterSvc ProvisioningClusterS
 		networkClient:     parentClient,
 		networkPeerClient: client,
 
-		isParentFilted: func(_ incusapi.Network) bool {
+		isParentFiltered: func(_ incusapi.Network) bool {
 			return false
 		},
 
@@ -70,7 +70,7 @@ func (s networkPeerService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByID(ctx, networkPeer.ClusterID)
+		cluster, err := s.clusterSvc.GetByName(ctx, networkPeer.Cluster)
 		if err != nil {
 			return err
 		}
@@ -111,8 +111,8 @@ func (s networkPeerService) ResyncByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s networkPeerService) SyncCluster(ctx context.Context, clusterID int) error {
-	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
+func (s networkPeerService) SyncCluster(ctx context.Context, name string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func (s networkPeerService) SyncCluster(ctx context.Context, clusterID int) erro
 	}
 
 	for _, network := range retrievedNetworks {
-		if s.isParentFilted(network) {
+		if s.isParentFiltered(network) {
 			continue
 		}
 
@@ -133,14 +133,14 @@ func (s networkPeerService) SyncCluster(ctx context.Context, clusterID int) erro
 		}
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
-			err = s.repo.DeleteByClusterID(ctx, clusterID)
+			err = s.repo.DeleteByClusterName(ctx, name)
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
 			}
 
 			for _, retrievedNetworkPeer := range retrievedNetworkPeers {
 				networkPeer := NetworkPeer{
-					ClusterID:   clusterID,
+					Cluster:     name,
 					NetworkName: network.Name,
 					Name:        retrievedNetworkPeer.Name,
 					Object:      retrievedNetworkPeer,

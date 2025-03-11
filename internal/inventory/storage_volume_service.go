@@ -19,7 +19,7 @@ type storageVolumeService struct {
 	storagePoolClient   StoragePoolServerClient
 	storageVolumeClient StorageVolumeServerClient
 
-	isParentFilted func(incusapi.StoragePool) bool
+	isParentFiltered func(incusapi.StoragePool) bool
 
 	now func() time.Time
 }
@@ -30,7 +30,7 @@ type StorageVolumeServiceOption func(s *storageVolumeService)
 
 func StorageVolumeWithParentFilter(f func(incusapi.StoragePool) bool) StorageVolumeServiceOption {
 	return func(s *storageVolumeService) {
-		s.isParentFilted = f
+		s.isParentFiltered = f
 	}
 }
 
@@ -41,7 +41,7 @@ func NewStorageVolumeService(repo StorageVolumeRepo, clusterSvc ProvisioningClus
 		storagePoolClient:   parentClient,
 		storageVolumeClient: client,
 
-		isParentFilted: func(_ incusapi.StoragePool) bool {
+		isParentFiltered: func(_ incusapi.StoragePool) bool {
 			return false
 		},
 
@@ -70,7 +70,7 @@ func (s storageVolumeService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByID(ctx, storageVolume.ClusterID)
+		cluster, err := s.clusterSvc.GetByName(ctx, storageVolume.Cluster)
 		if err != nil {
 			return err
 		}
@@ -89,6 +89,7 @@ func (s storageVolumeService) ResyncByID(ctx context.Context, id int) error {
 			return err
 		}
 
+		storageVolume.Server = retrievedStorageVolume.Location
 		storageVolume.ProjectName = retrievedStorageVolume.Project
 		storageVolume.Type = retrievedStorageVolume.Type
 		storageVolume.Object = retrievedStorageVolume
@@ -113,8 +114,8 @@ func (s storageVolumeService) ResyncByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s storageVolumeService) SyncCluster(ctx context.Context, clusterID int) error {
-	cluster, err := s.clusterSvc.GetByID(ctx, clusterID)
+func (s storageVolumeService) SyncCluster(ctx context.Context, name string) error {
+	cluster, err := s.clusterSvc.GetByName(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -125,7 +126,7 @@ func (s storageVolumeService) SyncCluster(ctx context.Context, clusterID int) er
 	}
 
 	for _, storagePool := range retrievedStoragePools {
-		if s.isParentFilted(storagePool) {
+		if s.isParentFiltered(storagePool) {
 			continue
 		}
 
@@ -135,15 +136,15 @@ func (s storageVolumeService) SyncCluster(ctx context.Context, clusterID int) er
 		}
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
-			err = s.repo.DeleteByClusterID(ctx, clusterID)
+			err = s.repo.DeleteByClusterName(ctx, name)
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
 			}
 
 			for _, retrievedStorageVolume := range retrievedStorageVolumes {
 				storageVolume := StorageVolume{
-					ClusterID:       clusterID,
-					Location:        retrievedStorageVolume.Location,
+					Cluster:         name,
+					Server:          retrievedStorageVolume.Location,
 					ProjectName:     retrievedStorageVolume.Project,
 					StoragePoolName: storagePool.Name,
 					Name:            retrievedStorageVolume.Name,

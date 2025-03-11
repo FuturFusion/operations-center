@@ -51,8 +51,8 @@ func (_d ProjectRepoWithPrometheus) Create(ctx context.Context, project inventor
 	return _d.base.Create(ctx, project)
 }
 
-// DeleteByClusterID implements inventory.ProjectRepo.
-func (_d ProjectRepoWithPrometheus) DeleteByClusterID(ctx context.Context, clusterID int) (err error) {
+// DeleteByClusterName implements inventory.ProjectRepo.
+func (_d ProjectRepoWithPrometheus) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -60,9 +60,9 @@ func (_d ProjectRepoWithPrometheus) DeleteByClusterID(ctx context.Context, clust
 			result = "error"
 		}
 
-		projectRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterID", result).Observe(time.Since(_since).Seconds())
+		projectRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByClusterID(ctx, clusterID)
+	return _d.base.DeleteByClusterName(ctx, cluster)
 }
 
 // DeleteByID implements inventory.ProjectRepo.

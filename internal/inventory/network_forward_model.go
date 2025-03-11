@@ -12,7 +12,7 @@ import (
 
 type NetworkForward struct {
 	ID          int
-	ClusterID   int
+	Cluster     string
 	NetworkName string
 	Name        string
 	Object      incusapi.NetworkForward
@@ -20,8 +20,8 @@ type NetworkForward struct {
 }
 
 func (m NetworkForward) Validate() error {
-	if m.ClusterID < 1 {
-		return domain.NewValidationErrf("Invalid NetworkForward, cluster id can not be less than 1")
+	if m.Cluster == "" {
+		return domain.NewValidationErrf("Invalid NetworkForward, cluster can not be empty")
 	}
 
 	if m.Name == "" {

@@ -83,7 +83,7 @@ func TestNetworkForwardService_GetByID(t *testing.T) {
 			idArg: 1,
 			repoGetByIDNetworkForward: inventory.NetworkForward{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 				NetworkName: "parent one",
 				Name:        "one",
 				Object:      incusapi.NetworkForward{},
@@ -142,12 +142,11 @@ func TestNetworkForwardService_ResyncByID(t *testing.T) {
 			name: "success",
 			repoGetByIDNetworkForward: inventory.NetworkForward{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 				Name:        "one",
 				NetworkName: "network",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkForwardClientGetNetworkForwardByName: incusapi.NetworkForward{
@@ -160,12 +159,11 @@ func TestNetworkForwardService_ResyncByID(t *testing.T) {
 			name: "success - networkForward get by name - not found",
 			repoGetByIDNetworkForward: inventory.NetworkForward{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 				Name:        "one",
 				NetworkName: "network",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkForwardClientGetNetworkForwardByNameErr: domain.ErrNotFound,
@@ -182,7 +180,7 @@ func TestNetworkForwardService_ResyncByID(t *testing.T) {
 			name: "error - cluster get by ID",
 			repoGetByIDNetworkForward: inventory.NetworkForward{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 				Name:        "one",
 				NetworkName: "network",
 			},
@@ -194,12 +192,11 @@ func TestNetworkForwardService_ResyncByID(t *testing.T) {
 			name: "error - networkForward get by name",
 			repoGetByIDNetworkForward: inventory.NetworkForward{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 				Name:        "one",
 				NetworkName: "network",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkForwardClientGetNetworkForwardByNameErr: boom.Error,
@@ -210,12 +207,11 @@ func TestNetworkForwardService_ResyncByID(t *testing.T) {
 			name: "error - networkForward get by name - not found - delete by id",
 			repoGetByIDNetworkForward: inventory.NetworkForward{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 				Name:        "one",
 				NetworkName: "network",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkForwardClientGetNetworkForwardByNameErr: domain.ErrNotFound,
@@ -227,12 +223,11 @@ func TestNetworkForwardService_ResyncByID(t *testing.T) {
 			name: "error - validate",
 			repoGetByIDNetworkForward: inventory.NetworkForward{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 				Name:        "", // invalid
 				NetworkName: "network",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkForwardClientGetNetworkForwardByName: incusapi.NetworkForward{
@@ -248,12 +243,11 @@ func TestNetworkForwardService_ResyncByID(t *testing.T) {
 			name: "error - update by ID",
 			repoGetByIDNetworkForward: inventory.NetworkForward{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 				Name:        "one",
 				NetworkName: "network",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkForwardClientGetNetworkForwardByName: incusapi.NetworkForward{
@@ -282,8 +276,8 @@ func TestNetworkForwardService_ResyncByID(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
-					require.Equal(t, 1, id)
+				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
+					require.Equal(t, "one", name)
 					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
@@ -319,7 +313,7 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 		networkClientGetNetworksErr               error
 		networkForwardClientGetNetworkForwards    []incusapi.NetworkForward
 		networkForwardClientGetNetworkForwardsErr error
-		repoDeleteByClusterIDErr                  error
+		repoDeleteByClusterNameErr                error
 		repoCreateErr                             error
 		serviceOptions                            []inventory.NetworkForwardServiceOption
 
@@ -328,7 +322,6 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 		{
 			name: "success",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
@@ -361,7 +354,6 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 		{
 			name: "error - network client get Networks",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworksErr: boom.Error,
@@ -371,7 +363,6 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 		{
 			name: "error - networkForward client get NetworkForwards",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
@@ -386,7 +377,6 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 		{
 			name: "error - network_forwards delete by cluster ID",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
@@ -399,14 +389,13 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 					ListenAddress: "networkForward one",
 				},
 			},
-			repoDeleteByClusterIDErr: boom.Error,
+			repoDeleteByClusterNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - validate",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
@@ -428,7 +417,6 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 		{
 			name: "error - networkForward create",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			networkClientGetNetworks: []incusapi.Network{
@@ -451,8 +439,8 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkForwardRepoMock{
-				DeleteByClusterIDFunc: func(ctx context.Context, clusterID int) error {
-					return tc.repoDeleteByClusterIDErr
+				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
+					return tc.repoDeleteByClusterNameErr
 				},
 				CreateFunc: func(ctx context.Context, networkForward inventory.NetworkForward) (inventory.NetworkForward, error) {
 					return inventory.NetworkForward{}, tc.repoCreateErr
@@ -460,7 +448,7 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
 					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
@@ -487,7 +475,7 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 			)
 
 			// Run test
-			err := networkForwardSvc.SyncCluster(context.Background(), 1)
+			err := networkForwardSvc.SyncCluster(context.Background(), "one")
 
 			// Assert
 			tc.assertErr(t, err)

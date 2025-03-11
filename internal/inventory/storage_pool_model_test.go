@@ -21,9 +21,9 @@ func TestStoragePool_Validate(t *testing.T) {
 		{
 			name: "valid",
 			image: inventory.StoragePool{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "one",
+				Name:    "one",
 			},
 
 			assertErr: require.NoError,
@@ -31,9 +31,9 @@ func TestStoragePool_Validate(t *testing.T) {
 		{
 			name: "error - invalid cluster ID",
 			image: inventory.StoragePool{
-				ID:        1,
-				ClusterID: 0, // invalid
-				Name:      "one",
+				ID:      1,
+				Cluster: "", // invalid
+				Name:    "one",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -44,9 +44,9 @@ func TestStoragePool_Validate(t *testing.T) {
 		{
 			name: "error - invalid name",
 			image: inventory.StoragePool{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "", // invalid
+				ID:      1,
+				Cluster: "one",
+				Name:    "", // invalid
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {

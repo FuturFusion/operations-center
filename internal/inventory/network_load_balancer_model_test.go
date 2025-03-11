@@ -22,7 +22,7 @@ func TestNetworkLoadBalancer_Validate(t *testing.T) {
 			name: "valid",
 			image: inventory.NetworkLoadBalancer{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 				NetworkName: "network one",
 				Name:        "one",
 			},
@@ -33,7 +33,7 @@ func TestNetworkLoadBalancer_Validate(t *testing.T) {
 			name: "error - invalid cluster ID",
 			image: inventory.NetworkLoadBalancer{
 				ID:          1,
-				ClusterID:   0, // invalid
+				Cluster:     "", // invalid
 				NetworkName: "network one",
 				Name:        "one",
 			},
@@ -47,7 +47,7 @@ func TestNetworkLoadBalancer_Validate(t *testing.T) {
 			name: "error - invalid project name",
 			image: inventory.NetworkLoadBalancer{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 				NetworkName: "", // invalid
 				Name:        "one",
 			},
@@ -61,7 +61,7 @@ func TestNetworkLoadBalancer_Validate(t *testing.T) {
 			name: "error - invalid name",
 			image: inventory.NetworkLoadBalancer{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 				NetworkName: "network one",
 				Name:        "", // invalid
 			},

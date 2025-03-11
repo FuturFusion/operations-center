@@ -83,7 +83,7 @@ func TestProjectService_GetByID(t *testing.T) {
 			idArg: 1,
 			repoGetByIDProject: inventory.Project{
 				ID:          1,
-				ClusterID:   1,
+				Cluster:     "one",
 				Name:        "one",
 				Object:      incusapi.Project{},
 				LastUpdated: time.Now(),
@@ -140,12 +140,11 @@ func TestProjectService_ResyncByID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByIDProject: inventory.Project{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			projectClientGetProjectByName: incusapi.Project{
@@ -157,12 +156,11 @@ func TestProjectService_ResyncByID(t *testing.T) {
 		{
 			name: "success - project get by name - not found",
 			repoGetByIDProject: inventory.Project{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			projectClientGetProjectByNameErr: domain.ErrNotFound,
@@ -178,9 +176,9 @@ func TestProjectService_ResyncByID(t *testing.T) {
 		{
 			name: "error - cluster get by ID",
 			repoGetByIDProject: inventory.Project{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDErr: boom.Error,
 
@@ -189,12 +187,11 @@ func TestProjectService_ResyncByID(t *testing.T) {
 		{
 			name: "error - project get by name",
 			repoGetByIDProject: inventory.Project{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			projectClientGetProjectByNameErr: boom.Error,
@@ -204,12 +201,11 @@ func TestProjectService_ResyncByID(t *testing.T) {
 		{
 			name: "error - project get by name - not found - delete by id",
 			repoGetByIDProject: inventory.Project{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			projectClientGetProjectByNameErr: domain.ErrNotFound,
@@ -220,12 +216,11 @@ func TestProjectService_ResyncByID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByIDProject: inventory.Project{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "", // invalid
+				ID:      1,
+				Cluster: "one",
+				Name:    "", // invalid
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			projectClientGetProjectByName: incusapi.Project{
@@ -240,12 +235,11 @@ func TestProjectService_ResyncByID(t *testing.T) {
 		{
 			name: "error - update by ID",
 			repoGetByIDProject: inventory.Project{
-				ID:        1,
-				ClusterID: 1,
-				Name:      "one",
+				ID:      1,
+				Cluster: "one",
+				Name:    "one",
 			},
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			projectClientGetProjectByName: incusapi.Project{
@@ -274,8 +268,8 @@ func TestProjectService_ResyncByID(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
-					require.Equal(t, 1, id)
+				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
+					require.Equal(t, "one", name)
 					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
@@ -308,7 +302,7 @@ func TestProjectService_SyncAll(t *testing.T) {
 		clusterSvcGetByIDErr        error
 		projectClientGetProjects    []incusapi.Project
 		projectClientGetProjectsErr error
-		repoDeleteByClusterIDErr    error
+		repoDeleteByClusterNameErr  error
 		repoCreateErr               error
 		serviceOptions              []inventory.ProjectServiceOption
 
@@ -317,7 +311,6 @@ func TestProjectService_SyncAll(t *testing.T) {
 		{
 			name: "success",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			projectClientGetProjects: []incusapi.Project{
@@ -337,7 +330,6 @@ func TestProjectService_SyncAll(t *testing.T) {
 		{
 			name: "error - project client get Projects",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			projectClientGetProjectsErr: boom.Error,
@@ -347,7 +339,6 @@ func TestProjectService_SyncAll(t *testing.T) {
 		{
 			name: "error - projects delete by cluster ID",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			projectClientGetProjects: []incusapi.Project{
@@ -355,14 +346,13 @@ func TestProjectService_SyncAll(t *testing.T) {
 					Name: "project one",
 				},
 			},
-			repoDeleteByClusterIDErr: boom.Error,
+			repoDeleteByClusterNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - validate",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			projectClientGetProjects: []incusapi.Project{
@@ -379,7 +369,6 @@ func TestProjectService_SyncAll(t *testing.T) {
 		{
 			name: "error - project create",
 			clusterSvcGetByIDCluster: provisioning.Cluster{
-				ID:   1,
 				Name: "cluster-one",
 			},
 			projectClientGetProjects: []incusapi.Project{
@@ -397,8 +386,8 @@ func TestProjectService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ProjectRepoMock{
-				DeleteByClusterIDFunc: func(ctx context.Context, clusterID int) error {
-					return tc.repoDeleteByClusterIDErr
+				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
+					return tc.repoDeleteByClusterNameErr
 				},
 				CreateFunc: func(ctx context.Context, project inventory.Project) (inventory.Project, error) {
 					return inventory.Project{}, tc.repoCreateErr
@@ -406,7 +395,7 @@ func TestProjectService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByIDFunc: func(ctx context.Context, id int) (provisioning.Cluster, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
 					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
@@ -427,7 +416,7 @@ func TestProjectService_SyncAll(t *testing.T) {
 			)
 
 			// Run test
-			err := projectSvc.SyncCluster(context.Background(), 1)
+			err := projectSvc.SyncCluster(context.Background(), "one")
 
 			// Assert
 			tc.assertErr(t, err)

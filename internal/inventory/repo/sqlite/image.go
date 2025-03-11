@@ -28,9 +28,12 @@ func NewImage(db sqlite.DBTX) *image {
 
 func (r image) Create(ctx context.Context, in inventory.Image) (inventory.Image, error) {
 	const sqlStmt = `
+WITH _lookup AS (
+  SELECT clusters.id AS cluster_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name
+)
 INSERT INTO images (cluster_id, project_name, name, object, last_updated)
-VALUES(:cluster_id, :project_name, :name, :object, :last_updated)
-RETURNING id, cluster_id, project_name, name, object, last_updated;
+VALUES ( (SELECT cluster_id FROM _lookup), :project_name, :name, :object, :last_updated)
+RETURNING id, :cluster_name, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -39,7 +42,7 @@ RETURNING id, cluster_id, project_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -66,8 +69,8 @@ ORDER BY images.id
 	var args []any
 
 	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND clusters.name = :cluster`)
-		args = append(args, sql.Named("cluster", filter.Cluster))
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
 	}
 
 	if filter.Project != nil {
@@ -105,10 +108,11 @@ ORDER BY images.id
 func (r image) GetByID(ctx context.Context, id int) (inventory.Image, error) {
 	const sqlStmt = `
 SELECT
-  id, cluster_id, project_name, name, object, last_updated
+  images.id, clusters.name, images.project_name, images.name, images.object, images.last_updated
 FROM
   images
-WHERE id=:id;
+  INNER JOIN clusters ON images.cluster_id = clusters.id
+WHERE images.id=:id;
 `
 
 	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
@@ -139,10 +143,14 @@ func (r image) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r image) DeleteByClusterID(ctx context.Context, clusterID int) error {
-	const sqlStmt = `DELETE FROM images WHERE cluster_id=:clusterID;`
+func (r image) DeleteByClusterName(ctx context.Context, cluster string) error {
+	const sqlStmt = `
+WITH _lookup AS (
+  SELECT id as cluster_id from clusters where name = :cluster_name
+)
+DELETE FROM images WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("clusterID", clusterID))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster_name", cluster))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -161,9 +169,12 @@ func (r image) DeleteByClusterID(ctx context.Context, clusterID int) error {
 
 func (r image) UpdateByID(ctx context.Context, in inventory.Image) (inventory.Image, error) {
 	const sqlStmt = `
-UPDATE images SET cluster_id=:cluster_id, project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
+WITH _lookup AS (
+  SELECT clusters.id AS cluster_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name
+)
+UPDATE images SET cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id
-RETURNING id, cluster_id, project_name, name, object, last_updated;
+RETURNING id, :cluster_name, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -173,7 +184,7 @@ RETURNING id, cluster_id, project_name, name, object, last_updated;
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
 		sql.Named("id", in.ID),
-		sql.Named("cluster_id", in.ClusterID),
+		sql.Named("cluster_name", in.Cluster),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -192,7 +203,7 @@ func scanImage(row interface{ Scan(dest ...any) error }) (inventory.Image, error
 
 	err := row.Scan(
 		&image.ID,
-		&image.ClusterID,
+		&image.Cluster,
 		&image.ProjectName,
 		&image.Name,
 		&object,

@@ -144,7 +144,7 @@ func (i *networkIntegrationHandler) networkIntegrationGet(r *http.Request) respo
 		true,
 		api.NetworkIntegration{
 			ID:          networkIntegration.ID,
-			ClusterID:   networkIntegration.ClusterID,
+			Cluster:     networkIntegration.Cluster,
 			Name:        networkIntegration.Name,
 			Object:      networkIntegration.Object,
 			LastUpdated: networkIntegration.LastUpdated,
