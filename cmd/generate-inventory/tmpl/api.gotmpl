@@ -40,7 +40,7 @@ func registerInventory{{ .Name | pascalcase }}Handler(router *http.ServeMux, ser
 //		    description: Cluster name
 //		    type: string
 //		    example: cluster
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 //		  - in: query
 //		    name: server
 //		    description: Server name
@@ -94,7 +94,7 @@ func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *htt
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
 	}
 
-{{ if .HasLocation }}
+{{ if .ServerIDByLocation }}
 	if r.URL.Query().Get("server") != "" {
 		filter.Server = ptr.To(r.URL.Query().Get("server"))
 	}
@@ -169,7 +169,7 @@ func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}Get(r *http.Requ
 		api.{{ .Name | pascalcase }}{
 			ID:          {{ .Name | camelcase }}.ID,
 			Cluster: {{ .Name | camelcase }}.Cluster,
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 			Server:  {{ .Name | camelcase }}.Server,
 {{- end }}
 {{- if .HasProject }}

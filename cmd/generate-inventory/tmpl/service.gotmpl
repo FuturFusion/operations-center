@@ -101,7 +101,7 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 			return err
 		}
 
-{{ if .HasLocation }}
+{{ if .ServerIDByLocation }}
 		{{ .Name | camelcase }}.Server = retrieved{{ .Name | pascalcase }}.Location
 {{- end }}
 {{- if .HasProject }}
@@ -172,7 +172,7 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 		for _, retrieved{{ .Name | pascalcase }} := range retrieved{{ .PluralName | pascalcase }} {
 			{{ .Name | camelcase }} := {{ .Name | pascalcase }}{
 				Cluster:   name,
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 				Server:      retrieved{{ .Name | pascalcase }}.Location,
 {{- end }}
 {{- if .HasProject }}

@@ -16,7 +16,7 @@ import (
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 	"github.com/FuturFusion/operations-center/shared/api"
 {{- end }}
 )
@@ -36,7 +36,7 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
-{{ if .HasLocation }}
+{{ if .ServerIDByLocation }}
 	testServerA := provisioning.Server{
 		Cluster:         "one",
 		Name:            "one",
@@ -56,7 +56,7 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 
 	{{ .Name | camelcase }}A := inventory.{{ .Name | pascalcase }}{
 		Cluster:     "one",
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 		Server:      "one",
 {{- end }}
 {{- if .HasProject }}
@@ -75,7 +75,7 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 
 	{{ .Name | camelcase }}B := inventory.{{ .Name | pascalcase }}{
 		Cluster:     "two",
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 		Server:      "two",
 {{- end }}
 {{- if .HasProject }}
@@ -121,7 +121,7 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	_, err = clusterSvc.Create(ctx, testClusterB)
 	require.NoError(t, err)
 
-{{ if .HasLocation }}
+{{ if .ServerIDByLocation }}
 	// Add dummy servers.
 	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
 	_, err = serverSvc.Create(ctx, testServerA)
@@ -148,7 +148,7 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	// Ensure we have one entry with filter for cluster, server and project
 	{{ .Name | camelcase }}IDs, err = {{ .Name | camelcase }}.GetAllIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{
 		Cluster: ptr.To("one"),
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 		Server:  ptr.To("one"),
 {{- end }}
 {{- if .HasProject }}

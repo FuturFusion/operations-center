@@ -11,7 +11,7 @@ import (
 type {{ .Name | pascalcase }} struct {
 	ID          int
 	Cluster     string
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 	Server      string
 {{- end }}
 {{- if .HasProject }}
@@ -32,7 +32,7 @@ func (m {{ .Name | pascalcase }}) Validate() error {
 	if m.Cluster == "" {
 		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, cluster can not be empty")
 	}
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 
 	if m.Server == "" {
 		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, server can not be empty")
@@ -62,7 +62,7 @@ type {{ .PluralName | pascalcase }} []{{ .Name | pascalcase }}
 
 type {{ .Name | pascalcase }}Filter struct{
 	Cluster *string
-{{- if .HasLocation }}
+{{- if .ServerIDByLocation }}
 	Server  *string
 {{- end }}
 {{- if .HasProject }}
