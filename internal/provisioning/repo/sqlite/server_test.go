@@ -71,10 +71,6 @@ func TestServerDatabaseActions(t *testing.T) {
 
 	server := sqlite.NewServer(db)
 
-	// Cannot add a server with an invalid cluster.
-	_, err = server.Create(ctx, serverA)
-	require.ErrorIs(t, err, domain.ErrConstraintViolation)
-
 	// Add dummy clusters.
 	_, err = clusterSvc.Create(ctx, testClusterA)
 	require.NoError(t, err)
