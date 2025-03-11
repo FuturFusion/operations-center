@@ -26,7 +26,7 @@ func (c cluster) Create(ctx context.Context, in provisioning.Cluster) (provision
 	const sqlStmt = `
 INSERT INTO clusters (name, connection_url, server_hostnames, last_updated)
 VALUES(:name, :connection_url, :server_hostnames, :last_updated)
-RETURNING id, name, connection_url, server_hostnames, last_updated;
+RETURNING name, connection_url, server_hostnames, last_updated;
 `
 
 	serverHostnames := strings.Join(in.ServerHostnames, ",")
@@ -45,7 +45,7 @@ RETURNING id, name, connection_url, server_hostnames, last_updated;
 }
 
 func (c cluster) GetAll(ctx context.Context) (provisioning.Clusters, error) {
-	const sqlStmt = `SELECT id, name, connection_url, server_hostnames, last_updated FROM clusters;`
+	const sqlStmt = `SELECT name, connection_url, server_hostnames, last_updated FROM clusters;`
 
 	rows, err := c.db.QueryContext(ctx, sqlStmt)
 	if err != nil {
@@ -99,19 +99,8 @@ func (c cluster) GetAllNames(ctx context.Context) ([]string, error) {
 	return clusterNames, nil
 }
 
-func (c cluster) GetByID(ctx context.Context, id int) (provisioning.Cluster, error) {
-	const sqlStmt = `SELECT id, name, connection_url, server_hostnames, last_updated FROM clusters WHERE id=:id;`
-
-	row := c.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
-	if row.Err() != nil {
-		return provisioning.Cluster{}, sqlite.MapErr(row.Err())
-	}
-
-	return scanCluster(row)
-}
-
 func (c cluster) GetByName(ctx context.Context, name string) (provisioning.Cluster, error) {
-	const sqlStmt = `SELECT id, name, connection_url, server_hostnames, last_updated FROM clusters WHERE name=:name;`
+	const sqlStmt = `SELECT name, connection_url, server_hostnames, last_updated FROM clusters WHERE name=:name;`
 
 	row := c.db.QueryRowContext(ctx, sqlStmt, sql.Named("name", name))
 	if row.Err() != nil {
@@ -121,17 +110,17 @@ func (c cluster) GetByName(ctx context.Context, name string) (provisioning.Clust
 	return scanCluster(row)
 }
 
-func (c cluster) UpdateByID(ctx context.Context, in provisioning.Cluster) (provisioning.Cluster, error) {
+func (c cluster) UpdateByName(ctx context.Context, name string, in provisioning.Cluster) (provisioning.Cluster, error) {
 	const sqlStmt = `
 UPDATE clusters SET connection_url=:connection_url, server_hostnames=:server_hostnames, last_updated=:last_updated
-WHERE id=:id
-RETURNING id, name, connection_url, server_hostnames, last_updated;
+WHERE name=:name
+RETURNING name, connection_url, server_hostnames, last_updated;
 `
 
 	serverHostnames := strings.Join(in.ServerHostnames, ",")
 
 	row := c.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("id", in.ID),
+		sql.Named("name", in.Name),
 		sql.Named("connection_url", in.ConnectionURL),
 		sql.Named("server_hostnames", serverHostnames),
 		sql.Named("last_updated", in.LastUpdated),
@@ -143,10 +132,10 @@ RETURNING id, name, connection_url, server_hostnames, last_updated;
 	return scanCluster(row)
 }
 
-func (c cluster) DeleteByID(ctx context.Context, id int) error {
-	const sqlStmt = `DELETE FROM clusters WHERE id=:id;`
+func (c cluster) DeleteByName(ctx context.Context, name string) error {
+	const sqlStmt = `DELETE FROM clusters WHERE name=:name;`
 
-	result, err := c.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	result, err := c.db.ExecContext(ctx, sqlStmt, sql.Named("name", name))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -168,7 +157,6 @@ func scanCluster(row interface{ Scan(dest ...any) error }) (provisioning.Cluster
 	var serverNames string
 
 	err := row.Scan(
-		&cluster.ID,
 		&cluster.Name,
 		&cluster.ConnectionURL,
 		&serverNames,

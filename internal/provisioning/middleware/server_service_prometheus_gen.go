@@ -107,20 +107,6 @@ func (_d ServerServiceWithPrometheus) GetAllNames(ctx context.Context) (strings 
 	return _d.base.GetAllNames(ctx)
 }
 
-// GetByID implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) GetByID(ctx context.Context, id int) (server provisioning.Server, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.GetByID(ctx, id)
-}
-
 // GetByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) GetByName(ctx context.Context, name string) (server provisioning.Server, err error) {
 	_since := time.Now()

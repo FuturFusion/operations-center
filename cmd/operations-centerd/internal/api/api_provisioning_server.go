@@ -125,8 +125,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 		result := make([]api.Server, 0, len(servers))
 		for _, server := range servers {
 			result = append(result, api.Server{
-				ID:            server.ID,
-				ClusterID:     server.ClusterID,
+				Cluster:       server.Cluster,
 				Name:          server.Name,
 				Type:          server.Type,
 				ConnectionURL: server.ConnectionURL,
@@ -189,8 +188,7 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 	}
 
 	_, err = s.service.Create(r.Context(), provisioning.Server{
-		ID:            server.ID,
-		ClusterID:     server.ClusterID,
+		Cluster:       server.Cluster,
 		Name:          server.Name,
 		Type:          server.Type,
 		ConnectionURL: server.ConnectionURL,
@@ -250,8 +248,7 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		api.Server{
-			ID:            server.ID,
-			ClusterID:     server.ClusterID,
+			Cluster:       server.Cluster,
 			Name:          server.Name,
 			Type:          server.Type,
 			ConnectionURL: server.ConnectionURL,
@@ -322,8 +319,7 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 	}
 
 	_, err = s.service.UpdateByName(ctx, name, provisioning.Server{
-		ID:            server.ID,
-		ClusterID:     server.ClusterID,
+		Cluster:       server.Cluster,
 		Name:          server.Name,
 		Type:          server.Type,
 		ConnectionURL: server.ConnectionURL,
@@ -431,8 +427,7 @@ func (s *serverHandler) serverPost(r *http.Request) response.Response {
 	}
 
 	_, err = s.service.RenameByName(ctx, name, provisioning.Server{
-		ID:            server.ID,
-		ClusterID:     server.ClusterID,
+		Cluster:       server.Cluster,
 		Name:          server.Name,
 		Type:          server.Type,
 		ConnectionURL: server.ConnectionURL,

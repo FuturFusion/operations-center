@@ -43,10 +43,6 @@ func (s clusterService) GetAllNames(ctx context.Context) ([]string, error) {
 	return s.repo.GetAllNames(ctx)
 }
 
-func (s clusterService) GetByID(ctx context.Context, id int) (Cluster, error) {
-	return s.repo.GetByID(ctx, id)
-}
-
 func (s clusterService) GetByName(ctx context.Context, name string) (Cluster, error) {
 	if name == "" {
 		return Cluster{}, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
@@ -80,9 +76,7 @@ func (s clusterService) UpdateByName(ctx context.Context, name string, newCluste
 			return fmt.Errorf("Clusters can not be shrunk or grown: %w", domain.ErrConstraintViolation)
 		}
 
-		newCluster.ID = cluster.ID
-
-		cluster, err = s.repo.UpdateByID(ctx, newCluster)
+		cluster, err = s.repo.UpdateByName(ctx, name, newCluster)
 		return err
 	})
 	if err != nil {
@@ -111,7 +105,7 @@ func (s clusterService) RenameByName(ctx context.Context, name string, newCluste
 
 		cluster.Name = newCluster.Name
 
-		cluster, err = s.repo.UpdateByID(ctx, cluster)
+		cluster, err = s.repo.UpdateByName(ctx, name, cluster)
 		return err
 	})
 	if err != nil {
@@ -126,26 +120,18 @@ func (s clusterService) DeleteByName(ctx context.Context, name string) error {
 		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	return transaction.Do(ctx, func(ctx context.Context) error {
-		cluster, err := s.repo.GetByName(ctx, name)
-		if err != nil {
-			return err
-		}
+	// FIXME: deleteting a server also requires to delete all the inventory (in a transaction).
 
-		// FIXME: deleteting a server also requires to delete all the inventory.
-
-		return s.repo.DeleteByID(ctx, cluster.ID)
-	})
+	return s.repo.DeleteByName(ctx, name)
 }
 
 func (s clusterService) ResyncInventoryByName(ctx context.Context, name string) error {
-	cluster, err := s.GetByName(ctx, name)
-	if err != nil {
-		return err
+	if name == "" {
+		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
 	for _, inventorySyncer := range s.inventorySyncers {
-		err := inventorySyncer.SyncCluster(ctx, cluster.ID)
+		err := inventorySyncer.SyncCluster(ctx, name)
 		if err != nil {
 			return err
 		}

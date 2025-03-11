@@ -12,8 +12,7 @@ import (
 )
 
 type Server struct {
-	ID            int
-	ClusterID     int
+	Cluster       string
 	Name          string
 	Type          api.ServerType
 	ConnectionURL string
@@ -27,8 +26,8 @@ func (s Server) Validate() error {
 		return domain.NewValidationErrf("Invalid server, name can not be empty")
 	}
 
-	if s.ClusterID < 1 {
-		return domain.NewValidationErrf("Invalid server, cluster id can not be less than 1")
+	if s.Cluster == "" {
+		return domain.NewValidationErrf("Invalid server, cluster can not be empty")
 	}
 
 	if s.ConnectionURL == "" {

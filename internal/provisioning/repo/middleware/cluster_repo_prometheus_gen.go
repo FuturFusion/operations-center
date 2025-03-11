@@ -51,8 +51,8 @@ func (_d ClusterRepoWithPrometheus) Create(ctx context.Context, cluster provisio
 	return _d.base.Create(ctx, cluster)
 }
 
-// DeleteByID implements provisioning.ClusterRepo.
-func (_d ClusterRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByName implements provisioning.ClusterRepo.
+func (_d ClusterRepoWithPrometheus) DeleteByName(ctx context.Context, name string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -60,9 +60,9 @@ func (_d ClusterRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err
 			result = "error"
 		}
 
-		clusterRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
+		clusterRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByID(ctx, id)
+	return _d.base.DeleteByName(ctx, name)
 }
 
 // GetAll implements provisioning.ClusterRepo.
@@ -93,20 +93,6 @@ func (_d ClusterRepoWithPrometheus) GetAllNames(ctx context.Context) (strings []
 	return _d.base.GetAllNames(ctx)
 }
 
-// GetByID implements provisioning.ClusterRepo.
-func (_d ClusterRepoWithPrometheus) GetByID(ctx context.Context, id int) (cluster provisioning.Cluster, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		clusterRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.GetByID(ctx, id)
-}
-
 // GetByName implements provisioning.ClusterRepo.
 func (_d ClusterRepoWithPrometheus) GetByName(ctx context.Context, name string) (cluster provisioning.Cluster, err error) {
 	_since := time.Now()
@@ -121,8 +107,8 @@ func (_d ClusterRepoWithPrometheus) GetByName(ctx context.Context, name string) 
 	return _d.base.GetByName(ctx, name)
 }
 
-// UpdateByID implements provisioning.ClusterRepo.
-func (_d ClusterRepoWithPrometheus) UpdateByID(ctx context.Context, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
+// UpdateByName implements provisioning.ClusterRepo.
+func (_d ClusterRepoWithPrometheus) UpdateByName(ctx context.Context, name string, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -130,7 +116,7 @@ func (_d ClusterRepoWithPrometheus) UpdateByID(ctx context.Context, cluster prov
 			result = "error"
 		}
 
-		clusterRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByID", result).Observe(time.Since(_since).Seconds())
+		clusterRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByID(ctx, cluster)
+	return _d.base.UpdateByName(ctx, name, cluster)
 }

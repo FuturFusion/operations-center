@@ -51,8 +51,8 @@ func (_d ServerRepoWithPrometheus) Create(ctx context.Context, server provisioni
 	return _d.base.Create(ctx, server)
 }
 
-// DeleteByID implements provisioning.ServerRepo.
-func (_d ServerRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByName implements provisioning.ServerRepo.
+func (_d ServerRepoWithPrometheus) DeleteByName(ctx context.Context, name string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -60,9 +60,9 @@ func (_d ServerRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err 
 			result = "error"
 		}
 
-		serverRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
+		serverRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByID(ctx, id)
+	return _d.base.DeleteByName(ctx, name)
 }
 
 // GetAll implements provisioning.ServerRepo.
@@ -107,20 +107,6 @@ func (_d ServerRepoWithPrometheus) GetAllNames(ctx context.Context) (strings []s
 	return _d.base.GetAllNames(ctx)
 }
 
-// GetByID implements provisioning.ServerRepo.
-func (_d ServerRepoWithPrometheus) GetByID(ctx context.Context, id int) (server provisioning.Server, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		serverRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.GetByID(ctx, id)
-}
-
 // GetByName implements provisioning.ServerRepo.
 func (_d ServerRepoWithPrometheus) GetByName(ctx context.Context, name string) (server provisioning.Server, err error) {
 	_since := time.Now()
@@ -135,8 +121,8 @@ func (_d ServerRepoWithPrometheus) GetByName(ctx context.Context, name string) (
 	return _d.base.GetByName(ctx, name)
 }
 
-// UpdateByID implements provisioning.ServerRepo.
-func (_d ServerRepoWithPrometheus) UpdateByID(ctx context.Context, server provisioning.Server) (server1 provisioning.Server, err error) {
+// UpdateByName implements provisioning.ServerRepo.
+func (_d ServerRepoWithPrometheus) UpdateByName(ctx context.Context, name string, server provisioning.Server) (server1 provisioning.Server, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -144,7 +130,7 @@ func (_d ServerRepoWithPrometheus) UpdateByID(ctx context.Context, server provis
 			result = "error"
 		}
 
-		serverRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByID", result).Observe(time.Since(_since).Seconds())
+		serverRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByID(ctx, server)
+	return _d.base.UpdateByName(ctx, name, server)
 }

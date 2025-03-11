@@ -20,7 +20,7 @@ func TestServer_Validate(t *testing.T) {
 			name: "valid",
 			server: provisioning.Server{
 				Name:          "one",
-				ClusterID:     1,
+				Cluster:       "one",
 				ConnectionURL: "http://one/",
 			},
 
@@ -30,7 +30,7 @@ func TestServer_Validate(t *testing.T) {
 			name: "error - name empty",
 			server: provisioning.Server{
 				Name:          "", // invalid
-				ClusterID:     1,
+				Cluster:       "one",
 				ConnectionURL: "http://one/",
 			},
 
@@ -43,7 +43,7 @@ func TestServer_Validate(t *testing.T) {
 			name: "error - server cluster ID invalid",
 			server: provisioning.Server{
 				Name:          "one",
-				ClusterID:     0, // invalid
+				Cluster:       "", // invalid
 				ConnectionURL: "http://one/",
 			},
 
@@ -56,7 +56,7 @@ func TestServer_Validate(t *testing.T) {
 			name: "error - connection URL empty",
 			server: provisioning.Server{
 				Name:          "one",
-				ClusterID:     1,
+				Cluster:       "one",
 				ConnectionURL: "", // invalid
 			},
 
@@ -69,7 +69,7 @@ func TestServer_Validate(t *testing.T) {
 			name: "error - connection URL invalid",
 			server: provisioning.Server{
 				Name:          "one",
-				ClusterID:     1,
+				Cluster:       "one",
 				ConnectionURL: ":|\\", // invalid
 			},
 

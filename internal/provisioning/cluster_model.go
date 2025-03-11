@@ -8,7 +8,6 @@ import (
 )
 
 type Cluster struct {
-	ID              int
 	Name            string
 	ConnectionURL   string
 	ServerHostnames []string // FIXME: it is unclear, if this is needed. If we don't have this, how can we know the expected size of a cluster and prevent it from growing / shrinking?
