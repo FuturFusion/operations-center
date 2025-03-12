@@ -74,6 +74,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			serverClient,
 			serverClient,
 			inventory.NetworkForwardWithParentFilter(func(network incusapi.Network) bool {
+				switch network.Type {
+				case "macvlan", "physical":
+					return true
+				}
+
 				return !network.Managed
 			}),
 		),
@@ -106,7 +111,8 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 					return true
 				}
 
-				if network.Type == "bridge" {
+				switch network.Type {
+				case "macvlan", "physical", "bridge":
 					return true
 				}
 
@@ -130,7 +136,8 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 					return true
 				}
 
-				if network.Type == "bridge" {
+				switch network.Type {
+				case "macvlan", "physical", "bridge":
 					return true
 				}
 
@@ -185,6 +192,14 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			clusterSvc,
 			serverClient,
 			serverClient,
+			inventory.StorageBucketWithParentFilter(func(storagePool incusapi.StoragePool) bool {
+				switch storagePool.Driver {
+				case "ceph", "lvmcluster":
+					return true
+				}
+
+				return false
+			}),
 		),
 		slog.Default(),
 	)

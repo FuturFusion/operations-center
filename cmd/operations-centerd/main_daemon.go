@@ -24,8 +24,6 @@ type env interface {
 }
 
 type cmdDaemon struct {
-	global *cmdGlobal
-
 	env env
 }
 
