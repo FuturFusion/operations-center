@@ -126,10 +126,9 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 		result := make([]api.Cluster, 0, len(clusters))
 		for _, cluster := range clusters {
 			result = append(result, api.Cluster{
-				Name:            cluster.Name,
-				ConnectionURL:   cluster.ConnectionURL,
-				ServerHostnames: cluster.ServerHostnames,
-				LastUpdated:     cluster.LastUpdated,
+				Name:          cluster.Name,
+				ConnectionURL: cluster.ConnectionURL,
+				LastUpdated:   cluster.LastUpdated,
 			})
 		}
 
@@ -166,7 +165,7 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 //	    description: Cluster configuration
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/Cluster"
+//	      $ref: "#/definitions/ClusterPost"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -177,7 +176,7 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clustersPost(r *http.Request) response.Response {
-	var cluster api.Cluster
+	var cluster api.ClusterPost
 
 	// Decode into the new cluster.
 	err := json.NewDecoder(r.Body).Decode(&cluster)
@@ -186,10 +185,10 @@ func (c *clusterHandler) clustersPost(r *http.Request) response.Response {
 	}
 
 	_, err = c.service.Create(r.Context(), provisioning.Cluster{
-		Name:            cluster.Name,
-		ConnectionURL:   cluster.ConnectionURL,
-		ServerHostnames: cluster.ServerHostnames,
-		LastUpdated:     cluster.LastUpdated,
+		Name:          cluster.Name,
+		ConnectionURL: cluster.ConnectionURL,
+		ServerNames:   cluster.ServerNames,
+		LastUpdated:   cluster.LastUpdated,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating cluster: %w", err))
@@ -243,10 +242,9 @@ func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		api.Cluster{
-			Name:            cluster.Name,
-			ConnectionURL:   cluster.ConnectionURL,
-			ServerHostnames: cluster.ServerHostnames,
-			LastUpdated:     cluster.LastUpdated,
+			Name:          cluster.Name,
+			ConnectionURL: cluster.ConnectionURL,
+			LastUpdated:   cluster.LastUpdated,
 		},
 		cluster,
 	)
@@ -311,10 +309,9 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 	}
 
 	_, err = c.service.UpdateByName(ctx, name, provisioning.Cluster{
-		Name:            cluster.Name,
-		ConnectionURL:   cluster.ConnectionURL,
-		ServerHostnames: cluster.ServerHostnames,
-		LastUpdated:     cluster.LastUpdated,
+		Name:          cluster.Name,
+		ConnectionURL: cluster.ConnectionURL,
+		LastUpdated:   cluster.LastUpdated,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating cluster %q: %w", name, err))
@@ -416,10 +413,9 @@ func (c *clusterHandler) clusterPost(r *http.Request) response.Response {
 	}
 
 	_, err = c.service.RenameByName(ctx, name, provisioning.Cluster{
-		Name:            cluster.Name,
-		ConnectionURL:   currentCluster.ConnectionURL,
-		ServerHostnames: currentCluster.ServerHostnames,
-		LastUpdated:     currentCluster.LastUpdated,
+		Name:          cluster.Name,
+		ConnectionURL: currentCluster.ConnectionURL,
+		LastUpdated:   currentCluster.LastUpdated,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed renaming cluster %q: %w", name, err))

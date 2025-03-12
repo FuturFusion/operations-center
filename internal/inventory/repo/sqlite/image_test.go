@@ -18,21 +18,36 @@ import (
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestImageDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		Name:            "one",
-		ConnectionURL:   "https://cluster-one/",
-		ServerHostnames: []string{"one", "two"},
-		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Name:          "one",
+		ConnectionURL: "https://cluster-one/",
+		ServerNames:   []string{"one"},
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	testClusterB := provisioning.Cluster{
-		Name:            "two",
-		ConnectionURL:   "https://cluster-two/",
-		ServerHostnames: []string{"three", "four"},
-		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Name:          "two",
+		ConnectionURL: "https://cluster-two/",
+		ServerNames:   []string{"two"},
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
+	testServerA := provisioning.Server{
+		Name:          "one",
+		ConnectionURL: "https://server-one/",
+		Type:          api.ServerTypeIncus,
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+	}
+
+	testServerB := provisioning.Server{
+		Name:          "two",
+		ConnectionURL: "https://server-two/",
+		Type:          api.ServerTypeIncus,
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	imageA := inventory.Image{
@@ -66,13 +81,20 @@ func TestImageDatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), nil)
+	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
+	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), serverSvc, nil)
 
 	image := inventorySqlite.NewImage(db)
 
 	// Cannot add an image with an invalid server.
 	_, err = image.Create(ctx, imageA)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
+	// Add dummy servers.
+	_, err = serverSvc.Create(ctx, testServerA)
+	require.NoError(t, err)
+	_, err = serverSvc.Create(ctx, testServerB)
+	require.NoError(t, err)
 
 	// Add dummy clusters.
 	_, err = clusterSvc.Create(ctx, testClusterA)

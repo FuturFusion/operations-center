@@ -3,6 +3,7 @@ package provisioning_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -13,6 +14,8 @@ import (
 )
 
 func TestServerService_Create(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
 	tests := []struct {
 		name          string
 		server        provisioning.Server
@@ -61,11 +64,12 @@ func TestServerService_Create(t *testing.T) {
 			// Setup
 			repo := &mock.ServerRepoMock{
 				CreateFunc: func(ctx context.Context, in provisioning.Server) (provisioning.Server, error) {
+					require.Equal(t, fixedDate, in.LastUpdated)
 					return provisioning.Server{}, tc.repoCreateErr
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo)
+			serverSvc := provisioning.NewServerService(repo, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			_, err := serverSvc.Create(context.Background(), tc.server)
@@ -350,6 +354,8 @@ func TestServerService_GetByName(t *testing.T) {
 }
 
 func TestServerService_UpdateByName(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
 	tests := []struct {
 		name             string
 		nameArg          string
@@ -430,11 +436,12 @@ func TestServerService_UpdateByName(t *testing.T) {
 			// Setup
 			repo := &mock.ServerRepoMock{
 				UpdateByNameFunc: func(ctx context.Context, name string, in provisioning.Server) (provisioning.Server, error) {
+					require.Equal(t, fixedDate, in.LastUpdated)
 					return tc.repoUpdateServer, tc.repoUpdateErr
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo)
+			serverSvc := provisioning.NewServerService(repo, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			server, err := serverSvc.UpdateByName(context.Background(), tc.nameArg, tc.server)
@@ -447,6 +454,8 @@ func TestServerService_UpdateByName(t *testing.T) {
 }
 
 func TestServerService_RenameByName(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
 	tests := []struct {
 		name                string
 		nameArg             string
@@ -541,11 +550,12 @@ func TestServerService_RenameByName(t *testing.T) {
 				},
 				UpdateByNameFunc: func(ctx context.Context, name string, in provisioning.Server) (provisioning.Server, error) {
 					require.Equal(t, tc.server.Name, in.Name)
+					require.Equal(t, fixedDate, in.LastUpdated)
 					return tc.repoUpdateServer, tc.repoUpdateErr
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo)
+			serverSvc := provisioning.NewServerService(repo, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			server, err := serverSvc.RenameByName(context.Background(), tc.nameArg, tc.server)

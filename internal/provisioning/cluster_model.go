@@ -8,10 +8,10 @@ import (
 )
 
 type Cluster struct {
-	Name            string
-	ConnectionURL   string
-	ServerHostnames []string // FIXME: it is unclear, if this is needed. If we don't have this, how can we know the expected size of a cluster and prevent it from growing / shrinking?
-	LastUpdated     time.Time
+	Name          string
+	ConnectionURL string
+	ServerNames   []string
+	LastUpdated   time.Time
 }
 
 func (c Cluster) Validate() error {
@@ -19,8 +19,8 @@ func (c Cluster) Validate() error {
 		return domain.NewValidationErrf("Invalid cluster, name can not be empty")
 	}
 
-	if len(c.ServerHostnames) == 0 {
-		return domain.NewValidationErrf("Invalid cluster, server hostname list can not be empty")
+	if len(c.ServerNames) == 0 {
+		return domain.NewValidationErrf("Invalid cluster, list of server names can not be empty")
 	}
 
 	if c.ConnectionURL == "" {

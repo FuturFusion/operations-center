@@ -3,6 +3,7 @@ package provisioning
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -10,16 +11,36 @@ import (
 
 type clusterService struct {
 	repo             ClusterRepo
+	serverSvc        ServerService
 	inventorySyncers []InventorySyncer
+
+	now func() time.Time
 }
 
 var _ ClusterService = &clusterService{}
 
-func NewClusterService(repo ClusterRepo, inventorySyncers []InventorySyncer) *clusterService {
-	return &clusterService{
-		repo:             repo,
-		inventorySyncers: inventorySyncers,
+type ClusterServiceOption func(s *clusterService)
+
+func ClusterServiceWithNow(nowFunc func() time.Time) ClusterServiceOption {
+	return func(s *clusterService) {
+		s.now = nowFunc
 	}
+}
+
+func NewClusterService(repo ClusterRepo, serverSvc ServerService, inventorySyncers []InventorySyncer, opts ...ClusterServiceOption) *clusterService {
+	clusterSvc := &clusterService{
+		repo:             repo,
+		serverSvc:        serverSvc,
+		inventorySyncers: inventorySyncers,
+
+		now: time.Now,
+	}
+
+	for _, opt := range opts {
+		opt(clusterSvc)
+	}
+
+	return clusterSvc
 }
 
 func (s *clusterService) SetInventorySyncers(inventorySyncers []InventorySyncer) {
@@ -32,7 +53,44 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		return Cluster{}, err
 	}
 
-	return s.repo.Create(ctx, newCluster)
+	var cluster Cluster
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		var servers []Server
+		for _, serverName := range newCluster.ServerNames {
+			server, err := s.serverSvc.GetByName(ctx, serverName)
+			if err != nil {
+				return err
+			}
+
+			if server.Cluster != "" {
+				return fmt.Errorf("Server %q is already part of cluster %q", serverName, server.Cluster)
+			}
+
+			servers = append(servers, server)
+		}
+
+		newCluster.LastUpdated = s.now()
+
+		cluster, err = s.repo.Create(ctx, newCluster)
+		if err != nil {
+			return err
+		}
+
+		for _, server := range servers {
+			server.Cluster = newCluster.Name
+			_, err = s.serverSvc.UpdateByName(ctx, server.Name, server)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return Cluster{}, err
+	}
+
+	return cluster, nil
 }
 
 func (s clusterService) GetAll(ctx context.Context) (Clusters, error) {
@@ -65,25 +123,9 @@ func (s clusterService) UpdateByName(ctx context.Context, name string, newCluste
 		return Cluster{}, domain.NewValidationErrf("Invalid cluster, name mismatch")
 	}
 
-	var cluster Cluster
-	err = transaction.Do(ctx, func(ctx context.Context) error {
-		cluster, err = s.repo.GetByName(ctx, name)
-		if err != nil {
-			return err
-		}
+	newCluster.LastUpdated = s.now()
 
-		if len(newCluster.ServerHostnames) != len(cluster.ServerHostnames) {
-			return fmt.Errorf("Clusters can not be shrunk or grown: %w", domain.ErrConstraintViolation)
-		}
-
-		cluster, err = s.repo.UpdateByName(ctx, name, newCluster)
-		return err
-	})
-	if err != nil {
-		return Cluster{}, err
-	}
-
-	return cluster, nil
+	return s.repo.UpdateByName(ctx, name, newCluster)
 }
 
 func (s clusterService) RenameByName(ctx context.Context, name string, newCluster Cluster) (Cluster, error) {
@@ -104,6 +146,7 @@ func (s clusterService) RenameByName(ctx context.Context, name string, newCluste
 		}
 
 		cluster.Name = newCluster.Name
+		cluster.LastUpdated = s.now()
 
 		cluster, err = s.repo.UpdateByName(ctx, name, cluster)
 		return err

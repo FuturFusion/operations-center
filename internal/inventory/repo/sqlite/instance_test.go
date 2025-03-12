@@ -23,21 +23,20 @@ import (
 
 func TestInstanceDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
-		Name:            "one",
-		ConnectionURL:   "https://cluster-one/",
-		ServerHostnames: []string{"one", "two"},
-		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Name:          "one",
+		ConnectionURL: "https://cluster-one/",
+		ServerNames:   []string{"one"},
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	testClusterB := provisioning.Cluster{
-		Name:            "two",
-		ConnectionURL:   "https://cluster-two/",
-		ServerHostnames: []string{"three", "four"},
-		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Name:          "two",
+		ConnectionURL: "https://cluster-two/",
+		ServerNames:   []string{"two"},
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	testServerA := provisioning.Server{
-		Cluster:       "one",
 		Name:          "one",
 		ConnectionURL: "https://server-one/",
 		Type:          api.ServerTypeIncus,
@@ -45,7 +44,6 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	}
 
 	testServerB := provisioning.Server{
-		Cluster:       "two",
 		Name:          "two",
 		ConnectionURL: "https://server-two/",
 		Type:          api.ServerTypeIncus,
@@ -85,7 +83,8 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), nil)
+	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
+	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), serverSvc, nil)
 
 	instance := inventorySqlite.NewInstance(db)
 
@@ -93,17 +92,16 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	_, err = instance.Create(ctx, instanceA)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
+	// Add dummy servers.
+	_, err = serverSvc.Create(ctx, testServerA)
+	require.NoError(t, err)
+	_, err = serverSvc.Create(ctx, testServerB)
+	require.NoError(t, err)
+
 	// Add dummy clusters.
 	_, err = clusterSvc.Create(ctx, testClusterA)
 	require.NoError(t, err)
 	_, err = clusterSvc.Create(ctx, testClusterB)
-	require.NoError(t, err)
-
-	// Add dummy servers.
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
-	_, err = serverSvc.Create(ctx, testServerA)
-	require.NoError(t, err)
-	_, err = serverSvc.Create(ctx, testServerB)
 	require.NoError(t, err)
 
 	// Add instances

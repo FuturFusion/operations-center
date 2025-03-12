@@ -115,18 +115,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.Default(),
 	)
 
-	clusterSvc := provisioning.NewClusterService(
-		provisioningRepoMiddleware.NewClusterRepoWithSlog(
-			provisioningSqlite.NewCluster(dbWithTransaction),
-			slog.Default(),
-		),
-		nil,
-	)
-	clusterSvcWrapped := provisioningServiceMiddleware.NewClusterServiceWithSlog(
-		clusterSvc,
-		slog.Default(),
-	)
-
 	serverSvc := provisioningServiceMiddleware.NewServerServiceWithSlog(
 		provisioning.NewServerService(
 			provisioningRepoMiddleware.NewServerRepoWithSlog(
@@ -134,6 +122,19 @@ func (d *Daemon) Start(ctx context.Context) error {
 				slog.Default(),
 			),
 		),
+		slog.Default(),
+	)
+
+	clusterSvc := provisioning.NewClusterService(
+		provisioningRepoMiddleware.NewClusterRepoWithSlog(
+			provisioningSqlite.NewCluster(dbWithTransaction),
+			slog.Default(),
+		),
+		serverSvc,
+		nil,
+	)
+	clusterSvcWrapped := provisioningServiceMiddleware.NewClusterServiceWithSlog(
+		clusterSvc,
 		slog.Default(),
 	)
 

@@ -3,6 +3,7 @@ package provisioning
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -10,14 +11,32 @@ import (
 
 type serverService struct {
 	repo ServerRepo
+
+	now func() time.Time
 }
 
 var _ ServerService = &serverService{}
 
-func NewServerService(repo ServerRepo) serverService {
-	return serverService{
-		repo: repo,
+type ServerServiceOption func(s *serverService)
+
+func ServerServiceWithNow(nowFunc func() time.Time) ServerServiceOption {
+	return func(s *serverService) {
+		s.now = nowFunc
 	}
+}
+
+func NewServerService(repo ServerRepo, opts ...ServerServiceOption) serverService {
+	serverSvc := serverService{
+		repo: repo,
+
+		now: time.Now,
+	}
+
+	for _, opt := range opts {
+		opt(&serverSvc)
+	}
+
+	return serverSvc
 }
 
 func (s serverService) Create(ctx context.Context, newServer Server) (Server, error) {
@@ -25,6 +44,8 @@ func (s serverService) Create(ctx context.Context, newServer Server) (Server, er
 	if err != nil {
 		return Server{}, err
 	}
+
+	newServer.LastUpdated = s.now()
 
 	return s.repo.Create(ctx, newServer)
 }
@@ -63,6 +84,8 @@ func (s serverService) UpdateByName(ctx context.Context, name string, newServer 
 		return Server{}, domain.NewValidationErrf("Invalid server, name mismatch")
 	}
 
+	newServer.LastUpdated = s.now()
+
 	return s.repo.UpdateByName(ctx, name, newServer)
 }
 
@@ -84,6 +107,7 @@ func (s serverService) RenameByName(ctx context.Context, name string, newServer 
 		}
 
 		server.Name = newServer.Name
+		server.LastUpdated = s.now()
 
 		server, err = s.repo.UpdateByName(ctx, name, server)
 		return err
