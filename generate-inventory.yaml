@@ -1,7 +1,7 @@
 ---
 
 image:
-  object-name-property-name: filename
+  object-name-property-name: fingerprint
   incus-get-all-method: GetImagesAllProjects
   incus-get-method: GetImage
 
