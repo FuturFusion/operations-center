@@ -48,7 +48,6 @@ func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
 
 	// Global flags
 	globalCmd := cmdGlobal{cmd: app}
-	daemonCmd.global = &globalCmd
 	app.PersistentPreRunE = globalCmd.Run
 	app.PersistentFlags().BoolVar(&globalCmd.flagVersion, "version", false, "Print version number")
 	app.PersistentFlags().BoolVarP(&globalCmd.flagHelp, "help", "h", false, "Print help")

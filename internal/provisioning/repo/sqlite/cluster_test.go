@@ -16,17 +16,17 @@ import (
 
 func TestClusterDatabaseActions(t *testing.T) {
 	clusterA := provisioning.Cluster{
-		Name:            "one",
-		ConnectionURL:   "https://cluster-one/",
-		ServerHostnames: []string{"server1", "server2"},
-		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Name:          "one",
+		ConnectionURL: "https://cluster-one/",
+		ServerNames:   []string{"server1", "server2"},
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	clusterB := provisioning.Cluster{
-		Name:            "two",
-		ConnectionURL:   "https://cluster-one/",
-		ServerHostnames: []string{"server10", "server11"},
-		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Name:          "two",
+		ConnectionURL: "https://cluster-one/",
+		ServerNames:   []string{"server10", "server11"},
+		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	ctx := context.Background()
@@ -52,6 +52,10 @@ func TestClusterDatabaseActions(t *testing.T) {
 	_, err = cluster.Create(ctx, clusterB)
 	require.NoError(t, err)
 
+	// Reset ServerNames, since they are only used during Create
+	clusterA.ServerNames = nil
+	clusterB.ServerNames = nil
+
 	// Ensure we have two entries
 	clusters, err := cluster.GetAll(ctx)
 	require.NoError(t, err)
@@ -72,7 +76,7 @@ func TestClusterDatabaseActions(t *testing.T) {
 	require.Equal(t, clusterA, dbClusterA)
 
 	// Test updating a cluster.
-	clusterB.ServerHostnames = []string{"server100"}
+	clusterB.ConnectionURL = "https://foobar.com"
 	dbClusterB, err := cluster.UpdateByName(ctx, clusterB.Name, clusterB)
 	require.NoError(t, err)
 	require.Equal(t, clusterB, dbClusterB)

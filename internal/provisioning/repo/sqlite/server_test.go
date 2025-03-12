@@ -18,18 +18,20 @@ import (
 )
 
 func TestServerDatabaseActions(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC).Truncate(0) // Truncate to remove the monotonic clock.
+
 	testClusterA := provisioning.Cluster{
-		Name:            "one",
-		ConnectionURL:   "https://cluster-one/",
-		ServerHostnames: []string{"one", "two"},
-		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Name:          "one",
+		ConnectionURL: "https://cluster-one/",
+		ServerNames:   []string{"one"},
+		LastUpdated:   fixedDate,
 	}
 
 	testClusterB := provisioning.Cluster{
-		Name:            "two",
-		ConnectionURL:   "https://cluster-two/",
-		ServerHostnames: []string{"one", "two"},
-		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Name:          "two",
+		ConnectionURL: "https://cluster-two/",
+		ServerNames:   []string{"two"},
+		LastUpdated:   fixedDate,
 	}
 
 	serverA := provisioning.Server{
@@ -39,7 +41,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		ConnectionURL: "https://one/",
 		HardwareData:  incusapi.Resources{},
 		VersionData:   json.RawMessage(nil),
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		LastUpdated:   fixedDate,
 	}
 
 	serverB := provisioning.Server{
@@ -49,7 +51,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		ConnectionURL: "https://two/",
 		HardwareData:  incusapi.Resources{},
 		VersionData:   json.RawMessage(nil),
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		LastUpdated:   fixedDate,
 	}
 
 	ctx := context.Background()
@@ -67,20 +69,21 @@ func TestServerDatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), nil)
-
 	server := sqlite.NewServer(db)
+	serverSvc := provisioning.NewServerService(server, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
-	// Add dummy clusters.
-	_, err = clusterSvc.Create(ctx, testClusterA)
-	require.NoError(t, err)
-	_, err = clusterSvc.Create(ctx, testClusterB)
-	require.NoError(t, err)
+	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), serverSvc, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
 
 	// Add server
 	_, err = server.Create(ctx, serverA)
 	require.NoError(t, err)
 	_, err = server.Create(ctx, serverB)
+	require.NoError(t, err)
+
+	// Add dummy clusters.
+	_, err = clusterSvc.Create(ctx, testClusterA)
+	require.NoError(t, err)
+	_, err = clusterSvc.Create(ctx, testClusterB)
 	require.NoError(t, err)
 
 	// Ensure we have two entries

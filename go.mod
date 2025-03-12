@@ -2,7 +2,7 @@ module github.com/FuturFusion/operations-center
 
 go 1.23
 
-require golang.org/x/sys v0.29.0
+require golang.org/x/sys v0.30.0
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
@@ -34,6 +34,7 @@ require (
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/muhlemmer/gu v0.3.1 // indirect
@@ -43,6 +44,7 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
@@ -66,10 +68,12 @@ require (
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
+	github.com/fvbommel/sortorder v1.1.0
 	github.com/google/go-github/v69 v69.0.0
 	github.com/google/uuid v1.6.0
 	github.com/lxc/incus/v6 v6.9.0
 	github.com/mattn/go-sqlite3 v1.14.24
+	github.com/olekukonko/tablewriter v0.0.5
 	github.com/prometheus/client_golang v1.21.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5

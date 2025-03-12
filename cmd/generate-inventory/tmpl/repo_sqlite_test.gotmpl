@@ -16,43 +16,37 @@ import (
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
-{{- if .ServerIDByLocation }}
 	"github.com/FuturFusion/operations-center/shared/api"
-{{- end }}
 )
 
 func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
 		Name:            "one",
 		ConnectionURL:   "https://cluster-one/",
-		ServerHostnames: []string{"one", "two"},
+		ServerNames:     []string{"one"},
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	testClusterB := provisioning.Cluster{
 		Name:            "two",
 		ConnectionURL:   "https://cluster-two/",
-		ServerHostnames: []string{"three", "four"},
+		ServerNames:     []string{"two"},
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
-{{ if .ServerIDByLocation }}
 	testServerA := provisioning.Server{
-		Cluster:         "one",
 		Name:            "one",
 		ConnectionURL:   "https://server-one/",
-    Type:            api.ServerTypeIncus,
+		Type:            api.ServerTypeIncus,
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	testServerB := provisioning.Server{
-		Cluster:         "two",
 		Name:            "two",
 		ConnectionURL:   "https://server-two/",
-    Type:            api.ServerTypeIncus,
+		Type:            api.ServerTypeIncus,
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
-{{ end }}
 
 	{{ .Name | camelcase }}A := inventory.{{ .Name | pascalcase }}{
 		Cluster:     "one",
@@ -107,7 +101,8 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), nil)
+	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
+	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), serverSvc, nil)
 
 	{{ .Name | camelcase }} := inventorySqlite.New{{ .Name | pascalcase }}(db)
 
@@ -115,20 +110,17 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	_, err = {{ .Name | camelcase }}.Create(ctx, {{ .Name | camelcase }}A)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
+	// Add dummy servers.
+	_, err = serverSvc.Create(ctx, testServerA)
+	require.NoError(t, err)
+	_, err = serverSvc.Create(ctx, testServerB)
+	require.NoError(t, err)
+
 	// Add dummy clusters.
 	_, err = clusterSvc.Create(ctx, testClusterA)
 	require.NoError(t, err)
 	_, err = clusterSvc.Create(ctx, testClusterB)
 	require.NoError(t, err)
-
-{{ if .ServerIDByLocation }}
-	// Add dummy servers.
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
-	_, err = serverSvc.Create(ctx, testServerA)
-	require.NoError(t, err)
-	_, err = serverSvc.Create(ctx, testServerB)
-	require.NoError(t, err)
-{{ end }}
 
 	// Add {{ .PluralName }}
 	{{ .Name | camelcase }}A, err = {{ .Name | camelcase }}.Create(ctx, {{ .Name | camelcase }}A)

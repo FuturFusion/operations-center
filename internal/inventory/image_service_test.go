@@ -149,8 +149,8 @@ func TestImageService_ResyncByID(t *testing.T) {
 				Name: "cluster-one",
 			},
 			imageClientGetImageByName: incusapi.Image{
-				Filename: "image one",
-				Project:  "project one",
+				Fingerprint: "image one",
+				Project:     "project one",
 			},
 
 			assertErr: require.NoError,
@@ -226,8 +226,8 @@ func TestImageService_ResyncByID(t *testing.T) {
 				Name: "cluster-one",
 			},
 			imageClientGetImageByName: incusapi.Image{
-				Filename: "image one",
-				Project:  "project one",
+				Fingerprint: "image one",
+				Project:     "project one",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -246,8 +246,8 @@ func TestImageService_ResyncByID(t *testing.T) {
 				Name: "cluster-one",
 			},
 			imageClientGetImageByName: incusapi.Image{
-				Filename: "image one",
-				Project:  "project one",
+				Fingerprint: "image one",
+				Project:     "project one",
 			},
 			repoUpdateByIDErr: boom.Error,
 
@@ -319,8 +319,8 @@ func TestImageService_SyncAll(t *testing.T) {
 			},
 			imageClientGetImages: []incusapi.Image{
 				{
-					Filename: "image one",
-					Project:  "project one",
+					Fingerprint: "image one",
+					Project:     "project one",
 				},
 			},
 
@@ -348,8 +348,8 @@ func TestImageService_SyncAll(t *testing.T) {
 			},
 			imageClientGetImages: []incusapi.Image{
 				{
-					Filename: "image one",
-					Project:  "project one",
+					Fingerprint: "image one",
+					Project:     "project one",
 				},
 			},
 			repoDeleteByClusterNameErr: boom.Error,
@@ -363,8 +363,8 @@ func TestImageService_SyncAll(t *testing.T) {
 			},
 			imageClientGetImages: []incusapi.Image{
 				{
-					Filename: "", // invalid
-					Project:  "project one",
+					Fingerprint: "", // invalid
+					Project:     "project one",
 				},
 			},
 
@@ -380,8 +380,8 @@ func TestImageService_SyncAll(t *testing.T) {
 			},
 			imageClientGetImages: []incusapi.Image{
 				{
-					Filename: "image one",
-					Project:  "project one",
+					Fingerprint: "image one",
+					Project:     "project one",
 				},
 			},
 			repoCreateErr: boom.Error,

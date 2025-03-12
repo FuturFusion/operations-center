@@ -17,7 +17,6 @@ CREATE TABLE clusters (
   id INTEGER PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
   connection_url TEXT NOT NULL,
-  server_hostnames TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (name)
 );
@@ -239,7 +238,6 @@ CREATE TABLE clusters (
   id INTEGER PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
   connection_url TEXT NOT NULL,
-  server_hostnames TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (name)
 );

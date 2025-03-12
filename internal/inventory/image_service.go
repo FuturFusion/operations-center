@@ -117,7 +117,7 @@ func (s imageService) SyncCluster(ctx context.Context, name string) error {
 			image := Image{
 				Cluster:     name,
 				ProjectName: retrievedImage.Project,
-				Name:        retrievedImage.Filename,
+				Name:        retrievedImage.Fingerprint,
 				Object:      retrievedImage,
 				LastUpdated: s.now(),
 			}

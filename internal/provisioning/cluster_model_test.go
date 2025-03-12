@@ -19,9 +19,9 @@ func TestCluster_Validate(t *testing.T) {
 		{
 			name: "valid",
 			cluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -29,9 +29,9 @@ func TestCluster_Validate(t *testing.T) {
 		{
 			name: "error - name empty",
 			cluster: provisioning.Cluster{
-				Name:            "", // invalid
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
+				Name:          "", // invalid
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -42,9 +42,9 @@ func TestCluster_Validate(t *testing.T) {
 		{
 			name: "error - server name list empty",
 			cluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: nil, // invalid
-				ConnectionURL:   "http://one/",
+				Name:          "one",
+				ServerNames:   nil, // invalid
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -55,9 +55,9 @@ func TestCluster_Validate(t *testing.T) {
 		{
 			name: "error - connection URL empty",
 			cluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "", // invalid
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "", // invalid
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -68,9 +68,9 @@ func TestCluster_Validate(t *testing.T) {
 		{
 			name: "error - connection URL invalid",
 			cluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   ":|\\", // invalid
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: ":|\\", // invalid
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {

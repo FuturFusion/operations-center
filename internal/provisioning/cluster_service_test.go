@@ -3,6 +3,7 @@ package provisioning_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -14,19 +15,28 @@ import (
 )
 
 func TestClusterService_Create(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
 	tests := []struct {
-		name          string
-		cluster       provisioning.Cluster
-		repoCreateErr error
+		name                     string
+		cluster                  provisioning.Cluster
+		serverSvcGetByName       provisioning.Server
+		serverSvcGetByNameErr    error
+		serverSvcUpdateByName    provisioning.Server
+		serverSvcUpdateByNameErr error
+		repoCreateErr            error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
 			cluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
+			},
+			serverSvcGetByName: provisioning.Server{
+				Name: "server1",
 			},
 
 			assertErr: require.NoError,
@@ -34,9 +44,9 @@ func TestClusterService_Create(t *testing.T) {
 		{
 			name: "error - validation",
 			cluster: provisioning.Cluster{
-				Name:            "", // invalid
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
+				Name:          "", // invalid
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -45,13 +55,54 @@ func TestClusterService_Create(t *testing.T) {
 			},
 		},
 		{
+			name: "error - serverSvc.GetByName",
+			cluster: provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
+			},
+			serverSvcGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - server already part of cluster",
+			cluster: provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
+			},
+			serverSvcGetByName: provisioning.Server{
+				Cluster: "cluster-foo",
+				Name:    "server1",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Server "server1" is already part of cluster "cluster-foo"`)
+			},
+		},
+		{
 			name: "error - repo.Create",
 			cluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
 			},
 			repoCreateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - serverSvc.UpdateByName",
+			cluster: provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
+			},
+			serverSvcGetByName: provisioning.Server{
+				Name: "one",
+			},
+			serverSvcUpdateByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -62,11 +113,21 @@ func TestClusterService_Create(t *testing.T) {
 			// Setup
 			repo := &mock.ClusterRepoMock{
 				CreateFunc: func(ctx context.Context, in provisioning.Cluster) (provisioning.Cluster, error) {
+					require.Equal(t, fixedDate, in.LastUpdated)
 					return provisioning.Cluster{}, tc.repoCreateErr
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil)
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Server, error) {
+					return tc.serverSvcGetByName, tc.serverSvcGetByNameErr
+				},
+				UpdateByNameFunc: func(ctx context.Context, name string, server provisioning.Server) (provisioning.Server, error) {
+					return tc.serverSvcUpdateByName, tc.serverSvcUpdateByNameErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, serverSvc, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			_, err := clusterSvc.Create(context.Background(), tc.cluster)
@@ -90,14 +151,14 @@ func TestClusterService_GetAll(t *testing.T) {
 			name: "success",
 			repoGetAllClusters: provisioning.Clusters{
 				provisioning.Cluster{
-					Name:            "one",
-					ServerHostnames: []string{"server1", "server2"},
-					ConnectionURL:   "http://one/",
+					Name:          "one",
+					ServerNames:   []string{"server1", "server2"},
+					ConnectionURL: "http://one/",
 				},
 				provisioning.Cluster{
-					Name:            "one",
-					ServerHostnames: []string{"server1", "server2"},
-					ConnectionURL:   "http://one/",
+					Name:          "one",
+					ServerNames:   []string{"server1", "server2"},
+					ConnectionURL: "http://one/",
 				},
 			},
 
@@ -122,7 +183,7 @@ func TestClusterService_GetAll(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil)
 
 			// Run test
 			clusters, err := clusterSvc.GetAll(context.Background())
@@ -170,7 +231,7 @@ func TestClusterService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil)
 
 			// Run test
 			clusterNames, err := clusterSvc.GetAllNames(context.Background())
@@ -195,9 +256,9 @@ func TestClusterService_GetByID(t *testing.T) {
 			name:  "success",
 			idArg: "one",
 			repoGetByIDCluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -220,7 +281,7 @@ func TestClusterService_GetByID(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetByName(context.Background(), tc.idArg)
@@ -245,9 +306,9 @@ func TestClusterService_GetByName(t *testing.T) {
 			name:    "success",
 			nameArg: "one",
 			repoGetByIDCluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -278,7 +339,7 @@ func TestClusterService_GetByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetByName(context.Background(), tc.nameArg)
@@ -291,6 +352,8 @@ func TestClusterService_GetByName(t *testing.T) {
 }
 
 func TestClusterService_UpdateByName(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
 	tests := []struct {
 		name                 string
 		nameArg              string
@@ -306,19 +369,19 @@ func TestClusterService_UpdateByName(t *testing.T) {
 			name:    "success",
 			nameArg: "one",
 			cluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1", "server3"},
-				ConnectionURL:   "http://one/",
+				Name:          "one",
+				ServerNames:   []string{"server1", "server3"},
+				ConnectionURL: "http://one/",
 			},
 			repoGetByNameCluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
 			},
 			repoUpdateCluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1", "server3"},
-				ConnectionURL:   "http://one/",
+				Name:          "one",
+				ServerNames:   []string{"server1", "server3"},
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -335,9 +398,9 @@ func TestClusterService_UpdateByName(t *testing.T) {
 			name:    "error - validation",
 			nameArg: "one",
 			cluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: nil, // invalid
-				ConnectionURL:   "http://one/",
+				Name:          "one",
+				ServerNames:   nil, // invalid
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -349,9 +412,9 @@ func TestClusterService_UpdateByName(t *testing.T) {
 			name:    "error - name mismatch",
 			nameArg: "one",
 			cluster: provisioning.Cluster{
-				Name:            "one 1", // invalid missmatch
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
+				Name:          "one 1", // invalid missmatch
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -360,47 +423,17 @@ func TestClusterService_UpdateByName(t *testing.T) {
 			},
 		},
 		{
-			name:    "error - repo.GetByName",
-			nameArg: "one",
-			cluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
-			},
-			repoGetByNameErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name:    "error - cluster shrinking",
-			nameArg: "one",
-			cluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
-			},
-			repoGetByNameCluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1"},
-				ConnectionURL:   "http://one/",
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrConstraintViolation, a...)
-			},
-		},
-		{
 			name:    "error - repo.UpdateByID",
 			nameArg: "one",
 			cluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1", "server3"},
-				ConnectionURL:   "http://one/",
+				Name:          "one",
+				ServerNames:   []string{"server1", "server3"},
+				ConnectionURL: "http://one/",
 			},
 			repoGetByNameCluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
 			},
 			repoUpdateErr: boom.Error,
 
@@ -412,15 +445,13 @@ func TestClusterService_UpdateByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.ClusterRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
-					return tc.repoGetByNameCluster, tc.repoGetByNameErr
-				},
 				UpdateByNameFunc: func(ctx context.Context, name string, in provisioning.Cluster) (provisioning.Cluster, error) {
+					require.Equal(t, fixedDate, in.LastUpdated)
 					return tc.repoUpdateCluster, tc.repoUpdateErr
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			cluster, err := clusterSvc.UpdateByName(context.Background(), tc.nameArg, tc.cluster)
@@ -433,6 +464,8 @@ func TestClusterService_UpdateByName(t *testing.T) {
 }
 
 func TestClusterService_RenameByName(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
 	tests := []struct {
 		name                 string
 		nameArg              string
@@ -448,19 +481,19 @@ func TestClusterService_RenameByName(t *testing.T) {
 			name:    "success",
 			nameArg: "one",
 			cluster: provisioning.Cluster{
-				Name:            "one new",
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
+				Name:          "one new",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
 			},
 			repoGetByNameCluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1"},
-				ConnectionURL:   "http://one/",
+				Name:          "one",
+				ServerNames:   []string{"server1"},
+				ConnectionURL: "http://one/",
 			},
 			repoUpdateCluster: provisioning.Cluster{
-				Name:            "one new",
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
+				Name:          "one new",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -477,9 +510,9 @@ func TestClusterService_RenameByName(t *testing.T) {
 			name:    "error - new name empty",
 			nameArg: "one",
 			cluster: provisioning.Cluster{
-				Name:            "", // invalid
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
+				Name:          "", // invalid
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -491,9 +524,9 @@ func TestClusterService_RenameByName(t *testing.T) {
 			name:    "error - repo.GetByName",
 			nameArg: "one",
 			cluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
 			},
 			repoGetByNameErr: boom.Error,
 
@@ -503,14 +536,14 @@ func TestClusterService_RenameByName(t *testing.T) {
 			name:    "error - repo.UpdateByID",
 			nameArg: "one",
 			cluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1", "server2"},
-				ConnectionURL:   "http://one/",
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
 			},
 			repoGetByNameCluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1"},
-				ConnectionURL:   "http://one/",
+				Name:          "one",
+				ServerNames:   []string{"server1"},
+				ConnectionURL: "http://one/",
 			},
 			repoUpdateErr: boom.Error,
 
@@ -527,11 +560,12 @@ func TestClusterService_RenameByName(t *testing.T) {
 				},
 				UpdateByNameFunc: func(ctx context.Context, name string, in provisioning.Cluster) (provisioning.Cluster, error) {
 					require.Equal(t, tc.cluster.Name, in.Name)
+					require.Equal(t, fixedDate, in.LastUpdated)
 					return tc.repoUpdateCluster, tc.repoUpdateErr
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			cluster, err := clusterSvc.RenameByName(context.Background(), tc.nameArg, tc.cluster)
@@ -583,7 +617,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil)
 
 			// Run test
 			err := clusterSvc.DeleteByName(context.Background(), tc.nameArg)
@@ -608,8 +642,8 @@ func TestClusterService_ResyncInventoryByName(t *testing.T) {
 			name:    "success",
 			nameArg: "one",
 			repoGetByNameCluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1"},
+				Name:        "one",
+				ServerNames: []string{"server1"},
 			},
 
 			assertErr: require.NoError,
@@ -626,8 +660,8 @@ func TestClusterService_ResyncInventoryByName(t *testing.T) {
 			name:    "error - sync cluster",
 			nameArg: "one",
 			repoGetByNameCluster: provisioning.Cluster{
-				Name:            "one",
-				ServerHostnames: []string{"server1"},
+				Name:        "one",
+				ServerNames: []string{"server1"},
 			},
 			inventorySyncerErr: boom.Error,
 
@@ -650,7 +684,7 @@ func TestClusterService_ResyncInventoryByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil)
 			clusterSvc.SetInventorySyncers([]provisioning.InventorySyncer{inventorySyncer})
 
 			// Run test

@@ -14,10 +14,18 @@ type Cluster struct {
 	// Example: https://incus.local:6443
 	ConnectionURL string `json:"connection_url" yaml:"connection_url"`
 
-	// ServerHostnames ...
-	ServerHostnames []string `json:"server_hostnames" yaml:"server_hostnames"` // FIXME: it is unclear, if this is needed. If we don't have this, how can we know the expected size of a cluster and prevent it from growing / shrinking?
-
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
 	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
+}
+
+// ClusterPost represents the fields available for a new cluster of servers running Hypervisor OS.
+//
+// swagger:model
+type ClusterPost struct {
+	Cluster `yaml:",inline"`
+
+	// Names of the servers beloning to the cluster.
+	// Example: [ "server1", "server2" ]
+	ServerNames []string `json:"server_names" yaml:"server_names"`
 }
