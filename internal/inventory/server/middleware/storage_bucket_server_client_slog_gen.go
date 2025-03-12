@@ -37,7 +37,7 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.C
 			slog.String("storageBucketName", storageBucketName),
 		)
 	}
-	log.Debug("StorageBucketServerClientWithSlog: calling GetStorageBucketByName")
+	log.Debug("=> calling GetStorageBucketByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -51,9 +51,9 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.C
 			}
 		}
 		if err != nil {
-			log.Error("StorageBucketServerClientWithSlog: method GetStorageBucketByName returned an error")
+			log.Error("<= method GetStorageBucketByName returned an error")
 		} else {
-			log.Debug("StorageBucketServerClientWithSlog: method GetStorageBucketByName finished")
+			log.Debug("<= method GetStorageBucketByName finished")
 		}
 	}()
 	return _d._base.GetStorageBucketByName(ctx, connectionURL, storagePoolName, storageBucketName)
@@ -69,7 +69,7 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBuckets(ctx context.Contex
 			slog.String("storagePoolName", storagePoolName),
 		)
 	}
-	log.Debug("StorageBucketServerClientWithSlog: calling GetStorageBuckets")
+	log.Debug("=> calling GetStorageBuckets")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -83,9 +83,9 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBuckets(ctx context.Contex
 			}
 		}
 		if err != nil {
-			log.Error("StorageBucketServerClientWithSlog: method GetStorageBuckets returned an error")
+			log.Error("<= method GetStorageBuckets returned an error")
 		} else {
-			log.Debug("StorageBucketServerClientWithSlog: method GetStorageBuckets finished")
+			log.Debug("<= method GetStorageBuckets finished")
 		}
 	}()
 	return _d._base.GetStorageBuckets(ctx, connectionURL, storagePoolName)

@@ -34,7 +34,7 @@ func (_d NetworkPeerServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, fi
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("NetworkPeerServiceWithSlog: calling GetAllIDsWithFilter")
+	log.Debug("=> calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d NetworkPeerServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, fi
 			}
 		}
 		if err != nil {
-			log.Error("NetworkPeerServiceWithSlog: method GetAllIDsWithFilter returned an error")
+			log.Error("<= method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("NetworkPeerServiceWithSlog: method GetAllIDsWithFilter finished")
+			log.Debug("<= method GetAllIDsWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
@@ -65,7 +65,7 @@ func (_d NetworkPeerServiceWithSlog) GetByID(ctx context.Context, id int) (netwo
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("NetworkPeerServiceWithSlog: calling GetByID")
+	log.Debug("=> calling GetByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -79,9 +79,9 @@ func (_d NetworkPeerServiceWithSlog) GetByID(ctx context.Context, id int) (netwo
 			}
 		}
 		if err != nil {
-			log.Error("NetworkPeerServiceWithSlog: method GetByID returned an error")
+			log.Error("<= method GetByID returned an error")
 		} else {
-			log.Debug("NetworkPeerServiceWithSlog: method GetByID finished")
+			log.Debug("<= method GetByID finished")
 		}
 	}()
 	return _d._base.GetByID(ctx, id)
@@ -96,7 +96,7 @@ func (_d NetworkPeerServiceWithSlog) ResyncByID(ctx context.Context, id int) (er
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("NetworkPeerServiceWithSlog: calling ResyncByID")
+	log.Debug("=> calling ResyncByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -109,9 +109,9 @@ func (_d NetworkPeerServiceWithSlog) ResyncByID(ctx context.Context, id int) (er
 			}
 		}
 		if err != nil {
-			log.Error("NetworkPeerServiceWithSlog: method ResyncByID returned an error")
+			log.Error("<= method ResyncByID returned an error")
 		} else {
-			log.Debug("NetworkPeerServiceWithSlog: method ResyncByID finished")
+			log.Debug("<= method ResyncByID finished")
 		}
 	}()
 	return _d._base.ResyncByID(ctx, id)
@@ -126,7 +126,7 @@ func (_d NetworkPeerServiceWithSlog) SyncCluster(ctx context.Context, cluster st
 			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("NetworkPeerServiceWithSlog: calling SyncCluster")
+	log.Debug("=> calling SyncCluster")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,9 +139,9 @@ func (_d NetworkPeerServiceWithSlog) SyncCluster(ctx context.Context, cluster st
 			}
 		}
 		if err != nil {
-			log.Error("NetworkPeerServiceWithSlog: method SyncCluster returned an error")
+			log.Error("<= method SyncCluster returned an error")
 		} else {
-			log.Debug("NetworkPeerServiceWithSlog: method SyncCluster finished")
+			log.Debug("<= method SyncCluster finished")
 		}
 	}()
 	return _d._base.SyncCluster(ctx, cluster)

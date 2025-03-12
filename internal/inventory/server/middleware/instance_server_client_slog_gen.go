@@ -36,7 +36,7 @@ func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, co
 			slog.String("instanceName", instanceName),
 		)
 	}
-	log.Debug("InstanceServerClientWithSlog: calling GetInstanceByName")
+	log.Debug("=> calling GetInstanceByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -50,9 +50,9 @@ func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, co
 			}
 		}
 		if err != nil {
-			log.Error("InstanceServerClientWithSlog: method GetInstanceByName returned an error")
+			log.Error("<= method GetInstanceByName returned an error")
 		} else {
-			log.Debug("InstanceServerClientWithSlog: method GetInstanceByName finished")
+			log.Debug("<= method GetInstanceByName finished")
 		}
 	}()
 	return _d._base.GetInstanceByName(ctx, connectionURL, instanceName)
@@ -67,7 +67,7 @@ func (_d InstanceServerClientWithSlog) GetInstances(ctx context.Context, connect
 			slog.String("connectionURL", connectionURL),
 		)
 	}
-	log.Debug("InstanceServerClientWithSlog: calling GetInstances")
+	log.Debug("=> calling GetInstances")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -81,9 +81,9 @@ func (_d InstanceServerClientWithSlog) GetInstances(ctx context.Context, connect
 			}
 		}
 		if err != nil {
-			log.Error("InstanceServerClientWithSlog: method GetInstances returned an error")
+			log.Error("<= method GetInstances returned an error")
 		} else {
-			log.Debug("InstanceServerClientWithSlog: method GetInstances finished")
+			log.Debug("<= method GetInstances finished")
 		}
 	}()
 	return _d._base.GetInstances(ctx, connectionURL)

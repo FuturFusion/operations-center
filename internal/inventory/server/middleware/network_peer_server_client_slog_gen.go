@@ -37,7 +37,7 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Conte
 			slog.String("networkPeerName", networkPeerName),
 		)
 	}
-	log.Debug("NetworkPeerServerClientWithSlog: calling GetNetworkPeerByName")
+	log.Debug("=> calling GetNetworkPeerByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -51,9 +51,9 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Conte
 			}
 		}
 		if err != nil {
-			log.Error("NetworkPeerServerClientWithSlog: method GetNetworkPeerByName returned an error")
+			log.Error("<= method GetNetworkPeerByName returned an error")
 		} else {
-			log.Debug("NetworkPeerServerClientWithSlog: method GetNetworkPeerByName finished")
+			log.Debug("<= method GetNetworkPeerByName finished")
 		}
 	}()
 	return _d._base.GetNetworkPeerByName(ctx, connectionURL, networkName, networkPeerName)
@@ -69,7 +69,7 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, c
 			slog.String("networkName", networkName),
 		)
 	}
-	log.Debug("NetworkPeerServerClientWithSlog: calling GetNetworkPeers")
+	log.Debug("=> calling GetNetworkPeers")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -83,9 +83,9 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, c
 			}
 		}
 		if err != nil {
-			log.Error("NetworkPeerServerClientWithSlog: method GetNetworkPeers returned an error")
+			log.Error("<= method GetNetworkPeers returned an error")
 		} else {
-			log.Debug("NetworkPeerServerClientWithSlog: method GetNetworkPeers finished")
+			log.Debug("<= method GetNetworkPeers finished")
 		}
 	}()
 	return _d._base.GetNetworkPeers(ctx, connectionURL, networkName)

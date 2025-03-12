@@ -34,7 +34,7 @@ func (_d StorageBucketServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, 
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("StorageBucketServiceWithSlog: calling GetAllIDsWithFilter")
+	log.Debug("=> calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d StorageBucketServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, 
 			}
 		}
 		if err != nil {
-			log.Error("StorageBucketServiceWithSlog: method GetAllIDsWithFilter returned an error")
+			log.Error("<= method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("StorageBucketServiceWithSlog: method GetAllIDsWithFilter finished")
+			log.Debug("<= method GetAllIDsWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
@@ -65,7 +65,7 @@ func (_d StorageBucketServiceWithSlog) GetByID(ctx context.Context, id int) (sto
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("StorageBucketServiceWithSlog: calling GetByID")
+	log.Debug("=> calling GetByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -79,9 +79,9 @@ func (_d StorageBucketServiceWithSlog) GetByID(ctx context.Context, id int) (sto
 			}
 		}
 		if err != nil {
-			log.Error("StorageBucketServiceWithSlog: method GetByID returned an error")
+			log.Error("<= method GetByID returned an error")
 		} else {
-			log.Debug("StorageBucketServiceWithSlog: method GetByID finished")
+			log.Debug("<= method GetByID finished")
 		}
 	}()
 	return _d._base.GetByID(ctx, id)
@@ -96,7 +96,7 @@ func (_d StorageBucketServiceWithSlog) ResyncByID(ctx context.Context, id int) (
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("StorageBucketServiceWithSlog: calling ResyncByID")
+	log.Debug("=> calling ResyncByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -109,9 +109,9 @@ func (_d StorageBucketServiceWithSlog) ResyncByID(ctx context.Context, id int) (
 			}
 		}
 		if err != nil {
-			log.Error("StorageBucketServiceWithSlog: method ResyncByID returned an error")
+			log.Error("<= method ResyncByID returned an error")
 		} else {
-			log.Debug("StorageBucketServiceWithSlog: method ResyncByID finished")
+			log.Debug("<= method ResyncByID finished")
 		}
 	}()
 	return _d._base.ResyncByID(ctx, id)
@@ -126,7 +126,7 @@ func (_d StorageBucketServiceWithSlog) SyncCluster(ctx context.Context, cluster 
 			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("StorageBucketServiceWithSlog: calling SyncCluster")
+	log.Debug("=> calling SyncCluster")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,9 +139,9 @@ func (_d StorageBucketServiceWithSlog) SyncCluster(ctx context.Context, cluster 
 			}
 		}
 		if err != nil {
-			log.Error("StorageBucketServiceWithSlog: method SyncCluster returned an error")
+			log.Error("<= method SyncCluster returned an error")
 		} else {
-			log.Debug("StorageBucketServiceWithSlog: method SyncCluster finished")
+			log.Debug("<= method SyncCluster finished")
 		}
 	}()
 	return _d._base.SyncCluster(ctx, cluster)

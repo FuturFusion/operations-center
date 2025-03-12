@@ -34,7 +34,7 @@ func (_d InstanceRepoWithSlog) Create(ctx context.Context, instance inventory.In
 			slog.Any("instance", instance),
 		)
 	}
-	log.Debug("InstanceRepoWithSlog: calling Create")
+	log.Debug("=> calling Create")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d InstanceRepoWithSlog) Create(ctx context.Context, instance inventory.In
 			}
 		}
 		if err != nil {
-			log.Error("InstanceRepoWithSlog: method Create returned an error")
+			log.Error("<= method Create returned an error")
 		} else {
-			log.Debug("InstanceRepoWithSlog: method Create finished")
+			log.Debug("<= method Create finished")
 		}
 	}()
 	return _d._base.Create(ctx, instance)
@@ -65,7 +65,7 @@ func (_d InstanceRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster 
 			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("InstanceRepoWithSlog: calling DeleteByClusterName")
+	log.Debug("=> calling DeleteByClusterName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,9 +78,9 @@ func (_d InstanceRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster 
 			}
 		}
 		if err != nil {
-			log.Error("InstanceRepoWithSlog: method DeleteByClusterName returned an error")
+			log.Error("<= method DeleteByClusterName returned an error")
 		} else {
-			log.Debug("InstanceRepoWithSlog: method DeleteByClusterName finished")
+			log.Debug("<= method DeleteByClusterName finished")
 		}
 	}()
 	return _d._base.DeleteByClusterName(ctx, cluster)
@@ -95,7 +95,7 @@ func (_d InstanceRepoWithSlog) DeleteByID(ctx context.Context, id int) (err erro
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("InstanceRepoWithSlog: calling DeleteByID")
+	log.Debug("=> calling DeleteByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -108,9 +108,9 @@ func (_d InstanceRepoWithSlog) DeleteByID(ctx context.Context, id int) (err erro
 			}
 		}
 		if err != nil {
-			log.Error("InstanceRepoWithSlog: method DeleteByID returned an error")
+			log.Error("<= method DeleteByID returned an error")
 		} else {
-			log.Debug("InstanceRepoWithSlog: method DeleteByID finished")
+			log.Debug("<= method DeleteByID finished")
 		}
 	}()
 	return _d._base.DeleteByID(ctx, id)
@@ -125,7 +125,7 @@ func (_d InstanceRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter i
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("InstanceRepoWithSlog: calling GetAllIDsWithFilter")
+	log.Debug("=> calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,9 +139,9 @@ func (_d InstanceRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter i
 			}
 		}
 		if err != nil {
-			log.Error("InstanceRepoWithSlog: method GetAllIDsWithFilter returned an error")
+			log.Error("<= method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("InstanceRepoWithSlog: method GetAllIDsWithFilter finished")
+			log.Debug("<= method GetAllIDsWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
@@ -156,7 +156,7 @@ func (_d InstanceRepoWithSlog) GetByID(ctx context.Context, id int) (instance in
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("InstanceRepoWithSlog: calling GetByID")
+	log.Debug("=> calling GetByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -170,9 +170,9 @@ func (_d InstanceRepoWithSlog) GetByID(ctx context.Context, id int) (instance in
 			}
 		}
 		if err != nil {
-			log.Error("InstanceRepoWithSlog: method GetByID returned an error")
+			log.Error("<= method GetByID returned an error")
 		} else {
-			log.Debug("InstanceRepoWithSlog: method GetByID finished")
+			log.Debug("<= method GetByID finished")
 		}
 	}()
 	return _d._base.GetByID(ctx, id)
@@ -187,7 +187,7 @@ func (_d InstanceRepoWithSlog) UpdateByID(ctx context.Context, instance inventor
 			slog.Any("instance", instance),
 		)
 	}
-	log.Debug("InstanceRepoWithSlog: calling UpdateByID")
+	log.Debug("=> calling UpdateByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -201,9 +201,9 @@ func (_d InstanceRepoWithSlog) UpdateByID(ctx context.Context, instance inventor
 			}
 		}
 		if err != nil {
-			log.Error("InstanceRepoWithSlog: method UpdateByID returned an error")
+			log.Error("<= method UpdateByID returned an error")
 		} else {
-			log.Debug("InstanceRepoWithSlog: method UpdateByID finished")
+			log.Debug("<= method UpdateByID finished")
 		}
 	}()
 	return _d._base.UpdateByID(ctx, instance)

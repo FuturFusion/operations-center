@@ -34,7 +34,7 @@ func (_d ImageServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter i
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("ImageServiceWithSlog: calling GetAllIDsWithFilter")
+	log.Debug("=> calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d ImageServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter i
 			}
 		}
 		if err != nil {
-			log.Error("ImageServiceWithSlog: method GetAllIDsWithFilter returned an error")
+			log.Error("<= method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("ImageServiceWithSlog: method GetAllIDsWithFilter finished")
+			log.Debug("<= method GetAllIDsWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
@@ -65,7 +65,7 @@ func (_d ImageServiceWithSlog) GetByID(ctx context.Context, id int) (image inven
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("ImageServiceWithSlog: calling GetByID")
+	log.Debug("=> calling GetByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -79,9 +79,9 @@ func (_d ImageServiceWithSlog) GetByID(ctx context.Context, id int) (image inven
 			}
 		}
 		if err != nil {
-			log.Error("ImageServiceWithSlog: method GetByID returned an error")
+			log.Error("<= method GetByID returned an error")
 		} else {
-			log.Debug("ImageServiceWithSlog: method GetByID finished")
+			log.Debug("<= method GetByID finished")
 		}
 	}()
 	return _d._base.GetByID(ctx, id)
@@ -96,7 +96,7 @@ func (_d ImageServiceWithSlog) ResyncByID(ctx context.Context, id int) (err erro
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("ImageServiceWithSlog: calling ResyncByID")
+	log.Debug("=> calling ResyncByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -109,9 +109,9 @@ func (_d ImageServiceWithSlog) ResyncByID(ctx context.Context, id int) (err erro
 			}
 		}
 		if err != nil {
-			log.Error("ImageServiceWithSlog: method ResyncByID returned an error")
+			log.Error("<= method ResyncByID returned an error")
 		} else {
-			log.Debug("ImageServiceWithSlog: method ResyncByID finished")
+			log.Debug("<= method ResyncByID finished")
 		}
 	}()
 	return _d._base.ResyncByID(ctx, id)
@@ -126,7 +126,7 @@ func (_d ImageServiceWithSlog) SyncCluster(ctx context.Context, cluster string) 
 			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("ImageServiceWithSlog: calling SyncCluster")
+	log.Debug("=> calling SyncCluster")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,9 +139,9 @@ func (_d ImageServiceWithSlog) SyncCluster(ctx context.Context, cluster string) 
 			}
 		}
 		if err != nil {
-			log.Error("ImageServiceWithSlog: method SyncCluster returned an error")
+			log.Error("<= method SyncCluster returned an error")
 		} else {
-			log.Debug("ImageServiceWithSlog: method SyncCluster finished")
+			log.Debug("<= method SyncCluster finished")
 		}
 	}()
 	return _d._base.SyncCluster(ctx, cluster)

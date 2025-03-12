@@ -37,7 +37,7 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(c
 			slog.String("networkLoadBalancerName", networkLoadBalancerName),
 		)
 	}
-	log.Debug("NetworkLoadBalancerServerClientWithSlog: calling GetNetworkLoadBalancerByName")
+	log.Debug("=> calling GetNetworkLoadBalancerByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -51,9 +51,9 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(c
 			}
 		}
 		if err != nil {
-			log.Error("NetworkLoadBalancerServerClientWithSlog: method GetNetworkLoadBalancerByName returned an error")
+			log.Error("<= method GetNetworkLoadBalancerByName returned an error")
 		} else {
-			log.Debug("NetworkLoadBalancerServerClientWithSlog: method GetNetworkLoadBalancerByName finished")
+			log.Debug("<= method GetNetworkLoadBalancerByName finished")
 		}
 	}()
 	return _d._base.GetNetworkLoadBalancerByName(ctx, connectionURL, networkName, networkLoadBalancerName)
@@ -69,7 +69,7 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx co
 			slog.String("networkName", networkName),
 		)
 	}
-	log.Debug("NetworkLoadBalancerServerClientWithSlog: calling GetNetworkLoadBalancers")
+	log.Debug("=> calling GetNetworkLoadBalancers")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -83,9 +83,9 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx co
 			}
 		}
 		if err != nil {
-			log.Error("NetworkLoadBalancerServerClientWithSlog: method GetNetworkLoadBalancers returned an error")
+			log.Error("<= method GetNetworkLoadBalancers returned an error")
 		} else {
-			log.Debug("NetworkLoadBalancerServerClientWithSlog: method GetNetworkLoadBalancers finished")
+			log.Debug("<= method GetNetworkLoadBalancers finished")
 		}
 	}()
 	return _d._base.GetNetworkLoadBalancers(ctx, connectionURL, networkName)

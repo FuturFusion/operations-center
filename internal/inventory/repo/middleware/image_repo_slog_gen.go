@@ -34,7 +34,7 @@ func (_d ImageRepoWithSlog) Create(ctx context.Context, image inventory.Image) (
 			slog.Any("image", image),
 		)
 	}
-	log.Debug("ImageRepoWithSlog: calling Create")
+	log.Debug("=> calling Create")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d ImageRepoWithSlog) Create(ctx context.Context, image inventory.Image) (
 			}
 		}
 		if err != nil {
-			log.Error("ImageRepoWithSlog: method Create returned an error")
+			log.Error("<= method Create returned an error")
 		} else {
-			log.Debug("ImageRepoWithSlog: method Create finished")
+			log.Debug("<= method Create finished")
 		}
 	}()
 	return _d._base.Create(ctx, image)
@@ -65,7 +65,7 @@ func (_d ImageRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster str
 			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("ImageRepoWithSlog: calling DeleteByClusterName")
+	log.Debug("=> calling DeleteByClusterName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,9 +78,9 @@ func (_d ImageRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster str
 			}
 		}
 		if err != nil {
-			log.Error("ImageRepoWithSlog: method DeleteByClusterName returned an error")
+			log.Error("<= method DeleteByClusterName returned an error")
 		} else {
-			log.Debug("ImageRepoWithSlog: method DeleteByClusterName finished")
+			log.Debug("<= method DeleteByClusterName finished")
 		}
 	}()
 	return _d._base.DeleteByClusterName(ctx, cluster)
@@ -95,7 +95,7 @@ func (_d ImageRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) 
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("ImageRepoWithSlog: calling DeleteByID")
+	log.Debug("=> calling DeleteByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -108,9 +108,9 @@ func (_d ImageRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) 
 			}
 		}
 		if err != nil {
-			log.Error("ImageRepoWithSlog: method DeleteByID returned an error")
+			log.Error("<= method DeleteByID returned an error")
 		} else {
-			log.Debug("ImageRepoWithSlog: method DeleteByID finished")
+			log.Debug("<= method DeleteByID finished")
 		}
 	}()
 	return _d._base.DeleteByID(ctx, id)
@@ -125,7 +125,7 @@ func (_d ImageRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inve
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("ImageRepoWithSlog: calling GetAllIDsWithFilter")
+	log.Debug("=> calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,9 +139,9 @@ func (_d ImageRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inve
 			}
 		}
 		if err != nil {
-			log.Error("ImageRepoWithSlog: method GetAllIDsWithFilter returned an error")
+			log.Error("<= method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("ImageRepoWithSlog: method GetAllIDsWithFilter finished")
+			log.Debug("<= method GetAllIDsWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
@@ -156,7 +156,7 @@ func (_d ImageRepoWithSlog) GetByID(ctx context.Context, id int) (image inventor
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("ImageRepoWithSlog: calling GetByID")
+	log.Debug("=> calling GetByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -170,9 +170,9 @@ func (_d ImageRepoWithSlog) GetByID(ctx context.Context, id int) (image inventor
 			}
 		}
 		if err != nil {
-			log.Error("ImageRepoWithSlog: method GetByID returned an error")
+			log.Error("<= method GetByID returned an error")
 		} else {
-			log.Debug("ImageRepoWithSlog: method GetByID finished")
+			log.Debug("<= method GetByID finished")
 		}
 	}()
 	return _d._base.GetByID(ctx, id)
@@ -187,7 +187,7 @@ func (_d ImageRepoWithSlog) UpdateByID(ctx context.Context, image inventory.Imag
 			slog.Any("image", image),
 		)
 	}
-	log.Debug("ImageRepoWithSlog: calling UpdateByID")
+	log.Debug("=> calling UpdateByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -201,9 +201,9 @@ func (_d ImageRepoWithSlog) UpdateByID(ctx context.Context, image inventory.Imag
 			}
 		}
 		if err != nil {
-			log.Error("ImageRepoWithSlog: method UpdateByID returned an error")
+			log.Error("<= method UpdateByID returned an error")
 		} else {
-			log.Debug("ImageRepoWithSlog: method UpdateByID finished")
+			log.Debug("<= method UpdateByID finished")
 		}
 	}()
 	return _d._base.UpdateByID(ctx, image)

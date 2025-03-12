@@ -36,7 +36,7 @@ func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, conn
 			slog.String("networkName", networkName),
 		)
 	}
-	log.Debug("NetworkServerClientWithSlog: calling GetNetworkByName")
+	log.Debug("=> calling GetNetworkByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -50,9 +50,9 @@ func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, conn
 			}
 		}
 		if err != nil {
-			log.Error("NetworkServerClientWithSlog: method GetNetworkByName returned an error")
+			log.Error("<= method GetNetworkByName returned an error")
 		} else {
-			log.Debug("NetworkServerClientWithSlog: method GetNetworkByName finished")
+			log.Debug("<= method GetNetworkByName finished")
 		}
 	}()
 	return _d._base.GetNetworkByName(ctx, connectionURL, networkName)
@@ -67,7 +67,7 @@ func (_d NetworkServerClientWithSlog) GetNetworks(ctx context.Context, connectio
 			slog.String("connectionURL", connectionURL),
 		)
 	}
-	log.Debug("NetworkServerClientWithSlog: calling GetNetworks")
+	log.Debug("=> calling GetNetworks")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -81,9 +81,9 @@ func (_d NetworkServerClientWithSlog) GetNetworks(ctx context.Context, connectio
 			}
 		}
 		if err != nil {
-			log.Error("NetworkServerClientWithSlog: method GetNetworks returned an error")
+			log.Error("<= method GetNetworks returned an error")
 		} else {
-			log.Debug("NetworkServerClientWithSlog: method GetNetworks finished")
+			log.Debug("<= method GetNetworks finished")
 		}
 	}()
 	return _d._base.GetNetworks(ctx, connectionURL)

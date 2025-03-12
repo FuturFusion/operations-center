@@ -36,7 +36,7 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context
 			slog.String("networkACLName", networkACLName),
 		)
 	}
-	log.Debug("NetworkACLServerClientWithSlog: calling GetNetworkACLByName")
+	log.Debug("=> calling GetNetworkACLByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -50,9 +50,9 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context
 			}
 		}
 		if err != nil {
-			log.Error("NetworkACLServerClientWithSlog: method GetNetworkACLByName returned an error")
+			log.Error("<= method GetNetworkACLByName returned an error")
 		} else {
-			log.Debug("NetworkACLServerClientWithSlog: method GetNetworkACLByName finished")
+			log.Debug("<= method GetNetworkACLByName finished")
 		}
 	}()
 	return _d._base.GetNetworkACLByName(ctx, connectionURL, networkACLName)
@@ -67,7 +67,7 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLs(ctx context.Context, con
 			slog.String("connectionURL", connectionURL),
 		)
 	}
-	log.Debug("NetworkACLServerClientWithSlog: calling GetNetworkACLs")
+	log.Debug("=> calling GetNetworkACLs")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -81,9 +81,9 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLs(ctx context.Context, con
 			}
 		}
 		if err != nil {
-			log.Error("NetworkACLServerClientWithSlog: method GetNetworkACLs returned an error")
+			log.Error("<= method GetNetworkACLs returned an error")
 		} else {
-			log.Debug("NetworkACLServerClientWithSlog: method GetNetworkACLs finished")
+			log.Debug("<= method GetNetworkACLs finished")
 		}
 	}()
 	return _d._base.GetNetworkACLs(ctx, connectionURL)

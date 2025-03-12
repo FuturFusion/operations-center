@@ -36,7 +36,7 @@ func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, conn
 			slog.String("profileName", profileName),
 		)
 	}
-	log.Debug("ProfileServerClientWithSlog: calling GetProfileByName")
+	log.Debug("=> calling GetProfileByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -50,9 +50,9 @@ func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, conn
 			}
 		}
 		if err != nil {
-			log.Error("ProfileServerClientWithSlog: method GetProfileByName returned an error")
+			log.Error("<= method GetProfileByName returned an error")
 		} else {
-			log.Debug("ProfileServerClientWithSlog: method GetProfileByName finished")
+			log.Debug("<= method GetProfileByName finished")
 		}
 	}()
 	return _d._base.GetProfileByName(ctx, connectionURL, profileName)
@@ -67,7 +67,7 @@ func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, connectio
 			slog.String("connectionURL", connectionURL),
 		)
 	}
-	log.Debug("ProfileServerClientWithSlog: calling GetProfiles")
+	log.Debug("=> calling GetProfiles")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -81,9 +81,9 @@ func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, connectio
 			}
 		}
 		if err != nil {
-			log.Error("ProfileServerClientWithSlog: method GetProfiles returned an error")
+			log.Error("<= method GetProfiles returned an error")
 		} else {
-			log.Debug("ProfileServerClientWithSlog: method GetProfiles finished")
+			log.Debug("<= method GetProfiles finished")
 		}
 	}()
 	return _d._base.GetProfiles(ctx, connectionURL)

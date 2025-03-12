@@ -34,7 +34,7 @@ func (_d ClusterRepoWithSlog) Create(ctx context.Context, cluster provisioning.C
 			slog.Any("cluster", cluster),
 		)
 	}
-	log.Debug("ClusterRepoWithSlog: calling Create")
+	log.Debug("=> calling Create")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d ClusterRepoWithSlog) Create(ctx context.Context, cluster provisioning.C
 			}
 		}
 		if err != nil {
-			log.Error("ClusterRepoWithSlog: method Create returned an error")
+			log.Error("<= method Create returned an error")
 		} else {
-			log.Debug("ClusterRepoWithSlog: method Create finished")
+			log.Debug("<= method Create finished")
 		}
 	}()
 	return _d._base.Create(ctx, cluster)
@@ -65,7 +65,7 @@ func (_d ClusterRepoWithSlog) DeleteByName(ctx context.Context, name string) (er
 			slog.String("name", name),
 		)
 	}
-	log.Debug("ClusterRepoWithSlog: calling DeleteByName")
+	log.Debug("=> calling DeleteByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,9 +78,9 @@ func (_d ClusterRepoWithSlog) DeleteByName(ctx context.Context, name string) (er
 			}
 		}
 		if err != nil {
-			log.Error("ClusterRepoWithSlog: method DeleteByName returned an error")
+			log.Error("<= method DeleteByName returned an error")
 		} else {
-			log.Debug("ClusterRepoWithSlog: method DeleteByName finished")
+			log.Debug("<= method DeleteByName finished")
 		}
 	}()
 	return _d._base.DeleteByName(ctx, name)
@@ -94,7 +94,7 @@ func (_d ClusterRepoWithSlog) GetAll(ctx context.Context) (clusters provisioning
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("ClusterRepoWithSlog: calling GetAll")
+	log.Debug("=> calling GetAll")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -108,9 +108,9 @@ func (_d ClusterRepoWithSlog) GetAll(ctx context.Context) (clusters provisioning
 			}
 		}
 		if err != nil {
-			log.Error("ClusterRepoWithSlog: method GetAll returned an error")
+			log.Error("<= method GetAll returned an error")
 		} else {
-			log.Debug("ClusterRepoWithSlog: method GetAll finished")
+			log.Debug("<= method GetAll finished")
 		}
 	}()
 	return _d._base.GetAll(ctx)
@@ -124,7 +124,7 @@ func (_d ClusterRepoWithSlog) GetAllNames(ctx context.Context) (strings []string
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("ClusterRepoWithSlog: calling GetAllNames")
+	log.Debug("=> calling GetAllNames")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -138,9 +138,9 @@ func (_d ClusterRepoWithSlog) GetAllNames(ctx context.Context) (strings []string
 			}
 		}
 		if err != nil {
-			log.Error("ClusterRepoWithSlog: method GetAllNames returned an error")
+			log.Error("<= method GetAllNames returned an error")
 		} else {
-			log.Debug("ClusterRepoWithSlog: method GetAllNames finished")
+			log.Debug("<= method GetAllNames finished")
 		}
 	}()
 	return _d._base.GetAllNames(ctx)
@@ -155,7 +155,7 @@ func (_d ClusterRepoWithSlog) GetByName(ctx context.Context, name string) (clust
 			slog.String("name", name),
 		)
 	}
-	log.Debug("ClusterRepoWithSlog: calling GetByName")
+	log.Debug("=> calling GetByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -169,9 +169,9 @@ func (_d ClusterRepoWithSlog) GetByName(ctx context.Context, name string) (clust
 			}
 		}
 		if err != nil {
-			log.Error("ClusterRepoWithSlog: method GetByName returned an error")
+			log.Error("<= method GetByName returned an error")
 		} else {
-			log.Debug("ClusterRepoWithSlog: method GetByName finished")
+			log.Debug("<= method GetByName finished")
 		}
 	}()
 	return _d._base.GetByName(ctx, name)
@@ -187,7 +187,7 @@ func (_d ClusterRepoWithSlog) UpdateByName(ctx context.Context, name string, clu
 			slog.Any("cluster", cluster),
 		)
 	}
-	log.Debug("ClusterRepoWithSlog: calling UpdateByName")
+	log.Debug("=> calling UpdateByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -201,9 +201,9 @@ func (_d ClusterRepoWithSlog) UpdateByName(ctx context.Context, name string, clu
 			}
 		}
 		if err != nil {
-			log.Error("ClusterRepoWithSlog: method UpdateByName returned an error")
+			log.Error("<= method UpdateByName returned an error")
 		} else {
-			log.Debug("ClusterRepoWithSlog: method UpdateByName finished")
+			log.Debug("<= method UpdateByName finished")
 		}
 	}()
 	return _d._base.UpdateByName(ctx, name, cluster)

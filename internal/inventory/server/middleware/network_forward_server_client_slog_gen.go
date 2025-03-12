@@ -37,7 +37,7 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context
 			slog.String("networkForwardName", networkForwardName),
 		)
 	}
-	log.Debug("NetworkForwardServerClientWithSlog: calling GetNetworkForwardByName")
+	log.Debug("=> calling GetNetworkForwardByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -51,9 +51,9 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context
 			}
 		}
 		if err != nil {
-			log.Error("NetworkForwardServerClientWithSlog: method GetNetworkForwardByName returned an error")
+			log.Error("<= method GetNetworkForwardByName returned an error")
 		} else {
-			log.Debug("NetworkForwardServerClientWithSlog: method GetNetworkForwardByName finished")
+			log.Debug("<= method GetNetworkForwardByName finished")
 		}
 	}()
 	return _d._base.GetNetworkForwardByName(ctx, connectionURL, networkName, networkForwardName)
@@ -69,7 +69,7 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Cont
 			slog.String("networkName", networkName),
 		)
 	}
-	log.Debug("NetworkForwardServerClientWithSlog: calling GetNetworkForwards")
+	log.Debug("=> calling GetNetworkForwards")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -83,9 +83,9 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Cont
 			}
 		}
 		if err != nil {
-			log.Error("NetworkForwardServerClientWithSlog: method GetNetworkForwards returned an error")
+			log.Error("<= method GetNetworkForwards returned an error")
 		} else {
-			log.Debug("NetworkForwardServerClientWithSlog: method GetNetworkForwards finished")
+			log.Debug("<= method GetNetworkForwards finished")
 		}
 	}()
 	return _d._base.GetNetworkForwards(ctx, connectionURL, networkName)

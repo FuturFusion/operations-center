@@ -76,7 +76,7 @@ func New{{$decorator}}(base {{ $.SrcPkgQualifier }}{{ $mock.InterfaceName }}, lo
 				)
 			}
 		{{end -}}
-		log.Debug("{{$decorator}}: calling {{$method.Name}}")
+		log.Debug("=> calling {{$method.Name}}")
 		defer func() {
 			log := _d._log.With()
 			{{- if gt ($method.Returns | len) 0}}
@@ -113,12 +113,12 @@ func New{{$decorator}}(base {{ $.SrcPkgQualifier }}{{ $mock.InterfaceName }}, lo
 
 			{{- if $returnsError}}
 				if err != nil {
-					log.Error("{{$decorator}}: method {{$method.Name}} returned an error" )
+					log.Error("<= method {{$method.Name}} returned an error" )
 				} else {
-					log.Debug("{{$decorator}}: method {{$method.Name}} finished")
+					log.Debug("<= method {{$method.Name}} finished")
 				}
 			{{else}}
-				log.Debug("{{$decorator}}: method {{$method.Name}} finished")
+				log.Debug("<= method {{$method.Name}} finished")
 			{{end -}}
 		}()
 		{{ if gt ($method.Returns | len) 0 -}}

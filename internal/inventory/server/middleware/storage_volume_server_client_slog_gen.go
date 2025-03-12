@@ -38,7 +38,7 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.C
 			slog.String("storageVolumeType", storageVolumeType),
 		)
 	}
-	log.Debug("StorageVolumeServerClientWithSlog: calling GetStorageVolumeByName")
+	log.Debug("=> calling GetStorageVolumeByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -52,9 +52,9 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.C
 			}
 		}
 		if err != nil {
-			log.Error("StorageVolumeServerClientWithSlog: method GetStorageVolumeByName returned an error")
+			log.Error("<= method GetStorageVolumeByName returned an error")
 		} else {
-			log.Debug("StorageVolumeServerClientWithSlog: method GetStorageVolumeByName finished")
+			log.Debug("<= method GetStorageVolumeByName finished")
 		}
 	}()
 	return _d._base.GetStorageVolumeByName(ctx, connectionURL, storagePoolName, storageVolumeName, storageVolumeType)
@@ -70,7 +70,7 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Contex
 			slog.String("storagePoolName", storagePoolName),
 		)
 	}
-	log.Debug("StorageVolumeServerClientWithSlog: calling GetStorageVolumes")
+	log.Debug("=> calling GetStorageVolumes")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -84,9 +84,9 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Contex
 			}
 		}
 		if err != nil {
-			log.Error("StorageVolumeServerClientWithSlog: method GetStorageVolumes returned an error")
+			log.Error("<= method GetStorageVolumes returned an error")
 		} else {
-			log.Debug("StorageVolumeServerClientWithSlog: method GetStorageVolumes finished")
+			log.Debug("<= method GetStorageVolumes finished")
 		}
 	}()
 	return _d._base.GetStorageVolumes(ctx, connectionURL, storagePoolName)

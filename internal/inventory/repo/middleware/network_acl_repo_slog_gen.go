@@ -34,7 +34,7 @@ func (_d NetworkACLRepoWithSlog) Create(ctx context.Context, networkACL inventor
 			slog.Any("networkACL", networkACL),
 		)
 	}
-	log.Debug("NetworkACLRepoWithSlog: calling Create")
+	log.Debug("=> calling Create")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d NetworkACLRepoWithSlog) Create(ctx context.Context, networkACL inventor
 			}
 		}
 		if err != nil {
-			log.Error("NetworkACLRepoWithSlog: method Create returned an error")
+			log.Error("<= method Create returned an error")
 		} else {
-			log.Debug("NetworkACLRepoWithSlog: method Create finished")
+			log.Debug("<= method Create finished")
 		}
 	}()
 	return _d._base.Create(ctx, networkACL)
@@ -65,7 +65,7 @@ func (_d NetworkACLRepoWithSlog) DeleteByClusterName(ctx context.Context, cluste
 			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("NetworkACLRepoWithSlog: calling DeleteByClusterName")
+	log.Debug("=> calling DeleteByClusterName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,9 +78,9 @@ func (_d NetworkACLRepoWithSlog) DeleteByClusterName(ctx context.Context, cluste
 			}
 		}
 		if err != nil {
-			log.Error("NetworkACLRepoWithSlog: method DeleteByClusterName returned an error")
+			log.Error("<= method DeleteByClusterName returned an error")
 		} else {
-			log.Debug("NetworkACLRepoWithSlog: method DeleteByClusterName finished")
+			log.Debug("<= method DeleteByClusterName finished")
 		}
 	}()
 	return _d._base.DeleteByClusterName(ctx, cluster)
@@ -95,7 +95,7 @@ func (_d NetworkACLRepoWithSlog) DeleteByID(ctx context.Context, id int) (err er
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("NetworkACLRepoWithSlog: calling DeleteByID")
+	log.Debug("=> calling DeleteByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -108,9 +108,9 @@ func (_d NetworkACLRepoWithSlog) DeleteByID(ctx context.Context, id int) (err er
 			}
 		}
 		if err != nil {
-			log.Error("NetworkACLRepoWithSlog: method DeleteByID returned an error")
+			log.Error("<= method DeleteByID returned an error")
 		} else {
-			log.Debug("NetworkACLRepoWithSlog: method DeleteByID finished")
+			log.Debug("<= method DeleteByID finished")
 		}
 	}()
 	return _d._base.DeleteByID(ctx, id)
@@ -125,7 +125,7 @@ func (_d NetworkACLRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("NetworkACLRepoWithSlog: calling GetAllIDsWithFilter")
+	log.Debug("=> calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,9 +139,9 @@ func (_d NetworkACLRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter
 			}
 		}
 		if err != nil {
-			log.Error("NetworkACLRepoWithSlog: method GetAllIDsWithFilter returned an error")
+			log.Error("<= method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("NetworkACLRepoWithSlog: method GetAllIDsWithFilter finished")
+			log.Debug("<= method GetAllIDsWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
@@ -156,7 +156,7 @@ func (_d NetworkACLRepoWithSlog) GetByID(ctx context.Context, id int) (networkAC
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("NetworkACLRepoWithSlog: calling GetByID")
+	log.Debug("=> calling GetByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -170,9 +170,9 @@ func (_d NetworkACLRepoWithSlog) GetByID(ctx context.Context, id int) (networkAC
 			}
 		}
 		if err != nil {
-			log.Error("NetworkACLRepoWithSlog: method GetByID returned an error")
+			log.Error("<= method GetByID returned an error")
 		} else {
-			log.Debug("NetworkACLRepoWithSlog: method GetByID finished")
+			log.Debug("<= method GetByID finished")
 		}
 	}()
 	return _d._base.GetByID(ctx, id)
@@ -187,7 +187,7 @@ func (_d NetworkACLRepoWithSlog) UpdateByID(ctx context.Context, networkACL inve
 			slog.Any("networkACL", networkACL),
 		)
 	}
-	log.Debug("NetworkACLRepoWithSlog: calling UpdateByID")
+	log.Debug("=> calling UpdateByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -201,9 +201,9 @@ func (_d NetworkACLRepoWithSlog) UpdateByID(ctx context.Context, networkACL inve
 			}
 		}
 		if err != nil {
-			log.Error("NetworkACLRepoWithSlog: method UpdateByID returned an error")
+			log.Error("<= method UpdateByID returned an error")
 		} else {
-			log.Debug("NetworkACLRepoWithSlog: method UpdateByID finished")
+			log.Debug("<= method UpdateByID finished")
 		}
 	}()
 	return _d._base.UpdateByID(ctx, networkACL)

@@ -36,7 +36,7 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Conte
 			slog.String("networkZoneName", networkZoneName),
 		)
 	}
-	log.Debug("NetworkZoneServerClientWithSlog: calling GetNetworkZoneByName")
+	log.Debug("=> calling GetNetworkZoneByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -50,9 +50,9 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Conte
 			}
 		}
 		if err != nil {
-			log.Error("NetworkZoneServerClientWithSlog: method GetNetworkZoneByName returned an error")
+			log.Error("<= method GetNetworkZoneByName returned an error")
 		} else {
-			log.Debug("NetworkZoneServerClientWithSlog: method GetNetworkZoneByName finished")
+			log.Debug("<= method GetNetworkZoneByName finished")
 		}
 	}()
 	return _d._base.GetNetworkZoneByName(ctx, connectionURL, networkZoneName)
@@ -67,7 +67,7 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZones(ctx context.Context, c
 			slog.String("connectionURL", connectionURL),
 		)
 	}
-	log.Debug("NetworkZoneServerClientWithSlog: calling GetNetworkZones")
+	log.Debug("=> calling GetNetworkZones")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -81,9 +81,9 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZones(ctx context.Context, c
 			}
 		}
 		if err != nil {
-			log.Error("NetworkZoneServerClientWithSlog: method GetNetworkZones returned an error")
+			log.Error("<= method GetNetworkZones returned an error")
 		} else {
-			log.Debug("NetworkZoneServerClientWithSlog: method GetNetworkZones finished")
+			log.Debug("<= method GetNetworkZones finished")
 		}
 	}()
 	return _d._base.GetNetworkZones(ctx, connectionURL)

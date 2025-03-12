@@ -34,7 +34,7 @@ func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisionin
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("UpdateServiceWithSlog: calling GetAll")
+	log.Debug("=> calling GetAll")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisionin
 			}
 		}
 		if err != nil {
-			log.Error("UpdateServiceWithSlog: method GetAll returned an error")
+			log.Error("<= method GetAll returned an error")
 		} else {
-			log.Debug("UpdateServiceWithSlog: method GetAll finished")
+			log.Debug("<= method GetAll finished")
 		}
 	}()
 	return _d._base.GetAll(ctx)
@@ -64,7 +64,7 @@ func (_d UpdateServiceWithSlog) GetAllIDs(ctx context.Context) (strings []string
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("UpdateServiceWithSlog: calling GetAllIDs")
+	log.Debug("=> calling GetAllIDs")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,9 +78,9 @@ func (_d UpdateServiceWithSlog) GetAllIDs(ctx context.Context) (strings []string
 			}
 		}
 		if err != nil {
-			log.Error("UpdateServiceWithSlog: method GetAllIDs returned an error")
+			log.Error("<= method GetAllIDs returned an error")
 		} else {
-			log.Debug("UpdateServiceWithSlog: method GetAllIDs finished")
+			log.Debug("<= method GetAllIDs finished")
 		}
 	}()
 	return _d._base.GetAllIDs(ctx)
@@ -95,7 +95,7 @@ func (_d UpdateServiceWithSlog) GetByID(ctx context.Context, id string) (update 
 			slog.String("id", id),
 		)
 	}
-	log.Debug("UpdateServiceWithSlog: calling GetByID")
+	log.Debug("=> calling GetByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -109,9 +109,9 @@ func (_d UpdateServiceWithSlog) GetByID(ctx context.Context, id string) (update 
 			}
 		}
 		if err != nil {
-			log.Error("UpdateServiceWithSlog: method GetByID returned an error")
+			log.Error("<= method GetByID returned an error")
 		} else {
-			log.Debug("UpdateServiceWithSlog: method GetByID finished")
+			log.Debug("<= method GetByID finished")
 		}
 	}()
 	return _d._base.GetByID(ctx, id)
@@ -126,7 +126,7 @@ func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, updateID 
 			slog.String("updateID", updateID),
 		)
 	}
-	log.Debug("UpdateServiceWithSlog: calling GetUpdateAllFiles")
+	log.Debug("=> calling GetUpdateAllFiles")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -140,9 +140,9 @@ func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, updateID 
 			}
 		}
 		if err != nil {
-			log.Error("UpdateServiceWithSlog: method GetUpdateAllFiles returned an error")
+			log.Error("<= method GetUpdateAllFiles returned an error")
 		} else {
-			log.Debug("UpdateServiceWithSlog: method GetUpdateAllFiles finished")
+			log.Debug("<= method GetUpdateAllFiles finished")
 		}
 	}()
 	return _d._base.GetUpdateAllFiles(ctx, updateID)
@@ -158,7 +158,7 @@ func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, upd
 			slog.String("filename", filename),
 		)
 	}
-	log.Debug("UpdateServiceWithSlog: calling GetUpdateFileByFilename")
+	log.Debug("=> calling GetUpdateFileByFilename")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -173,9 +173,9 @@ func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, upd
 			}
 		}
 		if err != nil {
-			log.Error("UpdateServiceWithSlog: method GetUpdateFileByFilename returned an error")
+			log.Error("<= method GetUpdateFileByFilename returned an error")
 		} else {
-			log.Debug("UpdateServiceWithSlog: method GetUpdateFileByFilename finished")
+			log.Debug("<= method GetUpdateFileByFilename finished")
 		}
 	}()
 	return _d._base.GetUpdateFileByFilename(ctx, updateID, filename)

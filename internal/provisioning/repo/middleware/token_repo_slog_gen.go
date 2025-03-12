@@ -35,7 +35,7 @@ func (_d TokenRepoWithSlog) Create(ctx context.Context, token provisioning.Token
 			slog.Any("token", token),
 		)
 	}
-	log.Debug("TokenRepoWithSlog: calling Create")
+	log.Debug("=> calling Create")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -49,9 +49,9 @@ func (_d TokenRepoWithSlog) Create(ctx context.Context, token provisioning.Token
 			}
 		}
 		if err != nil {
-			log.Error("TokenRepoWithSlog: method Create returned an error")
+			log.Error("<= method Create returned an error")
 		} else {
-			log.Debug("TokenRepoWithSlog: method Create finished")
+			log.Debug("<= method Create finished")
 		}
 	}()
 	return _d._base.Create(ctx, token)
@@ -66,7 +66,7 @@ func (_d TokenRepoWithSlog) DeleteByID(ctx context.Context, id uuid.UUID) (err e
 			slog.Any("id", id),
 		)
 	}
-	log.Debug("TokenRepoWithSlog: calling DeleteByID")
+	log.Debug("=> calling DeleteByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -79,9 +79,9 @@ func (_d TokenRepoWithSlog) DeleteByID(ctx context.Context, id uuid.UUID) (err e
 			}
 		}
 		if err != nil {
-			log.Error("TokenRepoWithSlog: method DeleteByID returned an error")
+			log.Error("<= method DeleteByID returned an error")
 		} else {
-			log.Debug("TokenRepoWithSlog: method DeleteByID finished")
+			log.Debug("<= method DeleteByID finished")
 		}
 	}()
 	return _d._base.DeleteByID(ctx, id)
@@ -95,7 +95,7 @@ func (_d TokenRepoWithSlog) GetAll(ctx context.Context) (tokens provisioning.Tok
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("TokenRepoWithSlog: calling GetAll")
+	log.Debug("=> calling GetAll")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -109,9 +109,9 @@ func (_d TokenRepoWithSlog) GetAll(ctx context.Context) (tokens provisioning.Tok
 			}
 		}
 		if err != nil {
-			log.Error("TokenRepoWithSlog: method GetAll returned an error")
+			log.Error("<= method GetAll returned an error")
 		} else {
-			log.Debug("TokenRepoWithSlog: method GetAll finished")
+			log.Debug("<= method GetAll finished")
 		}
 	}()
 	return _d._base.GetAll(ctx)
@@ -125,7 +125,7 @@ func (_d TokenRepoWithSlog) GetAllIDs(ctx context.Context) (uUIDs []uuid.UUID, e
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("TokenRepoWithSlog: calling GetAllIDs")
+	log.Debug("=> calling GetAllIDs")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,9 +139,9 @@ func (_d TokenRepoWithSlog) GetAllIDs(ctx context.Context) (uUIDs []uuid.UUID, e
 			}
 		}
 		if err != nil {
-			log.Error("TokenRepoWithSlog: method GetAllIDs returned an error")
+			log.Error("<= method GetAllIDs returned an error")
 		} else {
-			log.Debug("TokenRepoWithSlog: method GetAllIDs finished")
+			log.Debug("<= method GetAllIDs finished")
 		}
 	}()
 	return _d._base.GetAllIDs(ctx)
@@ -156,7 +156,7 @@ func (_d TokenRepoWithSlog) GetByID(ctx context.Context, id uuid.UUID) (token pr
 			slog.Any("id", id),
 		)
 	}
-	log.Debug("TokenRepoWithSlog: calling GetByID")
+	log.Debug("=> calling GetByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -170,9 +170,9 @@ func (_d TokenRepoWithSlog) GetByID(ctx context.Context, id uuid.UUID) (token pr
 			}
 		}
 		if err != nil {
-			log.Error("TokenRepoWithSlog: method GetByID returned an error")
+			log.Error("<= method GetByID returned an error")
 		} else {
-			log.Debug("TokenRepoWithSlog: method GetByID finished")
+			log.Debug("<= method GetByID finished")
 		}
 	}()
 	return _d._base.GetByID(ctx, id)
@@ -187,7 +187,7 @@ func (_d TokenRepoWithSlog) UpdateByID(ctx context.Context, token provisioning.T
 			slog.Any("token", token),
 		)
 	}
-	log.Debug("TokenRepoWithSlog: calling UpdateByID")
+	log.Debug("=> calling UpdateByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -201,9 +201,9 @@ func (_d TokenRepoWithSlog) UpdateByID(ctx context.Context, token provisioning.T
 			}
 		}
 		if err != nil {
-			log.Error("TokenRepoWithSlog: method UpdateByID returned an error")
+			log.Error("<= method UpdateByID returned an error")
 		} else {
-			log.Debug("TokenRepoWithSlog: method UpdateByID finished")
+			log.Debug("<= method UpdateByID finished")
 		}
 	}()
 	return _d._base.UpdateByID(ctx, token)

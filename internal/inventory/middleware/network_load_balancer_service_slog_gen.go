@@ -34,7 +34,7 @@ func (_d NetworkLoadBalancerServiceWithSlog) GetAllIDsWithFilter(ctx context.Con
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("NetworkLoadBalancerServiceWithSlog: calling GetAllIDsWithFilter")
+	log.Debug("=> calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d NetworkLoadBalancerServiceWithSlog) GetAllIDsWithFilter(ctx context.Con
 			}
 		}
 		if err != nil {
-			log.Error("NetworkLoadBalancerServiceWithSlog: method GetAllIDsWithFilter returned an error")
+			log.Error("<= method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("NetworkLoadBalancerServiceWithSlog: method GetAllIDsWithFilter finished")
+			log.Debug("<= method GetAllIDsWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
@@ -65,7 +65,7 @@ func (_d NetworkLoadBalancerServiceWithSlog) GetByID(ctx context.Context, id int
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("NetworkLoadBalancerServiceWithSlog: calling GetByID")
+	log.Debug("=> calling GetByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -79,9 +79,9 @@ func (_d NetworkLoadBalancerServiceWithSlog) GetByID(ctx context.Context, id int
 			}
 		}
 		if err != nil {
-			log.Error("NetworkLoadBalancerServiceWithSlog: method GetByID returned an error")
+			log.Error("<= method GetByID returned an error")
 		} else {
-			log.Debug("NetworkLoadBalancerServiceWithSlog: method GetByID finished")
+			log.Debug("<= method GetByID finished")
 		}
 	}()
 	return _d._base.GetByID(ctx, id)
@@ -96,7 +96,7 @@ func (_d NetworkLoadBalancerServiceWithSlog) ResyncByID(ctx context.Context, id 
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("NetworkLoadBalancerServiceWithSlog: calling ResyncByID")
+	log.Debug("=> calling ResyncByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -109,9 +109,9 @@ func (_d NetworkLoadBalancerServiceWithSlog) ResyncByID(ctx context.Context, id 
 			}
 		}
 		if err != nil {
-			log.Error("NetworkLoadBalancerServiceWithSlog: method ResyncByID returned an error")
+			log.Error("<= method ResyncByID returned an error")
 		} else {
-			log.Debug("NetworkLoadBalancerServiceWithSlog: method ResyncByID finished")
+			log.Debug("<= method ResyncByID finished")
 		}
 	}()
 	return _d._base.ResyncByID(ctx, id)
@@ -126,7 +126,7 @@ func (_d NetworkLoadBalancerServiceWithSlog) SyncCluster(ctx context.Context, cl
 			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("NetworkLoadBalancerServiceWithSlog: calling SyncCluster")
+	log.Debug("=> calling SyncCluster")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,9 +139,9 @@ func (_d NetworkLoadBalancerServiceWithSlog) SyncCluster(ctx context.Context, cl
 			}
 		}
 		if err != nil {
-			log.Error("NetworkLoadBalancerServiceWithSlog: method SyncCluster returned an error")
+			log.Error("<= method SyncCluster returned an error")
 		} else {
-			log.Debug("NetworkLoadBalancerServiceWithSlog: method SyncCluster finished")
+			log.Debug("<= method SyncCluster finished")
 		}
 	}()
 	return _d._base.SyncCluster(ctx, cluster)

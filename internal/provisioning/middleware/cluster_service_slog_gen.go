@@ -34,7 +34,7 @@ func (_d ClusterServiceWithSlog) Create(ctx context.Context, cluster provisionin
 			slog.Any("cluster", cluster),
 		)
 	}
-	log.Debug("ClusterServiceWithSlog: calling Create")
+	log.Debug("=> calling Create")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d ClusterServiceWithSlog) Create(ctx context.Context, cluster provisionin
 			}
 		}
 		if err != nil {
-			log.Error("ClusterServiceWithSlog: method Create returned an error")
+			log.Error("<= method Create returned an error")
 		} else {
-			log.Debug("ClusterServiceWithSlog: method Create finished")
+			log.Debug("<= method Create finished")
 		}
 	}()
 	return _d._base.Create(ctx, cluster)
@@ -65,7 +65,7 @@ func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string) 
 			slog.String("name", name),
 		)
 	}
-	log.Debug("ClusterServiceWithSlog: calling DeleteByName")
+	log.Debug("=> calling DeleteByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,9 +78,9 @@ func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string) 
 			}
 		}
 		if err != nil {
-			log.Error("ClusterServiceWithSlog: method DeleteByName returned an error")
+			log.Error("<= method DeleteByName returned an error")
 		} else {
-			log.Debug("ClusterServiceWithSlog: method DeleteByName finished")
+			log.Debug("<= method DeleteByName finished")
 		}
 	}()
 	return _d._base.DeleteByName(ctx, name)
@@ -94,7 +94,7 @@ func (_d ClusterServiceWithSlog) GetAll(ctx context.Context) (clusters provision
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("ClusterServiceWithSlog: calling GetAll")
+	log.Debug("=> calling GetAll")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -108,9 +108,9 @@ func (_d ClusterServiceWithSlog) GetAll(ctx context.Context) (clusters provision
 			}
 		}
 		if err != nil {
-			log.Error("ClusterServiceWithSlog: method GetAll returned an error")
+			log.Error("<= method GetAll returned an error")
 		} else {
-			log.Debug("ClusterServiceWithSlog: method GetAll finished")
+			log.Debug("<= method GetAll finished")
 		}
 	}()
 	return _d._base.GetAll(ctx)
@@ -124,7 +124,7 @@ func (_d ClusterServiceWithSlog) GetAllNames(ctx context.Context) (strings []str
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("ClusterServiceWithSlog: calling GetAllNames")
+	log.Debug("=> calling GetAllNames")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -138,9 +138,9 @@ func (_d ClusterServiceWithSlog) GetAllNames(ctx context.Context) (strings []str
 			}
 		}
 		if err != nil {
-			log.Error("ClusterServiceWithSlog: method GetAllNames returned an error")
+			log.Error("<= method GetAllNames returned an error")
 		} else {
-			log.Debug("ClusterServiceWithSlog: method GetAllNames finished")
+			log.Debug("<= method GetAllNames finished")
 		}
 	}()
 	return _d._base.GetAllNames(ctx)
@@ -155,7 +155,7 @@ func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cl
 			slog.String("name", name),
 		)
 	}
-	log.Debug("ClusterServiceWithSlog: calling GetByName")
+	log.Debug("=> calling GetByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -169,9 +169,9 @@ func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cl
 			}
 		}
 		if err != nil {
-			log.Error("ClusterServiceWithSlog: method GetByName returned an error")
+			log.Error("<= method GetByName returned an error")
 		} else {
-			log.Debug("ClusterServiceWithSlog: method GetByName finished")
+			log.Debug("<= method GetByName finished")
 		}
 	}()
 	return _d._base.GetByName(ctx, name)
@@ -187,7 +187,7 @@ func (_d ClusterServiceWithSlog) RenameByName(ctx context.Context, name string, 
 			slog.Any("cluster", cluster),
 		)
 	}
-	log.Debug("ClusterServiceWithSlog: calling RenameByName")
+	log.Debug("=> calling RenameByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -201,9 +201,9 @@ func (_d ClusterServiceWithSlog) RenameByName(ctx context.Context, name string, 
 			}
 		}
 		if err != nil {
-			log.Error("ClusterServiceWithSlog: method RenameByName returned an error")
+			log.Error("<= method RenameByName returned an error")
 		} else {
-			log.Debug("ClusterServiceWithSlog: method RenameByName finished")
+			log.Debug("<= method RenameByName finished")
 		}
 	}()
 	return _d._base.RenameByName(ctx, name, cluster)
@@ -218,7 +218,7 @@ func (_d ClusterServiceWithSlog) ResyncInventoryByName(ctx context.Context, name
 			slog.String("name", name),
 		)
 	}
-	log.Debug("ClusterServiceWithSlog: calling ResyncInventoryByName")
+	log.Debug("=> calling ResyncInventoryByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -231,9 +231,9 @@ func (_d ClusterServiceWithSlog) ResyncInventoryByName(ctx context.Context, name
 			}
 		}
 		if err != nil {
-			log.Error("ClusterServiceWithSlog: method ResyncInventoryByName returned an error")
+			log.Error("<= method ResyncInventoryByName returned an error")
 		} else {
-			log.Debug("ClusterServiceWithSlog: method ResyncInventoryByName finished")
+			log.Debug("<= method ResyncInventoryByName finished")
 		}
 	}()
 	return _d._base.ResyncInventoryByName(ctx, name)
@@ -249,7 +249,7 @@ func (_d ClusterServiceWithSlog) UpdateByName(ctx context.Context, name string, 
 			slog.Any("cluster", cluster),
 		)
 	}
-	log.Debug("ClusterServiceWithSlog: calling UpdateByName")
+	log.Debug("=> calling UpdateByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -263,9 +263,9 @@ func (_d ClusterServiceWithSlog) UpdateByName(ctx context.Context, name string, 
 			}
 		}
 		if err != nil {
-			log.Error("ClusterServiceWithSlog: method UpdateByName returned an error")
+			log.Error("<= method UpdateByName returned an error")
 		} else {
-			log.Debug("ClusterServiceWithSlog: method UpdateByName finished")
+			log.Debug("<= method UpdateByName finished")
 		}
 	}()
 	return _d._base.UpdateByName(ctx, name, cluster)

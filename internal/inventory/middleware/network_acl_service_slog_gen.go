@@ -34,7 +34,7 @@ func (_d NetworkACLServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, fil
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("NetworkACLServiceWithSlog: calling GetAllIDsWithFilter")
+	log.Debug("=> calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d NetworkACLServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, fil
 			}
 		}
 		if err != nil {
-			log.Error("NetworkACLServiceWithSlog: method GetAllIDsWithFilter returned an error")
+			log.Error("<= method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("NetworkACLServiceWithSlog: method GetAllIDsWithFilter finished")
+			log.Debug("<= method GetAllIDsWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
@@ -65,7 +65,7 @@ func (_d NetworkACLServiceWithSlog) GetByID(ctx context.Context, id int) (networ
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("NetworkACLServiceWithSlog: calling GetByID")
+	log.Debug("=> calling GetByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -79,9 +79,9 @@ func (_d NetworkACLServiceWithSlog) GetByID(ctx context.Context, id int) (networ
 			}
 		}
 		if err != nil {
-			log.Error("NetworkACLServiceWithSlog: method GetByID returned an error")
+			log.Error("<= method GetByID returned an error")
 		} else {
-			log.Debug("NetworkACLServiceWithSlog: method GetByID finished")
+			log.Debug("<= method GetByID finished")
 		}
 	}()
 	return _d._base.GetByID(ctx, id)
@@ -96,7 +96,7 @@ func (_d NetworkACLServiceWithSlog) ResyncByID(ctx context.Context, id int) (err
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("NetworkACLServiceWithSlog: calling ResyncByID")
+	log.Debug("=> calling ResyncByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -109,9 +109,9 @@ func (_d NetworkACLServiceWithSlog) ResyncByID(ctx context.Context, id int) (err
 			}
 		}
 		if err != nil {
-			log.Error("NetworkACLServiceWithSlog: method ResyncByID returned an error")
+			log.Error("<= method ResyncByID returned an error")
 		} else {
-			log.Debug("NetworkACLServiceWithSlog: method ResyncByID finished")
+			log.Debug("<= method ResyncByID finished")
 		}
 	}()
 	return _d._base.ResyncByID(ctx, id)
@@ -126,7 +126,7 @@ func (_d NetworkACLServiceWithSlog) SyncCluster(ctx context.Context, cluster str
 			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("NetworkACLServiceWithSlog: calling SyncCluster")
+	log.Debug("=> calling SyncCluster")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,9 +139,9 @@ func (_d NetworkACLServiceWithSlog) SyncCluster(ctx context.Context, cluster str
 			}
 		}
 		if err != nil {
-			log.Error("NetworkACLServiceWithSlog: method SyncCluster returned an error")
+			log.Error("<= method SyncCluster returned an error")
 		} else {
-			log.Debug("NetworkACLServiceWithSlog: method SyncCluster finished")
+			log.Debug("<= method SyncCluster finished")
 		}
 	}()
 	return _d._base.SyncCluster(ctx, cluster)

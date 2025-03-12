@@ -36,7 +36,7 @@ func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, connecti
 			slog.String("imageName", imageName),
 		)
 	}
-	log.Debug("ImageServerClientWithSlog: calling GetImageByName")
+	log.Debug("=> calling GetImageByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -50,9 +50,9 @@ func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, connecti
 			}
 		}
 		if err != nil {
-			log.Error("ImageServerClientWithSlog: method GetImageByName returned an error")
+			log.Error("<= method GetImageByName returned an error")
 		} else {
-			log.Debug("ImageServerClientWithSlog: method GetImageByName finished")
+			log.Debug("<= method GetImageByName finished")
 		}
 	}()
 	return _d._base.GetImageByName(ctx, connectionURL, imageName)
@@ -67,7 +67,7 @@ func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, connectionURL
 			slog.String("connectionURL", connectionURL),
 		)
 	}
-	log.Debug("ImageServerClientWithSlog: calling GetImages")
+	log.Debug("=> calling GetImages")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -81,9 +81,9 @@ func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, connectionURL
 			}
 		}
 		if err != nil {
-			log.Error("ImageServerClientWithSlog: method GetImages returned an error")
+			log.Error("<= method GetImages returned an error")
 		} else {
-			log.Debug("ImageServerClientWithSlog: method GetImages finished")
+			log.Debug("<= method GetImages finished")
 		}
 	}()
 	return _d._base.GetImages(ctx, connectionURL)
