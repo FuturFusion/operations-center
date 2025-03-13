@@ -5,6 +5,7 @@ package client
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"path"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
@@ -12,9 +13,14 @@ import (
 )
 
 func (c OperationsCenterClient) GetWithFilterProjects(filter inventory.ProjectFilter) ([]api.Project, error) {
-	// FIXME: use filters
+	query := url.Values{}
+	query.Add("recursion", "1")
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/projects", "recursion=1", nil)
+	if filter.Cluster != nil {
+		query.Add("cluster", *filter.Cluster)
+	}
+
+	response, err := c.doRequest(http.MethodGet, "/inventory/projects", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +35,7 @@ func (c OperationsCenterClient) GetWithFilterProjects(filter inventory.ProjectFi
 }
 
 func (c OperationsCenterClient) GetProject(name string) (api.Project, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/projects", name), "", nil)
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/projects", name), nil, nil)
 	if err != nil {
 		return api.Project{}, err
 	}

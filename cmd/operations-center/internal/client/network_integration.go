@@ -5,6 +5,7 @@ package client
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"path"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
@@ -12,9 +13,14 @@ import (
 )
 
 func (c OperationsCenterClient) GetWithFilterNetworkIntegrations(filter inventory.NetworkIntegrationFilter) ([]api.NetworkIntegration, error) {
-	// FIXME: use filters
+	query := url.Values{}
+	query.Add("recursion", "1")
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/network_integrations", "recursion=1", nil)
+	if filter.Cluster != nil {
+		query.Add("cluster", *filter.Cluster)
+	}
+
+	response, err := c.doRequest(http.MethodGet, "/inventory/network_integrations", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +35,7 @@ func (c OperationsCenterClient) GetWithFilterNetworkIntegrations(filter inventor
 }
 
 func (c OperationsCenterClient) GetNetworkIntegration(name string) (api.NetworkIntegration, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_integrations", name), "", nil)
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_integrations", name), nil, nil)
 	if err != nil {
 		return api.NetworkIntegration{}, err
 	}

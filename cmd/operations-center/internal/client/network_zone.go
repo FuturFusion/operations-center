@@ -5,6 +5,7 @@ package client
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"path"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
@@ -12,9 +13,18 @@ import (
 )
 
 func (c OperationsCenterClient) GetWithFilterNetworkZones(filter inventory.NetworkZoneFilter) ([]api.NetworkZone, error) {
-	// FIXME: use filters
+	query := url.Values{}
+	query.Add("recursion", "1")
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/network_zones", "recursion=1", nil)
+	if filter.Cluster != nil {
+		query.Add("cluster", *filter.Cluster)
+	}
+
+	if filter.Project != nil {
+		query.Add("project", *filter.Project)
+	}
+
+	response, err := c.doRequest(http.MethodGet, "/inventory/network_zones", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +39,7 @@ func (c OperationsCenterClient) GetWithFilterNetworkZones(filter inventory.Netwo
 }
 
 func (c OperationsCenterClient) GetNetworkZone(name string) (api.NetworkZone, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_zones", name), "", nil)
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_zones", name), nil, nil)
 	if err != nil {
 		return api.NetworkZone{}, err
 	}

@@ -5,6 +5,7 @@ package client
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"path"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
@@ -12,9 +13,14 @@ import (
 )
 
 func (c OperationsCenterClient) GetWithFilterNetworkLoadBalancers(filter inventory.NetworkLoadBalancerFilter) ([]api.NetworkLoadBalancer, error) {
-	// FIXME: use filters
+	query := url.Values{}
+	query.Add("recursion", "1")
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/network_load_balancers", "recursion=1", nil)
+	if filter.Cluster != nil {
+		query.Add("cluster", *filter.Cluster)
+	}
+
+	response, err := c.doRequest(http.MethodGet, "/inventory/network_load_balancers", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +35,7 @@ func (c OperationsCenterClient) GetWithFilterNetworkLoadBalancers(filter invento
 }
 
 func (c OperationsCenterClient) GetNetworkLoadBalancer(name string) (api.NetworkLoadBalancer, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_load_balancers", name), "", nil)
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_load_balancers", name), nil, nil)
 	if err != nil {
 		return api.NetworkLoadBalancer{}, err
 	}

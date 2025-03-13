@@ -12,6 +12,7 @@ import (
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/render"
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
@@ -45,6 +46,10 @@ func (c *CmdInstance) Command() *cobra.Command {
 
 // List instances.
 type cmdInstanceList struct {
+	flagFilterCluster string
+	flagFilterServer  string
+	flagFilterProject string
+
 	flagFormat string
 }
 
@@ -57,6 +62,10 @@ func (c *cmdInstanceList) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
+
+	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
+	cmd.Flags().StringVar(&c.flagFilterServer, "server", "", "server name to filter for")
+	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
 
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
@@ -73,10 +82,24 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	var filter inventory.InstanceFilter
+
+	if c.flagFilterCluster != "" {
+		filter.Cluster = ptr.To(c.flagFilterCluster)
+	}
+
+	if c.flagFilterServer != "" {
+		filter.Server = ptr.To(c.flagFilterServer)
+	}
+
+	if c.flagFilterProject != "" {
+		filter.Project = ptr.To(c.flagFilterProject)
+	}
+
 	// Client call
 	ocClient := client.New()
 
-	instances, err := ocClient.GetWithFilterInstances(inventory.InstanceFilter{})
+	instances, err := ocClient.GetWithFilterInstances(filter)
 	if err != nil {
 		return err
 	}

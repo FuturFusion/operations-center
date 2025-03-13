@@ -5,6 +5,7 @@ package client
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"path"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
@@ -12,9 +13,18 @@ import (
 )
 
 func (c OperationsCenterClient) GetWithFilterProfiles(filter inventory.ProfileFilter) ([]api.Profile, error) {
-	// FIXME: use filters
+	query := url.Values{}
+	query.Add("recursion", "1")
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/profiles", "recursion=1", nil)
+	if filter.Cluster != nil {
+		query.Add("cluster", *filter.Cluster)
+	}
+
+	if filter.Project != nil {
+		query.Add("project", *filter.Project)
+	}
+
+	response, err := c.doRequest(http.MethodGet, "/inventory/profiles", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +39,7 @@ func (c OperationsCenterClient) GetWithFilterProfiles(filter inventory.ProfileFi
 }
 
 func (c OperationsCenterClient) GetProfile(name string) (api.Profile, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/profiles", name), "", nil)
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/profiles", name), nil, nil)
 	if err != nil {
 		return api.Profile{}, err
 	}

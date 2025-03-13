@@ -12,6 +12,7 @@ import (
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/render"
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
@@ -45,6 +46,8 @@ func (c *CmdNetworkLoadBalancer) Command() *cobra.Command {
 
 // List network_load_balancers.
 type cmdNetworkLoadBalancerList struct {
+	flagFilterCluster string
+
 	flagFormat string
 }
 
@@ -57,6 +60,8 @@ func (c *cmdNetworkLoadBalancerList) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
+
+	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
 
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
@@ -73,10 +78,16 @@ func (c *cmdNetworkLoadBalancerList) Run(cmd *cobra.Command, args []string) erro
 		return err
 	}
 
+	var filter inventory.NetworkLoadBalancerFilter
+
+	if c.flagFilterCluster != "" {
+		filter.Cluster = ptr.To(c.flagFilterCluster)
+	}
+
 	// Client call
 	ocClient := client.New()
 
-	networkLoadBalancers, err := ocClient.GetWithFilterNetworkLoadBalancers(inventory.NetworkLoadBalancerFilter{})
+	networkLoadBalancers, err := ocClient.GetWithFilterNetworkLoadBalancers(filter)
 	if err != nil {
 		return err
 	}

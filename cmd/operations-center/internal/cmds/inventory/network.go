@@ -12,6 +12,7 @@ import (
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/render"
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
@@ -45,6 +46,9 @@ func (c *CmdNetwork) Command() *cobra.Command {
 
 // List networks.
 type cmdNetworkList struct {
+	flagFilterCluster string
+	flagFilterProject string
+
 	flagFormat string
 }
 
@@ -57,6 +61,9 @@ func (c *cmdNetworkList) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
+
+	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
+	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
 
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
@@ -73,10 +80,20 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	var filter inventory.NetworkFilter
+
+	if c.flagFilterCluster != "" {
+		filter.Cluster = ptr.To(c.flagFilterCluster)
+	}
+
+	if c.flagFilterProject != "" {
+		filter.Project = ptr.To(c.flagFilterProject)
+	}
+
 	// Client call
 	ocClient := client.New()
 
-	networks, err := ocClient.GetWithFilterNetworks(inventory.NetworkFilter{})
+	networks, err := ocClient.GetWithFilterNetworks(filter)
 	if err != nil {
 		return err
 	}
