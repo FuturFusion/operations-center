@@ -34,7 +34,7 @@ func (_d ServerRepoWithSlog) Create(ctx context.Context, server provisioning.Ser
 			slog.Any("server", server),
 		)
 	}
-	log.Debug("ServerRepoWithSlog: calling Create")
+	log.Debug("=> calling Create")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d ServerRepoWithSlog) Create(ctx context.Context, server provisioning.Ser
 			}
 		}
 		if err != nil {
-			log.Error("ServerRepoWithSlog: method Create returned an error")
+			log.Error("<= method Create returned an error")
 		} else {
-			log.Debug("ServerRepoWithSlog: method Create finished")
+			log.Debug("<= method Create finished")
 		}
 	}()
 	return _d._base.Create(ctx, server)
@@ -65,7 +65,7 @@ func (_d ServerRepoWithSlog) DeleteByName(ctx context.Context, name string) (err
 			slog.String("name", name),
 		)
 	}
-	log.Debug("ServerRepoWithSlog: calling DeleteByName")
+	log.Debug("=> calling DeleteByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,9 +78,9 @@ func (_d ServerRepoWithSlog) DeleteByName(ctx context.Context, name string) (err
 			}
 		}
 		if err != nil {
-			log.Error("ServerRepoWithSlog: method DeleteByName returned an error")
+			log.Error("<= method DeleteByName returned an error")
 		} else {
-			log.Debug("ServerRepoWithSlog: method DeleteByName finished")
+			log.Debug("<= method DeleteByName finished")
 		}
 	}()
 	return _d._base.DeleteByName(ctx, name)
@@ -94,7 +94,7 @@ func (_d ServerRepoWithSlog) GetAll(ctx context.Context) (servers provisioning.S
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("ServerRepoWithSlog: calling GetAll")
+	log.Debug("=> calling GetAll")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -108,9 +108,9 @@ func (_d ServerRepoWithSlog) GetAll(ctx context.Context) (servers provisioning.S
 			}
 		}
 		if err != nil {
-			log.Error("ServerRepoWithSlog: method GetAll returned an error")
+			log.Error("<= method GetAll returned an error")
 		} else {
-			log.Debug("ServerRepoWithSlog: method GetAll finished")
+			log.Debug("<= method GetAll finished")
 		}
 	}()
 	return _d._base.GetAll(ctx)
@@ -125,7 +125,7 @@ func (_d ServerRepoWithSlog) GetAllByClusterID(ctx context.Context, clusterID in
 			slog.Int("clusterID", clusterID),
 		)
 	}
-	log.Debug("ServerRepoWithSlog: calling GetAllByClusterID")
+	log.Debug("=> calling GetAllByClusterID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,9 +139,9 @@ func (_d ServerRepoWithSlog) GetAllByClusterID(ctx context.Context, clusterID in
 			}
 		}
 		if err != nil {
-			log.Error("ServerRepoWithSlog: method GetAllByClusterID returned an error")
+			log.Error("<= method GetAllByClusterID returned an error")
 		} else {
-			log.Debug("ServerRepoWithSlog: method GetAllByClusterID finished")
+			log.Debug("<= method GetAllByClusterID finished")
 		}
 	}()
 	return _d._base.GetAllByClusterID(ctx, clusterID)
@@ -155,7 +155,7 @@ func (_d ServerRepoWithSlog) GetAllNames(ctx context.Context) (strings []string,
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("ServerRepoWithSlog: calling GetAllNames")
+	log.Debug("=> calling GetAllNames")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -169,9 +169,9 @@ func (_d ServerRepoWithSlog) GetAllNames(ctx context.Context) (strings []string,
 			}
 		}
 		if err != nil {
-			log.Error("ServerRepoWithSlog: method GetAllNames returned an error")
+			log.Error("<= method GetAllNames returned an error")
 		} else {
-			log.Debug("ServerRepoWithSlog: method GetAllNames finished")
+			log.Debug("<= method GetAllNames finished")
 		}
 	}()
 	return _d._base.GetAllNames(ctx)
@@ -186,7 +186,7 @@ func (_d ServerRepoWithSlog) GetByName(ctx context.Context, name string) (server
 			slog.String("name", name),
 		)
 	}
-	log.Debug("ServerRepoWithSlog: calling GetByName")
+	log.Debug("=> calling GetByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -200,9 +200,9 @@ func (_d ServerRepoWithSlog) GetByName(ctx context.Context, name string) (server
 			}
 		}
 		if err != nil {
-			log.Error("ServerRepoWithSlog: method GetByName returned an error")
+			log.Error("<= method GetByName returned an error")
 		} else {
-			log.Debug("ServerRepoWithSlog: method GetByName finished")
+			log.Debug("<= method GetByName finished")
 		}
 	}()
 	return _d._base.GetByName(ctx, name)
@@ -218,7 +218,7 @@ func (_d ServerRepoWithSlog) UpdateByName(ctx context.Context, name string, serv
 			slog.Any("server", server),
 		)
 	}
-	log.Debug("ServerRepoWithSlog: calling UpdateByName")
+	log.Debug("=> calling UpdateByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -232,9 +232,9 @@ func (_d ServerRepoWithSlog) UpdateByName(ctx context.Context, name string, serv
 			}
 		}
 		if err != nil {
-			log.Error("ServerRepoWithSlog: method UpdateByName returned an error")
+			log.Error("<= method UpdateByName returned an error")
 		} else {
-			log.Debug("ServerRepoWithSlog: method UpdateByName finished")
+			log.Debug("<= method UpdateByName finished")
 		}
 	}()
 	return _d._base.UpdateByName(ctx, name, server)

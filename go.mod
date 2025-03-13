@@ -71,6 +71,7 @@ require (
 	github.com/fvbommel/sortorder v1.1.0
 	github.com/google/go-github/v69 v69.0.0
 	github.com/google/uuid v1.6.0
+	github.com/lmittmann/tint v1.0.7
 	github.com/lxc/incus/v6 v6.9.0
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/olekukonko/tablewriter v0.0.5

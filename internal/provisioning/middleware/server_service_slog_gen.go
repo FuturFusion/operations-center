@@ -34,7 +34,7 @@ func (_d ServerServiceWithSlog) Create(ctx context.Context, server provisioning.
 			slog.Any("server", server),
 		)
 	}
-	log.Debug("ServerServiceWithSlog: calling Create")
+	log.Debug("=> calling Create")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d ServerServiceWithSlog) Create(ctx context.Context, server provisioning.
 			}
 		}
 		if err != nil {
-			log.Error("ServerServiceWithSlog: method Create returned an error")
+			log.Error("<= method Create returned an error")
 		} else {
-			log.Debug("ServerServiceWithSlog: method Create finished")
+			log.Debug("<= method Create finished")
 		}
 	}()
 	return _d._base.Create(ctx, server)
@@ -65,7 +65,7 @@ func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (
 			slog.String("name", name),
 		)
 	}
-	log.Debug("ServerServiceWithSlog: calling DeleteByName")
+	log.Debug("=> calling DeleteByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,9 +78,9 @@ func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (
 			}
 		}
 		if err != nil {
-			log.Error("ServerServiceWithSlog: method DeleteByName returned an error")
+			log.Error("<= method DeleteByName returned an error")
 		} else {
-			log.Debug("ServerServiceWithSlog: method DeleteByName finished")
+			log.Debug("<= method DeleteByName finished")
 		}
 	}()
 	return _d._base.DeleteByName(ctx, name)
@@ -94,7 +94,7 @@ func (_d ServerServiceWithSlog) GetAll(ctx context.Context) (servers provisionin
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("ServerServiceWithSlog: calling GetAll")
+	log.Debug("=> calling GetAll")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -108,9 +108,9 @@ func (_d ServerServiceWithSlog) GetAll(ctx context.Context) (servers provisionin
 			}
 		}
 		if err != nil {
-			log.Error("ServerServiceWithSlog: method GetAll returned an error")
+			log.Error("<= method GetAll returned an error")
 		} else {
-			log.Debug("ServerServiceWithSlog: method GetAll finished")
+			log.Debug("<= method GetAll finished")
 		}
 	}()
 	return _d._base.GetAll(ctx)
@@ -125,7 +125,7 @@ func (_d ServerServiceWithSlog) GetAllByClusterID(ctx context.Context, clusterID
 			slog.Int("clusterID", clusterID),
 		)
 	}
-	log.Debug("ServerServiceWithSlog: calling GetAllByClusterID")
+	log.Debug("=> calling GetAllByClusterID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,9 +139,9 @@ func (_d ServerServiceWithSlog) GetAllByClusterID(ctx context.Context, clusterID
 			}
 		}
 		if err != nil {
-			log.Error("ServerServiceWithSlog: method GetAllByClusterID returned an error")
+			log.Error("<= method GetAllByClusterID returned an error")
 		} else {
-			log.Debug("ServerServiceWithSlog: method GetAllByClusterID finished")
+			log.Debug("<= method GetAllByClusterID finished")
 		}
 	}()
 	return _d._base.GetAllByClusterID(ctx, clusterID)
@@ -155,7 +155,7 @@ func (_d ServerServiceWithSlog) GetAllNames(ctx context.Context) (strings []stri
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("ServerServiceWithSlog: calling GetAllNames")
+	log.Debug("=> calling GetAllNames")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -169,9 +169,9 @@ func (_d ServerServiceWithSlog) GetAllNames(ctx context.Context) (strings []stri
 			}
 		}
 		if err != nil {
-			log.Error("ServerServiceWithSlog: method GetAllNames returned an error")
+			log.Error("<= method GetAllNames returned an error")
 		} else {
-			log.Debug("ServerServiceWithSlog: method GetAllNames finished")
+			log.Debug("<= method GetAllNames finished")
 		}
 	}()
 	return _d._base.GetAllNames(ctx)
@@ -186,7 +186,7 @@ func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (ser
 			slog.String("name", name),
 		)
 	}
-	log.Debug("ServerServiceWithSlog: calling GetByName")
+	log.Debug("=> calling GetByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -200,9 +200,9 @@ func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (ser
 			}
 		}
 		if err != nil {
-			log.Error("ServerServiceWithSlog: method GetByName returned an error")
+			log.Error("<= method GetByName returned an error")
 		} else {
-			log.Debug("ServerServiceWithSlog: method GetByName finished")
+			log.Debug("<= method GetByName finished")
 		}
 	}()
 	return _d._base.GetByName(ctx, name)
@@ -218,7 +218,7 @@ func (_d ServerServiceWithSlog) RenameByName(ctx context.Context, name string, s
 			slog.Any("server", server),
 		)
 	}
-	log.Debug("ServerServiceWithSlog: calling RenameByName")
+	log.Debug("=> calling RenameByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -232,9 +232,9 @@ func (_d ServerServiceWithSlog) RenameByName(ctx context.Context, name string, s
 			}
 		}
 		if err != nil {
-			log.Error("ServerServiceWithSlog: method RenameByName returned an error")
+			log.Error("<= method RenameByName returned an error")
 		} else {
-			log.Debug("ServerServiceWithSlog: method RenameByName finished")
+			log.Debug("<= method RenameByName finished")
 		}
 	}()
 	return _d._base.RenameByName(ctx, name, server)
@@ -250,7 +250,7 @@ func (_d ServerServiceWithSlog) UpdateByName(ctx context.Context, name string, s
 			slog.Any("server", server),
 		)
 	}
-	log.Debug("ServerServiceWithSlog: calling UpdateByName")
+	log.Debug("=> calling UpdateByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -264,9 +264,9 @@ func (_d ServerServiceWithSlog) UpdateByName(ctx context.Context, name string, s
 			}
 		}
 		if err != nil {
-			log.Error("ServerServiceWithSlog: method UpdateByName returned an error")
+			log.Error("<= method UpdateByName returned an error")
 		} else {
-			log.Debug("ServerServiceWithSlog: method UpdateByName finished")
+			log.Debug("<= method UpdateByName finished")
 		}
 	}()
 	return _d._base.UpdateByName(ctx, name, server)

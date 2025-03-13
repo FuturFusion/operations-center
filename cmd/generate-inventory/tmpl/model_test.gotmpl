@@ -57,7 +57,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				require.ErrorAs(tt, err, &verr, a...)
 			},
 		},
-{{- if .ServerIDByLocation }}
+{{- if and .ServerIDByLocation ( not .IsServerIDOptional ) }}
 		{
 			name: "error - invalid project name",
 			image: inventory.{{ .Name | pascalcase }}{

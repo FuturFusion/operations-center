@@ -36,7 +36,7 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx
 			slog.String("networkIntegrationName", networkIntegrationName),
 		)
 	}
-	log.Debug("NetworkIntegrationServerClientWithSlog: calling GetNetworkIntegrationByName")
+	log.Debug("=> calling GetNetworkIntegrationByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -50,9 +50,9 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx
 			}
 		}
 		if err != nil {
-			log.Error("NetworkIntegrationServerClientWithSlog: method GetNetworkIntegrationByName returned an error")
+			log.Error("<= method GetNetworkIntegrationByName returned an error")
 		} else {
-			log.Debug("NetworkIntegrationServerClientWithSlog: method GetNetworkIntegrationByName finished")
+			log.Debug("<= method GetNetworkIntegrationByName finished")
 		}
 	}()
 	return _d._base.GetNetworkIntegrationByName(ctx, connectionURL, networkIntegrationName)
@@ -67,7 +67,7 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx cont
 			slog.String("connectionURL", connectionURL),
 		)
 	}
-	log.Debug("NetworkIntegrationServerClientWithSlog: calling GetNetworkIntegrations")
+	log.Debug("=> calling GetNetworkIntegrations")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -81,9 +81,9 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx cont
 			}
 		}
 		if err != nil {
-			log.Error("NetworkIntegrationServerClientWithSlog: method GetNetworkIntegrations returned an error")
+			log.Error("<= method GetNetworkIntegrations returned an error")
 		} else {
-			log.Debug("NetworkIntegrationServerClientWithSlog: method GetNetworkIntegrations finished")
+			log.Debug("<= method GetNetworkIntegrations finished")
 		}
 	}()
 	return _d._base.GetNetworkIntegrations(ctx, connectionURL)

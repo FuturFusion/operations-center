@@ -178,7 +178,11 @@ DELETE FROM instances WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
 func (r instance) UpdateByID(ctx context.Context, in inventory.Instance) (inventory.Instance, error) {
 	const sqlStmt = `
 WITH _lookup AS (
-  SELECT clusters.id AS cluster_id , servers.id AS server_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name AND servers.name = :server_name
+  SELECT id AS cluster_id , (
+    SELECT servers.id FROM clusters
+      LEFT JOIN servers ON servers.cluster_id = clusters.id
+    WHERE clusters.name = :cluster_name AND servers.name = :server_name
+  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
 )
 UPDATE instances SET cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id

@@ -170,7 +170,7 @@ DELETE FROM images WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
 func (r image) UpdateByID(ctx context.Context, in inventory.Image) (inventory.Image, error) {
 	const sqlStmt = `
 WITH _lookup AS (
-  SELECT clusters.id AS cluster_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name
+  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
 UPDATE images SET cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id

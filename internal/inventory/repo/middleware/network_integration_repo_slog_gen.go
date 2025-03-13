@@ -34,7 +34,7 @@ func (_d NetworkIntegrationRepoWithSlog) Create(ctx context.Context, networkInte
 			slog.Any("networkIntegration", networkIntegration),
 		)
 	}
-	log.Debug("NetworkIntegrationRepoWithSlog: calling Create")
+	log.Debug("=> calling Create")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d NetworkIntegrationRepoWithSlog) Create(ctx context.Context, networkInte
 			}
 		}
 		if err != nil {
-			log.Error("NetworkIntegrationRepoWithSlog: method Create returned an error")
+			log.Error("<= method Create returned an error")
 		} else {
-			log.Debug("NetworkIntegrationRepoWithSlog: method Create finished")
+			log.Debug("<= method Create finished")
 		}
 	}()
 	return _d._base.Create(ctx, networkIntegration)
@@ -65,7 +65,7 @@ func (_d NetworkIntegrationRepoWithSlog) DeleteByClusterName(ctx context.Context
 			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("NetworkIntegrationRepoWithSlog: calling DeleteByClusterName")
+	log.Debug("=> calling DeleteByClusterName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,9 +78,9 @@ func (_d NetworkIntegrationRepoWithSlog) DeleteByClusterName(ctx context.Context
 			}
 		}
 		if err != nil {
-			log.Error("NetworkIntegrationRepoWithSlog: method DeleteByClusterName returned an error")
+			log.Error("<= method DeleteByClusterName returned an error")
 		} else {
-			log.Debug("NetworkIntegrationRepoWithSlog: method DeleteByClusterName finished")
+			log.Debug("<= method DeleteByClusterName finished")
 		}
 	}()
 	return _d._base.DeleteByClusterName(ctx, cluster)
@@ -95,7 +95,7 @@ func (_d NetworkIntegrationRepoWithSlog) DeleteByID(ctx context.Context, id int)
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("NetworkIntegrationRepoWithSlog: calling DeleteByID")
+	log.Debug("=> calling DeleteByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -108,9 +108,9 @@ func (_d NetworkIntegrationRepoWithSlog) DeleteByID(ctx context.Context, id int)
 			}
 		}
 		if err != nil {
-			log.Error("NetworkIntegrationRepoWithSlog: method DeleteByID returned an error")
+			log.Error("<= method DeleteByID returned an error")
 		} else {
-			log.Debug("NetworkIntegrationRepoWithSlog: method DeleteByID finished")
+			log.Debug("<= method DeleteByID finished")
 		}
 	}()
 	return _d._base.DeleteByID(ctx, id)
@@ -125,7 +125,7 @@ func (_d NetworkIntegrationRepoWithSlog) GetAllIDsWithFilter(ctx context.Context
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("NetworkIntegrationRepoWithSlog: calling GetAllIDsWithFilter")
+	log.Debug("=> calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,9 +139,9 @@ func (_d NetworkIntegrationRepoWithSlog) GetAllIDsWithFilter(ctx context.Context
 			}
 		}
 		if err != nil {
-			log.Error("NetworkIntegrationRepoWithSlog: method GetAllIDsWithFilter returned an error")
+			log.Error("<= method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("NetworkIntegrationRepoWithSlog: method GetAllIDsWithFilter finished")
+			log.Debug("<= method GetAllIDsWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
@@ -156,7 +156,7 @@ func (_d NetworkIntegrationRepoWithSlog) GetByID(ctx context.Context, id int) (n
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("NetworkIntegrationRepoWithSlog: calling GetByID")
+	log.Debug("=> calling GetByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -170,9 +170,9 @@ func (_d NetworkIntegrationRepoWithSlog) GetByID(ctx context.Context, id int) (n
 			}
 		}
 		if err != nil {
-			log.Error("NetworkIntegrationRepoWithSlog: method GetByID returned an error")
+			log.Error("<= method GetByID returned an error")
 		} else {
-			log.Debug("NetworkIntegrationRepoWithSlog: method GetByID finished")
+			log.Debug("<= method GetByID finished")
 		}
 	}()
 	return _d._base.GetByID(ctx, id)
@@ -187,7 +187,7 @@ func (_d NetworkIntegrationRepoWithSlog) UpdateByID(ctx context.Context, network
 			slog.Any("networkIntegration", networkIntegration),
 		)
 	}
-	log.Debug("NetworkIntegrationRepoWithSlog: calling UpdateByID")
+	log.Debug("=> calling UpdateByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -201,9 +201,9 @@ func (_d NetworkIntegrationRepoWithSlog) UpdateByID(ctx context.Context, network
 			}
 		}
 		if err != nil {
-			log.Error("NetworkIntegrationRepoWithSlog: method UpdateByID returned an error")
+			log.Error("<= method UpdateByID returned an error")
 		} else {
-			log.Debug("NetworkIntegrationRepoWithSlog: method UpdateByID finished")
+			log.Debug("<= method UpdateByID finished")
 		}
 	}()
 	return _d._base.UpdateByID(ctx, networkIntegration)

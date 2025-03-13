@@ -35,7 +35,7 @@ func (_d ProvisioningServerServiceWithSlog) GetAllByClusterName(ctx context.Cont
 			slog.String("name", name),
 		)
 	}
-	log.Debug("ProvisioningServerServiceWithSlog: calling GetAllByClusterName")
+	log.Debug("=> calling GetAllByClusterName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -49,9 +49,9 @@ func (_d ProvisioningServerServiceWithSlog) GetAllByClusterName(ctx context.Cont
 			}
 		}
 		if err != nil {
-			log.Error("ProvisioningServerServiceWithSlog: method GetAllByClusterName returned an error")
+			log.Error("<= method GetAllByClusterName returned an error")
 		} else {
-			log.Debug("ProvisioningServerServiceWithSlog: method GetAllByClusterName finished")
+			log.Debug("<= method GetAllByClusterName finished")
 		}
 	}()
 	return _d._base.GetAllByClusterName(ctx, name)
@@ -66,7 +66,7 @@ func (_d ProvisioningServerServiceWithSlog) GetByName(ctx context.Context, name 
 			slog.String("name", name),
 		)
 	}
-	log.Debug("ProvisioningServerServiceWithSlog: calling GetByName")
+	log.Debug("=> calling GetByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -80,9 +80,9 @@ func (_d ProvisioningServerServiceWithSlog) GetByName(ctx context.Context, name 
 			}
 		}
 		if err != nil {
-			log.Error("ProvisioningServerServiceWithSlog: method GetByName returned an error")
+			log.Error("<= method GetByName returned an error")
 		} else {
-			log.Debug("ProvisioningServerServiceWithSlog: method GetByName finished")
+			log.Debug("<= method GetByName finished")
 		}
 	}()
 	return _d._base.GetByName(ctx, name)

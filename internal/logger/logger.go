@@ -5,6 +5,9 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"time"
+
+	"github.com/lmittmann/tint"
 )
 
 const LevelTrace slog.Level = -8
@@ -23,6 +26,16 @@ func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) err
 		level = LevelTrace
 	}
 
+	slogHandler := tint.NewHandler(
+		writer,
+		&tint.Options{
+			Level:      level,
+			TimeFormat: time.RFC3339,
+			// Add source information, if debug level is enabled.
+			AddSource: debug,
+		},
+	)
+
 	if filepath != "" {
 		f, err := os.OpenFile(filepath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
 		if err != nil {
@@ -30,19 +43,19 @@ func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) err
 		}
 
 		writer = io.MultiWriter(writer, f)
+
+		slogHandler = slog.NewTextHandler(
+			writer,
+			&slog.HandlerOptions{
+				Level: level,
+				// Add source information, if debug level is enabled.
+				AddSource: debug,
+			},
+		)
 	}
 
 	logger := slog.New(
-		NewContextHandler(
-			slog.NewTextHandler(
-				writer,
-				&slog.HandlerOptions{
-					Level: level,
-					// Add source information, if debug level is enabled.
-					AddSource: debug,
-				},
-			),
-		),
+		NewContextHandler(slogHandler),
 	)
 
 	slog.SetDefault(logger)

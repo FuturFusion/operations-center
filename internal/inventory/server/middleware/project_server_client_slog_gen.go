@@ -36,7 +36,7 @@ func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, conn
 			slog.String("projectName", projectName),
 		)
 	}
-	log.Debug("ProjectServerClientWithSlog: calling GetProjectByName")
+	log.Debug("=> calling GetProjectByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -50,9 +50,9 @@ func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, conn
 			}
 		}
 		if err != nil {
-			log.Error("ProjectServerClientWithSlog: method GetProjectByName returned an error")
+			log.Error("<= method GetProjectByName returned an error")
 		} else {
-			log.Debug("ProjectServerClientWithSlog: method GetProjectByName finished")
+			log.Debug("<= method GetProjectByName finished")
 		}
 	}()
 	return _d._base.GetProjectByName(ctx, connectionURL, projectName)
@@ -67,7 +67,7 @@ func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, connectio
 			slog.String("connectionURL", connectionURL),
 		)
 	}
-	log.Debug("ProjectServerClientWithSlog: calling GetProjects")
+	log.Debug("=> calling GetProjects")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -81,9 +81,9 @@ func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, connectio
 			}
 		}
 		if err != nil {
-			log.Error("ProjectServerClientWithSlog: method GetProjects returned an error")
+			log.Error("<= method GetProjects returned an error")
 		} else {
-			log.Debug("ProjectServerClientWithSlog: method GetProjects finished")
+			log.Debug("<= method GetProjects finished")
 		}
 	}()
 	return _d._base.GetProjects(ctx, connectionURL)

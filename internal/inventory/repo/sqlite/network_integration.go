@@ -164,7 +164,7 @@ DELETE FROM network_integrations WHERE cluster_id=(SELECT cluster_id FROM _looku
 func (r networkIntegration) UpdateByID(ctx context.Context, in inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
 	const sqlStmt = `
 WITH _lookup AS (
-  SELECT clusters.id AS cluster_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name
+  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
 UPDATE network_integrations SET cluster_id=(SELECT cluster_id FROM _lookup), name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id

@@ -34,7 +34,7 @@ func (_d NetworkZoneRepoWithSlog) Create(ctx context.Context, networkZone invent
 			slog.Any("networkZone", networkZone),
 		)
 	}
-	log.Debug("NetworkZoneRepoWithSlog: calling Create")
+	log.Debug("=> calling Create")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d NetworkZoneRepoWithSlog) Create(ctx context.Context, networkZone invent
 			}
 		}
 		if err != nil {
-			log.Error("NetworkZoneRepoWithSlog: method Create returned an error")
+			log.Error("<= method Create returned an error")
 		} else {
-			log.Debug("NetworkZoneRepoWithSlog: method Create finished")
+			log.Debug("<= method Create finished")
 		}
 	}()
 	return _d._base.Create(ctx, networkZone)
@@ -65,7 +65,7 @@ func (_d NetworkZoneRepoWithSlog) DeleteByClusterName(ctx context.Context, clust
 			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("NetworkZoneRepoWithSlog: calling DeleteByClusterName")
+	log.Debug("=> calling DeleteByClusterName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,9 +78,9 @@ func (_d NetworkZoneRepoWithSlog) DeleteByClusterName(ctx context.Context, clust
 			}
 		}
 		if err != nil {
-			log.Error("NetworkZoneRepoWithSlog: method DeleteByClusterName returned an error")
+			log.Error("<= method DeleteByClusterName returned an error")
 		} else {
-			log.Debug("NetworkZoneRepoWithSlog: method DeleteByClusterName finished")
+			log.Debug("<= method DeleteByClusterName finished")
 		}
 	}()
 	return _d._base.DeleteByClusterName(ctx, cluster)
@@ -95,7 +95,7 @@ func (_d NetworkZoneRepoWithSlog) DeleteByID(ctx context.Context, id int) (err e
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("NetworkZoneRepoWithSlog: calling DeleteByID")
+	log.Debug("=> calling DeleteByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -108,9 +108,9 @@ func (_d NetworkZoneRepoWithSlog) DeleteByID(ctx context.Context, id int) (err e
 			}
 		}
 		if err != nil {
-			log.Error("NetworkZoneRepoWithSlog: method DeleteByID returned an error")
+			log.Error("<= method DeleteByID returned an error")
 		} else {
-			log.Debug("NetworkZoneRepoWithSlog: method DeleteByID finished")
+			log.Debug("<= method DeleteByID finished")
 		}
 	}()
 	return _d._base.DeleteByID(ctx, id)
@@ -125,7 +125,7 @@ func (_d NetworkZoneRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filte
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("NetworkZoneRepoWithSlog: calling GetAllIDsWithFilter")
+	log.Debug("=> calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,9 +139,9 @@ func (_d NetworkZoneRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filte
 			}
 		}
 		if err != nil {
-			log.Error("NetworkZoneRepoWithSlog: method GetAllIDsWithFilter returned an error")
+			log.Error("<= method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("NetworkZoneRepoWithSlog: method GetAllIDsWithFilter finished")
+			log.Debug("<= method GetAllIDsWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
@@ -156,7 +156,7 @@ func (_d NetworkZoneRepoWithSlog) GetByID(ctx context.Context, id int) (networkZ
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("NetworkZoneRepoWithSlog: calling GetByID")
+	log.Debug("=> calling GetByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -170,9 +170,9 @@ func (_d NetworkZoneRepoWithSlog) GetByID(ctx context.Context, id int) (networkZ
 			}
 		}
 		if err != nil {
-			log.Error("NetworkZoneRepoWithSlog: method GetByID returned an error")
+			log.Error("<= method GetByID returned an error")
 		} else {
-			log.Debug("NetworkZoneRepoWithSlog: method GetByID finished")
+			log.Debug("<= method GetByID finished")
 		}
 	}()
 	return _d._base.GetByID(ctx, id)
@@ -187,7 +187,7 @@ func (_d NetworkZoneRepoWithSlog) UpdateByID(ctx context.Context, networkZone in
 			slog.Any("networkZone", networkZone),
 		)
 	}
-	log.Debug("NetworkZoneRepoWithSlog: calling UpdateByID")
+	log.Debug("=> calling UpdateByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -201,9 +201,9 @@ func (_d NetworkZoneRepoWithSlog) UpdateByID(ctx context.Context, networkZone in
 			}
 		}
 		if err != nil {
-			log.Error("NetworkZoneRepoWithSlog: method UpdateByID returned an error")
+			log.Error("<= method UpdateByID returned an error")
 		} else {
-			log.Debug("NetworkZoneRepoWithSlog: method UpdateByID finished")
+			log.Debug("<= method UpdateByID finished")
 		}
 	}()
 	return _d._base.UpdateByID(ctx, networkZone)

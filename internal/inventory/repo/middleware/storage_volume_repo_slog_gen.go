@@ -34,7 +34,7 @@ func (_d StorageVolumeRepoWithSlog) Create(ctx context.Context, storageVolume in
 			slog.Any("storageVolume", storageVolume),
 		)
 	}
-	log.Debug("StorageVolumeRepoWithSlog: calling Create")
+	log.Debug("=> calling Create")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d StorageVolumeRepoWithSlog) Create(ctx context.Context, storageVolume in
 			}
 		}
 		if err != nil {
-			log.Error("StorageVolumeRepoWithSlog: method Create returned an error")
+			log.Error("<= method Create returned an error")
 		} else {
-			log.Debug("StorageVolumeRepoWithSlog: method Create finished")
+			log.Debug("<= method Create finished")
 		}
 	}()
 	return _d._base.Create(ctx, storageVolume)
@@ -65,7 +65,7 @@ func (_d StorageVolumeRepoWithSlog) DeleteByClusterName(ctx context.Context, clu
 			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("StorageVolumeRepoWithSlog: calling DeleteByClusterName")
+	log.Debug("=> calling DeleteByClusterName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,9 +78,9 @@ func (_d StorageVolumeRepoWithSlog) DeleteByClusterName(ctx context.Context, clu
 			}
 		}
 		if err != nil {
-			log.Error("StorageVolumeRepoWithSlog: method DeleteByClusterName returned an error")
+			log.Error("<= method DeleteByClusterName returned an error")
 		} else {
-			log.Debug("StorageVolumeRepoWithSlog: method DeleteByClusterName finished")
+			log.Debug("<= method DeleteByClusterName finished")
 		}
 	}()
 	return _d._base.DeleteByClusterName(ctx, cluster)
@@ -95,7 +95,7 @@ func (_d StorageVolumeRepoWithSlog) DeleteByID(ctx context.Context, id int) (err
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("StorageVolumeRepoWithSlog: calling DeleteByID")
+	log.Debug("=> calling DeleteByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -108,9 +108,9 @@ func (_d StorageVolumeRepoWithSlog) DeleteByID(ctx context.Context, id int) (err
 			}
 		}
 		if err != nil {
-			log.Error("StorageVolumeRepoWithSlog: method DeleteByID returned an error")
+			log.Error("<= method DeleteByID returned an error")
 		} else {
-			log.Debug("StorageVolumeRepoWithSlog: method DeleteByID finished")
+			log.Debug("<= method DeleteByID finished")
 		}
 	}()
 	return _d._base.DeleteByID(ctx, id)
@@ -125,7 +125,7 @@ func (_d StorageVolumeRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, fil
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("StorageVolumeRepoWithSlog: calling GetAllIDsWithFilter")
+	log.Debug("=> calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,9 +139,9 @@ func (_d StorageVolumeRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, fil
 			}
 		}
 		if err != nil {
-			log.Error("StorageVolumeRepoWithSlog: method GetAllIDsWithFilter returned an error")
+			log.Error("<= method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("StorageVolumeRepoWithSlog: method GetAllIDsWithFilter finished")
+			log.Debug("<= method GetAllIDsWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
@@ -156,7 +156,7 @@ func (_d StorageVolumeRepoWithSlog) GetByID(ctx context.Context, id int) (storag
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("StorageVolumeRepoWithSlog: calling GetByID")
+	log.Debug("=> calling GetByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -170,9 +170,9 @@ func (_d StorageVolumeRepoWithSlog) GetByID(ctx context.Context, id int) (storag
 			}
 		}
 		if err != nil {
-			log.Error("StorageVolumeRepoWithSlog: method GetByID returned an error")
+			log.Error("<= method GetByID returned an error")
 		} else {
-			log.Debug("StorageVolumeRepoWithSlog: method GetByID finished")
+			log.Debug("<= method GetByID finished")
 		}
 	}()
 	return _d._base.GetByID(ctx, id)
@@ -187,7 +187,7 @@ func (_d StorageVolumeRepoWithSlog) UpdateByID(ctx context.Context, storageVolum
 			slog.Any("storageVolume", storageVolume),
 		)
 	}
-	log.Debug("StorageVolumeRepoWithSlog: calling UpdateByID")
+	log.Debug("=> calling UpdateByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -201,9 +201,9 @@ func (_d StorageVolumeRepoWithSlog) UpdateByID(ctx context.Context, storageVolum
 			}
 		}
 		if err != nil {
-			log.Error("StorageVolumeRepoWithSlog: method UpdateByID returned an error")
+			log.Error("<= method UpdateByID returned an error")
 		} else {
-			log.Debug("StorageVolumeRepoWithSlog: method UpdateByID finished")
+			log.Debug("<= method UpdateByID finished")
 		}
 	}()
 	return _d._base.UpdateByID(ctx, storageVolume)

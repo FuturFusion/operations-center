@@ -52,22 +52,6 @@ func TestStorageVolume_Validate(t *testing.T) {
 			image: inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
-				Server:          "", // invalid
-				ProjectName:     "project one",
-				StoragePoolName: "storagePool one",
-				Name:            "one",
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
-		},
-		{
-			name: "error - invalid project name",
-			image: inventory.StorageVolume{
-				ID:              1,
-				Cluster:         "one",
 				Server:          "one",
 				ProjectName:     "", // invalid
 				StoragePoolName: "storagePool one",

@@ -34,7 +34,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) Create(ctx context.Context, networkLoa
 			slog.Any("networkLoadBalancer", networkLoadBalancer),
 		)
 	}
-	log.Debug("NetworkLoadBalancerRepoWithSlog: calling Create")
+	log.Debug("=> calling Create")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -48,9 +48,9 @@ func (_d NetworkLoadBalancerRepoWithSlog) Create(ctx context.Context, networkLoa
 			}
 		}
 		if err != nil {
-			log.Error("NetworkLoadBalancerRepoWithSlog: method Create returned an error")
+			log.Error("<= method Create returned an error")
 		} else {
-			log.Debug("NetworkLoadBalancerRepoWithSlog: method Create finished")
+			log.Debug("<= method Create finished")
 		}
 	}()
 	return _d._base.Create(ctx, networkLoadBalancer)
@@ -65,7 +65,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteByClusterName(ctx context.Contex
 			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("NetworkLoadBalancerRepoWithSlog: calling DeleteByClusterName")
+	log.Debug("=> calling DeleteByClusterName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -78,9 +78,9 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteByClusterName(ctx context.Contex
 			}
 		}
 		if err != nil {
-			log.Error("NetworkLoadBalancerRepoWithSlog: method DeleteByClusterName returned an error")
+			log.Error("<= method DeleteByClusterName returned an error")
 		} else {
-			log.Debug("NetworkLoadBalancerRepoWithSlog: method DeleteByClusterName finished")
+			log.Debug("<= method DeleteByClusterName finished")
 		}
 	}()
 	return _d._base.DeleteByClusterName(ctx, cluster)
@@ -95,7 +95,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteByID(ctx context.Context, id int
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("NetworkLoadBalancerRepoWithSlog: calling DeleteByID")
+	log.Debug("=> calling DeleteByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -108,9 +108,9 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteByID(ctx context.Context, id int
 			}
 		}
 		if err != nil {
-			log.Error("NetworkLoadBalancerRepoWithSlog: method DeleteByID returned an error")
+			log.Error("<= method DeleteByID returned an error")
 		} else {
-			log.Debug("NetworkLoadBalancerRepoWithSlog: method DeleteByID finished")
+			log.Debug("<= method DeleteByID finished")
 		}
 	}()
 	return _d._base.DeleteByID(ctx, id)
@@ -125,7 +125,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetAllIDsWithFilter(ctx context.Contex
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("NetworkLoadBalancerRepoWithSlog: calling GetAllIDsWithFilter")
+	log.Debug("=> calling GetAllIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,9 +139,9 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetAllIDsWithFilter(ctx context.Contex
 			}
 		}
 		if err != nil {
-			log.Error("NetworkLoadBalancerRepoWithSlog: method GetAllIDsWithFilter returned an error")
+			log.Error("<= method GetAllIDsWithFilter returned an error")
 		} else {
-			log.Debug("NetworkLoadBalancerRepoWithSlog: method GetAllIDsWithFilter finished")
+			log.Debug("<= method GetAllIDsWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
@@ -156,7 +156,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetByID(ctx context.Context, id int) (
 			slog.Int("id", id),
 		)
 	}
-	log.Debug("NetworkLoadBalancerRepoWithSlog: calling GetByID")
+	log.Debug("=> calling GetByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -170,9 +170,9 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetByID(ctx context.Context, id int) (
 			}
 		}
 		if err != nil {
-			log.Error("NetworkLoadBalancerRepoWithSlog: method GetByID returned an error")
+			log.Error("<= method GetByID returned an error")
 		} else {
-			log.Debug("NetworkLoadBalancerRepoWithSlog: method GetByID finished")
+			log.Debug("<= method GetByID finished")
 		}
 	}()
 	return _d._base.GetByID(ctx, id)
@@ -187,7 +187,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) UpdateByID(ctx context.Context, networ
 			slog.Any("networkLoadBalancer", networkLoadBalancer),
 		)
 	}
-	log.Debug("NetworkLoadBalancerRepoWithSlog: calling UpdateByID")
+	log.Debug("=> calling UpdateByID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -201,9 +201,9 @@ func (_d NetworkLoadBalancerRepoWithSlog) UpdateByID(ctx context.Context, networ
 			}
 		}
 		if err != nil {
-			log.Error("NetworkLoadBalancerRepoWithSlog: method UpdateByID returned an error")
+			log.Error("<= method UpdateByID returned an error")
 		} else {
-			log.Debug("NetworkLoadBalancerRepoWithSlog: method UpdateByID finished")
+			log.Debug("<= method UpdateByID finished")
 		}
 	}()
 	return _d._base.UpdateByID(ctx, networkLoadBalancer)
