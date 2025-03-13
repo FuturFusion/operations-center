@@ -1,0 +1,16 @@
+---
+
+all: False
+template: file://./internal/transaction/transaction_enforcer.gotmpl
+force-file-write: true
+include-regex: "(.+Repo)"
+dir: >-
+  {{- $targetDir := "repo/middleware" -}}
+  {{- .InterfaceDir -}}/{{- $targetDir -}}
+filename: >-
+  {{ .InterfaceName | snakecase }}_transaction_enforcer_gen.go
+mockname: "{{ .InterfaceName }}WithSlog"
+pkgname: middleware
+packages:
+  github.com/FuturFusion/operations-center/internal/inventory:
+  github.com/FuturFusion/operations-center/internal/provisioning:

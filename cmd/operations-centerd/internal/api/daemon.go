@@ -107,9 +107,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// Setup Services
 	tokenSvc := provisioningServiceMiddleware.NewTokenServiceWithSlog(
 		provisioning.NewTokenService(
-			provisioningRepoMiddleware.NewTokenRepoWithSlog(
-				provisioningSqlite.NewToken(dbWithTransaction),
-				slog.Default(),
+			provisioningRepoMiddleware.NewTokenRepoWithTransactionEnforcer(
+				provisioningRepoMiddleware.NewTokenRepoWithSlog(
+					provisioningSqlite.NewToken(dbWithTransaction),
+					slog.Default(),
+				),
 			),
 		),
 		slog.Default(),
@@ -117,18 +119,22 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	serverSvc := provisioningServiceMiddleware.NewServerServiceWithSlog(
 		provisioning.NewServerService(
-			provisioningRepoMiddleware.NewServerRepoWithSlog(
-				provisioningSqlite.NewServer(dbWithTransaction),
-				slog.Default(),
+			provisioningRepoMiddleware.NewServerRepoWithTransactionEnforcer(
+				provisioningRepoMiddleware.NewServerRepoWithSlog(
+					provisioningSqlite.NewServer(dbWithTransaction),
+					slog.Default(),
+				),
 			),
 		),
 		slog.Default(),
 	)
 
 	clusterSvc := provisioning.NewClusterService(
-		provisioningRepoMiddleware.NewClusterRepoWithSlog(
-			provisioningSqlite.NewCluster(dbWithTransaction),
-			slog.Default(),
+		provisioningRepoMiddleware.NewClusterRepoWithTransactionEnforcer(
+			provisioningRepoMiddleware.NewClusterRepoWithSlog(
+				provisioningSqlite.NewCluster(dbWithTransaction),
+				slog.Default(),
+			),
 		),
 		serverSvc,
 		nil,
@@ -140,9 +146,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	updateSvc := provisioningServiceMiddleware.NewUpdateServiceWithSlog(
 		provisioning.NewUpdateService(
-			provisioningRepoMiddleware.NewUpdateRepoWithSlog(
-				github.NewUpdate(gh),
-				slog.Default(),
+			provisioningRepoMiddleware.NewUpdateRepoWithTransactionEnforcer(
+				provisioningRepoMiddleware.NewUpdateRepoWithSlog(
+					github.NewUpdate(gh),
+					slog.Default(),
+				),
 			),
 		),
 		slog.Default(),

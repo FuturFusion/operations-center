@@ -18,9 +18,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 	// Service
 	inventoryImageSvc := inventoryServiceMiddleware.NewImageServiceWithSlog(
 		inventory.NewImageService(
-			inventoryRepoMiddleware.NewImageRepoWithSlog(
-				inventorySqlite.NewImage(db),
-				slog.Default(),
+			inventoryRepoMiddleware.NewImageRepoWithTransactionEnforcer(
+				inventoryRepoMiddleware.NewImageRepoWithSlog(
+					inventorySqlite.NewImage(db),
+					slog.Default(),
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -30,9 +32,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryInstanceSvc := inventoryServiceMiddleware.NewInstanceServiceWithSlog(
 		inventory.NewInstanceService(
-			inventoryRepoMiddleware.NewInstanceRepoWithSlog(
-				inventorySqlite.NewInstance(db),
-				slog.Default(),
+			inventoryRepoMiddleware.NewInstanceRepoWithTransactionEnforcer(
+				inventoryRepoMiddleware.NewInstanceRepoWithSlog(
+					inventorySqlite.NewInstance(db),
+					slog.Default(),
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -42,9 +46,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryNetworkSvc := inventoryServiceMiddleware.NewNetworkServiceWithSlog(
 		inventory.NewNetworkService(
-			inventoryRepoMiddleware.NewNetworkRepoWithSlog(
-				inventorySqlite.NewNetwork(db),
-				slog.Default(),
+			inventoryRepoMiddleware.NewNetworkRepoWithTransactionEnforcer(
+				inventoryRepoMiddleware.NewNetworkRepoWithSlog(
+					inventorySqlite.NewNetwork(db),
+					slog.Default(),
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -54,9 +60,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryNetworkACLSvc := inventoryServiceMiddleware.NewNetworkACLServiceWithSlog(
 		inventory.NewNetworkACLService(
-			inventoryRepoMiddleware.NewNetworkACLRepoWithSlog(
-				inventorySqlite.NewNetworkACL(db),
-				slog.Default(),
+			inventoryRepoMiddleware.NewNetworkACLRepoWithTransactionEnforcer(
+				inventoryRepoMiddleware.NewNetworkACLRepoWithSlog(
+					inventorySqlite.NewNetworkACL(db),
+					slog.Default(),
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -66,9 +74,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryNetworkForwardSvc := inventoryServiceMiddleware.NewNetworkForwardServiceWithSlog(
 		inventory.NewNetworkForwardService(
-			inventoryRepoMiddleware.NewNetworkForwardRepoWithSlog(
-				inventorySqlite.NewNetworkForward(db),
-				slog.Default(),
+			inventoryRepoMiddleware.NewNetworkForwardRepoWithTransactionEnforcer(
+				inventoryRepoMiddleware.NewNetworkForwardRepoWithSlog(
+					inventorySqlite.NewNetworkForward(db),
+					slog.Default(),
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -87,9 +97,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryNetworkIntegrationSvc := inventoryServiceMiddleware.NewNetworkIntegrationServiceWithSlog(
 		inventory.NewNetworkIntegrationService(
-			inventoryRepoMiddleware.NewNetworkIntegrationRepoWithSlog(
-				inventorySqlite.NewNetworkIntegration(db),
-				slog.Default(),
+			inventoryRepoMiddleware.NewNetworkIntegrationRepoWithTransactionEnforcer(
+				inventoryRepoMiddleware.NewNetworkIntegrationRepoWithSlog(
+					inventorySqlite.NewNetworkIntegration(db),
+					slog.Default(),
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -99,9 +111,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryNetworkLoadBalancerSvc := inventoryServiceMiddleware.NewNetworkLoadBalancerServiceWithSlog(
 		inventory.NewNetworkLoadBalancerService(
-			inventoryRepoMiddleware.NewNetworkLoadBalancerRepoWithSlog(
-				inventorySqlite.NewNetworkLoadBalancer(db),
-				slog.Default(),
+			inventoryRepoMiddleware.NewNetworkLoadBalancerRepoWithTransactionEnforcer(
+				inventoryRepoMiddleware.NewNetworkLoadBalancerRepoWithSlog(
+					inventorySqlite.NewNetworkLoadBalancer(db),
+					slog.Default(),
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -124,9 +138,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryNetworkPeerSvc := inventoryServiceMiddleware.NewNetworkPeerServiceWithSlog(
 		inventory.NewNetworkPeerService(
-			inventoryRepoMiddleware.NewNetworkPeerRepoWithSlog(
-				inventorySqlite.NewNetworkPeer(db),
-				slog.Default(),
+			inventoryRepoMiddleware.NewNetworkPeerRepoWithTransactionEnforcer(
+				inventoryRepoMiddleware.NewNetworkPeerRepoWithSlog(
+					inventorySqlite.NewNetworkPeer(db),
+					slog.Default(),
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -149,9 +165,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryNetworkZoneSvc := inventoryServiceMiddleware.NewNetworkZoneServiceWithSlog(
 		inventory.NewNetworkZoneService(
-			inventoryRepoMiddleware.NewNetworkZoneRepoWithSlog(
-				inventorySqlite.NewNetworkZone(db),
-				slog.Default(),
+			inventoryRepoMiddleware.NewNetworkZoneRepoWithTransactionEnforcer(
+				inventoryRepoMiddleware.NewNetworkZoneRepoWithSlog(
+					inventorySqlite.NewNetworkZone(db),
+					slog.Default(),
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -161,9 +179,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryProfileSvc := inventoryServiceMiddleware.NewProfileServiceWithSlog(
 		inventory.NewProfileService(
-			inventoryRepoMiddleware.NewProfileRepoWithSlog(
-				inventorySqlite.NewProfile(db),
-				slog.Default(),
+			inventoryRepoMiddleware.NewProfileRepoWithTransactionEnforcer(
+				inventoryRepoMiddleware.NewProfileRepoWithSlog(
+					inventorySqlite.NewProfile(db),
+					slog.Default(),
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -173,9 +193,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryProjectSvc := inventoryServiceMiddleware.NewProjectServiceWithSlog(
 		inventory.NewProjectService(
-			inventoryRepoMiddleware.NewProjectRepoWithSlog(
-				inventorySqlite.NewProject(db),
-				slog.Default(),
+			inventoryRepoMiddleware.NewProjectRepoWithTransactionEnforcer(
+				inventoryRepoMiddleware.NewProjectRepoWithSlog(
+					inventorySqlite.NewProject(db),
+					slog.Default(),
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -185,9 +207,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryStorageBucketSvc := inventoryServiceMiddleware.NewStorageBucketServiceWithSlog(
 		inventory.NewStorageBucketService(
-			inventoryRepoMiddleware.NewStorageBucketRepoWithSlog(
-				inventorySqlite.NewStorageBucket(db),
-				slog.Default(),
+			inventoryRepoMiddleware.NewStorageBucketRepoWithTransactionEnforcer(
+				inventoryRepoMiddleware.NewStorageBucketRepoWithSlog(
+					inventorySqlite.NewStorageBucket(db),
+					slog.Default(),
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -206,9 +230,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryStoragePoolSvc := inventoryServiceMiddleware.NewStoragePoolServiceWithSlog(
 		inventory.NewStoragePoolService(
-			inventoryRepoMiddleware.NewStoragePoolRepoWithSlog(
-				inventorySqlite.NewStoragePool(db),
-				slog.Default(),
+			inventoryRepoMiddleware.NewStoragePoolRepoWithTransactionEnforcer(
+				inventoryRepoMiddleware.NewStoragePoolRepoWithSlog(
+					inventorySqlite.NewStoragePool(db),
+					slog.Default(),
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -218,9 +244,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	inventoryStorageVolumeSvc := inventoryServiceMiddleware.NewStorageVolumeServiceWithSlog(
 		inventory.NewStorageVolumeService(
-			inventoryRepoMiddleware.NewStorageVolumeRepoWithSlog(
-				inventorySqlite.NewStorageVolume(db),
-				slog.Default(),
+			inventoryRepoMiddleware.NewStorageVolumeRepoWithTransactionEnforcer(
+				inventoryRepoMiddleware.NewStorageVolumeRepoWithSlog(
+					inventorySqlite.NewStorageVolume(db),
+					slog.Default(),
+				),
 			),
 			clusterSvc,
 			serverClient,
