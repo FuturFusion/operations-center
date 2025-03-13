@@ -29,7 +29,7 @@ func NewNetworkPeer(db sqlite.DBTX) *networkPeer {
 func (r networkPeer) Create(ctx context.Context, in inventory.NetworkPeer) (inventory.NetworkPeer, error) {
 	const sqlStmt = `
 WITH _lookup AS (
-  SELECT clusters.id AS cluster_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name
+  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
 INSERT INTO network_peers (cluster_id, network_name, name, object, last_updated)
 VALUES ( (SELECT cluster_id FROM _lookup), :network_name, :name, :object, :last_updated)

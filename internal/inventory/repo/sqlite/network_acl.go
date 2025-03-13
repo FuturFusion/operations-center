@@ -29,7 +29,7 @@ func NewNetworkACL(db sqlite.DBTX) *networkACL {
 func (r networkACL) Create(ctx context.Context, in inventory.NetworkACL) (inventory.NetworkACL, error) {
 	const sqlStmt = `
 WITH _lookup AS (
-  SELECT clusters.id AS cluster_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name
+  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
 INSERT INTO network_acls (cluster_id, project_name, name, object, last_updated)
 VALUES ( (SELECT cluster_id FROM _lookup), :project_name, :name, :object, :last_updated)

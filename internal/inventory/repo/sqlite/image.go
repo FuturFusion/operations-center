@@ -29,7 +29,7 @@ func NewImage(db sqlite.DBTX) *image {
 func (r image) Create(ctx context.Context, in inventory.Image) (inventory.Image, error) {
 	const sqlStmt = `
 WITH _lookup AS (
-  SELECT clusters.id AS cluster_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name
+  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
 INSERT INTO images (cluster_id, project_name, name, object, last_updated)
 VALUES ( (SELECT cluster_id FROM _lookup), :project_name, :name, :object, :last_updated)

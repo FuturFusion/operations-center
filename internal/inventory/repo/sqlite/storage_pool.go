@@ -29,7 +29,7 @@ func NewStoragePool(db sqlite.DBTX) *storagePool {
 func (r storagePool) Create(ctx context.Context, in inventory.StoragePool) (inventory.StoragePool, error) {
 	const sqlStmt = `
 WITH _lookup AS (
-  SELECT clusters.id AS cluster_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name
+  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
 INSERT INTO storage_pools (cluster_id, name, object, last_updated)
 VALUES ( (SELECT cluster_id FROM _lookup), :name, :object, :last_updated)

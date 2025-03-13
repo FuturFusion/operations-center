@@ -29,7 +29,11 @@ func NewInstance(db sqlite.DBTX) *instance {
 func (r instance) Create(ctx context.Context, in inventory.Instance) (inventory.Instance, error) {
 	const sqlStmt = `
 WITH _lookup AS (
-  SELECT clusters.id AS cluster_id , servers.id AS server_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name AND servers.name = :server_name
+  SELECT id AS cluster_id , (
+    SELECT servers.id FROM clusters
+      LEFT JOIN servers ON servers.cluster_id = clusters.id
+    WHERE clusters.name = :cluster_name AND servers.name = :server_name
+  ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
 )
 INSERT INTO instances (cluster_id, server_id, project_name, name, object, last_updated)
 VALUES ( (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :name, :object, :last_updated)

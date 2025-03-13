@@ -27,7 +27,12 @@ func New{{ .Name | pascalcase }}(db sqlite.DBTX) *{{ .Name | camelcase }} {
 func (r {{ .Name | camelcase }}) Create(ctx context.Context, in inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
 	const sqlStmt = `
 WITH _lookup AS (
-  SELECT clusters.id AS cluster_id {{ if .ServerIDByLocation -}} , servers.id AS server_id {{ end -}} FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name {{- if .ServerIDByLocation }} AND servers.name = :server_name {{- end }}
+  SELECT id AS cluster_id {{ if .ServerIDByLocation -}}, (
+    SELECT servers.id FROM clusters
+      LEFT JOIN servers ON servers.cluster_id = clusters.id
+    WHERE clusters.name = :cluster_name AND servers.name = :server_name
+  ) AS server_id {{ end -}}
+  FROM clusters WHERE clusters.name = :cluster_name
 )
 INSERT INTO {{ .PluralName }} (cluster_id, {{ if .ServerIDByLocation -}} server_id, {{ end -}} {{ if .HasProject }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name {{- range .ExtraAttributes }}, {{ .Name }} {{- end}}, object, last_updated)
 VALUES ( (SELECT cluster_id FROM _lookup), {{ if .ServerIDByLocation -}} (SELECT server_id FROM _lookup), {{ end -}} {{ if .HasProject -}} :project_name, {{ end -}}{{ if .HasParent }}:{{ .ParentName }}_name, {{ end -}} :name {{- range .ExtraAttributes }}, :{{ .Name }} {{- end}}, :object, :last_updated)
