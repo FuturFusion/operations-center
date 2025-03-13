@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 )
 
 func TestNetworkIntegration_Validate(t *testing.T) {
@@ -61,6 +62,37 @@ func TestNetworkIntegration_Validate(t *testing.T) {
 			err := tc.image.Validate()
 
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestNetworkIntegration_Filter(t *testing.T) {
+	tests := []struct {
+		name   string
+		filter inventory.NetworkIntegrationFilter
+
+		want string
+	}{
+		{
+			name:   "empty filter",
+			filter: inventory.NetworkIntegrationFilter{},
+
+			want: ``,
+		},
+		{
+			name: "complete filter",
+			filter: inventory.NetworkIntegrationFilter{
+				Cluster:    ptr.To("cluster"),
+				Expression: ptr.To("true"),
+			},
+
+			want: `cluster=cluster&filter=true`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, tc.filter.String())
 		})
 	}
 }

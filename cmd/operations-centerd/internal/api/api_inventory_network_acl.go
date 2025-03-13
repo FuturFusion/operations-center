@@ -47,6 +47,11 @@ func registerInventoryNetworkACLHandler(router *http.ServeMux, service inventory
 //	    description: Project name
 //	    type: string
 //	    example: default
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API network_acl
@@ -101,6 +106,11 @@ func registerInventoryNetworkACLHandler(router *http.ServeMux, service inventory
 //	    description: Project name
 //	    type: string
 //	    example: default
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API network_acls
@@ -144,6 +154,10 @@ func (i *networkACLHandler) networkACLsGet(r *http.Request) response.Response {
 
 	if r.URL.Query().Get("project") != "" {
 		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	}
+
+	if r.URL.Query().Get("filter") != "" {
+		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
 	}
 
 	if recursion == 1 {

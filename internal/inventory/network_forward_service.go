@@ -5,8 +5,11 @@ package inventory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -56,7 +59,43 @@ func NewNetworkForwardService(repo NetworkForwardRepo, clusterSvc ProvisioningCl
 }
 
 func (s networkForwardService) GetAllWithFilter(ctx context.Context, filter NetworkForwardFilter) (NetworkForwards, error) {
-	return s.repo.GetAllWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(NetworkForward{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	networkForwards, err := s.repo.GetAllWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredNetworkForwards NetworkForwards
+	if filter.Expression != nil {
+		for _, networkForward := range networkForwards {
+			output, err := expr.Run(filterExpression, networkForward)
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredNetworkForwards = append(filteredNetworkForwards, networkForward)
+			}
+		}
+
+		return filteredNetworkForwards, nil
+	}
+
+	return networkForwards, nil
 }
 
 func (s networkForwardService) GetAllIDsWithFilter(ctx context.Context, filter NetworkForwardFilter) ([]int, error) {

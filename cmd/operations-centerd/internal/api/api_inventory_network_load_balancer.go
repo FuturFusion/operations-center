@@ -42,6 +42,11 @@ func registerInventoryNetworkLoadBalancerHandler(router *http.ServeMux, service 
 //	    description: Cluster name
 //	    type: string
 //	    example: cluster
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API network_load_balancer
@@ -91,6 +96,11 @@ func registerInventoryNetworkLoadBalancerHandler(router *http.ServeMux, service 
 //	    description: Cluster name
 //	    type: string
 //	    example: cluster
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API network_load_balancers
@@ -130,6 +140,10 @@ func (i *networkLoadBalancerHandler) networkLoadBalancersGet(r *http.Request) re
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+	}
+
+	if r.URL.Query().Get("filter") != "" {
+		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
 	}
 
 	if recursion == 1 {

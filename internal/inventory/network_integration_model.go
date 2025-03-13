@@ -34,12 +34,17 @@ func (m NetworkIntegration) Validate() error {
 type NetworkIntegrations []NetworkIntegration
 
 type NetworkIntegrationFilter struct {
-	Cluster *string
+	Cluster    *string
+	Expression *string
 }
 
 func (f NetworkIntegrationFilter) AppendToURLValues(query url.Values) url.Values {
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
+	}
+
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
 	}
 
 	return query

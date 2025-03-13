@@ -54,6 +54,11 @@ func registerInventory{{ .Name | pascalcase }}Handler(router *http.ServeMux, ser
 //	    type: string
 //	    example: default
 {{- end }}
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API {{ .Name }}
@@ -117,6 +122,11 @@ func registerInventory{{ .Name | pascalcase }}Handler(router *http.ServeMux, ser
 //	    type: string
 //	    example: default
 {{- end }}
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API {{ .PluralName }}
@@ -169,6 +179,10 @@ func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *htt
 		filter.Project = ptr.To(r.URL.Query().Get("project"))
 	}
 {{ end }}
+
+	if r.URL.Query().Get("filter") != "" {
+		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
+	}
 
 	if recursion == 1 {
 		// FIXME: Should we require a non empty filter with recursion?

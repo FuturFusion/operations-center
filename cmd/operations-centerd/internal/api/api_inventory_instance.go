@@ -52,6 +52,11 @@ func registerInventoryInstanceHandler(router *http.ServeMux, service inventory.I
 //	    description: Project name
 //	    type: string
 //	    example: default
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API instance
@@ -111,6 +116,11 @@ func registerInventoryInstanceHandler(router *http.ServeMux, service inventory.I
 //	    description: Project name
 //	    type: string
 //	    example: default
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API instances
@@ -158,6 +168,10 @@ func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
 
 	if r.URL.Query().Get("project") != "" {
 		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	}
+
+	if r.URL.Query().Get("filter") != "" {
+		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
 	}
 
 	if recursion == 1 {

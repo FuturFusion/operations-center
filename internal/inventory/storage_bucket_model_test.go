@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 )
 
 func TestStorageBucket_Validate(t *testing.T) {
@@ -118,6 +119,39 @@ func TestStorageBucket_Validate(t *testing.T) {
 			err := tc.image.Validate()
 
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestStorageBucket_Filter(t *testing.T) {
+	tests := []struct {
+		name   string
+		filter inventory.StorageBucketFilter
+
+		want string
+	}{
+		{
+			name:   "empty filter",
+			filter: inventory.StorageBucketFilter{},
+
+			want: ``,
+		},
+		{
+			name: "complete filter",
+			filter: inventory.StorageBucketFilter{
+				Cluster:    ptr.To("cluster"),
+				Server:     ptr.To("server"),
+				Project:    ptr.To("project"),
+				Expression: ptr.To("true"),
+			},
+
+			want: `cluster=cluster&filter=true&project=project&server=server`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, tc.filter.String())
 		})
 	}
 }

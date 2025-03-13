@@ -47,6 +47,11 @@ func registerInventoryNetworkHandler(router *http.ServeMux, service inventory.Ne
 //	    description: Project name
 //	    type: string
 //	    example: default
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API network
@@ -101,6 +106,11 @@ func registerInventoryNetworkHandler(router *http.ServeMux, service inventory.Ne
 //	    description: Project name
 //	    type: string
 //	    example: default
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API networks
@@ -144,6 +154,10 @@ func (i *networkHandler) networksGet(r *http.Request) response.Response {
 
 	if r.URL.Query().Get("project") != "" {
 		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	}
+
+	if r.URL.Query().Get("filter") != "" {
+		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
 	}
 
 	if recursion == 1 {

@@ -39,12 +39,17 @@ func (m NetworkForward) Validate() error {
 type NetworkForwards []NetworkForward
 
 type NetworkForwardFilter struct {
-	Cluster *string
+	Cluster    *string
+	Expression *string
 }
 
 func (f NetworkForwardFilter) AppendToURLValues(query url.Values) url.Values {
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
+	}
+
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
 	}
 
 	return query

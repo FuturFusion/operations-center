@@ -5,7 +5,11 @@ package inventory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
+
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -40,7 +44,43 @@ func NewNetworkZoneService(repo NetworkZoneRepo, clusterSvc ProvisioningClusterS
 }
 
 func (s networkZoneService) GetAllWithFilter(ctx context.Context, filter NetworkZoneFilter) (NetworkZones, error) {
-	return s.repo.GetAllWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(NetworkZone{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	networkZones, err := s.repo.GetAllWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredNetworkZones NetworkZones
+	if filter.Expression != nil {
+		for _, networkZone := range networkZones {
+			output, err := expr.Run(filterExpression, networkZone)
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredNetworkZones = append(filteredNetworkZones, networkZone)
+			}
+		}
+
+		return filteredNetworkZones, nil
+	}
+
+	return networkZones, nil
 }
 
 func (s networkZoneService) GetAllIDsWithFilter(ctx context.Context, filter NetworkZoneFilter) ([]int, error) {

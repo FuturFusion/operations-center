@@ -46,9 +46,10 @@ func (m StorageVolume) Validate() error {
 type StorageVolumes []StorageVolume
 
 type StorageVolumeFilter struct {
-	Cluster *string
-	Server  *string
-	Project *string
+	Cluster    *string
+	Server     *string
+	Project    *string
+	Expression *string
 }
 
 func (f StorageVolumeFilter) AppendToURLValues(query url.Values) url.Values {
@@ -57,11 +58,15 @@ func (f StorageVolumeFilter) AppendToURLValues(query url.Values) url.Values {
 	}
 
 	if f.Server != nil {
-		query.Add("server", *f.Project)
+		query.Add("server", *f.Server)
 	}
 
 	if f.Project != nil {
 		query.Add("project", *f.Project)
+	}
+
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
 	}
 
 	return query

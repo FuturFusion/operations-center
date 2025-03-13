@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 )
 
 func TestImage_Validate(t *testing.T) {
@@ -78,6 +79,38 @@ func TestImage_Validate(t *testing.T) {
 			err := tc.image.Validate()
 
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestImage_Filter(t *testing.T) {
+	tests := []struct {
+		name   string
+		filter inventory.ImageFilter
+
+		want string
+	}{
+		{
+			name:   "empty filter",
+			filter: inventory.ImageFilter{},
+
+			want: ``,
+		},
+		{
+			name: "complete filter",
+			filter: inventory.ImageFilter{
+				Cluster:    ptr.To("cluster"),
+				Project:    ptr.To("project"),
+				Expression: ptr.To("true"),
+			},
+
+			want: `cluster=cluster&filter=true&project=project`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, tc.filter.String())
 		})
 	}
 }

@@ -46,7 +46,8 @@ func (c *CmdNetworkForward) Command() *cobra.Command {
 
 // List network_forwards.
 type cmdNetworkForwardList struct {
-	flagFilterCluster string
+	flagFilterCluster    string
+	flagFilterExpression string
 
 	flagFormat string
 }
@@ -62,6 +63,7 @@ func (c *cmdNetworkForwardList) Command() *cobra.Command {
 	cmd.RunE = c.Run
 
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
+	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
@@ -82,6 +84,10 @@ func (c *cmdNetworkForwardList) Run(cmd *cobra.Command, args []string) error {
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = ptr.To(c.flagFilterCluster)
+	}
+
+	if c.flagFilterExpression != "" {
+		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
 	// Client call

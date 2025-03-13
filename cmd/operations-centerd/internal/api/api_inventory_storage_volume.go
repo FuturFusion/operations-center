@@ -52,6 +52,11 @@ func registerInventoryStorageVolumeHandler(router *http.ServeMux, service invent
 //	    description: Project name
 //	    type: string
 //	    example: default
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API storage_volume
@@ -111,6 +116,11 @@ func registerInventoryStorageVolumeHandler(router *http.ServeMux, service invent
 //	    description: Project name
 //	    type: string
 //	    example: default
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API storage_volumes
@@ -158,6 +168,10 @@ func (i *storageVolumeHandler) storageVolumesGet(r *http.Request) response.Respo
 
 	if r.URL.Query().Get("project") != "" {
 		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	}
+
+	if r.URL.Query().Get("filter") != "" {
+		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
 	}
 
 	if recursion == 1 {

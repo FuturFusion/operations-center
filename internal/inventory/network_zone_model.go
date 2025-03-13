@@ -39,8 +39,9 @@ func (m NetworkZone) Validate() error {
 type NetworkZones []NetworkZone
 
 type NetworkZoneFilter struct {
-	Cluster *string
-	Project *string
+	Cluster    *string
+	Project    *string
+	Expression *string
 }
 
 func (f NetworkZoneFilter) AppendToURLValues(query url.Values) url.Values {
@@ -50,6 +51,10 @@ func (f NetworkZoneFilter) AppendToURLValues(query url.Values) url.Values {
 
 	if f.Project != nil {
 		query.Add("project", *f.Project)
+	}
+
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
 	}
 
 	return query

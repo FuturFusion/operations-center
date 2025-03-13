@@ -39,12 +39,17 @@ func (m NetworkPeer) Validate() error {
 type NetworkPeers []NetworkPeer
 
 type NetworkPeerFilter struct {
-	Cluster *string
+	Cluster    *string
+	Expression *string
 }
 
 func (f NetworkPeerFilter) AppendToURLValues(query url.Values) url.Values {
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
+	}
+
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
 	}
 
 	return query

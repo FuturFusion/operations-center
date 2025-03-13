@@ -47,6 +47,11 @@ func registerInventoryNetworkZoneHandler(router *http.ServeMux, service inventor
 //	    description: Project name
 //	    type: string
 //	    example: default
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API network_zone
@@ -101,6 +106,11 @@ func registerInventoryNetworkZoneHandler(router *http.ServeMux, service inventor
 //	    description: Project name
 //	    type: string
 //	    example: default
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API network_zones
@@ -144,6 +154,10 @@ func (i *networkZoneHandler) networkZonesGet(r *http.Request) response.Response 
 
 	if r.URL.Query().Get("project") != "" {
 		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	}
+
+	if r.URL.Query().Get("filter") != "" {
+		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
 	}
 
 	if recursion == 1 {

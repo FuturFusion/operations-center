@@ -5,8 +5,11 @@ package inventory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -56,7 +59,43 @@ func NewNetworkPeerService(repo NetworkPeerRepo, clusterSvc ProvisioningClusterS
 }
 
 func (s networkPeerService) GetAllWithFilter(ctx context.Context, filter NetworkPeerFilter) (NetworkPeers, error) {
-	return s.repo.GetAllWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(NetworkPeer{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	networkPeers, err := s.repo.GetAllWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredNetworkPeers NetworkPeers
+	if filter.Expression != nil {
+		for _, networkPeer := range networkPeers {
+			output, err := expr.Run(filterExpression, networkPeer)
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredNetworkPeers = append(filteredNetworkPeers, networkPeer)
+			}
+		}
+
+		return filteredNetworkPeers, nil
+	}
+
+	return networkPeers, nil
 }
 
 func (s networkPeerService) GetAllIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]int, error) {
