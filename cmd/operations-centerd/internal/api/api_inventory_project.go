@@ -29,41 +29,41 @@ func registerInventoryProjectHandler(router *http.ServeMux, service inventory.Pr
 
 // swagger:operation GET /1.0/inventory/projects projects projects_get
 //
-//		Get the project
+//	Get the project
 //
-//		Returns a list of project (list of relative URLs).
+//	Returns a list of project (list of relative URLs).
 //
-//		---
-//		produces:
-//		  - application/json
-//		parameters:
-//		  - in: query
-//		    name: cluster
-//		    description: Cluster name
-//		    type: string
-//		    example: cluster
-//		responses:
-//		  "200":
-//		    description: API project
-//		    schema:
-//		      type: object
-//		      description: Sync response
-//		      properties:
-//		        type:
-//		          type: string
-//		          description: Response type
-//		          example: sync
-//		        status:
-//		          type: string
-//		          description: Status description
-//		          example: Success
-//		        status_code:
-//		          type: integer
-//		          description: Status code
-//		          example: 200
-//		        metadata:
-//		          type: array
-//		          description: List of project
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	responses:
+//	  "200":
+//	    description: API project
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of project
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -71,10 +71,10 @@ func registerInventoryProjectHandler(router *http.ServeMux, service inventory.Pr
 //	                   "/1.0/inventory/projects/1",
 //	                   "/1.0/inventory/projects/2"
 //	                 ]
-//		  "403":
-//		    $ref: "#/responses/Forbidden"
-//		  "500":
-//		    $ref: "#/responses/InternalServerError"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 
 // swagger:operation GET /1.0/provisioning/projects?recursion=1 projects projects_get_recursion
 //
@@ -85,6 +85,12 @@ func registerInventoryProjectHandler(router *http.ServeMux, service inventory.Pr
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
 //	responses:
 //	  "200":
 //	    description: API projects

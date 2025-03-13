@@ -29,41 +29,41 @@ func registerInventoryNetworkForwardHandler(router *http.ServeMux, service inven
 
 // swagger:operation GET /1.0/inventory/network_forwards network_forwards network_forwards_get
 //
-//		Get the network_forward
+//	Get the network_forward
 //
-//		Returns a list of network_forward (list of relative URLs).
+//	Returns a list of network_forward (list of relative URLs).
 //
-//		---
-//		produces:
-//		  - application/json
-//		parameters:
-//		  - in: query
-//		    name: cluster
-//		    description: Cluster name
-//		    type: string
-//		    example: cluster
-//		responses:
-//		  "200":
-//		    description: API network_forward
-//		    schema:
-//		      type: object
-//		      description: Sync response
-//		      properties:
-//		        type:
-//		          type: string
-//		          description: Response type
-//		          example: sync
-//		        status:
-//		          type: string
-//		          description: Status description
-//		          example: Success
-//		        status_code:
-//		          type: integer
-//		          description: Status code
-//		          example: 200
-//		        metadata:
-//		          type: array
-//		          description: List of network_forward
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	responses:
+//	  "200":
+//	    description: API network_forward
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of network_forward
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -71,10 +71,10 @@ func registerInventoryNetworkForwardHandler(router *http.ServeMux, service inven
 //	                   "/1.0/inventory/network_forwards/1",
 //	                   "/1.0/inventory/network_forwards/2"
 //	                 ]
-//		  "403":
-//		    $ref: "#/responses/Forbidden"
-//		  "500":
-//		    $ref: "#/responses/InternalServerError"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 
 // swagger:operation GET /1.0/provisioning/network_forwards?recursion=1 network_forwards network_forwards_get_recursion
 //
@@ -85,6 +85,12 @@ func registerInventoryNetworkForwardHandler(router *http.ServeMux, service inven
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
 //	responses:
 //	  "200":
 //	    description: API network_forwards

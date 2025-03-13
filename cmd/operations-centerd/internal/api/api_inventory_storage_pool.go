@@ -29,41 +29,41 @@ func registerInventoryStoragePoolHandler(router *http.ServeMux, service inventor
 
 // swagger:operation GET /1.0/inventory/storage_pools storage_pools storage_pools_get
 //
-//		Get the storage_pool
+//	Get the storage_pool
 //
-//		Returns a list of storage_pool (list of relative URLs).
+//	Returns a list of storage_pool (list of relative URLs).
 //
-//		---
-//		produces:
-//		  - application/json
-//		parameters:
-//		  - in: query
-//		    name: cluster
-//		    description: Cluster name
-//		    type: string
-//		    example: cluster
-//		responses:
-//		  "200":
-//		    description: API storage_pool
-//		    schema:
-//		      type: object
-//		      description: Sync response
-//		      properties:
-//		        type:
-//		          type: string
-//		          description: Response type
-//		          example: sync
-//		        status:
-//		          type: string
-//		          description: Status description
-//		          example: Success
-//		        status_code:
-//		          type: integer
-//		          description: Status code
-//		          example: 200
-//		        metadata:
-//		          type: array
-//		          description: List of storage_pool
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	responses:
+//	  "200":
+//	    description: API storage_pool
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of storage_pool
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -71,10 +71,10 @@ func registerInventoryStoragePoolHandler(router *http.ServeMux, service inventor
 //	                   "/1.0/inventory/storage_pools/1",
 //	                   "/1.0/inventory/storage_pools/2"
 //	                 ]
-//		  "403":
-//		    $ref: "#/responses/Forbidden"
-//		  "500":
-//		    $ref: "#/responses/InternalServerError"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 
 // swagger:operation GET /1.0/provisioning/storage_pools?recursion=1 storage_pools storage_pools_get_recursion
 //
@@ -85,6 +85,12 @@ func registerInventoryStoragePoolHandler(router *http.ServeMux, service inventor
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
 //	responses:
 //	  "200":
 //	    description: API storage_pools

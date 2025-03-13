@@ -29,46 +29,46 @@ func registerInventoryProfileHandler(router *http.ServeMux, service inventory.Pr
 
 // swagger:operation GET /1.0/inventory/profiles profiles profiles_get
 //
-//		Get the profile
+//	Get the profile
 //
-//		Returns a list of profile (list of relative URLs).
+//	Returns a list of profile (list of relative URLs).
 //
-//		---
-//		produces:
-//		  - application/json
-//		parameters:
-//		  - in: query
-//		    name: cluster
-//		    description: Cluster name
-//		    type: string
-//		    example: cluster
-//		  - in: query
-//		    name: project
-//		    description: Project name
-//		    type: string
-//		    example: default
-//		responses:
-//		  "200":
-//		    description: API profile
-//		    schema:
-//		      type: object
-//		      description: Sync response
-//		      properties:
-//		        type:
-//		          type: string
-//		          description: Response type
-//		          example: sync
-//		        status:
-//		          type: string
-//		          description: Status description
-//		          example: Success
-//		        status_code:
-//		          type: integer
-//		          description: Status code
-//		          example: 200
-//		        metadata:
-//		          type: array
-//		          description: List of profile
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
+//	responses:
+//	  "200":
+//	    description: API profile
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of profile
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -76,10 +76,10 @@ func registerInventoryProfileHandler(router *http.ServeMux, service inventory.Pr
 //	                   "/1.0/inventory/profiles/1",
 //	                   "/1.0/inventory/profiles/2"
 //	                 ]
-//		  "403":
-//		    $ref: "#/responses/Forbidden"
-//		  "500":
-//		    $ref: "#/responses/InternalServerError"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 
 // swagger:operation GET /1.0/provisioning/profiles?recursion=1 profiles profiles_get_recursion
 //
@@ -90,6 +90,17 @@ func registerInventoryProfileHandler(router *http.ServeMux, service inventory.Pr
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
 //	responses:
 //	  "200":
 //	    description: API profiles

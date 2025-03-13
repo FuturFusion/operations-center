@@ -29,51 +29,51 @@ func registerInventoryStorageVolumeHandler(router *http.ServeMux, service invent
 
 // swagger:operation GET /1.0/inventory/storage_volumes storage_volumes storage_volumes_get
 //
-//		Get the storage_volume
+//	Get the storage_volume
 //
-//		Returns a list of storage_volume (list of relative URLs).
+//	Returns a list of storage_volume (list of relative URLs).
 //
-//		---
-//		produces:
-//		  - application/json
-//		parameters:
-//		  - in: query
-//		    name: cluster
-//		    description: Cluster name
-//		    type: string
-//		    example: cluster
-//		  - in: query
-//		    name: server
-//		    description: Server name
-//		    type: string
-//		    example: localhost
-//		  - in: query
-//		    name: project
-//		    description: Project name
-//		    type: string
-//		    example: default
-//		responses:
-//		  "200":
-//		    description: API storage_volume
-//		    schema:
-//		      type: object
-//		      description: Sync response
-//		      properties:
-//		        type:
-//		          type: string
-//		          description: Response type
-//		          example: sync
-//		        status:
-//		          type: string
-//		          description: Status description
-//		          example: Success
-//		        status_code:
-//		          type: integer
-//		          description: Status code
-//		          example: 200
-//		        metadata:
-//		          type: array
-//		          description: List of storage_volume
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: server
+//	    description: Server name
+//	    type: string
+//	    example: localhost
+//	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
+//	responses:
+//	  "200":
+//	    description: API storage_volume
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of storage_volume
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -81,10 +81,10 @@ func registerInventoryStorageVolumeHandler(router *http.ServeMux, service invent
 //	                   "/1.0/inventory/storage_volumes/1",
 //	                   "/1.0/inventory/storage_volumes/2"
 //	                 ]
-//		  "403":
-//		    $ref: "#/responses/Forbidden"
-//		  "500":
-//		    $ref: "#/responses/InternalServerError"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 
 // swagger:operation GET /1.0/provisioning/storage_volumes?recursion=1 storage_volumes storage_volumes_get_recursion
 //
@@ -95,6 +95,22 @@ func registerInventoryStorageVolumeHandler(router *http.ServeMux, service invent
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: server
+//	    description: Server name
+//	    type: string
+//	    example: localhost
+//	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
 //	responses:
 //	  "200":
 //	    description: API storage_volumes
