@@ -69,6 +69,69 @@ RETURNING id, :cluster_name, {{ if .ServerIDByLocation -}} :server_name, {{ end 
 	return scan{{ .Name | pascalcase }}(row)
 }
 
+func (r {{ .Name | camelcase }}) GetAllWithFilter(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) (inventory.{{ .PluralName | pascalcase }}, error) {
+	const sqlStmt = `
+SELECT
+  {{ .PluralName }}.id, clusters.name, {{ if .ServerIDByLocation -}} servers.name, {{ end -}} {{ if .HasProject -}} {{ .PluralName }}.project_name, {{ end -}}{{ if .HasParent -}} {{ .PluralName }}.{{ .ParentName }}_name, {{ end -}} {{ .PluralName }}.name {{- range .ExtraAttributes }}, {{ $.PluralName }}.{{ .Name }} {{- end}}, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
+FROM {{ .PluralName }}
+  INNER JOIN clusters ON {{ .PluralName }}.cluster_id = clusters.id
+{{- if .ServerIDByLocation }}
+  INNER JOIN servers ON {{ .PluralName }}.server_id = servers.id
+{{- end }}
+WHERE true
+%s
+ORDER BY clusters.name, {{ if .ServerIDByLocation -}} servers.name, {{ end -}} {{ .PluralName }}.name
+`
+
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+{{ if .ServerIDByLocation }}
+	if filter.Server != nil {
+		whereClause = append(whereClause, ` AND servers.name = :server_name`)
+		args = append(args, sql.Named("server_name", filter.Server))
+	}
+{{ end }}
+
+{{ if .HasProject }}
+	if filter.Project != nil {
+		whereClause = append(whereClause, ` AND {{ .PluralName }}.project_name = :project`)
+		args = append(args, sql.Named("project", filter.Project))
+	}
+{{ end }}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+	if err != nil {
+		return nil, sqlite.MapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var {{ .PluralName | camelcase }} inventory.{{ .PluralName | pascalcase }}
+	for rows.Next() {
+		var {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}
+		{{ .Name | camelcase }}, err = scan{{ .Name | pascalcase }}(rows)
+		if err != nil {
+			return nil, sqlite.MapErr(err)
+		}
+
+		{{ .PluralName | camelcase }} = append({{ .PluralName | camelcase }}, {{ .Name | camelcase }})
+	}
+
+	if rows.Err() != nil {
+		return nil, sqlite.MapErr(rows.Err())
+	}
+
+	return {{ .PluralName | camelcase }}, nil
+}
+
 func (r {{ .Name | camelcase }}) GetAllIDsWithFilter(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) ([]int, error) {
 	const sqlStmt = `
 SELECT {{ .PluralName }}.id

@@ -7,6 +7,7 @@ import (
 )
 
 type {{ .Name | pascalcase }}Service interface {
+	GetAllWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) ({{ .PluralName | pascalcase }}, error)
 	GetAllIDsWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) ([]int, error)
 	GetByID(ctx context.Context, id int) ({{ .Name | pascalcase }}, error)
 	ResyncByID(ctx context.Context, id int) error
@@ -14,6 +15,7 @@ type {{ .Name | pascalcase }}Service interface {
 }
 
 type {{ .Name | pascalcase }}Repo interface {
+	GetAllWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) ({{ .PluralName | pascalcase }}, error)
 	GetAllIDsWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) ([]int, error)
 	GetByID(ctx context.Context, id int) ({{ .Name | pascalcase }}, error)
 	Create(ctx context.Context, {{ .Name | camelcase }} {{ .Name | pascalcase }}) ({{ .Name | pascalcase }}, error)

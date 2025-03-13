@@ -1,0 +1,178 @@
+package inventory
+
+import (
+	"encoding/json"
+	"fmt"
+	"strconv"
+
+	"github.com/spf13/cobra"
+
+	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
+	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/render"
+	"github.com/FuturFusion/operations-center/internal/sort"
+)
+
+type Cmd{{ .Name | pascalcase }} struct{}
+
+func (c *Cmd{{ .Name | pascalcase }}) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "{{ .Name }}"
+	cmd.Short = "Interact with {{ .PluralName }}"
+	cmd.Long = `Description:
+  Interact with {{ .PluralName }}
+
+  Configure {{ .PluralName }} for use by operations center.
+`
+
+	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
+	cmd.Args = cobra.NoArgs
+	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
+
+	// List
+	{{ .Name | camelcase }}ListCmd := cmd{{ .Name | pascalcase }}List{}
+	cmd.AddCommand({{ .Name | camelcase }}ListCmd.Command())
+
+	// Show
+	{{ .Name | camelcase }}ShowCmd := cmd{{ .Name | pascalcase }}Show{}
+	cmd.AddCommand({{ .Name | camelcase }}ShowCmd.Command())
+
+	return cmd
+}
+
+// List {{ .PluralName }}.
+type cmd{{ .Name | pascalcase }}List struct {
+	flagFormat string
+}
+
+func (c *cmd{{ .Name | pascalcase }}List) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "list"
+	cmd.Short = "List available {{ .PluralName }}"
+	cmd.Long = `Description:
+  List the available {{ .PluralName }}
+`
+
+	cmd.RunE = c.Run
+
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
+	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
+		return validate.FormatFlag(cmd.Flag("format").Value.String())
+	}
+
+	return cmd
+}
+
+func (c *cmd{{ .Name | pascalcase }}List) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 0, 0)
+	if exit {
+		return err
+	}
+
+	// Client call
+	ocClient := client.New()
+
+	{{ .PluralName | camelcase }}, err := ocClient.GetWithFilter{{ .PluralName | pascalcase }}(inventory.{{ .Name | pascalcase }}Filter{})
+	if err != nil {
+		return err
+	}
+
+	// Render the table.
+	header := []string{
+		"ID",
+		"Cluster",
+{{- if .ServerIDByLocation }}
+		"Server",
+{{- end }}
+{{- if .HasProject }}
+		"Project Name",
+{{- end }}
+{{- if .HasParent }}
+		"{{ .ParentName | titlecase }} Name",
+{{- end }}
+		"Name",
+		"Last Updated",
+	}
+
+	data := [][]string{}
+
+	for _, {{ .Name | camelcase }} := range {{ .PluralName | camelcase }} {
+		data = append(data, []string{
+			strconv.FormatInt(int64({{ .Name | camelcase }}.ID), 10),
+			{{ .Name | camelcase }}.Cluster,
+{{- if .ServerIDByLocation }}
+			{{ .Name | camelcase }}.Server,
+{{- end }}
+{{- if .HasProject }}
+			{{ .Name | camelcase }}.ProjectName,
+{{- end }}
+{{- if .HasParent }}
+			{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name,
+{{- end }}
+			{{ .Name | camelcase }}.Name,
+			{{ .Name | camelcase }}.LastUpdated.String(),
+		})
+	}
+
+	sort.ColumnsNaturally(data)
+
+	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, {{ .PluralName | camelcase }})
+}
+
+// Show {{ .Name }}.
+type cmd{{ .Name | pascalcase }}Show struct{}
+
+func (c *cmd{{ .Name | pascalcase }}Show) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "show <name>"
+	cmd.Short = "Show information about a {{ .Name }}"
+	cmd.Long = `Description:
+  Show information about a {{ .Name }}.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmd{{ .Name | pascalcase }}Show) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	name := args[0]
+
+	// Client call
+	ocClient := client.New()
+
+	{{ .Name | camelcase }}, err := ocClient.Get{{ .Name | pascalcase }}(name)
+	if err != nil {
+		return err
+	}
+
+	objectJSON, err := json.MarshalIndent({{ .Name | camelcase }}.Object, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("ID: %d\n", {{ .Name | camelcase }}.ID)
+	fmt.Printf("Cluster: %s\n", {{ .Name | camelcase }}.Cluster)
+{{- if .ServerIDByLocation }}
+	fmt.Printf("Server: %s\n", {{ .Name | camelcase }}.Server)
+{{- end }}
+{{- if .HasProject }}
+	fmt.Printf("Project Name: %s\n", {{ .Name | camelcase }}.ProjectName)
+{{- end }}
+{{- if .HasParent }}
+	fmt.Printf("{{ .ParentName | titlecase }} Name: %s\n", {{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name)
+{{- end }}
+	fmt.Printf("Name: %s\n", {{ .Name | camelcase }}.Name)
+	fmt.Printf("Last Updated: %s\n", {{ .Name | camelcase }}.LastUpdated.String())
+	fmt.Printf("Object:\n%s\n", objectJSON)
+
+	return nil
+}
