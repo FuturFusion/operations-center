@@ -194,7 +194,12 @@ DELETE FROM {{ .PluralName }} WHERE cluster_id=(SELECT cluster_id FROM _lookup);
 func (r {{ .Name | camelcase }}) UpdateByID(ctx context.Context, in inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
 	const sqlStmt = `
 WITH _lookup AS (
-  SELECT clusters.id AS cluster_id {{ if .ServerIDByLocation -}} , servers.id AS server_id {{ end -}} FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name {{- if .ServerIDByLocation }} AND servers.name = :server_name {{- end }}
+  SELECT id AS cluster_id {{ if .ServerIDByLocation -}}, (
+    SELECT servers.id FROM clusters
+      LEFT JOIN servers ON servers.cluster_id = clusters.id
+    WHERE clusters.name = :cluster_name AND servers.name = :server_name
+  ) AS server_id {{ end -}}
+  FROM clusters WHERE clusters.name = :cluster_name
 )
 UPDATE {{ .PluralName }} SET cluster_id=(SELECT cluster_id FROM _lookup), {{ if .ServerIDByLocation -}} server_id=(SELECT server_id FROM _lookup), {{ end -}} {{ if .HasProject -}} project_name=:project_name, {{ end -}} {{ if .HasParent -}} {{ .ParentName }}_name=:{{ .ParentName }}_name, {{ end -}} name=:name {{- range .ExtraAttributes }}, {{ .Name }}=:{{ .Name }} {{- end}}, object=:object, last_updated=:last_updated
 WHERE id=:id

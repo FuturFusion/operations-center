@@ -71,6 +71,7 @@ storage_pool:
 
 storage_volume:
   server-id-by-location: true
+  is-server-id-optional: true
   parent: storage_pool
   incus-get-all-method: GetStoragePoolVolumesAllProjects
   incus-get-method: GetStoragePoolVolume

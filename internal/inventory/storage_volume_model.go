@@ -27,10 +27,6 @@ func (m StorageVolume) Validate() error {
 		return domain.NewValidationErrf("Invalid StorageVolume, cluster can not be empty")
 	}
 
-	if m.Server == "" {
-		return domain.NewValidationErrf("Invalid StorageVolume, server can not be empty")
-	}
-
 	if m.Name == "" {
 		return domain.NewValidationErrf("Invalid StorageVolume, name can not be empty")
 	}

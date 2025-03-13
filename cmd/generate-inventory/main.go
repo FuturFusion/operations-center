@@ -151,6 +151,7 @@ func main() {
 			HasProject             bool
 			UsesEmbeddedPostType   bool
 			ServerIDByLocation     bool
+			IsServerIDOptional     bool
 			IncusGetAllMethod      string
 			IncusGetMethod         string
 			HasParent              bool
@@ -167,6 +168,7 @@ func main() {
 			HasProject:             !entity.OmitProject,
 			UsesEmbeddedPostType:   entity.UsesEmbeddedPostType,
 			ServerIDByLocation:     entity.ServerIDByLocation,
+			IsServerIDOptional:     entity.IsServerIDOptional,
 			IncusGetAllMethod:      entity.IncusGetAllMethod,
 			IncusGetMethod:         entity.IncusGetMethod,
 			HasParent:              entity.ParentName != "",

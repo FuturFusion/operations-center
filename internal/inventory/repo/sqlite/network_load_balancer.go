@@ -165,7 +165,7 @@ DELETE FROM network_load_balancers WHERE cluster_id=(SELECT cluster_id FROM _loo
 func (r networkLoadBalancer) UpdateByID(ctx context.Context, in inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
 	const sqlStmt = `
 WITH _lookup AS (
-  SELECT clusters.id AS cluster_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name
+  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
 UPDATE network_load_balancers SET cluster_id=(SELECT cluster_id FROM _lookup), network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id

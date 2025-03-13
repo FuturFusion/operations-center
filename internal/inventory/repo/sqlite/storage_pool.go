@@ -164,7 +164,7 @@ DELETE FROM storage_pools WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
 func (r storagePool) UpdateByID(ctx context.Context, in inventory.StoragePool) (inventory.StoragePool, error) {
 	const sqlStmt = `
 WITH _lookup AS (
-  SELECT clusters.id AS cluster_id FROM clusters LEFT JOIN servers ON clusters.id = servers.cluster_id WHERE clusters.name = :cluster_name
+  SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
 UPDATE storage_pools SET cluster_id=(SELECT cluster_id FROM _lookup), name=:name, object=:object, last_updated=:last_updated
 WHERE id=:id

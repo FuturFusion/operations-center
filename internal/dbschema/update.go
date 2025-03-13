@@ -180,7 +180,7 @@ CREATE TABLE storage_pools (
 CREATE TABLE storage_volumes (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
-  server_id INTEGER NOT NULL,
+  server_id INTEGER,
   project_name TEXT NOT NULL,
   storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,
@@ -401,7 +401,7 @@ CREATE TABLE storage_pools (
 CREATE TABLE storage_volumes (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
-  server_id INTEGER NOT NULL,
+  server_id INTEGER,
   project_name TEXT NOT NULL,
   storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,
