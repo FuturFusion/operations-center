@@ -51,6 +51,20 @@ func (_d NetworkZoneServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Conte
 	return _d.base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.NetworkZoneService.
+func (_d NetworkZoneServiceWithPrometheus) GetAllWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (networkZones inventory.NetworkZones, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		networkZoneServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.NetworkZoneService.
 func (_d NetworkZoneServiceWithPrometheus) GetByID(ctx context.Context, id int) (networkZone inventory.NetworkZone, err error) {
 	_since := time.Now()

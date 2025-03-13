@@ -9,6 +9,7 @@ import (
 )
 
 type NetworkIntegrationService interface {
+	GetAllWithFilter(ctx context.Context, filter NetworkIntegrationFilter) (NetworkIntegrations, error)
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkIntegrationFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkIntegration, error)
 	ResyncByID(ctx context.Context, id int) error
@@ -16,6 +17,7 @@ type NetworkIntegrationService interface {
 }
 
 type NetworkIntegrationRepo interface {
+	GetAllWithFilter(ctx context.Context, filter NetworkIntegrationFilter) (NetworkIntegrations, error)
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkIntegrationFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkIntegration, error)
 	Create(ctx context.Context, networkIntegration NetworkIntegration) (NetworkIntegration, error)

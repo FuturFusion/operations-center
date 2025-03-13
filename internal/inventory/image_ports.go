@@ -9,6 +9,7 @@ import (
 )
 
 type ImageService interface {
+	GetAllWithFilter(ctx context.Context, filter ImageFilter) (Images, error)
 	GetAllIDsWithFilter(ctx context.Context, filter ImageFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Image, error)
 	ResyncByID(ctx context.Context, id int) error
@@ -16,6 +17,7 @@ type ImageService interface {
 }
 
 type ImageRepo interface {
+	GetAllWithFilter(ctx context.Context, filter ImageFilter) (Images, error)
 	GetAllIDsWithFilter(ctx context.Context, filter ImageFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Image, error)
 	Create(ctx context.Context, image Image) (Image, error)

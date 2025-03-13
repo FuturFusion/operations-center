@@ -32,6 +32,9 @@ var _ inventory.NetworkForwardRepo = &NetworkForwardRepoMock{}
 //			GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkForwardFilter) ([]int, error) {
 //				panic("mock out the GetAllIDsWithFilter method")
 //			},
+//			GetAllWithFilterFunc: func(ctx context.Context, filter inventory.NetworkForwardFilter) (inventory.NetworkForwards, error) {
+//				panic("mock out the GetAllWithFilter method")
+//			},
 //			GetByIDFunc: func(ctx context.Context, id int) (inventory.NetworkForward, error) {
 //				panic("mock out the GetByID method")
 //			},
@@ -56,6 +59,9 @@ type NetworkForwardRepoMock struct {
 
 	// GetAllIDsWithFilterFunc mocks the GetAllIDsWithFilter method.
 	GetAllIDsWithFilterFunc func(ctx context.Context, filter inventory.NetworkForwardFilter) ([]int, error)
+
+	// GetAllWithFilterFunc mocks the GetAllWithFilter method.
+	GetAllWithFilterFunc func(ctx context.Context, filter inventory.NetworkForwardFilter) (inventory.NetworkForwards, error)
 
 	// GetByIDFunc mocks the GetByID method.
 	GetByIDFunc func(ctx context.Context, id int) (inventory.NetworkForward, error)
@@ -93,6 +99,13 @@ type NetworkForwardRepoMock struct {
 			// Filter is the filter argument value.
 			Filter inventory.NetworkForwardFilter
 		}
+		// GetAllWithFilter holds details about calls to the GetAllWithFilter method.
+		GetAllWithFilter []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Filter is the filter argument value.
+			Filter inventory.NetworkForwardFilter
+		}
 		// GetByID holds details about calls to the GetByID method.
 		GetByID []struct {
 			// Ctx is the ctx argument value.
@@ -112,6 +125,7 @@ type NetworkForwardRepoMock struct {
 	lockDeleteByClusterName sync.RWMutex
 	lockDeleteByID          sync.RWMutex
 	lockGetAllIDsWithFilter sync.RWMutex
+	lockGetAllWithFilter    sync.RWMutex
 	lockGetByID             sync.RWMutex
 	lockUpdateByID          sync.RWMutex
 }
@@ -257,6 +271,42 @@ func (mock *NetworkForwardRepoMock) GetAllIDsWithFilterCalls() []struct {
 	mock.lockGetAllIDsWithFilter.RLock()
 	calls = mock.calls.GetAllIDsWithFilter
 	mock.lockGetAllIDsWithFilter.RUnlock()
+	return calls
+}
+
+// GetAllWithFilter calls GetAllWithFilterFunc.
+func (mock *NetworkForwardRepoMock) GetAllWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (inventory.NetworkForwards, error) {
+	if mock.GetAllWithFilterFunc == nil {
+		panic("NetworkForwardRepoMock.GetAllWithFilterFunc: method is nil but NetworkForwardRepo.GetAllWithFilter was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Filter inventory.NetworkForwardFilter
+	}{
+		Ctx:    ctx,
+		Filter: filter,
+	}
+	mock.lockGetAllWithFilter.Lock()
+	mock.calls.GetAllWithFilter = append(mock.calls.GetAllWithFilter, callInfo)
+	mock.lockGetAllWithFilter.Unlock()
+	return mock.GetAllWithFilterFunc(ctx, filter)
+}
+
+// GetAllWithFilterCalls gets all the calls that were made to GetAllWithFilter.
+// Check the length with:
+//
+//	len(mockedNetworkForwardRepo.GetAllWithFilterCalls())
+func (mock *NetworkForwardRepoMock) GetAllWithFilterCalls() []struct {
+	Ctx    context.Context
+	Filter inventory.NetworkForwardFilter
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Filter inventory.NetworkForwardFilter
+	}
+	mock.lockGetAllWithFilter.RLock()
+	calls = mock.calls.GetAllWithFilter
+	mock.lockGetAllWithFilter.RUnlock()
 	return calls
 }
 

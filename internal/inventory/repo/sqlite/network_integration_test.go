@@ -115,6 +115,13 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	require.Len(t, networkIntegrationIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, networkIntegrationIDs)
 
+	// Ensure we have two entries without filter
+	dbNetworkIntegration, err := networkIntegration.GetAllWithFilter(ctx, inventory.NetworkIntegrationFilter{})
+	require.NoError(t, err)
+	require.Len(t, dbNetworkIntegration, 2)
+	require.Equal(t, networkIntegrationA.Name, dbNetworkIntegration[0].Name)
+	require.Equal(t, networkIntegrationB.Name, dbNetworkIntegration[1].Name)
+
 	// Ensure we have one entry with filter for cluster, server and project
 	networkIntegrationIDs, err = networkIntegration.GetAllIDsWithFilter(ctx, inventory.NetworkIntegrationFilter{
 		Cluster: ptr.To("one"),
@@ -122,6 +129,14 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, networkIntegrationIDs, 1)
 	require.ElementsMatch(t, []int{1}, networkIntegrationIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	dbNetworkIntegration, err = networkIntegration.GetAllWithFilter(ctx, inventory.NetworkIntegrationFilter{
+		Cluster: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, networkIntegrationIDs, 1)
+	require.Equal(t, "one", dbNetworkIntegration[0].Name)
 
 	// Should get back networkIntegrationA unchanged.
 	networkIntegrationA.Cluster = "one"

@@ -75,11 +75,77 @@ func registerInventoryNetworkPeerHandler(router *http.ServeMux, service inventor
 //		    $ref: "#/responses/Forbidden"
 //		  "500":
 //		    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/provisioning/network_peers?recursion=1 network_peers network_peers_get_recursion
+//
+//	Get the network_peers
+//
+//	Returns a list of network_peers (structs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API network_peers
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of network_peers
+//	          items:
+//	            $ref: "#/definitions/networkPeer"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func (i *networkPeerHandler) networkPeersGet(r *http.Request) response.Response {
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
+
 	var filter inventory.NetworkPeerFilter
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+	}
+
+	if recursion == 1 {
+		// FIXME: Should we require a non empty filter with recursion?
+		networkPeers, err := i.service.GetAllWithFilter(r.Context(), filter)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		result := make([]api.NetworkPeer, 0, len(networkPeers))
+		for _, networkPeer := range networkPeers {
+			result = append(result, api.NetworkPeer{
+				ID:          networkPeer.ID,
+				Cluster:     networkPeer.Cluster,
+				NetworkName: networkPeer.NetworkName,
+				Name:        networkPeer.Name,
+				Object:      networkPeer.Object,
+				LastUpdated: networkPeer.LastUpdated,
+			})
+		}
+
+		return response.SyncResponse(true, result)
 	}
 
 	networkPeerIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)

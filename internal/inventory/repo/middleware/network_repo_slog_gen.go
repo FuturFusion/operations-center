@@ -29,7 +29,7 @@ func NewNetworkRepoWithSlog(base inventory.NetworkRepo, log *slog.Logger) Networ
 func (_d NetworkRepoWithSlog) Create(ctx context.Context, network inventory.Network) (network1 inventory.Network, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("network", network),
 		)
@@ -60,7 +60,7 @@ func (_d NetworkRepoWithSlog) Create(ctx context.Context, network inventory.Netw
 func (_d NetworkRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)
@@ -90,7 +90,7 @@ func (_d NetworkRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster s
 func (_d NetworkRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -120,7 +120,7 @@ func (_d NetworkRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error
 func (_d NetworkRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -147,11 +147,42 @@ func (_d NetworkRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter in
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.NetworkRepo.
+func (_d NetworkRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkFilter) (networks inventory.Networks, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.Debug("=> calling GetAllWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("networks", networks),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method GetAllWithFilter returned an error")
+		} else {
+			log.Debug("<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.NetworkRepo.
 func (_d NetworkRepoWithSlog) GetByID(ctx context.Context, id int) (network inventory.Network, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -182,7 +213,7 @@ func (_d NetworkRepoWithSlog) GetByID(ctx context.Context, id int) (network inve
 func (_d NetworkRepoWithSlog) UpdateByID(ctx context.Context, network inventory.Network) (network1 inventory.Network, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("network", network),
 		)

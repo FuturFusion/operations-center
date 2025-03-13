@@ -85,7 +85,51 @@ func registerInventoryStorageBucketHandler(router *http.ServeMux, service invent
 //		    $ref: "#/responses/Forbidden"
 //		  "500":
 //		    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/provisioning/storage_buckets?recursion=1 storage_buckets storage_buckets_get_recursion
+//
+//	Get the storage_buckets
+//
+//	Returns a list of storage_buckets (structs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API storage_buckets
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of storage_buckets
+//	          items:
+//	            $ref: "#/definitions/storageBucket"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func (i *storageBucketHandler) storageBucketsGet(r *http.Request) response.Response {
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
+
 	var filter inventory.StorageBucketFilter
 
 	if r.URL.Query().Get("cluster") != "" {
@@ -98,6 +142,30 @@ func (i *storageBucketHandler) storageBucketsGet(r *http.Request) response.Respo
 
 	if r.URL.Query().Get("project") != "" {
 		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	}
+
+	if recursion == 1 {
+		// FIXME: Should we require a non empty filter with recursion?
+		storageBuckets, err := i.service.GetAllWithFilter(r.Context(), filter)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		result := make([]api.StorageBucket, 0, len(storageBuckets))
+		for _, storageBucket := range storageBuckets {
+			result = append(result, api.StorageBucket{
+				ID:              storageBucket.ID,
+				Cluster:         storageBucket.Cluster,
+				Server:          storageBucket.Server,
+				ProjectName:     storageBucket.ProjectName,
+				StoragePoolName: storageBucket.StoragePoolName,
+				Name:            storageBucket.Name,
+				Object:          storageBucket.Object,
+				LastUpdated:     storageBucket.LastUpdated,
+			})
+		}
+
+		return response.SyncResponse(true, result)
 	}
 
 	storageBucketIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)

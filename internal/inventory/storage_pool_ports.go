@@ -9,6 +9,7 @@ import (
 )
 
 type StoragePoolService interface {
+	GetAllWithFilter(ctx context.Context, filter StoragePoolFilter) (StoragePools, error)
 	GetAllIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StoragePool, error)
 	ResyncByID(ctx context.Context, id int) error
@@ -16,6 +17,7 @@ type StoragePoolService interface {
 }
 
 type StoragePoolRepo interface {
+	GetAllWithFilter(ctx context.Context, filter StoragePoolFilter) (StoragePools, error)
 	GetAllIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StoragePool, error)
 	Create(ctx context.Context, storagePool StoragePool) (StoragePool, error)

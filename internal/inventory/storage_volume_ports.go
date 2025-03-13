@@ -9,6 +9,7 @@ import (
 )
 
 type StorageVolumeService interface {
+	GetAllWithFilter(ctx context.Context, filter StorageVolumeFilter) (StorageVolumes, error)
 	GetAllIDsWithFilter(ctx context.Context, filter StorageVolumeFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StorageVolume, error)
 	ResyncByID(ctx context.Context, id int) error
@@ -16,6 +17,7 @@ type StorageVolumeService interface {
 }
 
 type StorageVolumeRepo interface {
+	GetAllWithFilter(ctx context.Context, filter StorageVolumeFilter) (StorageVolumes, error)
 	GetAllIDsWithFilter(ctx context.Context, filter StorageVolumeFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StorageVolume, error)
 	Create(ctx context.Context, storageVolume StorageVolume) (StorageVolume, error)

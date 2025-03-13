@@ -30,7 +30,7 @@ func NewNetworkIntegrationServerClientWithSlog(base inventory.NetworkIntegration
 func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, connectionURL string, networkIntegrationName string) (networkIntegration api.NetworkIntegration, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkIntegrationName", networkIntegrationName),
@@ -62,7 +62,7 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx
 func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, connectionURL string) (networkIntegrations []api.NetworkIntegration, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)

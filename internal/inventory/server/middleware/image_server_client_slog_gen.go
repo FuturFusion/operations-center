@@ -30,7 +30,7 @@ func NewImageServerClientWithSlog(base inventory.ImageServerClient, log *slog.Lo
 func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, connectionURL string, imageName string) (image api.Image, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("imageName", imageName),
@@ -62,7 +62,7 @@ func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, connecti
 func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, connectionURL string) (images []api.Image, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)

@@ -51,6 +51,20 @@ func (_d ImageServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Context, fi
 	return _d.base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.ImageService.
+func (_d ImageServiceWithPrometheus) GetAllWithFilter(ctx context.Context, filter inventory.ImageFilter) (images inventory.Images, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		imageServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.ImageService.
 func (_d ImageServiceWithPrometheus) GetByID(ctx context.Context, id int) (image inventory.Image, err error) {
 	_since := time.Now()

@@ -75,11 +75,76 @@ func registerInventoryNetworkIntegrationHandler(router *http.ServeMux, service i
 //		    $ref: "#/responses/Forbidden"
 //		  "500":
 //		    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/provisioning/network_integrations?recursion=1 network_integrations network_integrations_get_recursion
+//
+//	Get the network_integrations
+//
+//	Returns a list of network_integrations (structs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API network_integrations
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of network_integrations
+//	          items:
+//	            $ref: "#/definitions/networkIntegration"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func (i *networkIntegrationHandler) networkIntegrationsGet(r *http.Request) response.Response {
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
+
 	var filter inventory.NetworkIntegrationFilter
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+	}
+
+	if recursion == 1 {
+		// FIXME: Should we require a non empty filter with recursion?
+		networkIntegrations, err := i.service.GetAllWithFilter(r.Context(), filter)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		result := make([]api.NetworkIntegration, 0, len(networkIntegrations))
+		for _, networkIntegration := range networkIntegrations {
+			result = append(result, api.NetworkIntegration{
+				ID:          networkIntegration.ID,
+				Cluster:     networkIntegration.Cluster,
+				Name:        networkIntegration.Name,
+				Object:      networkIntegration.Object,
+				LastUpdated: networkIntegration.LastUpdated,
+			})
+		}
+
+		return response.SyncResponse(true, result)
 	}
 
 	networkIntegrationIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)

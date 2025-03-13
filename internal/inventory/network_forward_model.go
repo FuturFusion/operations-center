@@ -3,6 +3,7 @@
 package inventory
 
 import (
+	"net/url"
 	"time"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
@@ -39,4 +40,16 @@ type NetworkForwards []NetworkForward
 
 type NetworkForwardFilter struct {
 	Cluster *string
+}
+
+func (f NetworkForwardFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.Cluster != nil {
+		query.Add("cluster", *f.Cluster)
+	}
+
+	return query
+}
+
+func (f NetworkForwardFilter) String() string {
+	return f.AppendToURLValues(url.Values{}).Encode()
 }

@@ -38,6 +38,14 @@ var targets = []struct {
 		TargetName:   "cmd/operations-centerd/internal/api/api_inventory_{{ .Name }}.go",
 	},
 	{
+		TemplateName: "client.gotmpl",
+		TargetName:   "cmd/operations-center/internal/client/{{ .Name }}.go",
+	},
+	{
+		TemplateName: "cmds.gotmpl",
+		TargetName:   "cmd/operations-center/internal/cmds/inventory/{{ .Name }}.go",
+	},
+	{
 		TemplateName: "model_test.gotmpl",
 		TargetName:   "internal/inventory/{{ .Name }}_model_test.go",
 	},
@@ -131,6 +139,7 @@ func main() {
 	funcsMap := sprig.FuncMap()
 	funcsMap["pascalcase"] = PascalCase
 	funcsMap["camelcase"] = CamelCase
+	funcsMap["titlecase"] = TitleCase
 
 	t := template.New("")
 	t = t.Funcs(funcsMap)

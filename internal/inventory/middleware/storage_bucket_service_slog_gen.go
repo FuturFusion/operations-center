@@ -29,7 +29,7 @@ func NewStorageBucketServiceWithSlog(base inventory.StorageBucketService, log *s
 func (_d StorageBucketServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -56,11 +56,42 @@ func (_d StorageBucketServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, 
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.StorageBucketService.
+func (_d StorageBucketServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (storageBuckets inventory.StorageBuckets, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.Debug("=> calling GetAllWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("storageBuckets", storageBuckets),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method GetAllWithFilter returned an error")
+		} else {
+			log.Debug("<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.StorageBucketService.
 func (_d StorageBucketServiceWithSlog) GetByID(ctx context.Context, id int) (storageBucket inventory.StorageBucket, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -91,7 +122,7 @@ func (_d StorageBucketServiceWithSlog) GetByID(ctx context.Context, id int) (sto
 func (_d StorageBucketServiceWithSlog) ResyncByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -121,7 +152,7 @@ func (_d StorageBucketServiceWithSlog) ResyncByID(ctx context.Context, id int) (
 func (_d StorageBucketServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)

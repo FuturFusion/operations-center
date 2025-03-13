@@ -9,6 +9,7 @@ import (
 )
 
 type NetworkZoneService interface {
+	GetAllWithFilter(ctx context.Context, filter NetworkZoneFilter) (NetworkZones, error)
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkZoneFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkZone, error)
 	ResyncByID(ctx context.Context, id int) error
@@ -16,6 +17,7 @@ type NetworkZoneService interface {
 }
 
 type NetworkZoneRepo interface {
+	GetAllWithFilter(ctx context.Context, filter NetworkZoneFilter) (NetworkZones, error)
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkZoneFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkZone, error)
 	Create(ctx context.Context, networkZone NetworkZone) (NetworkZone, error)

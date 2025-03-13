@@ -87,7 +87,51 @@ func registerInventory{{ .Name | pascalcase }}Handler(router *http.ServeMux, ser
 //		    $ref: "#/responses/Forbidden"
 //		  "500":
 //		    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/provisioning/{{ .PluralName }}?recursion=1 {{ .PluralName }} {{ .PluralName }}_get_recursion
+//
+//	Get the {{ .PluralName }}
+//
+//	Returns a list of {{ .PluralName }} (structs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API {{ .PluralName }}
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of {{ .PluralName }}
+//	          items:
+//	            $ref: "#/definitions/{{ .Name | camelcase }}"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *http.Request) response.Response {
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
+
 	var filter inventory.{{ .Name | pascalcase }}Filter
 
 	if r.URL.Query().Get("cluster") != "" {
@@ -105,6 +149,36 @@ func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *htt
 		filter.Project = ptr.To(r.URL.Query().Get("project"))
 	}
 {{ end }}
+
+	if recursion == 1 {
+		// FIXME: Should we require a non empty filter with recursion?
+		{{ .PluralName | camelcase }}, err := i.service.GetAllWithFilter(r.Context(), filter)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		result := make([]api.{{ .Name | pascalcase }}, 0, len({{ .PluralName | camelcase }}))
+		for _, {{ .Name | camelcase }} := range {{ .PluralName | camelcase }} {
+			result = append(result, api.{{ .Name | pascalcase }}{
+					ID:          {{ .Name | camelcase }}.ID,
+					Cluster:     {{ .Name | camelcase }}.Cluster,
+		{{- if .ServerIDByLocation }}
+					Server:      {{ .Name | camelcase }}.Server,
+		{{- end }}
+		{{- if .HasProject }}
+					ProjectName: {{ .Name | camelcase }}.ProjectName,
+		{{- end }}
+		{{- if .HasParent }}
+					{{ .ParentName | pascalcase }}Name: {{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name,
+		{{- end }}
+					Name:        {{ .Name | camelcase }}.Name,
+					Object:      {{ .Name | camelcase }}.Object,
+					LastUpdated: {{ .Name | camelcase }}.LastUpdated,
+			})
+		}
+
+		return response.SyncResponse(true, result)
+	}
 
 	{{ .Name | camelcase }}IDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
 	if err != nil {
@@ -168,9 +242,9 @@ func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}Get(r *http.Requ
 		true,
 		api.{{ .Name | pascalcase }}{
 			ID:          {{ .Name | camelcase }}.ID,
-			Cluster: {{ .Name | camelcase }}.Cluster,
+			Cluster:     {{ .Name | camelcase }}.Cluster,
 {{- if .ServerIDByLocation }}
-			Server:  {{ .Name | camelcase }}.Server,
+			Server:      {{ .Name | camelcase }}.Server,
 {{- end }}
 {{- if .HasProject }}
 			ProjectName: {{ .Name | camelcase }}.ProjectName,

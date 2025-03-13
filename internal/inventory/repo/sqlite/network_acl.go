@@ -55,6 +55,57 @@ RETURNING id, :cluster_name, project_name, name, object, last_updated;
 	return scanNetworkACL(row)
 }
 
+func (r networkACL) GetAllWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (inventory.NetworkACLs, error) {
+	const sqlStmt = `
+SELECT
+  network_acls.id, clusters.name, network_acls.project_name, network_acls.name, network_acls.object, network_acls.last_updated
+FROM network_acls
+  INNER JOIN clusters ON network_acls.cluster_id = clusters.id
+WHERE true
+%s
+ORDER BY clusters.name, network_acls.name
+`
+
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	if filter.Project != nil {
+		whereClause = append(whereClause, ` AND network_acls.project_name = :project`)
+		args = append(args, sql.Named("project", filter.Project))
+	}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+	if err != nil {
+		return nil, sqlite.MapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var networkACLs inventory.NetworkACLs
+	for rows.Next() {
+		var networkACL inventory.NetworkACL
+		networkACL, err = scanNetworkACL(rows)
+		if err != nil {
+			return nil, sqlite.MapErr(err)
+		}
+
+		networkACLs = append(networkACLs, networkACL)
+	}
+
+	if rows.Err() != nil {
+		return nil, sqlite.MapErr(rows.Err())
+	}
+
+	return networkACLs, nil
+}
+
 func (r networkACL) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT network_acls.id

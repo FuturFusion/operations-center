@@ -30,7 +30,7 @@ func NewNetworkPeerServerClientWithSlog(base inventory.NetworkPeerServerClient, 
 func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkName", networkName),
@@ -63,7 +63,7 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Conte
 func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, connectionURL string, networkName string) (networkPeers []api.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkName", networkName),

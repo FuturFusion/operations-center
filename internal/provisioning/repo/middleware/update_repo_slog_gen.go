@@ -30,7 +30,7 @@ func NewUpdateRepoWithSlog(base provisioning.UpdateRepo, log *slog.Logger) Updat
 func (_d UpdateRepoWithSlog) GetAll(ctx context.Context) (updates provisioning.Updates, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
@@ -60,7 +60,7 @@ func (_d UpdateRepoWithSlog) GetAll(ctx context.Context) (updates provisioning.U
 func (_d UpdateRepoWithSlog) GetAllIDs(ctx context.Context) (strings []string, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
@@ -90,7 +90,7 @@ func (_d UpdateRepoWithSlog) GetAllIDs(ctx context.Context) (strings []string, e
 func (_d UpdateRepoWithSlog) GetByID(ctx context.Context, id string) (update provisioning.Update, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("id", id),
 		)
@@ -121,7 +121,7 @@ func (_d UpdateRepoWithSlog) GetByID(ctx context.Context, id string) (update pro
 func (_d UpdateRepoWithSlog) GetUpdateAllFiles(ctx context.Context, updateID string) (updateFiles provisioning.UpdateFiles, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("updateID", updateID),
 		)
@@ -152,7 +152,7 @@ func (_d UpdateRepoWithSlog) GetUpdateAllFiles(ctx context.Context, updateID str
 func (_d UpdateRepoWithSlog) GetUpdateFileByFilename(ctx context.Context, updateID string, filename string) (readCloser io.ReadCloser, n int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("updateID", updateID),
 			slog.String("filename", filename),

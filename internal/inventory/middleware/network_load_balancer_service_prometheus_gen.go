@@ -51,6 +51,20 @@ func (_d NetworkLoadBalancerServiceWithPrometheus) GetAllIDsWithFilter(ctx conte
 	return _d.base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.NetworkLoadBalancerService.
+func (_d NetworkLoadBalancerServiceWithPrometheus) GetAllWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (networkLoadBalancers inventory.NetworkLoadBalancers, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		networkLoadBalancerServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.NetworkLoadBalancerService.
 func (_d NetworkLoadBalancerServiceWithPrometheus) GetByID(ctx context.Context, id int) (networkLoadBalancer inventory.NetworkLoadBalancer, err error) {
 	_since := time.Now()

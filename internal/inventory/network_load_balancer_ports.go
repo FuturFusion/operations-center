@@ -9,6 +9,7 @@ import (
 )
 
 type NetworkLoadBalancerService interface {
+	GetAllWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) (NetworkLoadBalancers, error)
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkLoadBalancer, error)
 	ResyncByID(ctx context.Context, id int) error
@@ -16,6 +17,7 @@ type NetworkLoadBalancerService interface {
 }
 
 type NetworkLoadBalancerRepo interface {
+	GetAllWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) (NetworkLoadBalancers, error)
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkLoadBalancer, error)
 	Create(ctx context.Context, networkLoadBalancer NetworkLoadBalancer) (NetworkLoadBalancer, error)

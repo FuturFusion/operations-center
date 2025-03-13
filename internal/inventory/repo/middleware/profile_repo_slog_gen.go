@@ -29,7 +29,7 @@ func NewProfileRepoWithSlog(base inventory.ProfileRepo, log *slog.Logger) Profil
 func (_d ProfileRepoWithSlog) Create(ctx context.Context, profile inventory.Profile) (profile1 inventory.Profile, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("profile", profile),
 		)
@@ -60,7 +60,7 @@ func (_d ProfileRepoWithSlog) Create(ctx context.Context, profile inventory.Prof
 func (_d ProfileRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)
@@ -90,7 +90,7 @@ func (_d ProfileRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster s
 func (_d ProfileRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -120,7 +120,7 @@ func (_d ProfileRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error
 func (_d ProfileRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.ProfileFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -147,11 +147,42 @@ func (_d ProfileRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter in
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.ProfileRepo.
+func (_d ProfileRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.ProfileFilter) (profiles inventory.Profiles, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.Debug("=> calling GetAllWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("profiles", profiles),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method GetAllWithFilter returned an error")
+		} else {
+			log.Debug("<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.ProfileRepo.
 func (_d ProfileRepoWithSlog) GetByID(ctx context.Context, id int) (profile inventory.Profile, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -182,7 +213,7 @@ func (_d ProfileRepoWithSlog) GetByID(ctx context.Context, id int) (profile inve
 func (_d ProfileRepoWithSlog) UpdateByID(ctx context.Context, profile inventory.Profile) (profile1 inventory.Profile, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("profile", profile),
 		)

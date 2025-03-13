@@ -51,6 +51,20 @@ func (_d InstanceServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Context,
 	return _d.base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.InstanceService.
+func (_d InstanceServiceWithPrometheus) GetAllWithFilter(ctx context.Context, filter inventory.InstanceFilter) (instances inventory.Instances, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		instanceServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.InstanceService.
 func (_d InstanceServiceWithPrometheus) GetByID(ctx context.Context, id int) (instance inventory.Instance, err error) {
 	_since := time.Now()

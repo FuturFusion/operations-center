@@ -19,18 +19,73 @@ import (
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
 
-func TestStorageBucketService_GetAllIDs(t *testing.T) {
+func TestStorageBucketService_GetAllWithFilter(t *testing.T) {
 	tests := []struct {
-		name             string
-		repoGetAllIDs    []int
-		repoGetAllIDsErr error
+		name                    string
+		repoGetAllWithFilter    inventory.StorageBuckets
+		repoGetAllWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success",
-			repoGetAllIDs: []int{
+			repoGetAllWithFilter: inventory.StorageBuckets{
+				inventory.StorageBucket{
+					Name: "one",
+				},
+				inventory.StorageBucket{
+					Name: "two",
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:                    "error - repo",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.StorageBucketRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.StorageBucketFilter) (inventory.StorageBuckets, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+			}
+
+			storageBucketSvc := inventory.NewStorageBucketService(repo, nil, nil, nil, inventory.StorageBucketWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			storageBucket, err := storageBucketSvc.GetAllWithFilter(context.Background(), inventory.StorageBucketFilter{})
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, storageBucket, tc.count)
+		})
+	}
+}
+
+func TestStorageBucketService_GetAllIDsWithFilter(t *testing.T) {
+	tests := []struct {
+		name                       string
+		repoGetAllIDsWithFilter    []int
+		repoGetAllIDsWithFilterErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name: "success",
+			repoGetAllIDsWithFilter: []int{
 				1, 2,
 			},
 
@@ -38,8 +93,8 @@ func TestStorageBucketService_GetAllIDs(t *testing.T) {
 			count:     2,
 		},
 		{
-			name:             "error - repo",
-			repoGetAllIDsErr: boom.Error,
+			name:                       "error - repo",
+			repoGetAllIDsWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -51,7 +106,7 @@ func TestStorageBucketService_GetAllIDs(t *testing.T) {
 			// Setup
 			repo := &repoMock.StorageBucketRepoMock{
 				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.StorageBucketFilter) ([]int, error) {
-					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
+					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
 				},
 			}
 

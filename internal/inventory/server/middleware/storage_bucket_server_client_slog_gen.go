@@ -30,7 +30,7 @@ func NewStorageBucketServerClientWithSlog(base inventory.StorageBucketServerClie
 func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (storageBucket api.StorageBucket, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("storagePoolName", storagePoolName),
@@ -63,7 +63,7 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.C
 func (_d StorageBucketServerClientWithSlog) GetStorageBuckets(ctx context.Context, connectionURL string, storagePoolName string) (storageBuckets []api.StorageBucket, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("storagePoolName", storagePoolName),

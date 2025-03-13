@@ -55,6 +55,52 @@ RETURNING id, :cluster_name, network_name, name, object, last_updated;
 	return scanNetworkLoadBalancer(row)
 }
 
+func (r networkLoadBalancer) GetAllWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (inventory.NetworkLoadBalancers, error) {
+	const sqlStmt = `
+SELECT
+  network_load_balancers.id, clusters.name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
+FROM network_load_balancers
+  INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
+WHERE true
+%s
+ORDER BY clusters.name, network_load_balancers.name
+`
+
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+	if err != nil {
+		return nil, sqlite.MapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var networkLoadBalancers inventory.NetworkLoadBalancers
+	for rows.Next() {
+		var networkLoadBalancer inventory.NetworkLoadBalancer
+		networkLoadBalancer, err = scanNetworkLoadBalancer(rows)
+		if err != nil {
+			return nil, sqlite.MapErr(err)
+		}
+
+		networkLoadBalancers = append(networkLoadBalancers, networkLoadBalancer)
+	}
+
+	if rows.Err() != nil {
+		return nil, sqlite.MapErr(rows.Err())
+	}
+
+	return networkLoadBalancers, nil
+}
+
 func (r networkLoadBalancer) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT network_load_balancers.id

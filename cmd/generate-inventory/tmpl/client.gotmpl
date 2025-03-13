@@ -1,0 +1,45 @@
+package client
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/url"
+	"path"
+
+	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/internal/inventory"
+)
+
+func (c OperationsCenterClient) GetWithFilter{{ .PluralName | pascalcase }}(filter inventory.{{ .Name | pascalcase }}Filter) ([]api.{{ .Name | pascalcase }}, error) {
+	query := url.Values{}
+	query.Add("recursion", "1")
+	query = filter.AppendToURLValues(query)
+
+	response, err := c.doRequest(http.MethodGet, "/inventory/{{ .PluralName }}", query, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	{{ .PluralName }} := []api.{{ .Name | pascalcase }}{}
+	err = json.Unmarshal(response.Metadata, &{{ .PluralName }})
+	if err != nil {
+		return nil, err
+	}
+
+	return {{ .PluralName }}, nil
+}
+
+func (c OperationsCenterClient) Get{{ .Name | pascalcase }}(name string) (api.{{ .Name | pascalcase }}, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/{{ .PluralName }}", name), nil, nil)
+	if err != nil {
+		return api.{{ .Name | pascalcase }}{}, err
+	}
+
+	{{ .Name }} := api.{{ .Name | pascalcase }}{}
+	err = json.Unmarshal(response.Metadata, &{{ .Name }})
+	if err != nil {
+		return api.{{ .Name | pascalcase }}{}, err
+	}
+
+	return {{ .Name }}, nil
+}

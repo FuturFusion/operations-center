@@ -55,6 +55,57 @@ RETURNING id, :cluster_name, project_name, name, object, last_updated;
 	return scanImage(row)
 }
 
+func (r image) GetAllWithFilter(ctx context.Context, filter inventory.ImageFilter) (inventory.Images, error) {
+	const sqlStmt = `
+SELECT
+  images.id, clusters.name, images.project_name, images.name, images.object, images.last_updated
+FROM images
+  INNER JOIN clusters ON images.cluster_id = clusters.id
+WHERE true
+%s
+ORDER BY clusters.name, images.name
+`
+
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	if filter.Project != nil {
+		whereClause = append(whereClause, ` AND images.project_name = :project`)
+		args = append(args, sql.Named("project", filter.Project))
+	}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+	if err != nil {
+		return nil, sqlite.MapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var images inventory.Images
+	for rows.Next() {
+		var image inventory.Image
+		image, err = scanImage(rows)
+		if err != nil {
+			return nil, sqlite.MapErr(err)
+		}
+
+		images = append(images, image)
+	}
+
+	if rows.Err() != nil {
+		return nil, sqlite.MapErr(rows.Err())
+	}
+
+	return images, nil
+}
+
 func (r image) GetAllIDsWithFilter(ctx context.Context, filter inventory.ImageFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT images.id

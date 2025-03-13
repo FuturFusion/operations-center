@@ -17,18 +17,73 @@ import (
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
 
-func Test{{ .Name | pascalcase }}Service_GetAllIDs(t *testing.T) {
+func Test{{ .Name | pascalcase }}Service_GetAllWithFilter(t *testing.T) {
 	tests := []struct {
-		name             string
-		repoGetAllIDs    []int
-		repoGetAllIDsErr error
+		name                    string
+		repoGetAllWithFilter    inventory.{{ .PluralName | pascalcase }}
+		repoGetAllWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success",
-			repoGetAllIDs: []int{
+			repoGetAllWithFilter: inventory.{{ .PluralName | pascalcase }}{
+				inventory.{{ .Name | pascalcase }}{
+					Name: "one",
+				},
+				inventory.{{ .Name | pascalcase }}{
+					Name: "two",
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:             "error - repo",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) (inventory.{{ .PluralName | pascalcase }}, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+			}
+
+			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, nil, nil, {{ if .HasParent }}nil, {{ end -}} inventory.{{ .Name | pascalcase }}WithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			{{ .Name | camelcase }}, err := {{ .Name | camelcase }}Svc.GetAllWithFilter(context.Background(), inventory.{{ .Name | pascalcase }}Filter{})
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, {{ .Name | camelcase }}, tc.count)
+		})
+	}
+}
+
+func Test{{ .Name | pascalcase }}Service_GetAllIDsWithFilter(t *testing.T) {
+	tests := []struct {
+		name                       string
+		repoGetAllIDsWithFilter    []int
+		repoGetAllIDsWithFilterErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name: "success",
+			repoGetAllIDsWithFilter: []int{
 				1, 2,
 			},
 
@@ -37,7 +92,7 @@ func Test{{ .Name | pascalcase }}Service_GetAllIDs(t *testing.T) {
 		},
 		{
 			name:             "error - repo",
-			repoGetAllIDsErr: boom.Error,
+			repoGetAllIDsWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -49,7 +104,7 @@ func Test{{ .Name | pascalcase }}Service_GetAllIDs(t *testing.T) {
 			// Setup
 			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
 				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) ([]int, error) {
-					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
+					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
 				},
 			}
 

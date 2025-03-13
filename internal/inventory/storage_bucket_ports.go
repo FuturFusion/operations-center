@@ -9,6 +9,7 @@ import (
 )
 
 type StorageBucketService interface {
+	GetAllWithFilter(ctx context.Context, filter StorageBucketFilter) (StorageBuckets, error)
 	GetAllIDsWithFilter(ctx context.Context, filter StorageBucketFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StorageBucket, error)
 	ResyncByID(ctx context.Context, id int) error
@@ -16,6 +17,7 @@ type StorageBucketService interface {
 }
 
 type StorageBucketRepo interface {
+	GetAllWithFilter(ctx context.Context, filter StorageBucketFilter) (StorageBuckets, error)
 	GetAllIDsWithFilter(ctx context.Context, filter StorageBucketFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (StorageBucket, error)
 	Create(ctx context.Context, storageBucket StorageBucket) (StorageBucket, error)

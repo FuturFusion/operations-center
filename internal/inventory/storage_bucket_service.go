@@ -55,6 +55,10 @@ func NewStorageBucketService(repo StorageBucketRepo, clusterSvc ProvisioningClus
 	return storageBucketSvc
 }
 
+func (s storageBucketService) GetAllWithFilter(ctx context.Context, filter StorageBucketFilter) (StorageBuckets, error) {
+	return s.repo.GetAllWithFilter(ctx, filter)
+}
+
 func (s storageBucketService) GetAllIDsWithFilter(ctx context.Context, filter StorageBucketFilter) ([]int, error) {
 	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }

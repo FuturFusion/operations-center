@@ -117,6 +117,13 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	require.Len(t, networkLoadBalancerIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, networkLoadBalancerIDs)
 
+	// Ensure we have two entries without filter
+	dbNetworkLoadBalancer, err := networkLoadBalancer.GetAllWithFilter(ctx, inventory.NetworkLoadBalancerFilter{})
+	require.NoError(t, err)
+	require.Len(t, dbNetworkLoadBalancer, 2)
+	require.Equal(t, networkLoadBalancerA.Name, dbNetworkLoadBalancer[0].Name)
+	require.Equal(t, networkLoadBalancerB.Name, dbNetworkLoadBalancer[1].Name)
+
 	// Ensure we have one entry with filter for cluster, server and project
 	networkLoadBalancerIDs, err = networkLoadBalancer.GetAllIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{
 		Cluster: ptr.To("one"),
@@ -124,6 +131,14 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, networkLoadBalancerIDs, 1)
 	require.ElementsMatch(t, []int{1}, networkLoadBalancerIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	dbNetworkLoadBalancer, err = networkLoadBalancer.GetAllWithFilter(ctx, inventory.NetworkLoadBalancerFilter{
+		Cluster: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, networkLoadBalancerIDs, 1)
+	require.Equal(t, "one", dbNetworkLoadBalancer[0].Name)
 
 	// Should get back networkLoadBalancerA unchanged.
 	networkLoadBalancerA.Cluster = "one"

@@ -62,6 +62,63 @@ RETURNING id, :cluster_name, :server_name, project_name, storage_pool_name, name
 	return scanStorageVolume(row)
 }
 
+func (r storageVolume) GetAllWithFilter(ctx context.Context, filter inventory.StorageVolumeFilter) (inventory.StorageVolumes, error) {
+	const sqlStmt = `
+SELECT
+  storage_volumes.id, clusters.name, servers.name, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.name, storage_volumes.type, storage_volumes.object, storage_volumes.last_updated
+FROM storage_volumes
+  INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
+  INNER JOIN servers ON storage_volumes.server_id = servers.id
+WHERE true
+%s
+ORDER BY clusters.name, servers.name, storage_volumes.name
+`
+
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	if filter.Server != nil {
+		whereClause = append(whereClause, ` AND servers.name = :server_name`)
+		args = append(args, sql.Named("server_name", filter.Server))
+	}
+
+	if filter.Project != nil {
+		whereClause = append(whereClause, ` AND storage_volumes.project_name = :project`)
+		args = append(args, sql.Named("project", filter.Project))
+	}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+	if err != nil {
+		return nil, sqlite.MapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var storageVolumes inventory.StorageVolumes
+	for rows.Next() {
+		var storageVolume inventory.StorageVolume
+		storageVolume, err = scanStorageVolume(rows)
+		if err != nil {
+			return nil, sqlite.MapErr(err)
+		}
+
+		storageVolumes = append(storageVolumes, storageVolume)
+	}
+
+	if rows.Err() != nil {
+		return nil, sqlite.MapErr(rows.Err())
+	}
+
+	return storageVolumes, nil
+}
+
 func (r storageVolume) GetAllIDsWithFilter(ctx context.Context, filter inventory.StorageVolumeFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT storage_volumes.id

@@ -9,6 +9,7 @@ import (
 )
 
 type NetworkForwardService interface {
+	GetAllWithFilter(ctx context.Context, filter NetworkForwardFilter) (NetworkForwards, error)
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkForwardFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkForward, error)
 	ResyncByID(ctx context.Context, id int) error
@@ -16,6 +17,7 @@ type NetworkForwardService interface {
 }
 
 type NetworkForwardRepo interface {
+	GetAllWithFilter(ctx context.Context, filter NetworkForwardFilter) (NetworkForwards, error)
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkForwardFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkForward, error)
 	Create(ctx context.Context, networkForward NetworkForward) (NetworkForward, error)

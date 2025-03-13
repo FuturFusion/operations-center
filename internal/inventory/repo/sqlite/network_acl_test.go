@@ -117,6 +117,13 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 	require.Len(t, networkACLIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, networkACLIDs)
 
+	// Ensure we have two entries without filter
+	dbNetworkACL, err := networkACL.GetAllWithFilter(ctx, inventory.NetworkACLFilter{})
+	require.NoError(t, err)
+	require.Len(t, dbNetworkACL, 2)
+	require.Equal(t, networkACLA.Name, dbNetworkACL[0].Name)
+	require.Equal(t, networkACLB.Name, dbNetworkACL[1].Name)
+
 	// Ensure we have one entry with filter for cluster, server and project
 	networkACLIDs, err = networkACL.GetAllIDsWithFilter(ctx, inventory.NetworkACLFilter{
 		Cluster: ptr.To("one"),
@@ -125,6 +132,15 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, networkACLIDs, 1)
 	require.ElementsMatch(t, []int{1}, networkACLIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	dbNetworkACL, err = networkACL.GetAllWithFilter(ctx, inventory.NetworkACLFilter{
+		Cluster: ptr.To("one"),
+		Project: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, networkACLIDs, 1)
+	require.Equal(t, "one", dbNetworkACL[0].Name)
 
 	// Should get back networkACLA unchanged.
 	networkACLA.Cluster = "one"

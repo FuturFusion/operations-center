@@ -55,6 +55,52 @@ RETURNING id, :cluster_name, network_name, name, object, last_updated;
 	return scanNetworkPeer(row)
 }
 
+func (r networkPeer) GetAllWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (inventory.NetworkPeers, error) {
+	const sqlStmt = `
+SELECT
+  network_peers.id, clusters.name, network_peers.network_name, network_peers.name, network_peers.object, network_peers.last_updated
+FROM network_peers
+  INNER JOIN clusters ON network_peers.cluster_id = clusters.id
+WHERE true
+%s
+ORDER BY clusters.name, network_peers.name
+`
+
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+	if err != nil {
+		return nil, sqlite.MapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var networkPeers inventory.NetworkPeers
+	for rows.Next() {
+		var networkPeer inventory.NetworkPeer
+		networkPeer, err = scanNetworkPeer(rows)
+		if err != nil {
+			return nil, sqlite.MapErr(err)
+		}
+
+		networkPeers = append(networkPeers, networkPeer)
+	}
+
+	if rows.Err() != nil {
+		return nil, sqlite.MapErr(rows.Err())
+	}
+
+	return networkPeers, nil
+}
+
 func (r networkPeer) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT network_peers.id

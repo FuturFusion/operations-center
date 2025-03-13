@@ -39,6 +39,10 @@ func NewImageService(repo ImageRepo, clusterSvc ProvisioningClusterService, clie
 	return imageSvc
 }
 
+func (s imageService) GetAllWithFilter(ctx context.Context, filter ImageFilter) (Images, error) {
+	return s.repo.GetAllWithFilter(ctx, filter)
+}
+
 func (s imageService) GetAllIDsWithFilter(ctx context.Context, filter ImageFilter) ([]int, error) {
 	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }

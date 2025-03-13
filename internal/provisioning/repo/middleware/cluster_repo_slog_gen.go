@@ -29,7 +29,7 @@ func NewClusterRepoWithSlog(base provisioning.ClusterRepo, log *slog.Logger) Clu
 func (_d ClusterRepoWithSlog) Create(ctx context.Context, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("cluster", cluster),
 		)
@@ -60,7 +60,7 @@ func (_d ClusterRepoWithSlog) Create(ctx context.Context, cluster provisioning.C
 func (_d ClusterRepoWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
 		)
@@ -90,7 +90,7 @@ func (_d ClusterRepoWithSlog) DeleteByName(ctx context.Context, name string) (er
 func (_d ClusterRepoWithSlog) GetAll(ctx context.Context) (clusters provisioning.Clusters, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
@@ -120,7 +120,7 @@ func (_d ClusterRepoWithSlog) GetAll(ctx context.Context) (clusters provisioning
 func (_d ClusterRepoWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
@@ -150,7 +150,7 @@ func (_d ClusterRepoWithSlog) GetAllNames(ctx context.Context) (strings []string
 func (_d ClusterRepoWithSlog) GetByName(ctx context.Context, name string) (cluster provisioning.Cluster, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
 		)
@@ -181,7 +181,7 @@ func (_d ClusterRepoWithSlog) GetByName(ctx context.Context, name string) (clust
 func (_d ClusterRepoWithSlog) UpdateByName(ctx context.Context, name string, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
 			slog.Any("cluster", cluster),

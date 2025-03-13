@@ -117,6 +117,13 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 	require.Len(t, networkForwardIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, networkForwardIDs)
 
+	// Ensure we have two entries without filter
+	dbNetworkForward, err := networkForward.GetAllWithFilter(ctx, inventory.NetworkForwardFilter{})
+	require.NoError(t, err)
+	require.Len(t, dbNetworkForward, 2)
+	require.Equal(t, networkForwardA.Name, dbNetworkForward[0].Name)
+	require.Equal(t, networkForwardB.Name, dbNetworkForward[1].Name)
+
 	// Ensure we have one entry with filter for cluster, server and project
 	networkForwardIDs, err = networkForward.GetAllIDsWithFilter(ctx, inventory.NetworkForwardFilter{
 		Cluster: ptr.To("one"),
@@ -124,6 +131,14 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, networkForwardIDs, 1)
 	require.ElementsMatch(t, []int{1}, networkForwardIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	dbNetworkForward, err = networkForward.GetAllWithFilter(ctx, inventory.NetworkForwardFilter{
+		Cluster: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, networkForwardIDs, 1)
+	require.Equal(t, "one", dbNetworkForward[0].Name)
 
 	// Should get back networkForwardA unchanged.
 	networkForwardA.Cluster = "one"

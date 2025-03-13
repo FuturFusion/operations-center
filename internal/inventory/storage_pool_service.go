@@ -39,6 +39,10 @@ func NewStoragePoolService(repo StoragePoolRepo, clusterSvc ProvisioningClusterS
 	return storagePoolSvc
 }
 
+func (s storagePoolService) GetAllWithFilter(ctx context.Context, filter StoragePoolFilter) (StoragePools, error) {
+	return s.repo.GetAllWithFilter(ctx, filter)
+}
+
 func (s storagePoolService) GetAllIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]int, error) {
 	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }

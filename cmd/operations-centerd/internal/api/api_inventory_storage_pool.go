@@ -75,11 +75,76 @@ func registerInventoryStoragePoolHandler(router *http.ServeMux, service inventor
 //		    $ref: "#/responses/Forbidden"
 //		  "500":
 //		    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/provisioning/storage_pools?recursion=1 storage_pools storage_pools_get_recursion
+//
+//	Get the storage_pools
+//
+//	Returns a list of storage_pools (structs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API storage_pools
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of storage_pools
+//	          items:
+//	            $ref: "#/definitions/storagePool"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func (i *storagePoolHandler) storagePoolsGet(r *http.Request) response.Response {
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
+
 	var filter inventory.StoragePoolFilter
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+	}
+
+	if recursion == 1 {
+		// FIXME: Should we require a non empty filter with recursion?
+		storagePools, err := i.service.GetAllWithFilter(r.Context(), filter)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		result := make([]api.StoragePool, 0, len(storagePools))
+		for _, storagePool := range storagePools {
+			result = append(result, api.StoragePool{
+				ID:          storagePool.ID,
+				Cluster:     storagePool.Cluster,
+				Name:        storagePool.Name,
+				Object:      storagePool.Object,
+				LastUpdated: storagePool.LastUpdated,
+			})
+		}
+
+		return response.SyncResponse(true, result)
 	}
 
 	storagePoolIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)

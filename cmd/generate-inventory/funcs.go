@@ -35,6 +35,16 @@ func CamelCase(s string) string {
 // PascalCase converts to pascal case ("foo_bar" -> "FooBar").
 // If a segment is a known acronym, it is returned in all upper case.
 func PascalCase(s string) string {
+	return strings.Join(capitalizedWords(s), "")
+}
+
+// TitleCase converts to title case ("foo_bar" -> "Foo Bar").
+// If a segment is a known acronym, it is returned in all upper case.
+func TitleCase(s string) string {
+	return strings.Join(capitalizedWords(s), " ")
+}
+
+func capitalizedWords(s string) []string {
 	words := strings.Split(s, "_")
 	for i := range words {
 		_, ok := acronyms[strings.ToLower(words[i])]
@@ -56,5 +66,5 @@ func PascalCase(s string) string {
 		words[i] = Capital(words[i])
 	}
 
-	return strings.Join(words, "")
+	return words
 }

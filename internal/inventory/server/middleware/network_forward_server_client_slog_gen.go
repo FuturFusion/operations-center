@@ -30,7 +30,7 @@ func NewNetworkForwardServerClientWithSlog(base inventory.NetworkForwardServerCl
 func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkName", networkName),
@@ -63,7 +63,7 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context
 func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Context, connectionURL string, networkName string) (networkForwards []api.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkName", networkName),

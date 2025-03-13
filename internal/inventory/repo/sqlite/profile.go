@@ -55,6 +55,57 @@ RETURNING id, :cluster_name, project_name, name, object, last_updated;
 	return scanProfile(row)
 }
 
+func (r profile) GetAllWithFilter(ctx context.Context, filter inventory.ProfileFilter) (inventory.Profiles, error) {
+	const sqlStmt = `
+SELECT
+  profiles.id, clusters.name, profiles.project_name, profiles.name, profiles.object, profiles.last_updated
+FROM profiles
+  INNER JOIN clusters ON profiles.cluster_id = clusters.id
+WHERE true
+%s
+ORDER BY clusters.name, profiles.name
+`
+
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	if filter.Project != nil {
+		whereClause = append(whereClause, ` AND profiles.project_name = :project`)
+		args = append(args, sql.Named("project", filter.Project))
+	}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+	if err != nil {
+		return nil, sqlite.MapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var profiles inventory.Profiles
+	for rows.Next() {
+		var profile inventory.Profile
+		profile, err = scanProfile(rows)
+		if err != nil {
+			return nil, sqlite.MapErr(err)
+		}
+
+		profiles = append(profiles, profile)
+	}
+
+	if rows.Err() != nil {
+		return nil, sqlite.MapErr(rows.Err())
+	}
+
+	return profiles, nil
+}
+
 func (r profile) GetAllIDsWithFilter(ctx context.Context, filter inventory.ProfileFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT profiles.id

@@ -30,7 +30,7 @@ func NewUpdateServiceWithSlog(base provisioning.UpdateService, log *slog.Logger)
 func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisioning.Updates, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
@@ -60,7 +60,7 @@ func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisionin
 func (_d UpdateServiceWithSlog) GetAllIDs(ctx context.Context) (strings []string, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
@@ -90,7 +90,7 @@ func (_d UpdateServiceWithSlog) GetAllIDs(ctx context.Context) (strings []string
 func (_d UpdateServiceWithSlog) GetByID(ctx context.Context, id string) (update provisioning.Update, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("id", id),
 		)
@@ -121,7 +121,7 @@ func (_d UpdateServiceWithSlog) GetByID(ctx context.Context, id string) (update 
 func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, updateID string) (updateFiles provisioning.UpdateFiles, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("updateID", updateID),
 		)
@@ -152,7 +152,7 @@ func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, updateID 
 func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, updateID string, filename string) (readCloser io.ReadCloser, n int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("updateID", updateID),
 			slog.String("filename", filename),

@@ -30,7 +30,7 @@ func NewNetworkServerClientWithSlog(base inventory.NetworkServerClient, log *slo
 func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, connectionURL string, networkName string) (network api.Network, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkName", networkName),
@@ -62,7 +62,7 @@ func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, conn
 func (_d NetworkServerClientWithSlog) GetNetworks(ctx context.Context, connectionURL string) (networks []api.Network, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)

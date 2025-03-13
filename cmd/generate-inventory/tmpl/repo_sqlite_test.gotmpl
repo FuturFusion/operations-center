@@ -137,6 +137,13 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	require.Len(t, {{ .Name | camelcase }}IDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, {{ .Name | camelcase }}IDs)
 
+	// Ensure we have two entries without filter
+	db{{ .Name | pascalcase }}, err := {{ .Name | camelcase }}.GetAllWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{})
+	require.NoError(t, err)
+	require.Len(t, db{{ .Name | pascalcase }}, 2)
+	require.Equal(t, {{ .Name | camelcase }}A.Name, db{{ .Name | pascalcase }}[0].Name)
+	require.Equal(t, {{ .Name | camelcase }}B.Name, db{{ .Name | pascalcase }}[1].Name)
+
 	// Ensure we have one entry with filter for cluster, server and project
 	{{ .Name | camelcase }}IDs, err = {{ .Name | camelcase }}.GetAllIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{
 		Cluster: ptr.To("one"),
@@ -150,6 +157,20 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, {{ .Name | camelcase }}IDs, 1)
 	require.ElementsMatch(t, []int{1}, {{ .Name | camelcase }}IDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	db{{ .Name | pascalcase }}, err = {{ .Name | camelcase }}.GetAllWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{
+		Cluster: ptr.To("one"),
+{{- if .ServerIDByLocation }}
+		Server:  ptr.To("one"),
+{{- end }}
+{{- if .HasProject }}
+		Project: ptr.To("one"),
+{{- end }}
+	})
+	require.NoError(t, err)
+	require.Len(t, {{ .Name | camelcase }}IDs, 1)
+	require.Equal(t, "one", db{{ .Name | pascalcase }}[0].Name)
 
 	// Should get back {{ .Name | camelcase }}A unchanged.
 	{{ .Name | camelcase }}A.Cluster = "one"

@@ -9,6 +9,7 @@ import (
 )
 
 type ProfileService interface {
+	GetAllWithFilter(ctx context.Context, filter ProfileFilter) (Profiles, error)
 	GetAllIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Profile, error)
 	ResyncByID(ctx context.Context, id int) error
@@ -16,6 +17,7 @@ type ProfileService interface {
 }
 
 type ProfileRepo interface {
+	GetAllWithFilter(ctx context.Context, filter ProfileFilter) (Profiles, error)
 	GetAllIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Profile, error)
 	Create(ctx context.Context, profile Profile) (Profile, error)

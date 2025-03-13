@@ -19,18 +19,73 @@ import (
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
 
-func TestNetworkPeerService_GetAllIDs(t *testing.T) {
+func TestNetworkPeerService_GetAllWithFilter(t *testing.T) {
 	tests := []struct {
-		name             string
-		repoGetAllIDs    []int
-		repoGetAllIDsErr error
+		name                    string
+		repoGetAllWithFilter    inventory.NetworkPeers
+		repoGetAllWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success",
-			repoGetAllIDs: []int{
+			repoGetAllWithFilter: inventory.NetworkPeers{
+				inventory.NetworkPeer{
+					Name: "one",
+				},
+				inventory.NetworkPeer{
+					Name: "two",
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:                    "error - repo",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.NetworkPeerRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.NetworkPeerFilter) (inventory.NetworkPeers, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+			}
+
+			networkPeerSvc := inventory.NewNetworkPeerService(repo, nil, nil, nil, inventory.NetworkPeerWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			networkPeer, err := networkPeerSvc.GetAllWithFilter(context.Background(), inventory.NetworkPeerFilter{})
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, networkPeer, tc.count)
+		})
+	}
+}
+
+func TestNetworkPeerService_GetAllIDsWithFilter(t *testing.T) {
+	tests := []struct {
+		name                       string
+		repoGetAllIDsWithFilter    []int
+		repoGetAllIDsWithFilterErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name: "success",
+			repoGetAllIDsWithFilter: []int{
 				1, 2,
 			},
 
@@ -38,8 +93,8 @@ func TestNetworkPeerService_GetAllIDs(t *testing.T) {
 			count:     2,
 		},
 		{
-			name:             "error - repo",
-			repoGetAllIDsErr: boom.Error,
+			name:                       "error - repo",
+			repoGetAllIDsWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -51,7 +106,7 @@ func TestNetworkPeerService_GetAllIDs(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkPeerRepoMock{
 				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkPeerFilter) ([]int, error) {
-					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
+					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
 				},
 			}
 

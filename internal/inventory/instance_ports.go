@@ -9,6 +9,7 @@ import (
 )
 
 type InstanceService interface {
+	GetAllWithFilter(ctx context.Context, filter InstanceFilter) (Instances, error)
 	GetAllIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Instance, error)
 	ResyncByID(ctx context.Context, id int) error
@@ -16,6 +17,7 @@ type InstanceService interface {
 }
 
 type InstanceRepo interface {
+	GetAllWithFilter(ctx context.Context, filter InstanceFilter) (Instances, error)
 	GetAllIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (Instance, error)
 	Create(ctx context.Context, instance Instance) (Instance, error)

@@ -93,6 +93,20 @@ func (_d ProjectRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, fil
 	return _d.base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.ProjectRepo.
+func (_d ProjectRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filter inventory.ProjectFilter) (projects inventory.Projects, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		projectRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.ProjectRepo.
 func (_d ProjectRepoWithPrometheus) GetByID(ctx context.Context, id int) (project inventory.Project, err error) {
 	_since := time.Now()

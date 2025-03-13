@@ -80,7 +80,51 @@ func registerInventoryImageHandler(router *http.ServeMux, service inventory.Imag
 //		    $ref: "#/responses/Forbidden"
 //		  "500":
 //		    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/provisioning/images?recursion=1 images images_get_recursion
+//
+//	Get the images
+//
+//	Returns a list of images (structs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API images
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of images
+//	          items:
+//	            $ref: "#/definitions/image"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func (i *imageHandler) imagesGet(r *http.Request) response.Response {
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
+
 	var filter inventory.ImageFilter
 
 	if r.URL.Query().Get("cluster") != "" {
@@ -89,6 +133,28 @@ func (i *imageHandler) imagesGet(r *http.Request) response.Response {
 
 	if r.URL.Query().Get("project") != "" {
 		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	}
+
+	if recursion == 1 {
+		// FIXME: Should we require a non empty filter with recursion?
+		images, err := i.service.GetAllWithFilter(r.Context(), filter)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		result := make([]api.Image, 0, len(images))
+		for _, image := range images {
+			result = append(result, api.Image{
+				ID:          image.ID,
+				Cluster:     image.Cluster,
+				ProjectName: image.ProjectName,
+				Name:        image.Name,
+				Object:      image.Object,
+				LastUpdated: image.LastUpdated,
+			})
+		}
+
+		return response.SyncResponse(true, result)
 	}
 
 	imageIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)

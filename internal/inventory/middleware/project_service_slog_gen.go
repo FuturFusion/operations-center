@@ -29,7 +29,7 @@ func NewProjectServiceWithSlog(base inventory.ProjectService, log *slog.Logger) 
 func (_d ProjectServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.ProjectFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -56,11 +56,42 @@ func (_d ProjectServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.ProjectService.
+func (_d ProjectServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.ProjectFilter) (projects inventory.Projects, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.Debug("=> calling GetAllWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("projects", projects),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method GetAllWithFilter returned an error")
+		} else {
+			log.Debug("<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.ProjectService.
 func (_d ProjectServiceWithSlog) GetByID(ctx context.Context, id int) (project inventory.Project, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -91,7 +122,7 @@ func (_d ProjectServiceWithSlog) GetByID(ctx context.Context, id int) (project i
 func (_d ProjectServiceWithSlog) ResyncByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -121,7 +152,7 @@ func (_d ProjectServiceWithSlog) ResyncByID(ctx context.Context, id int) (err er
 func (_d ProjectServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)

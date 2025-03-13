@@ -93,6 +93,20 @@ func (_d ProfileRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, fil
 	return _d.base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.ProfileRepo.
+func (_d ProfileRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filter inventory.ProfileFilter) (profiles inventory.Profiles, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		profileRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.ProfileRepo.
 func (_d ProfileRepoWithPrometheus) GetByID(ctx context.Context, id int) (profile inventory.Profile, err error) {
 	_since := time.Now()

@@ -3,6 +3,7 @@
 package inventory
 
 import (
+	"net/url"
 	"time"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
@@ -34,4 +35,16 @@ type Projects []Project
 
 type ProjectFilter struct {
 	Cluster *string
+}
+
+func (f ProjectFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.Cluster != nil {
+		query.Add("cluster", *f.Cluster)
+	}
+
+	return query
+}
+
+func (f ProjectFilter) String() string {
+	return f.AppendToURLValues(url.Values{}).Encode()
 }

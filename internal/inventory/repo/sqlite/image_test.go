@@ -117,6 +117,13 @@ func TestImageDatabaseActions(t *testing.T) {
 	require.Len(t, imageIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, imageIDs)
 
+	// Ensure we have two entries without filter
+	dbImage, err := image.GetAllWithFilter(ctx, inventory.ImageFilter{})
+	require.NoError(t, err)
+	require.Len(t, dbImage, 2)
+	require.Equal(t, imageA.Name, dbImage[0].Name)
+	require.Equal(t, imageB.Name, dbImage[1].Name)
+
 	// Ensure we have one entry with filter for cluster, server and project
 	imageIDs, err = image.GetAllIDsWithFilter(ctx, inventory.ImageFilter{
 		Cluster: ptr.To("one"),
@@ -125,6 +132,15 @@ func TestImageDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, imageIDs, 1)
 	require.ElementsMatch(t, []int{1}, imageIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	dbImage, err = image.GetAllWithFilter(ctx, inventory.ImageFilter{
+		Cluster: ptr.To("one"),
+		Project: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, imageIDs, 1)
+	require.Equal(t, "one", dbImage[0].Name)
 
 	// Should get back imageA unchanged.
 	imageA.Cluster = "one"

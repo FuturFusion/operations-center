@@ -30,7 +30,7 @@ func NewProfileServerClientWithSlog(base inventory.ProfileServerClient, log *slo
 func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, connectionURL string, profileName string) (profile api.Profile, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("profileName", profileName),
@@ -62,7 +62,7 @@ func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, conn
 func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, connectionURL string) (profiles []api.Profile, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)

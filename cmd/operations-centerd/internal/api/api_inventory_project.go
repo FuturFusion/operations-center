@@ -75,11 +75,76 @@ func registerInventoryProjectHandler(router *http.ServeMux, service inventory.Pr
 //		    $ref: "#/responses/Forbidden"
 //		  "500":
 //		    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/provisioning/projects?recursion=1 projects projects_get_recursion
+//
+//	Get the projects
+//
+//	Returns a list of projects (structs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API projects
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of projects
+//	          items:
+//	            $ref: "#/definitions/project"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func (i *projectHandler) projectsGet(r *http.Request) response.Response {
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
+
 	var filter inventory.ProjectFilter
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+	}
+
+	if recursion == 1 {
+		// FIXME: Should we require a non empty filter with recursion?
+		projects, err := i.service.GetAllWithFilter(r.Context(), filter)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		result := make([]api.Project, 0, len(projects))
+		for _, project := range projects {
+			result = append(result, api.Project{
+				ID:          project.ID,
+				Cluster:     project.Cluster,
+				Name:        project.Name,
+				Object:      project.Object,
+				LastUpdated: project.LastUpdated,
+			})
+		}
+
+		return response.SyncResponse(true, result)
 	}
 
 	projectIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)

@@ -29,7 +29,7 @@ func NewImageRepoWithSlog(base inventory.ImageRepo, log *slog.Logger) ImageRepoW
 func (_d ImageRepoWithSlog) Create(ctx context.Context, image inventory.Image) (image1 inventory.Image, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("image", image),
 		)
@@ -60,7 +60,7 @@ func (_d ImageRepoWithSlog) Create(ctx context.Context, image inventory.Image) (
 func (_d ImageRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)
@@ -90,7 +90,7 @@ func (_d ImageRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster str
 func (_d ImageRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -120,7 +120,7 @@ func (_d ImageRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) 
 func (_d ImageRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.ImageFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -147,11 +147,42 @@ func (_d ImageRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inve
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.ImageRepo.
+func (_d ImageRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.ImageFilter) (images inventory.Images, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.Debug("=> calling GetAllWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("images", images),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method GetAllWithFilter returned an error")
+		} else {
+			log.Debug("<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.ImageRepo.
 func (_d ImageRepoWithSlog) GetByID(ctx context.Context, id int) (image inventory.Image, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -182,7 +213,7 @@ func (_d ImageRepoWithSlog) GetByID(ctx context.Context, id int) (image inventor
 func (_d ImageRepoWithSlog) UpdateByID(ctx context.Context, image inventory.Image) (image1 inventory.Image, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("image", image),
 		)

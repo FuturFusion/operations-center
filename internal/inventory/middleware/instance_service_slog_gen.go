@@ -29,7 +29,7 @@ func NewInstanceServiceWithSlog(base inventory.InstanceService, log *slog.Logger
 func (_d InstanceServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.InstanceFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -56,11 +56,42 @@ func (_d InstanceServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filte
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.InstanceService.
+func (_d InstanceServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.InstanceFilter) (instances inventory.Instances, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.Debug("=> calling GetAllWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("instances", instances),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method GetAllWithFilter returned an error")
+		} else {
+			log.Debug("<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.InstanceService.
 func (_d InstanceServiceWithSlog) GetByID(ctx context.Context, id int) (instance inventory.Instance, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -91,7 +122,7 @@ func (_d InstanceServiceWithSlog) GetByID(ctx context.Context, id int) (instance
 func (_d InstanceServiceWithSlog) ResyncByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -121,7 +152,7 @@ func (_d InstanceServiceWithSlog) ResyncByID(ctx context.Context, id int) (err e
 func (_d InstanceServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)

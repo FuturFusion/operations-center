@@ -55,6 +55,57 @@ RETURNING id, :cluster_name, project_name, name, object, last_updated;
 	return scanNetwork(row)
 }
 
+func (r network) GetAllWithFilter(ctx context.Context, filter inventory.NetworkFilter) (inventory.Networks, error) {
+	const sqlStmt = `
+SELECT
+  networks.id, clusters.name, networks.project_name, networks.name, networks.object, networks.last_updated
+FROM networks
+  INNER JOIN clusters ON networks.cluster_id = clusters.id
+WHERE true
+%s
+ORDER BY clusters.name, networks.name
+`
+
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	if filter.Project != nil {
+		whereClause = append(whereClause, ` AND networks.project_name = :project`)
+		args = append(args, sql.Named("project", filter.Project))
+	}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+	if err != nil {
+		return nil, sqlite.MapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var networks inventory.Networks
+	for rows.Next() {
+		var network inventory.Network
+		network, err = scanNetwork(rows)
+		if err != nil {
+			return nil, sqlite.MapErr(err)
+		}
+
+		networks = append(networks, network)
+	}
+
+	if rows.Err() != nil {
+		return nil, sqlite.MapErr(rows.Err())
+	}
+
+	return networks, nil
+}
+
 func (r network) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT networks.id

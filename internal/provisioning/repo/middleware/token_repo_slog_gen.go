@@ -30,7 +30,7 @@ func NewTokenRepoWithSlog(base provisioning.TokenRepo, log *slog.Logger) TokenRe
 func (_d TokenRepoWithSlog) Create(ctx context.Context, token provisioning.Token) (token1 provisioning.Token, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("token", token),
 		)
@@ -61,7 +61,7 @@ func (_d TokenRepoWithSlog) Create(ctx context.Context, token provisioning.Token
 func (_d TokenRepoWithSlog) DeleteByID(ctx context.Context, id uuid.UUID) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
 		)
@@ -91,7 +91,7 @@ func (_d TokenRepoWithSlog) DeleteByID(ctx context.Context, id uuid.UUID) (err e
 func (_d TokenRepoWithSlog) GetAll(ctx context.Context) (tokens provisioning.Tokens, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
@@ -121,7 +121,7 @@ func (_d TokenRepoWithSlog) GetAll(ctx context.Context) (tokens provisioning.Tok
 func (_d TokenRepoWithSlog) GetAllIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
@@ -151,7 +151,7 @@ func (_d TokenRepoWithSlog) GetAllIDs(ctx context.Context) (uUIDs []uuid.UUID, e
 func (_d TokenRepoWithSlog) GetByID(ctx context.Context, id uuid.UUID) (token provisioning.Token, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
 		)
@@ -182,7 +182,7 @@ func (_d TokenRepoWithSlog) GetByID(ctx context.Context, id uuid.UUID) (token pr
 func (_d TokenRepoWithSlog) UpdateByID(ctx context.Context, token provisioning.Token) (token1 provisioning.Token, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("token", token),
 		)

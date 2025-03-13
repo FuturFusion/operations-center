@@ -55,6 +55,10 @@ func NewNetworkForwardService(repo NetworkForwardRepo, clusterSvc ProvisioningCl
 	return networkForwardSvc
 }
 
+func (s networkForwardService) GetAllWithFilter(ctx context.Context, filter NetworkForwardFilter) (NetworkForwards, error) {
+	return s.repo.GetAllWithFilter(ctx, filter)
+}
+
 func (s networkForwardService) GetAllIDsWithFilter(ctx context.Context, filter NetworkForwardFilter) ([]int, error) {
 	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }

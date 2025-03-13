@@ -117,6 +117,13 @@ func TestProfileDatabaseActions(t *testing.T) {
 	require.Len(t, profileIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, profileIDs)
 
+	// Ensure we have two entries without filter
+	dbProfile, err := profile.GetAllWithFilter(ctx, inventory.ProfileFilter{})
+	require.NoError(t, err)
+	require.Len(t, dbProfile, 2)
+	require.Equal(t, profileA.Name, dbProfile[0].Name)
+	require.Equal(t, profileB.Name, dbProfile[1].Name)
+
 	// Ensure we have one entry with filter for cluster, server and project
 	profileIDs, err = profile.GetAllIDsWithFilter(ctx, inventory.ProfileFilter{
 		Cluster: ptr.To("one"),
@@ -125,6 +132,15 @@ func TestProfileDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, profileIDs, 1)
 	require.ElementsMatch(t, []int{1}, profileIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	dbProfile, err = profile.GetAllWithFilter(ctx, inventory.ProfileFilter{
+		Cluster: ptr.To("one"),
+		Project: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, profileIDs, 1)
+	require.Equal(t, "one", dbProfile[0].Name)
 
 	// Should get back profileA unchanged.
 	profileA.Cluster = "one"

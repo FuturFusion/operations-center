@@ -51,7 +51,7 @@ func New{{$decorator}}(base {{ $.SrcPkgQualifier }}{{ $mock.InterfaceName }}, lo
 		log := _d._log.With()
 		{{- if gt ($method.Params | len) 0 }}
 			if _d._log.Enabled(ctx, logger.LevelTrace) {
-				log.With(
+				log = log.With(
 					{{range $param := $method.Params}}
 						{{- if eq $param.TypeString "string" -}}
 						slog.String("{{ $param.Name }}", {{ $param.Name }}),

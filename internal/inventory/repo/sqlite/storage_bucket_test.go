@@ -121,6 +121,13 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	require.Len(t, storageBucketIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, storageBucketIDs)
 
+	// Ensure we have two entries without filter
+	dbStorageBucket, err := storageBucket.GetAllWithFilter(ctx, inventory.StorageBucketFilter{})
+	require.NoError(t, err)
+	require.Len(t, dbStorageBucket, 2)
+	require.Equal(t, storageBucketA.Name, dbStorageBucket[0].Name)
+	require.Equal(t, storageBucketB.Name, dbStorageBucket[1].Name)
+
 	// Ensure we have one entry with filter for cluster, server and project
 	storageBucketIDs, err = storageBucket.GetAllIDsWithFilter(ctx, inventory.StorageBucketFilter{
 		Cluster: ptr.To("one"),
@@ -130,6 +137,16 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, storageBucketIDs, 1)
 	require.ElementsMatch(t, []int{1}, storageBucketIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	dbStorageBucket, err = storageBucket.GetAllWithFilter(ctx, inventory.StorageBucketFilter{
+		Cluster: ptr.To("one"),
+		Server:  ptr.To("one"),
+		Project: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, storageBucketIDs, 1)
+	require.Equal(t, "one", dbStorageBucket[0].Name)
 
 	// Should get back storageBucketA unchanged.
 	storageBucketA.Cluster = "one"
