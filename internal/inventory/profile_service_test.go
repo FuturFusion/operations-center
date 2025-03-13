@@ -19,18 +19,73 @@ import (
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
 
-func TestProfileService_GetAllIDs(t *testing.T) {
+func TestProfileService_GetAllWithFilter(t *testing.T) {
 	tests := []struct {
-		name             string
-		repoGetAllIDs    []int
-		repoGetAllIDsErr error
+		name                    string
+		repoGetAllWithFilter    inventory.Profiles
+		repoGetAllWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success",
-			repoGetAllIDs: []int{
+			repoGetAllWithFilter: inventory.Profiles{
+				inventory.Profile{
+					Name: "one",
+				},
+				inventory.Profile{
+					Name: "two",
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:                    "error - repo",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ProfileRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.ProfileFilter) (inventory.Profiles, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+			}
+
+			profileSvc := inventory.NewProfileService(repo, nil, nil, inventory.ProfileWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			profile, err := profileSvc.GetAllWithFilter(context.Background(), inventory.ProfileFilter{})
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, profile, tc.count)
+		})
+	}
+}
+
+func TestProfileService_GetAllIDsWithFilter(t *testing.T) {
+	tests := []struct {
+		name                       string
+		repoGetAllIDsWithFilter    []int
+		repoGetAllIDsWithFilterErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name: "success",
+			repoGetAllIDsWithFilter: []int{
 				1, 2,
 			},
 
@@ -38,8 +93,8 @@ func TestProfileService_GetAllIDs(t *testing.T) {
 			count:     2,
 		},
 		{
-			name:             "error - repo",
-			repoGetAllIDsErr: boom.Error,
+			name:                       "error - repo",
+			repoGetAllIDsWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -51,7 +106,7 @@ func TestProfileService_GetAllIDs(t *testing.T) {
 			// Setup
 			repo := &repoMock.ProfileRepoMock{
 				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.ProfileFilter) ([]int, error) {
-					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
+					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
 				},
 			}
 

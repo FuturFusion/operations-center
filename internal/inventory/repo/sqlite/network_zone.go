@@ -55,6 +55,57 @@ RETURNING id, :cluster_name, project_name, name, object, last_updated;
 	return scanNetworkZone(row)
 }
 
+func (r networkZone) GetAllWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (inventory.NetworkZones, error) {
+	const sqlStmt = `
+SELECT
+  network_zones.id, clusters.name, network_zones.project_name, network_zones.name, network_zones.object, network_zones.last_updated
+FROM network_zones
+  INNER JOIN clusters ON network_zones.cluster_id = clusters.id
+WHERE true
+%s
+ORDER BY clusters.name, network_zones.name
+`
+
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	if filter.Project != nil {
+		whereClause = append(whereClause, ` AND network_zones.project_name = :project`)
+		args = append(args, sql.Named("project", filter.Project))
+	}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+	if err != nil {
+		return nil, sqlite.MapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var networkZones inventory.NetworkZones
+	for rows.Next() {
+		var networkZone inventory.NetworkZone
+		networkZone, err = scanNetworkZone(rows)
+		if err != nil {
+			return nil, sqlite.MapErr(err)
+		}
+
+		networkZones = append(networkZones, networkZone)
+	}
+
+	if rows.Err() != nil {
+		return nil, sqlite.MapErr(rows.Err())
+	}
+
+	return networkZones, nil
+}
+
 func (r networkZone) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT network_zones.id

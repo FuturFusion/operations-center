@@ -147,6 +147,37 @@ func (_d NetworkPeerRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filte
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.NetworkPeerRepo.
+func (_d NetworkPeerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (networkPeers inventory.NetworkPeers, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.Debug("=> calling GetAllWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("networkPeers", networkPeers),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method GetAllWithFilter returned an error")
+		} else {
+			log.Debug("<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.NetworkPeerRepo.
 func (_d NetworkPeerRepoWithSlog) GetByID(ctx context.Context, id int) (networkPeer inventory.NetworkPeer, err error) {
 	log := _d._log.With()

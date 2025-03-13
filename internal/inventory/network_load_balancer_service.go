@@ -55,6 +55,10 @@ func NewNetworkLoadBalancerService(repo NetworkLoadBalancerRepo, clusterSvc Prov
 	return networkLoadBalancerSvc
 }
 
+func (s networkLoadBalancerService) GetAllWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) (NetworkLoadBalancers, error) {
+	return s.repo.GetAllWithFilter(ctx, filter)
+}
+
 func (s networkLoadBalancerService) GetAllIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]int, error) {
 	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }

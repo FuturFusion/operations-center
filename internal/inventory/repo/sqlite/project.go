@@ -54,6 +54,52 @@ RETURNING id, :cluster_name, name, object, last_updated;
 	return scanProject(row)
 }
 
+func (r project) GetAllWithFilter(ctx context.Context, filter inventory.ProjectFilter) (inventory.Projects, error) {
+	const sqlStmt = `
+SELECT
+  projects.id, clusters.name, projects.name, projects.object, projects.last_updated
+FROM projects
+  INNER JOIN clusters ON projects.cluster_id = clusters.id
+WHERE true
+%s
+ORDER BY clusters.name, projects.name
+`
+
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+	if err != nil {
+		return nil, sqlite.MapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var projects inventory.Projects
+	for rows.Next() {
+		var project inventory.Project
+		project, err = scanProject(rows)
+		if err != nil {
+			return nil, sqlite.MapErr(err)
+		}
+
+		projects = append(projects, project)
+	}
+
+	if rows.Err() != nil {
+		return nil, sqlite.MapErr(rows.Err())
+	}
+
+	return projects, nil
+}
+
 func (r project) GetAllIDsWithFilter(ctx context.Context, filter inventory.ProjectFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT projects.id

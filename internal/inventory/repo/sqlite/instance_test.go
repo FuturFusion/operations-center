@@ -119,6 +119,13 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.Len(t, instanceIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, instanceIDs)
 
+	// Ensure we have two entries without filter
+	dbInstance, err := instance.GetAllWithFilter(ctx, inventory.InstanceFilter{})
+	require.NoError(t, err)
+	require.Len(t, dbInstance, 2)
+	require.Equal(t, instanceA.Name, dbInstance[0].Name)
+	require.Equal(t, instanceB.Name, dbInstance[1].Name)
+
 	// Ensure we have one entry with filter for cluster, server and project
 	instanceIDs, err = instance.GetAllIDsWithFilter(ctx, inventory.InstanceFilter{
 		Cluster: ptr.To("one"),
@@ -128,6 +135,16 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, instanceIDs, 1)
 	require.ElementsMatch(t, []int{1}, instanceIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	dbInstance, err = instance.GetAllWithFilter(ctx, inventory.InstanceFilter{
+		Cluster: ptr.To("one"),
+		Server:  ptr.To("one"),
+		Project: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, instanceIDs, 1)
+	require.Equal(t, "one", dbInstance[0].Name)
 
 	// Should get back instanceA unchanged.
 	instanceA.Cluster = "one"

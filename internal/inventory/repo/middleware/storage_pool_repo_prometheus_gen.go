@@ -93,6 +93,20 @@ func (_d StoragePoolRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context,
 	return _d.base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.StoragePoolRepo.
+func (_d StoragePoolRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) (storagePools inventory.StoragePools, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		storagePoolRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.StoragePoolRepo.
 func (_d StoragePoolRepoWithPrometheus) GetByID(ctx context.Context, id int) (storagePool inventory.StoragePool, err error) {
 	_since := time.Now()

@@ -39,6 +39,10 @@ func NewNetworkService(repo NetworkRepo, clusterSvc ProvisioningClusterService, 
 	return networkSvc
 }
 
+func (s networkService) GetAllWithFilter(ctx context.Context, filter NetworkFilter) (Networks, error) {
+	return s.repo.GetAllWithFilter(ctx, filter)
+}
+
 func (s networkService) GetAllIDsWithFilter(ctx context.Context, filter NetworkFilter) ([]int, error) {
 	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }

@@ -9,6 +9,7 @@ import (
 )
 
 type NetworkACLService interface {
+	GetAllWithFilter(ctx context.Context, filter NetworkACLFilter) (NetworkACLs, error)
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkACL, error)
 	ResyncByID(ctx context.Context, id int) error
@@ -16,6 +17,7 @@ type NetworkACLService interface {
 }
 
 type NetworkACLRepo interface {
+	GetAllWithFilter(ctx context.Context, filter NetworkACLFilter) (NetworkACLs, error)
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkACL, error)
 	Create(ctx context.Context, networkACL NetworkACL) (NetworkACL, error)

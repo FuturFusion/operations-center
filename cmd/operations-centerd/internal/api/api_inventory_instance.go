@@ -85,7 +85,51 @@ func registerInventoryInstanceHandler(router *http.ServeMux, service inventory.I
 //		    $ref: "#/responses/Forbidden"
 //		  "500":
 //		    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/provisioning/instances?recursion=1 instances instances_get_recursion
+//
+//	Get the instances
+//
+//	Returns a list of instances (structs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API instances
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of instances
+//	          items:
+//	            $ref: "#/definitions/instance"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
+
 	var filter inventory.InstanceFilter
 
 	if r.URL.Query().Get("cluster") != "" {
@@ -98,6 +142,29 @@ func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
 
 	if r.URL.Query().Get("project") != "" {
 		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	}
+
+	if recursion == 1 {
+		// FIXME: Should we require a non empty filter with recursion?
+		instances, err := i.service.GetAllWithFilter(r.Context(), filter)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		result := make([]api.Instance, 0, len(instances))
+		for _, instance := range instances {
+			result = append(result, api.Instance{
+				ID:          instance.ID,
+				Cluster:     instance.Cluster,
+				Server:      instance.Server,
+				ProjectName: instance.ProjectName,
+				Name:        instance.Name,
+				Object:      instance.Object,
+				LastUpdated: instance.LastUpdated,
+			})
+		}
+
+		return response.SyncResponse(true, result)
 	}
 
 	instanceIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)

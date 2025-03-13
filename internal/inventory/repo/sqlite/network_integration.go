@@ -54,6 +54,52 @@ RETURNING id, :cluster_name, name, object, last_updated;
 	return scanNetworkIntegration(row)
 }
 
+func (r networkIntegration) GetAllWithFilter(ctx context.Context, filter inventory.NetworkIntegrationFilter) (inventory.NetworkIntegrations, error) {
+	const sqlStmt = `
+SELECT
+  network_integrations.id, clusters.name, network_integrations.name, network_integrations.object, network_integrations.last_updated
+FROM network_integrations
+  INNER JOIN clusters ON network_integrations.cluster_id = clusters.id
+WHERE true
+%s
+ORDER BY clusters.name, network_integrations.name
+`
+
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+	if err != nil {
+		return nil, sqlite.MapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var networkIntegrations inventory.NetworkIntegrations
+	for rows.Next() {
+		var networkIntegration inventory.NetworkIntegration
+		networkIntegration, err = scanNetworkIntegration(rows)
+		if err != nil {
+			return nil, sqlite.MapErr(err)
+		}
+
+		networkIntegrations = append(networkIntegrations, networkIntegration)
+	}
+
+	if rows.Err() != nil {
+		return nil, sqlite.MapErr(rows.Err())
+	}
+
+	return networkIntegrations, nil
+}
+
 func (r networkIntegration) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT network_integrations.id

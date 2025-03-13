@@ -93,6 +93,20 @@ func (_d StorageBucketRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Contex
 	return _d.base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.StorageBucketRepo.
+func (_d StorageBucketRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (storageBuckets inventory.StorageBuckets, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		storageBucketRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.StorageBucketRepo.
 func (_d StorageBucketRepoWithPrometheus) GetByID(ctx context.Context, id int) (storageBucket inventory.StorageBucket, err error) {
 	_since := time.Now()

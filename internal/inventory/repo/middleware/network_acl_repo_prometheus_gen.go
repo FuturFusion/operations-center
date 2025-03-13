@@ -93,6 +93,20 @@ func (_d NetworkACLRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, 
 	return _d.base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.NetworkACLRepo.
+func (_d NetworkACLRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (networkACLs inventory.NetworkACLs, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		networkACLRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.NetworkACLRepo.
 func (_d NetworkACLRepoWithPrometheus) GetByID(ctx context.Context, id int) (networkACL inventory.NetworkACL, err error) {
 	_since := time.Now()

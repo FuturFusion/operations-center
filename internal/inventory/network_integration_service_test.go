@@ -19,18 +19,73 @@ import (
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
 
-func TestNetworkIntegrationService_GetAllIDs(t *testing.T) {
+func TestNetworkIntegrationService_GetAllWithFilter(t *testing.T) {
 	tests := []struct {
-		name             string
-		repoGetAllIDs    []int
-		repoGetAllIDsErr error
+		name                    string
+		repoGetAllWithFilter    inventory.NetworkIntegrations
+		repoGetAllWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success",
-			repoGetAllIDs: []int{
+			repoGetAllWithFilter: inventory.NetworkIntegrations{
+				inventory.NetworkIntegration{
+					Name: "one",
+				},
+				inventory.NetworkIntegration{
+					Name: "two",
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:                    "error - repo",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.NetworkIntegrationRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.NetworkIntegrationFilter) (inventory.NetworkIntegrations, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+			}
+
+			networkIntegrationSvc := inventory.NewNetworkIntegrationService(repo, nil, nil, inventory.NetworkIntegrationWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			networkIntegration, err := networkIntegrationSvc.GetAllWithFilter(context.Background(), inventory.NetworkIntegrationFilter{})
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, networkIntegration, tc.count)
+		})
+	}
+}
+
+func TestNetworkIntegrationService_GetAllIDsWithFilter(t *testing.T) {
+	tests := []struct {
+		name                       string
+		repoGetAllIDsWithFilter    []int
+		repoGetAllIDsWithFilterErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name: "success",
+			repoGetAllIDsWithFilter: []int{
 				1, 2,
 			},
 
@@ -38,8 +93,8 @@ func TestNetworkIntegrationService_GetAllIDs(t *testing.T) {
 			count:     2,
 		},
 		{
-			name:             "error - repo",
-			repoGetAllIDsErr: boom.Error,
+			name:                       "error - repo",
+			repoGetAllIDsWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -51,7 +106,7 @@ func TestNetworkIntegrationService_GetAllIDs(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkIntegrationRepoMock{
 				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]int, error) {
-					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
+					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
 				},
 			}
 

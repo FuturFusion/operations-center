@@ -75,11 +75,77 @@ func registerInventoryNetworkForwardHandler(router *http.ServeMux, service inven
 //		    $ref: "#/responses/Forbidden"
 //		  "500":
 //		    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/provisioning/network_forwards?recursion=1 network_forwards network_forwards_get_recursion
+//
+//	Get the network_forwards
+//
+//	Returns a list of network_forwards (structs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API network_forwards
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of network_forwards
+//	          items:
+//	            $ref: "#/definitions/networkForward"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func (i *networkForwardHandler) networkForwardsGet(r *http.Request) response.Response {
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
+
 	var filter inventory.NetworkForwardFilter
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+	}
+
+	if recursion == 1 {
+		// FIXME: Should we require a non empty filter with recursion?
+		networkForwards, err := i.service.GetAllWithFilter(r.Context(), filter)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		result := make([]api.NetworkForward, 0, len(networkForwards))
+		for _, networkForward := range networkForwards {
+			result = append(result, api.NetworkForward{
+				ID:          networkForward.ID,
+				Cluster:     networkForward.Cluster,
+				NetworkName: networkForward.NetworkName,
+				Name:        networkForward.Name,
+				Object:      networkForward.Object,
+				LastUpdated: networkForward.LastUpdated,
+			})
+		}
+
+		return response.SyncResponse(true, result)
 	}
 
 	networkForwardIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)

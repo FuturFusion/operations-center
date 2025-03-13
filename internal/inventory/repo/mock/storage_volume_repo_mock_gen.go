@@ -32,6 +32,9 @@ var _ inventory.StorageVolumeRepo = &StorageVolumeRepoMock{}
 //			GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.StorageVolumeFilter) ([]int, error) {
 //				panic("mock out the GetAllIDsWithFilter method")
 //			},
+//			GetAllWithFilterFunc: func(ctx context.Context, filter inventory.StorageVolumeFilter) (inventory.StorageVolumes, error) {
+//				panic("mock out the GetAllWithFilter method")
+//			},
 //			GetByIDFunc: func(ctx context.Context, id int) (inventory.StorageVolume, error) {
 //				panic("mock out the GetByID method")
 //			},
@@ -56,6 +59,9 @@ type StorageVolumeRepoMock struct {
 
 	// GetAllIDsWithFilterFunc mocks the GetAllIDsWithFilter method.
 	GetAllIDsWithFilterFunc func(ctx context.Context, filter inventory.StorageVolumeFilter) ([]int, error)
+
+	// GetAllWithFilterFunc mocks the GetAllWithFilter method.
+	GetAllWithFilterFunc func(ctx context.Context, filter inventory.StorageVolumeFilter) (inventory.StorageVolumes, error)
 
 	// GetByIDFunc mocks the GetByID method.
 	GetByIDFunc func(ctx context.Context, id int) (inventory.StorageVolume, error)
@@ -93,6 +99,13 @@ type StorageVolumeRepoMock struct {
 			// Filter is the filter argument value.
 			Filter inventory.StorageVolumeFilter
 		}
+		// GetAllWithFilter holds details about calls to the GetAllWithFilter method.
+		GetAllWithFilter []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Filter is the filter argument value.
+			Filter inventory.StorageVolumeFilter
+		}
 		// GetByID holds details about calls to the GetByID method.
 		GetByID []struct {
 			// Ctx is the ctx argument value.
@@ -112,6 +125,7 @@ type StorageVolumeRepoMock struct {
 	lockDeleteByClusterName sync.RWMutex
 	lockDeleteByID          sync.RWMutex
 	lockGetAllIDsWithFilter sync.RWMutex
+	lockGetAllWithFilter    sync.RWMutex
 	lockGetByID             sync.RWMutex
 	lockUpdateByID          sync.RWMutex
 }
@@ -257,6 +271,42 @@ func (mock *StorageVolumeRepoMock) GetAllIDsWithFilterCalls() []struct {
 	mock.lockGetAllIDsWithFilter.RLock()
 	calls = mock.calls.GetAllIDsWithFilter
 	mock.lockGetAllIDsWithFilter.RUnlock()
+	return calls
+}
+
+// GetAllWithFilter calls GetAllWithFilterFunc.
+func (mock *StorageVolumeRepoMock) GetAllWithFilter(ctx context.Context, filter inventory.StorageVolumeFilter) (inventory.StorageVolumes, error) {
+	if mock.GetAllWithFilterFunc == nil {
+		panic("StorageVolumeRepoMock.GetAllWithFilterFunc: method is nil but StorageVolumeRepo.GetAllWithFilter was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Filter inventory.StorageVolumeFilter
+	}{
+		Ctx:    ctx,
+		Filter: filter,
+	}
+	mock.lockGetAllWithFilter.Lock()
+	mock.calls.GetAllWithFilter = append(mock.calls.GetAllWithFilter, callInfo)
+	mock.lockGetAllWithFilter.Unlock()
+	return mock.GetAllWithFilterFunc(ctx, filter)
+}
+
+// GetAllWithFilterCalls gets all the calls that were made to GetAllWithFilter.
+// Check the length with:
+//
+//	len(mockedStorageVolumeRepo.GetAllWithFilterCalls())
+func (mock *StorageVolumeRepoMock) GetAllWithFilterCalls() []struct {
+	Ctx    context.Context
+	Filter inventory.StorageVolumeFilter
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Filter inventory.StorageVolumeFilter
+	}
+	mock.lockGetAllWithFilter.RLock()
+	calls = mock.calls.GetAllWithFilter
+	mock.lockGetAllWithFilter.RUnlock()
 	return calls
 }
 

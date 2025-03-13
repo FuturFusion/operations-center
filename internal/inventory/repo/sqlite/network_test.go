@@ -117,6 +117,13 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	require.Len(t, networkIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, networkIDs)
 
+	// Ensure we have two entries without filter
+	dbNetwork, err := network.GetAllWithFilter(ctx, inventory.NetworkFilter{})
+	require.NoError(t, err)
+	require.Len(t, dbNetwork, 2)
+	require.Equal(t, networkA.Name, dbNetwork[0].Name)
+	require.Equal(t, networkB.Name, dbNetwork[1].Name)
+
 	// Ensure we have one entry with filter for cluster, server and project
 	networkIDs, err = network.GetAllIDsWithFilter(ctx, inventory.NetworkFilter{
 		Cluster: ptr.To("one"),
@@ -125,6 +132,15 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, networkIDs, 1)
 	require.ElementsMatch(t, []int{1}, networkIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	dbNetwork, err = network.GetAllWithFilter(ctx, inventory.NetworkFilter{
+		Cluster: ptr.To("one"),
+		Project: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, networkIDs, 1)
+	require.Equal(t, "one", dbNetwork[0].Name)
 
 	// Should get back networkA unchanged.
 	networkA.Cluster = "one"

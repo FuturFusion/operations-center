@@ -54,6 +54,52 @@ RETURNING id, :cluster_name, name, object, last_updated;
 	return scanStoragePool(row)
 }
 
+func (r storagePool) GetAllWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) (inventory.StoragePools, error) {
+	const sqlStmt = `
+SELECT
+  storage_pools.id, clusters.name, storage_pools.name, storage_pools.object, storage_pools.last_updated
+FROM storage_pools
+  INNER JOIN clusters ON storage_pools.cluster_id = clusters.id
+WHERE true
+%s
+ORDER BY clusters.name, storage_pools.name
+`
+
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+	if err != nil {
+		return nil, sqlite.MapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var storagePools inventory.StoragePools
+	for rows.Next() {
+		var storagePool inventory.StoragePool
+		storagePool, err = scanStoragePool(rows)
+		if err != nil {
+			return nil, sqlite.MapErr(err)
+		}
+
+		storagePools = append(storagePools, storagePool)
+	}
+
+	if rows.Err() != nil {
+		return nil, sqlite.MapErr(rows.Err())
+	}
+
+	return storagePools, nil
+}
+
 func (r storagePool) GetAllIDsWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT storage_pools.id

@@ -9,6 +9,7 @@ import (
 )
 
 type NetworkPeerService interface {
+	GetAllWithFilter(ctx context.Context, filter NetworkPeerFilter) (NetworkPeers, error)
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkPeer, error)
 	ResyncByID(ctx context.Context, id int) error
@@ -16,6 +17,7 @@ type NetworkPeerService interface {
 }
 
 type NetworkPeerRepo interface {
+	GetAllWithFilter(ctx context.Context, filter NetworkPeerFilter) (NetworkPeers, error)
 	GetAllIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]int, error)
 	GetByID(ctx context.Context, id int) (NetworkPeer, error)
 	Create(ctx context.Context, networkPeer NetworkPeer) (NetworkPeer, error)

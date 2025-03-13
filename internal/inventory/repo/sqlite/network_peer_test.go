@@ -117,6 +117,13 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 	require.Len(t, networkPeerIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, networkPeerIDs)
 
+	// Ensure we have two entries without filter
+	dbNetworkPeer, err := networkPeer.GetAllWithFilter(ctx, inventory.NetworkPeerFilter{})
+	require.NoError(t, err)
+	require.Len(t, dbNetworkPeer, 2)
+	require.Equal(t, networkPeerA.Name, dbNetworkPeer[0].Name)
+	require.Equal(t, networkPeerB.Name, dbNetworkPeer[1].Name)
+
 	// Ensure we have one entry with filter for cluster, server and project
 	networkPeerIDs, err = networkPeer.GetAllIDsWithFilter(ctx, inventory.NetworkPeerFilter{
 		Cluster: ptr.To("one"),
@@ -124,6 +131,14 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, networkPeerIDs, 1)
 	require.ElementsMatch(t, []int{1}, networkPeerIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	dbNetworkPeer, err = networkPeer.GetAllWithFilter(ctx, inventory.NetworkPeerFilter{
+		Cluster: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, networkPeerIDs, 1)
+	require.Equal(t, "one", dbNetworkPeer[0].Name)
 
 	// Should get back networkPeerA unchanged.
 	networkPeerA.Cluster = "one"

@@ -56,6 +56,37 @@ func (_d NetworkZoneServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, fi
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.NetworkZoneService.
+func (_d NetworkZoneServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (networkZones inventory.NetworkZones, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.Debug("=> calling GetAllWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("networkZones", networkZones),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method GetAllWithFilter returned an error")
+		} else {
+			log.Debug("<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.NetworkZoneService.
 func (_d NetworkZoneServiceWithSlog) GetByID(ctx context.Context, id int) (networkZone inventory.NetworkZone, err error) {
 	log := _d._log.With()

@@ -19,18 +19,73 @@ import (
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
 
-func TestNetworkForwardService_GetAllIDs(t *testing.T) {
+func TestNetworkForwardService_GetAllWithFilter(t *testing.T) {
 	tests := []struct {
-		name             string
-		repoGetAllIDs    []int
-		repoGetAllIDsErr error
+		name                    string
+		repoGetAllWithFilter    inventory.NetworkForwards
+		repoGetAllWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success",
-			repoGetAllIDs: []int{
+			repoGetAllWithFilter: inventory.NetworkForwards{
+				inventory.NetworkForward{
+					Name: "one",
+				},
+				inventory.NetworkForward{
+					Name: "two",
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:                    "error - repo",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.NetworkForwardRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.NetworkForwardFilter) (inventory.NetworkForwards, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+			}
+
+			networkForwardSvc := inventory.NewNetworkForwardService(repo, nil, nil, nil, inventory.NetworkForwardWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			networkForward, err := networkForwardSvc.GetAllWithFilter(context.Background(), inventory.NetworkForwardFilter{})
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, networkForward, tc.count)
+		})
+	}
+}
+
+func TestNetworkForwardService_GetAllIDsWithFilter(t *testing.T) {
+	tests := []struct {
+		name                       string
+		repoGetAllIDsWithFilter    []int
+		repoGetAllIDsWithFilterErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name: "success",
+			repoGetAllIDsWithFilter: []int{
 				1, 2,
 			},
 
@@ -38,8 +93,8 @@ func TestNetworkForwardService_GetAllIDs(t *testing.T) {
 			count:     2,
 		},
 		{
-			name:             "error - repo",
-			repoGetAllIDsErr: boom.Error,
+			name:                       "error - repo",
+			repoGetAllIDsWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -51,7 +106,7 @@ func TestNetworkForwardService_GetAllIDs(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkForwardRepoMock{
 				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkForwardFilter) ([]int, error) {
-					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
+					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
 				},
 			}
 

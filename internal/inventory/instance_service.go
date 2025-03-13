@@ -39,6 +39,10 @@ func NewInstanceService(repo InstanceRepo, clusterSvc ProvisioningClusterService
 	return instanceSvc
 }
 
+func (s instanceService) GetAllWithFilter(ctx context.Context, filter InstanceFilter) (Instances, error) {
+	return s.repo.GetAllWithFilter(ctx, filter)
+}
+
 func (s instanceService) GetAllIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]int, error) {
 	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }

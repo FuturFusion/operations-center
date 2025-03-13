@@ -147,6 +147,37 @@ func (_d StorageVolumeRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, fil
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.StorageVolumeRepo.
+func (_d StorageVolumeRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.StorageVolumeFilter) (storageVolumes inventory.StorageVolumes, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.Debug("=> calling GetAllWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("storageVolumes", storageVolumes),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method GetAllWithFilter returned an error")
+		} else {
+			log.Debug("<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.StorageVolumeRepo.
 func (_d StorageVolumeRepoWithSlog) GetByID(ctx context.Context, id int) (storageVolume inventory.StorageVolume, err error) {
 	log := _d._log.With()

@@ -93,6 +93,20 @@ func (_d NetworkRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, fil
 	return _d.base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.NetworkRepo.
+func (_d NetworkRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filter inventory.NetworkFilter) (networks inventory.Networks, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		networkRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.NetworkRepo.
 func (_d NetworkRepoWithPrometheus) GetByID(ctx context.Context, id int) (network inventory.Network, err error) {
 	_since := time.Now()

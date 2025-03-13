@@ -56,6 +56,37 @@ func (_d NetworkACLServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, fil
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.NetworkACLService.
+func (_d NetworkACLServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (networkACLs inventory.NetworkACLs, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.Debug("=> calling GetAllWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("networkACLs", networkACLs),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method GetAllWithFilter returned an error")
+		} else {
+			log.Debug("<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.NetworkACLService.
 func (_d NetworkACLServiceWithSlog) GetByID(ctx context.Context, id int) (networkACL inventory.NetworkACL, err error) {
 	log := _d._log.With()

@@ -117,6 +117,13 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 	require.Len(t, networkZoneIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, networkZoneIDs)
 
+	// Ensure we have two entries without filter
+	dbNetworkZone, err := networkZone.GetAllWithFilter(ctx, inventory.NetworkZoneFilter{})
+	require.NoError(t, err)
+	require.Len(t, dbNetworkZone, 2)
+	require.Equal(t, networkZoneA.Name, dbNetworkZone[0].Name)
+	require.Equal(t, networkZoneB.Name, dbNetworkZone[1].Name)
+
 	// Ensure we have one entry with filter for cluster, server and project
 	networkZoneIDs, err = networkZone.GetAllIDsWithFilter(ctx, inventory.NetworkZoneFilter{
 		Cluster: ptr.To("one"),
@@ -125,6 +132,15 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, networkZoneIDs, 1)
 	require.ElementsMatch(t, []int{1}, networkZoneIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	dbNetworkZone, err = networkZone.GetAllWithFilter(ctx, inventory.NetworkZoneFilter{
+		Cluster: ptr.To("one"),
+		Project: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, networkZoneIDs, 1)
+	require.Equal(t, "one", dbNetworkZone[0].Name)
 
 	// Should get back networkZoneA unchanged.
 	networkZoneA.Cluster = "one"

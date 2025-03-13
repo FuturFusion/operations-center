@@ -93,6 +93,20 @@ func (_d ImageRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filte
 	return _d.base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.ImageRepo.
+func (_d ImageRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filter inventory.ImageFilter) (images inventory.Images, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		imageRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.ImageRepo.
 func (_d ImageRepoWithPrometheus) GetByID(ctx context.Context, id int) (image inventory.Image, err error) {
 	_since := time.Now()

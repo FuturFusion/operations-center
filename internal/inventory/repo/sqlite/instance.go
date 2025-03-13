@@ -60,6 +60,63 @@ RETURNING id, :cluster_name, :server_name, project_name, name, object, last_upda
 	return scanInstance(row)
 }
 
+func (r instance) GetAllWithFilter(ctx context.Context, filter inventory.InstanceFilter) (inventory.Instances, error) {
+	const sqlStmt = `
+SELECT
+  instances.id, clusters.name, servers.name, instances.project_name, instances.name, instances.object, instances.last_updated
+FROM instances
+  INNER JOIN clusters ON instances.cluster_id = clusters.id
+  INNER JOIN servers ON instances.server_id = servers.id
+WHERE true
+%s
+ORDER BY clusters.name, servers.name, instances.name
+`
+
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	if filter.Server != nil {
+		whereClause = append(whereClause, ` AND servers.name = :server_name`)
+		args = append(args, sql.Named("server_name", filter.Server))
+	}
+
+	if filter.Project != nil {
+		whereClause = append(whereClause, ` AND instances.project_name = :project`)
+		args = append(args, sql.Named("project", filter.Project))
+	}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+	if err != nil {
+		return nil, sqlite.MapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var instances inventory.Instances
+	for rows.Next() {
+		var instance inventory.Instance
+		instance, err = scanInstance(rows)
+		if err != nil {
+			return nil, sqlite.MapErr(err)
+		}
+
+		instances = append(instances, instance)
+	}
+
+	if rows.Err() != nil {
+		return nil, sqlite.MapErr(rows.Err())
+	}
+
+	return instances, nil
+}
+
 func (r instance) GetAllIDsWithFilter(ctx context.Context, filter inventory.InstanceFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT instances.id

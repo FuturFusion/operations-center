@@ -55,6 +55,52 @@ RETURNING id, :cluster_name, network_name, name, object, last_updated;
 	return scanNetworkForward(row)
 }
 
+func (r networkForward) GetAllWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (inventory.NetworkForwards, error) {
+	const sqlStmt = `
+SELECT
+  network_forwards.id, clusters.name, network_forwards.network_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
+FROM network_forwards
+  INNER JOIN clusters ON network_forwards.cluster_id = clusters.id
+WHERE true
+%s
+ORDER BY clusters.name, network_forwards.name
+`
+
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+	if err != nil {
+		return nil, sqlite.MapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var networkForwards inventory.NetworkForwards
+	for rows.Next() {
+		var networkForward inventory.NetworkForward
+		networkForward, err = scanNetworkForward(rows)
+		if err != nil {
+			return nil, sqlite.MapErr(err)
+		}
+
+		networkForwards = append(networkForwards, networkForward)
+	}
+
+	if rows.Err() != nil {
+		return nil, sqlite.MapErr(rows.Err())
+	}
+
+	return networkForwards, nil
+}
+
 func (r networkForward) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT network_forwards.id

@@ -123,6 +123,13 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	require.Len(t, storageVolumeIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, storageVolumeIDs)
 
+	// Ensure we have two entries without filter
+	dbStorageVolume, err := storageVolume.GetAllWithFilter(ctx, inventory.StorageVolumeFilter{})
+	require.NoError(t, err)
+	require.Len(t, dbStorageVolume, 2)
+	require.Equal(t, storageVolumeA.Name, dbStorageVolume[0].Name)
+	require.Equal(t, storageVolumeB.Name, dbStorageVolume[1].Name)
+
 	// Ensure we have one entry with filter for cluster, server and project
 	storageVolumeIDs, err = storageVolume.GetAllIDsWithFilter(ctx, inventory.StorageVolumeFilter{
 		Cluster: ptr.To("one"),
@@ -132,6 +139,16 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, storageVolumeIDs, 1)
 	require.ElementsMatch(t, []int{1}, storageVolumeIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	dbStorageVolume, err = storageVolume.GetAllWithFilter(ctx, inventory.StorageVolumeFilter{
+		Cluster: ptr.To("one"),
+		Server:  ptr.To("one"),
+		Project: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, storageVolumeIDs, 1)
+	require.Equal(t, "one", dbStorageVolume[0].Name)
 
 	// Should get back storageVolumeA unchanged.
 	storageVolumeA.Cluster = "one"

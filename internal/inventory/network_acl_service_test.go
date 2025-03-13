@@ -19,18 +19,73 @@ import (
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
 
-func TestNetworkACLService_GetAllIDs(t *testing.T) {
+func TestNetworkACLService_GetAllWithFilter(t *testing.T) {
 	tests := []struct {
-		name             string
-		repoGetAllIDs    []int
-		repoGetAllIDsErr error
+		name                    string
+		repoGetAllWithFilter    inventory.NetworkACLs
+		repoGetAllWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success",
-			repoGetAllIDs: []int{
+			repoGetAllWithFilter: inventory.NetworkACLs{
+				inventory.NetworkACL{
+					Name: "one",
+				},
+				inventory.NetworkACL{
+					Name: "two",
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:                    "error - repo",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.NetworkACLRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.NetworkACLFilter) (inventory.NetworkACLs, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+			}
+
+			networkACLSvc := inventory.NewNetworkACLService(repo, nil, nil, inventory.NetworkACLWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			networkACL, err := networkACLSvc.GetAllWithFilter(context.Background(), inventory.NetworkACLFilter{})
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, networkACL, tc.count)
+		})
+	}
+}
+
+func TestNetworkACLService_GetAllIDsWithFilter(t *testing.T) {
+	tests := []struct {
+		name                       string
+		repoGetAllIDsWithFilter    []int
+		repoGetAllIDsWithFilterErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name: "success",
+			repoGetAllIDsWithFilter: []int{
 				1, 2,
 			},
 
@@ -38,8 +93,8 @@ func TestNetworkACLService_GetAllIDs(t *testing.T) {
 			count:     2,
 		},
 		{
-			name:             "error - repo",
-			repoGetAllIDsErr: boom.Error,
+			name:                       "error - repo",
+			repoGetAllIDsWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -51,7 +106,7 @@ func TestNetworkACLService_GetAllIDs(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkACLRepoMock{
 				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkACLFilter) ([]int, error) {
-					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
+					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
 				},
 			}
 

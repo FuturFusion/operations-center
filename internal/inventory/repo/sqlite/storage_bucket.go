@@ -61,6 +61,63 @@ RETURNING id, :cluster_name, :server_name, project_name, storage_pool_name, name
 	return scanStorageBucket(row)
 }
 
+func (r storageBucket) GetAllWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (inventory.StorageBuckets, error) {
+	const sqlStmt = `
+SELECT
+  storage_buckets.id, clusters.name, servers.name, storage_buckets.project_name, storage_buckets.storage_pool_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
+FROM storage_buckets
+  INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
+  INNER JOIN servers ON storage_buckets.server_id = servers.id
+WHERE true
+%s
+ORDER BY clusters.name, servers.name, storage_buckets.name
+`
+
+	var whereClause []string
+	var args []any
+
+	if filter.Cluster != nil {
+		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
+		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	if filter.Server != nil {
+		whereClause = append(whereClause, ` AND servers.name = :server_name`)
+		args = append(args, sql.Named("server_name", filter.Server))
+	}
+
+	if filter.Project != nil {
+		whereClause = append(whereClause, ` AND storage_buckets.project_name = :project`)
+		args = append(args, sql.Named("project", filter.Project))
+	}
+
+	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+
+	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+	if err != nil {
+		return nil, sqlite.MapErr(err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var storageBuckets inventory.StorageBuckets
+	for rows.Next() {
+		var storageBucket inventory.StorageBucket
+		storageBucket, err = scanStorageBucket(rows)
+		if err != nil {
+			return nil, sqlite.MapErr(err)
+		}
+
+		storageBuckets = append(storageBuckets, storageBucket)
+	}
+
+	if rows.Err() != nil {
+		return nil, sqlite.MapErr(rows.Err())
+	}
+
+	return storageBuckets, nil
+}
+
 func (r storageBucket) GetAllIDsWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) ([]int, error) {
 	const sqlStmt = `
 SELECT storage_buckets.id

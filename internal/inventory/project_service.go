@@ -39,6 +39,10 @@ func NewProjectService(repo ProjectRepo, clusterSvc ProvisioningClusterService, 
 	return projectSvc
 }
 
+func (s projectService) GetAllWithFilter(ctx context.Context, filter ProjectFilter) (Projects, error) {
+	return s.repo.GetAllWithFilter(ctx, filter)
+}
+
 func (s projectService) GetAllIDsWithFilter(ctx context.Context, filter ProjectFilter) ([]int, error) {
 	return s.repo.GetAllIDsWithFilter(ctx, filter)
 }

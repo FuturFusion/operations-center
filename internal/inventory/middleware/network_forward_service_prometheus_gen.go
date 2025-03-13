@@ -51,6 +51,20 @@ func (_d NetworkForwardServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Co
 	return _d.base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.NetworkForwardService.
+func (_d NetworkForwardServiceWithPrometheus) GetAllWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (networkForwards inventory.NetworkForwards, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		networkForwardServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.NetworkForwardService.
 func (_d NetworkForwardServiceWithPrometheus) GetByID(ctx context.Context, id int) (networkForward inventory.NetworkForward, err error) {
 	_since := time.Now()

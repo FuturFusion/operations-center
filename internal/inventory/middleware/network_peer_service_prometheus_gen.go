@@ -51,6 +51,20 @@ func (_d NetworkPeerServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Conte
 	return _d.base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.NetworkPeerService.
+func (_d NetworkPeerServiceWithPrometheus) GetAllWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (networkPeers inventory.NetworkPeers, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		networkPeerServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.NetworkPeerService.
 func (_d NetworkPeerServiceWithPrometheus) GetByID(ctx context.Context, id int) (networkPeer inventory.NetworkPeer, err error) {
 	_since := time.Now()

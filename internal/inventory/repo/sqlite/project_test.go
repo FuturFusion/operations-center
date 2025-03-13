@@ -115,6 +115,13 @@ func TestProjectDatabaseActions(t *testing.T) {
 	require.Len(t, projectIDs, 2)
 	require.ElementsMatch(t, []int{1, 2}, projectIDs)
 
+	// Ensure we have two entries without filter
+	dbProject, err := project.GetAllWithFilter(ctx, inventory.ProjectFilter{})
+	require.NoError(t, err)
+	require.Len(t, dbProject, 2)
+	require.Equal(t, projectA.Name, dbProject[0].Name)
+	require.Equal(t, projectB.Name, dbProject[1].Name)
+
 	// Ensure we have one entry with filter for cluster, server and project
 	projectIDs, err = project.GetAllIDsWithFilter(ctx, inventory.ProjectFilter{
 		Cluster: ptr.To("one"),
@@ -122,6 +129,14 @@ func TestProjectDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, projectIDs, 1)
 	require.ElementsMatch(t, []int{1}, projectIDs)
+
+	// Ensure we have one entry with filter for cluster, server and project
+	dbProject, err = project.GetAllWithFilter(ctx, inventory.ProjectFilter{
+		Cluster: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, projectIDs, 1)
+	require.Equal(t, "one", dbProject[0].Name)
 
 	// Should get back projectA unchanged.
 	projectA.Cluster = "one"

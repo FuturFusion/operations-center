@@ -19,18 +19,73 @@ import (
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
 
-func TestNetworkZoneService_GetAllIDs(t *testing.T) {
+func TestNetworkZoneService_GetAllWithFilter(t *testing.T) {
 	tests := []struct {
-		name             string
-		repoGetAllIDs    []int
-		repoGetAllIDsErr error
+		name                    string
+		repoGetAllWithFilter    inventory.NetworkZones
+		repoGetAllWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success",
-			repoGetAllIDs: []int{
+			repoGetAllWithFilter: inventory.NetworkZones{
+				inventory.NetworkZone{
+					Name: "one",
+				},
+				inventory.NetworkZone{
+					Name: "two",
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:                    "error - repo",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.NetworkZoneRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter inventory.NetworkZoneFilter) (inventory.NetworkZones, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+			}
+
+			networkZoneSvc := inventory.NewNetworkZoneService(repo, nil, nil, inventory.NetworkZoneWithNow(func() time.Time {
+				return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+			}))
+
+			// Run test
+			networkZone, err := networkZoneSvc.GetAllWithFilter(context.Background(), inventory.NetworkZoneFilter{})
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, networkZone, tc.count)
+		})
+	}
+}
+
+func TestNetworkZoneService_GetAllIDsWithFilter(t *testing.T) {
+	tests := []struct {
+		name                       string
+		repoGetAllIDsWithFilter    []int
+		repoGetAllIDsWithFilterErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name: "success",
+			repoGetAllIDsWithFilter: []int{
 				1, 2,
 			},
 
@@ -38,8 +93,8 @@ func TestNetworkZoneService_GetAllIDs(t *testing.T) {
 			count:     2,
 		},
 		{
-			name:             "error - repo",
-			repoGetAllIDsErr: boom.Error,
+			name:                       "error - repo",
+			repoGetAllIDsWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -51,7 +106,7 @@ func TestNetworkZoneService_GetAllIDs(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkZoneRepoMock{
 				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkZoneFilter) ([]int, error) {
-					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
+					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
 				},
 			}
 

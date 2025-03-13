@@ -56,6 +56,37 @@ func (_d ProfileServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.ProfileService.
+func (_d ProfileServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.ProfileFilter) (profiles inventory.Profiles, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.Debug("=> calling GetAllWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("profiles", profiles),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method GetAllWithFilter returned an error")
+		} else {
+			log.Debug("<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.ProfileService.
 func (_d ProfileServiceWithSlog) GetByID(ctx context.Context, id int) (profile inventory.Profile, err error) {
 	log := _d._log.With()

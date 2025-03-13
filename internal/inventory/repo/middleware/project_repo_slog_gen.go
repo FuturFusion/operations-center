@@ -147,6 +147,37 @@ func (_d ProjectRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter in
 	return _d._base.GetAllIDsWithFilter(ctx, filter)
 }
 
+// GetAllWithFilter implements inventory.ProjectRepo.
+func (_d ProjectRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.ProjectFilter) (projects inventory.Projects, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.Debug("=> calling GetAllWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("projects", projects),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method GetAllWithFilter returned an error")
+		} else {
+			log.Debug("<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByID implements inventory.ProjectRepo.
 func (_d ProjectRepoWithSlog) GetByID(ctx context.Context, id int) (project inventory.Project, err error) {
 	log := _d._log.With()
