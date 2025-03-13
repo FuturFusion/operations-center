@@ -30,7 +30,7 @@ func NewNetworkLoadBalancerServerClientWithSlog(base inventory.NetworkLoadBalanc
 func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context, connectionURL string, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkName", networkName),
@@ -63,7 +63,7 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(c
 func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, connectionURL string, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkName", networkName),

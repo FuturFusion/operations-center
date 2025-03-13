@@ -30,7 +30,7 @@ func NewStorageVolumeServerClientWithSlog(base inventory.StorageVolumeServerClie
 func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("storagePoolName", storagePoolName),
@@ -64,7 +64,7 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.C
 func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Context, connectionURL string, storagePoolName string) (storageVolumes []api.StorageVolume, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("storagePoolName", storagePoolName),

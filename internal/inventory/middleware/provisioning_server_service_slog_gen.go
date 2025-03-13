@@ -30,7 +30,7 @@ func NewProvisioningServerServiceWithSlog(base inventory.ProvisioningServerServi
 func (_d ProvisioningServerServiceWithSlog) GetAllByClusterName(ctx context.Context, name string) (servers provisioning.Servers, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
 		)
@@ -61,7 +61,7 @@ func (_d ProvisioningServerServiceWithSlog) GetAllByClusterName(ctx context.Cont
 func (_d ProvisioningServerServiceWithSlog) GetByName(ctx context.Context, name string) (server provisioning.Server, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
 		)

@@ -30,7 +30,7 @@ func NewServerClientWithSlog(base inventory.ServerClient, log *slog.Logger) Serv
 func (_d ServerClientWithSlog) GetImageByName(ctx context.Context, connectionURL string, imageName string) (image api.Image, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("imageName", imageName),
@@ -62,7 +62,7 @@ func (_d ServerClientWithSlog) GetImageByName(ctx context.Context, connectionURL
 func (_d ServerClientWithSlog) GetImages(ctx context.Context, connectionURL string) (images []api.Image, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)
@@ -93,7 +93,7 @@ func (_d ServerClientWithSlog) GetImages(ctx context.Context, connectionURL stri
 func (_d ServerClientWithSlog) GetInstanceByName(ctx context.Context, connectionURL string, instanceName string) (instanceFull api.InstanceFull, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("instanceName", instanceName),
@@ -125,7 +125,7 @@ func (_d ServerClientWithSlog) GetInstanceByName(ctx context.Context, connection
 func (_d ServerClientWithSlog) GetInstances(ctx context.Context, connectionURL string) (instanceFulls []api.InstanceFull, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)
@@ -156,7 +156,7 @@ func (_d ServerClientWithSlog) GetInstances(ctx context.Context, connectionURL s
 func (_d ServerClientWithSlog) GetNetworkACLByName(ctx context.Context, connectionURL string, networkACLName string) (networkACL api.NetworkACL, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkACLName", networkACLName),
@@ -188,7 +188,7 @@ func (_d ServerClientWithSlog) GetNetworkACLByName(ctx context.Context, connecti
 func (_d ServerClientWithSlog) GetNetworkACLs(ctx context.Context, connectionURL string) (networkACLs []api.NetworkACL, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)
@@ -219,7 +219,7 @@ func (_d ServerClientWithSlog) GetNetworkACLs(ctx context.Context, connectionURL
 func (_d ServerClientWithSlog) GetNetworkByName(ctx context.Context, connectionURL string, networkName string) (network api.Network, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkName", networkName),
@@ -251,7 +251,7 @@ func (_d ServerClientWithSlog) GetNetworkByName(ctx context.Context, connectionU
 func (_d ServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkName", networkName),
@@ -284,7 +284,7 @@ func (_d ServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, conn
 func (_d ServerClientWithSlog) GetNetworkForwards(ctx context.Context, connectionURL string, networkName string) (networkForwards []api.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkName", networkName),
@@ -316,7 +316,7 @@ func (_d ServerClientWithSlog) GetNetworkForwards(ctx context.Context, connectio
 func (_d ServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, connectionURL string, networkIntegrationName string) (networkIntegration api.NetworkIntegration, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkIntegrationName", networkIntegrationName),
@@ -348,7 +348,7 @@ func (_d ServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, 
 func (_d ServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, connectionURL string) (networkIntegrations []api.NetworkIntegration, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)
@@ -379,7 +379,7 @@ func (_d ServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, conne
 func (_d ServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context, connectionURL string, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkName", networkName),
@@ -412,7 +412,7 @@ func (_d ServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context,
 func (_d ServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, connectionURL string, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkName", networkName),
@@ -444,7 +444,7 @@ func (_d ServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, conn
 func (_d ServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkName", networkName),
@@ -477,7 +477,7 @@ func (_d ServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, connect
 func (_d ServerClientWithSlog) GetNetworkPeers(ctx context.Context, connectionURL string, networkName string) (networkPeers []api.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkName", networkName),
@@ -509,7 +509,7 @@ func (_d ServerClientWithSlog) GetNetworkPeers(ctx context.Context, connectionUR
 func (_d ServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, connectionURL string, networkZoneName string) (networkZone api.NetworkZone, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkZoneName", networkZoneName),
@@ -541,7 +541,7 @@ func (_d ServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, connect
 func (_d ServerClientWithSlog) GetNetworkZones(ctx context.Context, connectionURL string) (networkZones []api.NetworkZone, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)
@@ -572,7 +572,7 @@ func (_d ServerClientWithSlog) GetNetworkZones(ctx context.Context, connectionUR
 func (_d ServerClientWithSlog) GetNetworks(ctx context.Context, connectionURL string) (networks []api.Network, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)
@@ -603,7 +603,7 @@ func (_d ServerClientWithSlog) GetNetworks(ctx context.Context, connectionURL st
 func (_d ServerClientWithSlog) GetProfileByName(ctx context.Context, connectionURL string, profileName string) (profile api.Profile, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("profileName", profileName),
@@ -635,7 +635,7 @@ func (_d ServerClientWithSlog) GetProfileByName(ctx context.Context, connectionU
 func (_d ServerClientWithSlog) GetProfiles(ctx context.Context, connectionURL string) (profiles []api.Profile, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)
@@ -666,7 +666,7 @@ func (_d ServerClientWithSlog) GetProfiles(ctx context.Context, connectionURL st
 func (_d ServerClientWithSlog) GetProjectByName(ctx context.Context, connectionURL string, projectName string) (project api.Project, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("projectName", projectName),
@@ -698,7 +698,7 @@ func (_d ServerClientWithSlog) GetProjectByName(ctx context.Context, connectionU
 func (_d ServerClientWithSlog) GetProjects(ctx context.Context, connectionURL string) (projects []api.Project, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)
@@ -729,7 +729,7 @@ func (_d ServerClientWithSlog) GetProjects(ctx context.Context, connectionURL st
 func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (storageBucket api.StorageBucket, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("storagePoolName", storagePoolName),
@@ -762,7 +762,7 @@ func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, conne
 func (_d ServerClientWithSlog) GetStorageBuckets(ctx context.Context, connectionURL string, storagePoolName string) (storageBuckets []api.StorageBucket, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("storagePoolName", storagePoolName),
@@ -794,7 +794,7 @@ func (_d ServerClientWithSlog) GetStorageBuckets(ctx context.Context, connection
 func (_d ServerClientWithSlog) GetStoragePoolByName(ctx context.Context, connectionURL string, storagePoolName string) (storagePool api.StoragePool, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("storagePoolName", storagePoolName),
@@ -826,7 +826,7 @@ func (_d ServerClientWithSlog) GetStoragePoolByName(ctx context.Context, connect
 func (_d ServerClientWithSlog) GetStoragePools(ctx context.Context, connectionURL string) (storagePools []api.StoragePool, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)
@@ -857,7 +857,7 @@ func (_d ServerClientWithSlog) GetStoragePools(ctx context.Context, connectionUR
 func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("storagePoolName", storagePoolName),
@@ -891,7 +891,7 @@ func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, conne
 func (_d ServerClientWithSlog) GetStorageVolumes(ctx context.Context, connectionURL string, storagePoolName string) (storageVolumes []api.StorageVolume, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("storagePoolName", storagePoolName),

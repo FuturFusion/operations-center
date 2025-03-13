@@ -29,7 +29,7 @@ func NewNetworkACLRepoWithSlog(base inventory.NetworkACLRepo, log *slog.Logger) 
 func (_d NetworkACLRepoWithSlog) Create(ctx context.Context, networkACL inventory.NetworkACL) (networkACL1 inventory.NetworkACL, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("networkACL", networkACL),
 		)
@@ -60,7 +60,7 @@ func (_d NetworkACLRepoWithSlog) Create(ctx context.Context, networkACL inventor
 func (_d NetworkACLRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)
@@ -90,7 +90,7 @@ func (_d NetworkACLRepoWithSlog) DeleteByClusterName(ctx context.Context, cluste
 func (_d NetworkACLRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -120,7 +120,7 @@ func (_d NetworkACLRepoWithSlog) DeleteByID(ctx context.Context, id int) (err er
 func (_d NetworkACLRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -151,7 +151,7 @@ func (_d NetworkACLRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter
 func (_d NetworkACLRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (networkACLs inventory.NetworkACLs, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -182,7 +182,7 @@ func (_d NetworkACLRepoWithSlog) GetAllWithFilter(ctx context.Context, filter in
 func (_d NetworkACLRepoWithSlog) GetByID(ctx context.Context, id int) (networkACL inventory.NetworkACL, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -213,7 +213,7 @@ func (_d NetworkACLRepoWithSlog) GetByID(ctx context.Context, id int) (networkAC
 func (_d NetworkACLRepoWithSlog) UpdateByID(ctx context.Context, networkACL inventory.NetworkACL) (networkACL1 inventory.NetworkACL, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("networkACL", networkACL),
 		)

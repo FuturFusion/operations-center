@@ -29,7 +29,7 @@ func NewNetworkPeerRepoWithSlog(base inventory.NetworkPeerRepo, log *slog.Logger
 func (_d NetworkPeerRepoWithSlog) Create(ctx context.Context, networkPeer inventory.NetworkPeer) (networkPeer1 inventory.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("networkPeer", networkPeer),
 		)
@@ -60,7 +60,7 @@ func (_d NetworkPeerRepoWithSlog) Create(ctx context.Context, networkPeer invent
 func (_d NetworkPeerRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)
@@ -90,7 +90,7 @@ func (_d NetworkPeerRepoWithSlog) DeleteByClusterName(ctx context.Context, clust
 func (_d NetworkPeerRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -120,7 +120,7 @@ func (_d NetworkPeerRepoWithSlog) DeleteByID(ctx context.Context, id int) (err e
 func (_d NetworkPeerRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -151,7 +151,7 @@ func (_d NetworkPeerRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filte
 func (_d NetworkPeerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (networkPeers inventory.NetworkPeers, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -182,7 +182,7 @@ func (_d NetworkPeerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter i
 func (_d NetworkPeerRepoWithSlog) GetByID(ctx context.Context, id int) (networkPeer inventory.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -213,7 +213,7 @@ func (_d NetworkPeerRepoWithSlog) GetByID(ctx context.Context, id int) (networkP
 func (_d NetworkPeerRepoWithSlog) UpdateByID(ctx context.Context, networkPeer inventory.NetworkPeer) (networkPeer1 inventory.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("networkPeer", networkPeer),
 		)

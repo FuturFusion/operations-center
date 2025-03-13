@@ -29,7 +29,7 @@ func NewNetworkForwardRepoWithSlog(base inventory.NetworkForwardRepo, log *slog.
 func (_d NetworkForwardRepoWithSlog) Create(ctx context.Context, networkForward inventory.NetworkForward) (networkForward1 inventory.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("networkForward", networkForward),
 		)
@@ -60,7 +60,7 @@ func (_d NetworkForwardRepoWithSlog) Create(ctx context.Context, networkForward 
 func (_d NetworkForwardRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)
@@ -90,7 +90,7 @@ func (_d NetworkForwardRepoWithSlog) DeleteByClusterName(ctx context.Context, cl
 func (_d NetworkForwardRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -120,7 +120,7 @@ func (_d NetworkForwardRepoWithSlog) DeleteByID(ctx context.Context, id int) (er
 func (_d NetworkForwardRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -151,7 +151,7 @@ func (_d NetworkForwardRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, fi
 func (_d NetworkForwardRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (networkForwards inventory.NetworkForwards, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -182,7 +182,7 @@ func (_d NetworkForwardRepoWithSlog) GetAllWithFilter(ctx context.Context, filte
 func (_d NetworkForwardRepoWithSlog) GetByID(ctx context.Context, id int) (networkForward inventory.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -213,7 +213,7 @@ func (_d NetworkForwardRepoWithSlog) GetByID(ctx context.Context, id int) (netwo
 func (_d NetworkForwardRepoWithSlog) UpdateByID(ctx context.Context, networkForward inventory.NetworkForward) (networkForward1 inventory.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("networkForward", networkForward),
 		)

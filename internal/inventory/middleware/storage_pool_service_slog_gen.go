@@ -29,7 +29,7 @@ func NewStoragePoolServiceWithSlog(base inventory.StoragePoolService, log *slog.
 func (_d StoragePoolServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -60,7 +60,7 @@ func (_d StoragePoolServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, fi
 func (_d StoragePoolServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) (storagePools inventory.StoragePools, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -91,7 +91,7 @@ func (_d StoragePoolServiceWithSlog) GetAllWithFilter(ctx context.Context, filte
 func (_d StoragePoolServiceWithSlog) GetByID(ctx context.Context, id int) (storagePool inventory.StoragePool, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -122,7 +122,7 @@ func (_d StoragePoolServiceWithSlog) GetByID(ctx context.Context, id int) (stora
 func (_d StoragePoolServiceWithSlog) ResyncByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -152,7 +152,7 @@ func (_d StoragePoolServiceWithSlog) ResyncByID(ctx context.Context, id int) (er
 func (_d StoragePoolServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)

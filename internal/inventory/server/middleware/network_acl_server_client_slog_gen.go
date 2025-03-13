@@ -30,7 +30,7 @@ func NewNetworkACLServerClientWithSlog(base inventory.NetworkACLServerClient, lo
 func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context, connectionURL string, networkACLName string) (networkACL api.NetworkACL, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("networkACLName", networkACLName),
@@ -62,7 +62,7 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context
 func (_d NetworkACLServerClientWithSlog) GetNetworkACLs(ctx context.Context, connectionURL string) (networkACLs []api.NetworkACL, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)

@@ -29,7 +29,7 @@ func NewInstanceRepoWithSlog(base inventory.InstanceRepo, log *slog.Logger) Inst
 func (_d InstanceRepoWithSlog) Create(ctx context.Context, instance inventory.Instance) (instance1 inventory.Instance, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("instance", instance),
 		)
@@ -60,7 +60,7 @@ func (_d InstanceRepoWithSlog) Create(ctx context.Context, instance inventory.In
 func (_d InstanceRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)
@@ -90,7 +90,7 @@ func (_d InstanceRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster 
 func (_d InstanceRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -120,7 +120,7 @@ func (_d InstanceRepoWithSlog) DeleteByID(ctx context.Context, id int) (err erro
 func (_d InstanceRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.InstanceFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -151,7 +151,7 @@ func (_d InstanceRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter i
 func (_d InstanceRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.InstanceFilter) (instances inventory.Instances, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -182,7 +182,7 @@ func (_d InstanceRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inve
 func (_d InstanceRepoWithSlog) GetByID(ctx context.Context, id int) (instance inventory.Instance, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -213,7 +213,7 @@ func (_d InstanceRepoWithSlog) GetByID(ctx context.Context, id int) (instance in
 func (_d InstanceRepoWithSlog) UpdateByID(ctx context.Context, instance inventory.Instance) (instance1 inventory.Instance, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("instance", instance),
 		)

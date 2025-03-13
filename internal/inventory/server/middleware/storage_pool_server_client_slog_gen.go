@@ -30,7 +30,7 @@ func NewStoragePoolServerClientWithSlog(base inventory.StoragePoolServerClient, 
 func (_d StoragePoolServerClientWithSlog) GetStoragePoolByName(ctx context.Context, connectionURL string, storagePoolName string) (storagePool api.StoragePool, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("storagePoolName", storagePoolName),
@@ -62,7 +62,7 @@ func (_d StoragePoolServerClientWithSlog) GetStoragePoolByName(ctx context.Conte
 func (_d StoragePoolServerClientWithSlog) GetStoragePools(ctx context.Context, connectionURL string) (storagePools []api.StoragePool, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)

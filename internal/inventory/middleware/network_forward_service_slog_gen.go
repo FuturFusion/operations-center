@@ -29,7 +29,7 @@ func NewNetworkForwardServiceWithSlog(base inventory.NetworkForwardService, log 
 func (_d NetworkForwardServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -60,7 +60,7 @@ func (_d NetworkForwardServiceWithSlog) GetAllIDsWithFilter(ctx context.Context,
 func (_d NetworkForwardServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (networkForwards inventory.NetworkForwards, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -91,7 +91,7 @@ func (_d NetworkForwardServiceWithSlog) GetAllWithFilter(ctx context.Context, fi
 func (_d NetworkForwardServiceWithSlog) GetByID(ctx context.Context, id int) (networkForward inventory.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -122,7 +122,7 @@ func (_d NetworkForwardServiceWithSlog) GetByID(ctx context.Context, id int) (ne
 func (_d NetworkForwardServiceWithSlog) ResyncByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -152,7 +152,7 @@ func (_d NetworkForwardServiceWithSlog) ResyncByID(ctx context.Context, id int) 
 func (_d NetworkForwardServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)

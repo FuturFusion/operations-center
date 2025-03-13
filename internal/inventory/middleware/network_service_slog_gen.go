@@ -29,7 +29,7 @@ func NewNetworkServiceWithSlog(base inventory.NetworkService, log *slog.Logger) 
 func (_d NetworkServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -60,7 +60,7 @@ func (_d NetworkServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter
 func (_d NetworkServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkFilter) (networks inventory.Networks, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -91,7 +91,7 @@ func (_d NetworkServiceWithSlog) GetAllWithFilter(ctx context.Context, filter in
 func (_d NetworkServiceWithSlog) GetByID(ctx context.Context, id int) (network inventory.Network, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -122,7 +122,7 @@ func (_d NetworkServiceWithSlog) GetByID(ctx context.Context, id int) (network i
 func (_d NetworkServiceWithSlog) ResyncByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -152,7 +152,7 @@ func (_d NetworkServiceWithSlog) ResyncByID(ctx context.Context, id int) (err er
 func (_d NetworkServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)

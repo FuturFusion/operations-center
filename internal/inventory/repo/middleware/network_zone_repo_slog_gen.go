@@ -29,7 +29,7 @@ func NewNetworkZoneRepoWithSlog(base inventory.NetworkZoneRepo, log *slog.Logger
 func (_d NetworkZoneRepoWithSlog) Create(ctx context.Context, networkZone inventory.NetworkZone) (networkZone1 inventory.NetworkZone, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("networkZone", networkZone),
 		)
@@ -60,7 +60,7 @@ func (_d NetworkZoneRepoWithSlog) Create(ctx context.Context, networkZone invent
 func (_d NetworkZoneRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)
@@ -90,7 +90,7 @@ func (_d NetworkZoneRepoWithSlog) DeleteByClusterName(ctx context.Context, clust
 func (_d NetworkZoneRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -120,7 +120,7 @@ func (_d NetworkZoneRepoWithSlog) DeleteByID(ctx context.Context, id int) (err e
 func (_d NetworkZoneRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -151,7 +151,7 @@ func (_d NetworkZoneRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filte
 func (_d NetworkZoneRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (networkZones inventory.NetworkZones, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -182,7 +182,7 @@ func (_d NetworkZoneRepoWithSlog) GetAllWithFilter(ctx context.Context, filter i
 func (_d NetworkZoneRepoWithSlog) GetByID(ctx context.Context, id int) (networkZone inventory.NetworkZone, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -213,7 +213,7 @@ func (_d NetworkZoneRepoWithSlog) GetByID(ctx context.Context, id int) (networkZ
 func (_d NetworkZoneRepoWithSlog) UpdateByID(ctx context.Context, networkZone inventory.NetworkZone) (networkZone1 inventory.NetworkZone, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("networkZone", networkZone),
 		)

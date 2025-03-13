@@ -29,7 +29,7 @@ func NewNetworkLoadBalancerRepoWithSlog(base inventory.NetworkLoadBalancerRepo, 
 func (_d NetworkLoadBalancerRepoWithSlog) Create(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (networkLoadBalancer1 inventory.NetworkLoadBalancer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("networkLoadBalancer", networkLoadBalancer),
 		)
@@ -60,7 +60,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) Create(ctx context.Context, networkLoa
 func (_d NetworkLoadBalancerRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)
@@ -90,7 +90,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteByClusterName(ctx context.Contex
 func (_d NetworkLoadBalancerRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -120,7 +120,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteByID(ctx context.Context, id int
 func (_d NetworkLoadBalancerRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -151,7 +151,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetAllIDsWithFilter(ctx context.Contex
 func (_d NetworkLoadBalancerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (networkLoadBalancers inventory.NetworkLoadBalancers, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -182,7 +182,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetAllWithFilter(ctx context.Context, 
 func (_d NetworkLoadBalancerRepoWithSlog) GetByID(ctx context.Context, id int) (networkLoadBalancer inventory.NetworkLoadBalancer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -213,7 +213,7 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetByID(ctx context.Context, id int) (
 func (_d NetworkLoadBalancerRepoWithSlog) UpdateByID(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (networkLoadBalancer1 inventory.NetworkLoadBalancer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("networkLoadBalancer", networkLoadBalancer),
 		)

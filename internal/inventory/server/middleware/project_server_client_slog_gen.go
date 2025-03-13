@@ -30,7 +30,7 @@ func NewProjectServerClientWithSlog(base inventory.ProjectServerClient, log *slo
 func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, connectionURL string, projectName string) (project api.Project, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("projectName", projectName),
@@ -62,7 +62,7 @@ func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, conn
 func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, connectionURL string) (projects []api.Project, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)

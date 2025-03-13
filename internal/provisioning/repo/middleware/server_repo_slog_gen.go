@@ -29,7 +29,7 @@ func NewServerRepoWithSlog(base provisioning.ServerRepo, log *slog.Logger) Serve
 func (_d ServerRepoWithSlog) Create(ctx context.Context, server provisioning.Server) (server1 provisioning.Server, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
 		)
@@ -60,7 +60,7 @@ func (_d ServerRepoWithSlog) Create(ctx context.Context, server provisioning.Ser
 func (_d ServerRepoWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
 		)
@@ -90,7 +90,7 @@ func (_d ServerRepoWithSlog) DeleteByName(ctx context.Context, name string) (err
 func (_d ServerRepoWithSlog) GetAll(ctx context.Context) (servers provisioning.Servers, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
@@ -120,7 +120,7 @@ func (_d ServerRepoWithSlog) GetAll(ctx context.Context) (servers provisioning.S
 func (_d ServerRepoWithSlog) GetAllByClusterID(ctx context.Context, clusterID int) (servers provisioning.Servers, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("clusterID", clusterID),
 		)
@@ -151,7 +151,7 @@ func (_d ServerRepoWithSlog) GetAllByClusterID(ctx context.Context, clusterID in
 func (_d ServerRepoWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
@@ -181,7 +181,7 @@ func (_d ServerRepoWithSlog) GetAllNames(ctx context.Context) (strings []string,
 func (_d ServerRepoWithSlog) GetByName(ctx context.Context, name string) (server provisioning.Server, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
 		)
@@ -212,7 +212,7 @@ func (_d ServerRepoWithSlog) GetByName(ctx context.Context, name string) (server
 func (_d ServerRepoWithSlog) UpdateByName(ctx context.Context, name string, server provisioning.Server) (server1 provisioning.Server, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
 			slog.Any("server", server),

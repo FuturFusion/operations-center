@@ -29,7 +29,7 @@ func NewNetworkPeerServiceWithSlog(base inventory.NetworkPeerService, log *slog.
 func (_d NetworkPeerServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -60,7 +60,7 @@ func (_d NetworkPeerServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, fi
 func (_d NetworkPeerServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (networkPeers inventory.NetworkPeers, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -91,7 +91,7 @@ func (_d NetworkPeerServiceWithSlog) GetAllWithFilter(ctx context.Context, filte
 func (_d NetworkPeerServiceWithSlog) GetByID(ctx context.Context, id int) (networkPeer inventory.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -122,7 +122,7 @@ func (_d NetworkPeerServiceWithSlog) GetByID(ctx context.Context, id int) (netwo
 func (_d NetworkPeerServiceWithSlog) ResyncByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -152,7 +152,7 @@ func (_d NetworkPeerServiceWithSlog) ResyncByID(ctx context.Context, id int) (er
 func (_d NetworkPeerServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)

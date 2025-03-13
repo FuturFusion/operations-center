@@ -29,7 +29,7 @@ func NewProjectRepoWithSlog(base inventory.ProjectRepo, log *slog.Logger) Projec
 func (_d ProjectRepoWithSlog) Create(ctx context.Context, project inventory.Project) (project1 inventory.Project, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("project", project),
 		)
@@ -60,7 +60,7 @@ func (_d ProjectRepoWithSlog) Create(ctx context.Context, project inventory.Proj
 func (_d ProjectRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)
@@ -90,7 +90,7 @@ func (_d ProjectRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster s
 func (_d ProjectRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -120,7 +120,7 @@ func (_d ProjectRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error
 func (_d ProjectRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.ProjectFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -151,7 +151,7 @@ func (_d ProjectRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter in
 func (_d ProjectRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.ProjectFilter) (projects inventory.Projects, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -182,7 +182,7 @@ func (_d ProjectRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inven
 func (_d ProjectRepoWithSlog) GetByID(ctx context.Context, id int) (project inventory.Project, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -213,7 +213,7 @@ func (_d ProjectRepoWithSlog) GetByID(ctx context.Context, id int) (project inve
 func (_d ProjectRepoWithSlog) UpdateByID(ctx context.Context, project inventory.Project) (project1 inventory.Project, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("project", project),
 		)

@@ -29,7 +29,7 @@ func NewNetworkZoneServiceWithSlog(base inventory.NetworkZoneService, log *slog.
 func (_d NetworkZoneServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -60,7 +60,7 @@ func (_d NetworkZoneServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, fi
 func (_d NetworkZoneServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (networkZones inventory.NetworkZones, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -91,7 +91,7 @@ func (_d NetworkZoneServiceWithSlog) GetAllWithFilter(ctx context.Context, filte
 func (_d NetworkZoneServiceWithSlog) GetByID(ctx context.Context, id int) (networkZone inventory.NetworkZone, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -122,7 +122,7 @@ func (_d NetworkZoneServiceWithSlog) GetByID(ctx context.Context, id int) (netwo
 func (_d NetworkZoneServiceWithSlog) ResyncByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -152,7 +152,7 @@ func (_d NetworkZoneServiceWithSlog) ResyncByID(ctx context.Context, id int) (er
 func (_d NetworkZoneServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)

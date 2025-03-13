@@ -29,7 +29,7 @@ func NewNetworkACLServiceWithSlog(base inventory.NetworkACLService, log *slog.Lo
 func (_d NetworkACLServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -60,7 +60,7 @@ func (_d NetworkACLServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, fil
 func (_d NetworkACLServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (networkACLs inventory.NetworkACLs, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -91,7 +91,7 @@ func (_d NetworkACLServiceWithSlog) GetAllWithFilter(ctx context.Context, filter
 func (_d NetworkACLServiceWithSlog) GetByID(ctx context.Context, id int) (networkACL inventory.NetworkACL, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -122,7 +122,7 @@ func (_d NetworkACLServiceWithSlog) GetByID(ctx context.Context, id int) (networ
 func (_d NetworkACLServiceWithSlog) ResyncByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -152,7 +152,7 @@ func (_d NetworkACLServiceWithSlog) ResyncByID(ctx context.Context, id int) (err
 func (_d NetworkACLServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)

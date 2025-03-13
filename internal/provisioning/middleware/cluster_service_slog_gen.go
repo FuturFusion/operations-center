@@ -29,7 +29,7 @@ func NewClusterServiceWithSlog(base provisioning.ClusterService, log *slog.Logge
 func (_d ClusterServiceWithSlog) Create(ctx context.Context, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("cluster", cluster),
 		)
@@ -60,7 +60,7 @@ func (_d ClusterServiceWithSlog) Create(ctx context.Context, cluster provisionin
 func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
 		)
@@ -90,7 +90,7 @@ func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string) 
 func (_d ClusterServiceWithSlog) GetAll(ctx context.Context) (clusters provisioning.Clusters, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
@@ -120,7 +120,7 @@ func (_d ClusterServiceWithSlog) GetAll(ctx context.Context) (clusters provision
 func (_d ClusterServiceWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
@@ -150,7 +150,7 @@ func (_d ClusterServiceWithSlog) GetAllNames(ctx context.Context) (strings []str
 func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cluster provisioning.Cluster, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
 		)
@@ -181,7 +181,7 @@ func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cl
 func (_d ClusterServiceWithSlog) RenameByName(ctx context.Context, name string, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
 			slog.Any("cluster", cluster),
@@ -213,7 +213,7 @@ func (_d ClusterServiceWithSlog) RenameByName(ctx context.Context, name string, 
 func (_d ClusterServiceWithSlog) ResyncInventoryByName(ctx context.Context, name string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
 		)
@@ -243,7 +243,7 @@ func (_d ClusterServiceWithSlog) ResyncInventoryByName(ctx context.Context, name
 func (_d ClusterServiceWithSlog) UpdateByName(ctx context.Context, name string, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
 			slog.Any("cluster", cluster),

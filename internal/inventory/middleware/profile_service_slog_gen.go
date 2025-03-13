@@ -29,7 +29,7 @@ func NewProfileServiceWithSlog(base inventory.ProfileService, log *slog.Logger) 
 func (_d ProfileServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.ProfileFilter) (ints []int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -60,7 +60,7 @@ func (_d ProfileServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter
 func (_d ProfileServiceWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.ProfileFilter) (profiles inventory.Profiles, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("filter", filter),
 		)
@@ -91,7 +91,7 @@ func (_d ProfileServiceWithSlog) GetAllWithFilter(ctx context.Context, filter in
 func (_d ProfileServiceWithSlog) GetByID(ctx context.Context, id int) (profile inventory.Profile, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -122,7 +122,7 @@ func (_d ProfileServiceWithSlog) GetByID(ctx context.Context, id int) (profile i
 func (_d ProfileServiceWithSlog) ResyncByID(ctx context.Context, id int) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Int("id", id),
 		)
@@ -152,7 +152,7 @@ func (_d ProfileServiceWithSlog) ResyncByID(ctx context.Context, id int) (err er
 func (_d ProfileServiceWithSlog) SyncCluster(ctx context.Context, cluster string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("cluster", cluster),
 		)

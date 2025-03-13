@@ -30,7 +30,7 @@ func NewInstanceServerClientWithSlog(base inventory.InstanceServerClient, log *s
 func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, connectionURL string, instanceName string) (instanceFull api.InstanceFull, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 			slog.String("instanceName", instanceName),
@@ -62,7 +62,7 @@ func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, co
 func (_d InstanceServerClientWithSlog) GetInstances(ctx context.Context, connectionURL string) (instanceFulls []api.InstanceFull, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log.With(
+		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("connectionURL", connectionURL),
 		)
