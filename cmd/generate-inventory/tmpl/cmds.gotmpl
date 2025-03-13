@@ -10,6 +10,7 @@ import (
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/render"
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
@@ -43,6 +44,14 @@ func (c *Cmd{{ .Name | pascalcase }}) Command() *cobra.Command {
 
 // List {{ .PluralName }}.
 type cmd{{ .Name | pascalcase }}List struct {
+	flagFilterCluster string
+{{- if .ServerIDByLocation }}
+	flagFilterServer string
+{{- end }}
+{{- if .HasProject }}
+	flagFilterProject string
+{{- end }}
+
 	flagFormat string
 }
 
@@ -55,6 +64,14 @@ func (c *cmd{{ .Name | pascalcase }}List) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
+
+	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
+{{- if .ServerIDByLocation }}
+	cmd.Flags().StringVar(&c.flagFilterServer, "server", "", "server name to filter for")
+{{- end}}
+{{- if .HasProject }}
+	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
+{{- end}}
 
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
@@ -71,10 +88,28 @@ func (c *cmd{{ .Name | pascalcase }}List) Run(cmd *cobra.Command, args []string)
 		return err
 	}
 
+	var filter inventory.{{ .Name | pascalcase }}Filter
+
+	if c.flagFilterCluster != "" {
+		filter.Cluster = ptr.To(c.flagFilterCluster)
+	}
+{{- if .ServerIDByLocation }}
+
+	if c.flagFilterServer != "" {
+		filter.Server = ptr.To(c.flagFilterServer)
+	}
+{{- end}}
+{{- if .HasProject }}
+
+	if c.flagFilterProject != "" {
+		filter.Project = ptr.To(c.flagFilterProject)
+	}
+{{- end}}
+
 	// Client call
 	ocClient := client.New()
 
-	{{ .PluralName | camelcase }}, err := ocClient.GetWithFilter{{ .PluralName | pascalcase }}(inventory.{{ .Name | pascalcase }}Filter{})
+	{{ .PluralName | camelcase }}, err := ocClient.GetWithFilter{{ .PluralName | pascalcase }}(filter)
 	if err != nil {
 		return err
 	}

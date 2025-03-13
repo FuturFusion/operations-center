@@ -3,13 +3,17 @@ package client
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"path"
 
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func (c OperationsCenterClient) GetServers() ([]api.Server, error) {
-	response, err := c.doRequest(http.MethodGet, "/provisioning/servers", "recursion=1", nil)
+	query := url.Values{}
+	query.Add("recursion", "1")
+
+	response, err := c.doRequest(http.MethodGet, "/provisioning/servers", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +28,7 @@ func (c OperationsCenterClient) GetServers() ([]api.Server, error) {
 }
 
 func (c OperationsCenterClient) GetServer(name string) (api.Server, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/provisioning/servers", name), "", nil)
+	response, err := c.doRequest(http.MethodGet, path.Join("/provisioning/servers", name), nil, nil)
 	if err != nil {
 		return api.Server{}, err
 	}
@@ -44,7 +48,7 @@ func (c OperationsCenterClient) CreateServer(server api.Server) error {
 		return err
 	}
 
-	response, err := c.doRequest(http.MethodPost, "/provisioning/servers", "", content)
+	response, err := c.doRequest(http.MethodPost, "/provisioning/servers", nil, content)
 	if err != nil {
 		return err
 	}
@@ -59,7 +63,7 @@ func (c OperationsCenterClient) CreateServer(server api.Server) error {
 }
 
 func (c OperationsCenterClient) DeleteServer(name string) error {
-	_, err := c.doRequest(http.MethodDelete, path.Join("/provisioning/servers", name), "", nil)
+	_, err := c.doRequest(http.MethodDelete, path.Join("/provisioning/servers", name), nil, nil)
 	if err != nil {
 		return err
 	}

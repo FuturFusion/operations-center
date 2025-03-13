@@ -32,15 +32,14 @@ func New() OperationsCenterClient {
 	}
 }
 
-// FIXME: should query be url.Query instead of string?
-func (c OperationsCenterClient) doRequest(method string, endpoint string, query string, content []byte) (*api.Response, error) {
+func (c OperationsCenterClient) doRequest(method string, endpoint string, query url.Values, content []byte) (*api.Response, error) {
 	apiEndpoint, err := url.JoinPath(apiVersionPrefix, endpoint)
 	if err != nil {
 		return nil, err
 	}
 
 	// FIXME: take URL from config
-	u, err := url.Parse(fmt.Sprintf("https://localhost:7443%s?%s", apiEndpoint, query))
+	u, err := url.Parse(fmt.Sprintf("https://localhost:7443%s?%s", apiEndpoint, query.Encode()))
 	if err != nil {
 		return nil, err
 	}
