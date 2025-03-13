@@ -3,6 +3,7 @@
 package inventory
 
 import (
+	"net/url"
 	"time"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
@@ -39,4 +40,16 @@ type NetworkPeers []NetworkPeer
 
 type NetworkPeerFilter struct {
 	Cluster *string
+}
+
+func (f NetworkPeerFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.Cluster != nil {
+		query.Add("cluster", *f.Cluster)
+	}
+
+	return query
+}
+
+func (f NetworkPeerFilter) String() string {
+	return f.AppendToURLValues(url.Values{}).Encode()
 }

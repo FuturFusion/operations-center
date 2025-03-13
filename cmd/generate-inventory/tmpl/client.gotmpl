@@ -13,22 +13,7 @@ import (
 func (c OperationsCenterClient) GetWithFilter{{ .PluralName | pascalcase }}(filter inventory.{{ .Name | pascalcase }}Filter) ([]api.{{ .Name | pascalcase }}, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
-
-  if filter.Cluster != nil {
-		query.Add("cluster", *filter.Cluster)
-	}
-{{- if .ServerIDByLocation }}
-
-	if filter.Server != nil {
-		query.Add("server", *filter.Project)
-	}
-{{- end }}
-{{- if .HasProject }}
-
-	if filter.Project != nil {
-		query.Add("project", *filter.Project)
-	}
-{{- end }}
+	query = filter.AppendToURLValues(query)
 
 	response, err := c.doRequest(http.MethodGet, "/inventory/{{ .PluralName }}", query, nil)
 	if err != nil {

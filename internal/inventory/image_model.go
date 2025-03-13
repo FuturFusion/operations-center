@@ -3,6 +3,7 @@
 package inventory
 
 import (
+	"net/url"
 	"time"
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
@@ -40,4 +41,20 @@ type Images []Image
 type ImageFilter struct {
 	Cluster *string
 	Project *string
+}
+
+func (f ImageFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.Cluster != nil {
+		query.Add("cluster", *f.Cluster)
+	}
+
+	if f.Project != nil {
+		query.Add("project", *f.Project)
+	}
+
+	return query
+}
+
+func (f ImageFilter) String() string {
+	return f.AppendToURLValues(url.Values{}).Encode()
 }

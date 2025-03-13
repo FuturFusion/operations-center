@@ -15,10 +15,7 @@ import (
 func (c OperationsCenterClient) GetWithFilterNetworkPeers(filter inventory.NetworkPeerFilter) ([]api.NetworkPeer, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
-
-	if filter.Cluster != nil {
-		query.Add("cluster", *filter.Cluster)
-	}
+	query = filter.AppendToURLValues(query)
 
 	response, err := c.doRequest(http.MethodGet, "/inventory/network_peers", query, nil)
 	if err != nil {

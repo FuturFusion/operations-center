@@ -15,18 +15,7 @@ import (
 func (c OperationsCenterClient) GetWithFilterInstances(filter inventory.InstanceFilter) ([]api.Instance, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
-
-	if filter.Cluster != nil {
-		query.Add("cluster", *filter.Cluster)
-	}
-
-	if filter.Server != nil {
-		query.Add("server", *filter.Project)
-	}
-
-	if filter.Project != nil {
-		query.Add("project", *filter.Project)
-	}
+	query = filter.AppendToURLValues(query)
 
 	response, err := c.doRequest(http.MethodGet, "/inventory/instances", query, nil)
 	if err != nil {

@@ -15,14 +15,7 @@ import (
 func (c OperationsCenterClient) GetWithFilterNetworkZones(filter inventory.NetworkZoneFilter) ([]api.NetworkZone, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
-
-	if filter.Cluster != nil {
-		query.Add("cluster", *filter.Cluster)
-	}
-
-	if filter.Project != nil {
-		query.Add("project", *filter.Project)
-	}
+	query = filter.AppendToURLValues(query)
 
 	response, err := c.doRequest(http.MethodGet, "/inventory/network_zones", query, nil)
 	if err != nil {

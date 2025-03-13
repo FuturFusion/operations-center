@@ -15,14 +15,7 @@ import (
 func (c OperationsCenterClient) GetWithFilterNetworkACLs(filter inventory.NetworkACLFilter) ([]api.NetworkACL, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
-
-	if filter.Cluster != nil {
-		query.Add("cluster", *filter.Cluster)
-	}
-
-	if filter.Project != nil {
-		query.Add("project", *filter.Project)
-	}
+	query = filter.AppendToURLValues(query)
 
 	response, err := c.doRequest(http.MethodGet, "/inventory/network_acls", query, nil)
 	if err != nil {
