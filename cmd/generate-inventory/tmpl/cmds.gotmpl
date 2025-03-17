@@ -101,7 +101,7 @@ func (c *cmd{{ .Name | pascalcase }}List) Command() *cobra.Command {
 {{- end}}
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
-	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", {{ .Name | camelcase }}DefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format, default: `+{{ .Name | camelcase }}DefaultColumns)
+	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", {{ .Name | camelcase }}DefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		return validate.FormatFlag(cmd.Flag("format").Value.String())

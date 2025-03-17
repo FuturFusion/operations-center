@@ -70,7 +70,7 @@ func (c *cmdNetworkLoadBalancerList) Command() *cobra.Command {
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
-	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkLoadBalancerDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format, default: `+networkLoadBalancerDefaultColumns)
+	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkLoadBalancerDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		return validate.FormatFlag(cmd.Flag("format").Value.String())
