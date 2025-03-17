@@ -41,14 +41,14 @@ func updateFromV0(ctx context.Context, tx *sql.Tx) error {
 func updateFromV1(ctx context.Context, tx *sql.Tx) error {
 	// v1..v2 add tokens table
 	stmt := `
-CREATE TABLE tokens (
+CREATE TABLE IF NOT EXISTS tokens (
   uuid TEXT PRIMARY KEY NOT NULL,
   uses_remaining INTEGER NOT NULL,
   expire_at DATETIME NOT NULL,
   description TEXT NOT NULL
 );
 
-CREATE TABLE clusters (
+CREATE TABLE IF NOT EXISTS clusters (
   id INTEGER PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
   connection_url TEXT NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE clusters (
   UNIQUE (name)
 );
 
-CREATE TABLE servers (
+CREATE TABLE IF NOT EXISTS servers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER,
   name TEXT NOT NULL,
@@ -67,7 +67,7 @@ CREATE TABLE servers (
   FOREIGN KEY(cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE images (
+CREATE TABLE IF NOT EXISTS images (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
@@ -78,7 +78,7 @@ CREATE TABLE images (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE instances (
+CREATE TABLE IF NOT EXISTS instances (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   server_id INTEGER NOT NULL,
@@ -91,7 +91,7 @@ CREATE TABLE instances (
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 
-CREATE TABLE networks (
+CREATE TABLE IF NOT EXISTS networks (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
@@ -102,7 +102,7 @@ CREATE TABLE networks (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE network_acls (
+CREATE TABLE IF NOT EXISTS network_acls (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
@@ -113,7 +113,7 @@ CREATE TABLE network_acls (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE network_forwards (
+CREATE TABLE IF NOT EXISTS network_forwards (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   network_name TEXT NOT NULL,
@@ -124,7 +124,7 @@ CREATE TABLE network_forwards (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE network_integrations (
+CREATE TABLE IF NOT EXISTS network_integrations (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   name TEXT NOT NULL,
@@ -134,7 +134,7 @@ CREATE TABLE network_integrations (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE network_load_balancers (
+CREATE TABLE IF NOT EXISTS network_load_balancers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   network_name TEXT NOT NULL,
@@ -145,7 +145,7 @@ CREATE TABLE network_load_balancers (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE network_peers (
+CREATE TABLE IF NOT EXISTS network_peers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   network_name TEXT NOT NULL,
@@ -156,7 +156,7 @@ CREATE TABLE network_peers (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE network_zones (
+CREATE TABLE IF NOT EXISTS network_zones (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
@@ -167,7 +167,7 @@ CREATE TABLE network_zones (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
@@ -178,7 +178,7 @@ CREATE TABLE profiles (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE projects (
+CREATE TABLE IF NOT EXISTS projects (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   name TEXT NOT NULL,
@@ -188,7 +188,7 @@ CREATE TABLE projects (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE storage_buckets (
+CREATE TABLE IF NOT EXISTS storage_buckets (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   server_id INTEGER NOT NULL,
@@ -202,7 +202,7 @@ CREATE TABLE storage_buckets (
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 
-CREATE TABLE storage_pools (
+CREATE TABLE IF NOT EXISTS storage_pools (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   name TEXT NOT NULL,
@@ -212,7 +212,7 @@ CREATE TABLE storage_pools (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE storage_volumes (
+CREATE TABLE IF NOT EXISTS storage_volumes (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   server_id INTEGER,
@@ -285,11 +285,244 @@ CREATE VIEW resources AS
     FROM storage_pools
     INNER JOIN clusters ON storage_pools.cluster_id = clusters.id
   UNION
-    SELECT 'storage_volume' AS kind, storage_volumes.id, clusters.name AS cluster_name, servers.name AS server_name, storage_volumes.project_name, storage_volumes.storage_pool_name AS parent_name, concat(storage_volumes."type", "/", storage_volumes.name) AS name, storage_volumes.object, storage_volumes.last_updated
+    SELECT 'storage_volume' AS kind, storage_volumes.id, clusters.name AS cluster_name, servers.name AS server_name, storage_volumes.project_name, storage_volumes.storage_pool_name AS parent_name, storage_volumes.type || "/" || storage_volumes.name AS name, storage_volumes.object, storage_volumes.last_updated
     FROM storage_volumes
     INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
+
+CREATE VIEW inventory_images AS
+  SELECT
+    clusters.name AS cluster_name,
+    CASE json_valid(json_group_object(images.project_name, json(images.object))) WHEN 1 THEN json_group_object(images.project_name, json(images.object)) ELSE "null" END AS images
+  FROM clusters
+    LEFT JOIN (
+      SELECT images.cluster_id, images.project_name, json_group_object(images.name, json(images.object)) AS object
+      FROM images
+      GROUP BY cluster_id, project_name
+    ) AS images ON clusters.id = images.cluster_id
+  GROUP BY clusters.id;
+
+CREATE VIEW inventory_instances AS
+  SELECT
+    clusters.name AS cluster_name,
+    CASE json_valid(json_group_object(instances.project_name, json(instances.object))) WHEN 1 THEN json_group_object(instances.project_name, json(instances.object)) ELSE "null" END AS instances
+  FROM clusters
+    LEFT JOIN (
+      SELECT instances.cluster_id, instances.project_name, json_group_object(instances.name, json(instances.object)) AS object
+      FROM (
+        SELECT instances.cluster_id, instances.project_name, instances.name, json_group_object(servers.name, json(instances.object)) AS object
+        FROM instances
+        LEFT JOIN servers ON instances.server_id = servers.id
+        GROUP BY instances.cluster_id, instances.project_name, instances.name
+      ) AS instances
+      GROUP BY cluster_id, instances.project_name
+    ) AS instances ON clusters.id = instances.cluster_id
+  GROUP BY clusters.id;
+
+CREATE VIEW inventory_networks AS
+  SELECT
+    clusters.name AS cluster_name,
+    CASE json_valid(json_group_object(networks.project_name, json(networks.object))) WHEN 1 THEN json_group_object(networks.project_name, json(networks.object)) ELSE "null" END AS networks
+  FROM clusters
+    LEFT JOIN (
+      SELECT networks.cluster_id, networks.project_name, json_group_object(networks.name, json(networks.object)) AS object
+      FROM networks
+      GROUP BY cluster_id, project_name
+    ) AS networks ON clusters.id = networks.cluster_id
+  GROUP BY clusters.id;
+
+CREATE VIEW inventory_network_acls AS
+  SELECT
+    clusters.name AS cluster_name,
+    CASE json_valid(json_group_object(network_acls.project_name, json(network_acls.object))) WHEN 1 THEN json_group_object(network_acls.project_name, json(network_acls.object)) ELSE "null" END AS network_acls
+  FROM clusters
+    LEFT JOIN (
+      SELECT network_acls.cluster_id, network_acls.project_name, json_group_object(network_acls.name, json(network_acls.object)) AS object
+      FROM network_acls
+      GROUP BY cluster_id, project_name
+    ) AS network_acls ON clusters.id = network_acls.cluster_id
+  GROUP BY clusters.id;
+
+CREATE VIEW inventory_network_forwards AS
+  SELECT
+    clusters.name AS cluster_name,
+    CASE json_valid(json_group_object(network_forwards.network_name, json(network_forwards.object))) WHEN 1 THEN json_group_object(network_forwards.network_name, json(network_forwards.object)) ELSE "null" END AS network_forwards
+  FROM clusters
+    LEFT JOIN (
+      SELECT network_forwards.cluster_id, network_forwards.network_name, json_group_object(network_forwards.name, json(network_forwards.object)) AS object
+      FROM network_forwards
+      GROUP BY cluster_id, network_name
+    ) AS network_forwards ON clusters.id = network_forwards.cluster_id
+  GROUP BY clusters.id;
+
+CREATE VIEW inventory_network_integrations AS
+  SELECT
+    clusters.name AS cluster_name,
+    CASE json_valid(json_group_object(network_integrations.name, json(network_integrations.object))) WHEN 1 THEN json_group_object(network_integrations.name, json(network_integrations.object)) ELSE "null" END AS network_integrations
+  FROM clusters
+    LEFT JOIN network_integrations ON clusters.id = network_integrations.cluster_id
+  GROUP BY clusters.id;
+
+CREATE VIEW inventory_network_load_balancers AS
+  SELECT
+    clusters.name AS cluster_name,
+    CASE json_valid(json_group_object(network_load_balancers.network_name, json(network_load_balancers.object))) WHEN 1 THEN json_group_object(network_load_balancers.network_name, json(network_load_balancers.object)) ELSE "null" END AS network_load_balancers
+  FROM clusters
+    LEFT JOIN (
+      SELECT network_load_balancers.cluster_id, network_load_balancers.network_name, json_group_object(network_load_balancers.name, json(network_load_balancers.object)) AS object
+      FROM network_load_balancers
+      GROUP BY cluster_id, network_name
+    ) AS network_load_balancers ON clusters.id = network_load_balancers.cluster_id
+  GROUP BY clusters.id;
+
+CREATE VIEW inventory_network_peers AS
+  SELECT
+    clusters.name AS cluster_name,
+    CASE json_valid(json_group_object(network_peers.network_name, json(network_peers.object))) WHEN 1 THEN json_group_object(network_peers.network_name, json(network_peers.object)) ELSE "null" END AS network_peers
+  FROM clusters
+    LEFT JOIN (
+      SELECT network_peers.cluster_id, network_peers.network_name, json_group_object(network_peers.name, json(network_peers.object)) AS object
+      FROM network_peers
+      GROUP BY cluster_id, network_name
+    ) AS network_peers ON clusters.id = network_peers.cluster_id
+  GROUP BY clusters.id;
+
+CREATE VIEW inventory_network_zones AS
+  SELECT
+    clusters.name AS cluster_name,
+    CASE json_valid(json_group_object(network_zones.project_name, json(network_zones.object))) WHEN 1 THEN json_group_object(network_zones.project_name, json(network_zones.object)) ELSE "null" END AS network_zones
+  FROM clusters
+    LEFT JOIN (
+      SELECT network_zones.cluster_id, network_zones.project_name, json_group_object(network_zones.name, json(network_zones.object)) AS object
+      FROM network_zones
+      GROUP BY cluster_id, project_name
+    ) AS network_zones ON clusters.id = network_zones.cluster_id
+  GROUP BY clusters.id;
+
+CREATE VIEW inventory_profiles AS
+  SELECT
+    clusters.name AS cluster_name,
+    CASE json_valid(json_group_object(profiles.project_name, json(profiles.object))) WHEN 1 THEN json_group_object(profiles.project_name, json(profiles.object)) ELSE "null" END AS profiles
+  FROM clusters
+    LEFT JOIN (
+      SELECT profiles.cluster_id, profiles.project_name, json_group_object(profiles.name, json(profiles.object)) AS object
+      FROM profiles
+      GROUP BY cluster_id, project_name
+    ) AS profiles ON clusters.id = profiles.cluster_id
+  GROUP BY clusters.id;
+
+CREATE VIEW inventory_projects AS
+  SELECT
+    clusters.name AS cluster_name,
+    CASE json_valid(json_group_object(projects.name, json(projects.object))) WHEN 1 THEN json_group_object(projects.name, json(projects.object)) ELSE "null" END AS projects
+  FROM clusters
+    LEFT JOIN projects ON clusters.id = projects.cluster_id
+  GROUP BY clusters.id;
+
+CREATE VIEW inventory_storage_buckets AS
+  SELECT
+    clusters.name AS cluster_name,
+    CASE json_valid(json_group_object(storage_buckets.server_name, json(storage_buckets.object))) WHEN 1 THEN json_group_object(storage_buckets.server_name, json(storage_buckets.object)) ELSE "null" END AS storage_buckets
+  FROM clusters
+    LEFT JOIN (
+      SELECT cluster_id, server_name, json_group_object(storage_buckets.project_name, json(storage_buckets.object)) AS object
+      FROM (
+        SELECT cluster_id, server_name, project_name, json_group_object(storage_buckets.storage_pool_name, json(storage_buckets.object)) AS object
+        FROM (
+          SELECT storage_buckets.cluster_id, servers.name AS server_name, storage_buckets.project_name, storage_buckets.storage_pool_name, json_group_object(storage_buckets.name, json(storage_buckets.object)) AS object
+          FROM storage_buckets
+          LEFT JOIN servers ON storage_buckets.server_id = servers.id
+          GROUP BY storage_buckets.cluster_id, storage_buckets.server_id, storage_buckets.project_name, storage_buckets.storage_pool_name
+        ) AS storage_buckets
+        GROUP BY cluster_id, server_name, project_name
+      ) AS storage_buckets
+      GROUP BY cluster_id, server_name
+    ) AS storage_buckets ON clusters.id = storage_buckets.cluster_id
+  GROUP BY clusters.id;
+
+CREATE VIEW inventory_storage_pools AS
+  SELECT
+    clusters.name AS cluster_name,
+    CASE json_valid(json_group_object(storage_pools.name, json(storage_pools.object))) WHEN 1 THEN json_group_object(storage_pools.name, json(storage_pools.object)) ELSE "null" END AS storage_pools
+  FROM clusters
+    LEFT JOIN storage_pools ON clusters.id = storage_pools.cluster_id
+  GROUP BY clusters.id;
+
+CREATE VIEW inventory_storage_volumes AS
+  SELECT
+    clusters.name AS cluster_name,
+    CASE json_valid(json_group_object(storage_volumes.project_name, json(storage_volumes.object))) WHEN 1 THEN json_group_object(storage_volumes.project_name, json(storage_volumes.object)) ELSE "null" END AS storage_volumes
+  FROM clusters
+    LEFT JOIN (
+      SELECT cluster_id, project_name, json_group_object(storage_volumes.storage_pool_name, json(storage_volumes.object)) AS object
+      FROM (
+        SELECT cluster_id, project_name, storage_pool_name, json_group_object(storage_volumes.name, json(storage_volumes.object)) AS object
+        FROM (
+          SELECT storage_volumes.cluster_id, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.type || "/" || storage_volumes.name AS name, json_group_object(coalesce(servers.name, ''), json(storage_volumes.object)) AS object
+          FROM storage_volumes
+          LEFT JOIN servers ON storage_volumes.server_id = servers.id
+          GROUP BY storage_volumes.cluster_id, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.type || "/" || storage_volumes.name
+        ) AS storage_volumes
+        GROUP BY cluster_id, project_name, storage_pool_name
+      ) AS storage_volumes
+      GROUP BY cluster_id, project_name
+    ) AS storage_volumes ON clusters.id = storage_volumes.cluster_id
+  GROUP BY clusters.id;
+
+CREATE VIEW inventory AS
+  SELECT
+    clusters.name AS cluster_name,
+    servers,
+    images,
+    instances,
+    networks,
+    network_acls,
+    network_forwards,
+    network_integrations,
+    network_load_balancers,
+    network_peers,
+    network_zones,
+    profiles,
+    projects,
+    storage_buckets,
+    storage_pools,
+    storage_volumes
+  FROM
+    clusters,
+    (SELECT clusters.name AS cluster_name, json_group_array(DISTINCT servers.name) AS servers FROM servers INNER JOIN clusters ON servers.cluster_id = clusters.id GROUP BY servers.cluster_id) inventory_servers,
+    inventory_images,
+    inventory_instances,
+    inventory_networks,
+    inventory_network_acls,
+    inventory_network_forwards,
+    inventory_network_integrations,
+    inventory_network_load_balancers,
+    inventory_network_peers,
+    inventory_network_zones,
+    inventory_profiles,
+    inventory_projects,
+    inventory_storage_buckets,
+    inventory_storage_pools,
+    inventory_storage_volumes
+  WHERE
+    clusters.name = inventory_servers.cluster_name AND
+    clusters.name = inventory_images.cluster_name AND
+    clusters.name = inventory_instances.cluster_name AND
+    clusters.name = inventory_networks.cluster_name AND
+    clusters.name = inventory_network_acls.cluster_name AND
+    clusters.name = inventory_network_forwards.cluster_name AND
+    clusters.name = inventory_network_integrations.cluster_name AND
+    clusters.name = inventory_network_load_balancers.cluster_name AND
+    clusters.name = inventory_network_peers.cluster_name AND
+    clusters.name = inventory_network_zones.cluster_name AND
+    clusters.name = inventory_profiles.cluster_name AND
+    clusters.name = inventory_projects.cluster_name AND
+    clusters.name = inventory_storage_buckets.cluster_name AND
+    clusters.name = inventory_storage_pools.cluster_name AND
+    clusters.name = inventory_storage_volumes.cluster_name
+;
+
 `
 	_, err := tx.Exec(stmt)
 	return mapDBError(err)
