@@ -202,6 +202,7 @@ func (s storageVolumeService) SyncCluster(ctx context.Context, name string) erro
 					ProjectName:     retrievedStorageVolume.Project,
 					StoragePoolName: storagePool.Name,
 					Name:            retrievedStorageVolume.Name,
+					Type:            retrievedStorageVolume.Type,
 					Object:          retrievedStorageVolume,
 					LastUpdated:     s.now(),
 				}

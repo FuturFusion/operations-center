@@ -236,6 +236,9 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 				{{ .ParentName | pascalcase }}Name:  {{ .ParentName | camelcase }}.Name,
 {{- end }}
 				Name:        retrieved{{ .Name | pascalcase }}.{{ .ObjectNamePropertyName | pascalcase }},
+{{- range .ExtraAttributes }}
+				{{ .Name | pascalcase }}: retrieved{{ $.Name | pascalcase }}.{{ .Name | pascalcase }},
+{{- end}}
 				Object:      retrieved{{ .Name | pascalcase }},
 				LastUpdated: s.now(),
 			}
