@@ -1,9 +1,11 @@
 package inventory
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"strconv"
+	"strings"
+	"text/template"
 
 	"github.com/spf13/cobra"
 
@@ -53,8 +55,32 @@ type cmd{{ .Name | pascalcase }}List struct {
 {{- end }}
 	flagFilterExpression string
 
+	flagColumns string
 	flagFormat string
 }
+
+{{/*
+Since we create a template inside of this template, the syntax becomes somewhat complext.
+The basic idea is:
+- Dynamically create the list $defaultColumns with the necessary column names
+  while respecting the optional fields like Server, ProjectName and ParentName.
+- Construct the "defaultColumns" template string by ranging over the $defaultColumn variable.
+  While doing so, the curly braces are emitted as literal strings.
+- Since we do not want to have a final comma at the end of the list, the last column ("LastUpdated")
+  is not added to the list, but literaly after the range in the template.
+*/ -}}
+{{- $defaultColumns := list "ID" "Cluster" -}}
+{{- if .ServerIDByLocation -}}
+{{- $defaultColumns = append $defaultColumns "Server" -}}
+{{- end -}}
+{{- if .HasProject }}
+{{- $defaultColumns = append $defaultColumns "ProjectName" -}}
+{{- end }}
+{{- if .HasParent }}
+{{- $defaultColumns = append $defaultColumns "ParentName" -}}
+{{- end }}
+{{- $defaultColumns = append $defaultColumns "Name" -}}
+const {{ .Name | camelcase }}DefaultColumns = `{{- range $item := $defaultColumns -}} {{- "{{" }} .{{ $item }} {{ "}}" -}}, {{- end -}}{{- "{{ .LastUpdated }}" -}}`
 
 func (c *cmd{{ .Name | pascalcase }}List) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -75,6 +101,7 @@ func (c *cmd{{ .Name | pascalcase }}List) Command() *cobra.Command {
 {{- end}}
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
+	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", {{ .Name | camelcase }}DefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format, default: `+{{ .Name | camelcase }}DefaultColumns)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		return validate.FormatFlag(cmd.Flag("format").Value.String())
@@ -121,40 +148,37 @@ func (c *cmd{{ .Name | pascalcase }}List) Run(cmd *cobra.Command, args []string)
 	}
 
 	// Render the table.
-	header := []string{
-		"ID",
-		"Cluster",
-{{- if .ServerIDByLocation }}
-		"Server",
-{{- end }}
-{{- if .HasProject }}
-		"Project Name",
-{{- end }}
-{{- if .HasParent }}
-		"{{ .ParentName | titlecase }} Name",
-{{- end }}
-		"Name",
-		"Last Updated",
+	fields := strings.Split(c.flagColumns, ",")
+
+	header := []string{}
+	tmpl := template.New("")
+
+	for _, field := range fields {
+		title := strings.Trim(field, "{} .")
+		header = append(header, title)
+		fieldTmpl := tmpl.New(title)
+		_, err := fieldTmpl.Parse(field)
+		if err != nil {
+			return err
+		}
 	}
 
 	data := [][]string{}
+	wr := &bytes.Buffer{}
 
 	for _, {{ .Name | camelcase }} := range {{ .PluralName | camelcase }} {
-		data = append(data, []string{
-			strconv.FormatInt(int64({{ .Name | camelcase }}.ID), 10),
-			{{ .Name | camelcase }}.Cluster,
-{{- if .ServerIDByLocation }}
-			{{ .Name | camelcase }}.Server,
-{{- end }}
-{{- if .HasProject }}
-			{{ .Name | camelcase }}.ProjectName,
-{{- end }}
-{{- if .HasParent }}
-			{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name,
-{{- end }}
-			{{ .Name | camelcase }}.Name,
-			{{ .Name | camelcase }}.LastUpdated.String(),
-		})
+		row := make([]string, len(header))
+		for i, field := range header {
+			wr.Reset()
+			err := tmpl.ExecuteTemplate(wr, field, {{ .Name | camelcase }})
+			if err != nil {
+				return err
+			}
+
+			row[i] = wr.String()
+		}
+
+		data = append(data, row)
 	}
 
 	sort.ColumnsNaturally(data)

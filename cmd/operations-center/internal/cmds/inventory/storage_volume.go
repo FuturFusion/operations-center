@@ -3,9 +3,11 @@
 package inventory
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"strconv"
+	"strings"
+	"text/template"
 
 	"github.com/spf13/cobra"
 
@@ -51,8 +53,11 @@ type cmdStorageVolumeList struct {
 	flagFilterProject    string
 	flagFilterExpression string
 
-	flagFormat string
+	flagColumns string
+	flagFormat  string
 }
+
+const storageVolumeDefaultColumns = `{{ .ID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
 
 func (c *cmdStorageVolumeList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -69,6 +74,7 @@ func (c *cmdStorageVolumeList) Command() *cobra.Command {
 	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
+	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", storageVolumeDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format, default: `+storageVolumeDefaultColumns)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		return validate.FormatFlag(cmd.Flag("format").Value.String())
@@ -111,28 +117,37 @@ func (c *cmdStorageVolumeList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{
-		"ID",
-		"Cluster",
-		"Server",
-		"Project Name",
-		"Storage Pool Name",
-		"Name",
-		"Last Updated",
+	fields := strings.Split(c.flagColumns, ",")
+
+	header := []string{}
+	tmpl := template.New("")
+
+	for _, field := range fields {
+		title := strings.Trim(field, "{} .")
+		header = append(header, title)
+		fieldTmpl := tmpl.New(title)
+		_, err := fieldTmpl.Parse(field)
+		if err != nil {
+			return err
+		}
 	}
 
 	data := [][]string{}
+	wr := &bytes.Buffer{}
 
 	for _, storageVolume := range storageVolumes {
-		data = append(data, []string{
-			strconv.FormatInt(int64(storageVolume.ID), 10),
-			storageVolume.Cluster,
-			storageVolume.Server,
-			storageVolume.ProjectName,
-			storageVolume.StoragePoolName,
-			storageVolume.Name,
-			storageVolume.LastUpdated.String(),
-		})
+		row := make([]string, len(header))
+		for i, field := range header {
+			wr.Reset()
+			err := tmpl.ExecuteTemplate(wr, field, storageVolume)
+			if err != nil {
+				return err
+			}
+
+			row[i] = wr.String()
+		}
+
+		data = append(data, row)
 	}
 
 	sort.ColumnsNaturally(data)
