@@ -69,6 +69,7 @@ type {{ .Name | pascalcase }}Filter struct{
 {{- if .HasProject }}
 	Project *string
 {{- end }}
+	Expression *string
 }
 
 func (f {{ .Name | pascalcase }}Filter) AppendToURLValues(query url.Values) url.Values {
@@ -78,7 +79,7 @@ func (f {{ .Name | pascalcase }}Filter) AppendToURLValues(query url.Values) url.
 {{- if .ServerIDByLocation }}
 
 	if f.Server != nil {
-		query.Add("server", *f.Project)
+		query.Add("server", *f.Server)
 	}
 {{- end }}
 {{- if .HasProject }}
@@ -87,6 +88,10 @@ func (f {{ .Name | pascalcase }}Filter) AppendToURLValues(query url.Values) url.
 		query.Add("project", *f.Project)
 	}
 {{- end }}
+
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
+	}
 
 	return query
 }

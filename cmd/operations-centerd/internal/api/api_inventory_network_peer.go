@@ -29,41 +29,46 @@ func registerInventoryNetworkPeerHandler(router *http.ServeMux, service inventor
 
 // swagger:operation GET /1.0/inventory/network_peers network_peers network_peers_get
 //
-//		Get the network_peer
+//	Get the network_peer
 //
-//		Returns a list of network_peer (list of relative URLs).
+//	Returns a list of network_peer (list of relative URLs).
 //
-//		---
-//		produces:
-//		  - application/json
-//		parameters:
-//		  - in: query
-//		    name: cluster
-//		    description: Cluster name
-//		    type: string
-//		    example: cluster
-//		responses:
-//		  "200":
-//		    description: API network_peer
-//		    schema:
-//		      type: object
-//		      description: Sync response
-//		      properties:
-//		        type:
-//		          type: string
-//		          description: Response type
-//		          example: sync
-//		        status:
-//		          type: string
-//		          description: Status description
-//		          example: Success
-//		        status_code:
-//		          type: integer
-//		          description: Status code
-//		          example: 200
-//		        metadata:
-//		          type: array
-//		          description: List of network_peer
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
+//	responses:
+//	  "200":
+//	    description: API network_peer
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of network_peer
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -71,10 +76,10 @@ func registerInventoryNetworkPeerHandler(router *http.ServeMux, service inventor
 //	                   "/1.0/inventory/network_peers/1",
 //	                   "/1.0/inventory/network_peers/2"
 //	                 ]
-//		  "403":
-//		    $ref: "#/responses/Forbidden"
-//		  "500":
-//		    $ref: "#/responses/InternalServerError"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 
 // swagger:operation GET /1.0/provisioning/network_peers?recursion=1 network_peers network_peers_get_recursion
 //
@@ -85,6 +90,17 @@ func registerInventoryNetworkPeerHandler(router *http.ServeMux, service inventor
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API network_peers
@@ -124,6 +140,10 @@ func (i *networkPeerHandler) networkPeersGet(r *http.Request) response.Response 
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+	}
+
+	if r.URL.Query().Get("filter") != "" {
+		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
 	}
 
 	if recursion == 1 {

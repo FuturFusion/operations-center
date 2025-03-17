@@ -5,8 +5,11 @@ package inventory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -56,7 +59,43 @@ func NewStorageBucketService(repo StorageBucketRepo, clusterSvc ProvisioningClus
 }
 
 func (s storageBucketService) GetAllWithFilter(ctx context.Context, filter StorageBucketFilter) (StorageBuckets, error) {
-	return s.repo.GetAllWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(StorageBucket{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	storageBuckets, err := s.repo.GetAllWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredStorageBuckets StorageBuckets
+	if filter.Expression != nil {
+		for _, storageBucket := range storageBuckets {
+			output, err := expr.Run(filterExpression, storageBucket)
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredStorageBuckets = append(filteredStorageBuckets, storageBucket)
+			}
+		}
+
+		return filteredStorageBuckets, nil
+	}
+
+	return storageBuckets, nil
 }
 
 func (s storageBucketService) GetAllIDsWithFilter(ctx context.Context, filter StorageBucketFilter) ([]int, error) {

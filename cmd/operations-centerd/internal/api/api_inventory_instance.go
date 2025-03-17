@@ -29,51 +29,56 @@ func registerInventoryInstanceHandler(router *http.ServeMux, service inventory.I
 
 // swagger:operation GET /1.0/inventory/instances instances instances_get
 //
-//		Get the instance
+//	Get the instance
 //
-//		Returns a list of instance (list of relative URLs).
+//	Returns a list of instance (list of relative URLs).
 //
-//		---
-//		produces:
-//		  - application/json
-//		parameters:
-//		  - in: query
-//		    name: cluster
-//		    description: Cluster name
-//		    type: string
-//		    example: cluster
-//		  - in: query
-//		    name: server
-//		    description: Server name
-//		    type: string
-//		    example: localhost
-//		  - in: query
-//		    name: project
-//		    description: Project name
-//		    type: string
-//		    example: default
-//		responses:
-//		  "200":
-//		    description: API instance
-//		    schema:
-//		      type: object
-//		      description: Sync response
-//		      properties:
-//		        type:
-//		          type: string
-//		          description: Response type
-//		          example: sync
-//		        status:
-//		          type: string
-//		          description: Status description
-//		          example: Success
-//		        status_code:
-//		          type: integer
-//		          description: Status code
-//		          example: 200
-//		        metadata:
-//		          type: array
-//		          description: List of instance
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: server
+//	    description: Server name
+//	    type: string
+//	    example: localhost
+//	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
+//	responses:
+//	  "200":
+//	    description: API instance
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of instance
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -81,10 +86,10 @@ func registerInventoryInstanceHandler(router *http.ServeMux, service inventory.I
 //	                   "/1.0/inventory/instances/1",
 //	                   "/1.0/inventory/instances/2"
 //	                 ]
-//		  "403":
-//		    $ref: "#/responses/Forbidden"
-//		  "500":
-//		    $ref: "#/responses/InternalServerError"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 
 // swagger:operation GET /1.0/provisioning/instances?recursion=1 instances instances_get_recursion
 //
@@ -95,6 +100,27 @@ func registerInventoryInstanceHandler(router *http.ServeMux, service inventory.I
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: server
+//	    description: Server name
+//	    type: string
+//	    example: localhost
+//	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API instances
@@ -142,6 +168,10 @@ func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
 
 	if r.URL.Query().Get("project") != "" {
 		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	}
+
+	if r.URL.Query().Get("filter") != "" {
+		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
 	}
 
 	if recursion == 1 {

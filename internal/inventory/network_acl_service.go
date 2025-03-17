@@ -5,7 +5,11 @@ package inventory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
+
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -40,7 +44,43 @@ func NewNetworkACLService(repo NetworkACLRepo, clusterSvc ProvisioningClusterSer
 }
 
 func (s networkACLService) GetAllWithFilter(ctx context.Context, filter NetworkACLFilter) (NetworkACLs, error) {
-	return s.repo.GetAllWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(NetworkACL{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	networkACLs, err := s.repo.GetAllWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredNetworkACLs NetworkACLs
+	if filter.Expression != nil {
+		for _, networkACL := range networkACLs {
+			output, err := expr.Run(filterExpression, networkACL)
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredNetworkACLs = append(filteredNetworkACLs, networkACL)
+			}
+		}
+
+		return filteredNetworkACLs, nil
+	}
+
+	return networkACLs, nil
 }
 
 func (s networkACLService) GetAllIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]int, error) {

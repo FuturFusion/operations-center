@@ -29,41 +29,46 @@ func registerInventoryNetworkLoadBalancerHandler(router *http.ServeMux, service 
 
 // swagger:operation GET /1.0/inventory/network_load_balancers network_load_balancers network_load_balancers_get
 //
-//		Get the network_load_balancer
+//	Get the network_load_balancer
 //
-//		Returns a list of network_load_balancer (list of relative URLs).
+//	Returns a list of network_load_balancer (list of relative URLs).
 //
-//		---
-//		produces:
-//		  - application/json
-//		parameters:
-//		  - in: query
-//		    name: cluster
-//		    description: Cluster name
-//		    type: string
-//		    example: cluster
-//		responses:
-//		  "200":
-//		    description: API network_load_balancer
-//		    schema:
-//		      type: object
-//		      description: Sync response
-//		      properties:
-//		        type:
-//		          type: string
-//		          description: Response type
-//		          example: sync
-//		        status:
-//		          type: string
-//		          description: Status description
-//		          example: Success
-//		        status_code:
-//		          type: integer
-//		          description: Status code
-//		          example: 200
-//		        metadata:
-//		          type: array
-//		          description: List of network_load_balancer
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
+//	responses:
+//	  "200":
+//	    description: API network_load_balancer
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of network_load_balancer
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -71,10 +76,10 @@ func registerInventoryNetworkLoadBalancerHandler(router *http.ServeMux, service 
 //	                   "/1.0/inventory/network_load_balancers/1",
 //	                   "/1.0/inventory/network_load_balancers/2"
 //	                 ]
-//		  "403":
-//		    $ref: "#/responses/Forbidden"
-//		  "500":
-//		    $ref: "#/responses/InternalServerError"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 
 // swagger:operation GET /1.0/provisioning/network_load_balancers?recursion=1 network_load_balancers network_load_balancers_get_recursion
 //
@@ -85,6 +90,17 @@ func registerInventoryNetworkLoadBalancerHandler(router *http.ServeMux, service 
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API network_load_balancers
@@ -124,6 +140,10 @@ func (i *networkLoadBalancerHandler) networkLoadBalancersGet(r *http.Request) re
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+	}
+
+	if r.URL.Query().Get("filter") != "" {
+		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
 	}
 
 	if recursion == 1 {

@@ -5,8 +5,11 @@ package inventory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -56,7 +59,43 @@ func NewNetworkLoadBalancerService(repo NetworkLoadBalancerRepo, clusterSvc Prov
 }
 
 func (s networkLoadBalancerService) GetAllWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) (NetworkLoadBalancers, error) {
-	return s.repo.GetAllWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(NetworkLoadBalancer{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	networkLoadBalancers, err := s.repo.GetAllWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredNetworkLoadBalancers NetworkLoadBalancers
+	if filter.Expression != nil {
+		for _, networkLoadBalancer := range networkLoadBalancers {
+			output, err := expr.Run(filterExpression, networkLoadBalancer)
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredNetworkLoadBalancers = append(filteredNetworkLoadBalancers, networkLoadBalancer)
+			}
+		}
+
+		return filteredNetworkLoadBalancers, nil
+	}
+
+	return networkLoadBalancers, nil
 }
 
 func (s networkLoadBalancerService) GetAllIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]int, error) {

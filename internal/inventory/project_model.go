@@ -34,12 +34,17 @@ func (m Project) Validate() error {
 type Projects []Project
 
 type ProjectFilter struct {
-	Cluster *string
+	Cluster    *string
+	Expression *string
 }
 
 func (f ProjectFilter) AppendToURLValues(query url.Values) url.Values {
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
+	}
+
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
 	}
 
 	return query

@@ -29,51 +29,56 @@ func registerInventoryStorageBucketHandler(router *http.ServeMux, service invent
 
 // swagger:operation GET /1.0/inventory/storage_buckets storage_buckets storage_buckets_get
 //
-//		Get the storage_bucket
+//	Get the storage_bucket
 //
-//		Returns a list of storage_bucket (list of relative URLs).
+//	Returns a list of storage_bucket (list of relative URLs).
 //
-//		---
-//		produces:
-//		  - application/json
-//		parameters:
-//		  - in: query
-//		    name: cluster
-//		    description: Cluster name
-//		    type: string
-//		    example: cluster
-//		  - in: query
-//		    name: server
-//		    description: Server name
-//		    type: string
-//		    example: localhost
-//		  - in: query
-//		    name: project
-//		    description: Project name
-//		    type: string
-//		    example: default
-//		responses:
-//		  "200":
-//		    description: API storage_bucket
-//		    schema:
-//		      type: object
-//		      description: Sync response
-//		      properties:
-//		        type:
-//		          type: string
-//		          description: Response type
-//		          example: sync
-//		        status:
-//		          type: string
-//		          description: Status description
-//		          example: Success
-//		        status_code:
-//		          type: integer
-//		          description: Status code
-//		          example: 200
-//		        metadata:
-//		          type: array
-//		          description: List of storage_bucket
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: server
+//	    description: Server name
+//	    type: string
+//	    example: localhost
+//	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
+//	responses:
+//	  "200":
+//	    description: API storage_bucket
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of storage_bucket
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -81,10 +86,10 @@ func registerInventoryStorageBucketHandler(router *http.ServeMux, service invent
 //	                   "/1.0/inventory/storage_buckets/1",
 //	                   "/1.0/inventory/storage_buckets/2"
 //	                 ]
-//		  "403":
-//		    $ref: "#/responses/Forbidden"
-//		  "500":
-//		    $ref: "#/responses/InternalServerError"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 
 // swagger:operation GET /1.0/provisioning/storage_buckets?recursion=1 storage_buckets storage_buckets_get_recursion
 //
@@ -95,6 +100,27 @@ func registerInventoryStorageBucketHandler(router *http.ServeMux, service invent
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: server
+//	    description: Server name
+//	    type: string
+//	    example: localhost
+//	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API storage_buckets
@@ -142,6 +168,10 @@ func (i *storageBucketHandler) storageBucketsGet(r *http.Request) response.Respo
 
 	if r.URL.Query().Get("project") != "" {
 		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	}
+
+	if r.URL.Query().Get("filter") != "" {
+		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
 	}
 
 	if recursion == 1 {

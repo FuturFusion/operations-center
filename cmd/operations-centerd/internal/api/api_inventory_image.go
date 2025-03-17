@@ -29,46 +29,51 @@ func registerInventoryImageHandler(router *http.ServeMux, service inventory.Imag
 
 // swagger:operation GET /1.0/inventory/images images images_get
 //
-//		Get the image
+//	Get the image
 //
-//		Returns a list of image (list of relative URLs).
+//	Returns a list of image (list of relative URLs).
 //
-//		---
-//		produces:
-//		  - application/json
-//		parameters:
-//		  - in: query
-//		    name: cluster
-//		    description: Cluster name
-//		    type: string
-//		    example: cluster
-//		  - in: query
-//		    name: project
-//		    description: Project name
-//		    type: string
-//		    example: default
-//		responses:
-//		  "200":
-//		    description: API image
-//		    schema:
-//		      type: object
-//		      description: Sync response
-//		      properties:
-//		        type:
-//		          type: string
-//		          description: Response type
-//		          example: sync
-//		        status:
-//		          type: string
-//		          description: Status description
-//		          example: Success
-//		        status_code:
-//		          type: integer
-//		          description: Status code
-//		          example: 200
-//		        metadata:
-//		          type: array
-//		          description: List of image
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
+//	responses:
+//	  "200":
+//	    description: API image
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of image
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -76,10 +81,10 @@ func registerInventoryImageHandler(router *http.ServeMux, service inventory.Imag
 //	                   "/1.0/inventory/images/1",
 //	                   "/1.0/inventory/images/2"
 //	                 ]
-//		  "403":
-//		    $ref: "#/responses/Forbidden"
-//		  "500":
-//		    $ref: "#/responses/InternalServerError"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 
 // swagger:operation GET /1.0/provisioning/images?recursion=1 images images_get_recursion
 //
@@ -90,6 +95,22 @@ func registerInventoryImageHandler(router *http.ServeMux, service inventory.Imag
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API images
@@ -133,6 +154,10 @@ func (i *imageHandler) imagesGet(r *http.Request) response.Response {
 
 	if r.URL.Query().Get("project") != "" {
 		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	}
+
+	if r.URL.Query().Get("filter") != "" {
+		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
 	}
 
 	if recursion == 1 {

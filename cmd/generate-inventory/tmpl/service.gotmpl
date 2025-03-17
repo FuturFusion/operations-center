@@ -3,9 +3,12 @@ package inventory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
-{{- if .HasParent }}
 
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
+{{- if .HasParent }}
 	incusapi "github.com/lxc/incus/v6/shared/api"
 {{- end }}
 
@@ -68,7 +71,43 @@ func New{{ .Name | pascalcase }}Service(repo {{ .Name | pascalcase }}Repo, clust
 }
 
 func (s {{ .Name | camelcase }}Service) GetAllWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) ({{ .PluralName | pascalcase }}, error) {
-	return s.repo.GetAllWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env({{ .Name | pascalcase }}{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	{{ .PluralName | camelcase }}, err := s.repo.GetAllWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filtered{{ .PluralName | pascalcase }} {{ .PluralName | pascalcase }}
+	if filter.Expression != nil {
+		for _, {{ .Name | camelcase }} := range {{ .PluralName | camelcase }} {
+			output, err := expr.Run(filterExpression, {{ .Name | camelcase }})
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filtered{{ .PluralName | pascalcase }} = append(filtered{{ .PluralName | pascalcase }}, {{ .Name | camelcase }})
+			}
+		}
+
+		return filtered{{ .PluralName | pascalcase }}, nil
+	}
+
+	return {{ .PluralName | camelcase }}, nil
 }
 
 func (s {{ .Name | camelcase }}Service) GetAllIDsWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) ([]int, error) {

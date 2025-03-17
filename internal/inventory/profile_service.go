@@ -5,7 +5,11 @@ package inventory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
+
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -40,7 +44,43 @@ func NewProfileService(repo ProfileRepo, clusterSvc ProvisioningClusterService, 
 }
 
 func (s profileService) GetAllWithFilter(ctx context.Context, filter ProfileFilter) (Profiles, error) {
-	return s.repo.GetAllWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Profile{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	profiles, err := s.repo.GetAllWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredProfiles Profiles
+	if filter.Expression != nil {
+		for _, profile := range profiles {
+			output, err := expr.Run(filterExpression, profile)
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredProfiles = append(filteredProfiles, profile)
+			}
+		}
+
+		return filteredProfiles, nil
+	}
+
+	return profiles, nil
 }
 
 func (s profileService) GetAllIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]int, error) {

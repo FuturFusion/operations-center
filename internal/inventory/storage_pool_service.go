@@ -5,7 +5,11 @@ package inventory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
+
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -40,7 +44,43 @@ func NewStoragePoolService(repo StoragePoolRepo, clusterSvc ProvisioningClusterS
 }
 
 func (s storagePoolService) GetAllWithFilter(ctx context.Context, filter StoragePoolFilter) (StoragePools, error) {
-	return s.repo.GetAllWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(StoragePool{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	storagePools, err := s.repo.GetAllWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredStoragePools StoragePools
+	if filter.Expression != nil {
+		for _, storagePool := range storagePools {
+			output, err := expr.Run(filterExpression, storagePool)
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredStoragePools = append(filteredStoragePools, storagePool)
+			}
+		}
+
+		return filteredStoragePools, nil
+	}
+
+	return storagePools, nil
 }
 
 func (s storagePoolService) GetAllIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]int, error) {

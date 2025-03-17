@@ -16,12 +16,14 @@ import (
 	repoMock "github.com/FuturFusion/operations-center/internal/inventory/repo/mock"
 	serverMock "github.com/FuturFusion/operations-center/internal/inventory/server/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
 
 func TestInstanceService_GetAllWithFilter(t *testing.T) {
 	tests := []struct {
 		name                    string
+		filterExpression        *string
 		repoGetAllWithFilter    inventory.Instances
 		repoGetAllWithFilterErr error
 
@@ -29,7 +31,7 @@ func TestInstanceService_GetAllWithFilter(t *testing.T) {
 		count     int
 	}{
 		{
-			name: "success",
+			name: "success - no filter expression",
 			repoGetAllWithFilter: inventory.Instances{
 				inventory.Instance{
 					Name: "one",
@@ -41,6 +43,59 @@ func TestInstanceService_GetAllWithFilter(t *testing.T) {
 
 			assertErr: require.NoError,
 			count:     2,
+		},
+		{
+			name:             "success - with filter expression",
+			filterExpression: ptr.To(`Name == "one"`),
+			repoGetAllWithFilter: inventory.Instances{
+				inventory.Instance{
+					Name: "one",
+				},
+				inventory.Instance{
+					Name: "two",
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     1,
+		},
+		{
+			name:             "error - invalid filter expression",
+			filterExpression: ptr.To(``), // the empty expression is an invalid expression.
+			repoGetAllWithFilter: inventory.Instances{
+				inventory.Instance{
+					Name: "one",
+				},
+			},
+
+			assertErr: require.Error,
+			count:     0,
+		},
+		{
+			name:             "error - filter expression run",
+			filterExpression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
+			repoGetAllWithFilter: inventory.Instances{
+				inventory.Instance{
+					Name: "one",
+				},
+			},
+
+			assertErr: require.Error,
+			count:     0,
+		},
+		{
+			name:             "error - non bool expression",
+			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
+			repoGetAllWithFilter: inventory.Instances{
+				inventory.Instance{
+					Name: "one",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...interface{}) {
+				require.ErrorContains(tt, err, "does not evaluate to boolean result")
+			},
+			count: 0,
 		},
 		{
 			name:                    "error - repo",
@@ -65,7 +120,9 @@ func TestInstanceService_GetAllWithFilter(t *testing.T) {
 			}))
 
 			// Run test
-			instance, err := instanceSvc.GetAllWithFilter(context.Background(), inventory.InstanceFilter{})
+			instance, err := instanceSvc.GetAllWithFilter(context.Background(), inventory.InstanceFilter{
+				Expression: tc.filterExpression,
+			})
 
 			// Assert
 			tc.assertErr(t, err)

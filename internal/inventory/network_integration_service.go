@@ -5,7 +5,11 @@ package inventory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
+
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -40,7 +44,43 @@ func NewNetworkIntegrationService(repo NetworkIntegrationRepo, clusterSvc Provis
 }
 
 func (s networkIntegrationService) GetAllWithFilter(ctx context.Context, filter NetworkIntegrationFilter) (NetworkIntegrations, error) {
-	return s.repo.GetAllWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(NetworkIntegration{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	networkIntegrations, err := s.repo.GetAllWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredNetworkIntegrations NetworkIntegrations
+	if filter.Expression != nil {
+		for _, networkIntegration := range networkIntegrations {
+			output, err := expr.Run(filterExpression, networkIntegration)
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredNetworkIntegrations = append(filteredNetworkIntegrations, networkIntegration)
+			}
+		}
+
+		return filteredNetworkIntegrations, nil
+	}
+
+	return networkIntegrations, nil
 }
 
 func (s networkIntegrationService) GetAllIDsWithFilter(ctx context.Context, filter NetworkIntegrationFilter) ([]int, error) {

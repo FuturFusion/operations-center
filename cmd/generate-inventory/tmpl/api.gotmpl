@@ -27,55 +27,60 @@ func registerInventory{{ .Name | pascalcase }}Handler(router *http.ServeMux, ser
 
 // swagger:operation GET /1.0/inventory/{{ .PluralName }} {{ .PluralName }} {{ .PluralName }}_get
 //
-//		Get the {{ .Name }}
+//	Get the {{ .Name }}
 //
-//		Returns a list of {{ .Name }} (list of relative URLs).
+//	Returns a list of {{ .Name }} (list of relative URLs).
 //
-//		---
-//		produces:
-//		  - application/json
-//		parameters:
-//		  - in: query
-//		    name: cluster
-//		    description: Cluster name
-//		    type: string
-//		    example: cluster
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
 {{- if .ServerIDByLocation }}
-//		  - in: query
-//		    name: server
-//		    description: Server name
-//		    type: string
-//		    example: localhost
+//	  - in: query
+//	    name: server
+//	    description: Server name
+//	    type: string
+//	    example: localhost
 {{- end }}
 {{- if .HasProject }}
-//		  - in: query
-//		    name: project
-//		    description: Project name
-//		    type: string
-//		    example: default
+//	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
 {{- end }}
-//		responses:
-//		  "200":
-//		    description: API {{ .Name }}
-//		    schema:
-//		      type: object
-//		      description: Sync response
-//		      properties:
-//		        type:
-//		          type: string
-//		          description: Response type
-//		          example: sync
-//		        status:
-//		          type: string
-//		          description: Status description
-//		          example: Success
-//		        status_code:
-//		          type: integer
-//		          description: Status code
-//		          example: 200
-//		        metadata:
-//		          type: array
-//		          description: List of {{ .Name }}
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
+//	responses:
+//	  "200":
+//	    description: API {{ .Name }}
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of {{ .Name }}
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -83,10 +88,10 @@ func registerInventory{{ .Name | pascalcase }}Handler(router *http.ServeMux, ser
 //	                   "/1.0/inventory/{{ .PluralName }}/1",
 //	                   "/1.0/inventory/{{ .PluralName }}/2"
 //	                 ]
-//		  "403":
-//		    $ref: "#/responses/Forbidden"
-//		  "500":
-//		    $ref: "#/responses/InternalServerError"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 
 // swagger:operation GET /1.0/provisioning/{{ .PluralName }}?recursion=1 {{ .PluralName }} {{ .PluralName }}_get_recursion
 //
@@ -97,6 +102,31 @@ func registerInventory{{ .Name | pascalcase }}Handler(router *http.ServeMux, ser
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+{{- if .ServerIDByLocation }}
+//	  - in: query
+//	    name: server
+//	    description: Server name
+//	    type: string
+//	    example: localhost
+{{- end }}
+{{- if .HasProject }}
+//	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
+{{- end }}
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API {{ .PluralName }}
@@ -149,6 +179,10 @@ func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *htt
 		filter.Project = ptr.To(r.URL.Query().Get("project"))
 	}
 {{ end }}
+
+	if r.URL.Query().Get("filter") != "" {
+		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
+	}
 
 	if recursion == 1 {
 		// FIXME: Should we require a non empty filter with recursion?

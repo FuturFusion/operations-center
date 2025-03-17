@@ -46,8 +46,9 @@ func (c *CmdImage) Command() *cobra.Command {
 
 // List images.
 type cmdImageList struct {
-	flagFilterCluster string
-	flagFilterProject string
+	flagFilterCluster    string
+	flagFilterProject    string
+	flagFilterExpression string
 
 	flagFormat string
 }
@@ -64,6 +65,7 @@ func (c *cmdImageList) Command() *cobra.Command {
 
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
+	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
@@ -88,6 +90,10 @@ func (c *cmdImageList) Run(cmd *cobra.Command, args []string) error {
 
 	if c.flagFilterProject != "" {
 		filter.Project = ptr.To(c.flagFilterProject)
+	}
+
+	if c.flagFilterExpression != "" {
+		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
 	// Client call

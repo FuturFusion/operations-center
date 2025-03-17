@@ -46,9 +46,10 @@ func (c *CmdStorageVolume) Command() *cobra.Command {
 
 // List storage_volumes.
 type cmdStorageVolumeList struct {
-	flagFilterCluster string
-	flagFilterServer  string
-	flagFilterProject string
+	flagFilterCluster    string
+	flagFilterServer     string
+	flagFilterProject    string
+	flagFilterExpression string
 
 	flagFormat string
 }
@@ -66,6 +67,7 @@ func (c *cmdStorageVolumeList) Command() *cobra.Command {
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterServer, "server", "", "server name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
+	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
@@ -94,6 +96,10 @@ func (c *cmdStorageVolumeList) Run(cmd *cobra.Command, args []string) error {
 
 	if c.flagFilterProject != "" {
 		filter.Project = ptr.To(c.flagFilterProject)
+	}
+
+	if c.flagFilterExpression != "" {
+		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
 	// Client call

@@ -29,41 +29,46 @@ func registerInventoryNetworkIntegrationHandler(router *http.ServeMux, service i
 
 // swagger:operation GET /1.0/inventory/network_integrations network_integrations network_integrations_get
 //
-//		Get the network_integration
+//	Get the network_integration
 //
-//		Returns a list of network_integration (list of relative URLs).
+//	Returns a list of network_integration (list of relative URLs).
 //
-//		---
-//		produces:
-//		  - application/json
-//		parameters:
-//		  - in: query
-//		    name: cluster
-//		    description: Cluster name
-//		    type: string
-//		    example: cluster
-//		responses:
-//		  "200":
-//		    description: API network_integration
-//		    schema:
-//		      type: object
-//		      description: Sync response
-//		      properties:
-//		        type:
-//		          type: string
-//		          description: Response type
-//		          example: sync
-//		        status:
-//		          type: string
-//		          description: Status description
-//		          example: Success
-//		        status_code:
-//		          type: integer
-//		          description: Status code
-//		          example: 200
-//		        metadata:
-//		          type: array
-//		          description: List of network_integration
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
+//	responses:
+//	  "200":
+//	    description: API network_integration
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of network_integration
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -71,10 +76,10 @@ func registerInventoryNetworkIntegrationHandler(router *http.ServeMux, service i
 //	                   "/1.0/inventory/network_integrations/1",
 //	                   "/1.0/inventory/network_integrations/2"
 //	                 ]
-//		  "403":
-//		    $ref: "#/responses/Forbidden"
-//		  "500":
-//		    $ref: "#/responses/InternalServerError"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 
 // swagger:operation GET /1.0/provisioning/network_integrations?recursion=1 network_integrations network_integrations_get_recursion
 //
@@ -85,6 +90,17 @@ func registerInventoryNetworkIntegrationHandler(router *http.ServeMux, service i
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API network_integrations
@@ -124,6 +140,10 @@ func (i *networkIntegrationHandler) networkIntegrationsGet(r *http.Request) resp
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+	}
+
+	if r.URL.Query().Get("filter") != "" {
+		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
 	}
 
 	if recursion == 1 {

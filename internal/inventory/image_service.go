@@ -5,7 +5,11 @@ package inventory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
+
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -40,7 +44,43 @@ func NewImageService(repo ImageRepo, clusterSvc ProvisioningClusterService, clie
 }
 
 func (s imageService) GetAllWithFilter(ctx context.Context, filter ImageFilter) (Images, error) {
-	return s.repo.GetAllWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Image{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	images, err := s.repo.GetAllWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredImages Images
+	if filter.Expression != nil {
+		for _, image := range images {
+			output, err := expr.Run(filterExpression, image)
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredImages = append(filteredImages, image)
+			}
+		}
+
+		return filteredImages, nil
+	}
+
+	return images, nil
 }
 
 func (s imageService) GetAllIDsWithFilter(ctx context.Context, filter ImageFilter) ([]int, error) {

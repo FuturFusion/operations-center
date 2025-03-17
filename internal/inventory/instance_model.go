@@ -44,9 +44,10 @@ func (m Instance) Validate() error {
 type Instances []Instance
 
 type InstanceFilter struct {
-	Cluster *string
-	Server  *string
-	Project *string
+	Cluster    *string
+	Server     *string
+	Project    *string
+	Expression *string
 }
 
 func (f InstanceFilter) AppendToURLValues(query url.Values) url.Values {
@@ -55,11 +56,15 @@ func (f InstanceFilter) AppendToURLValues(query url.Values) url.Values {
 	}
 
 	if f.Server != nil {
-		query.Add("server", *f.Project)
+		query.Add("server", *f.Server)
 	}
 
 	if f.Project != nil {
 		query.Add("project", *f.Project)
+	}
+
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
 	}
 
 	return query
