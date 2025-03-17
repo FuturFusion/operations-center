@@ -48,6 +48,9 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			),
 			clusterSvc,
 			serverClient,
+			inventory.NetworkWithSyncFilter(func(network inventory.Network) bool {
+				return !network.Object.Managed
+			}),
 		),
 		slog.Default(),
 	)
