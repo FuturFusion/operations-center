@@ -20,6 +20,8 @@ type networkACLService struct {
 	clusterSvc       ProvisioningClusterService
 	networkACLClient NetworkACLServerClient
 
+	clusterSyncFilterFunc func(networkACL NetworkACL) bool
+
 	now func() time.Time
 }
 
@@ -27,11 +29,21 @@ var _ NetworkACLService = &networkACLService{}
 
 type NetworkACLServiceOption func(s *networkACLService)
 
+func NetworkACLWithSyncFilter(clusterSyncFilterFunc func(networkACL NetworkACL) bool) NetworkACLServiceOption {
+	return func(s *networkACLService) {
+		s.clusterSyncFilterFunc = clusterSyncFilterFunc
+	}
+}
+
 func NewNetworkACLService(repo NetworkACLRepo, clusterSvc ProvisioningClusterService, client NetworkACLServerClient, opts ...NetworkACLServiceOption) networkACLService {
 	networkACLSvc := networkACLService{
 		repo:             repo,
 		clusterSvc:       clusterSvc,
 		networkACLClient: client,
+
+		clusterSyncFilterFunc: func(networkACL NetworkACL) bool {
+			return false
+		},
 
 		now: time.Now,
 	}
@@ -164,6 +176,10 @@ func (s networkACLService) SyncCluster(ctx context.Context, name string) error {
 				Name:        retrievedNetworkACL.Name,
 				Object:      retrievedNetworkACL,
 				LastUpdated: s.now(),
+			}
+
+			if s.clusterSyncFilterFunc(networkACL) {
+				continue
 			}
 
 			err = networkACL.Validate()

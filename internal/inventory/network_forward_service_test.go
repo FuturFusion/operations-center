@@ -440,6 +440,24 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 				{
 					Name: "network one",
 				},
+			},
+			networkForwardClientGetNetworkForwards: []incusapi.NetworkForward{
+				{
+					ListenAddress: "networkForward one",
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - with parent filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			networkClientGetNetworks: []incusapi.Network{
+				{
+					Name: "network one",
+				},
 				{
 					Name: "filtered",
 				},
@@ -452,6 +470,32 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 			serviceOptions: []inventory.NetworkForwardServiceOption{
 				inventory.NetworkForwardWithParentFilter(func(parent incusapi.Network) bool {
 					return parent.Name == "filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - with sync filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			networkClientGetNetworks: []incusapi.Network{
+				{
+					Name: "network one",
+				},
+			},
+			networkForwardClientGetNetworkForwards: []incusapi.NetworkForward{
+				{
+					ListenAddress: "networkForward one",
+				},
+				{
+					ListenAddress: "networkForward filtered",
+				},
+			},
+			serviceOptions: []inventory.NetworkForwardServiceOption{
+				inventory.NetworkForwardWithSyncFilter(func(networkForward inventory.NetworkForward) bool {
+					return networkForward.Name == "networkForward filtered"
 				}),
 			},
 

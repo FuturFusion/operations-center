@@ -516,9 +516,6 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 				{
 					Name: "{{ .ParentName | camelcase }} one",
 				},
-				{
-					Name: "filtered",
-				},
 			},
 {{- end }}
 			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}: []incusapi.{{ .ObjectType | pascalcase }}{
@@ -544,13 +541,116 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- end }}
 				},
 			},
+
+			assertErr: require.NoError,
+		},
 {{- if .HasParent }}
+		{
+			name: "success - with parent filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name:  "cluster-one",
+			},
+			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
+				{
+					Name: "{{ .ParentName | camelcase }} one",
+				},
+				{
+					Name: "filtered",
+				},
+			},
+			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}: []incusapi.{{ .ObjectType | pascalcase }}{
+				{
+{{- if .ObjectEmbedded }}
+					{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+						{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+							{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .UsesEmbeddedPostType }}
+						},
+{{- end }}
+{{- if .ServerIDByLocation }}
+						Location:  "one",
+{{- end }}
+{{- if .HasProject }}
+						Project: "project one",
+{{- end }}
+{{- if .ObjectEmbedded }}
+					},
+{{- end }}
+				},
+			},
 			serviceOptions: []inventory.{{ .Name | pascalcase }}ServiceOption{
 				inventory.{{ .Name | pascalcase }}WithParentFilter(func(parent incusapi.{{ .ParentObjectType | pascalcase }}) bool {
 					return parent.Name == "filtered"
 				}),
 			},
+
+			assertErr: require.NoError,
+		},
 {{- end }}
+		{
+			name: "success - with sync filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name:  "cluster-one",
+			},
+{{- if .HasParent }}
+			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
+				{
+					Name: "{{ .ParentName | camelcase }} one",
+				},
+			},
+{{- end }}
+			{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}: []incusapi.{{ .ObjectType | pascalcase }}{
+				{
+{{- if .ObjectEmbedded }}
+					{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+						{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+							{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .UsesEmbeddedPostType }}
+						},
+{{- end }}
+{{- if .ServerIDByLocation }}
+						Location:  "one",
+{{- end }}
+{{- if .HasProject }}
+						Project: "project one",
+{{- end }}
+{{- if .ObjectEmbedded }}
+					},
+{{- end }}
+				},
+				{
+{{- if .ObjectEmbedded }}
+					{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+						{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+							{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} filtered",
+{{- if .UsesEmbeddedPostType }}
+						},
+{{- end }}
+{{- if .ServerIDByLocation }}
+						Location:  "one",
+{{- end }}
+{{- if .HasProject }}
+						Project: "project one",
+{{- end }}
+{{- if .ObjectEmbedded }}
+					},
+{{- end }}
+				},
+			},
+			serviceOptions: []inventory.{{ .Name | pascalcase }}ServiceOption{
+				inventory.{{ .Name | pascalcase }}WithSyncFilter(func({{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) bool{
+					return {{ .Name | camelcase }}.Name == "{{ .Name | camelcase }} filtered"
+				}),
+			},
 
 			assertErr: require.NoError,
 		},

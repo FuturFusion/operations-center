@@ -21,8 +21,9 @@ type networkLoadBalancerService struct {
 	clusterSvc                ProvisioningClusterService
 	networkClient             NetworkServerClient
 	networkLoadBalancerClient NetworkLoadBalancerServerClient
+	isParentFiltered          func(incusapi.Network) bool
 
-	isParentFiltered func(incusapi.Network) bool
+	clusterSyncFilterFunc func(networkLoadBalancer NetworkLoadBalancer) bool
 
 	now func() time.Time
 }
@@ -30,6 +31,12 @@ type networkLoadBalancerService struct {
 var _ NetworkLoadBalancerService = &networkLoadBalancerService{}
 
 type NetworkLoadBalancerServiceOption func(s *networkLoadBalancerService)
+
+func NetworkLoadBalancerWithSyncFilter(clusterSyncFilterFunc func(networkLoadBalancer NetworkLoadBalancer) bool) NetworkLoadBalancerServiceOption {
+	return func(s *networkLoadBalancerService) {
+		s.clusterSyncFilterFunc = clusterSyncFilterFunc
+	}
+}
 
 func NetworkLoadBalancerWithParentFilter(f func(incusapi.Network) bool) NetworkLoadBalancerServiceOption {
 	return func(s *networkLoadBalancerService) {
@@ -43,6 +50,10 @@ func NewNetworkLoadBalancerService(repo NetworkLoadBalancerRepo, clusterSvc Prov
 		clusterSvc:                clusterSvc,
 		networkClient:             parentClient,
 		networkLoadBalancerClient: client,
+
+		clusterSyncFilterFunc: func(networkLoadBalancer NetworkLoadBalancer) bool {
+			return false
+		},
 
 		isParentFiltered: func(_ incusapi.Network) bool {
 			return false
@@ -188,6 +199,10 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, name string
 					Name:        retrievedNetworkLoadBalancer.ListenAddress,
 					Object:      retrievedNetworkLoadBalancer,
 					LastUpdated: s.now(),
+				}
+
+				if s.clusterSyncFilterFunc(networkLoadBalancer) {
+					continue
 				}
 
 				err = networkLoadBalancer.Validate()

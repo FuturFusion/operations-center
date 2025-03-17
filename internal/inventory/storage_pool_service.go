@@ -20,6 +20,8 @@ type storagePoolService struct {
 	clusterSvc        ProvisioningClusterService
 	storagePoolClient StoragePoolServerClient
 
+	clusterSyncFilterFunc func(storagePool StoragePool) bool
+
 	now func() time.Time
 }
 
@@ -27,11 +29,21 @@ var _ StoragePoolService = &storagePoolService{}
 
 type StoragePoolServiceOption func(s *storagePoolService)
 
+func StoragePoolWithSyncFilter(clusterSyncFilterFunc func(storagePool StoragePool) bool) StoragePoolServiceOption {
+	return func(s *storagePoolService) {
+		s.clusterSyncFilterFunc = clusterSyncFilterFunc
+	}
+}
+
 func NewStoragePoolService(repo StoragePoolRepo, clusterSvc ProvisioningClusterService, client StoragePoolServerClient, opts ...StoragePoolServiceOption) storagePoolService {
 	storagePoolSvc := storagePoolService{
 		repo:              repo,
 		clusterSvc:        clusterSvc,
 		storagePoolClient: client,
+
+		clusterSyncFilterFunc: func(storagePool StoragePool) bool {
+			return false
+		},
 
 		now: time.Now,
 	}
@@ -162,6 +174,10 @@ func (s storagePoolService) SyncCluster(ctx context.Context, name string) error 
 				Name:        retrievedStoragePool.Name,
 				Object:      retrievedStoragePool,
 				LastUpdated: s.now(),
+			}
+
+			if s.clusterSyncFilterFunc(storagePool) {
+				continue
 			}
 
 			err = storagePool.Validate()

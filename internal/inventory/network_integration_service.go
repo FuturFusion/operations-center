@@ -20,6 +20,8 @@ type networkIntegrationService struct {
 	clusterSvc               ProvisioningClusterService
 	networkIntegrationClient NetworkIntegrationServerClient
 
+	clusterSyncFilterFunc func(networkIntegration NetworkIntegration) bool
+
 	now func() time.Time
 }
 
@@ -27,11 +29,21 @@ var _ NetworkIntegrationService = &networkIntegrationService{}
 
 type NetworkIntegrationServiceOption func(s *networkIntegrationService)
 
+func NetworkIntegrationWithSyncFilter(clusterSyncFilterFunc func(networkIntegration NetworkIntegration) bool) NetworkIntegrationServiceOption {
+	return func(s *networkIntegrationService) {
+		s.clusterSyncFilterFunc = clusterSyncFilterFunc
+	}
+}
+
 func NewNetworkIntegrationService(repo NetworkIntegrationRepo, clusterSvc ProvisioningClusterService, client NetworkIntegrationServerClient, opts ...NetworkIntegrationServiceOption) networkIntegrationService {
 	networkIntegrationSvc := networkIntegrationService{
 		repo:                     repo,
 		clusterSvc:               clusterSvc,
 		networkIntegrationClient: client,
+
+		clusterSyncFilterFunc: func(networkIntegration NetworkIntegration) bool {
+			return false
+		},
 
 		now: time.Now,
 	}
@@ -162,6 +174,10 @@ func (s networkIntegrationService) SyncCluster(ctx context.Context, name string)
 				Name:        retrievedNetworkIntegration.Name,
 				Object:      retrievedNetworkIntegration,
 				LastUpdated: s.now(),
+			}
+
+			if s.clusterSyncFilterFunc(networkIntegration) {
+				continue
 			}
 
 			err = networkIntegration.Validate()

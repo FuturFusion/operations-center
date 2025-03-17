@@ -21,8 +21,9 @@ type networkForwardService struct {
 	clusterSvc           ProvisioningClusterService
 	networkClient        NetworkServerClient
 	networkForwardClient NetworkForwardServerClient
+	isParentFiltered     func(incusapi.Network) bool
 
-	isParentFiltered func(incusapi.Network) bool
+	clusterSyncFilterFunc func(networkForward NetworkForward) bool
 
 	now func() time.Time
 }
@@ -30,6 +31,12 @@ type networkForwardService struct {
 var _ NetworkForwardService = &networkForwardService{}
 
 type NetworkForwardServiceOption func(s *networkForwardService)
+
+func NetworkForwardWithSyncFilter(clusterSyncFilterFunc func(networkForward NetworkForward) bool) NetworkForwardServiceOption {
+	return func(s *networkForwardService) {
+		s.clusterSyncFilterFunc = clusterSyncFilterFunc
+	}
+}
 
 func NetworkForwardWithParentFilter(f func(incusapi.Network) bool) NetworkForwardServiceOption {
 	return func(s *networkForwardService) {
@@ -43,6 +50,10 @@ func NewNetworkForwardService(repo NetworkForwardRepo, clusterSvc ProvisioningCl
 		clusterSvc:           clusterSvc,
 		networkClient:        parentClient,
 		networkForwardClient: client,
+
+		clusterSyncFilterFunc: func(networkForward NetworkForward) bool {
+			return false
+		},
 
 		isParentFiltered: func(_ incusapi.Network) bool {
 			return false
@@ -188,6 +199,10 @@ func (s networkForwardService) SyncCluster(ctx context.Context, name string) err
 					Name:        retrievedNetworkForward.ListenAddress,
 					Object:      retrievedNetworkForward,
 					LastUpdated: s.now(),
+				}
+
+				if s.clusterSyncFilterFunc(networkForward) {
+					continue
 				}
 
 				err = networkForward.Validate()

@@ -20,6 +20,8 @@ type networkService struct {
 	clusterSvc    ProvisioningClusterService
 	networkClient NetworkServerClient
 
+	clusterSyncFilterFunc func(network Network) bool
+
 	now func() time.Time
 }
 
@@ -27,11 +29,21 @@ var _ NetworkService = &networkService{}
 
 type NetworkServiceOption func(s *networkService)
 
+func NetworkWithSyncFilter(clusterSyncFilterFunc func(network Network) bool) NetworkServiceOption {
+	return func(s *networkService) {
+		s.clusterSyncFilterFunc = clusterSyncFilterFunc
+	}
+}
+
 func NewNetworkService(repo NetworkRepo, clusterSvc ProvisioningClusterService, client NetworkServerClient, opts ...NetworkServiceOption) networkService {
 	networkSvc := networkService{
 		repo:          repo,
 		clusterSvc:    clusterSvc,
 		networkClient: client,
+
+		clusterSyncFilterFunc: func(network Network) bool {
+			return false
+		},
 
 		now: time.Now,
 	}
@@ -164,6 +176,10 @@ func (s networkService) SyncCluster(ctx context.Context, name string) error {
 				Name:        retrievedNetwork.Name,
 				Object:      retrievedNetwork,
 				LastUpdated: s.now(),
+			}
+
+			if s.clusterSyncFilterFunc(network) {
+				continue
 			}
 
 			err = network.Validate()

@@ -447,6 +447,33 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name: "success - with sync filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			networkACLClientGetNetworkACLs: []incusapi.NetworkACL{
+				{
+					NetworkACLPost: incusapi.NetworkACLPost{
+						Name: "networkACL one",
+					},
+					Project: "project one",
+				},
+				{
+					NetworkACLPost: incusapi.NetworkACLPost{
+						Name: "networkACL filtered",
+					},
+					Project: "project one",
+				},
+			},
+			serviceOptions: []inventory.NetworkACLServiceOption{
+				inventory.NetworkACLWithSyncFilter(func(networkACL inventory.NetworkACL) bool {
+					return networkACL.Name == "networkACL filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name:                 "error - cluster service get by ID",
 			clusterSvcGetByIDErr: boom.Error,
 

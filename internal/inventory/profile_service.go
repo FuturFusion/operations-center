@@ -20,6 +20,8 @@ type profileService struct {
 	clusterSvc    ProvisioningClusterService
 	profileClient ProfileServerClient
 
+	clusterSyncFilterFunc func(profile Profile) bool
+
 	now func() time.Time
 }
 
@@ -27,11 +29,21 @@ var _ ProfileService = &profileService{}
 
 type ProfileServiceOption func(s *profileService)
 
+func ProfileWithSyncFilter(clusterSyncFilterFunc func(profile Profile) bool) ProfileServiceOption {
+	return func(s *profileService) {
+		s.clusterSyncFilterFunc = clusterSyncFilterFunc
+	}
+}
+
 func NewProfileService(repo ProfileRepo, clusterSvc ProvisioningClusterService, client ProfileServerClient, opts ...ProfileServiceOption) profileService {
 	profileSvc := profileService{
 		repo:          repo,
 		clusterSvc:    clusterSvc,
 		profileClient: client,
+
+		clusterSyncFilterFunc: func(profile Profile) bool {
+			return false
+		},
 
 		now: time.Now,
 	}
@@ -164,6 +176,10 @@ func (s profileService) SyncCluster(ctx context.Context, name string) error {
 				Name:        retrievedProfile.Name,
 				Object:      retrievedProfile,
 				LastUpdated: s.now(),
+			}
+
+			if s.clusterSyncFilterFunc(profile) {
+				continue
 			}
 
 			err = profile.Validate()

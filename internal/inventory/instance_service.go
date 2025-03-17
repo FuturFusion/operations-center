@@ -20,6 +20,8 @@ type instanceService struct {
 	clusterSvc     ProvisioningClusterService
 	instanceClient InstanceServerClient
 
+	clusterSyncFilterFunc func(instance Instance) bool
+
 	now func() time.Time
 }
 
@@ -27,11 +29,21 @@ var _ InstanceService = &instanceService{}
 
 type InstanceServiceOption func(s *instanceService)
 
+func InstanceWithSyncFilter(clusterSyncFilterFunc func(instance Instance) bool) InstanceServiceOption {
+	return func(s *instanceService) {
+		s.clusterSyncFilterFunc = clusterSyncFilterFunc
+	}
+}
+
 func NewInstanceService(repo InstanceRepo, clusterSvc ProvisioningClusterService, client InstanceServerClient, opts ...InstanceServiceOption) instanceService {
 	instanceSvc := instanceService{
 		repo:           repo,
 		clusterSvc:     clusterSvc,
 		instanceClient: client,
+
+		clusterSyncFilterFunc: func(instance Instance) bool {
+			return false
+		},
 
 		now: time.Now,
 	}
@@ -166,6 +178,10 @@ func (s instanceService) SyncCluster(ctx context.Context, name string) error {
 				Name:        retrievedInstance.Name,
 				Object:      retrievedInstance,
 				LastUpdated: s.now(),
+			}
+
+			if s.clusterSyncFilterFunc(instance) {
+				continue
 			}
 
 			err = instance.Validate()

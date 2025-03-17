@@ -20,6 +20,8 @@ type projectService struct {
 	clusterSvc    ProvisioningClusterService
 	projectClient ProjectServerClient
 
+	clusterSyncFilterFunc func(project Project) bool
+
 	now func() time.Time
 }
 
@@ -27,11 +29,21 @@ var _ ProjectService = &projectService{}
 
 type ProjectServiceOption func(s *projectService)
 
+func ProjectWithSyncFilter(clusterSyncFilterFunc func(project Project) bool) ProjectServiceOption {
+	return func(s *projectService) {
+		s.clusterSyncFilterFunc = clusterSyncFilterFunc
+	}
+}
+
 func NewProjectService(repo ProjectRepo, clusterSvc ProvisioningClusterService, client ProjectServerClient, opts ...ProjectServiceOption) projectService {
 	projectSvc := projectService{
 		repo:          repo,
 		clusterSvc:    clusterSvc,
 		projectClient: client,
+
+		clusterSyncFilterFunc: func(project Project) bool {
+			return false
+		},
 
 		now: time.Now,
 	}
@@ -162,6 +174,10 @@ func (s projectService) SyncCluster(ctx context.Context, name string) error {
 				Name:        retrievedProject.Name,
 				Object:      retrievedProject,
 				LastUpdated: s.now(),
+			}
+
+			if s.clusterSyncFilterFunc(project) {
+				continue
 			}
 
 			err = project.Validate()

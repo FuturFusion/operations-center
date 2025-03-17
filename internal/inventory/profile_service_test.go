@@ -439,6 +439,29 @@ func TestProfileService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name: "success - with sync filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			profileClientGetProfiles: []incusapi.Profile{
+				{
+					Name:    "profile one",
+					Project: "project one",
+				},
+				{
+					Name:    "profile filtered",
+					Project: "project one",
+				},
+			},
+			serviceOptions: []inventory.ProfileServiceOption{
+				inventory.ProfileWithSyncFilter(func(profile inventory.Profile) bool {
+					return profile.Name == "profile filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name:                 "error - cluster service get by ID",
 			clusterSvcGetByIDErr: boom.Error,
 

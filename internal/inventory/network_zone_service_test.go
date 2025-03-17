@@ -439,6 +439,29 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name: "success - with sync filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			networkZoneClientGetNetworkZones: []incusapi.NetworkZone{
+				{
+					Name:    "networkZone one",
+					Project: "project one",
+				},
+				{
+					Name:    "networkZone filtered",
+					Project: "project one",
+				},
+			},
+			serviceOptions: []inventory.NetworkZoneServiceOption{
+				inventory.NetworkZoneWithSyncFilter(func(networkZone inventory.NetworkZone) bool {
+					return networkZone.Name == "networkZone filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name:                 "error - cluster service get by ID",
 			clusterSvcGetByIDErr: boom.Error,
 
