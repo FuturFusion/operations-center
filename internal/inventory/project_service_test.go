@@ -434,6 +434,27 @@ func TestProjectService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name: "success - with sync filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			projectClientGetProjects: []incusapi.Project{
+				{
+					Name: "project one",
+				},
+				{
+					Name: "project filtered",
+				},
+			},
+			serviceOptions: []inventory.ProjectServiceOption{
+				inventory.ProjectWithSyncFilter(func(project inventory.Project) bool {
+					return project.Name == "project filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name:                 "error - cluster service get by ID",
 			clusterSvcGetByIDErr: boom.Error,
 

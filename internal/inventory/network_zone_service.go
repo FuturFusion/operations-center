@@ -20,6 +20,8 @@ type networkZoneService struct {
 	clusterSvc        ProvisioningClusterService
 	networkZoneClient NetworkZoneServerClient
 
+	clusterSyncFilterFunc func(networkZone NetworkZone) bool
+
 	now func() time.Time
 }
 
@@ -27,11 +29,21 @@ var _ NetworkZoneService = &networkZoneService{}
 
 type NetworkZoneServiceOption func(s *networkZoneService)
 
+func NetworkZoneWithSyncFilter(clusterSyncFilterFunc func(networkZone NetworkZone) bool) NetworkZoneServiceOption {
+	return func(s *networkZoneService) {
+		s.clusterSyncFilterFunc = clusterSyncFilterFunc
+	}
+}
+
 func NewNetworkZoneService(repo NetworkZoneRepo, clusterSvc ProvisioningClusterService, client NetworkZoneServerClient, opts ...NetworkZoneServiceOption) networkZoneService {
 	networkZoneSvc := networkZoneService{
 		repo:              repo,
 		clusterSvc:        clusterSvc,
 		networkZoneClient: client,
+
+		clusterSyncFilterFunc: func(networkZone NetworkZone) bool {
+			return false
+		},
 
 		now: time.Now,
 	}
@@ -164,6 +176,10 @@ func (s networkZoneService) SyncCluster(ctx context.Context, name string) error 
 				Name:        retrievedNetworkZone.Name,
 				Object:      retrievedNetworkZone,
 				LastUpdated: s.now(),
+			}
+
+			if s.clusterSyncFilterFunc(networkZone) {
+				continue
 			}
 
 			err = networkZone.Validate()

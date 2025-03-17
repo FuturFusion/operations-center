@@ -25,9 +25,10 @@ type {{ .Name | camelcase }}Service struct {
 {{- end }}
 	{{ .Name | camelcase }}Client {{ .Name | pascalcase }}ServerClient
 {{- if .HasParent }}
-
 	isParentFiltered func(incusapi.{{ .ParentObjectType | pascalcase }}) bool
 {{- end }}
+
+	clusterSyncFilterFunc func({{ .Name | camelcase }} {{ .Name | pascalcase }}) bool
 
 	now func() time.Time
 }
@@ -35,6 +36,12 @@ type {{ .Name | camelcase }}Service struct {
 var _ {{ .Name | pascalcase }}Service = &{{ .Name | camelcase }}Service{}
 
 type {{ .Name | pascalcase }}ServiceOption func(s *{{ .Name | camelcase }}Service)
+
+func {{ .Name | pascalcase }}WithSyncFilter(clusterSyncFilterFunc func({{ .Name | camelcase }} {{ .Name | pascalcase }}) bool) {{ .Name | pascalcase }}ServiceOption {
+	return func(s *{{ .Name | camelcase }}Service) {
+		s.clusterSyncFilterFunc = clusterSyncFilterFunc
+	}
+}
 {{- if .HasParent }}
 
 func {{ .Name | pascalcase }}WithParentFilter(f func(incusapi.{{ .ParentObjectType | pascalcase }}) bool) {{ .Name | pascalcase }}ServiceOption {
@@ -53,6 +60,10 @@ func New{{ .Name | pascalcase }}Service(repo {{ .Name | pascalcase }}Repo, clust
 		{{ .ParentName | camelcase }}Client: parentClient,
 {{- end }}
 		{{ .Name | camelcase }}Client: client,
+
+		clusterSyncFilterFunc: func({{ .Name | camelcase }} {{ .Name | pascalcase }}) bool{
+			return false
+		},
 {{- if .HasParent }}
 
 	isParentFiltered: func(_ incusapi.{{ .ParentObjectType | pascalcase }}) bool {
@@ -227,6 +238,10 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 				Name:        retrieved{{ .Name | pascalcase }}.{{ .ObjectNamePropertyName | pascalcase }},
 				Object:      retrieved{{ .Name | pascalcase }},
 				LastUpdated: s.now(),
+			}
+
+			if s.clusterSyncFilterFunc({{ .Name | camelcase }}) {
+				continue
 			}
 
 			err = {{ .Name | camelcase }}.Validate()

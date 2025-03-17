@@ -439,6 +439,29 @@ func TestImageService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name: "success - with sync filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			imageClientGetImages: []incusapi.Image{
+				{
+					Fingerprint: "image one",
+					Project:     "project one",
+				},
+				{
+					Fingerprint: "image filtered",
+					Project:     "project one",
+				},
+			},
+			serviceOptions: []inventory.ImageServiceOption{
+				inventory.ImageWithSyncFilter(func(image inventory.Image) bool {
+					return image.Name == "image filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name:                 "error - cluster service get by ID",
 			clusterSvcGetByIDErr: boom.Error,
 

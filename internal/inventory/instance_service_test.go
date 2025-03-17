@@ -451,6 +451,35 @@ func TestInstanceService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name: "success - with sync filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			instanceClientGetInstances: []incusapi.InstanceFull{
+				{
+					Instance: incusapi.Instance{
+						Name:     "instance one",
+						Location: "one",
+						Project:  "project one",
+					},
+				},
+				{
+					Instance: incusapi.Instance{
+						Name:     "instance filtered",
+						Location: "one",
+						Project:  "project one",
+					},
+				},
+			},
+			serviceOptions: []inventory.InstanceServiceOption{
+				inventory.InstanceWithSyncFilter(func(instance inventory.Instance) bool {
+					return instance.Name == "instance filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name:                 "error - cluster service get by ID",
 			clusterSvcGetByIDErr: boom.Error,
 

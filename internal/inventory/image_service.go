@@ -20,6 +20,8 @@ type imageService struct {
 	clusterSvc  ProvisioningClusterService
 	imageClient ImageServerClient
 
+	clusterSyncFilterFunc func(image Image) bool
+
 	now func() time.Time
 }
 
@@ -27,11 +29,21 @@ var _ ImageService = &imageService{}
 
 type ImageServiceOption func(s *imageService)
 
+func ImageWithSyncFilter(clusterSyncFilterFunc func(image Image) bool) ImageServiceOption {
+	return func(s *imageService) {
+		s.clusterSyncFilterFunc = clusterSyncFilterFunc
+	}
+}
+
 func NewImageService(repo ImageRepo, clusterSvc ProvisioningClusterService, client ImageServerClient, opts ...ImageServiceOption) imageService {
 	imageSvc := imageService{
 		repo:        repo,
 		clusterSvc:  clusterSvc,
 		imageClient: client,
+
+		clusterSyncFilterFunc: func(image Image) bool {
+			return false
+		},
 
 		now: time.Now,
 	}
@@ -164,6 +176,10 @@ func (s imageService) SyncCluster(ctx context.Context, name string) error {
 				Name:        retrievedImage.Fingerprint,
 				Object:      retrievedImage,
 				LastUpdated: s.now(),
+			}
+
+			if s.clusterSyncFilterFunc(image) {
+				continue
 			}
 
 			err = image.Validate()

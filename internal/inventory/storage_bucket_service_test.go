@@ -447,6 +447,26 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 				{
 					Name: "storagePool one",
 				},
+			},
+			storageBucketClientGetStorageBuckets: []incusapi.StorageBucket{
+				{
+					Name:     "storageBucket one",
+					Location: "one",
+					Project:  "project one",
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - with parent filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			storagePoolClientGetStoragePools: []incusapi.StoragePool{
+				{
+					Name: "storagePool one",
+				},
 				{
 					Name: "filtered",
 				},
@@ -461,6 +481,36 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 			serviceOptions: []inventory.StorageBucketServiceOption{
 				inventory.StorageBucketWithParentFilter(func(parent incusapi.StoragePool) bool {
 					return parent.Name == "filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - with sync filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			storagePoolClientGetStoragePools: []incusapi.StoragePool{
+				{
+					Name: "storagePool one",
+				},
+			},
+			storageBucketClientGetStorageBuckets: []incusapi.StorageBucket{
+				{
+					Name:     "storageBucket one",
+					Location: "one",
+					Project:  "project one",
+				},
+				{
+					Name:     "storageBucket filtered",
+					Location: "one",
+					Project:  "project one",
+				},
+			},
+			serviceOptions: []inventory.StorageBucketServiceOption{
+				inventory.StorageBucketWithSyncFilter(func(storageBucket inventory.StorageBucket) bool {
+					return storageBucket.Name == "storageBucket filtered"
 				}),
 			},
 

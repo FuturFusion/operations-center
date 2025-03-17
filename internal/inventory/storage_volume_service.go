@@ -21,8 +21,9 @@ type storageVolumeService struct {
 	clusterSvc          ProvisioningClusterService
 	storagePoolClient   StoragePoolServerClient
 	storageVolumeClient StorageVolumeServerClient
+	isParentFiltered    func(incusapi.StoragePool) bool
 
-	isParentFiltered func(incusapi.StoragePool) bool
+	clusterSyncFilterFunc func(storageVolume StorageVolume) bool
 
 	now func() time.Time
 }
@@ -30,6 +31,12 @@ type storageVolumeService struct {
 var _ StorageVolumeService = &storageVolumeService{}
 
 type StorageVolumeServiceOption func(s *storageVolumeService)
+
+func StorageVolumeWithSyncFilter(clusterSyncFilterFunc func(storageVolume StorageVolume) bool) StorageVolumeServiceOption {
+	return func(s *storageVolumeService) {
+		s.clusterSyncFilterFunc = clusterSyncFilterFunc
+	}
+}
 
 func StorageVolumeWithParentFilter(f func(incusapi.StoragePool) bool) StorageVolumeServiceOption {
 	return func(s *storageVolumeService) {
@@ -43,6 +50,10 @@ func NewStorageVolumeService(repo StorageVolumeRepo, clusterSvc ProvisioningClus
 		clusterSvc:          clusterSvc,
 		storagePoolClient:   parentClient,
 		storageVolumeClient: client,
+
+		clusterSyncFilterFunc: func(storageVolume StorageVolume) bool {
+			return false
+		},
 
 		isParentFiltered: func(_ incusapi.StoragePool) bool {
 			return false
@@ -193,6 +204,10 @@ func (s storageVolumeService) SyncCluster(ctx context.Context, name string) erro
 					Name:            retrievedStorageVolume.Name,
 					Object:          retrievedStorageVolume,
 					LastUpdated:     s.now(),
+				}
+
+				if s.clusterSyncFilterFunc(storageVolume) {
+					continue
 				}
 
 				err = storageVolume.Validate()

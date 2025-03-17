@@ -440,6 +440,24 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 				{
 					Name: "network one",
 				},
+			},
+			networkPeerClientGetNetworkPeers: []incusapi.NetworkPeer{
+				{
+					Name: "networkPeer one",
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - with parent filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			networkClientGetNetworks: []incusapi.Network{
+				{
+					Name: "network one",
+				},
 				{
 					Name: "filtered",
 				},
@@ -452,6 +470,32 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			serviceOptions: []inventory.NetworkPeerServiceOption{
 				inventory.NetworkPeerWithParentFilter(func(parent incusapi.Network) bool {
 					return parent.Name == "filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - with sync filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			networkClientGetNetworks: []incusapi.Network{
+				{
+					Name: "network one",
+				},
+			},
+			networkPeerClientGetNetworkPeers: []incusapi.NetworkPeer{
+				{
+					Name: "networkPeer one",
+				},
+				{
+					Name: "networkPeer filtered",
+				},
+			},
+			serviceOptions: []inventory.NetworkPeerServiceOption{
+				inventory.NetworkPeerWithSyncFilter(func(networkPeer inventory.NetworkPeer) bool {
+					return networkPeer.Name == "networkPeer filtered"
 				}),
 			},
 

@@ -434,6 +434,27 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name: "success - with sync filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			storagePoolClientGetStoragePools: []incusapi.StoragePool{
+				{
+					Name: "storagePool one",
+				},
+				{
+					Name: "storagePool filtered",
+				},
+			},
+			serviceOptions: []inventory.StoragePoolServiceOption{
+				inventory.StoragePoolWithSyncFilter(func(storagePool inventory.StoragePool) bool {
+					return storagePool.Name == "storagePool filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name:                 "error - cluster service get by ID",
 			clusterSvcGetByIDErr: boom.Error,
 

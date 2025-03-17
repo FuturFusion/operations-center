@@ -440,6 +440,24 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 				{
 					Name: "network one",
 				},
+			},
+			networkLoadBalancerClientGetNetworkLoadBalancers: []incusapi.NetworkLoadBalancer{
+				{
+					ListenAddress: "networkLoadBalancer one",
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - with parent filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			networkClientGetNetworks: []incusapi.Network{
+				{
+					Name: "network one",
+				},
 				{
 					Name: "filtered",
 				},
@@ -452,6 +470,32 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			serviceOptions: []inventory.NetworkLoadBalancerServiceOption{
 				inventory.NetworkLoadBalancerWithParentFilter(func(parent incusapi.Network) bool {
 					return parent.Name == "filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - with sync filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			networkClientGetNetworks: []incusapi.Network{
+				{
+					Name: "network one",
+				},
+			},
+			networkLoadBalancerClientGetNetworkLoadBalancers: []incusapi.NetworkLoadBalancer{
+				{
+					ListenAddress: "networkLoadBalancer one",
+				},
+				{
+					ListenAddress: "networkLoadBalancer filtered",
+				},
+			},
+			serviceOptions: []inventory.NetworkLoadBalancerServiceOption{
+				inventory.NetworkLoadBalancerWithSyncFilter(func(networkLoadBalancer inventory.NetworkLoadBalancer) bool {
+					return networkLoadBalancer.Name == "networkLoadBalancer filtered"
 				}),
 			},
 

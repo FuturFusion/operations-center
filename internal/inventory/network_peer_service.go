@@ -21,8 +21,9 @@ type networkPeerService struct {
 	clusterSvc        ProvisioningClusterService
 	networkClient     NetworkServerClient
 	networkPeerClient NetworkPeerServerClient
+	isParentFiltered  func(incusapi.Network) bool
 
-	isParentFiltered func(incusapi.Network) bool
+	clusterSyncFilterFunc func(networkPeer NetworkPeer) bool
 
 	now func() time.Time
 }
@@ -30,6 +31,12 @@ type networkPeerService struct {
 var _ NetworkPeerService = &networkPeerService{}
 
 type NetworkPeerServiceOption func(s *networkPeerService)
+
+func NetworkPeerWithSyncFilter(clusterSyncFilterFunc func(networkPeer NetworkPeer) bool) NetworkPeerServiceOption {
+	return func(s *networkPeerService) {
+		s.clusterSyncFilterFunc = clusterSyncFilterFunc
+	}
+}
 
 func NetworkPeerWithParentFilter(f func(incusapi.Network) bool) NetworkPeerServiceOption {
 	return func(s *networkPeerService) {
@@ -43,6 +50,10 @@ func NewNetworkPeerService(repo NetworkPeerRepo, clusterSvc ProvisioningClusterS
 		clusterSvc:        clusterSvc,
 		networkClient:     parentClient,
 		networkPeerClient: client,
+
+		clusterSyncFilterFunc: func(networkPeer NetworkPeer) bool {
+			return false
+		},
 
 		isParentFiltered: func(_ incusapi.Network) bool {
 			return false
@@ -188,6 +199,10 @@ func (s networkPeerService) SyncCluster(ctx context.Context, name string) error 
 					Name:        retrievedNetworkPeer.Name,
 					Object:      retrievedNetworkPeer,
 					LastUpdated: s.now(),
+				}
+
+				if s.clusterSyncFilterFunc(networkPeer) {
+					continue
 				}
 
 				err = networkPeer.Validate()

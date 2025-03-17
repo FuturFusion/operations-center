@@ -434,6 +434,27 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name: "success - with sync filter",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			networkIntegrationClientGetNetworkIntegrations: []incusapi.NetworkIntegration{
+				{
+					Name: "networkIntegration one",
+				},
+				{
+					Name: "networkIntegration filtered",
+				},
+			},
+			serviceOptions: []inventory.NetworkIntegrationServiceOption{
+				inventory.NetworkIntegrationWithSyncFilter(func(networkIntegration inventory.NetworkIntegration) bool {
+					return networkIntegration.Name == "networkIntegration filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name:                 "error - cluster service get by ID",
 			clusterSvcGetByIDErr: boom.Error,
 
