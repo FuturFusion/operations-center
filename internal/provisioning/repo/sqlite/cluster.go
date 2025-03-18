@@ -8,6 +8,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
 type cluster struct {
@@ -99,11 +100,13 @@ func (c cluster) GetByName(ctx context.Context, name string) (provisioning.Clust
 }
 
 func (c cluster) UpdateByName(ctx context.Context, name string, in provisioning.Cluster) (provisioning.Cluster, error) {
-	err := entities.UpdateCluster(ctx, c.db, name, entities.Cluster{
-		Name:            name,
-		ConnectionURL:   in.ConnectionURL,
-		ServerHostnames: in.ServerHostnames,
-		LastUpdated:     in.LastUpdated,
+	err := transaction.ForceTx(ctx, c.db, func(ctx context.Context, tx transaction.TX) error {
+		return entities.UpdateCluster(ctx, tx, name, entities.Cluster{
+			Name:            name,
+			ConnectionURL:   in.ConnectionURL,
+			ServerHostnames: in.ServerHostnames,
+			LastUpdated:     in.LastUpdated,
+		})
 	})
 	in.Name = name
 	return in, err

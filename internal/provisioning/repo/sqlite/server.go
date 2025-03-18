@@ -11,6 +11,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
 type server struct {
@@ -174,24 +175,26 @@ func (s server) GetByName(ctx context.Context, name string) (provisioning.Server
 }
 
 func (s server) UpdateByName(ctx context.Context, name string, in provisioning.Server) (provisioning.Server, error) {
-	err := entities.UpdateServer(ctx, s.db, name, entities.Server{
-		Cluster: in.Cluster,
-		Name:    in.Name,
-		Type:    in.Type,
-		HardwareData: entities.MarshalableResource{
-			CPU:     in.HardwareData.CPU,
-			Memory:  in.HardwareData.Memory,
-			GPU:     in.HardwareData.GPU,
-			Network: in.HardwareData.Network,
-			Storage: in.HardwareData.Storage,
-			USB:     in.HardwareData.USB,
-			PCI:     in.HardwareData.PCI,
-			System:  in.HardwareData.System,
-			Load:    in.HardwareData.Load,
-		},
-		VersionData:   in.VersionData,
-		ConnectionURL: in.ConnectionURL,
-		LastUpdated:   in.LastUpdated,
+	err := transaction.ForceTx(ctx, s.db, func(ctx context.Context, tx transaction.TX) error {
+		return entities.UpdateServer(ctx, tx, name, entities.Server{
+			Cluster: in.Cluster,
+			Name:    in.Name,
+			Type:    in.Type,
+			HardwareData: entities.MarshalableResource{
+				CPU:     in.HardwareData.CPU,
+				Memory:  in.HardwareData.Memory,
+				GPU:     in.HardwareData.GPU,
+				Network: in.HardwareData.Network,
+				Storage: in.HardwareData.Storage,
+				USB:     in.HardwareData.USB,
+				PCI:     in.HardwareData.PCI,
+				System:  in.HardwareData.System,
+				Load:    in.HardwareData.Load,
+			},
+			VersionData:   in.VersionData,
+			ConnectionURL: in.ConnectionURL,
+			LastUpdated:   in.LastUpdated,
+		})
 	})
 	in.Name = name
 	return in, err
