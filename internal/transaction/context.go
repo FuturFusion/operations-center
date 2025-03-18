@@ -10,7 +10,7 @@ import (
 
 type tcKey struct{}
 
-type tx interface {
+type TX interface {
 	DBTX
 	Transaction
 }
@@ -43,6 +43,53 @@ func Do(ctx context.Context, f func(ctx context.Context) error) (err error) {
 	return nil
 }
 
+// ForceTx operates like Do, but instead of waiting for the first db call to open a transaction,
+// one is opened immediately and passed to the function argument.
+func ForceTx(ctx context.Context, dbtx DBTX, f func(context.Context, TX) error) (err error) {
+	db, ok := dbtx.(transaction)
+	if !ok {
+		return fmt.Errorf("Database does not support transactions")
+	}
+
+	// Check if there is an existing transaction in the context.
+	ctx, trans := Begin(ctx)
+	defer func() {
+		rollbackErr := trans.Rollback()
+		if rollbackErr != nil {
+			err = fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err)
+			return
+		}
+	}()
+
+	// Begin should always re-use or create a transaction container.
+	_, ok = ctx.Value(tcKey{}).(*transactionContainer)
+	if !ok {
+		return fmt.Errorf("Transaction context is invalid")
+	}
+
+	begunTx, err := db.getDBTX(ctx)
+	if err != nil {
+		return err
+	}
+
+	tx, ok := begunTx.(TX)
+	if !ok {
+		return fmt.Errorf("Transaction is invalid")
+	}
+
+	err = f(ctx, tx)
+	if err != nil {
+		return err
+	}
+
+	err = trans.Commit()
+	if err != nil {
+		return fmt.Errorf("Failed commit transaction: %w", err)
+	}
+
+	return nil
+}
+
 func Begin(ctx context.Context) (context.Context, Transaction) {
 	existingTC := ctx.Value(tcKey{})
 	if existingTC != nil {
@@ -54,7 +101,7 @@ func Begin(ctx context.Context) (context.Context, Transaction) {
 }
 
 type transactionContainer struct {
-	tx   tx
+	tx   TX
 	lock sync.Mutex
 }
 
