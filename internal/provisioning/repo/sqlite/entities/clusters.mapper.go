@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/mattn/go-sqlite3"
 )
 
 var clusterObjects = RegisterStmt(`
@@ -49,7 +51,7 @@ DELETE FROM clusters WHERE name = ?
 
 // GetClusterID return the ID of the cluster with the given key.
 // generator: cluster ID
-func GetClusterID(ctx context.Context, db dbtx, name string) (_ int64, _err error) {
+func GetClusterID(ctx context.Context, db tx, name string) (_ int64, _err error) {
 	defer func() {
 		_err = mapErr(_err, "Cluster")
 	}()
@@ -268,16 +270,6 @@ func CreateCluster(ctx context.Context, db dbtx, object Cluster) (_ int64, _err 
 		_err = mapErr(_err, "Cluster")
 	}()
 
-	// Check if a cluster with the same key exists.
-	exists, err := ClusterExists(ctx, db, object.Name)
-	if err != nil {
-		return -1, fmt.Errorf("Failed to check for duplicates: %w", err)
-	}
-
-	if exists {
-		return -1, ErrConflict
-	}
-
 	args := make([]any, 4)
 
 	// Populate the statement arguments.
@@ -299,6 +291,13 @@ func CreateCluster(ctx context.Context, db dbtx, object Cluster) (_ int64, _err 
 
 	// Execute the statement.
 	result, err := stmt.Exec(args...)
+	var sqliteErr sqlite3.Error
+	if errors.As(err, &sqliteErr) {
+		if sqliteErr.Code == sqlite3.ErrConstraint {
+			return -1, ErrConflict
+		}
+	}
+
 	if err != nil {
 		return -1, fmt.Errorf("Failed to create \"clusters\" entry: %w", err)
 	}
@@ -313,7 +312,7 @@ func CreateCluster(ctx context.Context, db dbtx, object Cluster) (_ int64, _err 
 
 // UpdateCluster updates the cluster matching the given key parameters.
 // generator: cluster Update
-func UpdateCluster(ctx context.Context, db dbtx, name string, object Cluster) (_err error) {
+func UpdateCluster(ctx context.Context, db tx, name string, object Cluster) (_err error) {
 	defer func() {
 		_err = mapErr(_err, "Cluster")
 	}()

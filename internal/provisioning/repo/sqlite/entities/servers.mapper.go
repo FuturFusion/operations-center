@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/mattn/go-sqlite3"
 )
 
 var serverObjects = RegisterStmt(`
@@ -59,7 +61,7 @@ DELETE FROM servers WHERE name = ?
 
 // GetServerID return the ID of the server with the given key.
 // generator: server ID
-func GetServerID(ctx context.Context, db dbtx, name string) (_ int64, _err error) {
+func GetServerID(ctx context.Context, db tx, name string) (_ int64, _err error) {
 	defer func() {
 		_err = mapErr(_err, "Server")
 	}()
@@ -302,16 +304,6 @@ func CreateServer(ctx context.Context, db dbtx, object Server) (_ int64, _err er
 		_err = mapErr(_err, "Server")
 	}()
 
-	// Check if a server with the same key exists.
-	exists, err := ServerExists(ctx, db, object.Name)
-	if err != nil {
-		return -1, fmt.Errorf("Failed to check for duplicates: %w", err)
-	}
-
-	if exists {
-		return -1, ErrConflict
-	}
-
 	args := make([]any, 7)
 
 	// Populate the statement arguments.
@@ -336,6 +328,13 @@ func CreateServer(ctx context.Context, db dbtx, object Server) (_ int64, _err er
 
 	// Execute the statement.
 	result, err := stmt.Exec(args...)
+	var sqliteErr sqlite3.Error
+	if errors.As(err, &sqliteErr) {
+		if sqliteErr.Code == sqlite3.ErrConstraint {
+			return -1, ErrConflict
+		}
+	}
+
 	if err != nil {
 		return -1, fmt.Errorf("Failed to create \"servers\" entry: %w", err)
 	}
@@ -350,7 +349,7 @@ func CreateServer(ctx context.Context, db dbtx, object Server) (_ int64, _err er
 
 // UpdateServer updates the server matching the given key parameters.
 // generator: server Update
-func UpdateServer(ctx context.Context, db dbtx, name string, object Server) (_err error) {
+func UpdateServer(ctx context.Context, db tx, name string, object Server) (_err error) {
 	defer func() {
 		_err = mapErr(_err, "Server")
 	}()
