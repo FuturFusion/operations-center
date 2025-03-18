@@ -1,54 +1,18 @@
-package dbschema
+CREATE TABLE IF NOT EXISTS schema (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  version INTEGER NOT NULL,
+  updated_at DATETIME NOT NULL,
+  UNIQUE (version)
+);
 
-import (
-	"context"
-	"database/sql"
-	_ "embed"
-)
-
-//go:embed schema/000001_freshschema.sql
-var freshSchema string
-
-/* Database updates are one-time actions that are needed to move an
-   existing database from one version of the schema to the next.
-
-   Those updates are applied at startup time before anything else
-   is initialized. This means that they should be entirely
-   self-contained and not touch anything but the database.
-
-   Calling API functions isn't allowed as such functions may themselves
-   depend on a newer DB schema and so would fail when upgrading a very old
-   version.
-
-   DO NOT USE this mechanism for one-time actions which do not involve
-   changes to the database schema.
-
-   Only append to the updates list, never remove entries and never re-order them.
-*/
-
-var updates = map[int]update{
-	1: updateFromV0,
-	2: updateFromV1,
-}
-
-func updateFromV0(ctx context.Context, tx *sql.Tx) error {
-	// v0..v1 the dawn of operations center
-	stmt := ``
-	_, err := tx.Exec(stmt)
-	return mapDBError(err)
-}
-
-func updateFromV1(ctx context.Context, tx *sql.Tx) error {
-	// v1..v2 add tokens table
-	stmt := `
-CREATE TABLE tokens (
+CREATE TABLE IF NOT EXISTS tokens (
   uuid TEXT PRIMARY KEY NOT NULL,
   uses_remaining INTEGER NOT NULL,
   expire_at DATETIME NOT NULL,
   description TEXT NOT NULL
 );
 
-CREATE TABLE clusters (
+CREATE TABLE IF NOT EXISTS clusters (
   id INTEGER PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
   connection_url TEXT NOT NULL,
@@ -56,7 +20,7 @@ CREATE TABLE clusters (
   UNIQUE (name)
 );
 
-CREATE TABLE servers (
+CREATE TABLE IF NOT EXISTS servers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER,
   name TEXT NOT NULL,
@@ -67,7 +31,7 @@ CREATE TABLE servers (
   FOREIGN KEY(cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE images (
+CREATE TABLE IF NOT EXISTS images (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
@@ -78,7 +42,7 @@ CREATE TABLE images (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE instances (
+CREATE TABLE IF NOT EXISTS instances (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   server_id INTEGER NOT NULL,
@@ -91,7 +55,7 @@ CREATE TABLE instances (
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 
-CREATE TABLE networks (
+CREATE TABLE IF NOT EXISTS networks (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
@@ -102,7 +66,7 @@ CREATE TABLE networks (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE network_acls (
+CREATE TABLE IF NOT EXISTS network_acls (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
@@ -113,7 +77,7 @@ CREATE TABLE network_acls (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE network_forwards (
+CREATE TABLE IF NOT EXISTS network_forwards (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   network_name TEXT NOT NULL,
@@ -124,7 +88,7 @@ CREATE TABLE network_forwards (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE network_integrations (
+CREATE TABLE IF NOT EXISTS network_integrations (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   name TEXT NOT NULL,
@@ -134,7 +98,7 @@ CREATE TABLE network_integrations (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE network_load_balancers (
+CREATE TABLE IF NOT EXISTS network_load_balancers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   network_name TEXT NOT NULL,
@@ -145,7 +109,7 @@ CREATE TABLE network_load_balancers (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE network_peers (
+CREATE TABLE IF NOT EXISTS network_peers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   network_name TEXT NOT NULL,
@@ -156,7 +120,7 @@ CREATE TABLE network_peers (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE network_zones (
+CREATE TABLE IF NOT EXISTS network_zones (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
@@ -167,7 +131,7 @@ CREATE TABLE network_zones (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   project_name TEXT NOT NULL,
@@ -178,7 +142,7 @@ CREATE TABLE profiles (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE projects (
+CREATE TABLE IF NOT EXISTS projects (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   name TEXT NOT NULL,
@@ -188,7 +152,7 @@ CREATE TABLE projects (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE storage_buckets (
+CREATE TABLE IF NOT EXISTS storage_buckets (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   server_id INTEGER NOT NULL,
@@ -202,7 +166,7 @@ CREATE TABLE storage_buckets (
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 
-CREATE TABLE storage_pools (
+CREATE TABLE IF NOT EXISTS storage_pools (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   name TEXT NOT NULL,
@@ -212,7 +176,7 @@ CREATE TABLE storage_pools (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE storage_volumes (
+CREATE TABLE IF NOT EXISTS storage_volumes (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER NOT NULL,
   server_id INTEGER,
@@ -226,7 +190,5 @@ CREATE TABLE storage_volumes (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id),
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
-`
-	_, err := tx.Exec(stmt)
-	return mapDBError(err)
-}
+
+INSERT INTO schema (version, updated_at) VALUES (2, strftime("%s"))
