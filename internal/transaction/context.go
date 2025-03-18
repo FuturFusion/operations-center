@@ -40,7 +40,7 @@ func Do(ctx context.Context, f func(ctx context.Context) error) (err error) {
 		return fmt.Errorf("Failed commit transaction: %w", err)
 	}
 
-	return nil
+	return err
 }
 
 // ForceTx operates like Do, but instead of waiting for the first db call to open a transaction,
@@ -87,7 +87,7 @@ func ForceTx(ctx context.Context, dbtx DBTX, f func(context.Context, TX) error) 
 		return fmt.Errorf("Failed commit transaction: %w", err)
 	}
 
-	return nil
+	return err
 }
 
 func Begin(ctx context.Context) (context.Context, Transaction) {
