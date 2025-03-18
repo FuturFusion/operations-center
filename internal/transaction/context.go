@@ -5,14 +5,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sync"
 )
 
 type tcKey struct{}
 
 type tx interface {
 	DBTX
-	Commit() error
-	Rollback() error
+	Transaction
 }
 
 type Transaction interface {
@@ -54,7 +54,8 @@ func Begin(ctx context.Context) (context.Context, Transaction) {
 }
 
 type transactionContainer struct {
-	tx tx
+	tx   tx
+	lock sync.Mutex
 }
 
 var _ Transaction = &transactionContainer{}

@@ -72,6 +72,9 @@ func (t transaction) getDBTX(ctx context.Context) (DBTX, error) {
 		return t.db, nil
 	}
 
+	tc.lock.Lock()
+	defer tc.lock.Unlock()
+
 	if tc.tx == nil {
 		// Transaction requested, but no DB transaction started yet.
 		tx, err := t.db.BeginTx(ctx, &sql.TxOptions{})
