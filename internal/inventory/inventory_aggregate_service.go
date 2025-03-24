@@ -33,23 +33,7 @@ func (s inventoryAggregateService) GetAllWithFilter(ctx context.Context, filter 
 		}
 	}
 
-	inventoryAggregates, err := s.repo.GetAllWithFilter(ctx, InventoryAggregateColumns{
-		Servers:              true,
-		Images:               true,
-		Instances:            true,
-		Networks:             true,
-		NetworkACLs:          true,
-		NetworkForwards:      true,
-		NetworkIntegrations:  true,
-		NetworkLoadBalancers: true,
-		NetworkPeers:         true,
-		NetworkZones:         true,
-		Profiles:             true,
-		Projects:             true,
-		StorageBuckets:       true,
-		StoragePools:         true,
-		StorageVolumes:       true,
-	}, filter)
+	inventoryAggregates, err := s.repo.GetAllWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}

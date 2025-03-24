@@ -26,12 +26,11 @@ func NewInventoryAggregateRepoWithSlog(base inventory.InventoryAggregateRepo, lo
 }
 
 // GetAllWithFilter implements inventory.InventoryAggregateRepo.
-func (_d InventoryAggregateRepoWithSlog) GetAllWithFilter(ctx context.Context, columns inventory.InventoryAggregateColumns, filter inventory.InventoryAggregateFilter) (inventoryAggregates inventory.InventoryAggregates, err error) {
+func (_d InventoryAggregateRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inventory.InventoryAggregateFilter) (inventoryAggregates inventory.InventoryAggregates, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("columns", columns),
 			slog.Any("filter", filter),
 		)
 	}
@@ -54,5 +53,5 @@ func (_d InventoryAggregateRepoWithSlog) GetAllWithFilter(ctx context.Context, c
 			log.Debug("<= method GetAllWithFilter finished")
 		}
 	}()
-	return _d._base.GetAllWithFilter(ctx, columns, filter)
+	return _d._base.GetAllWithFilter(ctx, filter)
 }

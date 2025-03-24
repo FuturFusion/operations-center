@@ -20,7 +20,7 @@ var _ inventory.InventoryAggregateRepo = &InventoryAggregateRepoMock{}
 //
 //		// make and configure a mocked inventory.InventoryAggregateRepo
 //		mockedInventoryAggregateRepo := &InventoryAggregateRepoMock{
-//			GetAllWithFilterFunc: func(ctx context.Context, columns inventory.InventoryAggregateColumns, filter inventory.InventoryAggregateFilter) (inventory.InventoryAggregates, error) {
+//			GetAllWithFilterFunc: func(ctx context.Context, filter inventory.InventoryAggregateFilter) (inventory.InventoryAggregates, error) {
 //				panic("mock out the GetAllWithFilter method")
 //			},
 //		}
@@ -31,7 +31,7 @@ var _ inventory.InventoryAggregateRepo = &InventoryAggregateRepoMock{}
 //	}
 type InventoryAggregateRepoMock struct {
 	// GetAllWithFilterFunc mocks the GetAllWithFilter method.
-	GetAllWithFilterFunc func(ctx context.Context, columns inventory.InventoryAggregateColumns, filter inventory.InventoryAggregateFilter) (inventory.InventoryAggregates, error)
+	GetAllWithFilterFunc func(ctx context.Context, filter inventory.InventoryAggregateFilter) (inventory.InventoryAggregates, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -39,8 +39,6 @@ type InventoryAggregateRepoMock struct {
 		GetAllWithFilter []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Columns is the columns argument value.
-			Columns inventory.InventoryAggregateColumns
 			// Filter is the filter argument value.
 			Filter inventory.InventoryAggregateFilter
 		}
@@ -49,23 +47,21 @@ type InventoryAggregateRepoMock struct {
 }
 
 // GetAllWithFilter calls GetAllWithFilterFunc.
-func (mock *InventoryAggregateRepoMock) GetAllWithFilter(ctx context.Context, columns inventory.InventoryAggregateColumns, filter inventory.InventoryAggregateFilter) (inventory.InventoryAggregates, error) {
+func (mock *InventoryAggregateRepoMock) GetAllWithFilter(ctx context.Context, filter inventory.InventoryAggregateFilter) (inventory.InventoryAggregates, error) {
 	if mock.GetAllWithFilterFunc == nil {
 		panic("InventoryAggregateRepoMock.GetAllWithFilterFunc: method is nil but InventoryAggregateRepo.GetAllWithFilter was just called")
 	}
 	callInfo := struct {
-		Ctx     context.Context
-		Columns inventory.InventoryAggregateColumns
-		Filter  inventory.InventoryAggregateFilter
+		Ctx    context.Context
+		Filter inventory.InventoryAggregateFilter
 	}{
-		Ctx:     ctx,
-		Columns: columns,
-		Filter:  filter,
+		Ctx:    ctx,
+		Filter: filter,
 	}
 	mock.lockGetAllWithFilter.Lock()
 	mock.calls.GetAllWithFilter = append(mock.calls.GetAllWithFilter, callInfo)
 	mock.lockGetAllWithFilter.Unlock()
-	return mock.GetAllWithFilterFunc(ctx, columns, filter)
+	return mock.GetAllWithFilterFunc(ctx, filter)
 }
 
 // GetAllWithFilterCalls gets all the calls that were made to GetAllWithFilter.
@@ -73,14 +69,12 @@ func (mock *InventoryAggregateRepoMock) GetAllWithFilter(ctx context.Context, co
 //
 //	len(mockedInventoryAggregateRepo.GetAllWithFilterCalls())
 func (mock *InventoryAggregateRepoMock) GetAllWithFilterCalls() []struct {
-	Ctx     context.Context
-	Columns inventory.InventoryAggregateColumns
-	Filter  inventory.InventoryAggregateFilter
+	Ctx    context.Context
+	Filter inventory.InventoryAggregateFilter
 } {
 	var calls []struct {
-		Ctx     context.Context
-		Columns inventory.InventoryAggregateColumns
-		Filter  inventory.InventoryAggregateFilter
+		Ctx    context.Context
+		Filter inventory.InventoryAggregateFilter
 	}
 	mock.lockGetAllWithFilter.RLock()
 	calls = mock.calls.GetAllWithFilter

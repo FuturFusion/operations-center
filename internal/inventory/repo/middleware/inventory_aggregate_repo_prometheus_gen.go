@@ -38,7 +38,7 @@ func NewInventoryAggregateRepoWithPrometheus(base inventory.InventoryAggregateRe
 }
 
 // GetAllWithFilter implements inventory.InventoryAggregateRepo.
-func (_d InventoryAggregateRepoWithPrometheus) GetAllWithFilter(ctx context.Context, columns inventory.InventoryAggregateColumns, filter inventory.InventoryAggregateFilter) (inventoryAggregates inventory.InventoryAggregates, err error) {
+func (_d InventoryAggregateRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filter inventory.InventoryAggregateFilter) (inventoryAggregates inventory.InventoryAggregates, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -48,5 +48,5 @@ func (_d InventoryAggregateRepoWithPrometheus) GetAllWithFilter(ctx context.Cont
 
 		inventoryAggregateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllWithFilter(ctx, columns, filter)
+	return _d.base.GetAllWithFilter(ctx, filter)
 }

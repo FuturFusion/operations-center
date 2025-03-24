@@ -1,0 +1,174 @@
+{{- with . -}}
+Resource Tree:
+{{- range . }}
+- Cluster Name: {{ .Cluster }}
+
+  {{- with $server := .Servers }}
+
+  Servers:
+  {{- range $name := $server }}
+    - {{ $name }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $images := .Images }}
+
+  Images:
+  {{- range $projectName, $projectImages := $images }}
+    {{ $projectName }}:
+      {{- range $name, $image := $projectImages }}
+      - {{ $name }}
+    {{- end -}}
+  {{- end }}
+  {{- end }}
+
+  {{- with $instances := .Instances }}
+
+  Instances:
+  {{- range $projectName, $projectInstances := $instances }}
+    {{ $projectName }}:
+    {{- range $name, $nameInstances := $projectInstances }}
+      {{ $name }}:
+      {{- range $serverName, $serverInstance := $nameInstances }}
+        - {{ $serverName }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $networks := .Networks }}
+
+  Networks:
+  {{- range $projectName, $projectNetworks := $networks }}
+    {{ $projectName }}:
+      {{- range $name, $network := $projectNetworks }}
+      - {{ $name }}
+    {{- end -}}
+  {{- end }}
+  {{- end }}
+
+  {{- with $networkACLs := .NetworkACLs }}
+
+  Network ACLs:
+  {{- range $projectName, $projectNetworkACLs := $networkACLs }}
+    {{ $projectName }}:
+      {{- range $name, $networkACL := $projectNetworkACLs }}
+      - {{ $name }}
+    {{- end -}}
+  {{- end }}
+  {{- end }}
+
+  {{- with $networkForwards := .NetworkForwards }}
+
+  Network Forwards:
+  {{- range $projectName, $projectNetworkForwards := $networkForwards }}
+    {{ $projectName }}:
+      {{- range $name, $networkForward := $projectNetworkForwards }}
+      - {{ $name }}
+    {{- end -}}
+  {{- end }}
+  {{- end }}
+
+  {{- with $networkIntegrations := .NetworkIntegrations }}
+
+  Network Integrations:
+  {{- range $name, $networkintegration := $networkIntegrations }}
+    - {{ $name }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $networkLoadBalancers := .NetworkLoadBalancers }}
+
+  Network Load Balancers:
+  {{- range $networkName, $networkLoadBalancers := $networkLoadBalancers }}
+    {{ $networkName }}:
+      {{- range $name, $networkLoadBalancer := $networkLoadBalancers }}
+      - {{ $name }}
+    {{- end -}}
+  {{- end }}
+  {{- end }}
+
+  {{- with $networkPeers := .NetworkPeers }}
+
+  Network Peers:
+  {{- range $networkName, $networkPeers := $networkPeers }}
+    {{ $networkName }}:
+      {{- range $name, $networkPeer := $networkPeers }}
+      - {{ $name }}
+    {{- end -}}
+  {{- end }}
+  {{- end }}
+
+  {{- with $networkZones := .NetworkZones }}
+
+  Network Zones:
+  {{- range $projectName, $projectNetworkZones := $networkZones }}
+    {{ $projectName }}:
+      {{- range $name, $networkZone := $projectNetworkZones }}
+      - {{ $name }}
+    {{- end -}}
+  {{- end }}
+  {{- end }}
+
+  {{- with $profiles := .Profiles }}
+
+  Profiles:
+  {{- range $projectName, $projectProfiles := $profiles }}
+    {{ $projectName }}:
+      {{- range $name, $profile := $projectProfiles }}
+      - {{ $name }}
+    {{- end -}}
+  {{- end }}
+  {{- end }}
+
+  {{- with $projects := .Projects }}
+
+  Projects:
+  {{- range $name, $project := $projects }}
+    - {{ $name }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $storageBuckets := .StorageBuckets }}
+
+  Storage Buckets:
+  {{- range $projectName, $projectStorageBuckets := $storageBuckets }}
+    {{ $projectName }}:
+    {{- range $storagePoolName, $storagePoolNameStorageBuckets := $projectStorageBuckets }}
+      {{ $storagePoolName }}:
+      {{- range $name, $nameStorageBuckets := $storagePoolNameStorageBuckets }}
+        {{ $name }}:
+        {{- range $serverName, $serverStorageBucket := $nameStorageBuckets }}
+          - {{ $serverName }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $storagePools := .StoragePools }}
+
+  Storage Pools:
+  {{- range $name, $storagePool := $storagePools }}
+    - {{ $name }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $storageVolumes := .StorageVolumes }}
+
+  Storage Volumes:
+  {{- range $projectName, $projectStorageVolumes := $storageVolumes }}
+    {{ $projectName }}:
+    {{- range $storagePoolName, $storagePoolNameStorageVolumes := $projectStorageVolumes }}
+      {{ $storagePoolName }}:
+      {{- range $name, $nameStorageVolumes := $storagePoolNameStorageVolumes }}
+        {{ $name }}:
+        {{- range $serverName, $serverStorageVolume := $nameStorageVolumes }}
+          - {{ $serverName }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- end }}
+{{ end }}
+{{- end }}

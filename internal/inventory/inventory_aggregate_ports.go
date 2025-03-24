@@ -9,5 +9,5 @@ type InventoryAggregateService interface {
 }
 
 type InventoryAggregateRepo interface {
-	GetAllWithFilter(ctx context.Context, columns InventoryAggregateColumns, filter InventoryAggregateFilter) (InventoryAggregates, error)
+	GetAllWithFilter(ctx context.Context, filter InventoryAggregateFilter) (InventoryAggregates, error)
 }

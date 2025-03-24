@@ -22,6 +22,11 @@ func (c *CmdInventory) Command() *cobra.Command {
 	cmd.Args = cobra.NoArgs
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
+	// Query
+	queryCmd := inventory.CmdQuery{}
+	cmd.AddCommand(queryCmd.Command())
+
+	// Single resources
 	imageCmd := inventory.CmdImage{}
 	cmd.AddCommand(imageCmd.Command())
 

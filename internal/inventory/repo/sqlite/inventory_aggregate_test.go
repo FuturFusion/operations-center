@@ -35,23 +35,7 @@ func TestInventoryAggregateDatabaseActions(t *testing.T) {
 
 	aggregateRepo := inventorySqlite.NewInventoryAggregate(db)
 
-	aggregates, err := aggregateRepo.GetAllWithFilter(context.Background(), inventory.InventoryAggregateColumns{
-		Servers:              true,
-		Images:               true,
-		Instances:            true,
-		Networks:             true,
-		NetworkACLs:          true,
-		NetworkForwards:      true,
-		NetworkIntegrations:  true,
-		NetworkLoadBalancers: true,
-		NetworkPeers:         true,
-		NetworkZones:         true,
-		Profiles:             true,
-		Projects:             true,
-		StorageBuckets:       true,
-		StoragePools:         true,
-		StorageVolumes:       true,
-	}, inventory.InventoryAggregateFilter{
+	aggregates, err := aggregateRepo.GetAllWithFilter(context.Background(), inventory.InventoryAggregateFilter{
 		Cluster: ptr.To("cluster-00000001"),
 	})
 	require.NoError(t, err)
