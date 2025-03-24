@@ -27,8 +27,6 @@ func (c *CmdStoragePool) Command() *cobra.Command {
 	cmd.Short = "Interact with storage_pools"
 	cmd.Long = `Description:
   Interact with storage_pools
-
-  Configure storage_pools for use by operations center.
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706

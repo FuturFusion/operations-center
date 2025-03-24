@@ -27,8 +27,6 @@ func (c *CmdNetworkPeer) Command() *cobra.Command {
 	cmd.Short = "Interact with network_peers"
 	cmd.Long = `Description:
   Interact with network_peers
-
-  Configure network_peers for use by operations center.
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706

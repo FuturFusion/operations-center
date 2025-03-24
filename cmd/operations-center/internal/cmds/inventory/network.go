@@ -27,8 +27,6 @@ func (c *CmdNetwork) Command() *cobra.Command {
 	cmd.Short = "Interact with networks"
 	cmd.Long = `Description:
   Interact with networks
-
-  Configure networks for use by operations center.
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706

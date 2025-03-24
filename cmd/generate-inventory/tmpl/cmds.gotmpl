@@ -25,8 +25,6 @@ func (c *Cmd{{ .Name | pascalcase }}) Command() *cobra.Command {
 	cmd.Short = "Interact with {{ .PluralName }}"
 	cmd.Long = `Description:
   Interact with {{ .PluralName }}
-
-  Configure {{ .PluralName }} for use by operations center.
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706

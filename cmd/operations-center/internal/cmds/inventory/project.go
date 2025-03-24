@@ -27,8 +27,6 @@ func (c *CmdProject) Command() *cobra.Command {
 	cmd.Short = "Interact with projects"
 	cmd.Long = `Description:
   Interact with projects
-
-  Configure projects for use by operations center.
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
