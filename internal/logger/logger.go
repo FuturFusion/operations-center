@@ -1,3 +1,7 @@
+// Package logger provides a preinitialized slog logger ready for use.
+//
+// Additionally it provides middlewares for use with http handlers to record
+// access logs.
 package logger
 
 import (

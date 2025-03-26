@@ -199,7 +199,7 @@ type Update struct {
 	Channel string `json:"channel" yaml:"channel"`
 }
 
-// Update defines an update file.
+// UpdateFile defines an update file.
 //
 // swagger:model
 type UpdateFile struct {
