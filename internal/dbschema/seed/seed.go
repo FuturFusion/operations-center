@@ -4,7 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"math/rand/v2"
+	"strconv"
+	"strings"
 
 	"github.com/brianvoe/gofakeit/v7"
 	incusapi "github.com/lxc/incus/v6/shared/api"
@@ -238,9 +239,22 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 			projectName := fmt.Sprintf("project-%08x-%08x", clusterIdx, projectIdx)
 			projects = append(projects, projectName)
 			_, err = projectRepo.Create(ctx, inventory.Project{
-				Cluster:     clusterName,
-				Name:        projectName,
-				Object:      incusapi.Project{},
+				Cluster: clusterName,
+				Name:    projectName,
+				Object: incusapi.Project{
+					Name: projectName,
+					ProjectPut: incusapi.ProjectPut{
+						Description: projectName + " " + gofakeit.Sentence(5),
+						Config: map[string]string{
+							"features.images":          strconv.FormatBool(gofakeit.Bool()),
+							"features.networks":        strconv.FormatBool(gofakeit.Bool()),
+							"features.networks.zones":  strconv.FormatBool(gofakeit.Bool()),
+							"features.profiles":        strconv.FormatBool(gofakeit.Bool()),
+							"features.storage.buckets": strconv.FormatBool(gofakeit.Bool()),
+							"features.storage.volumes": strconv.FormatBool(gofakeit.Bool()),
+						},
+					},
+				},
 				LastUpdated: faker.Date(),
 			})
 			if err != nil {
@@ -252,12 +266,24 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		networks := make([]string, 0, networkCount)
 		for networkIdx := 0; networkIdx < networkCount; networkIdx++ {
 			networkName := fmt.Sprintf("network-%08x-%08x", clusterIdx, networkIdx)
+			projectName := faker.RandomString(projects)
 			networks = append(networks, networkName)
 			_, err = networkRepo.Create(ctx, inventory.Network{
 				Cluster:     clusterName,
 				Name:        networkName,
-				ProjectName: faker.RandomString(projects),
-				Object:      incusapi.Network{},
+				ProjectName: projectName,
+				Object: incusapi.Network{
+					Name: networkName,
+					NetworkPut: incusapi.NetworkPut{
+						Description: networkName + " " + gofakeit.Sentence(5),
+						Config:      map[string]string{},
+					},
+					Type:      randomNetworkType(),
+					Managed:   gofakeit.Bool(),
+					Status:    randomStatus(),
+					Locations: randomSelection(servers),
+					Project:   projectName,
+				},
 				LastUpdated: faker.Date(),
 			})
 			if err != nil {
@@ -271,9 +297,18 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 			storagePoolName := fmt.Sprintf("storagePool-%08x-%08x", clusterIdx, storagePoolIdx)
 			storagePools = append(storagePools, storagePoolName)
 			_, err = storagePoolRepo.Create(ctx, inventory.StoragePool{
-				Cluster:     clusterName,
-				Name:        storagePoolName,
-				Object:      incusapi.StoragePool{},
+				Cluster: clusterName,
+				Name:    storagePoolName,
+				Object: incusapi.StoragePool{
+					Name: storagePoolName,
+					StoragePoolPut: incusapi.StoragePoolPut{
+						Description: storagePoolName + " " + gofakeit.Sentence(5),
+						Config:      map[string]string{},
+					},
+					Driver:    randomStoragePoolDriver(),
+					Status:    randomStatus(),
+					Locations: randomSelection(servers),
+				},
 				LastUpdated: faker.Date(),
 			})
 			if err != nil {
@@ -284,11 +319,42 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		imageCount := randBetween(config.ImagesMin, config.ImagesMax)
 		for imageIdx := 0; imageIdx < imageCount; imageIdx++ {
 			imageName := fmt.Sprintf("image-%08x-%08x", clusterIdx, imageIdx)
+			projectName := faker.RandomString(projects)
 			_, err = imageRepo.Create(ctx, inventory.Image{
 				Cluster:     clusterName,
 				Name:        imageName,
-				ProjectName: faker.RandomString(projects),
-				Object:      incusapi.Image{},
+				ProjectName: projectName,
+				Object: incusapi.Image{
+					UpdateSource: &incusapi.ImageSource{
+						Alias:     gofakeit.Word(),
+						Protocol:  "simplestreams",
+						Server:    gofakeit.URL(),
+						ImageType: randomType(),
+					},
+					Aliases: []incusapi.ImageAlias{
+						{
+							Name:        gofakeit.Word(),
+							Description: gofakeit.LoremIpsumSentence(5),
+						},
+					},
+					Architecture: randomArchitecture(),
+					Cached:       gofakeit.Bool(),
+					Filename:     "/" + strings.ReplaceAll(strings.ToLower(gofakeit.Sentence(4)), " ", "/") + gofakeit.FileExtension(),
+					Fingerprint:  gofakeit.HexUint(256),
+					Size:         int64(gofakeit.Uint16()),
+					CreatedAt:    gofakeit.Date(),
+					LastUsedAt:   gofakeit.Date(),
+					UploadedAt:   gofakeit.Date(),
+					ImagePut: incusapi.ImagePut{
+						AutoUpdate: gofakeit.Bool(),
+						Properties: map[string]string{},
+						Public:     gofakeit.Bool(),
+						ExpiresAt:  gofakeit.Date(),
+						Profiles:   []string{},
+					},
+					Project: projectName,
+					Type:    randomType(),
+				},
 				LastUpdated: faker.Date(),
 			})
 			if err != nil {
@@ -303,7 +369,14 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Cluster:     clusterName,
 				Name:        profileName,
 				ProjectName: faker.RandomString(projects),
-				Object:      incusapi.Profile{},
+				Object: incusapi.Profile{
+					Name: profileName,
+					ProfilePut: incusapi.ProfilePut{
+						Description: profileName + " " + gofakeit.Sentence(5),
+						Config:      map[string]string{},
+						Devices:     map[string]map[string]string{},
+					},
+				},
 				LastUpdated: faker.Date(),
 			})
 			if err != nil {
@@ -314,12 +387,75 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		instanceCount := randBetween(config.InstancesMin, config.InstancesMax)
 		for instanceIdx := 0; instanceIdx < instanceCount; instanceIdx++ {
 			instanceName := fmt.Sprintf("instance-%08x-%08x", clusterIdx, instanceIdx)
+			serverName := faker.RandomString(servers)
+			projectName := faker.RandomString(projects)
+			instanceState := randomInstanceState()
 			_, err = instanceRepo.Create(ctx, inventory.Instance{
 				Cluster:     clusterName,
-				Server:      faker.RandomString(servers),
+				Server:      serverName,
 				Name:        instanceName,
-				ProjectName: faker.RandomString(projects),
-				Object:      incusapi.InstanceFull{},
+				ProjectName: projectName,
+				Object: incusapi.InstanceFull{
+					Instance: incusapi.Instance{
+						InstancePut: incusapi.InstancePut{
+							Architecture: randomArchitecture(),
+							Config:       map[string]string{},
+							Description:  instanceName + " " + gofakeit.Sentence(5),
+							Ephemeral:    gofakeit.Bool(),
+							Devices:      map[string]map[string]string{},
+							Profiles:     []string{},
+							Restore:      gofakeit.RandomString([]string{"snap0", "", "", "", "", "", "", ""}),
+							Stateful:     gofakeit.Bool(),
+						},
+						CreatedAt:       gofakeit.Date(),
+						Name:            instanceName,
+						LastUsedAt:      gofakeit.Date(),
+						Type:            randomType(),
+						ExpandedConfig:  map[string]string{},
+						ExpandedDevices: map[string]map[string]string{},
+						Status:          instanceState,
+						StatusCode:      instanceStateCode(instanceState),
+						Location:        serverName,
+						Project:         projectName,
+					},
+					Backups: []incusapi.InstanceBackup{
+						{
+							Name:             fmt.Sprintf("backup%d", gofakeit.IntN(10)),
+							CreatedAt:        gofakeit.Date(),
+							ExpiresAt:        gofakeit.Date(),
+							InstanceOnly:     gofakeit.Bool(),
+							OptimizedStorage: gofakeit.Bool(),
+						},
+					},
+					State: &incusapi.InstanceState{
+						Status:     instanceState,
+						StatusCode: instanceStateCode(instanceState),
+						Pid:        gofakeit.Int64(),
+						Disk:       map[string]incusapi.InstanceStateDisk{},
+						Memory:     incusapi.InstanceStateMemory{},
+						Network:    map[string]incusapi.InstanceStateNetwork{},
+						Processes:  int64(gofakeit.IntN(100)),
+					},
+					Snapshots: []incusapi.InstanceSnapshot{
+						{
+							InstanceSnapshotPut: incusapi.InstanceSnapshotPut{
+								ExpiresAt: gofakeit.Date(),
+							},
+							Architecture:    randomArchitecture(),
+							Config:          map[string]string{},
+							CreatedAt:       gofakeit.Date(),
+							Devices:         map[string]map[string]string{},
+							Ephemeral:       gofakeit.Bool(),
+							ExpandedConfig:  map[string]string{},
+							ExpandedDevices: map[string]map[string]string{},
+							LastUsedAt:      gofakeit.Date(),
+							Name:            fmt.Sprintf("snapshot%d", gofakeit.IntN(20)),
+							Profiles:        []string{},
+							Stateful:        gofakeit.Bool(),
+							Size:            int64(gofakeit.Uint32()),
+						},
+					},
+				},
 				LastUpdated: faker.Date(),
 			})
 			if err != nil {
@@ -330,11 +466,49 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		networkACLCount := randBetween(config.NetworkACLsMin, config.NetworkACLsMax)
 		for networkACLIdx := 0; networkACLIdx < networkACLCount; networkACLIdx++ {
 			networkACLName := fmt.Sprintf("networkACL-%08x-%08x", clusterIdx, networkACLIdx)
+			projectName := faker.RandomString(projects)
 			_, err = networkACLRepo.Create(ctx, inventory.NetworkACL{
 				Cluster:     clusterName,
 				Name:        networkACLName,
-				ProjectName: faker.RandomString(projects),
-				Object:      incusapi.NetworkACL{},
+				ProjectName: projectName,
+				Object: incusapi.NetworkACL{
+					NetworkACLPost: incusapi.NetworkACLPost{
+						Name: networkACLName,
+					},
+					NetworkACLPut: incusapi.NetworkACLPut{
+						Description: networkACLName + " " + gofakeit.Sentence(5),
+						Egress: []incusapi.NetworkACLRule{
+							{
+								Action:          "deny",
+								Source:          gofakeit.IPv4Address(),
+								Destination:     gofakeit.IPv4Address(),
+								Protocol:        "ip",
+								SourcePort:      strconv.FormatInt(int64(gofakeit.Uint16()), 10),
+								DestinationPort: strconv.FormatInt(int64(gofakeit.Uint16()), 10),
+								ICMPType:        "8",
+								ICMPCode:        "0",
+								Description:     networkACLName + " acl " + gofakeit.Sentence(5),
+								State:           gofakeit.RandomString([]string{"enabled", "disabled"}),
+							},
+						},
+						Ingress: []incusapi.NetworkACLRule{
+							{
+								Action:          "deny",
+								Source:          gofakeit.IPv4Address(),
+								Destination:     gofakeit.IPv4Address(),
+								Protocol:        gofakeit.RandomString([]string{"tcp", "udp"}),
+								SourcePort:      strconv.FormatInt(int64(gofakeit.Uint16()), 10),
+								DestinationPort: strconv.FormatInt(int64(gofakeit.Uint16()), 10),
+								ICMPType:        "8",
+								ICMPCode:        "0",
+								Description:     networkACLName + " acl " + gofakeit.Sentence(5),
+								State:           gofakeit.RandomString([]string{"enabled", "disabled"}),
+							},
+						},
+						Config: map[string]string{},
+					},
+					Project: projectName,
+				},
 				LastUpdated: faker.Date(),
 			})
 			if err != nil {
@@ -349,7 +523,23 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Cluster:     clusterName,
 				Name:        networkForwardName,
 				NetworkName: faker.RandomString(networks),
-				Object:      incusapi.NetworkForward{},
+				Object: incusapi.NetworkForward{
+					NetworkForwardPut: incusapi.NetworkForwardPut{
+						Description: networkForwardName + " " + gofakeit.Sentence(5),
+						Config:      map[string]string{},
+						Ports: []incusapi.NetworkForwardPort{
+							{
+								Description:   networkForwardName + " forward " + gofakeit.Sentence(5),
+								Protocol:      gofakeit.RandomString([]string{"tcp", "udp"}),
+								ListenPort:    strconv.FormatInt(int64(gofakeit.Uint16()), 10),
+								TargetPort:    strconv.FormatInt(int64(gofakeit.Uint16()), 10),
+								TargetAddress: gofakeit.IPv4Address(),
+							},
+						},
+					},
+					ListenAddress: gofakeit.IPv4Address(),
+					Location:      gofakeit.RandomString(servers),
+				},
 				LastUpdated: faker.Date(),
 			})
 			if err != nil {
@@ -361,9 +551,16 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		for networkIntegrationIdx := 0; networkIntegrationIdx < networkIntegrationCount; networkIntegrationIdx++ {
 			networkIntegrationName := fmt.Sprintf("networkIntegration-%08x-%08x", clusterIdx, networkIntegrationIdx)
 			_, err = networkIntegrationRepo.Create(ctx, inventory.NetworkIntegration{
-				Cluster:     clusterName,
-				Name:        networkIntegrationName,
-				Object:      incusapi.NetworkIntegration{},
+				Cluster: clusterName,
+				Name:    networkIntegrationName,
+				Object: incusapi.NetworkIntegration{
+					NetworkIntegrationPut: incusapi.NetworkIntegrationPut{
+						Description: networkIntegrationName + " " + gofakeit.Sentence(5),
+						Config:      map[string]string{},
+					},
+					Name: networkIntegrationName,
+					Type: randomNetworkType(),
+				},
 				LastUpdated: faker.Date(),
 			})
 			if err != nil {
@@ -378,7 +575,28 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Cluster:     clusterName,
 				Name:        networkLoadBalancerName,
 				NetworkName: faker.RandomString(networks),
-				Object:      incusapi.NetworkLoadBalancer{},
+				Object: incusapi.NetworkLoadBalancer{
+					NetworkLoadBalancerPut: incusapi.NetworkLoadBalancerPut{
+						Description: networkLoadBalancerName + " " + gofakeit.Sentence(5),
+						Config:      map[string]string{},
+						Backends: []incusapi.NetworkLoadBalancerBackend{
+							{
+								Name:          gofakeit.Word(),
+								Description:   networkLoadBalancerName + " backend " + gofakeit.Sentence(5),
+								TargetPort:    strconv.FormatInt(int64(gofakeit.Uint16()), 10),
+								TargetAddress: gofakeit.IPv4Address(),
+							},
+						},
+						Ports: []incusapi.NetworkLoadBalancerPort{
+							{
+								Description:   networkLoadBalancerName + " port " + gofakeit.Sentence(5),
+								Protocol:      gofakeit.RandomString([]string{"tcp", "udp"}),
+								ListenPort:    strconv.FormatInt(int64(gofakeit.Uint16()), 10),
+								TargetBackend: []string{gofakeit.IPv4Address()},
+							},
+						},
+					},
+				},
 				LastUpdated: faker.Date(),
 			})
 			if err != nil {
@@ -393,7 +611,18 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Cluster:     clusterName,
 				Name:        networkPeerName,
 				NetworkName: faker.RandomString(networks),
-				Object:      incusapi.NetworkPeer{},
+				Object: incusapi.NetworkPeer{
+					NetworkPeerPut: incusapi.NetworkPeerPut{
+						Description: networkPeerName + " " + gofakeit.Sentence(5),
+						Config:      map[string]string{},
+					},
+					Name:              networkPeerName,
+					TargetProject:     gofakeit.RandomString(projects),
+					TargetNetwork:     gofakeit.IPv4Address(),
+					Status:            randomStatus(),
+					Type:              randomNetworkType(),
+					TargetIntegration: "ovn-ic1",
+				},
 				LastUpdated: faker.Date(),
 			})
 			if err != nil {
@@ -404,11 +633,19 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		networkZoneCount := randBetween(config.NetworkZonesMin, config.NetworkZonesMax)
 		for networkZoneIdx := 0; networkZoneIdx < networkZoneCount; networkZoneIdx++ {
 			networkZoneName := fmt.Sprintf("networkZone-%08x-%08x", clusterIdx, networkZoneIdx)
+			projectName := faker.RandomString(projects)
 			_, err = networkZoneRepo.Create(ctx, inventory.NetworkZone{
 				Cluster:     clusterName,
 				Name:        networkZoneName,
-				ProjectName: faker.RandomString(projects),
-				Object:      incusapi.NetworkZone{},
+				ProjectName: projectName,
+				Object: incusapi.NetworkZone{
+					NetworkZonePut: incusapi.NetworkZonePut{
+						Description: networkZoneName + " " + gofakeit.Sentence(5),
+						Config:      map[string]string{},
+					},
+					Name:    networkZoneName,
+					Project: projectName,
+				},
 				LastUpdated: faker.Date(),
 			})
 			if err != nil {
@@ -419,14 +656,24 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		storageBucketCount := randBetween(config.StorageBucketsMin, config.StorageBucketsMax)
 		for storageBucketIdx := 0; storageBucketIdx < storageBucketCount; storageBucketIdx++ {
 			storageBucketName := fmt.Sprintf("storageBucket-%08x-%08x", clusterIdx, storageBucketIdx)
+			projectName := faker.RandomString(projects)
 			_, err = storageBucketRepo.Create(ctx, inventory.StorageBucket{
 				Cluster:         clusterName,
 				Server:          faker.RandomString(servers),
 				Name:            storageBucketName,
 				StoragePoolName: faker.RandomString(storagePools),
-				ProjectName:     faker.RandomString(projects),
-				Object:          incusapi.StorageBucket{},
-				LastUpdated:     faker.Date(),
+				ProjectName:     projectName,
+				Object: incusapi.StorageBucket{
+					StorageBucketPut: incusapi.StorageBucketPut{
+						Config:      map[string]string{},
+						Description: storageBucketName + " " + gofakeit.Sentence(5),
+					},
+					Name:     storageBucketName,
+					S3URL:    gofakeit.URL(),
+					Location: gofakeit.RandomString(servers),
+					Project:  projectName,
+				},
+				LastUpdated: faker.Date(),
 			})
 			if err != nil {
 				return err
@@ -436,15 +683,28 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		storageVolumeCount := randBetween(config.StorageVolumesMin, config.StorageVolumesMax)
 		for storageVolumeIdx := 0; storageVolumeIdx < storageVolumeCount; storageVolumeIdx++ {
 			storageVolumeName := fmt.Sprintf("storageVolume-%08x-%08x", clusterIdx, storageVolumeIdx)
+			projectName := faker.RandomString(projects)
 			_, err = storageVolumeRepo.Create(ctx, inventory.StorageVolume{
 				Cluster:         clusterName,
 				Server:          faker.RandomString(servers),
 				Name:            storageVolumeName,
 				StoragePoolName: faker.RandomString(storagePools),
-				ProjectName:     faker.RandomString(projects),
+				ProjectName:     projectName,
 				Type:            gofakeit.RandomString([]string{"container", "virtual-machine"}),
-				Object:          incusapi.StorageVolume{},
-				LastUpdated:     faker.Date(),
+				Object: incusapi.StorageVolume{
+					StorageVolumePut: incusapi.StorageVolumePut{
+						Config:      map[string]string{},
+						Description: storageVolumeName + " " + gofakeit.Sentence(5),
+						Restore:     gofakeit.Word(),
+					},
+					Name:        storageVolumeName,
+					Type:        "custom",
+					Location:    gofakeit.RandomString(servers),
+					ContentType: gofakeit.RandomString([]string{"filesystem", "block"}),
+					Project:     projectName,
+					CreatedAt:   gofakeit.Date(),
+				},
+				LastUpdated: faker.Date(),
 			})
 			if err != nil {
 				return err
@@ -453,24 +713,4 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 	}
 
 	return nil
-}
-
-func randBetween(from, to int) int {
-	if from == to {
-		return from
-	}
-
-	if to < from {
-		to, from = from, to
-	}
-
-	if from < 0 {
-		from = 0
-	}
-
-	if to < 0 {
-		to = 10
-	}
-
-	return rand.IntN(to-from) + from
 }

@@ -1,6 +1,7 @@
 {{- with . -}}
 Resource Tree:
 {{- range . }}
+
 - Cluster Name: {{ .Cluster }}
 
   {{- with $server := .Servers }}
