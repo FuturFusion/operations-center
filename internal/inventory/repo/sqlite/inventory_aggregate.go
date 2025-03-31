@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
@@ -27,7 +29,7 @@ func NewInventoryAggregate(db sqlite.DBTX) *inventoryAggregate {
 	}
 }
 
-type inventoryResource struct {
+type InventoryResource struct {
 	Kind        string
 	ClusterName string
 	ServerName  *string
@@ -42,11 +44,29 @@ func (r inventoryAggregate) GetAllWithFilter(ctx context.Context, filter invento
 SELECT kind, cluster_name, server_name, project_name, parent_name, name, object FROM resources
 WHERE true
 %s
-ORDER BY cluster_name
+ORDER BY cluster_name, project_name, parent_name, name, server_name
 `
-
+	var err error
+	var filterExpression *vm.Program
 	var whereClause []string
 	var args []any
+
+	type Env struct {
+		Kind        string
+		ClusterName string
+		ServerName  string
+		ProjectName string
+		ParentName  string
+		Name        string
+		Object      map[string]any
+	}
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	if filter.Kinds != nil {
 		kinds := make([]string, 0, len(filter.Kinds))
@@ -56,32 +76,61 @@ ORDER BY cluster_name
 		}
 
 		whereClause = append(whereClause, fmt.Sprintf(` AND kind IN (%s)`, strings.Join(kinds, ", ")))
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
 	}
 
-	if filter.Cluster != nil {
-		whereClause = append(whereClause, ` AND cluster_name = :cluster_name`)
-		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	if len(filter.Clusters) > 0 {
+		clusters := make([]string, 0, len(filter.Clusters))
+		for i, cluster := range filter.Clusters {
+			clusters = append(clusters, fmt.Sprintf(`:cluster_name_%d`, i))
+			args = append(args, sql.Named(fmt.Sprintf("cluster_name_%d", i), cluster))
+		}
+
+		whereClause = append(whereClause, fmt.Sprintf(` AND cluster_name IN (%s)`, strings.Join(clusters, ", ")))
 	}
 
-	if filter.Server != nil {
-		serverCondition := `server_name = :server_name`
+	if len(filter.Servers) > 0 {
+		servers := make([]string, 0, len(filter.Servers))
+		for i, server := range filter.Servers {
+			servers = append(servers, fmt.Sprintf(`:server_name_%d`, i))
+			args = append(args, sql.Named(fmt.Sprintf("server_name_%d", i), server))
+		}
+
+		serverIsNil := ``
 		if filter.ServerIncludeNull {
-			serverCondition += ` OR server_name IS NULL`
+			serverIsNil += ` OR server_name IS NULL`
 		}
 
-		whereClause = append(whereClause, fmt.Sprintf(` AND (%s)`, serverCondition))
-		args = append(args, sql.Named("server_name", filter.Server))
+		whereClause = append(whereClause, fmt.Sprintf(` AND (server_name IN (%s)%s)`, strings.Join(servers, ", "), serverIsNil))
 	}
 
-	if filter.Project != nil {
-		projectCondition := `project_name = :project_name`
-		if filter.ProjectIncludeNull {
-			projectCondition += ` OR project_name IS NULL`
+	if len(filter.Projects) > 0 {
+		projects := make([]string, 0, len(filter.Projects))
+		for i, project := range filter.Projects {
+			projects = append(projects, fmt.Sprintf(`:project_name_%d`, i))
+			args = append(args, sql.Named(fmt.Sprintf("project_name_%d", i), project))
 		}
 
-		whereClause = append(whereClause, fmt.Sprintf(` AND (%s)`, projectCondition))
-		args = append(args, sql.Named("project_name", filter.Project))
+		projectIsNil := ``
+		if filter.ProjectIncludeNull {
+			projectIsNil += ` OR project_name IS NULL`
+		}
+
+		whereClause = append(whereClause, fmt.Sprintf(` AND (project_name IN (%s)%s)`, strings.Join(projects, ", "), projectIsNil))
+	}
+
+	if len(filter.Parents) > 0 {
+		parents := make([]string, 0, len(filter.Parents))
+		for i, parent := range filter.Parents {
+			parents = append(parents, fmt.Sprintf(`:parent_name_%d`, i))
+			args = append(args, sql.Named(fmt.Sprintf("parent_name_%d", i), parent))
+		}
+
+		parentIsNil := ``
+		if filter.ParentIncludeNull {
+			parentIsNil += ` OR parent_name IS NULL`
+		}
+
+		whereClause = append(whereClause, fmt.Sprintf(` AND (parent_name IN (%s)%s)`, strings.Join(parents, ", "), parentIsNil))
 	}
 
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
@@ -103,6 +152,36 @@ ORDER BY cluster_name
 			return nil, sqlite.MapErr(err)
 		}
 
+		if filter.Expression != nil {
+			object := map[string]any{}
+			err = json.Unmarshal(inventoryResource.Object, &object)
+			if err != nil {
+				return nil, err
+			}
+
+			output, err := expr.Run(filterExpression, Env{
+				Kind:        inventoryResource.Kind,
+				ClusterName: inventoryResource.ClusterName,
+				ServerName:  ptr.From(inventoryResource.ServerName),
+				ProjectName: ptr.From(inventoryResource.ProjectName),
+				ParentName:  ptr.From(inventoryResource.ParentName),
+				Name:        inventoryResource.Name,
+				Object:      object,
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Include expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if !result {
+				continue
+			}
+		}
+
 		inventoryAggregate, ok := inventoryAggregatesMap[inventoryResource.ClusterName]
 		if !ok {
 			inventoryAggregate.Cluster = inventoryResource.ClusterName
@@ -115,280 +194,230 @@ ORDER BY cluster_name
 
 		switch inventoryResource.Kind {
 		case "image":
-			if inventoryAggregate.Images == nil {
-				images := make(map[string]map[string]incusapi.Image)
-				inventoryAggregate.Images = images
-			}
-
-			_, ok = inventoryAggregate.Images[ptr.From(inventoryResource.ProjectName)]
-			if !ok {
-				inventoryAggregate.Images[ptr.From(inventoryResource.ProjectName)] = make(map[string]incusapi.Image)
-			}
-
-			var image incusapi.Image
-			err := json.Unmarshal(inventoryResource.Object, &image)
+			var object incusapi.Image
+			err := json.Unmarshal(inventoryResource.Object, &object)
 			if err != nil {
 				return nil, err
 			}
 
-			inventoryAggregate.Images[ptr.From(inventoryResource.ProjectName)][inventoryResource.Name] = image
+			image := inventory.Image{
+				Cluster:     inventoryResource.ClusterName,
+				ProjectName: ptr.From(inventoryResource.ProjectName),
+				Name:        inventoryResource.Name,
+				Object:      object,
+			}
+
+			inventoryAggregate.Images = append(inventoryAggregate.Images, image)
 
 		case "instance":
-			if inventoryAggregate.Instances == nil {
-				instances := make(map[string]map[string]map[string]incusapi.InstanceFull)
-				inventoryAggregate.Instances = instances
-			}
-
-			_, ok = inventoryAggregate.Instances[ptr.From(inventoryResource.ProjectName)]
-			if !ok {
-				inventoryAggregate.Instances[ptr.From(inventoryResource.ProjectName)] = make(map[string]map[string]incusapi.InstanceFull)
-			}
-
-			_, ok = inventoryAggregate.Instances[ptr.From(inventoryResource.ProjectName)][inventoryResource.Name]
-			if !ok {
-				inventoryAggregate.Instances[ptr.From(inventoryResource.ProjectName)][inventoryResource.Name] = make(map[string]incusapi.InstanceFull)
-			}
-
-			var instance incusapi.InstanceFull
-			err := json.Unmarshal(inventoryResource.Object, &instance)
+			var object incusapi.InstanceFull
+			err := json.Unmarshal(inventoryResource.Object, &object)
 			if err != nil {
 				return nil, err
 			}
 
-			inventoryAggregate.Instances[ptr.From(inventoryResource.ProjectName)][inventoryResource.Name][ptr.From(inventoryResource.ServerName)] = instance
+			instance := inventory.Instance{
+				Cluster:     inventoryResource.ClusterName,
+				ProjectName: ptr.From(inventoryResource.ProjectName),
+				Server:      ptr.From(inventoryResource.ServerName),
+				Name:        inventoryResource.Name,
+				Object:      object,
+			}
+
+			inventoryAggregate.Instances = append(inventoryAggregate.Instances, instance)
 
 		case "network":
-			if inventoryAggregate.Networks == nil {
-				networks := make(map[string]map[string]incusapi.Network)
-				inventoryAggregate.Networks = networks
-			}
-
-			_, ok = inventoryAggregate.Networks[ptr.From(inventoryResource.ProjectName)]
-			if !ok {
-				inventoryAggregate.Networks[ptr.From(inventoryResource.ProjectName)] = make(map[string]incusapi.Network)
-			}
-
-			var network incusapi.Network
-			err := json.Unmarshal(inventoryResource.Object, &network)
+			var object incusapi.Network
+			err := json.Unmarshal(inventoryResource.Object, &object)
 			if err != nil {
 				return nil, err
 			}
 
-			inventoryAggregate.Networks[ptr.From(inventoryResource.ProjectName)][inventoryResource.Name] = network
+			network := inventory.Network{
+				Cluster:     inventoryResource.ClusterName,
+				ProjectName: ptr.From(inventoryResource.ProjectName),
+				Name:        inventoryResource.Name,
+				Object:      object,
+			}
+
+			inventoryAggregate.Networks = append(inventoryAggregate.Networks, network)
 
 		case "network_acl":
-			if inventoryAggregate.NetworkACLs == nil {
-				networkACLs := make(map[string]map[string]incusapi.NetworkACL)
-				inventoryAggregate.NetworkACLs = networkACLs
-			}
-
-			_, ok = inventoryAggregate.NetworkACLs[ptr.From(inventoryResource.ProjectName)]
-			if !ok {
-				inventoryAggregate.NetworkACLs[ptr.From(inventoryResource.ProjectName)] = make(map[string]incusapi.NetworkACL)
-			}
-
-			var networkACL incusapi.NetworkACL
-			err := json.Unmarshal(inventoryResource.Object, &networkACL)
+			var object incusapi.NetworkACL
+			err := json.Unmarshal(inventoryResource.Object, &object)
 			if err != nil {
 				return nil, err
 			}
 
-			inventoryAggregate.NetworkACLs[ptr.From(inventoryResource.ProjectName)][inventoryResource.Name] = networkACL
+			networkACL := inventory.NetworkACL{
+				Cluster:     inventoryResource.ClusterName,
+				ProjectName: ptr.From(inventoryResource.ProjectName),
+				Name:        inventoryResource.Name,
+				Object:      object,
+			}
+
+			inventoryAggregate.NetworkACLs = append(inventoryAggregate.NetworkACLs, networkACL)
 
 		case "network_forward":
-			if inventoryAggregate.NetworkForwards == nil {
-				networkForwards := make(map[string]map[string]incusapi.NetworkForward)
-				inventoryAggregate.NetworkForwards = networkForwards
-			}
-
-			_, ok = inventoryAggregate.NetworkForwards[ptr.From(inventoryResource.ParentName)]
-			if !ok {
-				inventoryAggregate.NetworkForwards[ptr.From(inventoryResource.ParentName)] = make(map[string]incusapi.NetworkForward)
-			}
-
-			var networkForward incusapi.NetworkForward
-			err := json.Unmarshal(inventoryResource.Object, &networkForward)
+			var object incusapi.NetworkForward
+			err := json.Unmarshal(inventoryResource.Object, &object)
 			if err != nil {
 				return nil, err
 			}
 
-			inventoryAggregate.NetworkForwards[ptr.From(inventoryResource.ParentName)][inventoryResource.Name] = networkForward
+			networkForward := inventory.NetworkForward{
+				Cluster:     inventoryResource.ClusterName,
+				NetworkName: ptr.From(inventoryResource.ParentName),
+				Name:        inventoryResource.Name,
+				Object:      object,
+			}
+
+			inventoryAggregate.NetworkForwards = append(inventoryAggregate.NetworkForwards, networkForward)
 
 		case "network_integration":
-			if inventoryAggregate.NetworkIntegrations == nil {
-				networkIntegrations := make(map[string]incusapi.NetworkIntegration)
-				inventoryAggregate.NetworkIntegrations = networkIntegrations
-			}
-
-			var networkIntegration incusapi.NetworkIntegration
-			err := json.Unmarshal(inventoryResource.Object, &networkIntegration)
+			var object incusapi.NetworkIntegration
+			err := json.Unmarshal(inventoryResource.Object, &object)
 			if err != nil {
 				return nil, err
 			}
 
-			inventoryAggregate.NetworkIntegrations[inventoryResource.Name] = networkIntegration
+			networkIntegration := inventory.NetworkIntegration{
+				Cluster: inventoryResource.ClusterName,
+				Name:    inventoryResource.Name,
+				Object:  object,
+			}
+
+			inventoryAggregate.NetworkIntegrations = append(inventoryAggregate.NetworkIntegrations, networkIntegration)
 
 		case "network_load_balancer":
-			if inventoryAggregate.NetworkLoadBalancers == nil {
-				networkLoadBalancers := make(map[string]map[string]incusapi.NetworkLoadBalancer)
-				inventoryAggregate.NetworkLoadBalancers = networkLoadBalancers
-			}
-
-			_, ok = inventoryAggregate.NetworkLoadBalancers[ptr.From(inventoryResource.ParentName)]
-			if !ok {
-				inventoryAggregate.NetworkLoadBalancers[ptr.From(inventoryResource.ParentName)] = make(map[string]incusapi.NetworkLoadBalancer)
-			}
-
-			var networkLoadBalancer incusapi.NetworkLoadBalancer
-			err := json.Unmarshal(inventoryResource.Object, &networkLoadBalancer)
+			var object incusapi.NetworkLoadBalancer
+			err := json.Unmarshal(inventoryResource.Object, &object)
 			if err != nil {
 				return nil, err
 			}
 
-			inventoryAggregate.NetworkLoadBalancers[ptr.From(inventoryResource.ParentName)][inventoryResource.Name] = networkLoadBalancer
+			networkLoadBalancer := inventory.NetworkLoadBalancer{
+				Cluster:     inventoryResource.ClusterName,
+				NetworkName: ptr.From(inventoryResource.ParentName),
+				Name:        inventoryResource.Name,
+				Object:      object,
+			}
+
+			inventoryAggregate.NetworkLoadBalancers = append(inventoryAggregate.NetworkLoadBalancers, networkLoadBalancer)
 
 		case "network_peer":
-			if inventoryAggregate.NetworkPeers == nil {
-				networkPeers := make(map[string]map[string]incusapi.NetworkPeer)
-				inventoryAggregate.NetworkPeers = networkPeers
-			}
-
-			_, ok = inventoryAggregate.NetworkPeers[ptr.From(inventoryResource.ParentName)]
-			if !ok {
-				inventoryAggregate.NetworkPeers[ptr.From(inventoryResource.ParentName)] = make(map[string]incusapi.NetworkPeer)
-			}
-
-			var networkPeer incusapi.NetworkPeer
-			err := json.Unmarshal(inventoryResource.Object, &networkPeer)
+			var object incusapi.NetworkPeer
+			err := json.Unmarshal(inventoryResource.Object, &object)
 			if err != nil {
 				return nil, err
 			}
 
-			inventoryAggregate.NetworkPeers[ptr.From(inventoryResource.ParentName)][inventoryResource.Name] = networkPeer
+			networkPeer := inventory.NetworkPeer{
+				Cluster:     inventoryResource.ClusterName,
+				NetworkName: ptr.From(inventoryResource.ParentName),
+				Name:        inventoryResource.Name,
+				Object:      object,
+			}
+
+			inventoryAggregate.NetworkPeers = append(inventoryAggregate.NetworkPeers, networkPeer)
 
 		case "network_zone":
-			if inventoryAggregate.NetworkZones == nil {
-				networkZones := make(map[string]map[string]incusapi.NetworkZone)
-				inventoryAggregate.NetworkZones = networkZones
-			}
-
-			_, ok = inventoryAggregate.NetworkZones[ptr.From(inventoryResource.ProjectName)]
-			if !ok {
-				inventoryAggregate.NetworkZones[ptr.From(inventoryResource.ProjectName)] = make(map[string]incusapi.NetworkZone)
-			}
-
-			var networkZone incusapi.NetworkZone
-			err := json.Unmarshal(inventoryResource.Object, &networkZone)
+			var object incusapi.NetworkZone
+			err := json.Unmarshal(inventoryResource.Object, &object)
 			if err != nil {
 				return nil, err
 			}
 
-			inventoryAggregate.NetworkZones[ptr.From(inventoryResource.ProjectName)][inventoryResource.Name] = networkZone
+			networkZone := inventory.NetworkZone{
+				Cluster:     inventoryResource.ClusterName,
+				ProjectName: ptr.From(inventoryResource.ProjectName),
+				Name:        inventoryResource.Name,
+				Object:      object,
+			}
+
+			inventoryAggregate.NetworkZones = append(inventoryAggregate.NetworkZones, networkZone)
 
 		case "profile":
-			if inventoryAggregate.Profiles == nil {
-				profiles := make(map[string]map[string]incusapi.Profile)
-				inventoryAggregate.Profiles = profiles
-			}
-
-			_, ok = inventoryAggregate.Profiles[ptr.From(inventoryResource.ProjectName)]
-			if !ok {
-				inventoryAggregate.Profiles[ptr.From(inventoryResource.ProjectName)] = make(map[string]incusapi.Profile)
-			}
-
-			var profile incusapi.Profile
-			err := json.Unmarshal(inventoryResource.Object, &profile)
+			var object incusapi.Profile
+			err := json.Unmarshal(inventoryResource.Object, &object)
 			if err != nil {
 				return nil, err
 			}
 
-			inventoryAggregate.Profiles[ptr.From(inventoryResource.ProjectName)][inventoryResource.Name] = profile
+			profile := inventory.Profile{
+				Cluster:     inventoryResource.ClusterName,
+				ProjectName: ptr.From(inventoryResource.ProjectName),
+				Name:        inventoryResource.Name,
+				Object:      object,
+			}
+
+			inventoryAggregate.Profiles = append(inventoryAggregate.Profiles, profile)
 
 		case "project":
-			if inventoryAggregate.Projects == nil {
-				projects := make(map[string]incusapi.Project)
-				inventoryAggregate.Projects = projects
-			}
-
-			var project incusapi.Project
-			err := json.Unmarshal(inventoryResource.Object, &project)
+			var object incusapi.Project
+			err := json.Unmarshal(inventoryResource.Object, &object)
 			if err != nil {
 				return nil, err
 			}
 
-			inventoryAggregate.Projects[inventoryResource.Name] = project
+			project := inventory.Project{
+				Cluster: inventoryResource.ClusterName,
+				Name:    inventoryResource.Name,
+				Object:  object,
+			}
+
+			inventoryAggregate.Projects = append(inventoryAggregate.Projects, project)
 
 		case "storage_bucket":
-			if inventoryAggregate.StorageBuckets == nil {
-				storageBuckets := make(map[string]map[string]map[string]map[string]incusapi.StorageBucket)
-				inventoryAggregate.StorageBuckets = storageBuckets
-			}
-
-			_, ok = inventoryAggregate.StorageBuckets[ptr.From(inventoryResource.ProjectName)]
-			if !ok {
-				inventoryAggregate.StorageBuckets[ptr.From(inventoryResource.ProjectName)] = make(map[string]map[string]map[string]incusapi.StorageBucket)
-			}
-
-			_, ok = inventoryAggregate.StorageBuckets[ptr.From(inventoryResource.ProjectName)][ptr.From(inventoryResource.ParentName)]
-			if !ok {
-				inventoryAggregate.StorageBuckets[ptr.From(inventoryResource.ProjectName)][ptr.From(inventoryResource.ParentName)] = make(map[string]map[string]incusapi.StorageBucket)
-			}
-
-			_, ok = inventoryAggregate.StorageBuckets[ptr.From(inventoryResource.ProjectName)][ptr.From(inventoryResource.ParentName)][inventoryResource.Name]
-			if !ok {
-				inventoryAggregate.StorageBuckets[ptr.From(inventoryResource.ProjectName)][ptr.From(inventoryResource.ParentName)][inventoryResource.Name] = make(map[string]incusapi.StorageBucket)
-			}
-
-			var storageBucket incusapi.StorageBucket
-			err := json.Unmarshal(inventoryResource.Object, &storageBucket)
+			var object incusapi.StorageBucket
+			err := json.Unmarshal(inventoryResource.Object, &object)
 			if err != nil {
 				return nil, err
 			}
 
-			inventoryAggregate.StorageBuckets[ptr.From(inventoryResource.ProjectName)][ptr.From(inventoryResource.ParentName)][inventoryResource.Name][ptr.From(inventoryResource.ServerName)] = storageBucket
+			storageBucket := inventory.StorageBucket{
+				Cluster:         inventoryResource.ClusterName,
+				ProjectName:     ptr.From(inventoryResource.ProjectName),
+				StoragePoolName: ptr.From(inventoryResource.ParentName),
+				Server:          ptr.From(inventoryResource.ServerName),
+				Name:            inventoryResource.Name,
+				Object:          object,
+			}
+
+			inventoryAggregate.StorageBuckets = append(inventoryAggregate.StorageBuckets, storageBucket)
 
 		case "storage_pool":
-			if inventoryAggregate.StoragePools == nil {
-				storagePools := make(map[string]incusapi.StoragePool)
-				inventoryAggregate.StoragePools = storagePools
-			}
-
-			var storagePool incusapi.StoragePool
-			err := json.Unmarshal(inventoryResource.Object, &storagePool)
+			var object incusapi.StoragePool
+			err := json.Unmarshal(inventoryResource.Object, &object)
 			if err != nil {
 				return nil, err
 			}
 
-			inventoryAggregate.StoragePools[inventoryResource.Name] = storagePool
+			storagePool := inventory.StoragePool{
+				Cluster: inventoryResource.ClusterName,
+				Name:    inventoryResource.Name,
+				Object:  object,
+			}
+
+			inventoryAggregate.StoragePools = append(inventoryAggregate.StoragePools, storagePool)
 
 		case "storage_volume":
-			if inventoryAggregate.StorageVolumes == nil {
-				storageVolumes := make(map[string]map[string]map[string]map[string]incusapi.StorageVolume)
-				inventoryAggregate.StorageVolumes = storageVolumes
-			}
-
-			_, ok = inventoryAggregate.StorageVolumes[ptr.From(inventoryResource.ProjectName)]
-			if !ok {
-				inventoryAggregate.StorageVolumes[ptr.From(inventoryResource.ProjectName)] = make(map[string]map[string]map[string]incusapi.StorageVolume)
-			}
-
-			_, ok = inventoryAggregate.StorageVolumes[ptr.From(inventoryResource.ProjectName)][ptr.From(inventoryResource.ParentName)]
-			if !ok {
-				inventoryAggregate.StorageVolumes[ptr.From(inventoryResource.ProjectName)][ptr.From(inventoryResource.ParentName)] = make(map[string]map[string]incusapi.StorageVolume)
-			}
-
-			_, ok = inventoryAggregate.StorageVolumes[ptr.From(inventoryResource.ProjectName)][ptr.From(inventoryResource.ParentName)][inventoryResource.Name]
-			if !ok {
-				inventoryAggregate.StorageVolumes[ptr.From(inventoryResource.ProjectName)][ptr.From(inventoryResource.ParentName)][inventoryResource.Name] = make(map[string]incusapi.StorageVolume)
-			}
-
-			var storageVolume incusapi.StorageVolume
-			err := json.Unmarshal(inventoryResource.Object, &storageVolume)
+			var object incusapi.StorageVolume
+			err := json.Unmarshal(inventoryResource.Object, &object)
 			if err != nil {
 				return nil, err
 			}
 
-			inventoryAggregate.StorageVolumes[ptr.From(inventoryResource.ProjectName)][ptr.From(inventoryResource.ParentName)][inventoryResource.Name][ptr.From(inventoryResource.ServerName)] = storageVolume
+			storageVolume := inventory.StorageVolume{
+				Cluster:         inventoryResource.ClusterName,
+				ProjectName:     ptr.From(inventoryResource.ProjectName),
+				StoragePoolName: ptr.From(inventoryResource.ParentName),
+				Server:          ptr.From(inventoryResource.ServerName),
+				Name:            inventoryResource.Name,
+				Object:          object,
+			}
+
+			inventoryAggregate.StorageVolumes = append(inventoryAggregate.StorageVolumes, storageVolume)
 
 		default:
 			return nil, fmt.Errorf("Unknown inventory resource kind %q", inventoryResource.Kind)
@@ -415,8 +444,8 @@ ORDER BY cluster_name
 	return inventoryAggregates, nil
 }
 
-func scanInventoryResource(row interface{ Scan(dest ...any) error }) (inventoryResource, error) {
-	var resourceItem inventoryResource
+func scanInventoryResource(row interface{ Scan(dest ...any) error }) (InventoryResource, error) {
+	var resourceItem InventoryResource
 
 	err := row.Scan(
 		&resourceItem.Kind,
@@ -428,7 +457,7 @@ func scanInventoryResource(row interface{ Scan(dest ...any) error }) (inventoryR
 		&resourceItem.Object,
 	)
 	if err != nil {
-		return inventoryResource{}, sqlite.MapErr(err)
+		return InventoryResource{}, sqlite.MapErr(err)
 	}
 
 	return resourceItem, nil

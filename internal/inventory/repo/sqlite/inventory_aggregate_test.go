@@ -10,7 +10,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/dbschema/seed"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
-	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 )
 
@@ -36,7 +35,7 @@ func TestInventoryAggregateDatabaseActions(t *testing.T) {
 	aggregateRepo := inventorySqlite.NewInventoryAggregate(db)
 
 	aggregates, err := aggregateRepo.GetAllWithFilter(context.Background(), inventory.InventoryAggregateFilter{
-		Cluster: ptr.To("cluster-00000001"),
+		Clusters: []string{"cluster-00000001"},
 	})
 	require.NoError(t, err)
 

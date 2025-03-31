@@ -28,11 +28,13 @@ var embeddedTemplates = map[string]*string{
 
 type CmdQuery struct {
 	flagFilterKinds              []string
-	flagFilterCluster            string
-	flagFilterServer             string
+	flagFilterCluster            []string
+	flagFilterServer             []string
 	flagFilterServerIncludeNull  bool
-	flagFilterProject            string
+	flagFilterProject            []string
 	flagFilterProjectIncludeNull bool
+	flagFilterParent             []string
+	flagFilterParentIncludeNull  bool
 	flagFilterExpression         string
 	flagNoFilter                 bool
 
@@ -50,11 +52,13 @@ func (c *CmdQuery) Command() *cobra.Command {
 	cmd.RunE = c.Run
 
 	cmd.Flags().StringSliceVar(&c.flagFilterKinds, "kind", nil, "list of resource kinds to filter for")
-	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
-	cmd.Flags().StringVar(&c.flagFilterServer, "server", "", "server name to filter for")
+	cmd.Flags().StringSliceVar(&c.flagFilterCluster, "cluster", nil, "cluster name to filter for")
+	cmd.Flags().StringSliceVar(&c.flagFilterServer, "server", nil, "server name to filter for")
 	cmd.Flags().BoolVar(&c.flagFilterServerIncludeNull, "server-include-empty", false, "include resources where server is not set")
-	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
+	cmd.Flags().StringSliceVar(&c.flagFilterProject, "project", nil, "project name to filter for")
 	cmd.Flags().BoolVar(&c.flagFilterProjectIncludeNull, "project-include-empty", false, "include resources where project is not set")
+	cmd.Flags().StringSliceVar(&c.flagFilterParent, "parent", nil, "parent name to filter for")
+	cmd.Flags().BoolVar(&c.flagFilterParentIncludeNull, "parent-include-empty", false, "include resources where parent is not set")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 	cmd.Flags().BoolVar(&c.flagNoFilter, "no-filter", false, "force query without filter")
 
@@ -73,7 +77,13 @@ func (c *CmdQuery) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if len(c.flagFilterKinds) == 0 && c.flagFilterCluster == "" && c.flagFilterProject == "" && c.flagFilterServer == "" && c.flagFilterExpression == "" && !c.flagNoFilter {
+	if len(c.flagFilterKinds) == 0 &&
+		len(c.flagFilterCluster) == 0 &&
+		len(c.flagFilterProject) == 0 &&
+		len(c.flagFilterServer) == 0 &&
+		len(c.flagFilterParent) == 0 &&
+		c.flagFilterExpression == "" &&
+		!c.flagNoFilter {
 		return fmt.Errorf("Using query without filter might cause serious load and produce huge responses. Please use some filters or provide --no-filter flag.")
 	}
 
@@ -98,24 +108,24 @@ func (c *CmdQuery) Run(cmd *cobra.Command, args []string) error {
 
 	filter.Kinds = c.flagFilterKinds
 
-	if c.flagFilterCluster != "" {
-		filter.Cluster = ptr.To(c.flagFilterCluster)
-	}
+	filter.Clusters = c.flagFilterCluster
 
-	if c.flagFilterServer != "" {
-		filter.Server = ptr.To(c.flagFilterServer)
-	}
+	filter.Servers = c.flagFilterServer
 
 	if c.flagFilterServerIncludeNull {
 		filter.ServerIncludeNull = true
 	}
 
-	if c.flagFilterProject != "" {
-		filter.Project = ptr.To(c.flagFilterProject)
-	}
+	filter.Projects = c.flagFilterProject
 
 	if c.flagFilterProjectIncludeNull {
 		filter.ProjectIncludeNull = true
+	}
+
+	filter.Parents = c.flagFilterParent
+
+	if c.flagFilterParentIncludeNull {
+		filter.ParentIncludeNull = true
 	}
 
 	if c.flagFilterExpression != "" {

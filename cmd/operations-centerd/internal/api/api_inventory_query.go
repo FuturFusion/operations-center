@@ -93,12 +93,14 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 		filter.Kinds = kinds
 	}
 
-	if r.URL.Query().Get("cluster") != "" {
-		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+	clusters, ok := r.URL.Query()["cluster"]
+	if ok {
+		filter.Clusters = clusters
 	}
 
-	if r.URL.Query().Get("server") != "" {
-		filter.Server = ptr.To(r.URL.Query().Get("server"))
+	servers, ok := r.URL.Query()["server"]
+	if ok {
+		filter.Servers = servers
 	}
 
 	if r.URL.Query().Get("server_include_null") != "" {
@@ -110,8 +112,9 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 		filter.ServerIncludeNull = serverIncludeNull
 	}
 
-	if r.URL.Query().Get("project") != "" {
-		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	projects, ok := r.URL.Query()["project"]
+	if ok {
+		filter.Projects = projects
 	}
 
 	if r.URL.Query().Get("project_include_null") != "" {
@@ -121,6 +124,20 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 		}
 
 		filter.ProjectIncludeNull = projectIncludeNull
+	}
+
+	parents, ok := r.URL.Query()["parent"]
+	if ok {
+		filter.Parents = parents
+	}
+
+	if r.URL.Query().Get("parent_include_null") != "" {
+		parentIncludeNull, err := strconv.ParseBool(r.URL.Query().Get("parent_include_null"))
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		filter.ProjectIncludeNull = parentIncludeNull
 	}
 
 	if r.URL.Query().Get("filter") != "" {
@@ -135,24 +152,140 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 
 	result := make([]api.InventoryAggregate, 0, len(inventoryAggregates))
 	for _, inventoryAggregate := range inventoryAggregates {
-		result = append(result, api.InventoryAggregate{
-			Cluster:              inventoryAggregate.Cluster,
-			Servers:              inventoryAggregate.Servers,
-			Images:               inventoryAggregate.Images,
-			Instances:            inventoryAggregate.Instances,
-			Networks:             inventoryAggregate.Networks,
-			NetworkACLs:          inventoryAggregate.NetworkACLs,
-			NetworkForwards:      inventoryAggregate.NetworkForwards,
-			NetworkIntegrations:  inventoryAggregate.NetworkIntegrations,
-			NetworkLoadBalancers: inventoryAggregate.NetworkLoadBalancers,
-			NetworkPeers:         inventoryAggregate.NetworkPeers,
-			NetworkZones:         inventoryAggregate.NetworkZones,
-			Profiles:             inventoryAggregate.Profiles,
-			Projects:             inventoryAggregate.Projects,
-			StorageBuckets:       inventoryAggregate.StorageBuckets,
-			StoragePools:         inventoryAggregate.StoragePools,
-			StorageVolumes:       inventoryAggregate.StorageVolumes,
-		})
+		resultItem := api.InventoryAggregate{
+			Cluster: inventoryAggregate.Cluster,
+			Servers: inventoryAggregate.Servers,
+		}
+
+		for _, image := range inventoryAggregate.Images {
+			resultItem.Images = append(resultItem.Images, api.Image{
+				Cluster:     image.Cluster,
+				ProjectName: image.ProjectName,
+				Name:        image.Name,
+				Object:      image.Object,
+			})
+		}
+
+		for _, instance := range inventoryAggregate.Instances {
+			resultItem.Instances = append(resultItem.Instances, api.Instance{
+				Cluster:     instance.Cluster,
+				Server:      instance.Server,
+				ProjectName: instance.ProjectName,
+				Name:        instance.Name,
+				Object:      instance.Object,
+			})
+		}
+
+		for _, network := range inventoryAggregate.Networks {
+			resultItem.Networks = append(resultItem.Networks, api.Network{
+				Cluster:     network.Cluster,
+				ProjectName: network.ProjectName,
+				Name:        network.Name,
+				Object:      network.Object,
+			})
+		}
+
+		for _, networkACL := range inventoryAggregate.NetworkACLs {
+			resultItem.NetworkACLs = append(resultItem.NetworkACLs, api.NetworkACL{
+				Cluster:     networkACL.Cluster,
+				ProjectName: networkACL.ProjectName,
+				Name:        networkACL.Name,
+				Object:      networkACL.Object,
+			})
+		}
+
+		for _, networkForward := range inventoryAggregate.NetworkForwards {
+			resultItem.NetworkForwards = append(resultItem.NetworkForwards, api.NetworkForward{
+				Cluster:     networkForward.Cluster,
+				NetworkName: networkForward.NetworkName,
+				Name:        networkForward.Name,
+				Object:      networkForward.Object,
+			})
+		}
+
+		for _, networkIntegration := range inventoryAggregate.NetworkIntegrations {
+			resultItem.NetworkIntegrations = append(resultItem.NetworkIntegrations, api.NetworkIntegration{
+				Cluster: networkIntegration.Cluster,
+				Name:    networkIntegration.Name,
+				Object:  networkIntegration.Object,
+			})
+		}
+
+		for _, networkLoadBalancer := range inventoryAggregate.NetworkLoadBalancers {
+			resultItem.NetworkLoadBalancers = append(resultItem.NetworkLoadBalancers, api.NetworkLoadBalancer{
+				Cluster:     networkLoadBalancer.Cluster,
+				NetworkName: networkLoadBalancer.NetworkName,
+				Name:        networkLoadBalancer.Name,
+				Object:      networkLoadBalancer.Object,
+			})
+		}
+
+		for _, networkPeer := range inventoryAggregate.NetworkPeers {
+			resultItem.NetworkPeers = append(resultItem.NetworkPeers, api.NetworkPeer{
+				Cluster:     networkPeer.Cluster,
+				NetworkName: networkPeer.NetworkName,
+				Name:        networkPeer.Name,
+				Object:      networkPeer.Object,
+			})
+		}
+
+		for _, networkZone := range inventoryAggregate.NetworkZones {
+			resultItem.NetworkZones = append(resultItem.NetworkZones, api.NetworkZone{
+				Cluster:     networkZone.Cluster,
+				ProjectName: networkZone.ProjectName,
+				Name:        networkZone.Name,
+				Object:      networkZone.Object,
+			})
+		}
+
+		for _, profile := range inventoryAggregate.Profiles {
+			resultItem.Profiles = append(resultItem.Profiles, api.Profile{
+				Cluster:     profile.Cluster,
+				ProjectName: profile.ProjectName,
+				Name:        profile.Name,
+				Object:      profile.Object,
+			})
+		}
+
+		for _, project := range inventoryAggregate.Projects {
+			resultItem.Projects = append(resultItem.Projects, api.Project{
+				Cluster: project.Cluster,
+				Name:    project.Name,
+				Object:  project.Object,
+			})
+		}
+
+		for _, storageBucket := range inventoryAggregate.StorageBuckets {
+			resultItem.StorageBuckets = append(resultItem.StorageBuckets, api.StorageBucket{
+				Cluster:         storageBucket.Cluster,
+				Server:          storageBucket.Server,
+				ProjectName:     storageBucket.ProjectName,
+				StoragePoolName: storageBucket.StoragePoolName,
+				Name:            storageBucket.Name,
+				Object:          storageBucket.Object,
+			})
+		}
+
+		for _, storagePool := range inventoryAggregate.StoragePools {
+			resultItem.StoragePools = append(resultItem.StoragePools, api.StoragePool{
+				Cluster: storagePool.Cluster,
+				Name:    storagePool.Name,
+				Object:  storagePool.Object,
+			})
+		}
+
+		for _, storageVolume := range inventoryAggregate.StorageVolumes {
+			resultItem.StorageVolumes = append(resultItem.StorageVolumes, api.StorageVolume{
+				Cluster:         storageVolume.Cluster,
+				Server:          storageVolume.Server,
+				ProjectName:     storageVolume.ProjectName,
+				StoragePoolName: storageVolume.StoragePoolName,
+				Name:            storageVolume.Name,
+				Object:          storageVolume.Object,
+			})
+		}
+
+		result = append(result, resultItem)
 	}
 
 	return response.SyncResponse(true, result)
