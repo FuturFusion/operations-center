@@ -27,8 +27,6 @@ func (c *CmdImage) Command() *cobra.Command {
 	cmd.Short = "Interact with images"
 	cmd.Long = `Description:
   Interact with images
-
-  Configure images for use by operations center.
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706

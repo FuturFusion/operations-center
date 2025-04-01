@@ -2,17 +2,14 @@ package main
 
 import (
 	"bytes"
-	"cmp"
 	"context"
 	"embed"
 	"errors"
 	"go/format"
 	"io/fs"
-	"iter"
 	"log/slog"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"text/template"
 
@@ -20,6 +17,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/maps"
 )
 
 //go:embed tmpl
@@ -108,7 +106,7 @@ func main() {
 	err = cfg.LoadConfig(*flagConfigFile)
 	die(err)
 
-	for name, entity := range orderedByKey(cfg) {
+	for name, entity := range maps.OrderedByKey(cfg) {
 		if entity.PluralName == "" {
 			cfg[name].PluralName = name + "s"
 		}
@@ -146,7 +144,7 @@ func main() {
 	t, err = t.ParseFS(templateFS, "tmpl/*.gotmpl")
 	die(err)
 
-	for name, entity := range orderedByKey(cfg) {
+	for name, entity := range maps.OrderedByKey(cfg) {
 		if *flagOnlyEntity != "" && *flagOnlyEntity != name {
 			continue
 		}
@@ -247,22 +245,4 @@ func directoryExists(name string) bool {
 	}
 
 	return info.IsDir()
-}
-
-// orderedByKey returns an iterator to traverse a map ordered by key.
-func orderedByKey[K cmp.Ordered, E any](m map[K]E) iter.Seq2[K, E] {
-	return func(yield func(K, E) bool) {
-		keys := make([]K, 0, len(m))
-		for k := range m {
-			keys = append(keys, k)
-		}
-
-		slices.Sort(keys)
-
-		for _, k := range keys {
-			if !yield(k, m[k]) {
-				return
-			}
-		}
-	}
 }

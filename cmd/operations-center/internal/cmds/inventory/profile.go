@@ -27,8 +27,6 @@ func (c *CmdProfile) Command() *cobra.Command {
 	cmd.Short = "Interact with profiles"
 	cmd.Long = `Description:
   Interact with profiles
-
-  Configure profiles for use by operations center.
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706

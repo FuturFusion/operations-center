@@ -27,8 +27,6 @@ func (c *CmdStorageBucket) Command() *cobra.Command {
 	cmd.Short = "Interact with storage_buckets"
 	cmd.Long = `Description:
   Interact with storage_buckets
-
-  Configure storage_buckets for use by operations center.
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706

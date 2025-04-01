@@ -1,0 +1,205 @@
+{{- with . -}}
+Resource Tree:
+{{- range . }}
+
+- Cluster Name: {{ .Cluster }}
+
+  {{- with $server := .Servers }}
+
+  Servers:
+  {{- range $name := $server }}
+    - {{ $name }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $images := .Images }}
+
+  Images:
+  {{- $lastProjectName := "" }}
+  {{- range $images }}
+    {{- if ne .ProjectName $lastProjectName }}
+    {{- $lastProjectName = .ProjectName }}
+    {{ .ProjectName }}:
+    {{- end }}
+      - {{ .Name }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $instances := .Instances }}
+
+  Instances:
+  {{- $lastProjectName := "" }}
+  {{- $lastName := "" }}
+  {{- range $instances }}
+    {{- if ne .ProjectName $lastProjectName }}
+    {{- $lastProjectName = .ProjectName }}
+    {{ .ProjectName }}:
+    {{- end }}
+    {{- if ne .Name $lastName }}
+    {{- $lastName = .Name }}
+      {{ .Name }}:
+    {{- end }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $networks := .Networks }}
+
+  Networks:
+  {{- $lastProjectName := "" }}
+  {{- range $networks }}
+    {{- if ne .ProjectName $lastProjectName }}
+    {{- $lastProjectName = .ProjectName }}
+    {{ .ProjectName }}:
+    {{- end }}
+      - {{ .Name }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $networkACLs := .NetworkACLs }}
+
+  Network ACLs:
+  {{- $lastProjectName := "" }}
+  {{- range $networkACLs }}
+    {{- if ne .ProjectName $lastProjectName }}
+    {{- $lastProjectName = .ProjectName }}
+    {{ .ProjectName }}:
+    {{- end }}
+      - {{ .Name }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $networkForwards := .NetworkForwards }}
+
+  Network Forwards:
+  {{- $lastProjectName := "" }}
+  {{- range $networkForwards }}
+    {{- if ne .ProjectName $lastProjectName }}
+    {{- $lastProjectName = .ProjectName }}
+    {{ .ProjectName }}:
+    {{- end }}
+      - {{ .Name }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $networkIntegrations := .NetworkIntegrations }}
+
+  Network Integrations:
+  {{- range $networkIntegrations }}
+    - {{ .Name }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $networkLoadBalancers := .NetworkLoadBalancers }}
+
+  Network Load Balancers:
+  {{- $lastNetworkName := "" }}
+  {{- range $networkLoadBalancers }}
+    {{- if ne .NetworkName $lastNetworkName }}
+    {{- $lastNetworkName = .NetworkName }}
+    {{ .NetworkName }}:
+    {{- end }}
+      - {{ .Name }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $networkPeers := .NetworkPeers }}
+
+  Network Peers:
+  {{- $lastNetworkName := "" }}
+  {{- range $networkPeers }}
+    {{- if ne .NetworkName $lastNetworkName }}
+    {{- $lastNetworkName = .NetworkName }}
+    {{ .NetworkName }}:
+    {{- end }}
+      - {{ .Name }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $networkZones := .NetworkZones }}
+
+  Network Zones:
+  {{- $lastProjectName := "" }}
+  {{- range $networkZones }}
+    {{- if ne .ProjectName $lastProjectName }}
+    {{- $lastProjectName = .ProjectName }}
+    {{ .ProjectName }}:
+    {{- end }}
+      - {{ .Name }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $profiles := .Profiles }}
+
+  Profiles:
+  {{- $lastProjectName := "" }}
+  {{- range $profiles }}
+    {{- if ne .ProjectName $lastProjectName }}
+    {{- $lastProjectName = .ProjectName }}
+    {{ .ProjectName }}:
+    {{- end }}
+      - {{ .Name }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $projects := .Projects }}
+
+  Projects:
+  {{- range $projects }}
+    - {{ .Name }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $storageBuckets := .StorageBuckets }}
+
+  Storage Buckets:
+  {{- $lastProjectName := "" }}
+  {{- $lastStoragePoolName := "" }}
+  {{- $lastName := "" }}
+  {{- range $storageBuckets }}
+    {{- if ne .ProjectName $lastProjectName }}
+    {{- $lastProjectName = .ProjectName }}
+    {{ .ProjectName }}:
+    {{- end }}
+    {{- if ne .StoragePoolName $lastStoragePoolName }}
+    {{- $lastStoragePoolName = .StoragePoolName }}
+      {{ .StoragePoolName }}:
+    {{- end }}
+    {{- if ne .Name $lastName }}
+    {{- $lastName = .Name }}
+        {{ .Name }}:
+    {{- end }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $storagePools := .StoragePools }}
+
+  Storage Pools:
+  {{- range $storagePools }}
+    - {{ .Name }}
+  {{- end }}
+  {{- end }}
+
+  {{- with $storageVolumes := .StorageVolumes }}
+
+  Storage Volumes:
+  {{- $lastProjectName := "" }}
+  {{- $lastStoragePoolName := "" }}
+  {{- $lastName := "" }}
+  {{- range $storageVolumes }}
+    {{- if ne .ProjectName $lastProjectName }}
+    {{- $lastProjectName = .ProjectName }}
+    {{ .ProjectName }}:
+    {{- end }}
+    {{- if ne .StoragePoolName $lastStoragePoolName }}
+    {{- $lastStoragePoolName = .StoragePoolName }}
+      {{ .StoragePoolName }}:
+    {{- end }}
+    {{- if ne .Name $lastName }}
+    {{- $lastName = .Name }}
+        {{ .Name }}:
+    {{- end }}
+  {{- end }}
+  {{- end }}
+
+{{- end }}
+{{- end }}

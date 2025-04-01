@@ -16,6 +16,22 @@ import (
 
 func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverClient inventory.ServerClient, inventoryRouter *http.ServeMux) []provisioning.InventorySyncer {
 	// Service
+
+	// Without slog middleware, since this endpoint produces large responses.
+	inventoryInventoryAggregateSvc := inventory.NewInventoryAggregateService(
+		inventorySqlite.NewInventoryAggregate(db),
+	)
+	// FIXME: find better solution for this.
+	// inventoryInventoryAggregateSvc := inventoryServiceMiddleware.NewInventoryAggregateServiceWithSlog(
+	// 	inventory.NewInventoryAggregateService(
+	// 		inventoryRepoMiddleware.NewInventoryAggregateRepoWithSlog(
+	// 			inventorySqlite.NewInventoryAggregate(db),
+	// 			slog.Default(),
+	// 		),
+	// 	),
+	// 	slog.Default(),
+	// )
+
 	inventoryImageSvc := inventoryServiceMiddleware.NewImageServiceWithSlog(
 		inventory.NewImageService(
 			inventoryRepoMiddleware.NewImageRepoWithSlog(
@@ -233,6 +249,9 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 	)
 
 	// API routes
+	inventoryQueryRouter := newSubRouter(inventoryRouter, "/query")
+	registerInventoryQueryHandler(inventoryQueryRouter, inventoryInventoryAggregateSvc)
+
 	inventoryImageRouter := newSubRouter(inventoryRouter, "/images")
 	registerInventoryImageHandler(inventoryImageRouter, inventoryImageSvc)
 
