@@ -2,13 +2,13 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/google/uuid"
 
-	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
 type token struct {
@@ -23,149 +23,28 @@ func NewToken(db sqlite.DBTX) *token {
 	}
 }
 
-func (t token) Create(ctx context.Context, in provisioning.Token) (provisioning.Token, error) {
-	const sqlStmt = `
-INSERT INTO tokens (uuid, uses_remaining, expire_at, description)
-VALUES(:uuid, :uses_remaining, :expire_at, :description)
-RETURNING uuid, uses_remaining, expire_at, description;
-`
-
-	row := t.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uuid", in.UUID),
-		sql.Named("uses_remaining", in.UsesRemaining),
-		sql.Named("expire_at", in.ExpireAt),
-		sql.Named("description", in.Description),
-	)
-	if row.Err() != nil {
-		return provisioning.Token{}, sqlite.MapErr(row.Err())
-	}
-
-	return scanToken(row)
+func (t token) Create(ctx context.Context, in provisioning.Token) (int64, error) {
+	return entities.CreateToken(ctx, transaction.GetDBTX(ctx, t.db), in)
 }
 
 func (t token) GetAll(ctx context.Context) (provisioning.Tokens, error) {
-	const sqlStmt = `SELECT uuid, uses_remaining, expire_at, description FROM tokens;`
-
-	rows, err := t.db.QueryContext(ctx, sqlStmt)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var tokens provisioning.Tokens
-	for rows.Next() {
-		token, err := scanToken(rows)
-		if err != nil {
-			return nil, sqlite.MapErr(err)
-		}
-
-		tokens = append(tokens, token)
-	}
-
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
-
-	return tokens, nil
+	return entities.GetTokens(ctx, transaction.GetDBTX(ctx, t.db))
 }
 
-func (t token) GetAllIDs(ctx context.Context) ([]uuid.UUID, error) {
-	const sqlStmt = `SELECT uuid FROM tokens ORDER BY uuid`
-
-	rows, err := t.db.QueryContext(ctx, sqlStmt)
-	if err != nil {
-		return nil, sqlite.MapErr(err)
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var tokenIDs []uuid.UUID
-	for rows.Next() {
-		var tokenID string
-		err := rows.Scan(&tokenID)
-		if err != nil {
-			return nil, sqlite.MapErr(err)
-		}
-
-		id, err := uuid.Parse(tokenID)
-		if err != nil {
-			return nil, err
-		}
-
-		tokenIDs = append(tokenIDs, id)
-	}
-
-	if rows.Err() != nil {
-		return nil, sqlite.MapErr(rows.Err())
-	}
-
-	return tokenIDs, nil
+func (t token) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
+	return entities.GetTokenNames(ctx, transaction.GetDBTX(ctx, t.db))
 }
 
-func (t token) GetByID(ctx context.Context, id uuid.UUID) (provisioning.Token, error) {
-	const sqlStmt = `SELECT uuid, uses_remaining, expire_at, description FROM tokens WHERE uuid=:uuid;`
-
-	row := t.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if row.Err() != nil {
-		return provisioning.Token{}, sqlite.MapErr(row.Err())
-	}
-
-	return scanToken(row)
+func (t token) GetByUUID(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
+	return entities.GetToken(ctx, transaction.GetDBTX(ctx, t.db), id)
 }
 
-func (t token) UpdateByID(ctx context.Context, in provisioning.Token) (provisioning.Token, error) {
-	const sqlStmt = `
-UPDATE tokens SET uses_remaining=:uses_remaining, expire_at=:expire_at, description=:description
-WHERE uuid=:uuid
-RETURNING uuid, uses_remaining, expire_at, description;
-`
-
-	row := t.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("uses_remaining", in.UsesRemaining),
-		sql.Named("expire_at", in.ExpireAt),
-		sql.Named("description", in.Description),
-		sql.Named("uuid", in.UUID),
-	)
-	if row.Err() != nil {
-		return provisioning.Token{}, sqlite.MapErr(row.Err())
-	}
-
-	return scanToken(row)
+func (t token) Update(ctx context.Context, in provisioning.Token) error {
+	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, t.db), func(ctx context.Context, tx transaction.TX) error {
+		return entities.UpdateToken(ctx, tx, in.UUID, in)
+	})
 }
 
-func (t token) DeleteByID(ctx context.Context, id uuid.UUID) error {
-	const sqlStmt = `DELETE FROM tokens WHERE uuid=:uuid;`
-
-	result, err := t.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
-
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return sqlite.MapErr(err)
-	}
-
-	if affectedRows == 0 {
-		return domain.ErrNotFound
-	}
-
-	return nil
-}
-
-func scanToken(row interface{ Scan(dest ...any) error }) (provisioning.Token, error) {
-	var token provisioning.Token
-
-	err := row.Scan(
-		&token.UUID,
-		&token.UsesRemaining,
-		&token.ExpireAt,
-		&token.Description,
-	)
-	if err != nil {
-		return provisioning.Token{}, sqlite.MapErr(err)
-	}
-
-	return token, nil
+func (t token) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	return entities.DeleteToken(ctx, transaction.GetDBTX(ctx, t.db), id)
 }

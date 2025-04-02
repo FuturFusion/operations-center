@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -125,7 +126,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 		result := make([]api.Server, 0, len(servers))
 		for _, server := range servers {
 			result = append(result, api.Server{
-				Cluster:       server.Cluster,
+				Cluster:       ptr.From(server.Cluster),
 				Name:          server.Name,
 				Type:          server.Type,
 				ConnectionURL: server.ConnectionURL,
@@ -188,7 +189,7 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 	}
 
 	_, err = s.service.Create(r.Context(), provisioning.Server{
-		Cluster:       server.Cluster,
+		Cluster:       ptr.To(server.Cluster),
 		Name:          server.Name,
 		Type:          server.Type,
 		ConnectionURL: server.ConnectionURL,
@@ -248,7 +249,7 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		api.Server{
-			Cluster:       server.Cluster,
+			Cluster:       ptr.From(server.Cluster),
 			Name:          server.Name,
 			Type:          server.Type,
 			ConnectionURL: server.ConnectionURL,
@@ -318,8 +319,8 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = s.service.UpdateByName(ctx, name, provisioning.Server{
-		Cluster:       server.Cluster,
+	err = s.service.Update(ctx, provisioning.Server{
+		Cluster:       ptr.To(server.Cluster),
 		Name:          server.Name,
 		Type:          server.Type,
 		ConnectionURL: server.ConnectionURL,
@@ -426,15 +427,7 @@ func (s *serverHandler) serverPost(r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = s.service.RenameByName(ctx, name, provisioning.Server{
-		Cluster:       server.Cluster,
-		Name:          server.Name,
-		Type:          server.Type,
-		ConnectionURL: server.ConnectionURL,
-		HardwareData:  server.HardwareData,
-		VersionData:   server.VersionData,
-		LastUpdated:   server.LastUpdated,
-	})
+	err = s.service.Rename(ctx, name, server.Name)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed renaming server %q: %w", name, err))
 	}

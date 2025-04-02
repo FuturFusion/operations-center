@@ -222,7 +222,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 			serverName := fmt.Sprintf("server-%08x-%08x", clusterIdx, serverIdx)
 			servers = append(servers, serverName)
 			_, err = serverRepo.Create(ctx, provisioning.Server{
-				Cluster:       clusterName,
+				Cluster:       &clusterName,
 				Name:          serverName,
 				Type:          api.ServerType(faker.RandomString([]string{"unknown", "incus", "migration-manager", "operations-center"})),
 				ConnectionURL: fmt.Sprintf("https://%s.domain.tdl", serverName),

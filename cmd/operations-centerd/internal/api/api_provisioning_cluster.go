@@ -308,7 +308,7 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = c.service.UpdateByName(ctx, name, provisioning.Cluster{
+	err = c.service.Update(ctx, provisioning.Cluster{
 		Name:          cluster.Name,
 		ConnectionURL: cluster.ConnectionURL,
 		LastUpdated:   cluster.LastUpdated,
@@ -412,11 +412,7 @@ func (c *clusterHandler) clusterPost(r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = c.service.RenameByName(ctx, name, provisioning.Cluster{
-		Name:          cluster.Name,
-		ConnectionURL: currentCluster.ConnectionURL,
-		LastUpdated:   currentCluster.LastUpdated,
-	})
+	err = c.service.Rename(ctx, name, cluster.Name)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed renaming cluster %q: %w", name, err))
 	}

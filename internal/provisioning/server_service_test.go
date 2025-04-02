@@ -10,6 +10,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
 
@@ -27,7 +28,7 @@ func TestServerService_Create(t *testing.T) {
 			name: "success",
 			server: provisioning.Server{
 				Name:          "one",
-				Cluster:       "one",
+				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 			},
 
@@ -37,7 +38,7 @@ func TestServerService_Create(t *testing.T) {
 			name: "error - validation",
 			server: provisioning.Server{
 				Name:          "", // invalid
-				Cluster:       "one",
+				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 			},
 
@@ -50,7 +51,7 @@ func TestServerService_Create(t *testing.T) {
 			name: "error - repo.Create",
 			server: provisioning.Server{
 				Name:          "one",
-				Cluster:       "one",
+				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 			},
 			repoCreateErr: boom.Error,
@@ -63,9 +64,9 @@ func TestServerService_Create(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.ServerRepoMock{
-				CreateFunc: func(ctx context.Context, in provisioning.Server) (provisioning.Server, error) {
+				CreateFunc: func(ctx context.Context, in provisioning.Server) (int64, error) {
 					require.Equal(t, fixedDate, in.LastUpdated)
-					return provisioning.Server{}, tc.repoCreateErr
+					return 1, tc.repoCreateErr
 				},
 			}
 
@@ -94,12 +95,12 @@ func TestServerService_GetAll(t *testing.T) {
 			repoGetAllServers: provisioning.Servers{
 				provisioning.Server{
 					Name:          "one",
-					Cluster:       "one",
+					Cluster:       ptr.To("one"),
 					ConnectionURL: "http://one/",
 				},
 				provisioning.Server{
 					Name:          "two",
-					Cluster:       "one",
+					Cluster:       ptr.To("one"),
 					ConnectionURL: "http://one/",
 				},
 			},
@@ -129,66 +130,6 @@ func TestServerService_GetAll(t *testing.T) {
 
 			// Run test
 			servers, err := serverSvc.GetAll(context.Background())
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Len(t, servers, tc.count)
-		})
-	}
-}
-
-func TestServerService_GetAllByClusterID(t *testing.T) {
-	tests := []struct {
-		name                         string
-		clusterIDArg                 int
-		repoGetAllByClusterIDServers provisioning.Servers
-		repoGetAllByClusterIDErr     error
-
-		assertErr require.ErrorAssertionFunc
-		count     int
-	}{
-		{
-			name:         "success",
-			clusterIDArg: 1,
-			repoGetAllByClusterIDServers: provisioning.Servers{
-				provisioning.Server{
-					Name:          "one",
-					Cluster:       "one",
-					ConnectionURL: "http://one/",
-				},
-				provisioning.Server{
-					Name:          "two",
-					Cluster:       "one",
-					ConnectionURL: "http://one/",
-				},
-			},
-
-			assertErr: require.NoError,
-			count:     2,
-		},
-		{
-			name:                     "error - repo",
-			clusterIDArg:             1,
-			repoGetAllByClusterIDErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-			count:     0,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			repo := &mock.ServerRepoMock{
-				GetAllByClusterIDFunc: func(ctx context.Context, custerID int) (provisioning.Servers, error) {
-					return tc.repoGetAllByClusterIDServers, tc.repoGetAllByClusterIDErr
-				},
-			}
-
-			serverSvc := provisioning.NewServerService(repo)
-
-			// Run test
-			servers, err := serverSvc.GetAllByClusterID(context.Background(), tc.clusterIDArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -249,7 +190,7 @@ func TestServerService_GetByID(t *testing.T) {
 	tests := []struct {
 		name              string
 		idArg             string
-		repoGetByIDServer provisioning.Server
+		repoGetByIDServer *provisioning.Server
 		repoGetByIDErr    error
 
 		assertErr require.ErrorAssertionFunc
@@ -257,9 +198,9 @@ func TestServerService_GetByID(t *testing.T) {
 		{
 			name:  "success",
 			idArg: "one",
-			repoGetByIDServer: provisioning.Server{
+			repoGetByIDServer: &provisioning.Server{
 				Name:          "one",
-				Cluster:       "one",
+				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 			},
 
@@ -278,7 +219,7 @@ func TestServerService_GetByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.ServerRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Server, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return tc.repoGetByIDServer, tc.repoGetByIDErr
 				},
 			}
@@ -299,7 +240,7 @@ func TestServerService_GetByName(t *testing.T) {
 	tests := []struct {
 		name              string
 		nameArg           string
-		repoGetByIDServer provisioning.Server
+		repoGetByIDServer *provisioning.Server
 		repoGetByIDErr    error
 
 		assertErr require.ErrorAssertionFunc
@@ -307,9 +248,9 @@ func TestServerService_GetByName(t *testing.T) {
 		{
 			name:    "success",
 			nameArg: "one",
-			repoGetByIDServer: provisioning.Server{
+			repoGetByIDServer: &provisioning.Server{
 				Name:          "one",
-				Cluster:       "one",
+				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 			},
 
@@ -336,7 +277,7 @@ func TestServerService_GetByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.ServerRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Server, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return tc.repoGetByIDServer, tc.repoGetByIDErr
 				},
 			}
@@ -353,15 +294,14 @@ func TestServerService_GetByName(t *testing.T) {
 	}
 }
 
-func TestServerService_UpdateByName(t *testing.T) {
+func TestServerService_Update(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
-		name             string
-		nameArg          string
-		server           provisioning.Server
-		repoUpdateServer provisioning.Server
-		repoUpdateErr    error
+		name          string
+		nameArg       string
+		server        provisioning.Server
+		repoUpdateErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -370,12 +310,7 @@ func TestServerService_UpdateByName(t *testing.T) {
 			nameArg: "one",
 			server: provisioning.Server{
 				Name:          "one",
-				Cluster:       "one",
-				ConnectionURL: "http://one/",
-			},
-			repoUpdateServer: provisioning.Server{
-				Name:          "one",
-				Cluster:       "one",
+				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 			},
 
@@ -386,7 +321,8 @@ func TestServerService_UpdateByName(t *testing.T) {
 			nameArg: "", // invalid
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
 			},
 		},
 		{
@@ -394,21 +330,7 @@ func TestServerService_UpdateByName(t *testing.T) {
 			nameArg: "one",
 			server: provisioning.Server{
 				Name:          "", // invalid
-				Cluster:       "one",
-				ConnectionURL: "http://one/",
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
-		},
-		{
-			name:    "error - name mismatch",
-			nameArg: "one",
-			server: provisioning.Server{
-				Name:          "one 1", // mismatch
-				Cluster:       "one",
+				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 			},
 
@@ -422,7 +344,7 @@ func TestServerService_UpdateByName(t *testing.T) {
 			nameArg: "one",
 			server: provisioning.Server{
 				Name:          "one",
-				Cluster:       "one",
+				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 			},
 			repoUpdateErr: boom.Error,
@@ -435,62 +357,44 @@ func TestServerService_UpdateByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.ServerRepoMock{
-				UpdateByNameFunc: func(ctx context.Context, name string, in provisioning.Server) (provisioning.Server, error) {
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
 					require.Equal(t, fixedDate, in.LastUpdated)
-					return tc.repoUpdateServer, tc.repoUpdateErr
+					return tc.repoUpdateErr
 				},
 			}
 
 			serverSvc := provisioning.NewServerService(repo, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
-			server, err := serverSvc.UpdateByName(context.Background(), tc.nameArg, tc.server)
+			err := serverSvc.Update(context.Background(), tc.server)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoUpdateServer, server)
 		})
 	}
 }
 
-func TestServerService_RenameByName(t *testing.T) {
+func TestServerService_Rename(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
-		name                string
-		nameArg             string
-		server              provisioning.Server
-		repoGetByNameServer provisioning.Server
-		repoGetByNameErr    error
-		repoUpdateServer    provisioning.Server
-		repoUpdateErr       error
+		name          string
+		oldName       string
+		newName       string
+		repoRenameErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name:    "success",
-			nameArg: "one",
-			server: provisioning.Server{
-				Name:          "one",
-				Cluster:       "one",
-				ConnectionURL: "http://one/",
-			},
-			repoGetByNameServer: provisioning.Server{
-				Name:          "one",
-				Cluster:       "one",
-				ConnectionURL: "http://one/",
-			},
-			repoUpdateServer: provisioning.Server{
-				Name:          "one",
-				Cluster:       "one",
-				ConnectionURL: "http://one/",
-			},
+			oldName: "one",
+			newName: "one-new",
 
 			assertErr: require.NoError,
 		},
 		{
 			name:    "error - empty name",
-			nameArg: "", // invalid
+			oldName: "", // invalid
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
@@ -498,12 +402,8 @@ func TestServerService_RenameByName(t *testing.T) {
 		},
 		{
 			name:    "error - new name empty",
-			nameArg: "one",
-			server: provisioning.Server{
-				Name:          "", // invalid
-				Cluster:       "one",
-				ConnectionURL: "http://one/",
-			},
+			oldName: "one",
+			newName: "", // invalid
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
@@ -511,31 +411,10 @@ func TestServerService_RenameByName(t *testing.T) {
 			},
 		},
 		{
-			name:    "error - repo.GetByName",
-			nameArg: "one",
-			server: provisioning.Server{
-				Name:          "one",
-				Cluster:       "one",
-				ConnectionURL: "http://one/",
-			},
-			repoGetByNameErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name:    "error - repo.UpdateByID",
-			nameArg: "one",
-			server: provisioning.Server{
-				Name:          "one",
-				Cluster:       "one",
-				ConnectionURL: "http://one/",
-			},
-			repoGetByNameServer: provisioning.Server{
-				Name:          "one",
-				Cluster:       "one",
-				ConnectionURL: "http://one/",
-			},
-			repoUpdateErr: boom.Error,
+			name:          "error - repo.GetByName",
+			oldName:       "one",
+			newName:       "one",
+			repoRenameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -545,24 +424,20 @@ func TestServerService_RenameByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.ServerRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Server, error) {
-					return tc.repoGetByNameServer, tc.repoGetByNameErr
-				},
-				UpdateByNameFunc: func(ctx context.Context, name string, in provisioning.Server) (provisioning.Server, error) {
-					require.Equal(t, tc.server.Name, in.Name)
-					require.Equal(t, fixedDate, in.LastUpdated)
-					return tc.repoUpdateServer, tc.repoUpdateErr
+				RenameFunc: func(ctx context.Context, oldName string, newName string) error {
+					require.Equal(t, tc.oldName, oldName)
+					require.Equal(t, tc.newName, newName)
+					return tc.repoRenameErr
 				},
 			}
 
 			serverSvc := provisioning.NewServerService(repo, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
-			server, err := serverSvc.RenameByName(context.Background(), tc.nameArg, tc.server)
+			err := serverSvc.Rename(context.Background(), tc.oldName, tc.newName)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoUpdateServer, server)
 		})
 	}
 }

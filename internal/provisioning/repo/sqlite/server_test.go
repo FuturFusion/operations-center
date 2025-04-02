@@ -13,29 +13,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestServerDatabaseActions(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC).Truncate(0) // Truncate to remove the monotonic clock.
 
-	testClusterA := provisioning.Cluster{
-		Name:          "one",
-		ConnectionURL: "https://cluster-one/",
-		ServerNames:   []string{"one"},
-		LastUpdated:   fixedDate,
-	}
-
-	testClusterB := provisioning.Cluster{
-		Name:          "two",
-		ConnectionURL: "https://cluster-two/",
-		ServerNames:   []string{"two"},
-		LastUpdated:   fixedDate,
-	}
-
 	serverA := provisioning.Server{
-		Cluster:       "one",
 		Name:          "one",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
@@ -45,7 +32,6 @@ func TestServerDatabaseActions(t *testing.T) {
 	}
 
 	serverB := provisioning.Server{
-		Cluster:       "two",
 		Name:          "two",
 		Type:          api.ServerTypeMigrationManager,
 		ConnectionURL: "https://two/",
@@ -69,7 +55,11 @@ func TestServerDatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	server := sqlite.NewServer(db)
+	tx := transaction.Enable(db)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	require.NoError(t, err)
+
+	server := sqlite.NewServer(tx)
 	serverSvc := provisioning.NewServerService(server, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), serverSvc, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
@@ -78,12 +68,6 @@ func TestServerDatabaseActions(t *testing.T) {
 	_, err = server.Create(ctx, serverA)
 	require.NoError(t, err)
 	_, err = server.Create(ctx, serverB)
-	require.NoError(t, err)
-
-	// Add dummy clusters.
-	_, err = clusterSvc.Create(ctx, testClusterA)
-	require.NoError(t, err)
-	_, err = clusterSvc.Create(ctx, testClusterB)
 	require.NoError(t, err)
 
 	// Ensure we have two entries
@@ -99,20 +83,25 @@ func TestServerDatabaseActions(t *testing.T) {
 	// Should get back serverA unchanged.
 	dbServerA, err := server.GetByName(ctx, serverA.Name)
 	require.NoError(t, err)
-	require.Equal(t, serverA, dbServerA)
+	serverA.ID = dbServerA.ID
+	require.Equal(t, serverA, *dbServerA)
 
-	dbServerA, err = server.GetByName(ctx, serverA.Name)
+	dbServerB, err := server.GetByName(ctx, serverB.Name)
 	require.NoError(t, err)
-	require.Equal(t, serverA, dbServerA)
+	serverB.ID = dbServerB.ID
+	require.Equal(t, serverB, *dbServerB)
 
 	// Test updating a server.
-	serverB.Cluster = "two"
-	dbServerB, err := server.UpdateByName(ctx, serverB.Name, serverB)
+	serverB.ConnectionURL = "https://two-new/"
+	err = server.Update(ctx, serverB)
 	require.NoError(t, err)
-	require.Equal(t, serverB, dbServerB)
+	serverB.Name = "two-new"
+	err = server.Rename(ctx, "two", serverB.Name)
+	require.NoError(t, err)
 	dbServerB, err = server.GetByName(ctx, serverB.Name)
 	require.NoError(t, err)
-	require.Equal(t, serverB, dbServerB)
+	serverB.ID = dbServerB.ID
+	require.Equal(t, serverB, *dbServerB)
 
 	// Delete a server.
 	err = server.DeleteByName(ctx, serverA.Name)
@@ -130,7 +119,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Can't update a server that doesn't exist.
-	_, err = server.UpdateByName(ctx, serverA.Name, serverA)
+	err = server.Update(ctx, serverA)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Can't add a duplicate a server.
@@ -138,6 +127,12 @@ func TestServerDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
 	// Ensure deletion of cluster fails if a linked server is present.
-	err = clusterSvc.DeleteByName(ctx, "two")
+	_, err = clusterSvc.Create(ctx, provisioning.Cluster{
+		Name:          "one",
+		ConnectionURL: "https://one/",
+		ServerNames:   []string{"two-new"},
+	})
+	require.NoError(t, err)
+	err = clusterSvc.DeleteByName(ctx, "one")
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 }

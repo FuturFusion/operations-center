@@ -11,7 +11,9 @@ import (
 	"github.com/FuturFusion/operations-center/internal/dbschema"
 	"github.com/FuturFusion/operations-center/internal/dbschema/seed"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
 func main() {
@@ -92,6 +94,10 @@ PRAGMA temp_store = MEMORY;
 	die(err)
 
 	_, err = dbschema.Ensure(ctx, db, *flagDBDir)
+	die(err)
+
+	dbWithTransaction := transaction.Enable(db)
+	entities.PreparedStmts, err = entities.PrepareStmts(dbWithTransaction, false)
 	die(err)
 
 	err = seed.DB(ctx, db, seed.Config{

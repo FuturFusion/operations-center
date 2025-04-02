@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
 type serverService struct {
@@ -47,76 +46,51 @@ func (s serverService) Create(ctx context.Context, newServer Server) (Server, er
 
 	newServer.LastUpdated = s.now()
 
-	return s.repo.Create(ctx, newServer)
+	newServer.ID, err = s.repo.Create(ctx, newServer)
+	if err != nil {
+		return Server{}, err
+	}
+
+	return newServer, nil
 }
 
 func (s serverService) GetAll(ctx context.Context) (Servers, error) {
 	return s.repo.GetAll(ctx)
 }
 
-func (s serverService) GetAllByClusterID(ctx context.Context, clusterID int) (Servers, error) {
-	return s.repo.GetAllByClusterID(ctx, clusterID)
-}
-
 func (s serverService) GetAllNames(ctx context.Context) ([]string, error) {
 	return s.repo.GetAllNames(ctx)
 }
 
-func (s serverService) GetByName(ctx context.Context, name string) (Server, error) {
+func (s serverService) GetByName(ctx context.Context, name string) (*Server, error) {
 	if name == "" {
-		return Server{}, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s serverService) UpdateByName(ctx context.Context, name string, newServer Server) (Server, error) {
-	if name == "" {
-		return Server{}, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
-	}
-
+func (s serverService) Update(ctx context.Context, newServer Server) error {
 	err := newServer.Validate()
 	if err != nil {
-		return Server{}, err
-	}
-
-	if name != newServer.Name {
-		return Server{}, domain.NewValidationErrf("Invalid server, name mismatch")
+		return err
 	}
 
 	newServer.LastUpdated = s.now()
 
-	return s.repo.UpdateByName(ctx, name, newServer)
+	return s.repo.Update(ctx, newServer)
 }
 
-func (s serverService) RenameByName(ctx context.Context, name string, newServer Server) (Server, error) {
-	if name == "" {
-		return Server{}, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
+func (s serverService) Rename(ctx context.Context, oldName string, newName string) error {
+	if oldName == "" {
+		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	if newServer.Name == "" {
-		return Server{}, domain.NewValidationErrf("Invalid server, name cannot by empty")
+	if newName == "" {
+		return domain.NewValidationErrf("New Server name cannot by empty")
 	}
 
-	var server Server
-	var err error
-	err = transaction.Do(ctx, func(ctx context.Context) error {
-		server, err = s.repo.GetByName(ctx, name)
-		if err != nil {
-			return err
-		}
-
-		server.Name = newServer.Name
-		server.LastUpdated = s.now()
-
-		server, err = s.repo.UpdateByName(ctx, name, server)
-		return err
-	})
-	if err != nil {
-		return Server{}, err
-	}
-
-	return server, nil
+	return s.repo.Rename(ctx, oldName, newName)
 }
 
 func (s serverService) DeleteByName(ctx context.Context, name string) error {

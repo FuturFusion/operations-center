@@ -53,7 +53,6 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		return Cluster{}, err
 	}
 
-	var cluster Cluster
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		var servers []Server
 		for _, serverName := range newCluster.ServerNames {
@@ -62,23 +61,23 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 				return err
 			}
 
-			if server.Cluster != "" {
-				return fmt.Errorf("Server %q is already part of cluster %q", serverName, server.Cluster)
+			if server.Cluster != nil {
+				return fmt.Errorf("Server %q is already part of cluster %q", serverName, *server.Cluster)
 			}
 
-			servers = append(servers, server)
+			servers = append(servers, *server)
 		}
 
 		newCluster.LastUpdated = s.now()
 
-		cluster, err = s.repo.Create(ctx, newCluster)
+		newCluster.ID, err = s.repo.Create(ctx, newCluster)
 		if err != nil {
 			return err
 		}
 
 		for _, server := range servers {
-			server.Cluster = newCluster.Name
-			_, err = s.serverSvc.UpdateByName(ctx, server.Name, server)
+			server.Cluster = &newCluster.Name
+			err = s.serverSvc.Update(ctx, server)
 			if err != nil {
 				return err
 			}
@@ -90,7 +89,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		return Cluster{}, err
 	}
 
-	return cluster, nil
+	return newCluster, nil
 }
 
 func (s clusterService) GetAll(ctx context.Context) (Clusters, error) {
@@ -101,61 +100,35 @@ func (s clusterService) GetAllNames(ctx context.Context) ([]string, error) {
 	return s.repo.GetAllNames(ctx)
 }
 
-func (s clusterService) GetByName(ctx context.Context, name string) (Cluster, error) {
+func (s clusterService) GetByName(ctx context.Context, name string) (*Cluster, error) {
 	if name == "" {
-		return Cluster{}, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s clusterService) UpdateByName(ctx context.Context, name string, newCluster Cluster) (Cluster, error) {
-	if name == "" {
-		return Cluster{}, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
-	}
-
+func (s clusterService) Update(ctx context.Context, newCluster Cluster) error {
 	err := newCluster.Validate()
 	if err != nil {
-		return Cluster{}, err
-	}
-
-	if name != newCluster.Name {
-		return Cluster{}, domain.NewValidationErrf("Invalid cluster, name mismatch")
+		return err
 	}
 
 	newCluster.LastUpdated = s.now()
 
-	return s.repo.UpdateByName(ctx, name, newCluster)
+	return s.repo.Update(ctx, newCluster)
 }
 
-func (s clusterService) RenameByName(ctx context.Context, name string, newCluster Cluster) (Cluster, error) {
-	if name == "" {
-		return Cluster{}, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+func (s clusterService) Rename(ctx context.Context, oldName string, newName string) error {
+	if oldName == "" {
+		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	if newCluster.Name == "" {
-		return Cluster{}, domain.NewValidationErrf("Invalid cluster, name cannot by empty")
+	if newName == "" {
+		return domain.NewValidationErrf("New Cluster name cannot by empty")
 	}
 
-	var cluster Cluster
-	var err error
-	err = transaction.Do(ctx, func(ctx context.Context) error {
-		cluster, err = s.repo.GetByName(ctx, name)
-		if err != nil {
-			return err
-		}
-
-		cluster.Name = newCluster.Name
-		cluster.LastUpdated = s.now()
-
-		cluster, err = s.repo.UpdateByName(ctx, name, cluster)
-		return err
-	})
-	if err != nil {
-		return Cluster{}, err
-	}
-
-	return cluster, nil
+	return s.repo.Rename(ctx, oldName, newName)
 }
 
 func (s clusterService) DeleteByName(ctx context.Context, name string) error {

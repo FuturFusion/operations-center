@@ -12,7 +12,9 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
 func TestTokenDatabaseActions(t *testing.T) {
@@ -45,7 +47,11 @@ func TestTokenDatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	token := sqlite.NewToken(db)
+	tx := transaction.Enable(db)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	require.NoError(t, err)
+
+	token := sqlite.NewToken(tx)
 
 	// Add token
 	_, err = token.Create(ctx, tokenA)
@@ -58,29 +64,30 @@ func TestTokenDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, tokens, 2)
 
-	tokenIDs, err := token.GetAllIDs(ctx)
+	tokenIDs, err := token.GetAllUUIDs(ctx)
 	require.NoError(t, err)
 	require.Len(t, tokenIDs, 2)
 	require.ElementsMatch(t, []uuid.UUID{uuid.Must(uuid.Parse("8dae5ba3-2ad9-48a5-a7c4-188efb36fbb6")), uuid.Must(uuid.Parse("e74417e0-e6d8-465a-b7bc-86d99a45ba49"))}, tokenIDs)
 
 	// Should get back tokenA unchanged.
-	dbTokenA, err := token.GetByID(ctx, tokenA.UUID)
+	dbTokenA, err := token.GetByUUID(ctx, tokenA.UUID)
 	require.NoError(t, err)
-	require.Equal(t, tokenA, dbTokenA)
+	tokenA.ID = dbTokenA.ID
+	require.Equal(t, tokenA, *dbTokenA)
 
 	// Test updating a token.
 	tokenB.UsesRemaining = 100
-	dbTokenB, err := token.UpdateByID(ctx, tokenB)
+	err = token.Update(ctx, tokenB)
 	require.NoError(t, err)
-	require.Equal(t, tokenB, dbTokenB)
-	dbTokenB, err = token.GetByID(ctx, tokenB.UUID)
+	dbTokenB, err := token.GetByUUID(ctx, tokenB.UUID)
 	require.NoError(t, err)
-	require.Equal(t, tokenB, dbTokenB)
+	tokenB.ID = dbTokenB.ID
+	require.Equal(t, tokenB, *dbTokenB)
 
 	// Delete a token.
-	err = token.DeleteByID(ctx, tokenA.UUID)
+	err = token.DeleteByUUID(ctx, tokenA.UUID)
 	require.NoError(t, err)
-	_, err = token.GetByID(ctx, tokenA.UUID)
+	_, err = token.GetByUUID(ctx, tokenA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have two tokens remaining.
@@ -89,10 +96,10 @@ func TestTokenDatabaseActions(t *testing.T) {
 	require.Len(t, tokens, 1)
 
 	// Can't delete a token that doesn't exist.
-	err = token.DeleteByID(ctx, uuid.Must(uuid.Parse(`66307d51-c379-4fb3-be5d-5c4c24ba7b21`)))
+	err = token.DeleteByUUID(ctx, uuid.Must(uuid.Parse(`66307d51-c379-4fb3-be5d-5c4c24ba7b21`)))
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Can't update a token that doesn't exist.
-	_, err = token.UpdateByID(ctx, tokenA)
+	err = token.Update(ctx, tokenA)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 }
