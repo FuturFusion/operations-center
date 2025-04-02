@@ -35,17 +35,19 @@ func updateFromV0(ctx context.Context, tx *sql.Tx) error {
 	// v0..v1 the dawn of operations center
 	stmt := ``
 	_, err := tx.Exec(stmt)
-	return mapDBError(err)
+	return MapDBError(err)
 }
 
 func updateFromV1(ctx context.Context, tx *sql.Tx) error {
 	// v1..v2 add tokens table
 	stmt := `
 CREATE TABLE IF NOT EXISTS tokens (
-  uuid TEXT PRIMARY KEY NOT NULL,
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  uuid TEXT NOT NULL,
   uses_remaining INTEGER NOT NULL,
   expire_at DATETIME NOT NULL,
-  description TEXT NOT NULL
+  description TEXT NOT NULL,
+  UNIQUE(uuid)
 );
 
 CREATE TABLE IF NOT EXISTS clusters (
