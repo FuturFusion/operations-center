@@ -8,9 +8,10 @@ import (
 )
 
 type Cluster struct {
-	Name          string
+	ID            int64
+	Name          string `db:"primary=yes"`
 	ConnectionURL string
-	ServerNames   []string
+	ServerNames   []string `db:"ignore"`
 	LastUpdated   time.Time
 }
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 )
 
 func TestServer_Validate(t *testing.T) {
@@ -20,7 +21,7 @@ func TestServer_Validate(t *testing.T) {
 			name: "valid",
 			server: provisioning.Server{
 				Name:          "one",
-				Cluster:       "one",
+				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 			},
 
@@ -30,7 +31,7 @@ func TestServer_Validate(t *testing.T) {
 			name: "error - name empty",
 			server: provisioning.Server{
 				Name:          "", // invalid
-				Cluster:       "one",
+				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 			},
 
@@ -43,7 +44,7 @@ func TestServer_Validate(t *testing.T) {
 			name: "error - connection URL empty",
 			server: provisioning.Server{
 				Name:          "one",
-				Cluster:       "one",
+				Cluster:       ptr.To("one"),
 				ConnectionURL: "", // invalid
 			},
 
@@ -56,7 +57,7 @@ func TestServer_Validate(t *testing.T) {
 			name: "error - connection URL invalid",
 			server: provisioning.Server{
 				Name:          "one",
-				Cluster:       "one",
+				Cluster:       ptr.To("one"),
 				ConnectionURL: ":|\\", // invalid
 			},
 
