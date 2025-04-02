@@ -295,5 +295,5 @@ CREATE VIEW resources AS
 
 `
 	_, err := tx.Exec(stmt)
-	return mapDBError(err)
+	return MapDBError(err)
 }

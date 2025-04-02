@@ -7,7 +7,7 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func mapDBError(err error) error {
+func MapDBError(err error) error {
 	if err == nil {
 		return nil
 	}
