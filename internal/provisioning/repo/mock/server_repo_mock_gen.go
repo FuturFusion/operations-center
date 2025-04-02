@@ -20,7 +20,7 @@ var _ provisioning.ServerRepo = &ServerRepoMock{}
 //
 //		// make and configure a mocked provisioning.ServerRepo
 //		mockedServerRepo := &ServerRepoMock{
-//			CreateFunc: func(ctx context.Context, server provisioning.Server) (provisioning.Server, error) {
+//			CreateFunc: func(ctx context.Context, server provisioning.Server) (int64, error) {
 //				panic("mock out the Create method")
 //			},
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
@@ -29,17 +29,17 @@ var _ provisioning.ServerRepo = &ServerRepoMock{}
 //			GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
 //				panic("mock out the GetAll method")
 //			},
-//			GetAllByClusterIDFunc: func(ctx context.Context, clusterID int) (provisioning.Servers, error) {
-//				panic("mock out the GetAllByClusterID method")
-//			},
 //			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
 //				panic("mock out the GetAllNames method")
 //			},
-//			GetByNameFunc: func(ctx context.Context, name string) (provisioning.Server, error) {
+//			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			UpdateByNameFunc: func(ctx context.Context, name string, server provisioning.Server) (provisioning.Server, error) {
-//				panic("mock out the UpdateByName method")
+//			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
+//				panic("mock out the Rename method")
+//			},
+//			UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+//				panic("mock out the Update method")
 //			},
 //		}
 //
@@ -49,7 +49,7 @@ var _ provisioning.ServerRepo = &ServerRepoMock{}
 //	}
 type ServerRepoMock struct {
 	// CreateFunc mocks the Create method.
-	CreateFunc func(ctx context.Context, server provisioning.Server) (provisioning.Server, error)
+	CreateFunc func(ctx context.Context, server provisioning.Server) (int64, error)
 
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
@@ -57,17 +57,17 @@ type ServerRepoMock struct {
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Servers, error)
 
-	// GetAllByClusterIDFunc mocks the GetAllByClusterID method.
-	GetAllByClusterIDFunc func(ctx context.Context, clusterID int) (provisioning.Servers, error)
-
 	// GetAllNamesFunc mocks the GetAllNames method.
 	GetAllNamesFunc func(ctx context.Context) ([]string, error)
 
 	// GetByNameFunc mocks the GetByName method.
-	GetByNameFunc func(ctx context.Context, name string) (provisioning.Server, error)
+	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Server, error)
 
-	// UpdateByNameFunc mocks the UpdateByName method.
-	UpdateByNameFunc func(ctx context.Context, name string, server provisioning.Server) (provisioning.Server, error)
+	// RenameFunc mocks the Rename method.
+	RenameFunc func(ctx context.Context, oldName string, newName string) error
+
+	// UpdateFunc mocks the Update method.
+	UpdateFunc func(ctx context.Context, server provisioning.Server) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -90,13 +90,6 @@ type ServerRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetAllByClusterID holds details about calls to the GetAllByClusterID method.
-		GetAllByClusterID []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// ClusterID is the clusterID argument value.
-			ClusterID int
-		}
 		// GetAllNames holds details about calls to the GetAllNames method.
 		GetAllNames []struct {
 			// Ctx is the ctx argument value.
@@ -109,27 +102,34 @@ type ServerRepoMock struct {
 			// Name is the name argument value.
 			Name string
 		}
-		// UpdateByName holds details about calls to the UpdateByName method.
-		UpdateByName []struct {
+		// Rename holds details about calls to the Rename method.
+		Rename []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Name is the name argument value.
-			Name string
+			// OldName is the oldName argument value.
+			OldName string
+			// NewName is the newName argument value.
+			NewName string
+		}
+		// Update holds details about calls to the Update method.
+		Update []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
 	}
-	lockCreate            sync.RWMutex
-	lockDeleteByName      sync.RWMutex
-	lockGetAll            sync.RWMutex
-	lockGetAllByClusterID sync.RWMutex
-	lockGetAllNames       sync.RWMutex
-	lockGetByName         sync.RWMutex
-	lockUpdateByName      sync.RWMutex
+	lockCreate       sync.RWMutex
+	lockDeleteByName sync.RWMutex
+	lockGetAll       sync.RWMutex
+	lockGetAllNames  sync.RWMutex
+	lockGetByName    sync.RWMutex
+	lockRename       sync.RWMutex
+	lockUpdate       sync.RWMutex
 }
 
 // Create calls CreateFunc.
-func (mock *ServerRepoMock) Create(ctx context.Context, server provisioning.Server) (provisioning.Server, error) {
+func (mock *ServerRepoMock) Create(ctx context.Context, server provisioning.Server) (int64, error) {
 	if mock.CreateFunc == nil {
 		panic("ServerRepoMock.CreateFunc: method is nil but ServerRepo.Create was just called")
 	}
@@ -232,42 +232,6 @@ func (mock *ServerRepoMock) GetAllCalls() []struct {
 	return calls
 }
 
-// GetAllByClusterID calls GetAllByClusterIDFunc.
-func (mock *ServerRepoMock) GetAllByClusterID(ctx context.Context, clusterID int) (provisioning.Servers, error) {
-	if mock.GetAllByClusterIDFunc == nil {
-		panic("ServerRepoMock.GetAllByClusterIDFunc: method is nil but ServerRepo.GetAllByClusterID was just called")
-	}
-	callInfo := struct {
-		Ctx       context.Context
-		ClusterID int
-	}{
-		Ctx:       ctx,
-		ClusterID: clusterID,
-	}
-	mock.lockGetAllByClusterID.Lock()
-	mock.calls.GetAllByClusterID = append(mock.calls.GetAllByClusterID, callInfo)
-	mock.lockGetAllByClusterID.Unlock()
-	return mock.GetAllByClusterIDFunc(ctx, clusterID)
-}
-
-// GetAllByClusterIDCalls gets all the calls that were made to GetAllByClusterID.
-// Check the length with:
-//
-//	len(mockedServerRepo.GetAllByClusterIDCalls())
-func (mock *ServerRepoMock) GetAllByClusterIDCalls() []struct {
-	Ctx       context.Context
-	ClusterID int
-} {
-	var calls []struct {
-		Ctx       context.Context
-		ClusterID int
-	}
-	mock.lockGetAllByClusterID.RLock()
-	calls = mock.calls.GetAllByClusterID
-	mock.lockGetAllByClusterID.RUnlock()
-	return calls
-}
-
 // GetAllNames calls GetAllNamesFunc.
 func (mock *ServerRepoMock) GetAllNames(ctx context.Context) ([]string, error) {
 	if mock.GetAllNamesFunc == nil {
@@ -301,7 +265,7 @@ func (mock *ServerRepoMock) GetAllNamesCalls() []struct {
 }
 
 // GetByName calls GetByNameFunc.
-func (mock *ServerRepoMock) GetByName(ctx context.Context, name string) (provisioning.Server, error) {
+func (mock *ServerRepoMock) GetByName(ctx context.Context, name string) (*provisioning.Server, error) {
 	if mock.GetByNameFunc == nil {
 		panic("ServerRepoMock.GetByNameFunc: method is nil but ServerRepo.GetByName was just called")
 	}
@@ -336,42 +300,78 @@ func (mock *ServerRepoMock) GetByNameCalls() []struct {
 	return calls
 }
 
-// UpdateByName calls UpdateByNameFunc.
-func (mock *ServerRepoMock) UpdateByName(ctx context.Context, name string, server provisioning.Server) (provisioning.Server, error) {
-	if mock.UpdateByNameFunc == nil {
-		panic("ServerRepoMock.UpdateByNameFunc: method is nil but ServerRepo.UpdateByName was just called")
+// Rename calls RenameFunc.
+func (mock *ServerRepoMock) Rename(ctx context.Context, oldName string, newName string) error {
+	if mock.RenameFunc == nil {
+		panic("ServerRepoMock.RenameFunc: method is nil but ServerRepo.Rename was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		OldName string
+		NewName string
+	}{
+		Ctx:     ctx,
+		OldName: oldName,
+		NewName: newName,
+	}
+	mock.lockRename.Lock()
+	mock.calls.Rename = append(mock.calls.Rename, callInfo)
+	mock.lockRename.Unlock()
+	return mock.RenameFunc(ctx, oldName, newName)
+}
+
+// RenameCalls gets all the calls that were made to Rename.
+// Check the length with:
+//
+//	len(mockedServerRepo.RenameCalls())
+func (mock *ServerRepoMock) RenameCalls() []struct {
+	Ctx     context.Context
+	OldName string
+	NewName string
+} {
+	var calls []struct {
+		Ctx     context.Context
+		OldName string
+		NewName string
+	}
+	mock.lockRename.RLock()
+	calls = mock.calls.Rename
+	mock.lockRename.RUnlock()
+	return calls
+}
+
+// Update calls UpdateFunc.
+func (mock *ServerRepoMock) Update(ctx context.Context, server provisioning.Server) error {
+	if mock.UpdateFunc == nil {
+		panic("ServerRepoMock.UpdateFunc: method is nil but ServerRepo.Update was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
-		Name   string
 		Server provisioning.Server
 	}{
 		Ctx:    ctx,
-		Name:   name,
 		Server: server,
 	}
-	mock.lockUpdateByName.Lock()
-	mock.calls.UpdateByName = append(mock.calls.UpdateByName, callInfo)
-	mock.lockUpdateByName.Unlock()
-	return mock.UpdateByNameFunc(ctx, name, server)
+	mock.lockUpdate.Lock()
+	mock.calls.Update = append(mock.calls.Update, callInfo)
+	mock.lockUpdate.Unlock()
+	return mock.UpdateFunc(ctx, server)
 }
 
-// UpdateByNameCalls gets all the calls that were made to UpdateByName.
+// UpdateCalls gets all the calls that were made to Update.
 // Check the length with:
 //
-//	len(mockedServerRepo.UpdateByNameCalls())
-func (mock *ServerRepoMock) UpdateByNameCalls() []struct {
+//	len(mockedServerRepo.UpdateCalls())
+func (mock *ServerRepoMock) UpdateCalls() []struct {
 	Ctx    context.Context
-	Name   string
 	Server provisioning.Server
 } {
 	var calls []struct {
 		Ctx    context.Context
-		Name   string
 		Server provisioning.Server
 	}
-	mock.lockUpdateByName.RLock()
-	calls = mock.calls.UpdateByName
-	mock.lockUpdateByName.RUnlock()
+	mock.lockUpdate.RLock()
+	calls = mock.calls.Update
+	mock.lockUpdate.RUnlock()
 	return calls
 }

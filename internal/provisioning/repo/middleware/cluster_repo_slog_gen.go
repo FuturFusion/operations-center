@@ -26,7 +26,7 @@ func NewClusterRepoWithSlog(base provisioning.ClusterRepo, log *slog.Logger) Clu
 }
 
 // Create implements provisioning.ClusterRepo.
-func (_d ClusterRepoWithSlog) Create(ctx context.Context, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
+func (_d ClusterRepoWithSlog) Create(ctx context.Context, cluster provisioning.Cluster) (n int64, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -39,7 +39,7 @@ func (_d ClusterRepoWithSlog) Create(ctx context.Context, cluster provisioning.C
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("cluster1", cluster1),
+				slog.Int64("n", n),
 				slog.Any("err", err),
 			)
 		} else {
@@ -147,7 +147,7 @@ func (_d ClusterRepoWithSlog) GetAllNames(ctx context.Context) (strings []string
 }
 
 // GetByName implements provisioning.ClusterRepo.
-func (_d ClusterRepoWithSlog) GetByName(ctx context.Context, name string) (cluster provisioning.Cluster, err error) {
+func (_d ClusterRepoWithSlog) GetByName(ctx context.Context, name string) (cluster *provisioning.Cluster, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -177,22 +177,21 @@ func (_d ClusterRepoWithSlog) GetByName(ctx context.Context, name string) (clust
 	return _d._base.GetByName(ctx, name)
 }
 
-// UpdateByName implements provisioning.ClusterRepo.
-func (_d ClusterRepoWithSlog) UpdateByName(ctx context.Context, name string, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
+// Rename implements provisioning.ClusterRepo.
+func (_d ClusterRepoWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("name", name),
-			slog.Any("cluster", cluster),
+			slog.String("oldName", oldName),
+			slog.String("newName", newName),
 		)
 	}
-	log.Debug("=> calling UpdateByName")
+	log.Debug("=> calling Rename")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("cluster1", cluster1),
 				slog.Any("err", err),
 			)
 		} else {
@@ -201,10 +200,40 @@ func (_d ClusterRepoWithSlog) UpdateByName(ctx context.Context, name string, clu
 			}
 		}
 		if err != nil {
-			log.Error("<= method UpdateByName returned an error")
+			log.Error("<= method Rename returned an error")
 		} else {
-			log.Debug("<= method UpdateByName finished")
+			log.Debug("<= method Rename finished")
 		}
 	}()
-	return _d._base.UpdateByName(ctx, name, cluster)
+	return _d._base.Rename(ctx, oldName, newName)
+}
+
+// Update implements provisioning.ClusterRepo.
+func (_d ClusterRepoWithSlog) Update(ctx context.Context, cluster provisioning.Cluster) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("cluster", cluster),
+		)
+	}
+	log.Debug("=> calling Update")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method Update returned an error")
+		} else {
+			log.Debug("<= method Update finished")
+		}
+	}()
+	return _d._base.Update(ctx, cluster)
 }

@@ -116,37 +116,6 @@ func (_d ServerServiceWithSlog) GetAll(ctx context.Context) (servers provisionin
 	return _d._base.GetAll(ctx)
 }
 
-// GetAllByClusterID implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) GetAllByClusterID(ctx context.Context, clusterID int) (servers provisioning.Servers, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.Int("clusterID", clusterID),
-		)
-	}
-	log.Debug("=> calling GetAllByClusterID")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("servers", servers),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("<= method GetAllByClusterID returned an error")
-		} else {
-			log.Debug("<= method GetAllByClusterID finished")
-		}
-	}()
-	return _d._base.GetAllByClusterID(ctx, clusterID)
-}
-
 // GetAllNames implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) GetAllNames(ctx context.Context) (strings []string, err error) {
 	log := _d._log.With()
@@ -178,7 +147,7 @@ func (_d ServerServiceWithSlog) GetAllNames(ctx context.Context) (strings []stri
 }
 
 // GetByName implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (server provisioning.Server, err error) {
+func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (server *provisioning.Server, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -208,22 +177,21 @@ func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (ser
 	return _d._base.GetByName(ctx, name)
 }
 
-// RenameByName implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) RenameByName(ctx context.Context, name string, server provisioning.Server) (server1 provisioning.Server, err error) {
+// Rename implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("name", name),
-			slog.Any("server", server),
+			slog.String("oldName", oldName),
+			slog.String("newName", newName),
 		)
 	}
-	log.Debug("=> calling RenameByName")
+	log.Debug("=> calling Rename")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("server1", server1),
 				slog.Any("err", err),
 			)
 		} else {
@@ -232,30 +200,28 @@ func (_d ServerServiceWithSlog) RenameByName(ctx context.Context, name string, s
 			}
 		}
 		if err != nil {
-			log.Error("<= method RenameByName returned an error")
+			log.Error("<= method Rename returned an error")
 		} else {
-			log.Debug("<= method RenameByName finished")
+			log.Debug("<= method Rename finished")
 		}
 	}()
-	return _d._base.RenameByName(ctx, name, server)
+	return _d._base.Rename(ctx, oldName, newName)
 }
 
-// UpdateByName implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) UpdateByName(ctx context.Context, name string, server provisioning.Server) (server1 provisioning.Server, err error) {
+// Update implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) Update(ctx context.Context, server provisioning.Server) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("name", name),
 			slog.Any("server", server),
 		)
 	}
-	log.Debug("=> calling UpdateByName")
+	log.Debug("=> calling Update")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("server1", server1),
 				slog.Any("err", err),
 			)
 		} else {
@@ -264,10 +230,10 @@ func (_d ServerServiceWithSlog) UpdateByName(ctx context.Context, name string, s
 			}
 		}
 		if err != nil {
-			log.Error("<= method UpdateByName returned an error")
+			log.Error("<= method Update returned an error")
 		} else {
-			log.Debug("<= method UpdateByName finished")
+			log.Debug("<= method Update finished")
 		}
 	}()
-	return _d._base.UpdateByName(ctx, name, server)
+	return _d._base.Update(ctx, server)
 }

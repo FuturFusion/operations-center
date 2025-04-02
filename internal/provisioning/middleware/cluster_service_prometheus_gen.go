@@ -94,7 +94,7 @@ func (_d ClusterServiceWithPrometheus) GetAllNames(ctx context.Context) (strings
 }
 
 // GetByName implements provisioning.ClusterService.
-func (_d ClusterServiceWithPrometheus) GetByName(ctx context.Context, name string) (cluster provisioning.Cluster, err error) {
+func (_d ClusterServiceWithPrometheus) GetByName(ctx context.Context, name string) (cluster *provisioning.Cluster, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -107,8 +107,8 @@ func (_d ClusterServiceWithPrometheus) GetByName(ctx context.Context, name strin
 	return _d.base.GetByName(ctx, name)
 }
 
-// RenameByName implements provisioning.ClusterService.
-func (_d ClusterServiceWithPrometheus) RenameByName(ctx context.Context, name string, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
+// Rename implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -116,9 +116,9 @@ func (_d ClusterServiceWithPrometheus) RenameByName(ctx context.Context, name st
 			result = "error"
 		}
 
-		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RenameByName", result).Observe(time.Since(_since).Seconds())
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Rename", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.RenameByName(ctx, name, cluster)
+	return _d.base.Rename(ctx, oldName, newName)
 }
 
 // ResyncInventoryByName implements provisioning.ClusterService.
@@ -135,8 +135,8 @@ func (_d ClusterServiceWithPrometheus) ResyncInventoryByName(ctx context.Context
 	return _d.base.ResyncInventoryByName(ctx, name)
 }
 
-// UpdateByName implements provisioning.ClusterService.
-func (_d ClusterServiceWithPrometheus) UpdateByName(ctx context.Context, name string, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
+// Update implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) Update(ctx context.Context, cluster provisioning.Cluster) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -144,7 +144,7 @@ func (_d ClusterServiceWithPrometheus) UpdateByName(ctx context.Context, name st
 			result = "error"
 		}
 
-		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByName", result).Observe(time.Since(_since).Seconds())
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Update", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByName(ctx, name, cluster)
+	return _d.base.Update(ctx, cluster)
 }

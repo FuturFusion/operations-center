@@ -57,8 +57,8 @@ func (_d TokenServiceWithSlog) Create(ctx context.Context, token provisioning.To
 	return _d._base.Create(ctx, token)
 }
 
-// DeleteByID implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) DeleteByID(ctx context.Context, id uuid.UUID) (err error) {
+// DeleteByUUID implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -66,7 +66,7 @@ func (_d TokenServiceWithSlog) DeleteByID(ctx context.Context, id uuid.UUID) (er
 			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling DeleteByID")
+	log.Debug("=> calling DeleteByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -79,12 +79,12 @@ func (_d TokenServiceWithSlog) DeleteByID(ctx context.Context, id uuid.UUID) (er
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByID returned an error")
+			log.Error("<= method DeleteByUUID returned an error")
 		} else {
-			log.Debug("<= method DeleteByID finished")
+			log.Debug("<= method DeleteByUUID finished")
 		}
 	}()
-	return _d._base.DeleteByID(ctx, id)
+	return _d._base.DeleteByUUID(ctx, id)
 }
 
 // GetAll implements provisioning.TokenService.
@@ -117,15 +117,15 @@ func (_d TokenServiceWithSlog) GetAll(ctx context.Context) (tokens provisioning.
 	return _d._base.GetAll(ctx)
 }
 
-// GetAllIDs implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) GetAllIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
+// GetAllUUIDs implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling GetAllIDs")
+	log.Debug("=> calling GetAllUUIDs")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -139,16 +139,16 @@ func (_d TokenServiceWithSlog) GetAllIDs(ctx context.Context) (uUIDs []uuid.UUID
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllIDs returned an error")
+			log.Error("<= method GetAllUUIDs returned an error")
 		} else {
-			log.Debug("<= method GetAllIDs finished")
+			log.Debug("<= method GetAllUUIDs finished")
 		}
 	}()
-	return _d._base.GetAllIDs(ctx)
+	return _d._base.GetAllUUIDs(ctx)
 }
 
-// GetByID implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) GetByID(ctx context.Context, id uuid.UUID) (token provisioning.Token, err error) {
+// GetByUUID implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (token *provisioning.Token, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -156,7 +156,7 @@ func (_d TokenServiceWithSlog) GetByID(ctx context.Context, id uuid.UUID) (token
 			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling GetByID")
+	log.Debug("=> calling GetByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -170,16 +170,16 @@ func (_d TokenServiceWithSlog) GetByID(ctx context.Context, id uuid.UUID) (token
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByID returned an error")
+			log.Error("<= method GetByUUID returned an error")
 		} else {
-			log.Debug("<= method GetByID finished")
+			log.Debug("<= method GetByUUID finished")
 		}
 	}()
-	return _d._base.GetByID(ctx, id)
+	return _d._base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) UpdateByID(ctx context.Context, token provisioning.Token) (token1 provisioning.Token, err error) {
+// Update implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) Update(ctx context.Context, token provisioning.Token) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -187,12 +187,11 @@ func (_d TokenServiceWithSlog) UpdateByID(ctx context.Context, token provisionin
 			slog.Any("token", token),
 		)
 	}
-	log.Debug("=> calling UpdateByID")
+	log.Debug("=> calling Update")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("token1", token1),
 				slog.Any("err", err),
 			)
 		} else {
@@ -201,10 +200,10 @@ func (_d TokenServiceWithSlog) UpdateByID(ctx context.Context, token provisionin
 			}
 		}
 		if err != nil {
-			log.Error("<= method UpdateByID returned an error")
+			log.Error("<= method Update returned an error")
 		} else {
-			log.Debug("<= method UpdateByID finished")
+			log.Debug("<= method Update finished")
 		}
 	}()
-	return _d._base.UpdateByID(ctx, token)
+	return _d._base.Update(ctx, token)
 }
