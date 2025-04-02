@@ -12,11 +12,13 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
 func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
@@ -101,10 +103,14 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), serverSvc, nil)
+	tx := transaction.Enable(db)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	require.NoError(t, err)
 
-	{{ .Name | camelcase }} := inventorySqlite.New{{ .Name | pascalcase }}(db)
+	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(tx))
+	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(tx), serverSvc, nil)
+
+	{{ .Name | camelcase }} := inventorySqlite.New{{ .Name | pascalcase }}(tx)
 
 	// Cannot add an {{ .Name | camelcase }} with an invalid server.
 	_, err = {{ .Name | camelcase }}.Create(ctx, {{ .Name | camelcase }}A)
