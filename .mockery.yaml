@@ -14,7 +14,7 @@ dir: >-
   {{- end -}}
   {{- .InterfaceDir -}}/{{- $targetDir -}}
 filename: "{{ .InterfaceName | snakecase }}_mock_gen.go"
-mockname: "{{ .InterfaceName }}Mock"
+structname: "{{ .InterfaceName }}Mock"
 pkgname: mock
 packages:
   github.com/FuturFusion/operations-center/internal/inventory:

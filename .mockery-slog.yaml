@@ -15,7 +15,7 @@ dir: >-
   {{- .InterfaceDir -}}/{{- $targetDir -}}
 filename: >-
   {{ .InterfaceName | snakecase }}_slog_gen.go
-mockname: "{{ .InterfaceName }}WithSlog"
+structname: "{{ .InterfaceName }}WithSlog"
 pkgname: middleware
 packages:
   github.com/FuturFusion/operations-center/internal/inventory:

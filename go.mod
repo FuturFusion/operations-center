@@ -30,6 +30,7 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/jedib0t/go-pretty/v6 v6.6.7 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/knadh/koanf/maps v0.1.1 // indirect
 	github.com/knadh/koanf/parsers/yaml v0.1.0 // indirect
@@ -61,6 +62,9 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
+	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
+	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
+	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/zitadel/logging v0.6.2 // indirect
 	github.com/zitadel/oidc/v3 v3.37.0 // indirect
 	github.com/zitadel/schema v1.3.1 // indirect
@@ -70,6 +74,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	go.starlark.net v0.0.0-20250318223901-d9371fef63fe // indirect
 	golang.org/x/crypto v0.36.0 // indirect
+	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
 	golang.org/x/term v0.30.0 // indirect
@@ -92,7 +97,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
-	github.com/vektra/mockery/v3 v3.0.0-beta.0
+	github.com/vektra/mockery/v3 v3.0.0-beta.9
 	golang.org/x/sync v0.12.0
 	golang.org/x/text v0.23.0
 	golang.org/x/tools v0.31.0
