@@ -14,7 +14,7 @@ type updateHandler struct {
 	service provisioning.UpdateService
 }
 
-func registerUpdateHandler(router *http.ServeMux, service provisioning.UpdateService) {
+func registerUpdateHandler(router Router, service provisioning.UpdateService) {
 	handler := &updateHandler{
 		service: service,
 	}

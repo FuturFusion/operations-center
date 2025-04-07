@@ -17,7 +17,7 @@ type networkZoneHandler struct {
 	service inventory.NetworkZoneService
 }
 
-func registerInventoryNetworkZoneHandler(router *http.ServeMux, service inventory.NetworkZoneService) {
+func registerInventoryNetworkZoneHandler(router Router, service inventory.NetworkZoneService) {
 	handler := &networkZoneHandler{
 		service: service,
 	}

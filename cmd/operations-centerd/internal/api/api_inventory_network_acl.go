@@ -17,7 +17,7 @@ type networkACLHandler struct {
 	service inventory.NetworkACLService
 }
 
-func registerInventoryNetworkACLHandler(router *http.ServeMux, service inventory.NetworkACLService) {
+func registerInventoryNetworkACLHandler(router Router, service inventory.NetworkACLService) {
 	handler := &networkACLHandler{
 		service: service,
 	}

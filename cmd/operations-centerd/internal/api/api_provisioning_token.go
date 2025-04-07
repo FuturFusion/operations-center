@@ -18,7 +18,7 @@ type tokenHandler struct {
 	service provisioning.TokenService
 }
 
-func registerProvisioningTokenHandler(router *http.ServeMux, service provisioning.TokenService) {
+func registerProvisioningTokenHandler(router Router, service provisioning.TokenService) {
 	handler := &tokenHandler{
 		service: service,
 	}

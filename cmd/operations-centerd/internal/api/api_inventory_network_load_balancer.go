@@ -17,7 +17,7 @@ type networkLoadBalancerHandler struct {
 	service inventory.NetworkLoadBalancerService
 }
 
-func registerInventoryNetworkLoadBalancerHandler(router *http.ServeMux, service inventory.NetworkLoadBalancerService) {
+func registerInventoryNetworkLoadBalancerHandler(router Router, service inventory.NetworkLoadBalancerService) {
 	handler := &networkLoadBalancerHandler{
 		service: service,
 	}

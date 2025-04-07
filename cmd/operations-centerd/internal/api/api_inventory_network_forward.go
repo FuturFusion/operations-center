@@ -17,7 +17,7 @@ type networkForwardHandler struct {
 	service inventory.NetworkForwardService
 }
 
-func registerInventoryNetworkForwardHandler(router *http.ServeMux, service inventory.NetworkForwardService) {
+func registerInventoryNetworkForwardHandler(router Router, service inventory.NetworkForwardService) {
 	handler := &networkForwardHandler{
 		service: service,
 	}

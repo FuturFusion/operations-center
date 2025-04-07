@@ -17,7 +17,7 @@ type storageVolumeHandler struct {
 	service inventory.StorageVolumeService
 }
 
-func registerInventoryStorageVolumeHandler(router *http.ServeMux, service inventory.StorageVolumeService) {
+func registerInventoryStorageVolumeHandler(router Router, service inventory.StorageVolumeService) {
 	handler := &storageVolumeHandler{
 		service: service,
 	}

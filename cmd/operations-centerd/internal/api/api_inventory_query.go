@@ -14,7 +14,7 @@ type queryHandler struct {
 	service inventory.InventoryAggregateService
 }
 
-func registerInventoryQueryHandler(router *http.ServeMux, service inventory.InventoryAggregateService) {
+func registerInventoryQueryHandler(router Router, service inventory.InventoryAggregateService) {
 	handler := &queryHandler{
 		service: service,
 	}
