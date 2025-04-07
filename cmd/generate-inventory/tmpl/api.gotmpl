@@ -15,7 +15,7 @@ type {{ .Name | camelcase }}Handler struct {
 	service inventory.{{ .Name | pascalcase }}Service
 }
 
-func registerInventory{{ .Name | pascalcase }}Handler(router *http.ServeMux, service inventory.{{ .Name | pascalcase }}Service) {
+func registerInventory{{ .Name | pascalcase }}Handler(router Router, service inventory.{{ .Name | pascalcase }}Service) {
 	handler := &{{ .Name | camelcase }}Handler{
 		service: service,
 	}

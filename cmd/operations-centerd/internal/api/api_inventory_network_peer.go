@@ -17,7 +17,7 @@ type networkPeerHandler struct {
 	service inventory.NetworkPeerService
 }
 
-func registerInventoryNetworkPeerHandler(router *http.ServeMux, service inventory.NetworkPeerService) {
+func registerInventoryNetworkPeerHandler(router Router, service inventory.NetworkPeerService) {
 	handler := &networkPeerHandler{
 		service: service,
 	}

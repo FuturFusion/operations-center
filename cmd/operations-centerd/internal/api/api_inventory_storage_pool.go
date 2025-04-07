@@ -17,7 +17,7 @@ type storagePoolHandler struct {
 	service inventory.StoragePoolService
 }
 
-func registerInventoryStoragePoolHandler(router *http.ServeMux, service inventory.StoragePoolService) {
+func registerInventoryStoragePoolHandler(router Router, service inventory.StoragePoolService) {
 	handler := &storagePoolHandler{
 		service: service,
 	}

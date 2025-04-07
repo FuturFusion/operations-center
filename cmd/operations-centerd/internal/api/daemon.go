@@ -8,10 +8,8 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	ghClient "github.com/google/go-github/v69/github"
@@ -154,31 +152,32 @@ func (d *Daemon) Start(ctx context.Context) error {
 	)
 
 	// Setup Routes
-	router := http.NewServeMux()
+	serveMux := http.NewServeMux()
+	router := newRouter(serveMux)
 	router.HandleFunc("GET /{$}",
 		response.With(
 			rootHandler,
 		),
 	)
 
-	api10router := newSubRouter(router, "/1.0")
+	api10router := router.SubGroup("/1.0")
 	registerAPI10Handler(api10router)
 
-	provisioningRouter := newSubRouter(api10router, "/provisioning")
+	provisioningRouter := api10router.SubGroup("/provisioning")
 
-	provisioningTokenRouter := newSubRouter(provisioningRouter, "/tokens")
+	provisioningTokenRouter := provisioningRouter.SubGroup("/tokens")
 	registerProvisioningTokenHandler(provisioningTokenRouter, tokenSvc)
 
-	provisioningClusterRouter := newSubRouter(provisioningRouter, "/clusters")
+	provisioningClusterRouter := provisioningRouter.SubGroup("/clusters")
 	registerProvisioningClusterHandler(provisioningClusterRouter, clusterSvcWrapped)
 
-	provisioningServerRouter := newSubRouter(provisioningRouter, "/servers")
+	provisioningServerRouter := provisioningRouter.SubGroup("/servers")
 	registerProvisioningServerHandler(provisioningServerRouter, serverSvc)
 
-	updateRouter := newSubRouter(provisioningRouter, "/updates")
+	updateRouter := provisioningRouter.SubGroup("/updates")
 	registerUpdateHandler(updateRouter, updateSvc)
 
-	inventoryRouter := newSubRouter(api10router, "/inventory")
+	inventoryRouter := api10router.SubGroup("/inventory")
 
 	inventorySyncers := registerInventoryRoutes(dbWithTransaction, clusterSvcWrapped, serverClientProvider, inventoryRouter)
 
@@ -191,7 +190,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	d.server = &http.Server{
 		Handler: logger.RequestIDMiddleware(
 			logger.AccessLogMiddleware(
-				router,
+				serveMux,
 			),
 		),
 		IdleTimeout: 30 * time.Second,
@@ -262,60 +261,6 @@ func (d *Daemon) Stop(ctx context.Context) error {
 	errgroupWaitErr := d.errgroup.Wait()
 
 	return errors.Join(shutdownErr, errgroupWaitErr)
-}
-
-// newSubRouter returns a derived http.ServeMux for the given prefix.
-// The derived router is configured such that handlers can be defined as they
-// would on a regular root ServeMux.
-func newSubRouter(router *http.ServeMux, prefix string) *http.ServeMux {
-	if !strings.HasPrefix(prefix, "/") {
-		prefix = "/" + prefix
-	}
-
-	subrouter := http.NewServeMux()
-	router.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
-		http.StripPrefix(prefix, handleRootPath(subrouter, false)).ServeHTTP(w, r)
-	})
-	router.HandleFunc(prefix+"/", func(w http.ResponseWriter, r *http.Request) {
-		http.StripPrefix(prefix, handleRootPath(subrouter, false)).ServeHTTP(w, r)
-	})
-
-	return subrouter
-}
-
-// handleRootPath compensates for the handling of the root resource for a derived
-// sub router.
-// This allows to define routes on the sub router without knowledge of the prefix
-// from where these routes will be served.
-// If ignoreTrailingSlash is true, the root resource will be served for both,
-// "/prefix" and "/prefix/". If ignoreTrailingSlash is false, the root resource
-// is only served if the resource is requested without trailing slash ()"/prefix").
-func handleRootPath(h http.Handler, ignoreTrailingSlash bool) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "":
-			r2 := new(http.Request)
-			*r2 = *r
-			r2.URL = new(url.URL)
-			*r2.URL = *r.URL
-			r2.URL.Path = "/"
-			h.ServeHTTP(w, r2)
-			return
-
-		case "/":
-			if ignoreTrailingSlash {
-				h.ServeHTTP(w, r)
-				return
-			}
-
-			http.NotFound(w, r)
-			return
-
-		default:
-			h.ServeHTTP(w, r)
-			return
-		}
-	})
 }
 
 type httpErrorLogger struct{}

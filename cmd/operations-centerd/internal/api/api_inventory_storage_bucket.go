@@ -17,7 +17,7 @@ type storageBucketHandler struct {
 	service inventory.StorageBucketService
 }
 
-func registerInventoryStorageBucketHandler(router *http.ServeMux, service inventory.StorageBucketService) {
+func registerInventoryStorageBucketHandler(router Router, service inventory.StorageBucketService) {
 	handler := &storageBucketHandler{
 		service: service,
 	}

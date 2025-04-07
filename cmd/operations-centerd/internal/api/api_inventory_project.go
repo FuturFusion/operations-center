@@ -17,7 +17,7 @@ type projectHandler struct {
 	service inventory.ProjectService
 }
 
-func registerInventoryProjectHandler(router *http.ServeMux, service inventory.ProjectService) {
+func registerInventoryProjectHandler(router Router, service inventory.ProjectService) {
 	handler := &projectHandler{
 		service: service,
 	}

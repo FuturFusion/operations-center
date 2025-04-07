@@ -17,7 +17,7 @@ type profileHandler struct {
 	service inventory.ProfileService
 }
 
-func registerInventoryProfileHandler(router *http.ServeMux, service inventory.ProfileService) {
+func registerInventoryProfileHandler(router Router, service inventory.ProfileService) {
 	handler := &profileHandler{
 		service: service,
 	}

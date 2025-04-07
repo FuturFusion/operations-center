@@ -7,7 +7,7 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func registerAPI10Handler(router *http.ServeMux) {
+func registerAPI10Handler(router Router) {
 	router.HandleFunc("GET /{$}", response.With(api10Get))
 }
 

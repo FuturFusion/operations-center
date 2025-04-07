@@ -17,7 +17,7 @@ type imageHandler struct {
 	service inventory.ImageService
 }
 
-func registerInventoryImageHandler(router *http.ServeMux, service inventory.ImageService) {
+func registerInventoryImageHandler(router Router, service inventory.ImageService) {
 	handler := &imageHandler{
 		service: service,
 	}

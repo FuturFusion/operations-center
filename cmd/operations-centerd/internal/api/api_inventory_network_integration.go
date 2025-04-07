@@ -17,7 +17,7 @@ type networkIntegrationHandler struct {
 	service inventory.NetworkIntegrationService
 }
 
-func registerInventoryNetworkIntegrationHandler(router *http.ServeMux, service inventory.NetworkIntegrationService) {
+func registerInventoryNetworkIntegrationHandler(router Router, service inventory.NetworkIntegrationService) {
 	handler := &networkIntegrationHandler{
 		service: service,
 	}
