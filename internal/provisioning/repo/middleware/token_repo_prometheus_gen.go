@@ -39,7 +39,7 @@ func NewTokenRepoWithPrometheus(base provisioning.TokenRepo, instanceName string
 }
 
 // Create implements provisioning.TokenRepo.
-func (_d TokenRepoWithPrometheus) Create(ctx context.Context, token provisioning.Token) (token1 provisioning.Token, err error) {
+func (_d TokenRepoWithPrometheus) Create(ctx context.Context, token provisioning.Token) (n int64, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -52,8 +52,8 @@ func (_d TokenRepoWithPrometheus) Create(ctx context.Context, token provisioning
 	return _d.base.Create(ctx, token)
 }
 
-// DeleteByID implements provisioning.TokenRepo.
-func (_d TokenRepoWithPrometheus) DeleteByID(ctx context.Context, id uuid.UUID) (err error) {
+// DeleteByUUID implements provisioning.TokenRepo.
+func (_d TokenRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -61,9 +61,9 @@ func (_d TokenRepoWithPrometheus) DeleteByID(ctx context.Context, id uuid.UUID) 
 			result = "error"
 		}
 
-		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
+		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByID(ctx, id)
+	return _d.base.DeleteByUUID(ctx, id)
 }
 
 // GetAll implements provisioning.TokenRepo.
@@ -80,8 +80,8 @@ func (_d TokenRepoWithPrometheus) GetAll(ctx context.Context) (tokens provisioni
 	return _d.base.GetAll(ctx)
 }
 
-// GetAllIDs implements provisioning.TokenRepo.
-func (_d TokenRepoWithPrometheus) GetAllIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
+// GetAllUUIDs implements provisioning.TokenRepo.
+func (_d TokenRepoWithPrometheus) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -89,13 +89,13 @@ func (_d TokenRepoWithPrometheus) GetAllIDs(ctx context.Context) (uUIDs []uuid.U
 			result = "error"
 		}
 
-		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDs", result).Observe(time.Since(_since).Seconds())
+		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDs", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDs(ctx)
+	return _d.base.GetAllUUIDs(ctx)
 }
 
-// GetByID implements provisioning.TokenRepo.
-func (_d TokenRepoWithPrometheus) GetByID(ctx context.Context, id uuid.UUID) (token provisioning.Token, err error) {
+// GetByUUID implements provisioning.TokenRepo.
+func (_d TokenRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (token *provisioning.Token, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -103,13 +103,13 @@ func (_d TokenRepoWithPrometheus) GetByID(ctx context.Context, id uuid.UUID) (to
 			result = "error"
 		}
 
-		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements provisioning.TokenRepo.
-func (_d TokenRepoWithPrometheus) UpdateByID(ctx context.Context, token provisioning.Token) (token1 provisioning.Token, err error) {
+// Update implements provisioning.TokenRepo.
+func (_d TokenRepoWithPrometheus) Update(ctx context.Context, token provisioning.Token) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -117,7 +117,7 @@ func (_d TokenRepoWithPrometheus) UpdateByID(ctx context.Context, token provisio
 			result = "error"
 		}
 
-		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByID", result).Observe(time.Since(_since).Seconds())
+		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "Update", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByID(ctx, token)
+	return _d.base.Update(ctx, token)
 }

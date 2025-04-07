@@ -41,30 +41,35 @@ func (s tokenService) Create(ctx context.Context, newToken Token) (Token, error)
 		return Token{}, err
 	}
 
-	return s.repo.Create(ctx, newToken)
+	newToken.ID, err = s.repo.Create(ctx, newToken)
+	if err != nil {
+		return Token{}, err
+	}
+
+	return newToken, nil
 }
 
 func (s tokenService) GetAll(ctx context.Context) (Tokens, error) {
 	return s.repo.GetAll(ctx)
 }
 
-func (s tokenService) GetAllIDs(ctx context.Context) ([]uuid.UUID, error) {
-	return s.repo.GetAllIDs(ctx)
+func (s tokenService) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
+	return s.repo.GetAllUUIDs(ctx)
 }
 
-func (s tokenService) GetByID(ctx context.Context, id uuid.UUID) (Token, error) {
-	return s.repo.GetByID(ctx, id)
+func (s tokenService) GetByUUID(ctx context.Context, id uuid.UUID) (*Token, error) {
+	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s tokenService) UpdateByID(ctx context.Context, newToken Token) (Token, error) {
+func (s tokenService) Update(ctx context.Context, newToken Token) error {
 	err := newToken.Validate()
 	if err != nil {
-		return Token{}, err
+		return err
 	}
 
-	return s.repo.UpdateByID(ctx, newToken)
+	return s.repo.Update(ctx, newToken)
 }
 
-func (s tokenService) DeleteByID(ctx context.Context, id uuid.UUID) error {
-	return s.repo.DeleteByID(ctx, id)
+func (s tokenService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	return s.repo.DeleteByUUID(ctx, id)
 }

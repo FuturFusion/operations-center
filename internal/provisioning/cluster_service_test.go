@@ -11,6 +11,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
 
@@ -18,13 +19,12 @@ func TestClusterService_Create(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
-		name                     string
-		cluster                  provisioning.Cluster
-		serverSvcGetByName       provisioning.Server
-		serverSvcGetByNameErr    error
-		serverSvcUpdateByName    provisioning.Server
-		serverSvcUpdateByNameErr error
-		repoCreateErr            error
+		name                  string
+		cluster               provisioning.Cluster
+		serverSvcGetByName    *provisioning.Server
+		serverSvcGetByNameErr error
+		serverSvcUpdateErr    error
+		repoCreateErr         error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -35,7 +35,7 @@ func TestClusterService_Create(t *testing.T) {
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
 			},
-			serverSvcGetByName: provisioning.Server{
+			serverSvcGetByName: &provisioning.Server{
 				Name: "server1",
 			},
 
@@ -72,8 +72,8 @@ func TestClusterService_Create(t *testing.T) {
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
 			},
-			serverSvcGetByName: provisioning.Server{
-				Cluster: "cluster-foo",
+			serverSvcGetByName: &provisioning.Server{
+				Cluster: ptr.To("cluster-foo"),
 				Name:    "server1",
 			},
 
@@ -88,21 +88,24 @@ func TestClusterService_Create(t *testing.T) {
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
 			},
+			serverSvcGetByName: &provisioning.Server{
+				Name: "one",
+			},
 			repoCreateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - serverSvc.UpdateByName",
+			name: "error - serverSvc.Update",
 			cluster: provisioning.Cluster{
 				Name:          "one",
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
 			},
-			serverSvcGetByName: provisioning.Server{
+			serverSvcGetByName: &provisioning.Server{
 				Name: "one",
 			},
-			serverSvcUpdateByNameErr: boom.Error,
+			serverSvcUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -112,18 +115,18 @@ func TestClusterService_Create(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.ClusterRepoMock{
-				CreateFunc: func(ctx context.Context, in provisioning.Cluster) (provisioning.Cluster, error) {
+				CreateFunc: func(ctx context.Context, in provisioning.Cluster) (int64, error) {
 					require.Equal(t, fixedDate, in.LastUpdated)
-					return provisioning.Cluster{}, tc.repoCreateErr
+					return 0, tc.repoCreateErr
 				},
 			}
 
 			serverSvc := &serviceMock.ServerServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Server, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return tc.serverSvcGetByName, tc.serverSvcGetByNameErr
 				},
-				UpdateByNameFunc: func(ctx context.Context, name string, server provisioning.Server) (provisioning.Server, error) {
-					return tc.serverSvcUpdateByName, tc.serverSvcUpdateByNameErr
+				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.serverSvcUpdateErr
 				},
 			}
 
@@ -247,7 +250,7 @@ func TestClusterService_GetByID(t *testing.T) {
 	tests := []struct {
 		name               string
 		idArg              string
-		repoGetByIDCluster provisioning.Cluster
+		repoGetByIDCluster *provisioning.Cluster
 		repoGetByIDErr     error
 
 		assertErr require.ErrorAssertionFunc
@@ -255,7 +258,7 @@ func TestClusterService_GetByID(t *testing.T) {
 		{
 			name:  "success",
 			idArg: "one",
-			repoGetByIDCluster: provisioning.Cluster{
+			repoGetByIDCluster: &provisioning.Cluster{
 				Name:          "one",
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
@@ -276,7 +279,7 @@ func TestClusterService_GetByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.ClusterRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
 					return tc.repoGetByIDCluster, tc.repoGetByIDErr
 				},
 			}
@@ -297,7 +300,7 @@ func TestClusterService_GetByName(t *testing.T) {
 	tests := []struct {
 		name               string
 		nameArg            string
-		repoGetByIDCluster provisioning.Cluster
+		repoGetByIDCluster *provisioning.Cluster
 		repoGetByIDErr     error
 
 		assertErr require.ErrorAssertionFunc
@@ -305,7 +308,7 @@ func TestClusterService_GetByName(t *testing.T) {
 		{
 			name:    "success",
 			nameArg: "one",
-			repoGetByIDCluster: provisioning.Cluster{
+			repoGetByIDCluster: &provisioning.Cluster{
 				Name:          "one",
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
@@ -334,7 +337,7 @@ func TestClusterService_GetByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.ClusterRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
 					return tc.repoGetByIDCluster, tc.repoGetByIDErr
 				},
 			}
@@ -351,23 +354,20 @@ func TestClusterService_GetByName(t *testing.T) {
 	}
 }
 
-func TestClusterService_UpdateByName(t *testing.T) {
+func TestClusterService_Update(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
 		name                 string
-		nameArg              string
 		cluster              provisioning.Cluster
 		repoGetByNameCluster provisioning.Cluster
 		repoGetByNameErr     error
-		repoUpdateCluster    provisioning.Cluster
 		repoUpdateErr        error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name:    "success",
-			nameArg: "one",
+			name: "success",
 			cluster: provisioning.Cluster{
 				Name:          "one",
 				ServerNames:   []string{"server1", "server3"},
@@ -378,25 +378,11 @@ func TestClusterService_UpdateByName(t *testing.T) {
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
 			},
-			repoUpdateCluster: provisioning.Cluster{
-				Name:          "one",
-				ServerNames:   []string{"server1", "server3"},
-				ConnectionURL: "http://one/",
-			},
 
 			assertErr: require.NoError,
 		},
 		{
-			name:    "error - empty name",
-			nameArg: "", // invalid
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
-			},
-		},
-		{
-			name:    "error - validation",
-			nameArg: "one",
+			name: "error - validation",
 			cluster: provisioning.Cluster{
 				Name:          "one",
 				ServerNames:   nil, // invalid
@@ -409,22 +395,7 @@ func TestClusterService_UpdateByName(t *testing.T) {
 			},
 		},
 		{
-			name:    "error - name mismatch",
-			nameArg: "one",
-			cluster: provisioning.Cluster{
-				Name:          "one 1", // invalid missmatch
-				ServerNames:   []string{"server1", "server2"},
-				ConnectionURL: "http://one/",
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
-		},
-		{
-			name:    "error - repo.UpdateByID",
-			nameArg: "one",
+			name: "error - repo.Update",
 			cluster: provisioning.Cluster{
 				Name:          "one",
 				ServerNames:   []string{"server1", "server3"},
@@ -445,62 +416,45 @@ func TestClusterService_UpdateByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.ClusterRepoMock{
-				UpdateByNameFunc: func(ctx context.Context, name string, in provisioning.Cluster) (provisioning.Cluster, error) {
+				UpdateFunc: func(ctx context.Context, in provisioning.Cluster) error {
 					require.Equal(t, fixedDate, in.LastUpdated)
-					return tc.repoUpdateCluster, tc.repoUpdateErr
+					return tc.repoUpdateErr
 				},
 			}
 
 			clusterSvc := provisioning.NewClusterService(repo, nil, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
-			cluster, err := clusterSvc.UpdateByName(context.Background(), tc.nameArg, tc.cluster)
+			err := clusterSvc.Update(context.Background(), tc.cluster)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoUpdateCluster, cluster)
 		})
 	}
 }
 
-func TestClusterService_RenameByName(t *testing.T) {
+func TestClusterService_Rename(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
-		name                 string
-		nameArg              string
-		cluster              provisioning.Cluster
-		repoGetByNameCluster provisioning.Cluster
-		repoGetByNameErr     error
-		repoUpdateCluster    provisioning.Cluster
-		repoUpdateErr        error
+		name          string
+		oldName       string
+		newName       string
+		repoRenameErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name:    "success",
-			nameArg: "one",
-			cluster: provisioning.Cluster{
-				Name:          "one new",
-				ServerNames:   []string{"server1", "server2"},
-				ConnectionURL: "http://one/",
-			},
-			repoGetByNameCluster: provisioning.Cluster{
-				Name:          "one",
-				ServerNames:   []string{"server1"},
-				ConnectionURL: "http://one/",
-			},
-			repoUpdateCluster: provisioning.Cluster{
-				Name:          "one new",
-				ServerNames:   []string{"server1", "server2"},
-				ConnectionURL: "http://one/",
-			},
+			oldName: "one",
+			newName: "one new",
 
 			assertErr: require.NoError,
 		},
 		{
-			name:    "error - empty name",
-			nameArg: "", // invalid
+			name:    "error - old name empty",
+			oldName: "", // invalid
+			newName: "one new",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
@@ -508,12 +462,8 @@ func TestClusterService_RenameByName(t *testing.T) {
 		},
 		{
 			name:    "error - new name empty",
-			nameArg: "one",
-			cluster: provisioning.Cluster{
-				Name:          "", // invalid
-				ServerNames:   []string{"server1", "server2"},
-				ConnectionURL: "http://one/",
-			},
+			oldName: "one",
+			newName: "", // invalid
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
@@ -521,31 +471,10 @@ func TestClusterService_RenameByName(t *testing.T) {
 			},
 		},
 		{
-			name:    "error - repo.GetByName",
-			nameArg: "one",
-			cluster: provisioning.Cluster{
-				Name:          "one",
-				ServerNames:   []string{"server1", "server2"},
-				ConnectionURL: "http://one/",
-			},
-			repoGetByNameErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name:    "error - repo.UpdateByID",
-			nameArg: "one",
-			cluster: provisioning.Cluster{
-				Name:          "one",
-				ServerNames:   []string{"server1", "server2"},
-				ConnectionURL: "http://one/",
-			},
-			repoGetByNameCluster: provisioning.Cluster{
-				Name:          "one",
-				ServerNames:   []string{"server1"},
-				ConnectionURL: "http://one/",
-			},
-			repoUpdateErr: boom.Error,
+			name:          "error - repo.Rename",
+			oldName:       "one",
+			newName:       "one new",
+			repoRenameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -555,24 +484,20 @@ func TestClusterService_RenameByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.ClusterRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
-					return tc.repoGetByNameCluster, tc.repoGetByNameErr
-				},
-				UpdateByNameFunc: func(ctx context.Context, name string, in provisioning.Cluster) (provisioning.Cluster, error) {
-					require.Equal(t, tc.cluster.Name, in.Name)
-					require.Equal(t, fixedDate, in.LastUpdated)
-					return tc.repoUpdateCluster, tc.repoUpdateErr
+				RenameFunc: func(ctx context.Context, oldName string, newName string) error {
+					require.Equal(t, tc.oldName, oldName)
+					require.Equal(t, tc.newName, newName)
+					return tc.repoRenameErr
 				},
 			}
 
 			clusterSvc := provisioning.NewClusterService(repo, nil, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
-			cluster, err := clusterSvc.RenameByName(context.Background(), tc.nameArg, tc.cluster)
+			err := clusterSvc.Rename(context.Background(), tc.oldName, tc.newName)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoUpdateCluster, cluster)
 		})
 	}
 }
@@ -673,8 +598,8 @@ func TestClusterService_ResyncInventoryByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.ClusterRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
-					return tc.repoGetByNameCluster, tc.repoGetByNameErr
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return &tc.repoGetByNameCluster, tc.repoGetByNameErr
 				},
 			}
 

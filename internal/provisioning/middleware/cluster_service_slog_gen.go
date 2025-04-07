@@ -147,7 +147,7 @@ func (_d ClusterServiceWithSlog) GetAllNames(ctx context.Context) (strings []str
 }
 
 // GetByName implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cluster provisioning.Cluster, err error) {
+func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cluster *provisioning.Cluster, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -177,22 +177,21 @@ func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cl
 	return _d._base.GetByName(ctx, name)
 }
 
-// RenameByName implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) RenameByName(ctx context.Context, name string, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
+// Rename implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("name", name),
-			slog.Any("cluster", cluster),
+			slog.String("oldName", oldName),
+			slog.String("newName", newName),
 		)
 	}
-	log.Debug("=> calling RenameByName")
+	log.Debug("=> calling Rename")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("cluster1", cluster1),
 				slog.Any("err", err),
 			)
 		} else {
@@ -201,12 +200,12 @@ func (_d ClusterServiceWithSlog) RenameByName(ctx context.Context, name string, 
 			}
 		}
 		if err != nil {
-			log.Error("<= method RenameByName returned an error")
+			log.Error("<= method Rename returned an error")
 		} else {
-			log.Debug("<= method RenameByName finished")
+			log.Debug("<= method Rename finished")
 		}
 	}()
-	return _d._base.RenameByName(ctx, name, cluster)
+	return _d._base.Rename(ctx, oldName, newName)
 }
 
 // ResyncInventoryByName implements provisioning.ClusterService.
@@ -239,22 +238,20 @@ func (_d ClusterServiceWithSlog) ResyncInventoryByName(ctx context.Context, name
 	return _d._base.ResyncInventoryByName(ctx, name)
 }
 
-// UpdateByName implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) UpdateByName(ctx context.Context, name string, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
+// Update implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) Update(ctx context.Context, cluster provisioning.Cluster) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("name", name),
 			slog.Any("cluster", cluster),
 		)
 	}
-	log.Debug("=> calling UpdateByName")
+	log.Debug("=> calling Update")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("cluster1", cluster1),
 				slog.Any("err", err),
 			)
 		} else {
@@ -263,10 +260,10 @@ func (_d ClusterServiceWithSlog) UpdateByName(ctx context.Context, name string, 
 			}
 		}
 		if err != nil {
-			log.Error("<= method UpdateByName returned an error")
+			log.Error("<= method Update returned an error")
 		} else {
-			log.Debug("<= method UpdateByName finished")
+			log.Debug("<= method Update finished")
 		}
 	}()
-	return _d._base.UpdateByName(ctx, name, cluster)
+	return _d._base.Update(ctx, cluster)
 }

@@ -14,7 +14,8 @@ var ExpireAtInfinity = time.Date(9999, 12, 31, 23, 59, 59, 999999999, time.UTC)
 const UsesRemainingInfinity = math.MaxInt
 
 type Token struct {
-	UUID          uuid.UUID
+	ID            int64
+	UUID          uuid.UUID `db:"primary=yes"`
 	UsesRemaining int
 	ExpireAt      time.Time
 	Description   string

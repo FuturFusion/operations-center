@@ -16,8 +16,10 @@ import (
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -81,10 +83,14 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(db))
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(db), serverSvc, nil)
+	tx := transaction.Enable(db)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	require.NoError(t, err)
 
-	networkZone := inventorySqlite.NewNetworkZone(db)
+	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(tx))
+	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(tx), serverSvc, nil)
+
+	networkZone := inventorySqlite.NewNetworkZone(tx)
 
 	// Cannot add an networkZone with an invalid server.
 	_, err = networkZone.Create(ctx, networkZoneA)

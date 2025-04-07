@@ -156,6 +156,12 @@ linters:
         - -ST1005
   exclusions:
     generated: lax
+    rules:
+      - linters:
+          - revive
+        # generate-database expects to find declarations of the form //generate-database: in the entities package.
+        source: '^//generate-database:mapper '
+        text: comment-spacing
     paths:
       - third_party$
       - builtin$

@@ -24,7 +24,7 @@ var _ inventory.ProvisioningServerService = &ProvisioningServerServiceMock{}
 //			GetAllByClusterNameFunc: func(ctx context.Context, name string) (provisioning.Servers, error) {
 //				panic("mock out the GetAllByClusterName method")
 //			},
-//			GetByNameFunc: func(ctx context.Context, name string) (provisioning.Server, error) {
+//			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 //				panic("mock out the GetByName method")
 //			},
 //		}
@@ -38,7 +38,7 @@ type ProvisioningServerServiceMock struct {
 	GetAllByClusterNameFunc func(ctx context.Context, name string) (provisioning.Servers, error)
 
 	// GetByNameFunc mocks the GetByName method.
-	GetByNameFunc func(ctx context.Context, name string) (provisioning.Server, error)
+	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Server, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -98,7 +98,7 @@ func (mock *ProvisioningServerServiceMock) GetAllByClusterNameCalls() []struct {
 }
 
 // GetByName calls GetByNameFunc.
-func (mock *ProvisioningServerServiceMock) GetByName(ctx context.Context, name string) (provisioning.Server, error) {
+func (mock *ProvisioningServerServiceMock) GetByName(ctx context.Context, name string) (*provisioning.Server, error) {
 	if mock.GetByNameFunc == nil {
 		panic("ProvisioningServerServiceMock.GetByNameFunc: method is nil but ProvisioningServerService.GetByName was just called")
 	}

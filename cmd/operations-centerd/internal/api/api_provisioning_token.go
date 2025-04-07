@@ -136,7 +136,7 @@ func (t *tokenHandler) tokensGet(r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	tokenIDs, err := t.service.GetAllIDs(r.Context())
+	tokenIDs, err := t.service.GetAllUUIDs(r.Context())
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -239,7 +239,7 @@ func (t *tokenHandler) tokenGet(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	token, err := t.service.GetByID(r.Context(), UUID)
+	token, err := t.service.GetByUUID(r.Context(), UUID)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -308,7 +308,7 @@ func (t *tokenHandler) tokenPut(r *http.Request) response.Response {
 		}
 	}()
 
-	currentToken, err := t.service.GetByID(ctx, UUID)
+	currentToken, err := t.service.GetByUUID(ctx, UUID)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get token %q: %w", UUID.String(), err))
 	}
@@ -319,7 +319,7 @@ func (t *tokenHandler) tokenPut(r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = t.service.UpdateByID(ctx, provisioning.Token{
+	err = t.service.Update(ctx, provisioning.Token{
 		UUID:          currentToken.UUID,
 		UsesRemaining: token.UsesRemaining,
 		ExpireAt:      token.ExpireAt,
@@ -363,7 +363,7 @@ func (t *tokenHandler) tokenDelete(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	err = t.service.DeleteByID(r.Context(), UUID)
+	err = t.service.DeleteByUUID(r.Context(), UUID)
 	if err != nil {
 		return response.SmartError(err)
 	}

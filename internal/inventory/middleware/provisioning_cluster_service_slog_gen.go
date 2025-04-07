@@ -57,7 +57,7 @@ func (_d ProvisioningClusterServiceWithSlog) GetAll(ctx context.Context) (cluste
 }
 
 // GetByName implements inventory.ProvisioningClusterService.
-func (_d ProvisioningClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cluster provisioning.Cluster, err error) {
+func (_d ProvisioningClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cluster *provisioning.Cluster, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

@@ -384,9 +384,9 @@ func TestNetworkZoneService_ResyncByID(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
 					require.Equal(t, "one", name)
-					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
 
@@ -538,8 +538,8 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (provisioning.Cluster, error) {
-					return tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
 				},
 			}
 

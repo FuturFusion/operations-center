@@ -28,6 +28,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/github"
 	provisioningRepoMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/repo/middleware"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/response"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -85,6 +86,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	dbWithTransaction := transaction.Enable(db)
+	entities.PreparedStmts, err = entities.PrepareStmts(dbWithTransaction, false)
+	if err != nil {
+		return err
+	}
 
 	// TODO: setup certificates
 

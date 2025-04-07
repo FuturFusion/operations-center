@@ -38,7 +38,7 @@ func NewClusterRepoWithPrometheus(base provisioning.ClusterRepo, instanceName st
 }
 
 // Create implements provisioning.ClusterRepo.
-func (_d ClusterRepoWithPrometheus) Create(ctx context.Context, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
+func (_d ClusterRepoWithPrometheus) Create(ctx context.Context, cluster provisioning.Cluster) (n int64, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -94,7 +94,7 @@ func (_d ClusterRepoWithPrometheus) GetAllNames(ctx context.Context) (strings []
 }
 
 // GetByName implements provisioning.ClusterRepo.
-func (_d ClusterRepoWithPrometheus) GetByName(ctx context.Context, name string) (cluster provisioning.Cluster, err error) {
+func (_d ClusterRepoWithPrometheus) GetByName(ctx context.Context, name string) (cluster *provisioning.Cluster, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -107,8 +107,8 @@ func (_d ClusterRepoWithPrometheus) GetByName(ctx context.Context, name string) 
 	return _d.base.GetByName(ctx, name)
 }
 
-// UpdateByName implements provisioning.ClusterRepo.
-func (_d ClusterRepoWithPrometheus) UpdateByName(ctx context.Context, name string, cluster provisioning.Cluster) (cluster1 provisioning.Cluster, err error) {
+// Rename implements provisioning.ClusterRepo.
+func (_d ClusterRepoWithPrometheus) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -116,7 +116,21 @@ func (_d ClusterRepoWithPrometheus) UpdateByName(ctx context.Context, name strin
 			result = "error"
 		}
 
-		clusterRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByName", result).Observe(time.Since(_since).Seconds())
+		clusterRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "Rename", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByName(ctx, name, cluster)
+	return _d.base.Rename(ctx, oldName, newName)
+}
+
+// Update implements provisioning.ClusterRepo.
+func (_d ClusterRepoWithPrometheus) Update(ctx context.Context, cluster provisioning.Cluster) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "Update", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Update(ctx, cluster)
 }

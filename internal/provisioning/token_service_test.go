@@ -78,8 +78,8 @@ func TestTokenService_Create(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.TokenRepoMock{
-				CreateFunc: func(ctx context.Context, in provisioning.Token) (provisioning.Token, error) {
-					return provisioning.Token{}, tc.repoCreateErr
+				CreateFunc: func(ctx context.Context, in provisioning.Token) (int64, error) {
+					return 1, tc.repoCreateErr
 				},
 			}
 
@@ -186,7 +186,7 @@ func TestTokenService_GetAllNames(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.TokenRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
+				GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
 					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
 				},
 			}
@@ -194,7 +194,7 @@ func TestTokenService_GetAllNames(t *testing.T) {
 			tokenSvc := provisioning.NewTokenService(repo)
 
 			// Run test
-			tokenIDs, err := tokenSvc.GetAllIDs(context.Background())
+			tokenIDs, err := tokenSvc.GetAllUUIDs(context.Background())
 
 			// Assert
 			tc.assertErr(t, err)
@@ -207,7 +207,7 @@ func TestTokenService_GetByID(t *testing.T) {
 	tests := []struct {
 		name             string
 		idArg            uuid.UUID
-		repoGetByIDToken provisioning.Token
+		repoGetByIDToken *provisioning.Token
 		repoGetByIDErr   error
 
 		assertErr require.ErrorAssertionFunc
@@ -215,7 +215,7 @@ func TestTokenService_GetByID(t *testing.T) {
 		{
 			name:  "success",
 			idArg: uuidA,
-			repoGetByIDToken: provisioning.Token{
+			repoGetByIDToken: &provisioning.Token{
 				UUID:          uuidA,
 				UsesRemaining: 1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
@@ -237,7 +237,7 @@ func TestTokenService_GetByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.TokenRepoMock{
-				GetByIDFunc: func(ctx context.Context, uuid uuid.UUID) (provisioning.Token, error) {
+				GetByUUIDFunc: func(ctx context.Context, uuid uuid.UUID) (*provisioning.Token, error) {
 					return tc.repoGetByIDToken, tc.repoGetByIDErr
 				},
 			}
@@ -245,7 +245,7 @@ func TestTokenService_GetByID(t *testing.T) {
 			tokenSvc := provisioning.NewTokenService(repo)
 
 			// Run test
-			token, err := tokenSvc.GetByID(context.Background(), tc.idArg)
+			token, err := tokenSvc.GetByUUID(context.Background(), tc.idArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -254,24 +254,17 @@ func TestTokenService_GetByID(t *testing.T) {
 	}
 }
 
-func TestTokenService_UpdateByID(t *testing.T) {
+func TestTokenService_Update(t *testing.T) {
 	tests := []struct {
-		name            string
-		token           provisioning.Token
-		repoUpdateToken provisioning.Token
-		repoUpdateErr   error
+		name          string
+		token         provisioning.Token
+		repoUpdateErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
 			token: provisioning.Token{
-				UUID:          uuidA,
-				UsesRemaining: 1,
-				ExpireAt:      time.Now().Add(1 * time.Minute),
-				Description:   "A",
-			},
-			repoUpdateToken: provisioning.Token{
 				UUID:          uuidA,
 				UsesRemaining: 1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
@@ -312,24 +305,23 @@ func TestTokenService_UpdateByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.TokenRepoMock{
-				UpdateByIDFunc: func(ctx context.Context, in provisioning.Token) (provisioning.Token, error) {
-					return tc.repoUpdateToken, tc.repoUpdateErr
+				UpdateFunc: func(ctx context.Context, in provisioning.Token) error {
+					return tc.repoUpdateErr
 				},
 			}
 
 			tokenSvc := provisioning.NewTokenService(repo)
 
 			// Run test
-			token, err := tokenSvc.UpdateByID(context.Background(), tc.token)
+			err := tokenSvc.Update(context.Background(), tc.token)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoUpdateToken, token)
 		})
 	}
 }
 
-func TestTokenService_DeleteByID(t *testing.T) {
+func TestTokenService_DeleteByUUID(t *testing.T) {
 	tests := []struct {
 		name              string
 		idArg             uuid.UUID
@@ -356,7 +348,7 @@ func TestTokenService_DeleteByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.TokenRepoMock{
-				DeleteByIDFunc: func(ctx context.Context, id uuid.UUID) error {
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
 					return tc.repoDeleteByIDErr
 				},
 			}
@@ -364,7 +356,7 @@ func TestTokenService_DeleteByID(t *testing.T) {
 			tokenSvc := provisioning.NewTokenService(repo)
 
 			// Run test
-			err := tokenSvc.DeleteByID(context.Background(), tc.idArg)
+			err := tokenSvc.DeleteByUUID(context.Background(), tc.idArg)
 
 			// Assert
 			tc.assertErr(t, err)

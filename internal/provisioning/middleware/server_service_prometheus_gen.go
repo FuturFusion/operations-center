@@ -79,20 +79,6 @@ func (_d ServerServiceWithPrometheus) GetAll(ctx context.Context) (servers provi
 	return _d.base.GetAll(ctx)
 }
 
-// GetAllByClusterID implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) GetAllByClusterID(ctx context.Context, clusterID int) (servers provisioning.Servers, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllByClusterID", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.GetAllByClusterID(ctx, clusterID)
-}
-
 // GetAllNames implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) GetAllNames(ctx context.Context) (strings []string, err error) {
 	_since := time.Now()
@@ -108,7 +94,7 @@ func (_d ServerServiceWithPrometheus) GetAllNames(ctx context.Context) (strings 
 }
 
 // GetByName implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) GetByName(ctx context.Context, name string) (server provisioning.Server, err error) {
+func (_d ServerServiceWithPrometheus) GetByName(ctx context.Context, name string) (server *provisioning.Server, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -121,8 +107,8 @@ func (_d ServerServiceWithPrometheus) GetByName(ctx context.Context, name string
 	return _d.base.GetByName(ctx, name)
 }
 
-// RenameByName implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) RenameByName(ctx context.Context, name string, server provisioning.Server) (server1 provisioning.Server, err error) {
+// Rename implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -130,13 +116,13 @@ func (_d ServerServiceWithPrometheus) RenameByName(ctx context.Context, name str
 			result = "error"
 		}
 
-		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RenameByName", result).Observe(time.Since(_since).Seconds())
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Rename", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.RenameByName(ctx, name, server)
+	return _d.base.Rename(ctx, oldName, newName)
 }
 
-// UpdateByName implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) UpdateByName(ctx context.Context, name string, server provisioning.Server) (server1 provisioning.Server, err error) {
+// Update implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) Update(ctx context.Context, server provisioning.Server) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -144,7 +130,7 @@ func (_d ServerServiceWithPrometheus) UpdateByName(ctx context.Context, name str
 			result = "error"
 		}
 
-		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByName", result).Observe(time.Since(_since).Seconds())
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Update", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByName(ctx, name, server)
+	return _d.base.Update(ctx, server)
 }

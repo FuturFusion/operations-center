@@ -52,8 +52,8 @@ func (_d TokenServiceWithPrometheus) Create(ctx context.Context, token provision
 	return _d.base.Create(ctx, token)
 }
 
-// DeleteByID implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) DeleteByID(ctx context.Context, id uuid.UUID) (err error) {
+// DeleteByUUID implements provisioning.TokenService.
+func (_d TokenServiceWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -61,9 +61,9 @@ func (_d TokenServiceWithPrometheus) DeleteByID(ctx context.Context, id uuid.UUI
 			result = "error"
 		}
 
-		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
+		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByID(ctx, id)
+	return _d.base.DeleteByUUID(ctx, id)
 }
 
 // GetAll implements provisioning.TokenService.
@@ -80,8 +80,8 @@ func (_d TokenServiceWithPrometheus) GetAll(ctx context.Context) (tokens provisi
 	return _d.base.GetAll(ctx)
 }
 
-// GetAllIDs implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) GetAllIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
+// GetAllUUIDs implements provisioning.TokenService.
+func (_d TokenServiceWithPrometheus) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -89,13 +89,13 @@ func (_d TokenServiceWithPrometheus) GetAllIDs(ctx context.Context) (uUIDs []uui
 			result = "error"
 		}
 
-		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDs", result).Observe(time.Since(_since).Seconds())
+		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDs", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDs(ctx)
+	return _d.base.GetAllUUIDs(ctx)
 }
 
-// GetByID implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) GetByID(ctx context.Context, id uuid.UUID) (token provisioning.Token, err error) {
+// GetByUUID implements provisioning.TokenService.
+func (_d TokenServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (token *provisioning.Token, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -103,13 +103,13 @@ func (_d TokenServiceWithPrometheus) GetByID(ctx context.Context, id uuid.UUID) 
 			result = "error"
 		}
 
-		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) UpdateByID(ctx context.Context, token provisioning.Token) (token1 provisioning.Token, err error) {
+// Update implements provisioning.TokenService.
+func (_d TokenServiceWithPrometheus) Update(ctx context.Context, token provisioning.Token) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -117,7 +117,7 @@ func (_d TokenServiceWithPrometheus) UpdateByID(ctx context.Context, token provi
 			result = "error"
 		}
 
-		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByID", result).Observe(time.Since(_since).Seconds())
+		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Update", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByID(ctx, token)
+	return _d.base.Update(ctx, token)
 }

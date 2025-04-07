@@ -10,19 +10,19 @@ type db interface {
 	DBTX
 }
 
-type transaction struct {
+type dbtx struct {
 	db db
 }
 
-var _ DBTX = transaction{}
+var _ DBTX = dbtx{}
 
-func Enable(db db) transaction {
-	return transaction{
+func Enable(db db) dbtx {
+	return dbtx{
 		db: db,
 	}
 }
 
-func (t transaction) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+func (t dbtx) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	db, err := t.getDBTX(ctx)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,11 @@ func (t transaction) ExecContext(ctx context.Context, query string, args ...any)
 	return db.ExecContext(ctx, query, args...)
 }
 
-func (t transaction) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
+func (t dbtx) Prepare(query string) (*sql.Stmt, error) {
+	return t.db.PrepareContext(context.Background(), query)
+}
+
+func (t dbtx) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
 	db, err := t.getDBTX(ctx)
 	if err != nil {
 		return nil, err
@@ -40,7 +44,7 @@ func (t transaction) PrepareContext(ctx context.Context, query string) (*sql.Stm
 	return db.PrepareContext(ctx, query)
 }
 
-func (t transaction) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+func (t dbtx) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	db, err := t.getDBTX(ctx)
 	if err != nil {
 		return nil, err
@@ -49,7 +53,7 @@ func (t transaction) QueryContext(ctx context.Context, query string, args ...any
 	return db.QueryContext(ctx, query, args...)
 }
 
-func (t transaction) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+func (t dbtx) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
 	db, err := t.getDBTX(ctx)
 	if err != nil {
 		// Workaround to create a *sql.Row with the private err field set to the
@@ -61,12 +65,15 @@ func (t transaction) QueryRowContext(ctx context.Context, query string, args ...
 	return db.QueryRowContext(ctx, query, args...)
 }
 
-func (t transaction) getDBTX(ctx context.Context) (DBTX, error) {
+func (t dbtx) getDBTX(ctx context.Context) (DBTX, error) {
 	tc, ok := ctx.Value(tcKey{}).(*transactionContainer)
 	if !ok {
 		// No transaction started, use regular DB connection.
 		return t.db, nil
 	}
+
+	tc.lock.Lock()
+	defer tc.lock.Unlock()
 
 	if tc.tx == nil {
 		// Transaction requested, but no DB transaction started yet.

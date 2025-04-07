@@ -10,7 +10,9 @@ import (
 	"github.com/FuturFusion/operations-center/internal/dbschema/seed"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
 func TestInventoryAggregateDatabaseActions(t *testing.T) {
@@ -27,6 +29,10 @@ func TestInventoryAggregateDatabaseActions(t *testing.T) {
 	})
 
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
+	require.NoError(t, err)
+
+	tx := transaction.Enable(db)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
 
 	err = seed.DB(ctx, db, seed.Config{})

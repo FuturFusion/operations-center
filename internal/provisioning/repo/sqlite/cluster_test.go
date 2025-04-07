@@ -11,7 +11,9 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
 func TestClusterDatabaseActions(t *testing.T) {
@@ -44,7 +46,11 @@ func TestClusterDatabaseActions(t *testing.T) {
 	_, err = dbschema.Ensure(ctx, db, tmpDir)
 	require.NoError(t, err)
 
-	cluster := sqlite.NewCluster(db)
+	tx := transaction.Enable(db)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	require.NoError(t, err)
+
+	cluster := sqlite.NewCluster(tx)
 
 	// Add cluster
 	_, err = cluster.Create(ctx, clusterA)
@@ -69,20 +75,25 @@ func TestClusterDatabaseActions(t *testing.T) {
 	// Should get back clusterA unchanged.
 	dbClusterA, err := cluster.GetByName(ctx, clusterA.Name)
 	require.NoError(t, err)
-	require.Equal(t, clusterA, dbClusterA)
+	clusterA.ID = dbClusterA.ID
+	require.Equal(t, clusterA, *dbClusterA)
 
-	dbClusterA, err = cluster.GetByName(ctx, clusterA.Name)
+	dbClusterB, err := cluster.GetByName(ctx, clusterB.Name)
 	require.NoError(t, err)
-	require.Equal(t, clusterA, dbClusterA)
+	clusterB.ID = dbClusterB.ID
+	require.Equal(t, clusterB, *dbClusterB)
 
 	// Test updating a cluster.
 	clusterB.ConnectionURL = "https://foobar.com"
-	dbClusterB, err := cluster.UpdateByName(ctx, clusterB.Name, clusterB)
+	err = cluster.Update(ctx, clusterB)
 	require.NoError(t, err)
-	require.Equal(t, clusterB, dbClusterB)
+	clusterB.Name = "two new"
+	err = cluster.Rename(ctx, "two", clusterB.Name)
+	require.NoError(t, err)
 	dbClusterB, err = cluster.GetByName(ctx, clusterB.Name)
 	require.NoError(t, err)
-	require.Equal(t, clusterB, dbClusterB)
+	clusterB.ID = dbClusterB.ID
+	require.Equal(t, clusterB, *dbClusterB)
 
 	// Delete a cluster.
 	err = cluster.DeleteByName(ctx, clusterA.Name)
@@ -100,7 +111,7 @@ func TestClusterDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Can't update a cluster that doesn't exist.
-	_, err = cluster.UpdateByName(ctx, clusterA.Name, clusterA)
+	err = cluster.Update(ctx, clusterA)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Can't add a duplicate a cluster.
