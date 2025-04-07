@@ -10,42 +10,29 @@ import (
 )
 
 
-{{ range $i, $mock := .Mocks }}
+{{ range $i, $wrapper := .Interfaces }}
 
-{{ $decorator := (or .TemplateData.DecoratorName (printf "%sWithSlog" $mock.InterfaceName)) }}
+{{ $decorator := (or .TemplateData.DecoratorName (printf "%sWithSlog" $wrapper.Name)) }}
 
-// {{$decorator}} implements {{ $.SrcPkgQualifier }}{{ $mock.InterfaceName }} that is instrumented with slog logger.
+// {{$decorator}} implements {{ $.SrcPkgQualifier }}{{ $wrapper.Name }} that is instrumented with slog logger.
 type {{$decorator}} struct {
 	_log  *slog.Logger
-	_base {{ $.SrcPkgQualifier }}{{ $mock.InterfaceName }}
+	_base {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}
 }
 
-// New{{$decorator}} instruments an implementation of the {{ $.SrcPkgQualifier }}{{ $mock.InterfaceName }} with simple logging.
-func New{{$decorator}}(base {{ $.SrcPkgQualifier }}{{ $mock.InterfaceName }}, log *slog.Logger) {{$decorator}} {
+// New{{$decorator}} instruments an implementation of the {{ $.SrcPkgQualifier }}{{ $wrapper.Name }} with simple logging.
+func New{{$decorator}}(base {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}, log *slog.Logger) {{$decorator}} {
 	return {{$decorator}}{
 		_base: base,
 		_log: log,
 	}
 }
 
-{{ range $method := $mock.Methods }}
+{{ range $method := $wrapper.Methods }}
 
-	// {{$method.Name}} implements {{ $.SrcPkgQualifier }}{{ $mock.InterfaceName }}.
+	// {{$method.Name}} implements {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}.
 	func (_d {{$decorator}}) {{.Name}}({{.ArgList}}) ({{.ReturnArgList}}) {
-		{{- $acceptsContext := false -}}
-		{{- if and (gt ($method.Params | len) 0) (eq (index $method.Params 0).TypeString "context.Context") -}}
-		{{- $acceptsContext = true -}}
-		{{- end -}}
-		{{- $returnsError := false -}}
-		{{- $lastType := "" -}}
-		{{- range $method.Returns -}}
-		{{- $lastType = .TypeString }}
-		{{- end -}}
-		{{- if eq $lastType "error" -}}
-		{{- $returnsError = true -}}
-		{{- end -}}
-
-		{{- if not $acceptsContext }}
+		{{- if not $method.AcceptsContext }}
 		ctx := context.Background()
 		{{- end }}
 		log := _d._log.With()
@@ -111,7 +98,7 @@ func New{{$decorator}}(base {{ $.SrcPkgQualifier }}{{ $mock.InterfaceName }}, lo
 				}
 			{{- end }}
 
-			{{- if $returnsError}}
+			{{- if $method.ReturnsError }}
 				if err != nil {
 					log.Error("<= method {{$method.Name}} returned an error" )
 				} else {
@@ -121,9 +108,7 @@ func New{{$decorator}}(base {{ $.SrcPkgQualifier }}{{ $mock.InterfaceName }}, lo
 				log.Debug("<= method {{$method.Name}} finished")
 			{{end -}}
 		}()
-		{{ if gt ($method.Returns | len) 0 -}}
-		return
-		{{- end }} _d._base.{{ $method.Name }}({{ $method.ArgCallList }})
+		{{ $method.ReturnStatement }} _d._base.{{ $method.Name }}({{ $method.ArgCallList }})
 	}
 {{ end }}
 

@@ -16,7 +16,7 @@ dir: >-
   {{- .InterfaceDir -}}/{{- $targetDir -}}
 filename: >-
   {{ .InterfaceName | snakecase }}_prometheus_gen.go
-mockname: "{{ .InterfaceName }}WithPrometheus"
+structname: "{{ .InterfaceName }}WithPrometheus"
 pkgname: middleware
 packages:
   github.com/FuturFusion/operations-center/internal/inventory:
