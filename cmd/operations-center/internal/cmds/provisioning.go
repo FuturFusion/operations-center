@@ -31,7 +31,9 @@ func (c *CmdProvisioning) Command() *cobra.Command {
 
 	cmd.AddCommand(clusterCmd.Command())
 
-	serverCmd := provisioning.CmdServer{}
+	serverCmd := provisioning.CmdServer{
+		Config: c.Config,
+	}
 	cmd.AddCommand(serverCmd.Command())
 
 	return cmd
