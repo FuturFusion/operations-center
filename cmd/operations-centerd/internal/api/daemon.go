@@ -17,6 +17,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
+	"github.com/FuturFusion/operations-center/internal/auth"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
 	"github.com/FuturFusion/operations-center/internal/file"
 	incusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
@@ -157,7 +158,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Setup Routes
 	serveMux := http.NewServeMux()
-	router := newRouter(serveMux)
+	// TODO: Move access log and request ID middlewares here
+	router := newRouter(serveMux).AddMiddlewares(auth.Authenticate)
 	router.HandleFunc("GET /{$}",
 		response.With(
 			rootHandler,
