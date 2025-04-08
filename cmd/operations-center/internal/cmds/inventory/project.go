@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,7 +20,9 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdProject struct{}
+type CmdProject struct {
+	Config *config.Config
+}
 
 func (c *CmdProject) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -34,11 +37,17 @@ func (c *CmdProject) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	projectListCmd := cmdProjectList{}
+	projectListCmd := cmdProjectList{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(projectListCmd.Command())
 
 	// Show
-	projectShowCmd := cmdProjectShow{}
+	projectShowCmd := cmdProjectShow{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(projectShowCmd.Command())
 
 	return cmd
@@ -46,6 +55,8 @@ func (c *CmdProject) Command() *cobra.Command {
 
 // List projects.
 type cmdProjectList struct {
+	config *config.Config
+
 	flagFilterCluster    string
 	flagFilterExpression string
 
@@ -95,7 +106,7 @@ func (c *cmdProjectList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	projects, err := ocClient.GetWithFilterProjects(filter)
 	if err != nil {
@@ -142,7 +153,9 @@ func (c *cmdProjectList) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Show project.
-type cmdProjectShow struct{}
+type cmdProjectShow struct {
+	config *config.Config
+}
 
 func (c *cmdProjectShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -167,7 +180,7 @@ func (c *cmdProjectShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	project, err := ocClient.GetProject(name)
 	if err != nil {

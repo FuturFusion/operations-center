@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,7 +20,9 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdProfile struct{}
+type CmdProfile struct {
+	Config *config.Config
+}
 
 func (c *CmdProfile) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -34,11 +37,17 @@ func (c *CmdProfile) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	profileListCmd := cmdProfileList{}
+	profileListCmd := cmdProfileList{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(profileListCmd.Command())
 
 	// Show
-	profileShowCmd := cmdProfileShow{}
+	profileShowCmd := cmdProfileShow{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(profileShowCmd.Command())
 
 	return cmd
@@ -46,6 +55,8 @@ func (c *CmdProfile) Command() *cobra.Command {
 
 // List profiles.
 type cmdProfileList struct {
+	config *config.Config
+
 	flagFilterCluster    string
 	flagFilterProject    string
 	flagFilterExpression string
@@ -101,7 +112,7 @@ func (c *cmdProfileList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	profiles, err := ocClient.GetWithFilterProfiles(filter)
 	if err != nil {
@@ -148,7 +159,9 @@ func (c *cmdProfileList) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Show profile.
-type cmdProfileShow struct{}
+type cmdProfileShow struct {
+	config *config.Config
+}
 
 func (c *cmdProfileShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -173,7 +186,7 @@ func (c *cmdProfileShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	profile, err := ocClient.GetProfile(name)
 	if err != nil {

@@ -4,9 +4,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/cmds/inventory"
+	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 )
 
-type CmdInventory struct{}
+type CmdInventory struct {
+	Config *config.Config
+}
 
 func (c *CmdInventory) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -23,50 +26,95 @@ func (c *CmdInventory) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// Query
-	queryCmd := inventory.CmdQuery{}
+	queryCmd := inventory.CmdQuery{
+		Config: c.Config,
+	}
+
 	cmd.AddCommand(queryCmd.Command())
 
 	// Single resources
-	imageCmd := inventory.CmdImage{}
+	imageCmd := inventory.CmdImage{
+		Config: c.Config,
+	}
+
 	cmd.AddCommand(imageCmd.Command())
 
-	instanceCmd := inventory.CmdInstance{}
+	instanceCmd := inventory.CmdInstance{
+		Config: c.Config,
+	}
+
 	cmd.AddCommand(instanceCmd.Command())
 
-	networkACLCmd := inventory.CmdNetworkACL{}
+	networkACLCmd := inventory.CmdNetworkACL{
+		Config: c.Config,
+	}
+
 	cmd.AddCommand(networkACLCmd.Command())
 
-	networkForwardCmd := inventory.CmdNetworkForward{}
+	networkForwardCmd := inventory.CmdNetworkForward{
+		Config: c.Config,
+	}
+
 	cmd.AddCommand(networkForwardCmd.Command())
 
-	networkIntegrationCmd := inventory.CmdNetworkIntegration{}
+	networkIntegrationCmd := inventory.CmdNetworkIntegration{
+		Config: c.Config,
+	}
+
 	cmd.AddCommand(networkIntegrationCmd.Command())
 
-	networkLoadBalancerCmd := inventory.CmdNetworkLoadBalancer{}
+	networkLoadBalancerCmd := inventory.CmdNetworkLoadBalancer{
+		Config: c.Config,
+	}
+
 	cmd.AddCommand(networkLoadBalancerCmd.Command())
 
-	networkPeerCmd := inventory.CmdNetworkPeer{}
+	networkPeerCmd := inventory.CmdNetworkPeer{
+		Config: c.Config,
+	}
+
 	cmd.AddCommand(networkPeerCmd.Command())
 
-	networkZoneCmd := inventory.CmdNetworkZone{}
+	networkZoneCmd := inventory.CmdNetworkZone{
+		Config: c.Config,
+	}
+
 	cmd.AddCommand(networkZoneCmd.Command())
 
-	networkCmd := inventory.CmdNetwork{}
+	networkCmd := inventory.CmdNetwork{
+		Config: c.Config,
+	}
+
 	cmd.AddCommand(networkCmd.Command())
 
-	profileCmd := inventory.CmdProfile{}
+	profileCmd := inventory.CmdProfile{
+		Config: c.Config,
+	}
+
 	cmd.AddCommand(profileCmd.Command())
 
-	projectCmd := inventory.CmdProject{}
+	projectCmd := inventory.CmdProject{
+		Config: c.Config,
+	}
+
 	cmd.AddCommand(projectCmd.Command())
 
-	storageBucketCmd := inventory.CmdStorageBucket{}
+	storageBucketCmd := inventory.CmdStorageBucket{
+		Config: c.Config,
+	}
+
 	cmd.AddCommand(storageBucketCmd.Command())
 
-	storagePoolCmd := inventory.CmdStoragePool{}
+	storagePoolCmd := inventory.CmdStoragePool{
+		Config: c.Config,
+	}
+
 	cmd.AddCommand(storagePoolCmd.Command())
 
-	storageVolumeCmd := inventory.CmdStorageVolume{}
+	storageVolumeCmd := inventory.CmdStorageVolume{
+		Config: c.Config,
+	}
+
 	cmd.AddCommand(storageVolumeCmd.Command())
 
 	return cmd
