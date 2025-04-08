@@ -31,7 +31,7 @@ func (c *CmdServer) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	serverListCmd := cmddServerList{
+	serverListCmd := cmdServerList{
 		config: c.Config,
 	}
 
@@ -55,13 +55,13 @@ func (c *CmdServer) Command() *cobra.Command {
 }
 
 // List servers.
-type cmddServerList struct {
+type cmdServerList struct {
 	config *config.Config
 
 	flagFormat string
 }
 
-func (c *cmddServerList) Command() *cobra.Command {
+func (c *cmdServerList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
 	cmd.Short = "List available servers"
@@ -79,7 +79,7 @@ func (c *cmddServerList) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmddServerList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdServerList) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
