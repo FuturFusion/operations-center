@@ -2,12 +2,15 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -16,9 +19,41 @@ const apiVersionPrefix = "/1.0"
 
 type OperationsCenterClient struct {
 	httpClient *http.Client
+	baseURL    string
 }
 
-func New() OperationsCenterClient {
+func New(serverPort string, forceLocal bool) OperationsCenterClient {
+	if forceLocal {
+		// Setup a Unix socket dialer
+		unixDial := func(_ context.Context, network, addr string) (net.Conn, error) {
+			raddr, err := net.ResolveUnixAddr("unix", "./tmp/unix.socket")
+			if err != nil {
+				return nil, err
+			}
+
+			return net.DialUnix("unix", nil, raddr)
+		}
+
+		// Define the http transport
+		transport := &http.Transport{
+			DialContext:           unixDial,
+			DisableKeepAlives:     true,
+			ExpectContinueTimeout: time.Second * 30,
+			ResponseHeaderTimeout: time.Second * 3600,
+			TLSHandshakeTimeout:   time.Second * 5,
+		}
+
+		// Define the http client
+		client := &http.Client{}
+
+		client.Transport = transport
+
+		return OperationsCenterClient{
+			httpClient: client,
+			baseURL:    "http://unix.socket/",
+		}
+	}
+
 	httpClient := http.DefaultClient
 
 	httpClient.Transport = &http.Transport{
@@ -29,6 +64,7 @@ func New() OperationsCenterClient {
 
 	return OperationsCenterClient{
 		httpClient: httpClient,
+		baseURL:    fmt.Sprintf("https://%s", serverPort),
 	}
 }
 
@@ -38,8 +74,7 @@ func (c OperationsCenterClient) doRequest(method string, endpoint string, query 
 		return nil, err
 	}
 
-	// FIXME: take URL from config
-	u, err := url.Parse(fmt.Sprintf("https://localhost:7443%s?%s", apiEndpoint, query.Encode()))
+	u, err := url.Parse(fmt.Sprintf("%s%s?%s", c.baseURL, apiEndpoint, query.Encode()))
 	if err != nil {
 		return nil, err
 	}

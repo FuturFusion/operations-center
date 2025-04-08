@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,7 +20,9 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdNetworkZone struct{}
+type CmdNetworkZone struct {
+	Config *config.Config
+}
 
 func (c *CmdNetworkZone) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -34,11 +37,17 @@ func (c *CmdNetworkZone) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	networkZoneListCmd := cmdNetworkZoneList{}
+	networkZoneListCmd := cmdNetworkZoneList{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(networkZoneListCmd.Command())
 
 	// Show
-	networkZoneShowCmd := cmdNetworkZoneShow{}
+	networkZoneShowCmd := cmdNetworkZoneShow{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(networkZoneShowCmd.Command())
 
 	return cmd
@@ -46,6 +55,8 @@ func (c *CmdNetworkZone) Command() *cobra.Command {
 
 // List network_zones.
 type cmdNetworkZoneList struct {
+	config *config.Config
+
 	flagFilterCluster    string
 	flagFilterProject    string
 	flagFilterExpression string
@@ -101,7 +112,7 @@ func (c *cmdNetworkZoneList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	networkZones, err := ocClient.GetWithFilterNetworkZones(filter)
 	if err != nil {
@@ -148,7 +159,9 @@ func (c *cmdNetworkZoneList) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Show network_zone.
-type cmdNetworkZoneShow struct{}
+type cmdNetworkZoneShow struct {
+	config *config.Config
+}
 
 func (c *cmdNetworkZoneShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -173,7 +186,7 @@ func (c *cmdNetworkZoneShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	networkZone, err := ocClient.GetNetworkZone(name)
 	if err != nil {

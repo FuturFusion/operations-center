@@ -6,13 +6,16 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/render"
 	"github.com/FuturFusion/operations-center/internal/sort"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-type CmdCluster struct{}
+type CmdCluster struct {
+	Config *config.Config
+}
 
 func (c *CmdCluster) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -29,23 +32,38 @@ func (c *CmdCluster) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// Add
-	clusterAddCmd := cmdClusterAdd{}
+	clusterAddCmd := cmdClusterAdd{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(clusterAddCmd.Command())
 
 	// List
-	clusterListCmd := cmdClusterList{}
+	clusterListCmd := cmdClusterList{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(clusterListCmd.Command())
 
 	// Remove
-	clusterRemoveCmd := cmdClusterRemove{}
+	clusterRemoveCmd := cmdClusterRemove{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(clusterRemoveCmd.Command())
 
 	// Show
-	clusterShowCmd := cmdClusterShow{}
+	clusterShowCmd := cmdClusterShow{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(clusterShowCmd.Command())
 
 	// Resync
-	clusterResyncCmd := cmdClusterResync{}
+	clusterResyncCmd := cmdClusterResync{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(clusterResyncCmd.Command())
 
 	return cmd
@@ -53,6 +71,8 @@ func (c *CmdCluster) Command() *cobra.Command {
 
 // Add cluster.
 type cmdClusterAdd struct {
+	config *config.Config
+
 	connectionURL string
 	serverNames   []string
 }
@@ -92,7 +112,7 @@ func (c *cmdClusterAdd) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	err = ocClient.CreateCluster(api.ClusterPost{
 		Cluster: api.Cluster{
@@ -122,6 +142,8 @@ func (c *cmdClusterAdd) ValidateFlags(cmd *cobra.Command, _ []string) error {
 
 // List clusters.
 type cmdClusterList struct {
+	config *config.Config
+
 	flagFormat string
 }
 
@@ -151,7 +173,7 @@ func (c *cmdClusterList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	clusters, err := ocClient.GetClusters()
 	if err != nil {
@@ -172,7 +194,9 @@ func (c *cmdClusterList) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Remove cluster.
-type cmdClusterRemove struct{}
+type cmdClusterRemove struct {
+	config *config.Config
+}
 
 func (c *cmdClusterRemove) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -199,7 +223,7 @@ func (c *cmdClusterRemove) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	err = ocClient.DeleteCluster(name)
 	if err != nil {
@@ -210,7 +234,9 @@ func (c *cmdClusterRemove) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Show cluster.
-type cmdClusterShow struct{}
+type cmdClusterShow struct {
+	config *config.Config
+}
 
 func (c *cmdClusterShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -235,7 +261,7 @@ func (c *cmdClusterShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	cluster, err := ocClient.GetCluster(name)
 	if err != nil {
@@ -250,7 +276,9 @@ func (c *cmdClusterShow) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Resync cluster.
-type cmdClusterResync struct{}
+type cmdClusterResync struct {
+	config *config.Config
+}
 
 func (c *cmdClusterResync) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -275,7 +303,7 @@ func (c *cmdClusterResync) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	err = ocClient.ResyncCluster(name)
 	if err != nil {

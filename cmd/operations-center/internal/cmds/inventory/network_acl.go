@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,7 +20,9 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdNetworkACL struct{}
+type CmdNetworkACL struct {
+	Config *config.Config
+}
 
 func (c *CmdNetworkACL) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -34,11 +37,17 @@ func (c *CmdNetworkACL) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	networkACLListCmd := cmdNetworkACLList{}
+	networkACLListCmd := cmdNetworkACLList{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(networkACLListCmd.Command())
 
 	// Show
-	networkACLShowCmd := cmdNetworkACLShow{}
+	networkACLShowCmd := cmdNetworkACLShow{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(networkACLShowCmd.Command())
 
 	return cmd
@@ -46,6 +55,8 @@ func (c *CmdNetworkACL) Command() *cobra.Command {
 
 // List network_acls.
 type cmdNetworkACLList struct {
+	config *config.Config
+
 	flagFilterCluster    string
 	flagFilterProject    string
 	flagFilterExpression string
@@ -101,7 +112,7 @@ func (c *cmdNetworkACLList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	networkACLs, err := ocClient.GetWithFilterNetworkACLs(filter)
 	if err != nil {
@@ -148,7 +159,9 @@ func (c *cmdNetworkACLList) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Show network_acl.
-type cmdNetworkACLShow struct{}
+type cmdNetworkACLShow struct {
+	config *config.Config
+}
 
 func (c *cmdNetworkACLShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -173,7 +186,7 @@ func (c *cmdNetworkACLShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	networkACL, err := ocClient.GetNetworkACL(name)
 	if err != nil {

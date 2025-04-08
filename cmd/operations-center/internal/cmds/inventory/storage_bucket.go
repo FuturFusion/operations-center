@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,7 +20,9 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdStorageBucket struct{}
+type CmdStorageBucket struct {
+	Config *config.Config
+}
 
 func (c *CmdStorageBucket) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -34,11 +37,17 @@ func (c *CmdStorageBucket) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	storageBucketListCmd := cmdStorageBucketList{}
+	storageBucketListCmd := cmdStorageBucketList{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(storageBucketListCmd.Command())
 
 	// Show
-	storageBucketShowCmd := cmdStorageBucketShow{}
+	storageBucketShowCmd := cmdStorageBucketShow{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(storageBucketShowCmd.Command())
 
 	return cmd
@@ -46,6 +55,8 @@ func (c *CmdStorageBucket) Command() *cobra.Command {
 
 // List storage_buckets.
 type cmdStorageBucketList struct {
+	config *config.Config
+
 	flagFilterCluster    string
 	flagFilterServer     string
 	flagFilterProject    string
@@ -107,7 +118,7 @@ func (c *cmdStorageBucketList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	storageBuckets, err := ocClient.GetWithFilterStorageBuckets(filter)
 	if err != nil {
@@ -154,7 +165,9 @@ func (c *cmdStorageBucketList) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Show storage_bucket.
-type cmdStorageBucketShow struct{}
+type cmdStorageBucketShow struct {
+	config *config.Config
+}
 
 func (c *cmdStorageBucketShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -179,7 +192,7 @@ func (c *cmdStorageBucketShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	storageBucket, err := ocClient.GetStorageBucket(name)
 	if err != nil {

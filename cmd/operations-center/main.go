@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/cmds"
+	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/version"
 )
@@ -47,21 +48,32 @@ func main0(args []string, stdout io.Writer, stderr io.Writer) error {
 	app.Args = cobra.ArbitraryArgs
 
 	// Global flags
-	globalCmd := cmdGlobal{cmd: app}
+	globalCmd := cmdGlobal{
+		cmd:    app,
+		config: &config.Config{},
+	}
+
 	app.PersistentPreRunE = globalCmd.Run
 	app.PersistentFlags().BoolVar(&globalCmd.flagVersion, "version", false, "Print version number")
 	app.PersistentFlags().BoolVarP(&globalCmd.flagHelp, "help", "h", false, "Print help")
 	app.PersistentFlags().BoolVarP(&globalCmd.flagLogDebug, "debug", "d", false, "Show all debug messages")
 	app.PersistentFlags().BoolVarP(&globalCmd.flagLogVerbose, "verbose", "v", false, "Show all information messages")
+	app.PersistentFlags().BoolVar(&globalCmd.flagForceLocal, "force-local", false, "Force using the local unix socket")
 
 	// Version handling
 	app.SetVersionTemplate("{{.Version}}\n")
 	app.Version = version.Version
 
-	provisioningCmd := cmds.CmdProvisioning{}
+	provisioningCmd := cmds.CmdProvisioning{
+		Config: globalCmd.config,
+	}
+
 	app.AddCommand(provisioningCmd.Command())
 
-	inventoryCmd := cmds.CmdInventory{}
+	inventoryCmd := cmds.CmdInventory{
+		Config: globalCmd.config,
+	}
+
 	app.AddCommand(inventoryCmd.Command())
 
 	return app.Execute()
@@ -70,11 +82,15 @@ func main0(args []string, stdout io.Writer, stderr io.Writer) error {
 type cmdGlobal struct {
 	cmd *cobra.Command
 
+	config *config.Config
+
 	flagHelp    bool
 	flagVersion bool
 
 	flagLogDebug   bool
 	flagLogVerbose bool
+
+	flagForceLocal bool
 }
 
 func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
@@ -83,5 +99,10 @@ func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return nil
+	c.config.Verbose = c.flagLogVerbose
+	c.config.Debug = c.flagLogDebug
+	c.config.ForceLocal = c.flagForceLocal
+
+	// FIXME: correct directory
+	return c.config.LoadConfig("./tmp")
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,7 +20,9 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdStorageVolume struct{}
+type CmdStorageVolume struct {
+	Config *config.Config
+}
 
 func (c *CmdStorageVolume) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -34,11 +37,17 @@ func (c *CmdStorageVolume) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	storageVolumeListCmd := cmdStorageVolumeList{}
+	storageVolumeListCmd := cmdStorageVolumeList{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(storageVolumeListCmd.Command())
 
 	// Show
-	storageVolumeShowCmd := cmdStorageVolumeShow{}
+	storageVolumeShowCmd := cmdStorageVolumeShow{
+		config: c.Config,
+	}
+
 	cmd.AddCommand(storageVolumeShowCmd.Command())
 
 	return cmd
@@ -46,6 +55,8 @@ func (c *CmdStorageVolume) Command() *cobra.Command {
 
 // List storage_volumes.
 type cmdStorageVolumeList struct {
+	config *config.Config
+
 	flagFilterCluster    string
 	flagFilterServer     string
 	flagFilterProject    string
@@ -107,7 +118,7 @@ func (c *cmdStorageVolumeList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	storageVolumes, err := ocClient.GetWithFilterStorageVolumes(filter)
 	if err != nil {
@@ -154,7 +165,9 @@ func (c *cmdStorageVolumeList) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Show storage_volume.
-type cmdStorageVolumeShow struct{}
+type cmdStorageVolumeShow struct {
+	config *config.Config
+}
 
 func (c *cmdStorageVolumeShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -179,7 +192,7 @@ func (c *cmdStorageVolumeShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New()
+	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
 	storageVolume, err := ocClient.GetStorageVolume(name)
 	if err != nil {
