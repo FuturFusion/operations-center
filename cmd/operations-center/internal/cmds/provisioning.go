@@ -34,6 +34,7 @@ func (c *CmdProvisioning) Command() *cobra.Command {
 	serverCmd := provisioning.CmdServer{
 		Config: c.Config,
 	}
+
 	cmd.AddCommand(serverCmd.Command())
 
 	return cmd

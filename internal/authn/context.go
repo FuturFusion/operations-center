@@ -1,4 +1,4 @@
-package auth
+package authn
 
 // CtxKey is the type used for all fields stored in the request context.
 type ctxKey string

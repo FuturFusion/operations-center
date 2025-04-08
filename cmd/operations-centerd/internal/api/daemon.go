@@ -17,7 +17,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
-	"github.com/FuturFusion/operations-center/internal/auth"
+	"github.com/FuturFusion/operations-center/internal/authn"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
 	"github.com/FuturFusion/operations-center/internal/file"
 	incusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
@@ -82,6 +82,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return fmt.Errorf("Failed to open sqlite database: %w", err)
 	}
 
+	// TODO: should Ensure take the provided context? If not, document the reason.
 	_, err = dbschema.Ensure(context.TODO(), db, d.env.VarDir())
 	if err != nil {
 		return err
@@ -159,14 +160,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// Setup Routes
 	serveMux := http.NewServeMux()
 	// TODO: Move access log and request ID middlewares here
-	router := newRouter(serveMux).AddMiddlewares(auth.Authenticate)
+	router := newRouter(serveMux)
 	router.HandleFunc("GET /{$}",
 		response.With(
 			rootHandler,
 		),
 	)
 
-	api10router := router.SubGroup("/1.0")
+	api10router := router.SubGroup("/1.0").AddMiddlewares(authn.Authenticate)
 	registerAPI10Handler(api10router)
 
 	provisioningRouter := api10router.SubGroup("/provisioning")

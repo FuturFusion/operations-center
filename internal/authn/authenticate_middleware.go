@@ -1,4 +1,4 @@
-package auth
+package authn
 
 import (
 	"context"
@@ -15,12 +15,12 @@ func Authenticate(next http.HandlerFunc) http.HandlerFunc {
 		trusted, username, protocol, _ := authenticate(w, r)
 
 		if !trusted {
-			slog.Warn("Rejecting request from untrusted client", slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
+			slog.WarnContext(r.Context(), "Rejecting request from untrusted client", slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
 			_ = response.Forbidden(nil).Render(w)
 			return
 		}
 
-		slog.Debug("Handling API request", slog.String("method", r.Method), slog.String("url", r.URL.RequestURI()), slog.String("ip", r.RemoteAddr))
+		slog.DebugContext(r.Context(), "Handling API request", slog.String("method", r.Method), slog.String("url", r.URL.RequestURI()), slog.String("ip", r.RemoteAddr))
 
 		// Add authentication/authorization context data.
 		ctx := context.WithValue(r.Context(), CtxUsername, username)
@@ -40,7 +40,7 @@ func Authenticate(next http.HandlerFunc) http.HandlerFunc {
 // This does not perform authorization, only validates authentication.
 // Returns whether trusted or not, the username (or certificate fingerprint) of the trusted client, and the type of
 // client that has been authenticated (unix or tls).
-func authenticate(_ http.ResponseWriter, r *http.Request) (bool, string, string, error) {
+func authenticate(_ http.ResponseWriter, r *http.Request) (bool, string, string, error) { //nolint:unparam
 	// Local unix socket queries.
 	if r.RemoteAddr == "@" && r.TLS == nil {
 		return true, "", "unix", nil
