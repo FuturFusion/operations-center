@@ -18,6 +18,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
+	"github.com/FuturFusion/operations-center/internal/file"
 	incusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
 	"github.com/FuturFusion/operations-center/internal/logger"
@@ -50,14 +51,16 @@ type Daemon struct {
 }
 
 func NewDaemon(ctx context.Context, env environment, cfg *config.Config) *Daemon {
-	clientCert, err := os.ReadFile(cfg.ClientCertificateFilename)
+	clientCertFilename := filepath.Join(env.VarDir(), cfg.ClientCertificateFilename)
+	clientCert, err := os.ReadFile(clientCertFilename)
 	if err != nil {
-		slog.WarnContext(ctx, "failed to read client certificate", slog.String("file", cfg.ClientCertificateFilename), logger.Err(err))
+		slog.WarnContext(ctx, "failed to read client certificate", slog.String("file", clientCertFilename), logger.Err(err))
 	}
 
-	clientKey, err := os.ReadFile(cfg.ClientKeyFilename)
+	clientKeyFilename := filepath.Join(env.VarDir(), cfg.ClientKeyFilename)
+	clientKey, err := os.ReadFile(clientKeyFilename)
 	if err != nil {
-		slog.WarnContext(ctx, "failed to read client key", slog.String("file", cfg.ClientKeyFilename), logger.Err(err))
+		slog.WarnContext(ctx, "failed to read client key", slog.String("file", clientKeyFilename), logger.Err(err))
 	}
 
 	d := &Daemon{
@@ -95,9 +98,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// TODO: setup OIDC
 
-	// TODO: Decide on the usage of the GITHUB_TOKEN. It is necessary to avoid
-	// being hit by the Github rate limiting.
-	gh := ghClient.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
+	gh := ghClient.NewClient(nil)
+	if d.config.GithubToken != "" {
+		gh = gh.WithAuthToken(d.config.GithubToken)
+	}
 
 	serverClientProvider := serverMiddleware.NewServerClientWithSlog(
 		incusAdapter.New(
@@ -202,9 +206,16 @@ func (d *Daemon) Start(ctx context.Context) error {
 	d.errgroup = group
 
 	group.Go(func() error {
-		// TODO: Check if the socket file already exists. If it does, return an error,
-		// because this indicates, that an other instance of the operations-center
-		// is already running.
+		// TODO: if the socket file already exists, make a connection attempt. If
+		// successful, another instance of operations-centerd is already running.
+		// If not successful, it is save to delete the socket file.
+		if file.PathExists(d.env.GetUnixSocket()) {
+			err = os.Remove(d.env.GetUnixSocket())
+			if err != nil {
+				return err
+			}
+		}
+
 		unixListener, err := net.Listen("unix", d.env.GetUnixSocket())
 		if err != nil {
 			return err

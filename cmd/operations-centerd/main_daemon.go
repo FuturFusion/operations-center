@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"os/signal"
 	"time"
 
@@ -19,17 +20,21 @@ const defaultRestServerPort = 7443
 
 type env interface {
 	LogDir() string
+	RunDir() string
 	VarDir() string
 	GetUnixSocket() string
 }
 
 type cmdDaemon struct {
 	env env
+
+	flagServerAddr string
+	flagServerPort int
 }
 
 func (c *cmdDaemon) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = applicationName
+	cmd.Use = binaryName
 	cmd.Short = "The operations center daemon"
 	cmd.Long = `Description:
   The operations center daemon
@@ -38,19 +43,38 @@ func (c *cmdDaemon) Command() *cobra.Command {
 `
 	cmd.RunE = c.Run
 
+	cmd.Flags().StringVar(&c.flagServerAddr, "server-addr", "", "Address to bind to")
+	cmd.Flags().IntVar(&c.flagServerPort, "server-port", defaultRestServerPort, "IP port to bind to")
+
 	return cmd
 }
 
 func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
-	if len(args) > 1 || (len(args) == 1 && args[0] != applicationName && args[0] != "") {
+	if len(args) > 1 || (len(args) == 1 && args[0] != binaryName && args[0] != "") {
 		return fmt.Errorf(`Unknown command "%s" for "%s"`, args[0], cmd.CommandPath())
 	}
 
-	cfg := &config.Config{
-		RestServerPort: defaultRestServerPort,
+	// Ensure we have the data directory.
+	err := os.MkdirAll(c.env.VarDir(), 0o750)
+	if err != nil {
+		return fmt.Errorf("Create data directory %q: %v", c.env.VarDir(), err)
 	}
 
-	err := cfg.LoadConfig(c.env.VarDir())
+	// Ensure we have the run directory.
+	err = os.MkdirAll(c.env.RunDir(), 0o750)
+	if err != nil {
+		return fmt.Errorf("Create run directory %q: %v", c.env.RunDir(), err)
+	}
+
+	cfg := &config.Config{
+		RestServerPort: c.flagServerPort,
+		RestServerAddr: c.flagServerAddr,
+
+		ClientCertificateFilename: "client.crt",
+		ClientKeyFilename:         "client.key",
+	}
+
+	err = cfg.LoadConfig(c.env.VarDir())
 	if err != nil {
 		return fmt.Errorf("Failed to load config from %q: %w", c.env.VarDir(), err)
 	}

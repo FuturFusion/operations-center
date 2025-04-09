@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql/driver"
 	"fmt"
-	"net/url"
 	"strings"
 	"time"
 )
@@ -213,7 +212,7 @@ type UpdateFile struct {
 
 	// URL of the File.
 	// Example: https://github.com/lxc/incus-os/releases/download/202501311418/IncusOS_202501311418.efi.gz
-	URL url.URL `json:"url" yaml:"url"`
+	URL string `json:"url" yaml:"url"`
 
 	// Size of the File in bytes.
 	// Example: 54300000

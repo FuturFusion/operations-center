@@ -36,6 +36,7 @@ func TestMain0RunDaemon(t *testing.T) {
 	go func() {
 		daemonErr = main0([]string{"--verbose"}, nil, stderrWriter, mockEnv{
 			logDir:     tmpDir,
+			runDir:     tmpDir,
 			varDir:     tmpDir,
 			unixSocket: filepath.Join(tmpDir, "unix.socket"),
 		})
@@ -87,6 +88,7 @@ func TestMain0RunDaemonStartError(t *testing.T) {
 		name       string
 		args       []string
 		logDir     string
+		runDir     string
 		varDir     string
 		unixSocket string
 
@@ -115,6 +117,7 @@ func TestMain0RunDaemonStartError(t *testing.T) {
 
 			args:       []string{""},
 			logDir:     tmpDir,
+			runDir:     tmpDir,
 			varDir:     filepath.Join(tmpDir, "invalid"),
 			unixSocket: filepath.Join(tmpDir, "unix.socket"),
 
@@ -125,6 +128,7 @@ func TestMain0RunDaemonStartError(t *testing.T) {
 
 			args:       []string{""},
 			logDir:     tmpDir,
+			runDir:     tmpDir,
 			varDir:     tmpDir,
 			unixSocket: tmpDir, // invalid for unix socket, since it is a directory.
 
@@ -136,6 +140,7 @@ func TestMain0RunDaemonStartError(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := main0(tc.args, nil, nil, mockEnv{
 				logDir:     tc.logDir,
+				runDir:     tc.runDir,
 				varDir:     tc.varDir,
 				unixSocket: tc.unixSocket,
 			})
@@ -166,11 +171,13 @@ func waitFor(t *testing.T, in chan string, want string, d time.Duration) {
 
 type mockEnv struct {
 	logDir     string
+	runDir     string
 	varDir     string
 	unixSocket string
 }
 
 func (e mockEnv) LogDir() string        { return e.logDir }
+func (e mockEnv) RunDir() string        { return e.runDir }
 func (e mockEnv) VarDir() string        { return e.varDir }
 func (e mockEnv) GetUnixSocket() string { return e.unixSocket }
 

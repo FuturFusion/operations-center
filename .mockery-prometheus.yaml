@@ -2,6 +2,7 @@
 
 all: False
 template: file://./internal/metrics/prometheus.gotmpl
+require-template-schema-exists: false
 force-file-write: true
 include-regex: "(.+Repo|.*ServerClient|.+Service)"
 exclude-regex: "Provisioning.+Service"
