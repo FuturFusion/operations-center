@@ -18,6 +18,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
+	"github.com/FuturFusion/operations-center/internal/file"
 	incusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
 	"github.com/FuturFusion/operations-center/internal/logger"
@@ -204,9 +205,16 @@ func (d *Daemon) Start(ctx context.Context) error {
 	d.errgroup = group
 
 	group.Go(func() error {
-		// TODO: Check if the socket file already exists. If it does, return an error,
-		// because this indicates, that an other instance of the operations-center
-		// is already running.
+		// TODO: if the socket file already exists, make a connection attempt. If
+		// successful, another instance of operations-centerd is already running.
+		// If not successful, it is save to delete the socket file.
+		if file.PathExists(d.env.GetUnixSocket()) {
+			err = os.Remove(d.env.GetUnixSocket())
+			if err != nil {
+				return err
+			}
+		}
+
 		unixListener, err := net.Listen("unix", d.env.GetUnixSocket())
 		if err != nil {
 			return err
