@@ -98,9 +98,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// TODO: setup OIDC
 
-	// TODO: Decide on the usage of the GITHUB_TOKEN. It is necessary to avoid
-	// being hit by the Github rate limiting.
-	gh := ghClient.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
+	gh := ghClient.NewClient(nil)
+	if d.config.GithubToken != "" {
+		gh = gh.WithAuthToken(d.config.GithubToken)
+	}
 
 	serverClientProvider := serverMiddleware.NewServerClientWithSlog(
 		incusAdapter.New(

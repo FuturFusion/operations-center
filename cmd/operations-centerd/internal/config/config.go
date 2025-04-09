@@ -14,6 +14,8 @@ type Config struct {
 
 	ClientCertificateFilename string `yaml:"-"`
 	ClientKeyFilename         string `yaml:"-"`
+
+	GithubToken string `yaml:"github.token"`
 }
 
 func (c *Config) LoadConfig(path string) error {
