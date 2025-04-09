@@ -27,6 +27,9 @@ type env interface {
 
 type cmdDaemon struct {
 	env env
+
+	flagServerAddr string
+	flagServerPort int
 }
 
 func (c *cmdDaemon) Command() *cobra.Command {
@@ -39,6 +42,9 @@ func (c *cmdDaemon) Command() *cobra.Command {
   This is the operations center daemon command line.
 `
 	cmd.RunE = c.Run
+
+	cmd.Flags().StringVar(&c.flagServerAddr, "server-addr", "", "Address to bind to")
+	cmd.Flags().IntVar(&c.flagServerPort, "server-port", defaultRestServerPort, "IP port to bind to")
 
 	return cmd
 }
@@ -61,7 +67,8 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	cfg := &config.Config{
-		RestServerPort: defaultRestServerPort,
+		RestServerPort: c.flagServerPort,
+		RestServerAddr: c.flagServerAddr,
 
 		ClientCertificateFilename: "client.crt",
 		ClientKeyFilename:         "client.key",
