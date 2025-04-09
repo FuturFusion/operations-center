@@ -20,6 +20,7 @@ const defaultRestServerPort = 7443
 
 type env interface {
 	LogDir() string
+	RunDir() string
 	VarDir() string
 	GetUnixSocket() string
 }
@@ -51,6 +52,12 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	err := os.MkdirAll(c.env.VarDir(), 0o750)
 	if err != nil {
 		return fmt.Errorf("Create data directory %q: %v", c.env.VarDir(), err)
+	}
+
+	// Ensure we have the run directory.
+	err = os.MkdirAll(c.env.RunDir(), 0o750)
+	if err != nil {
+		return fmt.Errorf("Create run directory %q: %v", c.env.RunDir(), err)
 	}
 
 	cfg := &config.Config{
