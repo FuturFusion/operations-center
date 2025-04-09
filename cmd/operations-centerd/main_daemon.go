@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"os/signal"
 	"time"
 
@@ -46,11 +47,17 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(`Unknown command "%s" for "%s"`, args[0], cmd.CommandPath())
 	}
 
+	// Ensure we have the data directory.
+	err := os.MkdirAll(c.env.VarDir(), 0o750)
+	if err != nil {
+		return fmt.Errorf("Create data directory %q: %v", c.env.VarDir(), err)
+	}
+
 	cfg := &config.Config{
 		RestServerPort: defaultRestServerPort,
 	}
 
-	err := cfg.LoadConfig(c.env.VarDir())
+	err = cfg.LoadConfig(c.env.VarDir())
 	if err != nil {
 		return fmt.Errorf("Failed to load config from %q: %w", c.env.VarDir(), err)
 	}
