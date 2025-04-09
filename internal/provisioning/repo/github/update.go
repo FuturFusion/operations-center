@@ -171,7 +171,7 @@ func fromGHRelease(ghRelease *github.RepositoryRelease) (provisioning.Update, er
 	}, nil
 }
 
-const idSeparator = "$"
+const idSeparator = ":"
 
 func idFromGHRelease(ghRelease *github.RepositoryRelease) string {
 	return strings.Join([]string{ghOrganization, ghRepository, strconv.FormatInt(*ghRelease.ID, 10)}, idSeparator)
