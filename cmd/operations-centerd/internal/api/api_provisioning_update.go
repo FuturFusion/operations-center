@@ -252,7 +252,7 @@ func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
 		result = append(result, api.UpdateFile{
 			UpdateID: updateFile.UpdateID,
 			Filename: updateFile.Filename,
-			URL:      updateFile.URL,
+			URL:      updateFile.URL.String(),
 			Size:     updateFile.Size,
 		})
 	}
