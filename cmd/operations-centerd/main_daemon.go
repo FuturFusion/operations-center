@@ -62,6 +62,9 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 
 	cfg := &config.Config{
 		RestServerPort: defaultRestServerPort,
+
+		ClientCertificateFilename: "client.crt",
+		ClientKeyFilename:         "client.key",
 	}
 
 	err = cfg.LoadConfig(c.env.VarDir())

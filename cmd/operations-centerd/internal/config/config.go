@@ -12,8 +12,8 @@ type Config struct {
 	RestServerAddr string `yaml:"rest_server.addr"`
 	RestServerPort int    `yaml:"rest_server.port"`
 
-	ClientCertificateFilename string `yaml:"client.certificate_filename"`
-	ClientKeyFilename         string `yaml:"client.key_filename"`
+	ClientCertificateFilename string `yaml:"-"`
+	ClientKeyFilename         string `yaml:"-"`
 }
 
 func (c *Config) LoadConfig(path string) error {

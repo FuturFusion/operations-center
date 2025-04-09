@@ -50,14 +50,16 @@ type Daemon struct {
 }
 
 func NewDaemon(ctx context.Context, env environment, cfg *config.Config) *Daemon {
-	clientCert, err := os.ReadFile(cfg.ClientCertificateFilename)
+	clientCertFilename := filepath.Join(env.VarDir(), cfg.ClientCertificateFilename)
+	clientCert, err := os.ReadFile(clientCertFilename)
 	if err != nil {
-		slog.WarnContext(ctx, "failed to read client certificate", slog.String("file", cfg.ClientCertificateFilename), logger.Err(err))
+		slog.WarnContext(ctx, "failed to read client certificate", slog.String("file", clientCertFilename), logger.Err(err))
 	}
 
-	clientKey, err := os.ReadFile(cfg.ClientKeyFilename)
+	clientKeyFilename := filepath.Join(env.VarDir(), cfg.ClientKeyFilename)
+	clientKey, err := os.ReadFile(clientKeyFilename)
 	if err != nil {
-		slog.WarnContext(ctx, "failed to read client key", slog.String("file", cfg.ClientKeyFilename), logger.Err(err))
+		slog.WarnContext(ctx, "failed to read client key", slog.String("file", clientKeyFilename), logger.Err(err))
 	}
 
 	d := &Daemon{
