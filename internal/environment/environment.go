@@ -7,7 +7,7 @@ import (
 
 const (
 	logPathDefaultPrefix = "/var"
-	logPathSuffix        = "logs"
+	logPathSuffix        = "log"
 	runPathDefaultPrefix = "/run"
 	varPathDefaultPrefix = "/var/lib"
 
