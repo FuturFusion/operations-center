@@ -29,7 +29,7 @@ type cmdDaemon struct {
 
 func (c *cmdDaemon) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = applicationName
+	cmd.Use = binaryName
 	cmd.Short = "The operations center daemon"
 	cmd.Long = `Description:
   The operations center daemon
@@ -42,7 +42,7 @@ func (c *cmdDaemon) Command() *cobra.Command {
 }
 
 func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
-	if len(args) > 1 || (len(args) == 1 && args[0] != applicationName && args[0] != "") {
+	if len(args) > 1 || (len(args) == 1 && args[0] != binaryName && args[0] != "") {
 		return fmt.Errorf(`Unknown command "%s" for "%s"`, args[0], cmd.CommandPath())
 	}
 

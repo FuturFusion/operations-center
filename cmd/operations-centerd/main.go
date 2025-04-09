@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	applicationName      = "operations-centerd"
+	applicationName      = "operations-center"
+	binaryName           = "operations-centerd"
 	applicationEnvPrefix = "OPERATIONS_CENTER"
 )
 
