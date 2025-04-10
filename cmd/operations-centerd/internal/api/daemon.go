@@ -30,7 +30,6 @@ import (
 	provisioningRepoMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/repo/middleware"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
-	"github.com/FuturFusion/operations-center/internal/response"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/internal/version"
@@ -164,11 +163,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 	serveMux := http.NewServeMux()
 	// TODO: Move access log and request ID middlewares here
 	router := newRouter(serveMux)
-	router.HandleFunc("GET /{$}",
-		response.With(
-			rootHandler,
-		),
-	)
+
+	registerUIHandlers(router, d.env.VarDir())
 
 	api10router := router.SubGroup("/1.0").AddMiddlewares(authenticator.Middleware)
 	registerAPI10Handler(api10router)
