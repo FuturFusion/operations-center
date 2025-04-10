@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
@@ -96,6 +97,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// TODO: setup certificates
 
+	authenticator := authn.New(d.config.TrustedTLSClientCertFingerprints)
+
 	// TODO: setup authorizer
 
 	// TODO: setup OIDC
@@ -167,7 +170,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		),
 	)
 
-	api10router := router.SubGroup("/1.0").AddMiddlewares(authn.Authenticate)
+	api10router := router.SubGroup("/1.0").AddMiddlewares(authenticator.Middleware)
 	registerAPI10Handler(api10router)
 
 	provisioningRouter := api10router.SubGroup("/provisioning")
@@ -203,6 +206,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 		IdleTimeout: 30 * time.Second,
 		Addr:        fmt.Sprintf("%s:%d", d.config.RestServerAddr, d.config.RestServerPort),
 		ErrorLog:    errorLogger,
+		TLSConfig: &tls.Config{
+			NextProtos: []string{"h2", "http/1.1"},
+			ClientAuth: tls.RequestClientCert,
+		},
 	}
 
 	group, errgroupCtx := errgroup.WithContext(context.Background())

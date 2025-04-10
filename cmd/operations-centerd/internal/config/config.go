@@ -16,6 +16,9 @@ type Config struct {
 	ClientKeyFilename         string `yaml:"-"`
 
 	GithubToken string `yaml:"github.token"`
+
+	// An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
+	TrustedTLSClientCertFingerprints []string `yaml:"trusted_tls_client_cert_fingerprints"`
 }
 
 func (c *Config) LoadConfig(path string) error {
