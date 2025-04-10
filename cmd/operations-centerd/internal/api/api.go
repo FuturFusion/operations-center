@@ -40,10 +40,6 @@ import (
 //	          items:
 //	            type: string
 //	          example: ["/1.0"]
-func rootHandler(r *http.Request) response.Response {
-	if r.URL.Path != "/" {
-		return response.NotFound(nil)
-	}
-
+func rootHandler(_ *http.Request) response.Response {
 	return response.SyncResponse(true, []string{"/1.0"})
 }

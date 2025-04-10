@@ -10,6 +10,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.3.0 // indirect
 	github.com/Rican7/retry v0.3.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.8.1 // indirect
 	github.com/brunoga/deep v1.2.4 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chigopher/pathlib v0.19.1 // indirect
@@ -18,6 +19,7 @@ require (
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/flosch/pongo2/v6 v6.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
+	github.com/go-chi/chi/v5 v5.2.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -46,6 +48,7 @@ require (
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/muhlemmer/gu v0.3.1 // indirect
+	github.com/muhlemmer/httpforwarded v0.1.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/openfga/go-sdk v0.6.5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -57,6 +60,7 @@ require (
 	github.com/prometheus/procfs v0.16.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
+	github.com/rs/cors v1.11.1 // indirect
 	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
@@ -66,7 +70,6 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/zitadel/logging v0.6.2 // indirect
-	github.com/zitadel/oidc/v3 v3.37.0 // indirect
 	github.com/zitadel/schema v1.3.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel v1.35.0 // indirect
@@ -98,6 +101,7 @@ require (
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
 	github.com/vektra/mockery/v3 v3.0.0-beta.9
+	github.com/zitadel/oidc/v3 v3.37.0
 	golang.org/x/sync v0.12.0
 	golang.org/x/text v0.23.0
 	golang.org/x/tools v0.31.0

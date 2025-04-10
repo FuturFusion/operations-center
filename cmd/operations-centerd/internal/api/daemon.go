@@ -19,6 +19,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
 	"github.com/FuturFusion/operations-center/internal/authn"
+	"github.com/FuturFusion/operations-center/internal/authn/oidc"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
 	"github.com/FuturFusion/operations-center/internal/file"
 	incusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
@@ -30,7 +31,6 @@ import (
 	provisioningRepoMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/repo/middleware"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
-	"github.com/FuturFusion/operations-center/internal/response"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/internal/version"
@@ -97,7 +97,25 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// TODO: setup certificates
 
-	authenticator := authn.New(d.config.TrustedTLSClientCertFingerprints)
+	var authOptions []authn.Option
+	// Setup client cert fingerprint authentication.
+	if len(d.config.TrustedTLSClientCertFingerprints) > 0 {
+		authOptions = append(authOptions, authn.WithTLSClientCertFingerprints(d.config.TrustedTLSClientCertFingerprints))
+	}
+
+	// Setup OIDC authentication.
+	var oidcVerifier *oidc.Verifier
+	if d.config.OidcIssuer != "" && d.config.OidcClientID != "" {
+		oidcVerifier, err = oidc.NewVerifier(context.TODO(), d.config.OidcIssuer, d.config.OidcClientID, d.config.OidcScope, d.config.OidcAudience, d.config.OidcClaim)
+		if err != nil {
+			return err
+		}
+
+		authOptions = append(authOptions, authn.WithOIDCVerifier(oidcVerifier))
+	}
+
+	// Create authenticator
+	authenticator := authn.New(authOptions...)
 
 	// TODO: setup authorizer
 
@@ -164,11 +182,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 	serveMux := http.NewServeMux()
 	// TODO: Move access log and request ID middlewares here
 	router := newRouter(serveMux)
-	router.HandleFunc("GET /{$}",
-		response.With(
-			rootHandler,
-		),
-	)
+
+	registerUIHandlers(router, d.env.VarDir())
+
+	if oidcVerifier != nil {
+		registerOIDCHandlers(router, oidcVerifier)
+	}
 
 	api10router := router.SubGroup("/1.0").AddMiddlewares(authenticator.Middleware)
 	registerAPI10Handler(api10router)
