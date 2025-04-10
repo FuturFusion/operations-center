@@ -75,7 +75,7 @@ func (o *Verifier) Auth(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if o.accessTokenVerifier == nil {
 		var err error
 
-		o.accessTokenVerifier, err = getAccessTokenVerifier(o.issuer)
+		o.accessTokenVerifier, err = getAccessTokenVerifier(ctx, o.issuer)
 		if err != nil {
 			return "", &AuthError{err}
 		}
@@ -96,7 +96,7 @@ func (o *Verifier) Auth(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		}
 
 		// Attempt the refresh.
-		tokens, err := rp.RefreshTokens[*oidc.IDTokenClaims](context.TODO(), provider, cookie.Value, "", "")
+		tokens, err := rp.RefreshTokens[*oidc.IDTokenClaims](ctx, provider, cookie.Value, "", "")
 		if err != nil {
 			return "", &AuthError{err}
 		}
@@ -283,7 +283,7 @@ func (o *Verifier) VerifyAccessToken(ctx context.Context, token string) (*oidc.A
 	var err error
 
 	if o.accessTokenVerifier == nil {
-		o.accessTokenVerifier, err = getAccessTokenVerifier(o.issuer)
+		o.accessTokenVerifier, err = getAccessTokenVerifier(ctx, o.issuer)
 		if err != nil {
 			return nil, err
 		}
@@ -334,7 +334,7 @@ func (o *Verifier) getProvider(r *http.Request) (rp.RelyingParty, error) {
 		rp.WithPKCE(cookieHandler),
 	}
 
-	provider, err := rp.NewRelyingPartyOIDC(context.TODO(), o.issuer, o.clientID, "", fmt.Sprintf("https://%s/oidc/callback", r.Host), o.scopes, options...)
+	provider, err := rp.NewRelyingPartyOIDC(r.Context(), o.issuer, o.clientID, "", fmt.Sprintf("https://%s/oidc/callback", r.Host), o.scopes, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -343,8 +343,8 @@ func (o *Verifier) getProvider(r *http.Request) (rp.RelyingParty, error) {
 }
 
 // getAccessTokenVerifier calls the OIDC discovery endpoint in order to get the issuer's remote keys which are needed to create an access token verifier.
-func getAccessTokenVerifier(issuer string) (*op.AccessTokenVerifier, error) {
-	discoveryConfig, err := client.Discover(context.TODO(), issuer, http.DefaultClient)
+func getAccessTokenVerifier(ctx context.Context, issuer string) (*op.AccessTokenVerifier, error) {
+	discoveryConfig, err := client.Discover(ctx, issuer, http.DefaultClient)
 	if err != nil {
 		return nil, fmt.Errorf("Failed calling OIDC discovery endpoint: %w", err)
 	}
@@ -355,7 +355,7 @@ func getAccessTokenVerifier(issuer string) (*op.AccessTokenVerifier, error) {
 }
 
 // NewVerifier returns a Verifier.
-func NewVerifier(issuer string, clientid string, scope string, audience string, claim string) (*Verifier, error) {
+func NewVerifier(ctx context.Context, issuer string, clientid string, scope string, audience string, claim string) (*Verifier, error) {
 	cookieKey, err := uuid.New().MarshalBinary()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create UUID: %w", err)
@@ -368,7 +368,7 @@ func NewVerifier(issuer string, clientid string, scope string, audience string, 
 	}
 
 	verifier := &Verifier{issuer: issuer, clientID: clientid, scopes: scopes, audience: audience, cookieKey: cookieKey, claim: claim}
-	verifier.accessTokenVerifier, _ = getAccessTokenVerifier(issuer)
+	verifier.accessTokenVerifier, _ = getAccessTokenVerifier(ctx, issuer)
 
 	return verifier, nil
 }

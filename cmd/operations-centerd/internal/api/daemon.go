@@ -106,7 +106,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// Setup OIDC authentication.
 	var oidcVerifier *oidc.Verifier
 	if d.config.OidcIssuer != "" && d.config.OidcClientID != "" {
-		oidcVerifier, err = oidc.NewVerifier(d.config.OidcIssuer, d.config.OidcClientID, d.config.OidcScope, d.config.OidcAudience, d.config.OidcClaim)
+		oidcVerifier, err = oidc.NewVerifier(context.TODO(), d.config.OidcIssuer, d.config.OidcClientID, d.config.OidcScope, d.config.OidcAudience, d.config.OidcClaim)
 		if err != nil {
 			return err
 		}
