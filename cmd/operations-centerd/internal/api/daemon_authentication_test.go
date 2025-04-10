@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/oauth2-proxy/mockoidc"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/api"
@@ -17,10 +19,33 @@ import (
 func TestAuthentication(t *testing.T) {
 	tmpDir := t.TempDir()
 
+	// Setup OIDC, get accessToken
+	m, err := mockoidc.Run()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err = m.Shutdown()
+		require.NoError(t, err)
+	})
+
+	m.QueueCode("123")
+	sess, err := m.SessionStore.NewSession("openid email profile groups", "", mockoidc.DefaultUser(), "123", "")
+	require.NoError(t, err)
+
+	accessToken, err := sess.AccessToken(&mockoidc.Config{
+		ClientID:     m.Config().ClientID,
+		ClientSecret: m.Config().ClientSecret,
+		Issuer:       m.Issuer(),
+		AccessTTL:    5 * time.Second,
+		RefreshTTL:   5 * time.Second,
+	}, m.Keypair, time.Now())
+	require.NoError(t, err)
+
+	// Test cases
 	tests := []struct {
 		name     string
 		client   func() *http.Client
 		resource string
+		headers  map[string]string
 
 		wantStatusCode int
 	}{
@@ -84,6 +109,25 @@ func TestAuthentication(t *testing.T) {
 
 			wantStatusCode: http.StatusOK,
 		},
+		{
+			name: "oidc http /1.0",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							Certificates:       []tls.Certificate{cert},
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			resource: "https://localhost:17443/1.0",
+			headers: map[string]string{
+				"Authorization": "Bearer " + accessToken,
+			},
+
+			wantStatusCode: http.StatusOK,
+		},
 	}
 
 	ctx := context.Background()
@@ -94,11 +138,14 @@ func TestAuthentication(t *testing.T) {
 			varDir:     tmpDir,
 		},
 		&config.Config{
-			RestServerPort: 17443,
+			RestServerPort:                   17443,
+			OidcIssuer:                       m.Issuer(),
+			OidcClientID:                     m.ClientID,
+			OidcScope:                        "openid,offline_access,email",
 		},
 	)
 
-	err := d.Start(ctx)
+	err = d.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		err = d.Stop(context.Background())
@@ -109,6 +156,10 @@ func TestAuthentication(t *testing.T) {
 		t.Run(tc.resource, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodGet, tc.resource, http.NoBody)
 			require.NoError(t, err)
+
+			for key, value := range tc.headers {
+				req.Header.Add(key, value)
+			}
 
 			resp, err := tc.client().Do(req)
 			require.NoError(t, err)
