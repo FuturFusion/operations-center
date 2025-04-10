@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
@@ -17,6 +18,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
+	"github.com/FuturFusion/operations-center/internal/authn"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
 	"github.com/FuturFusion/operations-center/internal/file"
 	incusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
@@ -81,6 +83,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return fmt.Errorf("Failed to open sqlite database: %w", err)
 	}
 
+	// TODO: should Ensure take the provided context? If not, document the reason.
 	_, err = dbschema.Ensure(context.TODO(), db, d.env.VarDir())
 	if err != nil {
 		return err
@@ -93,6 +96,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// TODO: setup certificates
+
+	authenticator := authn.New(d.config.TrustedTLSClientCertFingerprints)
 
 	// TODO: setup authorizer
 
@@ -157,6 +162,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Setup Routes
 	serveMux := http.NewServeMux()
+	// TODO: Move access log and request ID middlewares here
 	router := newRouter(serveMux)
 	router.HandleFunc("GET /{$}",
 		response.With(
@@ -164,7 +170,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		),
 	)
 
-	api10router := router.SubGroup("/1.0")
+	api10router := router.SubGroup("/1.0").AddMiddlewares(authenticator.Middleware)
 	registerAPI10Handler(api10router)
 
 	provisioningRouter := api10router.SubGroup("/provisioning")
@@ -200,6 +206,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 		IdleTimeout: 30 * time.Second,
 		Addr:        fmt.Sprintf("%s:%d", d.config.RestServerAddr, d.config.RestServerPort),
 		ErrorLog:    errorLogger,
+		TLSConfig: &tls.Config{
+			NextProtos: []string{"h2", "http/1.1"},
+			ClientAuth: tls.RequestClientCert,
+		},
 	}
 
 	group, errgroupCtx := errgroup.WithContext(context.Background())

@@ -34,7 +34,7 @@ func TestMain0RunDaemon(t *testing.T) {
 
 	// Start daemon.
 	go func() {
-		daemonErr = main0([]string{"--verbose"}, nil, stderrWriter, mockEnv{
+		daemonErr = main0([]string{"--verbose", "--server-port", "27443"}, nil, stderrWriter, mockEnv{
 			logDir:     tmpDir,
 			runDir:     tmpDir,
 			varDir:     tmpDir,
@@ -55,7 +55,7 @@ func TestMain0RunDaemon(t *testing.T) {
 		},
 	}
 
-	resp, err := client.Get("https://localhost:7443")
+	resp, err := client.Get("https://localhost:27443")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
