@@ -146,7 +146,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(serverNames))
 	for _, name := range serverNames {
-		result = append(result, fmt.Sprintf("/%s/servers/%s", api.APIVersion, name))
+		result = append(result, fmt.Sprintf("/%s/provisioning/servers/%s", api.APIVersion, name))
 	}
 
 	return response.SyncResponse(true, result)

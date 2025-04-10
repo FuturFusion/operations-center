@@ -81,7 +81,7 @@ func registerInventoryProjectHandler(router Router, service inventory.ProjectSer
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/provisioning/projects?recursion=1 projects projects_get_recursion
+// swagger:operation GET /1.0/inventory/projects?recursion=1 projects projects_get_recursion
 //
 //	Get the projects
 //
@@ -174,7 +174,7 @@ func (i *projectHandler) projectsGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(projectIDs))
 	for _, id := range projectIDs {
-		result = append(result, fmt.Sprintf("/%s/project/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/project/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)

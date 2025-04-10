@@ -86,7 +86,7 @@ func registerInventoryNetworkACLHandler(router Router, service inventory.Network
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/provisioning/network_acls?recursion=1 network_acls network_acls_get_recursion
+// swagger:operation GET /1.0/inventory/network_acls?recursion=1 network_acls network_acls_get_recursion
 //
 //	Get the network_acls
 //
@@ -189,7 +189,7 @@ func (i *networkACLHandler) networkACLsGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(networkACLIDs))
 	for _, id := range networkACLIDs {
-		result = append(result, fmt.Sprintf("/%s/network_acl/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/network_acl/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)

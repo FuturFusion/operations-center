@@ -142,7 +142,7 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(clusterNames))
 	for _, name := range clusterNames {
-		result = append(result, fmt.Sprintf("/%s/clusters/%s", api.APIVersion, name))
+		result = append(result, fmt.Sprintf("/%s/provisioning/clusters/%s", api.APIVersion, name))
 	}
 
 	return response.SyncResponse(true, result)

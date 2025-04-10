@@ -143,7 +143,7 @@ func (t *tokenHandler) tokensGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(tokenIDs))
 	for _, id := range tokenIDs {
-		result = append(result, fmt.Sprintf("/%s/tokens/%s", api.APIVersion, id.String()))
+		result = append(result, fmt.Sprintf("/%s/provisioning/tokens/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)

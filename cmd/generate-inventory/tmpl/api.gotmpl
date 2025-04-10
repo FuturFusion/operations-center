@@ -93,7 +93,7 @@ func registerInventory{{ .Name | pascalcase }}Handler(router Router, service inv
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/provisioning/{{ .PluralName }}?recursion=1 {{ .PluralName }} {{ .PluralName }}_get_recursion
+// swagger:operation GET /1.0/inventory/{{ .PluralName }}?recursion=1 {{ .PluralName }} {{ .PluralName }}_get_recursion
 //
 //	Get the {{ .PluralName }}
 //
@@ -221,7 +221,7 @@ func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *htt
 
 	result := make([]string, 0, len({{ .Name | camelcase }}IDs))
 	for _, id := range {{ .Name | camelcase }}IDs {
-		result = append(result, fmt.Sprintf("/%s/{{ .Name }}/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/{{ .Name }}/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)

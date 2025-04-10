@@ -86,7 +86,7 @@ func registerInventoryProfileHandler(router Router, service inventory.ProfileSer
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/provisioning/profiles?recursion=1 profiles profiles_get_recursion
+// swagger:operation GET /1.0/inventory/profiles?recursion=1 profiles profiles_get_recursion
 //
 //	Get the profiles
 //
@@ -189,7 +189,7 @@ func (i *profileHandler) profilesGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(profileIDs))
 	for _, id := range profileIDs {
-		result = append(result, fmt.Sprintf("/%s/profile/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/profile/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)

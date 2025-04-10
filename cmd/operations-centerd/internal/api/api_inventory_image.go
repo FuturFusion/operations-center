@@ -86,7 +86,7 @@ func registerInventoryImageHandler(router Router, service inventory.ImageService
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/provisioning/images?recursion=1 images images_get_recursion
+// swagger:operation GET /1.0/inventory/images?recursion=1 images images_get_recursion
 //
 //	Get the images
 //
@@ -189,7 +189,7 @@ func (i *imageHandler) imagesGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(imageIDs))
 	for _, id := range imageIDs {
-		result = append(result, fmt.Sprintf("/%s/image/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/image/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)

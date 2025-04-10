@@ -81,7 +81,7 @@ func registerInventoryNetworkForwardHandler(router Router, service inventory.Net
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/provisioning/network_forwards?recursion=1 network_forwards network_forwards_get_recursion
+// swagger:operation GET /1.0/inventory/network_forwards?recursion=1 network_forwards network_forwards_get_recursion
 //
 //	Get the network_forwards
 //
@@ -175,7 +175,7 @@ func (i *networkForwardHandler) networkForwardsGet(r *http.Request) response.Res
 
 	result := make([]string, 0, len(networkForwardIDs))
 	for _, id := range networkForwardIDs {
-		result = append(result, fmt.Sprintf("/%s/network_forward/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/network_forward/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)

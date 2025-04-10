@@ -86,7 +86,7 @@ func registerInventoryNetworkHandler(router Router, service inventory.NetworkSer
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/provisioning/networks?recursion=1 networks networks_get_recursion
+// swagger:operation GET /1.0/inventory/networks?recursion=1 networks networks_get_recursion
 //
 //	Get the networks
 //
@@ -189,7 +189,7 @@ func (i *networkHandler) networksGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(networkIDs))
 	for _, id := range networkIDs {
-		result = append(result, fmt.Sprintf("/%s/network/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/network/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)

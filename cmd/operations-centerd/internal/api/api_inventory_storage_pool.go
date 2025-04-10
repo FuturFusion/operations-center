@@ -81,7 +81,7 @@ func registerInventoryStoragePoolHandler(router Router, service inventory.Storag
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/provisioning/storage_pools?recursion=1 storage_pools storage_pools_get_recursion
+// swagger:operation GET /1.0/inventory/storage_pools?recursion=1 storage_pools storage_pools_get_recursion
 //
 //	Get the storage_pools
 //
@@ -174,7 +174,7 @@ func (i *storagePoolHandler) storagePoolsGet(r *http.Request) response.Response 
 
 	result := make([]string, 0, len(storagePoolIDs))
 	for _, id := range storagePoolIDs {
-		result = append(result, fmt.Sprintf("/%s/storage_pool/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/storage_pool/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)
