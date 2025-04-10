@@ -86,7 +86,7 @@ func registerInventoryNetworkZoneHandler(router Router, service inventory.Networ
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/provisioning/network_zones?recursion=1 network_zones network_zones_get_recursion
+// swagger:operation GET /1.0/inventory/network_zones?recursion=1 network_zones network_zones_get_recursion
 //
 //	Get the network_zones
 //
@@ -189,7 +189,7 @@ func (i *networkZoneHandler) networkZonesGet(r *http.Request) response.Response 
 
 	result := make([]string, 0, len(networkZoneIDs))
 	for _, id := range networkZoneIDs {
-		result = append(result, fmt.Sprintf("/%s/network_zone/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/network_zone/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)

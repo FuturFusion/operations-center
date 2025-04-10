@@ -91,7 +91,7 @@ func registerInventoryStorageVolumeHandler(router Router, service inventory.Stor
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/provisioning/storage_volumes?recursion=1 storage_volumes storage_volumes_get_recursion
+// swagger:operation GET /1.0/inventory/storage_volumes?recursion=1 storage_volumes storage_volumes_get_recursion
 //
 //	Get the storage_volumes
 //
@@ -205,7 +205,7 @@ func (i *storageVolumeHandler) storageVolumesGet(r *http.Request) response.Respo
 
 	result := make([]string, 0, len(storageVolumeIDs))
 	for _, id := range storageVolumeIDs {
-		result = append(result, fmt.Sprintf("/%s/storage_volume/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/storage_volume/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)

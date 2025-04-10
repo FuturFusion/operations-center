@@ -81,7 +81,7 @@ func registerInventoryNetworkLoadBalancerHandler(router Router, service inventor
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/provisioning/network_load_balancers?recursion=1 network_load_balancers network_load_balancers_get_recursion
+// swagger:operation GET /1.0/inventory/network_load_balancers?recursion=1 network_load_balancers network_load_balancers_get_recursion
 //
 //	Get the network_load_balancers
 //
@@ -175,7 +175,7 @@ func (i *networkLoadBalancerHandler) networkLoadBalancersGet(r *http.Request) re
 
 	result := make([]string, 0, len(networkLoadBalancerIDs))
 	for _, id := range networkLoadBalancerIDs {
-		result = append(result, fmt.Sprintf("/%s/network_load_balancer/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/network_load_balancer/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)

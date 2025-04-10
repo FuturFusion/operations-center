@@ -91,7 +91,7 @@ func registerInventoryStorageBucketHandler(router Router, service inventory.Stor
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/provisioning/storage_buckets?recursion=1 storage_buckets storage_buckets_get_recursion
+// swagger:operation GET /1.0/inventory/storage_buckets?recursion=1 storage_buckets storage_buckets_get_recursion
 //
 //	Get the storage_buckets
 //
@@ -205,7 +205,7 @@ func (i *storageBucketHandler) storageBucketsGet(r *http.Request) response.Respo
 
 	result := make([]string, 0, len(storageBucketIDs))
 	for _, id := range storageBucketIDs {
-		result = append(result, fmt.Sprintf("/%s/storage_bucket/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/storage_bucket/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)

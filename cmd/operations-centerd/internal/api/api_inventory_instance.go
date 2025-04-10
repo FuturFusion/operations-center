@@ -91,7 +91,7 @@ func registerInventoryInstanceHandler(router Router, service inventory.InstanceS
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/provisioning/instances?recursion=1 instances instances_get_recursion
+// swagger:operation GET /1.0/inventory/instances?recursion=1 instances instances_get_recursion
 //
 //	Get the instances
 //
@@ -204,7 +204,7 @@ func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(instanceIDs))
 	for _, id := range instanceIDs {
-		result = append(result, fmt.Sprintf("/%s/instance/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/instance/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)

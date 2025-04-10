@@ -25,7 +25,7 @@ func registerUpdateHandler(router Router, service provisioning.UpdateService) {
 	router.HandleFunc("GET /{id}/files/{filename}", response.With(handler.updateFileGet))
 }
 
-// swagger:operation GET /1.0/updates updates updates_get
+// swagger:operation GET /1.0/provisioning/updates updates updates_get
 //
 //	Get the updates
 //
@@ -60,15 +60,15 @@ func registerUpdateHandler(router Router, service provisioning.UpdateService) {
 //                  type: string
 //                example: |-
 //                  [
-//                    "/1.0/updates/b32d0079-c48b-4957-b1cb-bef54125c861",
-//                    "/1.0/updates/464d229b-3069-4a82-bc59-b215a7c6ed1b"
+//                    "/1.0/provisioning/updates/b32d0079-c48b-4957-b1cb-bef54125c861",
+//                    "/1.0/provisioning/updates/464d229b-3069-4a82-bc59-b215a7c6ed1b"
 //                  ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
-// swagger:operation GET /1.0/updates?recursion=1 updates updates_get_recursion
+// swagger:operation GET /1.0/provisioning/updates?recursion=1 updates updates_get_recursion
 //
 //	Get the updates
 //
@@ -140,13 +140,13 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(updateIDs))
 	for _, id := range updateIDs {
-		result = append(result, fmt.Sprintf("/%s/updates/%s", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/provisioning/updates/%s", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/updates/{id} updates update_get
+// swagger:operation GET /1.0/provisioning/updates/{id} updates update_get
 //
 //	Get the update
 //
@@ -202,7 +202,7 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation GET /1.0/updates/{id}/files updates updates_files_get
+// swagger:operation GET /1.0/provisioning/updates/{id}/files updates updates_files_get
 //
 //	Get the update files
 //
@@ -260,7 +260,7 @@ func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/updates/{id}/files/{filename} update update_file_get
+// swagger:operation GET /1.0/provisioning/updates/{id}/files/{filename} update update_file_get
 //
 //	Get the update file
 //
