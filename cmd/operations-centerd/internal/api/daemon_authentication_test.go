@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/oauth2-proxy/mockoidc"
 	"github.com/stretchr/testify/require"
 
@@ -18,6 +19,15 @@ import (
 
 func TestAuthentication(t *testing.T) {
 	tmpDir := t.TempDir()
+
+	// Setup client certificate
+	certPEM, keyPEM, err := incustls.GenerateMemCert(true, false)
+	require.NoError(t, err)
+
+	cert, err := tls.X509KeyPair(certPEM, keyPEM)
+	require.NoError(t, err)
+
+	certFingerprint := incustls.CertFingerprint(cert.Leaf)
 
 	// Setup OIDC, get accessToken
 	m, err := mockoidc.Run()
@@ -110,6 +120,22 @@ func TestAuthentication(t *testing.T) {
 			wantStatusCode: http.StatusOK,
 		},
 		{
+			name: "client cert http /1.0",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							Certificates:       []tls.Certificate{cert},
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			resource: "https://localhost:17443/1.0",
+
+			wantStatusCode: http.StatusOK,
+		},
+		{
 			name: "oidc http /1.0",
 			client: func() *http.Client {
 				return &http.Client{
@@ -142,6 +168,7 @@ func TestAuthentication(t *testing.T) {
 			OidcIssuer:                       m.Issuer(),
 			OidcClientID:                     m.ClientID,
 			OidcScope:                        "openid,offline_access,email",
+			TrustedTLSClientCertFingerprints: []string{certFingerprint},
 		},
 	)
 
