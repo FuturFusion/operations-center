@@ -12,7 +12,7 @@ import (
 )
 
 // Ensure that InventoryAggregateRepoMock does implement inventory.InventoryAggregateRepo.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.InventoryAggregateRepo = &InventoryAggregateRepoMock{}
 
 // InventoryAggregateRepoMock is a mock implementation of inventory.InventoryAggregateRepo.

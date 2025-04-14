@@ -12,7 +12,7 @@ import (
 )
 
 // Ensure that ProjectRepoMock does implement inventory.ProjectRepo.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.ProjectRepo = &ProjectRepoMock{}
 
 // ProjectRepoMock is a mock implementation of inventory.ProjectRepo.

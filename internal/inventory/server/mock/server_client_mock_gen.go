@@ -13,7 +13,7 @@ import (
 )
 
 // Ensure that ServerClientMock does implement inventory.ServerClient.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.ServerClient = &ServerClientMock{}
 
 // ServerClientMock is a mock implementation of inventory.ServerClient.

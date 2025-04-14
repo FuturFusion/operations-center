@@ -13,7 +13,7 @@ import (
 )
 
 // Ensure that NetworkZoneServerClientMock does implement inventory.NetworkZoneServerClient.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.NetworkZoneServerClient = &NetworkZoneServerClientMock{}
 
 // NetworkZoneServerClientMock is a mock implementation of inventory.NetworkZoneServerClient.

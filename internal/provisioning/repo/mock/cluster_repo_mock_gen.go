@@ -12,7 +12,7 @@ import (
 )
 
 // Ensure that ClusterRepoMock does implement provisioning.ClusterRepo.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ provisioning.ClusterRepo = &ClusterRepoMock{}
 
 // ClusterRepoMock is a mock implementation of provisioning.ClusterRepo.

@@ -13,7 +13,7 @@ import (
 )
 
 // Ensure that ImageServerClientMock does implement inventory.ImageServerClient.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.ImageServerClient = &ImageServerClientMock{}
 
 // ImageServerClientMock is a mock implementation of inventory.ImageServerClient.

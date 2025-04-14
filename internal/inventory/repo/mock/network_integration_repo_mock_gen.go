@@ -12,7 +12,7 @@ import (
 )
 
 // Ensure that NetworkIntegrationRepoMock does implement inventory.NetworkIntegrationRepo.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.NetworkIntegrationRepo = &NetworkIntegrationRepoMock{}
 
 // NetworkIntegrationRepoMock is a mock implementation of inventory.NetworkIntegrationRepo.

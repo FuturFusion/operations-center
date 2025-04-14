@@ -13,7 +13,7 @@ import (
 )
 
 // Ensure that ProjectServerClientMock does implement inventory.ProjectServerClient.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.ProjectServerClient = &ProjectServerClientMock{}
 
 // ProjectServerClientMock is a mock implementation of inventory.ProjectServerClient.

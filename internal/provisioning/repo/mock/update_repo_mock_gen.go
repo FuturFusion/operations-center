@@ -13,7 +13,7 @@ import (
 )
 
 // Ensure that UpdateRepoMock does implement provisioning.UpdateRepo.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ provisioning.UpdateRepo = &UpdateRepoMock{}
 
 // UpdateRepoMock is a mock implementation of provisioning.UpdateRepo.

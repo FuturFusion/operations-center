@@ -12,7 +12,7 @@ import (
 )
 
 // Ensure that NetworkACLRepoMock does implement inventory.NetworkACLRepo.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.NetworkACLRepo = &NetworkACLRepoMock{}
 
 // NetworkACLRepoMock is a mock implementation of inventory.NetworkACLRepo.

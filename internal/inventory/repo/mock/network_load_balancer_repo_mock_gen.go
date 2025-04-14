@@ -12,7 +12,7 @@ import (
 )
 
 // Ensure that NetworkLoadBalancerRepoMock does implement inventory.NetworkLoadBalancerRepo.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.NetworkLoadBalancerRepo = &NetworkLoadBalancerRepoMock{}
 
 // NetworkLoadBalancerRepoMock is a mock implementation of inventory.NetworkLoadBalancerRepo.

@@ -12,7 +12,7 @@ import (
 )
 
 // Ensure that InstanceRepoMock does implement inventory.InstanceRepo.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.InstanceRepo = &InstanceRepoMock{}
 
 // InstanceRepoMock is a mock implementation of inventory.InstanceRepo.

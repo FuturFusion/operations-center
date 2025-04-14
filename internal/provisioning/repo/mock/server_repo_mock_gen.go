@@ -12,7 +12,7 @@ import (
 )
 
 // Ensure that ServerRepoMock does implement provisioning.ServerRepo.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ provisioning.ServerRepo = &ServerRepoMock{}
 
 // ServerRepoMock is a mock implementation of provisioning.ServerRepo.

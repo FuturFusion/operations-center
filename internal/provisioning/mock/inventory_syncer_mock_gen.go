@@ -12,7 +12,7 @@ import (
 )
 
 // Ensure that InventorySyncerMock does implement provisioning.InventorySyncer.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ provisioning.InventorySyncer = &InventorySyncerMock{}
 
 // InventorySyncerMock is a mock implementation of provisioning.InventorySyncer.

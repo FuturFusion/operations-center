@@ -13,7 +13,7 @@ import (
 )
 
 // Ensure that TokenRepoMock does implement provisioning.TokenRepo.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ provisioning.TokenRepo = &TokenRepoMock{}
 
 // TokenRepoMock is a mock implementation of provisioning.TokenRepo.

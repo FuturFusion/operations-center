@@ -13,7 +13,7 @@ import (
 )
 
 // Ensure that ProvisioningClusterServiceMock does implement inventory.ProvisioningClusterService.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.ProvisioningClusterService = &ProvisioningClusterServiceMock{}
 
 // ProvisioningClusterServiceMock is a mock implementation of inventory.ProvisioningClusterService.

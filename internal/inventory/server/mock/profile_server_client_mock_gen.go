@@ -13,7 +13,7 @@ import (
 )
 
 // Ensure that ProfileServerClientMock does implement inventory.ProfileServerClient.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.ProfileServerClient = &ProfileServerClientMock{}
 
 // ProfileServerClientMock is a mock implementation of inventory.ProfileServerClient.
