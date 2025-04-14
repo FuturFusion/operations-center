@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -17,14 +18,14 @@ type networkACLHandler struct {
 	service inventory.NetworkACLService
 }
 
-func registerInventoryNetworkACLHandler(router Router, service inventory.NetworkACLService) {
+func registerInventoryNetworkACLHandler(router Router, authorizer authz.Authorizer, service inventory.NetworkACLService) {
 	handler := &networkACLHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.networkACLsGet))
-	router.HandleFunc("GET /{id}", response.With(handler.networkACLGet))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.networkACLResyncPost))
+	router.HandleFunc("GET /{$}", response.With(handler.networkACLsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{id}", response.With(handler.networkACLGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.networkACLResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/network_acls network_acls network_acls_get

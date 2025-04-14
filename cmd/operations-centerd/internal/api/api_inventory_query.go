@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -14,12 +15,12 @@ type queryHandler struct {
 	service inventory.InventoryAggregateService
 }
 
-func registerInventoryQueryHandler(router Router, service inventory.InventoryAggregateService) {
+func registerInventoryQueryHandler(router Router, authorizer authz.Authorizer, service inventory.InventoryAggregateService) {
 	handler := &queryHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.querysGet))
+	router.HandleFunc("GET /{$}", response.With(handler.querysGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 }
 
 // swagger:operation GET /1.0/inventory/query query query_get

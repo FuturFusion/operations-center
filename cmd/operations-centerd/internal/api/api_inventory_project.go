@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -17,14 +18,14 @@ type projectHandler struct {
 	service inventory.ProjectService
 }
 
-func registerInventoryProjectHandler(router Router, service inventory.ProjectService) {
+func registerInventoryProjectHandler(router Router, authorizer authz.Authorizer, service inventory.ProjectService) {
 	handler := &projectHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.projectsGet))
-	router.HandleFunc("GET /{id}", response.With(handler.projectGet))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.projectResyncPost))
+	router.HandleFunc("GET /{$}", response.With(handler.projectsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{id}", response.With(handler.projectGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.projectResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/projects projects projects_get

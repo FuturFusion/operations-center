@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/response"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -16,18 +17,18 @@ type clusterHandler struct {
 	service provisioning.ClusterService
 }
 
-func registerProvisioningClusterHandler(router Router, service provisioning.ClusterService) {
+func registerProvisioningClusterHandler(router Router, authorizer authz.Authorizer, service provisioning.ClusterService) {
 	handler := &clusterHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.clustersGet))
-	router.HandleFunc("POST /{$}", response.With(handler.clustersPost))
-	router.HandleFunc("GET /{name}", response.With(handler.clusterGet))
-	router.HandleFunc("PUT /{name}", response.With(handler.clusterPut))
-	router.HandleFunc("DELETE /{name}", response.With(handler.clusterDelete))
-	router.HandleFunc("POST /{name}", response.With(handler.clusterPost))
-	router.HandleFunc("POST /{name}/resync-inventory", response.With(handler.clusterResyncInventoryPost))
+	router.HandleFunc("GET /{$}", response.With(handler.clustersGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{$}", response.With(handler.clustersPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
+	router.HandleFunc("GET /{name}", response.With(handler.clusterGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("PUT /{name}", response.With(handler.clusterPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("DELETE /{name}", response.With(handler.clusterDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
+	router.HandleFunc("POST /{name}", response.With(handler.clusterPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/resync-inventory", response.With(handler.clusterResyncInventoryPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/provisioning/clusters clusters clusters_get

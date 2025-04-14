@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -17,14 +18,14 @@ type networkHandler struct {
 	service inventory.NetworkService
 }
 
-func registerInventoryNetworkHandler(router Router, service inventory.NetworkService) {
+func registerInventoryNetworkHandler(router Router, authorizer authz.Authorizer, service inventory.NetworkService) {
 	handler := &networkHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.networksGet))
-	router.HandleFunc("GET /{id}", response.With(handler.networkGet))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.networkResyncPost))
+	router.HandleFunc("GET /{$}", response.With(handler.networksGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{id}", response.With(handler.networkGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.networkResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/networks networks networks_get

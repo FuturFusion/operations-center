@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -17,14 +18,14 @@ type networkZoneHandler struct {
 	service inventory.NetworkZoneService
 }
 
-func registerInventoryNetworkZoneHandler(router Router, service inventory.NetworkZoneService) {
+func registerInventoryNetworkZoneHandler(router Router, authorizer authz.Authorizer, service inventory.NetworkZoneService) {
 	handler := &networkZoneHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.networkZonesGet))
-	router.HandleFunc("GET /{id}", response.With(handler.networkZoneGet))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.networkZoneResyncPost))
+	router.HandleFunc("GET /{$}", response.With(handler.networkZonesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{id}", response.With(handler.networkZoneGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.networkZoneResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/network_zones network_zones network_zones_get

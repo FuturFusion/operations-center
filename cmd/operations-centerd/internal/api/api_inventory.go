@@ -5,6 +5,7 @@ import (
 
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	inventoryServiceMiddleware "github.com/FuturFusion/operations-center/internal/inventory/middleware"
 	inventoryRepoMiddleware "github.com/FuturFusion/operations-center/internal/inventory/repo/middleware"
@@ -13,7 +14,7 @@ import (
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 )
 
-func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverClient inventory.ServerClient, inventoryRouter Router) []provisioning.InventorySyncer {
+func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverClient inventory.ServerClient, authorizer authz.Authorizer, inventoryRouter Router) []provisioning.InventorySyncer {
 	// Service
 	inventoryInventoryAggregateSvc := inventoryServiceMiddleware.NewInventoryAggregateServiceWithSlog(
 		inventory.NewInventoryAggregateService(
@@ -243,49 +244,49 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 
 	// API routes
 	inventoryQueryRouter := inventoryRouter.SubGroup("/query")
-	registerInventoryQueryHandler(inventoryQueryRouter, inventoryInventoryAggregateSvc)
+	registerInventoryQueryHandler(inventoryQueryRouter, authorizer, inventoryInventoryAggregateSvc)
 
 	inventoryImageRouter := inventoryRouter.SubGroup("/images")
-	registerInventoryImageHandler(inventoryImageRouter, inventoryImageSvc)
+	registerInventoryImageHandler(inventoryImageRouter, authorizer, inventoryImageSvc)
 
 	inventoryInstanceRouter := inventoryRouter.SubGroup("/instances")
-	registerInventoryInstanceHandler(inventoryInstanceRouter, inventoryInstanceSvc)
+	registerInventoryInstanceHandler(inventoryInstanceRouter, authorizer, inventoryInstanceSvc)
 
 	inventoryNetworkRouter := inventoryRouter.SubGroup("/networks")
-	registerInventoryNetworkHandler(inventoryNetworkRouter, inventoryNetworkSvc)
+	registerInventoryNetworkHandler(inventoryNetworkRouter, authorizer, inventoryNetworkSvc)
 
 	inventoryNetworkACLRouter := inventoryRouter.SubGroup("/network_acls")
-	registerInventoryNetworkACLHandler(inventoryNetworkACLRouter, inventoryNetworkACLSvc)
+	registerInventoryNetworkACLHandler(inventoryNetworkACLRouter, authorizer, inventoryNetworkACLSvc)
 
 	inventoryNetworkForwardRouter := inventoryRouter.SubGroup("/network_forward")
-	registerInventoryNetworkForwardHandler(inventoryNetworkForwardRouter, inventoryNetworkForwardSvc)
+	registerInventoryNetworkForwardHandler(inventoryNetworkForwardRouter, authorizer, inventoryNetworkForwardSvc)
 
 	inventoryNetworkIntegrationRouter := inventoryRouter.SubGroup("/network_integrations")
-	registerInventoryNetworkIntegrationHandler(inventoryNetworkIntegrationRouter, inventoryNetworkIntegrationSvc)
+	registerInventoryNetworkIntegrationHandler(inventoryNetworkIntegrationRouter, authorizer, inventoryNetworkIntegrationSvc)
 
 	inventoryNetworkLoadBalancerRouter := inventoryRouter.SubGroup("/network_load_balancers")
-	registerInventoryNetworkLoadBalancerHandler(inventoryNetworkLoadBalancerRouter, inventoryNetworkLoadBalancerSvc)
+	registerInventoryNetworkLoadBalancerHandler(inventoryNetworkLoadBalancerRouter, authorizer, inventoryNetworkLoadBalancerSvc)
 
 	inventoryNetworkPeerRouter := inventoryRouter.SubGroup("/network_peers")
-	registerInventoryNetworkPeerHandler(inventoryNetworkPeerRouter, inventoryNetworkPeerSvc)
+	registerInventoryNetworkPeerHandler(inventoryNetworkPeerRouter, authorizer, inventoryNetworkPeerSvc)
 
 	inventoryNetworkZoneRouter := inventoryRouter.SubGroup("/network_zones")
-	registerInventoryNetworkZoneHandler(inventoryNetworkZoneRouter, inventoryNetworkZoneSvc)
+	registerInventoryNetworkZoneHandler(inventoryNetworkZoneRouter, authorizer, inventoryNetworkZoneSvc)
 
 	inventoryProfileRouter := inventoryRouter.SubGroup("/profiles")
-	registerInventoryProfileHandler(inventoryProfileRouter, inventoryProfileSvc)
+	registerInventoryProfileHandler(inventoryProfileRouter, authorizer, inventoryProfileSvc)
 
 	inventoryProjectRouter := inventoryRouter.SubGroup("/projects")
-	registerInventoryProjectHandler(inventoryProjectRouter, inventoryProjectSvc)
+	registerInventoryProjectHandler(inventoryProjectRouter, authorizer, inventoryProjectSvc)
 
 	inventoryStorageBucketRouter := inventoryRouter.SubGroup("/storage_buckets")
-	registerInventoryStorageBucketHandler(inventoryStorageBucketRouter, inventoryStorageBucketSvc)
+	registerInventoryStorageBucketHandler(inventoryStorageBucketRouter, authorizer, inventoryStorageBucketSvc)
 
 	inventoryStoragePoolRouter := inventoryRouter.SubGroup("/storage_pools")
-	registerInventoryStoragePoolHandler(inventoryStoragePoolRouter, inventoryStoragePoolSvc)
+	registerInventoryStoragePoolHandler(inventoryStoragePoolRouter, authorizer, inventoryStoragePoolSvc)
 
 	inventoryStorageVolumeRouter := inventoryRouter.SubGroup("/storage_volumes")
-	registerInventoryStorageVolumeHandler(inventoryStorageVolumeRouter, inventoryStorageVolumeSvc)
+	registerInventoryStorageVolumeHandler(inventoryStorageVolumeRouter, authorizer, inventoryStorageVolumeSvc)
 
 	return []provisioning.InventorySyncer{
 		inventoryImageSvc,

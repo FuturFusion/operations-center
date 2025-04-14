@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -17,14 +18,14 @@ type instanceHandler struct {
 	service inventory.InstanceService
 }
 
-func registerInventoryInstanceHandler(router Router, service inventory.InstanceService) {
+func registerInventoryInstanceHandler(router Router, authorizer authz.Authorizer, service inventory.InstanceService) {
 	handler := &instanceHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.instancesGet))
-	router.HandleFunc("GET /{id}", response.With(handler.instanceGet))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.instanceResyncPost))
+	router.HandleFunc("GET /{$}", response.With(handler.instancesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{id}", response.With(handler.instanceGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.instanceResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/instances instances instances_get
