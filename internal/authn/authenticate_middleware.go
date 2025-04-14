@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/FuturFusion/operations-center/internal/authn/oidc"
+	"github.com/FuturFusion/operations-center/internal/authn/tls"
 	"github.com/FuturFusion/operations-center/internal/response"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -76,7 +77,7 @@ func (a Authenticator) authenticate(w http.ResponseWriter, r *http.Request) (boo
 	}
 
 	for _, cert := range r.TLS.PeerCertificates {
-		trusted, username := checkTrustState(r.Context(), *cert, a.trustedTLSClientCertFingerprints)
+		trusted, username := tls.CheckTrustState(r.Context(), *cert, a.trustedTLSClientCertFingerprints)
 		if trusted {
 			return true, username, api.AuthenticationMethodTLS, nil
 		}
