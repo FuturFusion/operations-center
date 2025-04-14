@@ -1,4 +1,4 @@
-package authn
+package tls
 
 import (
 	"context"
@@ -10,11 +10,11 @@ import (
 	incustls "github.com/lxc/incus/v6/shared/tls"
 )
 
-// checkTrustState checks whether the given client certificate is trusted
+// CheckTrustState checks whether the given client certificate is trusted
 // (i.e. it has a valid time span and it belongs to the given list of trusted
 // certificates).
 // Returns whether or not the certificate is trusted, and the fingerprint of the certificate.
-func checkTrustState(ctx context.Context, cert x509.Certificate, trustedCertFingerprints []string) (bool, string) {
+func CheckTrustState(ctx context.Context, cert x509.Certificate, trustedCertFingerprints []string) (bool, string) {
 	// Extra validity check (should have been caught by TLS stack)
 	if time.Now().Before(cert.NotBefore) || time.Now().After(cert.NotAfter) {
 		return false, ""
