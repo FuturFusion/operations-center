@@ -12,7 +12,7 @@ import (
 )
 
 // Ensure that NetworkForwardRepoMock does implement inventory.NetworkForwardRepo.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.NetworkForwardRepo = &NetworkForwardRepoMock{}
 
 // NetworkForwardRepoMock is a mock implementation of inventory.NetworkForwardRepo.

@@ -12,7 +12,7 @@ import (
 )
 
 // Ensure that ProfileRepoMock does implement inventory.ProfileRepo.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.ProfileRepo = &ProfileRepoMock{}
 
 // ProfileRepoMock is a mock implementation of inventory.ProfileRepo.

@@ -12,7 +12,7 @@ import (
 )
 
 // Ensure that ClusterServiceMock does implement provisioning.ClusterService.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ provisioning.ClusterService = &ClusterServiceMock{}
 
 // ClusterServiceMock is a mock implementation of provisioning.ClusterService.

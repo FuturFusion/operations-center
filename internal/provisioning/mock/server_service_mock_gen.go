@@ -12,7 +12,7 @@ import (
 )
 
 // Ensure that ServerServiceMock does implement provisioning.ServerService.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ provisioning.ServerService = &ServerServiceMock{}
 
 // ServerServiceMock is a mock implementation of provisioning.ServerService.

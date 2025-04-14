@@ -13,7 +13,7 @@ import (
 )
 
 // Ensure that NetworkForwardServerClientMock does implement inventory.NetworkForwardServerClient.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.NetworkForwardServerClient = &NetworkForwardServerClientMock{}
 
 // NetworkForwardServerClientMock is a mock implementation of inventory.NetworkForwardServerClient.

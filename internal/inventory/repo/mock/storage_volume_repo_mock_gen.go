@@ -12,7 +12,7 @@ import (
 )
 
 // Ensure that StorageVolumeRepoMock does implement inventory.StorageVolumeRepo.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.StorageVolumeRepo = &StorageVolumeRepoMock{}
 
 // StorageVolumeRepoMock is a mock implementation of inventory.StorageVolumeRepo.

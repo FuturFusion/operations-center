@@ -13,7 +13,7 @@ import (
 )
 
 // Ensure that StorageBucketServerClientMock does implement inventory.StorageBucketServerClient.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.StorageBucketServerClient = &StorageBucketServerClientMock{}
 
 // StorageBucketServerClientMock is a mock implementation of inventory.StorageBucketServerClient.

@@ -12,7 +12,7 @@ import (
 )
 
 // Ensure that NetworkPeerRepoMock does implement inventory.NetworkPeerRepo.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.NetworkPeerRepo = &NetworkPeerRepoMock{}
 
 // NetworkPeerRepoMock is a mock implementation of inventory.NetworkPeerRepo.

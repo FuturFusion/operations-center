@@ -12,7 +12,7 @@ import (
 )
 
 // Ensure that ImageRepoMock does implement inventory.ImageRepo.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.ImageRepo = &ImageRepoMock{}
 
 // ImageRepoMock is a mock implementation of inventory.ImageRepo.

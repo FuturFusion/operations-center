@@ -13,7 +13,7 @@ import (
 )
 
 // Ensure that ProvisioningServerServiceMock does implement inventory.ProvisioningServerService.
-// If this is not the case, regenerate this file with moq.
+// If this is not the case, regenerate this file with mockery.
 var _ inventory.ProvisioningServerService = &ProvisioningServerServiceMock{}
 
 // ProvisioningServerServiceMock is a mock implementation of inventory.ProvisioningServerService.
