@@ -12,6 +12,8 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+type HandlerFunc func(r *http.Request) Response
+
 // Response represents an API response.
 type Response interface {
 	Render(w http.ResponseWriter) error
