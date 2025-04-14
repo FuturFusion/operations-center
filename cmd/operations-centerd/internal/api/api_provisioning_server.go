@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -17,17 +18,17 @@ type serverHandler struct {
 	service provisioning.ServerService
 }
 
-func registerProvisioningServerHandler(router Router, service provisioning.ServerService) {
+func registerProvisioningServerHandler(router Router, authorizer authz.Authorizer, service provisioning.ServerService) {
 	handler := &serverHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.serversGet))
-	router.HandleFunc("POST /{$}", response.With(handler.serversPost))
-	router.HandleFunc("GET /{name}", response.With(handler.serverGet))
-	router.HandleFunc("PUT /{name}", response.With(handler.serverPut))
-	router.HandleFunc("DELETE /{name}", response.With(handler.serverDelete))
-	router.HandleFunc("POST /{name}", response.With(handler.serverPost))
+	router.HandleFunc("GET /{$}", response.With(handler.serversGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{$}", response.With(handler.serversPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
+	router.HandleFunc("GET /{name}", response.With(handler.serverGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("PUT /{name}", response.With(handler.serverPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("DELETE /{name}", response.With(handler.serverDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
+	router.HandleFunc("POST /{name}", response.With(handler.serverPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/provisioning/servers servers servers_get

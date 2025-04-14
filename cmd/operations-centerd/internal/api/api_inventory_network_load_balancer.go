@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -17,14 +18,14 @@ type networkLoadBalancerHandler struct {
 	service inventory.NetworkLoadBalancerService
 }
 
-func registerInventoryNetworkLoadBalancerHandler(router Router, service inventory.NetworkLoadBalancerService) {
+func registerInventoryNetworkLoadBalancerHandler(router Router, authorizer authz.Authorizer, service inventory.NetworkLoadBalancerService) {
 	handler := &networkLoadBalancerHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.networkLoadBalancersGet))
-	router.HandleFunc("GET /{id}", response.With(handler.networkLoadBalancerGet))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.networkLoadBalancerResyncPost))
+	router.HandleFunc("GET /{$}", response.With(handler.networkLoadBalancersGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{id}", response.With(handler.networkLoadBalancerGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.networkLoadBalancerResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/network_load_balancers network_load_balancers network_load_balancers_get

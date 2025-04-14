@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/response"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -18,16 +19,16 @@ type tokenHandler struct {
 	service provisioning.TokenService
 }
 
-func registerProvisioningTokenHandler(router Router, service provisioning.TokenService) {
+func registerProvisioningTokenHandler(router Router, authorizer authz.Authorizer, service provisioning.TokenService) {
 	handler := &tokenHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.tokensGet))
-	router.HandleFunc("POST /{$}", response.With(handler.tokensPost))
-	router.HandleFunc("GET /{uuid}", response.With(handler.tokenGet))
-	router.HandleFunc("PUT /{uuid}", response.With(handler.tokenPut))
-	router.HandleFunc("DELETE /{uuid}", response.With(handler.tokenDelete))
+	router.HandleFunc("GET /{$}", response.With(handler.tokensGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{$}", response.With(handler.tokensPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
+	router.HandleFunc("GET /{uuid}", response.With(handler.tokenGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("PUT /{uuid}", response.With(handler.tokenPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("DELETE /{uuid}", response.With(handler.tokenDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 }
 
 // swagger:operation GET /1.0/provisioning/tokens tokens tokens_get

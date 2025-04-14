@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -17,14 +18,14 @@ type networkForwardHandler struct {
 	service inventory.NetworkForwardService
 }
 
-func registerInventoryNetworkForwardHandler(router Router, service inventory.NetworkForwardService) {
+func registerInventoryNetworkForwardHandler(router Router, authorizer authz.Authorizer, service inventory.NetworkForwardService) {
 	handler := &networkForwardHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.networkForwardsGet))
-	router.HandleFunc("GET /{id}", response.With(handler.networkForwardGet))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.networkForwardResyncPost))
+	router.HandleFunc("GET /{$}", response.With(handler.networkForwardsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{id}", response.With(handler.networkForwardGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.networkForwardResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/network_forwards network_forwards network_forwards_get

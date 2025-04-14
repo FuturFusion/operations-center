@@ -20,6 +20,7 @@ import (
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
 	"github.com/FuturFusion/operations-center/internal/authn"
 	"github.com/FuturFusion/operations-center/internal/authn/oidc"
+	authztlz "github.com/FuturFusion/operations-center/internal/authz/tls"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
 	"github.com/FuturFusion/operations-center/internal/file"
 	incusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
@@ -118,6 +119,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 	authenticator := authn.New(authOptions...)
 
 	// TODO: setup authorizer
+	authorizer := authztlz.New(ctx, d.config.TrustedTLSClientCertFingerprints)
+	// TODO: if OpenFGA config is present, replace the authorizer with the OpenFGA one
 
 	// TODO: setup OIDC
 
@@ -195,20 +198,20 @@ func (d *Daemon) Start(ctx context.Context) error {
 	provisioningRouter := api10router.SubGroup("/provisioning")
 
 	provisioningTokenRouter := provisioningRouter.SubGroup("/tokens")
-	registerProvisioningTokenHandler(provisioningTokenRouter, tokenSvc)
+	registerProvisioningTokenHandler(provisioningTokenRouter, authorizer, tokenSvc)
 
 	provisioningClusterRouter := provisioningRouter.SubGroup("/clusters")
-	registerProvisioningClusterHandler(provisioningClusterRouter, clusterSvcWrapped)
+	registerProvisioningClusterHandler(provisioningClusterRouter, authorizer, clusterSvcWrapped)
 
 	provisioningServerRouter := provisioningRouter.SubGroup("/servers")
-	registerProvisioningServerHandler(provisioningServerRouter, serverSvc)
+	registerProvisioningServerHandler(provisioningServerRouter, authorizer, serverSvc)
 
 	updateRouter := provisioningRouter.SubGroup("/updates")
-	registerUpdateHandler(updateRouter, updateSvc)
+	registerUpdateHandler(updateRouter, authorizer, updateSvc)
 
 	inventoryRouter := api10router.SubGroup("/inventory")
 
-	inventorySyncers := registerInventoryRoutes(dbWithTransaction, clusterSvcWrapped, serverClientProvider, inventoryRouter)
+	inventorySyncers := registerInventoryRoutes(dbWithTransaction, clusterSvcWrapped, serverClientProvider, authorizer, inventoryRouter)
 
 	clusterSvc.SetInventorySyncers(inventorySyncers)
 

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -15,14 +16,14 @@ type {{ .Name | camelcase }}Handler struct {
 	service inventory.{{ .Name | pascalcase }}Service
 }
 
-func registerInventory{{ .Name | pascalcase }}Handler(router Router, service inventory.{{ .Name | pascalcase }}Service) {
+func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer authz.Authorizer, service inventory.{{ .Name | pascalcase }}Service) {
 	handler := &{{ .Name | camelcase }}Handler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.{{ .PluralName | camelcase }}Get))
-	router.HandleFunc("GET /{id}", response.With(handler.{{ .Name | camelcase }}Get))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.{{ .Name | camelcase }}ResyncPost))
+	router.HandleFunc("GET /{$}", response.With(handler.{{ .PluralName | camelcase }}Get, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{id}", response.With(handler.{{ .Name | camelcase }}Get, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.{{ .Name | camelcase }}ResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/{{ .PluralName }} {{ .PluralName }} {{ .PluralName }}_get

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -17,14 +18,14 @@ type networkPeerHandler struct {
 	service inventory.NetworkPeerService
 }
 
-func registerInventoryNetworkPeerHandler(router Router, service inventory.NetworkPeerService) {
+func registerInventoryNetworkPeerHandler(router Router, authorizer authz.Authorizer, service inventory.NetworkPeerService) {
 	handler := &networkPeerHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.networkPeersGet))
-	router.HandleFunc("GET /{id}", response.With(handler.networkPeerGet))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.networkPeerResyncPost))
+	router.HandleFunc("GET /{$}", response.With(handler.networkPeersGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{id}", response.With(handler.networkPeerGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.networkPeerResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/network_peers network_peers network_peers_get

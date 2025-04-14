@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -17,14 +18,14 @@ type storagePoolHandler struct {
 	service inventory.StoragePoolService
 }
 
-func registerInventoryStoragePoolHandler(router Router, service inventory.StoragePoolService) {
+func registerInventoryStoragePoolHandler(router Router, authorizer authz.Authorizer, service inventory.StoragePoolService) {
 	handler := &storagePoolHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.storagePoolsGet))
-	router.HandleFunc("GET /{id}", response.With(handler.storagePoolGet))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.storagePoolResyncPost))
+	router.HandleFunc("GET /{$}", response.With(handler.storagePoolsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{id}", response.With(handler.storagePoolGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.storagePoolResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/storage_pools storage_pools storage_pools_get

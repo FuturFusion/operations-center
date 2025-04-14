@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -17,14 +18,14 @@ type imageHandler struct {
 	service inventory.ImageService
 }
 
-func registerInventoryImageHandler(router Router, service inventory.ImageService) {
+func registerInventoryImageHandler(router Router, authorizer authz.Authorizer, service inventory.ImageService) {
 	handler := &imageHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.imagesGet))
-	router.HandleFunc("GET /{id}", response.With(handler.imageGet))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.imageResyncPost))
+	router.HandleFunc("GET /{$}", response.With(handler.imagesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{id}", response.With(handler.imageGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.imageResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/images images images_get

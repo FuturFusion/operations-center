@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -17,14 +18,14 @@ type networkIntegrationHandler struct {
 	service inventory.NetworkIntegrationService
 }
 
-func registerInventoryNetworkIntegrationHandler(router Router, service inventory.NetworkIntegrationService) {
+func registerInventoryNetworkIntegrationHandler(router Router, authorizer authz.Authorizer, service inventory.NetworkIntegrationService) {
 	handler := &networkIntegrationHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.networkIntegrationsGet))
-	router.HandleFunc("GET /{id}", response.With(handler.networkIntegrationGet))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.networkIntegrationResyncPost))
+	router.HandleFunc("GET /{$}", response.With(handler.networkIntegrationsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{id}", response.With(handler.networkIntegrationGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.networkIntegrationResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/network_integrations network_integrations network_integrations_get

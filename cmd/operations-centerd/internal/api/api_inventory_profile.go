@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -17,14 +18,14 @@ type profileHandler struct {
 	service inventory.ProfileService
 }
 
-func registerInventoryProfileHandler(router Router, service inventory.ProfileService) {
+func registerInventoryProfileHandler(router Router, authorizer authz.Authorizer, service inventory.ProfileService) {
 	handler := &profileHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.profilesGet))
-	router.HandleFunc("GET /{id}", response.With(handler.profileGet))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.profileResyncPost))
+	router.HandleFunc("GET /{$}", response.With(handler.profilesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{id}", response.With(handler.profileGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.profileResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/profiles profiles profiles_get

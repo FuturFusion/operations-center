@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -17,14 +18,14 @@ type storageBucketHandler struct {
 	service inventory.StorageBucketService
 }
 
-func registerInventoryStorageBucketHandler(router Router, service inventory.StorageBucketService) {
+func registerInventoryStorageBucketHandler(router Router, authorizer authz.Authorizer, service inventory.StorageBucketService) {
 	handler := &storageBucketHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.storageBucketsGet))
-	router.HandleFunc("GET /{id}", response.With(handler.storageBucketGet))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.storageBucketResyncPost))
+	router.HandleFunc("GET /{$}", response.With(handler.storageBucketsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{id}", response.With(handler.storageBucketGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{id}/resync", response.With(handler.storageBucketResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/storage_buckets storage_buckets storage_buckets_get
