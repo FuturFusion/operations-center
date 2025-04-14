@@ -20,6 +20,7 @@ require (
 	github.com/flosch/pongo2/v6 v6.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-chi/chi/v5 v5.2.1 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -95,6 +96,7 @@ require (
 	github.com/lmittmann/tint v1.0.7
 	github.com/lxc/incus/v6 v6.11.0
 	github.com/mattn/go-sqlite3 v1.14.24
+	github.com/oauth2-proxy/mockoidc v0.0.0-20240214162133-caebfff84d25
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/prometheus/client_golang v1.21.1
 	github.com/spf13/cobra v1.9.1
