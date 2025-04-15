@@ -20,7 +20,10 @@ import (
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
 	"github.com/FuturFusion/operations-center/internal/authn"
 	"github.com/FuturFusion/operations-center/internal/authn/oidc"
+	"github.com/FuturFusion/operations-center/internal/authz"
+	"github.com/FuturFusion/operations-center/internal/authz/chain"
 	authztlz "github.com/FuturFusion/operations-center/internal/authz/tls"
+	"github.com/FuturFusion/operations-center/internal/authz/unixsocket"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
 	"github.com/FuturFusion/operations-center/internal/file"
 	incusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
@@ -49,8 +52,8 @@ type Daemon struct {
 	clientCertificate string
 	clientKey         string
 
-	server   *http.Server
-	errgroup *errgroup.Group
+	shutdownFuncs []func(context.Context) error
+	errgroup      *errgroup.Group
 }
 
 func NewDaemon(ctx context.Context, env environment, cfg *config.Config) *Daemon {
@@ -119,7 +122,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 	authenticator := authn.New(authOptions...)
 
 	// TODO: setup authorizer
-	authorizer := authztlz.New(ctx, d.config.TrustedTLSClientCertFingerprints)
+	authorizers := []authz.Authorizer{
+		unixsocket.New(),
+		authztlz.New(ctx, d.config.TrustedTLSClientCertFingerprints),
+	}
+
+	authorizer := chain.New(authorizers...)
+
 	// TODO: if OpenFGA config is present, replace the authorizer with the OpenFGA one
 
 	// TODO: setup OIDC
@@ -219,7 +228,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	errorLogger.SetOutput(httpErrorLogger{})
 
 	// Setup web server
-	d.server = &http.Server{
+	server := &http.Server{
 		Handler: logger.RequestIDMiddleware(
 			logger.AccessLogMiddleware(
 				serveMux,
@@ -233,6 +242,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 			ClientAuth: tls.RequestClientCert,
 		},
 	}
+
+	d.shutdownFuncs = append(d.shutdownFuncs, server.Shutdown)
 
 	group, errgroupCtx := errgroup.WithContext(context.Background())
 	d.errgroup = group
@@ -255,7 +266,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 		slog.InfoContext(ctx, "Start unix socket listener", slog.Any("addr", unixListener.Addr()))
 
-		err = d.server.Serve(unixListener)
+		err = server.Serve(unixListener)
 		if errors.Is(err, http.ErrServerClosed) {
 			// Ignore error from graceful shutdown.
 			return nil
@@ -265,7 +276,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	})
 
 	group.Go(func() error {
-		slog.InfoContext(ctx, "Start https listener", slog.Any("addr", d.server.Addr))
+		slog.InfoContext(ctx, "Start https listener", slog.Any("addr", server.Addr))
 
 		certFile := filepath.Join(d.env.VarDir(), "server.crt")
 		keyFile := filepath.Join(d.env.VarDir(), "server.key")
@@ -276,7 +287,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 			return err
 		}
 
-		err = d.server.ListenAndServeTLS(certFile, keyFile)
+		err = server.ListenAndServeTLS(certFile, keyFile)
 		if errors.Is(err, http.ErrServerClosed) {
 			// Ignore error from graceful shutdown.
 			return nil
@@ -290,7 +301,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer shutdownCancel()
 		return d.Stop(shutdownCtx)
-	case <-time.After(500 * time.Millisecond):
+	case <-time.After(50 * time.Millisecond):
 		// Grace period we wait for potential immediate errors from serving the http server.
 		// TODO: More clean way would be to check if the listeners are reachable (http, unix socket).
 	}
@@ -299,11 +310,17 @@ func (d *Daemon) Start(ctx context.Context) error {
 }
 
 func (d *Daemon) Stop(ctx context.Context) error {
-	shutdownErr := d.server.Shutdown(ctx)
+	errs := make([]error, len(d.shutdownFuncs)+1)
+
+	for _, shutdown := range d.shutdownFuncs {
+		err := shutdown(ctx)
+		errs = append(errs, err)
+	}
 
 	errgroupWaitErr := d.errgroup.Wait()
+	errs = append(errs, errgroupWaitErr)
 
-	return errors.Join(shutdownErr, errgroupWaitErr)
+	return errors.Join(errs...)
 }
 
 type httpErrorLogger struct{}
