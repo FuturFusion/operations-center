@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/authn/oidc"
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/authz/chain"
+	"github.com/FuturFusion/operations-center/internal/authz/openfga"
 	authztlz "github.com/FuturFusion/operations-center/internal/authz/tls"
 	"github.com/FuturFusion/operations-center/internal/authz/unixsocket"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -125,6 +126,17 @@ func (d *Daemon) Start(ctx context.Context) error {
 	authorizers := []authz.Authorizer{
 		unixsocket.New(),
 		authztlz.New(ctx, d.config.TrustedTLSClientCertFingerprints),
+	}
+
+	if d.config.OpenfgaAPIURL != "" && d.config.OpenfgaAPIToken != "" && d.config.OpenfgaStoreID != "" {
+		openfgaAuthorizer, err := openfga.New(ctx, d.config.OpenfgaAPIURL, d.config.OpenfgaAPIToken, d.config.OpenfgaStoreID)
+		if err != nil {
+			// TODO: cloud also be a warning
+			return err
+		}
+
+		authorizers = append(authorizers, openfgaAuthorizer)
+		d.shutdownFuncs = append(d.shutdownFuncs, openfgaAuthorizer.Shutdown)
 	}
 
 	authorizer := chain.New(authorizers...)

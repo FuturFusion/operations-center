@@ -26,6 +26,11 @@ type Config struct {
 	OidcScope    string `yaml:"oidc.scopes"`
 	OidcAudience string `yaml:"oidc.audience"`
 	OidcClaim    string `yaml:"oidc.claim"`
+
+	// OpenFGA-specific configuration.
+	OpenfgaAPIToken string `yaml:"openfga.api.token"`
+	OpenfgaAPIURL   string `yaml:"openfga.api.url"`
+	OpenfgaStoreID  string `yaml:"openfga.store.id"`
 }
 
 func (c *Config) LoadConfig(path string) error {
