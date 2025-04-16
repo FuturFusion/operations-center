@@ -1,0 +1,45 @@
+{
+  "name": "operations-center-ui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "lint-eslint": "eslint 'src/**/*.{json,tsx,ts}'",
+    "lint-prettier": "prettier --check 'src/**/*.{json,tsx,ts}'",
+    "lint": "tsc -b && yarn lint-eslint && yarn lint-prettier",
+    "build": "yarn lint && vite build",
+    "build-nolint": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.63.0",
+    "bootstrap": "5.3.3",
+    "react": "^19.0.0",
+    "react-bootstrap": "2.10.7",
+    "react-dom": "^19.0.0",
+    "react-icons": "5.4.0",
+    "react-router": "7.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.22.0",
+    "@testing-library/dom": "10.4.0",
+    "@testing-library/jest-dom": "6.6.3",
+    "@testing-library/react": "16.2.0",
+    "@testing-library/user-event": "14.6.1",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.22.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^16.0.0",
+    "jsdom": "26.0.0",
+    "prettier": "^3.5.3",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.26.1",
+    "vite": "^6.3.0",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "3.0.5"
+  }
+}

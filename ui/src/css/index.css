@@ -1,0 +1,12 @@
+@import "./dataTable.css";
+@import "./sidebar.css";
+
+body {
+  font-family: 'Inter', sans-serif !important;
+}
+
+.scroll-container {
+  overflow-y: auto;
+  min-height: calc(100vh - 100px);
+  max-height: calc(100vh - 100px);
+}

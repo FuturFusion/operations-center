@@ -1,0 +1,20 @@
+nav {
+  width: 240px;
+}
+
+.navbar-nav li:hover {
+  background-color: #3f3f3f;
+}
+
+.navbar-nav .nav-link {
+  margin-left: 20px;
+}
+
+.nav-link {
+  margin: 5px;
+}
+
+.nav-link svg {
+  color: #fff !important;
+  margin-right: 10px;
+}
