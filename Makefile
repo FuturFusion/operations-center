@@ -55,7 +55,7 @@ endif
 build-dev-container:
 	docker build -t operations-center-dev ./.devcontainer/
 
-DOCKER_RUN := docker run -i -v .:/home/vscode/src --mount source=operations_center_devcontainer_goroot,target=/go,type=volume --mount source=operations_center_devcontainer_cache,target=/home/vscode/.cache,type=volume -w /home/vscode/src -u 1000:1000 operations-center-dev
+DOCKER_RUN := docker run -i -v .:/home/vscode/src --mount source=operations_center_devcontainer_goroot,target=/go,type=volume --mount source=operations_center_devcontainer_cache,target=/home/vscode/.cache,type=volume --mount source=/var/run/docker.sock,target=/var/run/docker-host.sock,type=bind -w /home/vscode/src -u 1000:$$(stat -c '%g' /var/run/docker.sock) operations-center-dev
 
 .PHONY: docker-build
 docker-build: build-dev-container
