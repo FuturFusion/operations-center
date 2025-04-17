@@ -40,6 +40,10 @@ linters:
         # slog without context
         - pattern: ^slog\.(Debug|Info|Warn|Error)$
           msg: Do not use slog without context
+    misspell:
+      ignore-rules:
+        # Interface name formed from auth
+        - auther
     revive:
       rules:
         # Disabled for now while we are rushing with the development of an initial version.

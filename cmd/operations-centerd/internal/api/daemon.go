@@ -19,10 +19,12 @@ import (
 
 	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
 	"github.com/FuturFusion/operations-center/internal/authn"
-	"github.com/FuturFusion/operations-center/internal/authn/oidc"
+	authnoidc "github.com/FuturFusion/operations-center/internal/authn/oidc"
+	authntls "github.com/FuturFusion/operations-center/internal/authn/tls"
+	authnunixsocket "github.com/FuturFusion/operations-center/internal/authn/unixsocket"
 	"github.com/FuturFusion/operations-center/internal/authz"
-	"github.com/FuturFusion/operations-center/internal/authz/chain"
-	"github.com/FuturFusion/operations-center/internal/authz/openfga"
+	authzchain "github.com/FuturFusion/operations-center/internal/authz/chain"
+	authzopenfga "github.com/FuturFusion/operations-center/internal/authz/openfga"
 	authztlz "github.com/FuturFusion/operations-center/internal/authz/tls"
 	"github.com/FuturFusion/operations-center/internal/authz/unixsocket"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -102,25 +104,29 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// TODO: setup certificates
 
-	var authOptions []authn.Option
-	// Setup client cert fingerprint authentication.
-	if len(d.config.TrustedTLSClientCertFingerprints) > 0 {
-		authOptions = append(authOptions, authn.WithTLSClientCertFingerprints(d.config.TrustedTLSClientCertFingerprints))
+	// UnixSocket authenticator is always available.
+	authers := []authn.Auther{
+		authnunixsocket.UnixSocket{},
 	}
 
 	// Setup OIDC authentication.
-	var oidcVerifier *oidc.Verifier
+	var oidcVerifier *authnoidc.Verifier
 	if d.config.OidcIssuer != "" && d.config.OidcClientID != "" {
-		oidcVerifier, err = oidc.NewVerifier(context.TODO(), d.config.OidcIssuer, d.config.OidcClientID, d.config.OidcScope, d.config.OidcAudience, d.config.OidcClaim)
+		oidcVerifier, err = authnoidc.NewVerifier(context.TODO(), d.config.OidcIssuer, d.config.OidcClientID, d.config.OidcScope, d.config.OidcAudience, d.config.OidcClaim)
 		if err != nil {
 			return err
 		}
 
-		authOptions = append(authOptions, authn.WithOIDCVerifier(oidcVerifier))
+		authers = append(authers, authnoidc.New(oidcVerifier))
+	}
+
+	// Setup client cert fingerprint authentication.
+	if len(d.config.TrustedTLSClientCertFingerprints) > 0 {
+		authers = append(authers, authntls.New(d.config.TrustedTLSClientCertFingerprints))
 	}
 
 	// Create authenticator
-	authenticator := authn.New(authOptions...)
+	authenticator := authn.New(authers)
 
 	// TODO: setup authorizer
 	authorizers := []authz.Authorizer{
@@ -129,7 +135,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	if d.config.OpenfgaAPIURL != "" && d.config.OpenfgaAPIToken != "" && d.config.OpenfgaStoreID != "" {
-		openfgaAuthorizer, err := openfga.New(ctx, d.config.OpenfgaAPIURL, d.config.OpenfgaAPIToken, d.config.OpenfgaStoreID)
+		openfgaAuthorizer, err := authzopenfga.New(ctx, d.config.OpenfgaAPIURL, d.config.OpenfgaAPIToken, d.config.OpenfgaStoreID)
 		if err != nil {
 			// TODO: cloud also be a warning
 			return err
@@ -139,11 +145,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		d.shutdownFuncs = append(d.shutdownFuncs, openfgaAuthorizer.Shutdown)
 	}
 
-	authorizer := chain.New(authorizers...)
-
-	// TODO: if OpenFGA config is present, replace the authorizer with the OpenFGA one
-
-	// TODO: setup OIDC
+	authorizer := authzchain.New(authorizers...)
 
 	gh := ghClient.NewClient(nil)
 	if d.config.GithubToken != "" {
