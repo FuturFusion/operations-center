@@ -7,7 +7,9 @@ package entities
 //
 //generate-database:mapper stmt -e server objects
 //generate-database:mapper stmt -e server objects-by-Name
+//generate-database:mapper stmt -e server objects-by-Cluster
 //generate-database:mapper stmt -e server names
+//generate-database:mapper stmt -e server names-by-Cluster
 //generate-database:mapper stmt -e server id
 //generate-database:mapper stmt -e server create
 //generate-database:mapper stmt -e server update
@@ -25,5 +27,6 @@ package entities
 //generate-database:mapper method -e server DeleteOne-by-Name
 
 type ServerFilter struct {
-	Name *string
+	Name    *string
+	Cluster *string
 }

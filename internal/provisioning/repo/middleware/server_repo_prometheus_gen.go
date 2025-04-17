@@ -93,6 +93,34 @@ func (_d ServerRepoWithPrometheus) GetAllNames(ctx context.Context) (strings []s
 	return _d.base.GetAllNames(ctx)
 }
 
+// GetAllNamesWithFilter implements provisioning.ServerRepo.
+func (_d ServerRepoWithPrometheus) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ServerFilter) (strings []string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllNamesWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllNamesWithFilter(ctx, filter)
+}
+
+// GetAllWithFilter implements provisioning.ServerRepo.
+func (_d ServerRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filter provisioning.ServerFilter) (servers provisioning.Servers, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByName implements provisioning.ServerRepo.
 func (_d ServerRepoWithPrometheus) GetByName(ctx context.Context, name string) (server *provisioning.Server, err error) {
 	_since := time.Now()

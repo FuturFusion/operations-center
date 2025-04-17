@@ -40,3 +40,25 @@ func (s Server) Validate() error {
 }
 
 type Servers []Server
+
+type ServerFilter struct {
+	Name       *string
+	Cluster    *string
+	Expression *string `db:"ignore"`
+}
+
+func (f ServerFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.Cluster != nil {
+		query.Add("cluster", *f.Cluster)
+	}
+
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
+	}
+
+	return query
+}
+
+func (f ServerFilter) String() string {
+	return f.AppendToURLValues(url.Values{}).Encode()
+}

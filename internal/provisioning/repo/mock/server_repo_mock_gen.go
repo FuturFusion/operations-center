@@ -33,6 +33,12 @@ var _ provisioning.ServerRepo = &ServerRepoMock{}
 //			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
 //				panic("mock out the GetAllNames method")
 //			},
+//			GetAllNamesWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) ([]string, error) {
+//				panic("mock out the GetAllNamesWithFilter method")
+//			},
+//			GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+//				panic("mock out the GetAllWithFilter method")
+//			},
 //			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 //				panic("mock out the GetByName method")
 //			},
@@ -60,6 +66,12 @@ type ServerRepoMock struct {
 
 	// GetAllNamesFunc mocks the GetAllNames method.
 	GetAllNamesFunc func(ctx context.Context) ([]string, error)
+
+	// GetAllNamesWithFilterFunc mocks the GetAllNamesWithFilter method.
+	GetAllNamesWithFilterFunc func(ctx context.Context, filter provisioning.ServerFilter) ([]string, error)
+
+	// GetAllWithFilterFunc mocks the GetAllWithFilter method.
+	GetAllWithFilterFunc func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error)
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Server, error)
@@ -96,6 +108,20 @@ type ServerRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// GetAllNamesWithFilter holds details about calls to the GetAllNamesWithFilter method.
+		GetAllNamesWithFilter []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Filter is the filter argument value.
+			Filter provisioning.ServerFilter
+		}
+		// GetAllWithFilter holds details about calls to the GetAllWithFilter method.
+		GetAllWithFilter []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Filter is the filter argument value.
+			Filter provisioning.ServerFilter
+		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
 			// Ctx is the ctx argument value.
@@ -120,13 +146,15 @@ type ServerRepoMock struct {
 			Server provisioning.Server
 		}
 	}
-	lockCreate       sync.RWMutex
-	lockDeleteByName sync.RWMutex
-	lockGetAll       sync.RWMutex
-	lockGetAllNames  sync.RWMutex
-	lockGetByName    sync.RWMutex
-	lockRename       sync.RWMutex
-	lockUpdate       sync.RWMutex
+	lockCreate                sync.RWMutex
+	lockDeleteByName          sync.RWMutex
+	lockGetAll                sync.RWMutex
+	lockGetAllNames           sync.RWMutex
+	lockGetAllNamesWithFilter sync.RWMutex
+	lockGetAllWithFilter      sync.RWMutex
+	lockGetByName             sync.RWMutex
+	lockRename                sync.RWMutex
+	lockUpdate                sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -262,6 +290,78 @@ func (mock *ServerRepoMock) GetAllNamesCalls() []struct {
 	mock.lockGetAllNames.RLock()
 	calls = mock.calls.GetAllNames
 	mock.lockGetAllNames.RUnlock()
+	return calls
+}
+
+// GetAllNamesWithFilter calls GetAllNamesWithFilterFunc.
+func (mock *ServerRepoMock) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ServerFilter) ([]string, error) {
+	if mock.GetAllNamesWithFilterFunc == nil {
+		panic("ServerRepoMock.GetAllNamesWithFilterFunc: method is nil but ServerRepo.GetAllNamesWithFilter was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Filter provisioning.ServerFilter
+	}{
+		Ctx:    ctx,
+		Filter: filter,
+	}
+	mock.lockGetAllNamesWithFilter.Lock()
+	mock.calls.GetAllNamesWithFilter = append(mock.calls.GetAllNamesWithFilter, callInfo)
+	mock.lockGetAllNamesWithFilter.Unlock()
+	return mock.GetAllNamesWithFilterFunc(ctx, filter)
+}
+
+// GetAllNamesWithFilterCalls gets all the calls that were made to GetAllNamesWithFilter.
+// Check the length with:
+//
+//	len(mockedServerRepo.GetAllNamesWithFilterCalls())
+func (mock *ServerRepoMock) GetAllNamesWithFilterCalls() []struct {
+	Ctx    context.Context
+	Filter provisioning.ServerFilter
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Filter provisioning.ServerFilter
+	}
+	mock.lockGetAllNamesWithFilter.RLock()
+	calls = mock.calls.GetAllNamesWithFilter
+	mock.lockGetAllNamesWithFilter.RUnlock()
+	return calls
+}
+
+// GetAllWithFilter calls GetAllWithFilterFunc.
+func (mock *ServerRepoMock) GetAllWithFilter(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+	if mock.GetAllWithFilterFunc == nil {
+		panic("ServerRepoMock.GetAllWithFilterFunc: method is nil but ServerRepo.GetAllWithFilter was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Filter provisioning.ServerFilter
+	}{
+		Ctx:    ctx,
+		Filter: filter,
+	}
+	mock.lockGetAllWithFilter.Lock()
+	mock.calls.GetAllWithFilter = append(mock.calls.GetAllWithFilter, callInfo)
+	mock.lockGetAllWithFilter.Unlock()
+	return mock.GetAllWithFilterFunc(ctx, filter)
+}
+
+// GetAllWithFilterCalls gets all the calls that were made to GetAllWithFilter.
+// Check the length with:
+//
+//	len(mockedServerRepo.GetAllWithFilterCalls())
+func (mock *ServerRepoMock) GetAllWithFilterCalls() []struct {
+	Ctx    context.Context
+	Filter provisioning.ServerFilter
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Filter provisioning.ServerFilter
+	}
+	mock.lockGetAllWithFilter.RLock()
+	calls = mock.calls.GetAllWithFilter
+	mock.lockGetAllWithFilter.RUnlock()
 	return calls
 }
 

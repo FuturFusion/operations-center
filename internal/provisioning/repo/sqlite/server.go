@@ -29,8 +29,16 @@ func (s server) GetAll(ctx context.Context) (provisioning.Servers, error) {
 	return entities.GetServers(ctx, transaction.GetDBTX(ctx, s.db))
 }
 
+func (s server) GetAllWithFilter(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+	return entities.GetServers(ctx, transaction.GetDBTX(ctx, s.db), filter)
+}
+
 func (s server) GetAllNames(ctx context.Context) ([]string, error) {
 	return entities.GetServerNames(ctx, transaction.GetDBTX(ctx, s.db))
+}
+
+func (s server) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ServerFilter) ([]string, error) {
+	return entities.GetServerNames(ctx, transaction.GetDBTX(ctx, s.db), filter)
 }
 
 func (s server) GetByName(ctx context.Context, name string) (*provisioning.Server, error) {

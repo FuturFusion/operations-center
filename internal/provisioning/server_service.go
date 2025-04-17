@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
@@ -58,8 +61,105 @@ func (s serverService) GetAll(ctx context.Context) (Servers, error) {
 	return s.repo.GetAll(ctx)
 }
 
+func (s serverService) GetAllWithFilter(ctx context.Context, filter ServerFilter) (Servers, error) {
+	var filterExpression *vm.Program
+	var err error
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Server{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var servers Servers
+	if filter.Name == nil && filter.Cluster == nil {
+		servers, err = s.repo.GetAll(ctx)
+	} else {
+		servers, err = s.repo.GetAllWithFilter(ctx, filter)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredServers Servers
+	if filter.Expression != nil {
+		for _, server := range servers {
+			output, err := expr.Run(filterExpression, server)
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredServers = append(filteredServers, server)
+			}
+		}
+
+		return filteredServers, nil
+	}
+
+	return servers, nil
+}
+
 func (s serverService) GetAllNames(ctx context.Context) ([]string, error) {
 	return s.repo.GetAllNames(ctx)
+}
+
+func (s serverService) GetAllNamesWithFilter(ctx context.Context, filter ServerFilter) ([]string, error) {
+	var filterExpression *vm.Program
+	var err error
+
+	type Env struct {
+		Name string
+	}
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var serverIDs []string
+
+	if filter.Name == nil && filter.Cluster == nil {
+		serverIDs, err = s.repo.GetAllNames(ctx)
+	} else {
+		serverIDs, err = s.repo.GetAllNamesWithFilter(ctx, filter)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredServerIDs []string
+	if filter.Expression != nil {
+		for _, serverID := range serverIDs {
+			output, err := expr.Run(filterExpression, Env{serverID})
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredServerIDs = append(filteredServerIDs, serverID)
+			}
+		}
+
+		return filteredServerIDs, nil
+	}
+
+	return serverIDs, nil
 }
 
 func (s serverService) GetByName(ctx context.Context, name string) (*Server, error) {

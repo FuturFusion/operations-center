@@ -40,6 +40,17 @@ func registerProvisioningServerHandler(router Router, authorizer authz.Authorize
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API servers
@@ -83,6 +94,17 @@ func registerProvisioningServerHandler(router Router, authorizer authz.Authorize
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cluster
+//	    description: Cluster name
+//	    type: string
+//	    example: cluster
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API servers
@@ -118,8 +140,18 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 		recursion = 0
 	}
 
+	var filter provisioning.ServerFilter
+
+	if r.URL.Query().Get("cluster") != "" {
+		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+	}
+
+	if r.URL.Query().Get("filter") != "" {
+		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
+	}
+
 	if recursion == 1 {
-		servers, err := s.service.GetAll(r.Context())
+		servers, err := s.service.GetAllWithFilter(r.Context(), filter)
 		if err != nil {
 			return response.SmartError(err)
 		}
@@ -140,7 +172,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	serverNames, err := s.service.GetAllNames(r.Context())
+	serverNames, err := s.service.GetAllNamesWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
