@@ -11,6 +11,11 @@ const (
 	EntitlementCanView   Entitlement = "can_view"
 )
 
+// String implements fmt.Stringer for Entitlement.
+func (e Entitlement) String() string {
+	return string(e)
+}
+
 // ObjectType is a type of resource within the operations center.
 type ObjectType string
 
@@ -21,3 +26,8 @@ const (
 	// ObjectTypeServer represents a server.
 	ObjectTypeServer ObjectType = "server"
 )
+
+// String implements fmt.Stringer for ObjectType.
+func (o ObjectType) String() string {
+	return string(o)
+}
