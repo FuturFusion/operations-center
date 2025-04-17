@@ -11,11 +11,14 @@ ARG USER_GID=1000
 # Install necessary tools.
 RUN echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | tee /etc/apt/sources.list.d/goreleaser.list && \
     apt update && \
-    apt install -y vim sudo man less goreleaser jq fish zsh sqlite3 direnv
+    apt install -y vim sudo man less goreleaser jq fish zsh sqlite3 direnv docker.io
 
 # Add vscode user and add it to sudoers.
 RUN groupadd -g 1000 $USERNAME && \
     useradd -s /bin/bash -u $USER_UID -g $USER_GID -m $USERNAME && \
+    usermod -aG docker $USERNAME && \
+    cd /run && touch docker-host.sock && ln -s docker-host.sock docker.sock && cd - && \
+    chown -h $USERNAME /run/docker.sock && \
     mkdir -p /etc/sudoers.d && \
     echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME && \
     chmod 0440 /etc/sudoers.d/$USERNAME

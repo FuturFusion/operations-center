@@ -1,0 +1,16 @@
+model
+  schema 1.1
+
+type user
+
+type server
+  relations
+    define admin: [user]
+    define operator: [user] or admin
+    define user: [user] or operator
+    define viewer: [user] or user
+    define authenticated: [user:*]
+    define can_create: admin
+    define can_delete: admin
+    define can_edit: operator
+    define can_view: viewer

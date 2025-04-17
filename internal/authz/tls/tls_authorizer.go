@@ -2,7 +2,6 @@ package authz
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 	"strings"
 
@@ -12,34 +11,18 @@ import (
 
 // TLS represents a TLS authorizer.
 type TLS struct {
-	authz.CommonAuthorizer
-
 	certificateFingerprints []string
 }
 
-func New(ctx context.Context, certificateFingerprints []string) authz.Authorizer {
+func New(ctx context.Context, certificateFingerprints []string) TLS {
 	return TLS{
 		certificateFingerprints: certificateFingerprints,
 	}
 }
 
-func (t TLS) CheckPermission(ctx context.Context, r *http.Request, object authz.Object, entitlement authz.Entitlement) error {
-	logger := slog.With(slog.String("authorizer", "tls"))
-	details, err := t.RequestDetails(r)
-	if err != nil {
-		return api.StatusErrorf(http.StatusForbidden, "Failed to extract request details: %v", err)
-	}
-
-	// Always allow full access via local unix socket.
-	if details.Protocol == "unix" {
-		return nil
-	}
-
+func (t TLS) CheckPermission(ctx context.Context, details *authz.RequestDetails, object authz.Object, entitlement authz.Entitlement) error {
 	if details.Protocol != api.AuthenticationMethodTLS {
-		logger.WarnContext(ctx, "Authentication protocol is not compatible with authorizer", slog.String("protocol", details.Protocol))
-		// Return nil. If the server has been configured with an authentication method but no associated authorizer,
-		// the default is to give these authenticated users admin privileges.
-		return nil
+		return api.StatusErrorf(http.StatusForbidden, "Authentication protocol %q, is not compatible with authorizer", details.Protocol)
 	}
 
 	for _, fingerprint := range t.certificateFingerprints {
