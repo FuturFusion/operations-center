@@ -3,6 +3,7 @@ package authz
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/FuturFusion/operations-center/internal/authn"
 )
@@ -11,11 +12,11 @@ import (
 type RequestDetails struct {
 	Username string
 	Protocol string
+	URL      *url.URL
+	Method   string
 }
 
-type CommonAuthorizer struct{}
-
-func (c *CommonAuthorizer) RequestDetails(r *http.Request) (*RequestDetails, error) {
+func ExtractRequestDetails(r *http.Request) (*RequestDetails, error) {
 	if r == nil {
 		return nil, fmt.Errorf("Cannot inspect nil request")
 	}
@@ -47,5 +48,7 @@ func (c *CommonAuthorizer) RequestDetails(r *http.Request) (*RequestDetails, err
 	return &RequestDetails{
 		Username: username,
 		Protocol: protocol,
+		URL:      r.URL,
+		Method:   r.Method,
 	}, nil
 }

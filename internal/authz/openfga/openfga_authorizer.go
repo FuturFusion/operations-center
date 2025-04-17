@@ -19,8 +19,6 @@ import (
 
 // FGA represents an OpenFGA authorizer.
 type FGA struct {
-	authz.CommonAuthorizer
-
 	client *client.OpenFgaClient
 }
 
@@ -87,15 +85,9 @@ func (f FGA) ensureAuthorizationModel(ctx context.Context) error {
 	return nil
 }
 
-func (f FGA) CheckPermission(ctx context.Context, r *http.Request, object authz.Object, entitlement authz.Entitlement) error {
+func (f FGA) CheckPermission(ctx context.Context, details *authz.RequestDetails, object authz.Object, entitlement authz.Entitlement) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-
-	// TODO: This should not be necessary in every authorizer again and again
-	details, err := f.RequestDetails(r)
-	if err != nil {
-		return api.StatusErrorf(http.StatusForbidden, "Failed to extract request details: %v", err)
-	}
 
 	username := details.Username
 
@@ -106,7 +98,7 @@ func (f FGA) CheckPermission(ctx context.Context, r *http.Request, object authz.
 		Object:   object.String(),
 	}
 
-	slog.DebugContext(ctx, "Checking OpenFGA relation", slog.Any("object", object), slog.Any("entitlement", entitlement), slog.String("url", r.URL.String()), slog.String("method", r.Method), slog.String("username", username), slog.String("protocol", details.Protocol))
+	slog.DebugContext(ctx, "Checking OpenFGA relation", slog.Any("object", object), slog.Any("entitlement", entitlement), slog.String("url", details.URL.String()), slog.String("method", details.Method), slog.String("username", username), slog.String("protocol", details.Protocol))
 	resp, err := f.client.Check(ctx).Body(body).Execute()
 	if err != nil {
 		return fmt.Errorf("Failed to check OpenFGA relation: %w", err)
