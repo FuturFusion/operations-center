@@ -1,6 +1,8 @@
 package api
 
 import (
+	"errors"
+	"io/fs"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -11,6 +13,16 @@ type uiHTTPDir struct {
 }
 
 const uiPathSegment = "ui"
+
+// Open is part of the http.FileSystem interface.
+func (httpFS uiHTTPDir) Open(name string) (http.File, error) {
+	fsFile, err := httpFS.FileSystem.Open(name)
+	if err != nil && errors.Is(err, fs.ErrNotExist) {
+		return httpFS.FileSystem.Open("index.html")
+	}
+
+	return fsFile, err
+}
 
 func registerUIHandlers(router Router, varDir string) {
 	uiDir := uiHTTPDir{http.Dir(filepath.Join(varDir, uiPathSegment))}
