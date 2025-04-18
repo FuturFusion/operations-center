@@ -13,6 +13,12 @@ RUN echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | tee /etc/apt/s
     apt update && \
     apt install -y vim sudo man less goreleaser jq fish zsh sqlite3 direnv docker.io
 
+# Install tools for building UI.
+RUN curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash - && \
+    apt update && \
+    apt install nodejs && \
+    npm install --global yarn
+
 # Add vscode user and add it to sudoers.
 RUN groupadd -g 1000 $USERNAME && \
     useradd -s /bin/bash -u $USER_UID -g $USER_GID -m $USERNAME && \

@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "lint-eslint": "eslint 'src/**/*.{json,tsx,ts}'",
-    "lint-prettier": "prettier --check 'src/**/*.{json,tsx,ts}'",
-    "lint": "tsc -b && yarn lint-eslint && yarn lint-prettier",
-    "build": "yarn lint && vite build",
+    "lint-eslint": "yarn eslint 'src/**/*.{json,tsx,ts}'",
+    "lint-prettier": "yarn prettier --check 'src/**/*.{json,tsx,ts}'",
+    "lint": "yarn lint-eslint && yarn lint-prettier",
+    "build": "yarn lint && tsc -b && vite build",
     "build-nolint": "vite build",
     "preview": "vite preview"
   },
