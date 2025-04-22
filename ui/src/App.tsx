@@ -1,11 +1,24 @@
 import { Routes, Route } from "react-router";
 import { Container } from "react-bootstrap";
 import Sidebar from "components/Sidebar";
+import { useAuth } from "context/auth";
 import Home from "pages/Home";
 import Profile from "pages/Profile";
 import Project from "pages/Project";
 
 function App() {
+  const { isAuthenticated, isAuthLoading } = useAuth();
+
+  if (isAuthLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    if (window.location.pathname !== "/ui/") {
+      window.location.href = "/ui/";
+    }
+  }
+
   return (
     <>
       <div style={{ display: "flex" }}>
