@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 )
@@ -96,8 +99,92 @@ func (s clusterService) GetAll(ctx context.Context) (Clusters, error) {
 	return s.repo.GetAll(ctx)
 }
 
+func (s clusterService) GetAllWithFilter(ctx context.Context, filter ClusterFilter) (Clusters, error) {
+	var filterExpression *vm.Program
+	var err error
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Cluster{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	clusters, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredClusters Clusters
+	if filter.Expression != nil {
+		for _, cluster := range clusters {
+			output, err := expr.Run(filterExpression, cluster)
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredClusters = append(filteredClusters, cluster)
+			}
+		}
+
+		return filteredClusters, nil
+	}
+
+	return clusters, nil
+}
+
 func (s clusterService) GetAllNames(ctx context.Context) ([]string, error) {
 	return s.repo.GetAllNames(ctx)
+}
+
+func (s clusterService) GetAllNamesWithFilter(ctx context.Context, filter ClusterFilter) ([]string, error) {
+	var filterExpression *vm.Program
+	var err error
+
+	type Env struct {
+		Name string
+	}
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	clusterIDs, err := s.repo.GetAllNames(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredClusterIDs []string
+	if filter.Expression != nil {
+		for _, clusterID := range clusterIDs {
+			output, err := expr.Run(filterExpression, Env{clusterID})
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredClusterIDs = append(filteredClusterIDs, clusterID)
+			}
+		}
+
+		return filteredClusterIDs, nil
+	}
+
+	return clusterIDs, nil
 }
 
 func (s clusterService) GetByName(ctx context.Context, name string) (*Cluster, error) {

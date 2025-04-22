@@ -8,6 +8,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -40,6 +41,12 @@ func registerProvisioningClusterHandler(router Router, authorizer authz.Authoriz
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API clusters
@@ -83,6 +90,12 @@ func registerProvisioningClusterHandler(router Router, authorizer authz.Authoriz
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: filter
+//	    description: Filter expression
+//	    type: string
+//	    example: name == "value"
 //	responses:
 //	  "200":
 //	    description: API clusters
@@ -118,8 +131,14 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 		recursion = 0
 	}
 
+	var filter provisioning.ClusterFilter
+
+	if r.URL.Query().Get("filter") != "" {
+		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
+	}
+
 	if recursion == 1 {
-		clusters, err := c.service.GetAll(r.Context())
+		clusters, err := c.service.GetAllWithFilter(r.Context(), filter)
 		if err != nil {
 			return response.SmartError(err)
 		}
@@ -136,7 +155,7 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	clusterNames, err := c.service.GetAllNames(r.Context())
+	clusterNames, err := c.service.GetAllNamesWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}

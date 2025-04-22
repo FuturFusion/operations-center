@@ -93,6 +93,34 @@ func (_d ServerServiceWithPrometheus) GetAllNames(ctx context.Context) (strings 
 	return _d.base.GetAllNames(ctx)
 }
 
+// GetAllNamesWithFilter implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ServerFilter) (strings []string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllNamesWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllNamesWithFilter(ctx, filter)
+}
+
+// GetAllWithFilter implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) GetAllWithFilter(ctx context.Context, filter provisioning.ServerFilter) (servers provisioning.Servers, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) GetByName(ctx context.Context, name string) (server *provisioning.Server, err error) {
 	_since := time.Now()

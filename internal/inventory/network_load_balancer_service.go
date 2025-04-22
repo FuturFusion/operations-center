@@ -110,7 +110,47 @@ func (s networkLoadBalancerService) GetAllWithFilter(ctx context.Context, filter
 }
 
 func (s networkLoadBalancerService) GetAllIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]int, error) {
-	return s.repo.GetAllIDsWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	type Env struct {
+		ID int
+	}
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	networkLoadBalancersIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredNetworkLoadBalancersIDs []int
+	if filter.Expression != nil {
+		for _, networkLoadBalancerID := range networkLoadBalancersIDs {
+			output, err := expr.Run(filterExpression, Env{networkLoadBalancerID})
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredNetworkLoadBalancersIDs = append(filteredNetworkLoadBalancersIDs, networkLoadBalancerID)
+			}
+		}
+
+		return filteredNetworkLoadBalancersIDs, nil
+	}
+
+	return networkLoadBalancersIDs, nil
 }
 
 func (s networkLoadBalancerService) GetByID(ctx context.Context, id int) (NetworkLoadBalancer, error) {

@@ -28,9 +28,25 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
   ORDER BY servers.name
 `)
 
+var serverObjectsByCluster = RegisterStmt(`
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.last_updated
+  FROM servers
+  LEFT JOIN clusters ON servers.cluster_id = clusters.id
+  WHERE ( cluster = ? )
+  ORDER BY servers.name
+`)
+
 var serverNames = RegisterStmt(`
 SELECT servers.name
   FROM servers
+  ORDER BY servers.name
+`)
+
+var serverNamesByCluster = RegisterStmt(`
+SELECT servers.name
+  FROM servers
+  LEFT JOIN clusters ON servers.cluster_id = clusters.id
+  WHERE ( clusters.name = ? )
   ORDER BY servers.name
 `)
 
@@ -117,7 +133,7 @@ func GetServer(ctx context.Context, db dbtx, name string) (_ *provisioning.Serve
 		_err = mapErr(_err, "Server")
 	}()
 
-	filter := ServerFilter{}
+	filter := provisioning.ServerFilter{}
 	filter.Name = &name
 
 	objects, err := GetServers(ctx, db, filter)
@@ -191,7 +207,7 @@ func getServersRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]pro
 
 // GetServers returns all available servers.
 // generator: server GetMany
-func GetServers(ctx context.Context, db dbtx, filters ...ServerFilter) (_ []provisioning.Server, _err error) {
+func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilter) (_ []provisioning.Server, _err error) {
 	defer func() {
 		_err = mapErr(_err, "Server")
 	}()
@@ -214,7 +230,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...ServerFilter) (_ []prov
 	}
 
 	for i, filter := range filters {
-		if filter.Name != nil {
+		if filter.Name != nil && filter.Cluster == nil {
 			args = append(args, []any{filter.Name}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, serverObjectsByName)
@@ -238,7 +254,31 @@ func GetServers(ctx context.Context, db dbtx, filters ...ServerFilter) (_ []prov
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Name == nil {
+		} else if filter.Cluster != nil && filter.Name == nil {
+			args = append(args, []any{filter.Cluster}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, serverObjectsByCluster)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"serverObjectsByCluster\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(serverObjectsByCluster)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"serverObjects\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.Name == nil && filter.Cluster == nil {
 			return nil, fmt.Errorf("Cannot filter on empty ServerFilter")
 		} else {
 			return nil, fmt.Errorf("No statement exists for the given Filter")
@@ -262,7 +302,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...ServerFilter) (_ []prov
 
 // GetServerNames returns the identifying field of server.
 // generator: server GetNames
-func GetServerNames(ctx context.Context, db dbtx, filters ...ServerFilter) (_ []string, _err error) {
+func GetServerNames(ctx context.Context, db dbtx, filters ...provisioning.ServerFilter) (_ []string, _err error) {
 	defer func() {
 		_err = mapErr(_err, "Server")
 	}()
@@ -284,8 +324,32 @@ func GetServerNames(ctx context.Context, db dbtx, filters ...ServerFilter) (_ []
 		}
 	}
 
-	for _, filter := range filters {
-		if filter.Name == nil {
+	for i, filter := range filters {
+		if filter.Cluster != nil && filter.Name == nil {
+			args = append(args, []any{filter.Cluster}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, serverNamesByCluster)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"serverNamesByCluster\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(serverNamesByCluster)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"serverNames\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.Name == nil && filter.Cluster == nil {
 			return nil, fmt.Errorf("Cannot filter on empty ServerFilter")
 		} else {
 			return nil, fmt.Errorf("No statement exists for the given Filter")

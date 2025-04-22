@@ -37,3 +37,20 @@ func (c Cluster) Validate() error {
 }
 
 type Clusters []Cluster
+
+type ClusterFilter struct {
+	Name       *string
+	Expression *string `db:"ignore"`
+}
+
+func (f ClusterFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.Expression != nil {
+		query.Add("filter", *f.Expression)
+	}
+
+	return query
+}
+
+func (f ClusterFilter) String() string {
+	return f.AppendToURLValues(url.Values{}).Encode()
+}
