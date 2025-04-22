@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/FuturFusion/operations-center/internal/authn"
 	"github.com/FuturFusion/operations-center/internal/response"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -50,6 +51,16 @@ func api10Get(r *http.Request) response.Response {
 		APIVersion:  api.APIVersion,
 		Auth:        "untrusted",
 		AuthMethods: []string{"oidc", "tls"},
+	}
+
+	// Return the authentication method, if any, that the client is using.
+	ctx := r.Context()
+	auth := ctx.Value(authn.CtxProtocol)
+	if auth != nil {
+		v, ok := auth.(string)
+		if ok {
+			srv.Auth = v
+		}
 	}
 
 	return response.SyncResponseETag(true, srv, nil)
