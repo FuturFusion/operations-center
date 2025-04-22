@@ -112,10 +112,13 @@ func (c *cmdNetworkZoneList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New(
+	ocClient, err := client.New(
 		c.config.OperationsCenterServer,
 		client.WithForceLocal(c.config.ForceLocal),
 	)
+	if err != nil {
+		return err
+	}
 
 	networkZones, err := ocClient.GetWithFilterNetworkZones(filter)
 	if err != nil {
@@ -189,10 +192,13 @@ func (c *cmdNetworkZoneShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(
+	ocClient, err := client.New(
 		c.config.OperationsCenterServer,
 		client.WithForceLocal(c.config.ForceLocal),
 	)
+	if err != nil {
+		return err
+	}
 
 	networkZone, err := ocClient.GetNetworkZone(name)
 	if err != nil {

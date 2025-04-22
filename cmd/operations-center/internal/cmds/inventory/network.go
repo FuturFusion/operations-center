@@ -112,10 +112,13 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New(
+	ocClient, err := client.New(
 		c.config.OperationsCenterServer,
 		client.WithForceLocal(c.config.ForceLocal),
 	)
+	if err != nil {
+		return err
+	}
 
 	networks, err := ocClient.GetWithFilterNetworks(filter)
 	if err != nil {
@@ -189,10 +192,13 @@ func (c *cmdNetworkShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(
+	ocClient, err := client.New(
 		c.config.OperationsCenterServer,
 		client.WithForceLocal(c.config.ForceLocal),
 	)
+	if err != nil {
+		return err
+	}
 
 	network, err := ocClient.GetNetwork(name)
 	if err != nil {

@@ -112,10 +112,13 @@ func (c *cmdNetworkACLList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New(
+	ocClient, err := client.New(
 		c.config.OperationsCenterServer,
 		client.WithForceLocal(c.config.ForceLocal),
 	)
+	if err != nil {
+		return err
+	}
 
 	networkACLs, err := ocClient.GetWithFilterNetworkACLs(filter)
 	if err != nil {
@@ -189,10 +192,13 @@ func (c *cmdNetworkACLShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(
+	ocClient, err := client.New(
 		c.config.OperationsCenterServer,
 		client.WithForceLocal(c.config.ForceLocal),
 	)
+	if err != nil {
+		return err
+	}
 
 	networkACL, err := ocClient.GetNetworkACL(name)
 	if err != nil {

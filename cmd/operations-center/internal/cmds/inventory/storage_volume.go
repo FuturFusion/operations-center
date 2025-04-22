@@ -118,10 +118,13 @@ func (c *cmdStorageVolumeList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New(
+	ocClient, err := client.New(
 		c.config.OperationsCenterServer,
 		client.WithForceLocal(c.config.ForceLocal),
 	)
+	if err != nil {
+		return err
+	}
 
 	storageVolumes, err := ocClient.GetWithFilterStorageVolumes(filter)
 	if err != nil {
@@ -195,10 +198,13 @@ func (c *cmdStorageVolumeShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(
+	ocClient, err := client.New(
 		c.config.OperationsCenterServer,
 		client.WithForceLocal(c.config.ForceLocal),
 	)
+	if err != nil {
+		return err
+	}
 
 	storageVolume, err := ocClient.GetStorageVolume(name)
 	if err != nil {

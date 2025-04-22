@@ -21,22 +21,28 @@ type OperationsCenterClient struct {
 	httpClient *http.Client
 	baseURL    string
 
-	forceLocal bool
+	forceLocal    bool
+	tlsClientCert tls.Certificate
 }
 
-type Option func(c *OperationsCenterClient)
+type Option func(c *OperationsCenterClient) error
 
 func WithForceLocal(forceLocal bool) Option {
-	return func(c *OperationsCenterClient) {
+	return func(c *OperationsCenterClient) error {
 		c.forceLocal = forceLocal
+
+		return nil
 	}
 }
 
-func New(serverPort string, opts ...Option) OperationsCenterClient {
+func New(serverPort string, opts ...Option) (OperationsCenterClient, error) {
 	c := OperationsCenterClient{}
 
 	for _, opt := range opts {
-		opt(&c)
+		err := opt(&c)
+		if err != nil {
+			return OperationsCenterClient{}, err
+		}
 	}
 
 	if c.forceLocal {
@@ -67,7 +73,7 @@ func New(serverPort string, opts ...Option) OperationsCenterClient {
 		c.httpClient = client
 		c.baseURL = "http://unix.socket/"
 
-		return c
+		return c, nil
 	}
 
 	httpClient := http.DefaultClient
@@ -81,7 +87,7 @@ func New(serverPort string, opts ...Option) OperationsCenterClient {
 	c.httpClient = httpClient
 	c.baseURL = fmt.Sprintf("https://%s", serverPort)
 
-	return c
+	return c, nil
 }
 
 func (c OperationsCenterClient) doRequest(method string, endpoint string, query url.Values, content []byte) (*api.Response, error) {

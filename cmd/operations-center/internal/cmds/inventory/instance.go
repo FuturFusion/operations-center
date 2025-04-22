@@ -118,10 +118,13 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New(
+	ocClient, err := client.New(
 		c.config.OperationsCenterServer,
 		client.WithForceLocal(c.config.ForceLocal),
 	)
+	if err != nil {
+		return err
+	}
 
 	instances, err := ocClient.GetWithFilterInstances(filter)
 	if err != nil {
@@ -195,10 +198,13 @@ func (c *cmdInstanceShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(
+	ocClient, err := client.New(
 		c.config.OperationsCenterServer,
 		client.WithForceLocal(c.config.ForceLocal),
 	)
+	if err != nil {
+		return err
+	}
 
 	instance, err := ocClient.GetInstance(name)
 	if err != nil {
