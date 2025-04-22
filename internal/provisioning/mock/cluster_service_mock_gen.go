@@ -33,6 +33,12 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
 //				panic("mock out the GetAllNames method")
 //			},
+//			GetAllNamesWithFilterFunc: func(ctx context.Context, filter provisioning.ClusterFilter) ([]string, error) {
+//				panic("mock out the GetAllNamesWithFilter method")
+//			},
+//			GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ClusterFilter) (provisioning.Clusters, error) {
+//				panic("mock out the GetAllWithFilter method")
+//			},
 //			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
 //				panic("mock out the GetByName method")
 //			},
@@ -63,6 +69,12 @@ type ClusterServiceMock struct {
 
 	// GetAllNamesFunc mocks the GetAllNames method.
 	GetAllNamesFunc func(ctx context.Context) ([]string, error)
+
+	// GetAllNamesWithFilterFunc mocks the GetAllNamesWithFilter method.
+	GetAllNamesWithFilterFunc func(ctx context.Context, filter provisioning.ClusterFilter) ([]string, error)
+
+	// GetAllWithFilterFunc mocks the GetAllWithFilter method.
+	GetAllWithFilterFunc func(ctx context.Context, filter provisioning.ClusterFilter) (provisioning.Clusters, error)
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Cluster, error)
@@ -102,6 +114,20 @@ type ClusterServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// GetAllNamesWithFilter holds details about calls to the GetAllNamesWithFilter method.
+		GetAllNamesWithFilter []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Filter is the filter argument value.
+			Filter provisioning.ClusterFilter
+		}
+		// GetAllWithFilter holds details about calls to the GetAllWithFilter method.
+		GetAllWithFilter []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Filter is the filter argument value.
+			Filter provisioning.ClusterFilter
+		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
 			// Ctx is the ctx argument value.
@@ -137,6 +163,8 @@ type ClusterServiceMock struct {
 	lockDeleteByName          sync.RWMutex
 	lockGetAll                sync.RWMutex
 	lockGetAllNames           sync.RWMutex
+	lockGetAllNamesWithFilter sync.RWMutex
+	lockGetAllWithFilter      sync.RWMutex
 	lockGetByName             sync.RWMutex
 	lockRename                sync.RWMutex
 	lockResyncInventoryByName sync.RWMutex
@@ -276,6 +304,78 @@ func (mock *ClusterServiceMock) GetAllNamesCalls() []struct {
 	mock.lockGetAllNames.RLock()
 	calls = mock.calls.GetAllNames
 	mock.lockGetAllNames.RUnlock()
+	return calls
+}
+
+// GetAllNamesWithFilter calls GetAllNamesWithFilterFunc.
+func (mock *ClusterServiceMock) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ClusterFilter) ([]string, error) {
+	if mock.GetAllNamesWithFilterFunc == nil {
+		panic("ClusterServiceMock.GetAllNamesWithFilterFunc: method is nil but ClusterService.GetAllNamesWithFilter was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Filter provisioning.ClusterFilter
+	}{
+		Ctx:    ctx,
+		Filter: filter,
+	}
+	mock.lockGetAllNamesWithFilter.Lock()
+	mock.calls.GetAllNamesWithFilter = append(mock.calls.GetAllNamesWithFilter, callInfo)
+	mock.lockGetAllNamesWithFilter.Unlock()
+	return mock.GetAllNamesWithFilterFunc(ctx, filter)
+}
+
+// GetAllNamesWithFilterCalls gets all the calls that were made to GetAllNamesWithFilter.
+// Check the length with:
+//
+//	len(mockedClusterService.GetAllNamesWithFilterCalls())
+func (mock *ClusterServiceMock) GetAllNamesWithFilterCalls() []struct {
+	Ctx    context.Context
+	Filter provisioning.ClusterFilter
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Filter provisioning.ClusterFilter
+	}
+	mock.lockGetAllNamesWithFilter.RLock()
+	calls = mock.calls.GetAllNamesWithFilter
+	mock.lockGetAllNamesWithFilter.RUnlock()
+	return calls
+}
+
+// GetAllWithFilter calls GetAllWithFilterFunc.
+func (mock *ClusterServiceMock) GetAllWithFilter(ctx context.Context, filter provisioning.ClusterFilter) (provisioning.Clusters, error) {
+	if mock.GetAllWithFilterFunc == nil {
+		panic("ClusterServiceMock.GetAllWithFilterFunc: method is nil but ClusterService.GetAllWithFilter was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Filter provisioning.ClusterFilter
+	}{
+		Ctx:    ctx,
+		Filter: filter,
+	}
+	mock.lockGetAllWithFilter.Lock()
+	mock.calls.GetAllWithFilter = append(mock.calls.GetAllWithFilter, callInfo)
+	mock.lockGetAllWithFilter.Unlock()
+	return mock.GetAllWithFilterFunc(ctx, filter)
+}
+
+// GetAllWithFilterCalls gets all the calls that were made to GetAllWithFilter.
+// Check the length with:
+//
+//	len(mockedClusterService.GetAllWithFilterCalls())
+func (mock *ClusterServiceMock) GetAllWithFilterCalls() []struct {
+	Ctx    context.Context
+	Filter provisioning.ClusterFilter
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Filter provisioning.ClusterFilter
+	}
+	mock.lockGetAllWithFilter.RLock()
+	calls = mock.calls.GetAllWithFilter
+	mock.lockGetAllWithFilter.RUnlock()
 	return calls
 }
 

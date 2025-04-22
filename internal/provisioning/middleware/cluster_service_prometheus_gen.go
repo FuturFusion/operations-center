@@ -93,6 +93,34 @@ func (_d ClusterServiceWithPrometheus) GetAllNames(ctx context.Context) (strings
 	return _d.base.GetAllNames(ctx)
 }
 
+// GetAllNamesWithFilter implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ClusterFilter) (strings []string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllNamesWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllNamesWithFilter(ctx, filter)
+}
+
+// GetAllWithFilter implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) GetAllWithFilter(ctx context.Context, filter provisioning.ClusterFilter) (clusters provisioning.Clusters, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByName implements provisioning.ClusterService.
 func (_d ClusterServiceWithPrometheus) GetByName(ctx context.Context, name string) (cluster *provisioning.Cluster, err error) {
 	_since := time.Now()

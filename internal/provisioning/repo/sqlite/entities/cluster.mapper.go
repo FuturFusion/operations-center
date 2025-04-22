@@ -115,7 +115,7 @@ func GetCluster(ctx context.Context, db dbtx, name string) (_ *provisioning.Clus
 		_err = mapErr(_err, "Cluster")
 	}()
 
-	filter := ClusterFilter{}
+	filter := provisioning.ClusterFilter{}
 	filter.Name = &name
 
 	objects, err := GetClusters(ctx, db, filter)
@@ -189,7 +189,7 @@ func getClustersRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]pr
 
 // GetClusters returns all available clusters.
 // generator: cluster GetMany
-func GetClusters(ctx context.Context, db dbtx, filters ...ClusterFilter) (_ []provisioning.Cluster, _err error) {
+func GetClusters(ctx context.Context, db dbtx, filters ...provisioning.ClusterFilter) (_ []provisioning.Cluster, _err error) {
 	defer func() {
 		_err = mapErr(_err, "Cluster")
 	}()
@@ -260,7 +260,7 @@ func GetClusters(ctx context.Context, db dbtx, filters ...ClusterFilter) (_ []pr
 
 // GetClusterNames returns the identifying field of cluster.
 // generator: cluster GetNames
-func GetClusterNames(ctx context.Context, db dbtx, filters ...ClusterFilter) (_ []string, _err error) {
+func GetClusterNames(ctx context.Context, db dbtx, filters ...provisioning.ClusterFilter) (_ []string, _err error) {
 	defer func() {
 		_err = mapErr(_err, "Cluster")
 	}()

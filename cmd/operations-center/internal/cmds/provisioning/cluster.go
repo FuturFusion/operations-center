@@ -8,6 +8,8 @@ import (
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/render"
 	"github.com/FuturFusion/operations-center/internal/sort"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -144,6 +146,8 @@ func (c *cmdClusterAdd) ValidateFlags(cmd *cobra.Command, _ []string) error {
 type cmdClusterList struct {
 	config *config.Config
 
+	flagFilterExpression string
+
 	flagFormat string
 }
 
@@ -156,6 +160,8 @@ func (c *cmdClusterList) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
+
+	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
@@ -172,10 +178,16 @@ func (c *cmdClusterList) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	var filter provisioning.ClusterFilter
+
+	if c.flagFilterExpression != "" {
+		filter.Expression = ptr.To(c.flagFilterExpression)
+	}
+
 	// Client call
 	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
 
-	clusters, err := ocClient.GetClusters()
+	clusters, err := ocClient.GetWithFilterClusters(filter)
 	if err != nil {
 		return err
 	}

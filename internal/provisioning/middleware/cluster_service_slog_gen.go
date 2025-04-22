@@ -146,6 +146,68 @@ func (_d ClusterServiceWithSlog) GetAllNames(ctx context.Context) (strings []str
 	return _d._base.GetAllNames(ctx)
 }
 
+// GetAllNamesWithFilter implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) GetAllNamesWithFilter(ctx context.Context, filter provisioning.ClusterFilter) (strings []string, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.Debug("=> calling GetAllNamesWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("strings", strings),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method GetAllNamesWithFilter returned an error")
+		} else {
+			log.Debug("<= method GetAllNamesWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllNamesWithFilter(ctx, filter)
+}
+
+// GetAllWithFilter implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) GetAllWithFilter(ctx context.Context, filter provisioning.ClusterFilter) (clusters provisioning.Clusters, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.Debug("=> calling GetAllWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("clusters", clusters),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method GetAllWithFilter returned an error")
+		} else {
+			log.Debug("<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByName implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cluster *provisioning.Cluster, err error) {
 	log := _d._log.With()
