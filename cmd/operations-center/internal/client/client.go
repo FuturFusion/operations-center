@@ -20,10 +20,26 @@ const apiVersionPrefix = "/1.0"
 type OperationsCenterClient struct {
 	httpClient *http.Client
 	baseURL    string
+
+	forceLocal bool
 }
 
-func New(serverPort string, forceLocal bool) OperationsCenterClient {
-	if forceLocal {
+type Option func(c *OperationsCenterClient)
+
+func WithForceLocal(forceLocal bool) Option {
+	return func(c *OperationsCenterClient) {
+		c.forceLocal = forceLocal
+	}
+}
+
+func New(serverPort string, opts ...Option) OperationsCenterClient {
+	c := OperationsCenterClient{}
+
+	for _, opt := range opts {
+		opt(&c)
+	}
+
+	if c.forceLocal {
 		// Setup a Unix socket dialer
 		unixDial := func(_ context.Context, network, addr string) (net.Conn, error) {
 			raddr, err := net.ResolveUnixAddr("unix", "./tmp/unix.socket")
@@ -44,14 +60,14 @@ func New(serverPort string, forceLocal bool) OperationsCenterClient {
 		}
 
 		// Define the http client
-		client := &http.Client{}
-
-		client.Transport = transport
-
-		return OperationsCenterClient{
-			httpClient: client,
-			baseURL:    "http://unix.socket/",
+		client := &http.Client{
+			Transport: transport,
 		}
+
+		c.httpClient = client
+		c.baseURL = "http://unix.socket/"
+
+		return c
 	}
 
 	httpClient := http.DefaultClient
@@ -62,10 +78,10 @@ func New(serverPort string, forceLocal bool) OperationsCenterClient {
 		},
 	}
 
-	return OperationsCenterClient{
-		httpClient: httpClient,
-		baseURL:    fmt.Sprintf("https://%s", serverPort),
-	}
+	c.httpClient = httpClient
+	c.baseURL = fmt.Sprintf("https://%s", serverPort)
+
+	return c
 }
 
 func (c OperationsCenterClient) doRequest(method string, endpoint string, query url.Values, content []byte) (*api.Response, error) {

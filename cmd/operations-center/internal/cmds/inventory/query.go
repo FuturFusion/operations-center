@@ -136,7 +136,10 @@ func (c *CmdQuery) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New(c.Config.OperationsCenterServer, c.Config.ForceLocal)
+	ocClient := client.New(
+		c.Config.OperationsCenterServer,
+		client.WithForceLocal(c.Config.ForceLocal),
+	)
 
 	inventoryAggregates, err := ocClient.GetWithFilterInventoryAggregates(filter)
 	if err != nil {

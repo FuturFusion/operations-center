@@ -149,7 +149,10 @@ func (c *cmd{{ .Name | pascalcase }}List) Run(cmd *cobra.Command, args []string)
 	}
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	{{ .PluralName | camelcase }}, err := ocClient.GetWithFilter{{ .PluralName | pascalcase }}(filter)
 	if err != nil {
@@ -223,7 +226,10 @@ func (c *cmd{{ .Name | pascalcase }}Show) Run(cmd *cobra.Command, args []string)
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	{{ .Name | camelcase }}, err := ocClient.Get{{ .Name | pascalcase }}(name)
 	if err != nil {

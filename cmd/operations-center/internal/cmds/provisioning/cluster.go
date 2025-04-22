@@ -114,7 +114,10 @@ func (c *cmdClusterAdd) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	err = ocClient.CreateCluster(api.ClusterPost{
 		Cluster: api.Cluster{
@@ -185,7 +188,10 @@ func (c *cmdClusterList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	clusters, err := ocClient.GetWithFilterClusters(filter)
 	if err != nil {
@@ -235,7 +241,10 @@ func (c *cmdClusterRemove) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	err = ocClient.DeleteCluster(name)
 	if err != nil {
@@ -273,7 +282,10 @@ func (c *cmdClusterShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	cluster, err := ocClient.GetCluster(name)
 	if err != nil {
@@ -315,7 +327,10 @@ func (c *cmdClusterResync) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	err = ocClient.ResyncCluster(name)
 	if err != nil {
