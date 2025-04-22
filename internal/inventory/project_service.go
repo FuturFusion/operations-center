@@ -96,7 +96,47 @@ func (s projectService) GetAllWithFilter(ctx context.Context, filter ProjectFilt
 }
 
 func (s projectService) GetAllIDsWithFilter(ctx context.Context, filter ProjectFilter) ([]int, error) {
-	return s.repo.GetAllIDsWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	type Env struct {
+		ID int
+	}
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	projectsIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredProjectsIDs []int
+	if filter.Expression != nil {
+		for _, projectID := range projectsIDs {
+			output, err := expr.Run(filterExpression, Env{projectID})
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredProjectsIDs = append(filteredProjectsIDs, projectID)
+			}
+		}
+
+		return filteredProjectsIDs, nil
+	}
+
+	return projectsIDs, nil
 }
 
 func (s projectService) GetByID(ctx context.Context, id int) (Project, error) {

@@ -96,7 +96,47 @@ func (s networkIntegrationService) GetAllWithFilter(ctx context.Context, filter 
 }
 
 func (s networkIntegrationService) GetAllIDsWithFilter(ctx context.Context, filter NetworkIntegrationFilter) ([]int, error) {
-	return s.repo.GetAllIDsWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	type Env struct {
+		ID int
+	}
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	networkIntegrationsIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredNetworkIntegrationsIDs []int
+	if filter.Expression != nil {
+		for _, networkIntegrationID := range networkIntegrationsIDs {
+			output, err := expr.Run(filterExpression, Env{networkIntegrationID})
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredNetworkIntegrationsIDs = append(filteredNetworkIntegrationsIDs, networkIntegrationID)
+			}
+		}
+
+		return filteredNetworkIntegrationsIDs, nil
+	}
+
+	return networkIntegrationsIDs, nil
 }
 
 func (s networkIntegrationService) GetByID(ctx context.Context, id int) (NetworkIntegration, error) {

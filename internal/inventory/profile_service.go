@@ -96,7 +96,47 @@ func (s profileService) GetAllWithFilter(ctx context.Context, filter ProfileFilt
 }
 
 func (s profileService) GetAllIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]int, error) {
-	return s.repo.GetAllIDsWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	type Env struct {
+		ID int
+	}
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	profilesIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredProfilesIDs []int
+	if filter.Expression != nil {
+		for _, profileID := range profilesIDs {
+			output, err := expr.Run(filterExpression, Env{profileID})
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredProfilesIDs = append(filteredProfilesIDs, profileID)
+			}
+		}
+
+		return filteredProfilesIDs, nil
+	}
+
+	return profilesIDs, nil
 }
 
 func (s profileService) GetByID(ctx context.Context, id int) (Profile, error) {

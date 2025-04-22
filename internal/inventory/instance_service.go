@@ -96,7 +96,47 @@ func (s instanceService) GetAllWithFilter(ctx context.Context, filter InstanceFi
 }
 
 func (s instanceService) GetAllIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]int, error) {
-	return s.repo.GetAllIDsWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	type Env struct {
+		ID int
+	}
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	instancesIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredInstancesIDs []int
+	if filter.Expression != nil {
+		for _, instanceID := range instancesIDs {
+			output, err := expr.Run(filterExpression, Env{instanceID})
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filteredInstancesIDs = append(filteredInstancesIDs, instanceID)
+			}
+		}
+
+		return filteredInstancesIDs, nil
+	}
+
+	return instancesIDs, nil
 }
 
 func (s instanceService) GetByID(ctx context.Context, id int) (Instance, error) {

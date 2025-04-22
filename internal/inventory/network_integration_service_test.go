@@ -134,6 +134,7 @@ func TestNetworkIntegrationService_GetAllWithFilter(t *testing.T) {
 func TestNetworkIntegrationService_GetAllIDsWithFilter(t *testing.T) {
 	tests := []struct {
 		name                       string
+		filterExpression           *string
 		repoGetAllIDsWithFilter    []int
 		repoGetAllIDsWithFilterErr error
 
@@ -141,13 +142,55 @@ func TestNetworkIntegrationService_GetAllIDsWithFilter(t *testing.T) {
 		count     int
 	}{
 		{
-			name: "success",
+			name: "success - no filter expression",
 			repoGetAllIDsWithFilter: []int{
 				1, 2,
 			},
 
 			assertErr: require.NoError,
 			count:     2,
+		},
+		{
+			name:             "success - with filter expression",
+			filterExpression: ptr.To(`ID < 2`),
+			repoGetAllIDsWithFilter: []int{
+				1, 2,
+			},
+
+			assertErr: require.NoError,
+			count:     1,
+		},
+		{
+			name:             "error - invalid filter expression",
+			filterExpression: ptr.To(``), // the empty expression is an invalid expression.
+			repoGetAllIDsWithFilter: []int{
+				1,
+			},
+
+			assertErr: require.Error,
+			count:     0,
+		},
+		{
+			name:             "error - filter expression run",
+			filterExpression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
+			repoGetAllIDsWithFilter: []int{
+				1,
+			},
+
+			assertErr: require.Error,
+			count:     0,
+		},
+		{
+			name:             "error - non bool expression",
+			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
+			repoGetAllIDsWithFilter: []int{
+				1,
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...interface{}) {
+				require.ErrorContains(tt, err, "does not evaluate to boolean result")
+			},
+			count: 0,
 		},
 		{
 			name:                       "error - repo",
@@ -172,7 +215,9 @@ func TestNetworkIntegrationService_GetAllIDsWithFilter(t *testing.T) {
 			}))
 
 			// Run test
-			networkIntegrationIDs, err := networkIntegrationSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkIntegrationFilter{})
+			networkIntegrationIDs, err := networkIntegrationSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkIntegrationFilter{
+				Expression: tc.filterExpression,
+			})
 
 			// Assert
 			tc.assertErr(t, err)
