@@ -122,7 +122,47 @@ func (s {{ .Name | camelcase }}Service) GetAllWithFilter(ctx context.Context, fi
 }
 
 func (s {{ .Name | camelcase }}Service) GetAllIDsWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) ([]int, error) {
-	return s.repo.GetAllIDsWithFilter(ctx, filter)
+	var filterExpression *vm.Program
+	var err error
+
+	type Env struct {
+		ID int
+	}
+
+	if filter.Expression != nil {
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	{{ .PluralName | camelcase }}IDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var filtered{{ .PluralName | pascalcase }}IDs []int
+	if filter.Expression != nil {
+		for _, {{ .Name | camelcase }}ID := range {{ .PluralName | camelcase }}IDs {
+			output, err := expr.Run(filterExpression, Env{ {{ .Name | camelcase }}ID })
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+			}
+
+			if result {
+				filtered{{ .PluralName | pascalcase }}IDs = append(filtered{{ .PluralName | pascalcase }}IDs, {{ .Name | camelcase }}ID)
+			}
+		}
+
+		return filtered{{ .PluralName | pascalcase }}IDs, nil
+	}
+
+	return {{ .PluralName | camelcase }}IDs, nil
 }
 
 func (s {{ .Name | camelcase }}Service) GetByID(ctx context.Context, id int) ({{ .Name | pascalcase }}, error) {
