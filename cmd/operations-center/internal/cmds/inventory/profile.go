@@ -112,7 +112,10 @@ func (c *cmdProfileList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	profiles, err := ocClient.GetWithFilterProfiles(filter)
 	if err != nil {
@@ -186,7 +189,10 @@ func (c *cmdProfileShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	profile, err := ocClient.GetProfile(name)
 	if err != nil {

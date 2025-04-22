@@ -112,7 +112,10 @@ func (c *cmdImageList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	images, err := ocClient.GetWithFilterImages(filter)
 	if err != nil {
@@ -186,7 +189,10 @@ func (c *cmdImageShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	image, err := ocClient.GetImage(name)
 	if err != nil {

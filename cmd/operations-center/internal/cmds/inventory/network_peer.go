@@ -106,7 +106,10 @@ func (c *cmdNetworkPeerList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	networkPeers, err := ocClient.GetWithFilterNetworkPeers(filter)
 	if err != nil {
@@ -180,7 +183,10 @@ func (c *cmdNetworkPeerShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	networkPeer, err := ocClient.GetNetworkPeer(name)
 	if err != nil {

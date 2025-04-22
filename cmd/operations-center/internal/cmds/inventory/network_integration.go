@@ -106,7 +106,10 @@ func (c *cmdNetworkIntegrationList) Run(cmd *cobra.Command, args []string) error
 	}
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	networkIntegrations, err := ocClient.GetWithFilterNetworkIntegrations(filter)
 	if err != nil {
@@ -180,7 +183,10 @@ func (c *cmdNetworkIntegrationShow) Run(cmd *cobra.Command, args []string) error
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	networkIntegration, err := ocClient.GetNetworkIntegration(name)
 	if err != nil {

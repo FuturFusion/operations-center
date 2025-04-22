@@ -118,7 +118,10 @@ func (c *cmdStorageBucketList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	storageBuckets, err := ocClient.GetWithFilterStorageBuckets(filter)
 	if err != nil {
@@ -192,7 +195,10 @@ func (c *cmdStorageBucketShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	storageBucket, err := ocClient.GetStorageBucket(name)
 	if err != nil {

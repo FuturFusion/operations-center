@@ -106,7 +106,10 @@ func (c *cmdNetworkLoadBalancerList) Run(cmd *cobra.Command, args []string) erro
 	}
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	networkLoadBalancers, err := ocClient.GetWithFilterNetworkLoadBalancers(filter)
 	if err != nil {
@@ -180,7 +183,10 @@ func (c *cmdNetworkLoadBalancerShow) Run(cmd *cobra.Command, args []string) erro
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	networkLoadBalancer, err := ocClient.GetNetworkLoadBalancer(name)
 	if err != nil {

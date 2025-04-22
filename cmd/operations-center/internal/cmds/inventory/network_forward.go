@@ -106,7 +106,10 @@ func (c *cmdNetworkForwardList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	networkForwards, err := ocClient.GetWithFilterNetworkForwards(filter)
 	if err != nil {
@@ -180,7 +183,10 @@ func (c *cmdNetworkForwardShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
+	ocClient := client.New(
+		c.config.OperationsCenterServer,
+		client.WithForceLocal(c.config.ForceLocal),
+	)
 
 	networkForward, err := ocClient.GetNetworkForward(name)
 	if err != nil {
