@@ -62,9 +62,9 @@
     }
   },
 
-  "features": {
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
-  },
+  // "features": {
+  //   "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  // },
 
   "postCreateCommand": "go mod download",
 
