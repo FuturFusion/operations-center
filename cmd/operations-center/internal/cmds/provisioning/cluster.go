@@ -98,8 +98,6 @@ func (c *cmdClusterAdd) Command() *cobra.Command {
 	cmd.Flags().StringSliceVarP(&c.serverNames, flagServerNames, "s", nil, "Server names of the cluster members")
 	_ = cmd.MarkFlagRequired(flagServerNames)
 
-	cmd.PreRunE = c.ValidateFlags
-
 	return cmd
 }
 
@@ -121,18 +119,6 @@ func (c *cmdClusterAdd) Run(cmd *cobra.Command, args []string) error {
 	})
 	if err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func (c *cmdClusterAdd) ValidateFlags(cmd *cobra.Command, _ []string) error {
-	if cmd.Flag("connection-url").Value.String() == "" {
-		return fmt.Errorf(`Flag "--connection-url" is mandatory`)
-	}
-
-	if cmd.Flag("server-names").Value.String() == "" {
-		return fmt.Errorf(`Flag "--server-names" is mandatory`)
 	}
 
 	return nil
