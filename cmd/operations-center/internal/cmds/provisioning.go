@@ -3,12 +3,12 @@ package cmds
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/cmds/provisioning"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 )
 
 type CmdProvisioning struct {
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 }
 
 func (c *CmdProvisioning) Command() *cobra.Command {
@@ -26,13 +26,13 @@ func (c *CmdProvisioning) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	clusterCmd := provisioning.CmdCluster{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(clusterCmd.Command())
 
 	serverCmd := provisioning.CmdServer{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(serverCmd.Command())

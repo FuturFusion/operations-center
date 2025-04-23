@@ -20,13 +20,50 @@ const apiVersionPrefix = "/1.0"
 type OperationsCenterClient struct {
 	httpClient *http.Client
 	baseURL    string
+
+	forceLocal    bool
+	unixSocket    string
+	tlsClientCert tls.Certificate
 }
 
-func New(serverPort string, forceLocal bool) OperationsCenterClient {
-	if forceLocal {
+type Option func(c *OperationsCenterClient) error
+
+func WithForceLocal(unixSocket string) Option {
+	return func(c *OperationsCenterClient) error {
+		c.forceLocal = true
+		c.unixSocket = unixSocket
+
+		return nil
+	}
+}
+
+func WithClientCertificate(clientCertFile string, clientKeyFile string) Option {
+	return func(c *OperationsCenterClient) error {
+		cert, err := tls.LoadX509KeyPair(clientCertFile, clientKeyFile)
+		if err != nil {
+			return err
+		}
+
+		c.tlsClientCert = cert
+
+		return nil
+	}
+}
+
+func New(serverPort string, opts ...Option) (OperationsCenterClient, error) {
+	c := OperationsCenterClient{}
+
+	for _, opt := range opts {
+		err := opt(&c)
+		if err != nil {
+			return OperationsCenterClient{}, err
+		}
+	}
+
+	if c.forceLocal {
 		// Setup a Unix socket dialer
 		unixDial := func(_ context.Context, network, addr string) (net.Conn, error) {
-			raddr, err := net.ResolveUnixAddr("unix", "./tmp/unix.socket")
+			raddr, err := net.ResolveUnixAddr("unix", c.unixSocket)
 			if err != nil {
 				return nil, err
 			}
@@ -44,14 +81,14 @@ func New(serverPort string, forceLocal bool) OperationsCenterClient {
 		}
 
 		// Define the http client
-		client := &http.Client{}
-
-		client.Transport = transport
-
-		return OperationsCenterClient{
-			httpClient: client,
-			baseURL:    "http://unix.socket/",
+		client := &http.Client{
+			Transport: transport,
 		}
+
+		c.httpClient = client
+		c.baseURL = "http://unix.socket/"
+
+		return c, nil
 	}
 
 	httpClient := http.DefaultClient
@@ -59,13 +96,14 @@ func New(serverPort string, forceLocal bool) OperationsCenterClient {
 	httpClient.Transport = &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
+			Certificates:       []tls.Certificate{c.tlsClientCert},
 		},
 	}
 
-	return OperationsCenterClient{
-		httpClient: httpClient,
-		baseURL:    fmt.Sprintf("https://%s", serverPort),
-	}
+	c.httpClient = httpClient
+	c.baseURL = fmt.Sprintf("https://%s", serverPort)
+
+	return c, nil
 }
 
 func (c OperationsCenterClient) doRequest(method string, endpoint string, query url.Values, content []byte) (*api.Response, error) {

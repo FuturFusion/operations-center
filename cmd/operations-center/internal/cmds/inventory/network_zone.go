@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -21,7 +20,7 @@ import (
 )
 
 type CmdNetworkZone struct {
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 }
 
 func (c *CmdNetworkZone) Command() *cobra.Command {
@@ -38,14 +37,14 @@ func (c *CmdNetworkZone) Command() *cobra.Command {
 
 	// List
 	networkZoneListCmd := cmdNetworkZoneList{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkZoneListCmd.Command())
 
 	// Show
 	networkZoneShowCmd := cmdNetworkZoneShow{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkZoneShowCmd.Command())
@@ -55,7 +54,7 @@ func (c *CmdNetworkZone) Command() *cobra.Command {
 
 // List network_zones.
 type cmdNetworkZoneList struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
 	flagFilterProject    string
@@ -111,10 +110,7 @@ func (c *cmdNetworkZoneList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
-
-	networkZones, err := ocClient.GetWithFilterNetworkZones(filter)
+	networkZones, err := c.ocClient.GetWithFilterNetworkZones(filter)
 	if err != nil {
 		return err
 	}
@@ -160,7 +156,7 @@ func (c *cmdNetworkZoneList) Run(cmd *cobra.Command, args []string) error {
 
 // Show network_zone.
 type cmdNetworkZoneShow struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 }
 
 func (c *cmdNetworkZoneShow) Command() *cobra.Command {
@@ -185,10 +181,7 @@ func (c *cmdNetworkZoneShow) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
-
-	networkZone, err := ocClient.GetNetworkZone(name)
+	networkZone, err := c.ocClient.GetNetworkZone(name)
 	if err != nil {
 		return err
 	}

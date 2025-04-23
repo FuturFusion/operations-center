@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -21,7 +20,7 @@ import (
 )
 
 type CmdImage struct {
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 }
 
 func (c *CmdImage) Command() *cobra.Command {
@@ -38,14 +37,14 @@ func (c *CmdImage) Command() *cobra.Command {
 
 	// List
 	imageListCmd := cmdImageList{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(imageListCmd.Command())
 
 	// Show
 	imageShowCmd := cmdImageShow{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(imageShowCmd.Command())
@@ -55,7 +54,7 @@ func (c *CmdImage) Command() *cobra.Command {
 
 // List images.
 type cmdImageList struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
 	flagFilterProject    string
@@ -111,10 +110,7 @@ func (c *cmdImageList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
-
-	images, err := ocClient.GetWithFilterImages(filter)
+	images, err := c.ocClient.GetWithFilterImages(filter)
 	if err != nil {
 		return err
 	}
@@ -160,7 +156,7 @@ func (c *cmdImageList) Run(cmd *cobra.Command, args []string) error {
 
 // Show image.
 type cmdImageShow struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 }
 
 func (c *cmdImageShow) Command() *cobra.Command {
@@ -185,10 +181,7 @@ func (c *cmdImageShow) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
-
-	image, err := ocClient.GetImage(name)
+	image, err := c.ocClient.GetImage(name)
 	if err != nil {
 		return err
 	}

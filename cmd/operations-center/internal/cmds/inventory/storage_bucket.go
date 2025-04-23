@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -21,7 +20,7 @@ import (
 )
 
 type CmdStorageBucket struct {
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 }
 
 func (c *CmdStorageBucket) Command() *cobra.Command {
@@ -38,14 +37,14 @@ func (c *CmdStorageBucket) Command() *cobra.Command {
 
 	// List
 	storageBucketListCmd := cmdStorageBucketList{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(storageBucketListCmd.Command())
 
 	// Show
 	storageBucketShowCmd := cmdStorageBucketShow{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(storageBucketShowCmd.Command())
@@ -55,7 +54,7 @@ func (c *CmdStorageBucket) Command() *cobra.Command {
 
 // List storage_buckets.
 type cmdStorageBucketList struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
 	flagFilterServer     string
@@ -117,10 +116,7 @@ func (c *cmdStorageBucketList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
-
-	storageBuckets, err := ocClient.GetWithFilterStorageBuckets(filter)
+	storageBuckets, err := c.ocClient.GetWithFilterStorageBuckets(filter)
 	if err != nil {
 		return err
 	}
@@ -166,7 +162,7 @@ func (c *cmdStorageBucketList) Run(cmd *cobra.Command, args []string) error {
 
 // Show storage_bucket.
 type cmdStorageBucketShow struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 }
 
 func (c *cmdStorageBucketShow) Command() *cobra.Command {
@@ -191,10 +187,7 @@ func (c *cmdStorageBucketShow) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
-
-	storageBucket, err := ocClient.GetStorageBucket(name)
+	storageBucket, err := c.ocClient.GetStorageBucket(name)
 	if err != nil {
 		return err
 	}

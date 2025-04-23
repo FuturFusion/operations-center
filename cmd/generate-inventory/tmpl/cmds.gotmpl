@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,7 +18,7 @@ import (
 )
 
 type Cmd{{ .Name | pascalcase }} struct{
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 }
 
 func (c *Cmd{{ .Name | pascalcase }}) Command() *cobra.Command {
@@ -36,14 +35,14 @@ func (c *Cmd{{ .Name | pascalcase }}) Command() *cobra.Command {
 
 	// List
 	{{ .Name | camelcase }}ListCmd := cmd{{ .Name | pascalcase }}List{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand({{ .Name | camelcase }}ListCmd.Command())
 
 	// Show
 	{{ .Name | camelcase }}ShowCmd := cmd{{ .Name | pascalcase }}Show{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand({{ .Name | camelcase }}ShowCmd.Command())
@@ -53,7 +52,7 @@ func (c *Cmd{{ .Name | pascalcase }}) Command() *cobra.Command {
 
 // List {{ .PluralName }}.
 type cmd{{ .Name | pascalcase }}List struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster string
 {{- if .ServerIDByLocation }}
@@ -148,10 +147,7 @@ func (c *cmd{{ .Name | pascalcase }}List) Run(cmd *cobra.Command, args []string)
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
-
-	{{ .PluralName | camelcase }}, err := ocClient.GetWithFilter{{ .PluralName | pascalcase }}(filter)
+	{{ .PluralName | camelcase }}, err := c.ocClient.GetWithFilter{{ .PluralName | pascalcase }}(filter)
 	if err != nil {
 		return err
 	}
@@ -197,7 +193,7 @@ func (c *cmd{{ .Name | pascalcase }}List) Run(cmd *cobra.Command, args []string)
 
 // Show {{ .Name }}.
 type cmd{{ .Name | pascalcase }}Show struct{
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 }
 
 func (c *cmd{{ .Name | pascalcase }}Show) Command() *cobra.Command {
@@ -222,10 +218,7 @@ func (c *cmd{{ .Name | pascalcase }}Show) Run(cmd *cobra.Command, args []string)
 
 	name := args[0]
 
-	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
-
-	{{ .Name | camelcase }}, err := ocClient.Get{{ .Name | pascalcase }}(name)
+	{{ .Name | camelcase }}, err := c.ocClient.Get{{ .Name | pascalcase }}(name)
 	if err != nil {
 		return err
 	}

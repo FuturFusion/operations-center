@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -21,7 +20,7 @@ import (
 )
 
 type CmdInstance struct {
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 }
 
 func (c *CmdInstance) Command() *cobra.Command {
@@ -38,14 +37,14 @@ func (c *CmdInstance) Command() *cobra.Command {
 
 	// List
 	instanceListCmd := cmdInstanceList{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(instanceListCmd.Command())
 
 	// Show
 	instanceShowCmd := cmdInstanceShow{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(instanceShowCmd.Command())
@@ -55,7 +54,7 @@ func (c *CmdInstance) Command() *cobra.Command {
 
 // List instances.
 type cmdInstanceList struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
 	flagFilterServer     string
@@ -117,10 +116,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
-
-	instances, err := ocClient.GetWithFilterInstances(filter)
+	instances, err := c.ocClient.GetWithFilterInstances(filter)
 	if err != nil {
 		return err
 	}
@@ -166,7 +162,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 
 // Show instance.
 type cmdInstanceShow struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 }
 
 func (c *cmdInstanceShow) Command() *cobra.Command {
@@ -191,10 +187,7 @@ func (c *cmdInstanceShow) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
-
-	instance, err := ocClient.GetInstance(name)
+	instance, err := c.ocClient.GetInstance(name)
 	if err != nil {
 		return err
 	}

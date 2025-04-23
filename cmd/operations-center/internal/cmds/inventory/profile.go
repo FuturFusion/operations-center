@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -21,7 +20,7 @@ import (
 )
 
 type CmdProfile struct {
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 }
 
 func (c *CmdProfile) Command() *cobra.Command {
@@ -38,14 +37,14 @@ func (c *CmdProfile) Command() *cobra.Command {
 
 	// List
 	profileListCmd := cmdProfileList{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(profileListCmd.Command())
 
 	// Show
 	profileShowCmd := cmdProfileShow{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(profileShowCmd.Command())
@@ -55,7 +54,7 @@ func (c *CmdProfile) Command() *cobra.Command {
 
 // List profiles.
 type cmdProfileList struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
 	flagFilterProject    string
@@ -111,10 +110,7 @@ func (c *cmdProfileList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
-
-	profiles, err := ocClient.GetWithFilterProfiles(filter)
+	profiles, err := c.ocClient.GetWithFilterProfiles(filter)
 	if err != nil {
 		return err
 	}
@@ -160,7 +156,7 @@ func (c *cmdProfileList) Run(cmd *cobra.Command, args []string) error {
 
 // Show profile.
 type cmdProfileShow struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 }
 
 func (c *cmdProfileShow) Command() *cobra.Command {
@@ -185,10 +181,7 @@ func (c *cmdProfileShow) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	// Client call
-	ocClient := client.New(c.config.OperationsCenterServer, c.config.ForceLocal)
-
-	profile, err := ocClient.GetProfile(name)
+	profile, err := c.ocClient.GetProfile(name)
 	if err != nil {
 		return err
 	}
