@@ -1,0 +1,32 @@
+.data-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: none;
+}
+
+.data-table th, .data-table td {
+  border: none;
+}
+
+.data-table th {
+  font-size: 14px;
+  font-weight: 550;
+}
+
+.data-table tr:not(:last-child) td, .data-table tr th {
+  border-bottom: 1px solid #ccc;
+}
+
+/* Change background color on hover */
+.data-table tbody tr:hover {
+  background-color: #D3D3D3;
+}
+
+.data-table-link {
+  text-decoration: none;
+}
+
+.page-control {
+  width: 50px !important;
+  display: inline-block !important;
+}

@@ -17,6 +17,10 @@ operations-center:
 	GOOS=windows GOARCH=amd64 $(GO) build -o ./bin/operations-center.windows.amd64.exe ./cmd/operations-center
 	GOOS=windows GOARCH=arm64 $(GO) build -o ./bin/operations-center.windows.arm64.exe ./cmd/operations-center
 
+.PHONY: build-ui
+build-ui:
+	$(MAKE) -C ui
+
 .PHONY: build-all-packages
 build-all-packages:
 	$(GO) mod tidy
@@ -60,6 +64,10 @@ DOCKER_RUN := docker run -i -v .:/home/vscode/src --mount source=operations_cent
 .PHONY: docker-build
 docker-build: build-dev-container
 	${DOCKER_RUN} make build
+
+.PHONY: docker-build-ui
+docker-build-ui: build-dev-container
+	${DOCKER_RUN} make build-ui
 
 .PHONY: docker-build-all-packages
 docker-build-all-packages: build-dev-container

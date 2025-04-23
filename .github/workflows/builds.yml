@@ -1,0 +1,81 @@
+---
+
+name: Builds
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  client:
+    name: Client binaries
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+
+      - name: Build binaries
+        run: |
+          make operations-center
+
+      - name: Upload client (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Linux
+          path: bin/*linux*
+
+      - name: Upload client (MacOS)
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: bin/*macos*
+
+      - name: Upload client (Windows)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows
+          path: bin/*windows*
+
+  ui:
+    name: UI
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Install UI dependencies
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: install
+          dir: ui
+
+      - name: Build UI
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: build
+          dir: ui
+
+      - name: Upload UI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: UI
+          path: ui/dist/
