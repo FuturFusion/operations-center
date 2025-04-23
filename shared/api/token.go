@@ -10,10 +10,17 @@ import (
 //
 // swagger:model
 type Token struct {
+	TokenPut
+
 	// UUID of the token, which serves as the the token.
 	// Example: b32d0079-c48b-4957-b1cb-bef54125c861
 	UUID uuid.UUID `json:"uuid" yaml:"uuid"`
+}
 
+// TokenPut defines the configurable properties of Token.
+//
+// swagger:model
+type TokenPut struct {
 	// Value indicating, how many times the token might be used for registration.
 	// Example: 10
 	UsesRemaining int `json:"uses_remaining" yaml:"uses_remaining"`

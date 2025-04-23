@@ -127,10 +127,12 @@ func (t *tokenHandler) tokensGet(r *http.Request) response.Response {
 		result := make([]api.Token, 0, len(tokens))
 		for _, token := range tokens {
 			result = append(result, api.Token{
-				UUID:          token.UUID,
-				UsesRemaining: token.UsesRemaining,
-				ExpireAt:      token.ExpireAt,
-				Description:   token.Description,
+				UUID: token.UUID,
+				TokenPut: api.TokenPut{
+					UsesRemaining: token.UsesRemaining,
+					ExpireAt:      token.ExpireAt,
+					Description:   token.Description,
+				},
 			})
 		}
 
@@ -167,7 +169,7 @@ func (t *tokenHandler) tokensGet(r *http.Request) response.Response {
 //	    description: Token configuration
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/Token"
+//	      $ref: "#/definitions/TokenPost"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -178,7 +180,7 @@ func (t *tokenHandler) tokensGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (t *tokenHandler) tokensPost(r *http.Request) response.Response {
-	var token api.Token
+	var token api.TokenPut
 
 	// Decode into the new token.
 	err := json.NewDecoder(r.Body).Decode(&token)
@@ -186,7 +188,7 @@ func (t *tokenHandler) tokensPost(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	_, err = t.service.Create(r.Context(), provisioning.Token{
+	newToken, err := t.service.Create(r.Context(), provisioning.Token{
 		UsesRemaining: token.UsesRemaining,
 		ExpireAt:      token.ExpireAt,
 		Description:   token.Description,
@@ -195,7 +197,7 @@ func (t *tokenHandler) tokensPost(r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed creating token: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/tokens/"+token.UUID.String())
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/tokens/"+newToken.UUID.String())
 }
 
 // swagger:operation GET /1.0/provisioning/tokens/{uuid} tokens token_get
@@ -248,10 +250,12 @@ func (t *tokenHandler) tokenGet(r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		api.Token{
-			UUID:          token.UUID,
-			UsesRemaining: token.UsesRemaining,
-			ExpireAt:      token.ExpireAt,
-			Description:   token.Description,
+			UUID: token.UUID,
+			TokenPut: api.TokenPut{
+				UsesRemaining: token.UsesRemaining,
+				ExpireAt:      token.ExpireAt,
+				Description:   token.Description,
+			},
 		},
 		token,
 	)
