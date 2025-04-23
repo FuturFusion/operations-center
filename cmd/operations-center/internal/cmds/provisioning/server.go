@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -15,7 +14,7 @@ import (
 )
 
 type CmdServer struct {
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 }
 
 func (c *CmdServer) Command() *cobra.Command {
@@ -34,21 +33,21 @@ func (c *CmdServer) Command() *cobra.Command {
 
 	// List
 	serverListCmd := cmdServerList{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(serverListCmd.Command())
 
 	// Remove
 	serverRemoveCmd := cmddServerRemove{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(serverRemoveCmd.Command())
 
 	// Show
 	serverShowCmd := cmddServerShow{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(serverShowCmd.Command())
@@ -58,7 +57,7 @@ func (c *CmdServer) Command() *cobra.Command {
 
 // List servers.
 type cmdServerList struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
 	flagFilterExpression string
@@ -104,16 +103,7 @@ func (c *cmdServerList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	servers, err := ocClient.GetWithFilterServers(filter)
+	servers, err := c.ocClient.GetWithFilterServers(filter)
 	if err != nil {
 		return err
 	}
@@ -133,7 +123,7 @@ func (c *cmdServerList) Run(cmd *cobra.Command, args []string) error {
 
 // Remove server.
 type cmddServerRemove struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 }
 
 func (c *cmddServerRemove) Command() *cobra.Command {
@@ -160,16 +150,7 @@ func (c *cmddServerRemove) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	err = ocClient.DeleteServer(name)
+	err = c.ocClient.DeleteServer(name)
 	if err != nil {
 		return err
 	}
@@ -179,7 +160,7 @@ func (c *cmddServerRemove) Run(cmd *cobra.Command, args []string) error {
 
 // Show server.
 type cmddServerShow struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 }
 
 func (c *cmddServerShow) Command() *cobra.Command {
@@ -204,16 +185,7 @@ func (c *cmddServerShow) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	server, err := ocClient.GetServer(name)
+	server, err := c.ocClient.GetServer(name)
 	if err != nil {
 		return err
 	}

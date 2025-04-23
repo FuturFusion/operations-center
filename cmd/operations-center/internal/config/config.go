@@ -15,6 +15,8 @@ type Config struct {
 	ForceLocal bool `yaml:"-"`
 
 	OperationsCenterServer string `yaml:"operations_center_server"`
+	TLSClientCertFile      string `yaml:"tls_client_cert_file"`
+	TLSClientKeyFile       string `yaml:"tls_client_key_file"`
 }
 
 func (c *Config) LoadConfig(path string) error {

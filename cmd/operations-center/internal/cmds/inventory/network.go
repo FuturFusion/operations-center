@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -21,7 +20,7 @@ import (
 )
 
 type CmdNetwork struct {
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 }
 
 func (c *CmdNetwork) Command() *cobra.Command {
@@ -38,14 +37,14 @@ func (c *CmdNetwork) Command() *cobra.Command {
 
 	// List
 	networkListCmd := cmdNetworkList{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkListCmd.Command())
 
 	// Show
 	networkShowCmd := cmdNetworkShow{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkShowCmd.Command())
@@ -55,7 +54,7 @@ func (c *CmdNetwork) Command() *cobra.Command {
 
 // List networks.
 type cmdNetworkList struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
 	flagFilterProject    string
@@ -111,16 +110,7 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	networks, err := ocClient.GetWithFilterNetworks(filter)
+	networks, err := c.ocClient.GetWithFilterNetworks(filter)
 	if err != nil {
 		return err
 	}
@@ -166,7 +156,7 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 
 // Show network.
 type cmdNetworkShow struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 }
 
 func (c *cmdNetworkShow) Command() *cobra.Command {
@@ -191,16 +181,7 @@ func (c *cmdNetworkShow) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	network, err := ocClient.GetNetwork(name)
+	network, err := c.ocClient.GetNetwork(name)
 	if err != nil {
 		return err
 	}

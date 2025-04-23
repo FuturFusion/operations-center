@@ -7,25 +7,33 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/cmds"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
+	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/version"
 )
 
 const (
-	applicationName = "operations-center"
+	applicationName      = "operations-center"
+	applicationEnvPrefix = "OPERATIONS_CENTER"
 )
 
 func main() {
-	err := main0(os.Args[1:], os.Stdout, os.Stderr)
+	err := main0(os.Args[1:], os.Stdout, os.Stderr, environment.New(applicationName, applicationEnvPrefix))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func main0(args []string, stdout io.Writer, stderr io.Writer) error {
+type env interface {
+	VarDir() string
+	GetUnixSocket() string
+}
+
+func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
 	app := &cobra.Command{}
 	app.Use = applicationName
 	app.Short = "Command line client for operations center"
@@ -49,8 +57,10 @@ func main0(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	// Global flags
 	globalCmd := cmdGlobal{
-		cmd:    app,
-		config: &config.Config{},
+		cmd:      app,
+		env:      env,
+		config:   &config.Config{},
+		ocClient: &client.OperationsCenterClient{},
 	}
 
 	app.PersistentPreRunE = globalCmd.Run
@@ -65,13 +75,13 @@ func main0(args []string, stdout io.Writer, stderr io.Writer) error {
 	app.Version = version.Version
 
 	provisioningCmd := cmds.CmdProvisioning{
-		Config: globalCmd.config,
+		OCClient: globalCmd.ocClient,
 	}
 
 	app.AddCommand(provisioningCmd.Command())
 
 	inventoryCmd := cmds.CmdInventory{
-		Config: globalCmd.config,
+		OCClient: globalCmd.ocClient,
 	}
 
 	app.AddCommand(inventoryCmd.Command())
@@ -81,8 +91,10 @@ func main0(args []string, stdout io.Writer, stderr io.Writer) error {
 
 type cmdGlobal struct {
 	cmd *cobra.Command
+	env env
 
-	config *config.Config
+	config   *config.Config
+	ocClient *client.OperationsCenterClient
 
 	flagHelp    bool
 	flagVersion bool
@@ -103,6 +115,28 @@ func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
 	c.config.Debug = c.flagLogDebug
 	c.config.ForceLocal = c.flagForceLocal
 
-	// FIXME: correct directory
-	return c.config.LoadConfig("./tmp")
+	err = c.config.LoadConfig(c.env.VarDir())
+	if err != nil {
+		return err
+	}
+
+	opts := []client.Option{}
+
+	if c.config.ForceLocal {
+		opts = append(opts, client.WithForceLocal(c.env.GetUnixSocket()))
+	}
+
+	if c.config.TLSClientCertFile != "" && c.config.TLSClientKeyFile != "" {
+		opts = append(opts, client.WithClientCertificate(c.config.TLSClientCertFile, c.config.TLSClientKeyFile))
+	}
+
+	*c.ocClient, err = client.New(
+		c.config.OperationsCenterServer,
+		opts...,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

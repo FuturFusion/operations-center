@@ -22,14 +22,29 @@ type OperationsCenterClient struct {
 	baseURL    string
 
 	forceLocal    bool
+	unixSocket    string
 	tlsClientCert tls.Certificate
 }
 
 type Option func(c *OperationsCenterClient) error
 
-func WithForceLocal(forceLocal bool) Option {
+func WithForceLocal(unixSocket string) Option {
 	return func(c *OperationsCenterClient) error {
-		c.forceLocal = forceLocal
+		c.forceLocal = true
+		c.unixSocket = unixSocket
+
+		return nil
+	}
+}
+
+func WithClientCertificate(clientCertFile string, clientKeyFile string) Option {
+	return func(c *OperationsCenterClient) error {
+		cert, err := tls.LoadX509KeyPair(clientCertFile, clientKeyFile)
+		if err != nil {
+			return err
+		}
+
+		c.tlsClientCert = cert
 
 		return nil
 	}
@@ -48,7 +63,7 @@ func New(serverPort string, opts ...Option) (OperationsCenterClient, error) {
 	if c.forceLocal {
 		// Setup a Unix socket dialer
 		unixDial := func(_ context.Context, network, addr string) (net.Conn, error) {
-			raddr, err := net.ResolveUnixAddr("unix", "./tmp/unix.socket")
+			raddr, err := net.ResolveUnixAddr("unix", c.unixSocket)
 			if err != nil {
 				return nil, err
 			}
@@ -81,6 +96,7 @@ func New(serverPort string, opts ...Option) (OperationsCenterClient, error) {
 	httpClient.Transport = &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
+			Certificates:       []tls.Certificate{c.tlsClientCert},
 		},
 	}
 

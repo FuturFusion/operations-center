@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -21,7 +20,7 @@ import (
 )
 
 type CmdNetworkPeer struct {
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 }
 
 func (c *CmdNetworkPeer) Command() *cobra.Command {
@@ -38,14 +37,14 @@ func (c *CmdNetworkPeer) Command() *cobra.Command {
 
 	// List
 	networkPeerListCmd := cmdNetworkPeerList{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkPeerListCmd.Command())
 
 	// Show
 	networkPeerShowCmd := cmdNetworkPeerShow{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkPeerShowCmd.Command())
@@ -55,7 +54,7 @@ func (c *CmdNetworkPeer) Command() *cobra.Command {
 
 // List network_peers.
 type cmdNetworkPeerList struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
 	flagFilterExpression string
@@ -105,16 +104,7 @@ func (c *cmdNetworkPeerList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	networkPeers, err := ocClient.GetWithFilterNetworkPeers(filter)
+	networkPeers, err := c.ocClient.GetWithFilterNetworkPeers(filter)
 	if err != nil {
 		return err
 	}
@@ -160,7 +150,7 @@ func (c *cmdNetworkPeerList) Run(cmd *cobra.Command, args []string) error {
 
 // Show network_peer.
 type cmdNetworkPeerShow struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 }
 
 func (c *cmdNetworkPeerShow) Command() *cobra.Command {
@@ -185,16 +175,7 @@ func (c *cmdNetworkPeerShow) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	networkPeer, err := ocClient.GetNetworkPeer(name)
+	networkPeer, err := c.ocClient.GetNetworkPeer(name)
 	if err != nil {
 		return err
 	}

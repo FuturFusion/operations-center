@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -21,7 +20,7 @@ import (
 )
 
 type CmdStorageVolume struct {
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 }
 
 func (c *CmdStorageVolume) Command() *cobra.Command {
@@ -38,14 +37,14 @@ func (c *CmdStorageVolume) Command() *cobra.Command {
 
 	// List
 	storageVolumeListCmd := cmdStorageVolumeList{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(storageVolumeListCmd.Command())
 
 	// Show
 	storageVolumeShowCmd := cmdStorageVolumeShow{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(storageVolumeShowCmd.Command())
@@ -55,7 +54,7 @@ func (c *CmdStorageVolume) Command() *cobra.Command {
 
 // List storage_volumes.
 type cmdStorageVolumeList struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
 	flagFilterServer     string
@@ -117,16 +116,7 @@ func (c *cmdStorageVolumeList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	storageVolumes, err := ocClient.GetWithFilterStorageVolumes(filter)
+	storageVolumes, err := c.ocClient.GetWithFilterStorageVolumes(filter)
 	if err != nil {
 		return err
 	}
@@ -172,7 +162,7 @@ func (c *cmdStorageVolumeList) Run(cmd *cobra.Command, args []string) error {
 
 // Show storage_volume.
 type cmdStorageVolumeShow struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 }
 
 func (c *cmdStorageVolumeShow) Command() *cobra.Command {
@@ -197,16 +187,7 @@ func (c *cmdStorageVolumeShow) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	storageVolume, err := ocClient.GetStorageVolume(name)
+	storageVolume, err := c.ocClient.GetStorageVolume(name)
 	if err != nil {
 		return err
 	}

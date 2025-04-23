@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -28,7 +27,7 @@ var embeddedTemplates = map[string]*string{
 }
 
 type CmdQuery struct {
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 
 	flagFilterKinds              []string
 	flagFilterCluster            []string
@@ -135,16 +134,7 @@ func (c *CmdQuery) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	// Client call
-	ocClient, err := client.New(
-		c.Config.OperationsCenterServer,
-		client.WithForceLocal(c.Config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	inventoryAggregates, err := ocClient.GetWithFilterInventoryAggregates(filter)
+	inventoryAggregates, err := c.OCClient.GetWithFilterInventoryAggregates(filter)
 	if err != nil {
 		return err
 	}

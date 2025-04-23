@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -21,7 +20,7 @@ import (
 )
 
 type CmdNetworkForward struct {
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 }
 
 func (c *CmdNetworkForward) Command() *cobra.Command {
@@ -38,14 +37,14 @@ func (c *CmdNetworkForward) Command() *cobra.Command {
 
 	// List
 	networkForwardListCmd := cmdNetworkForwardList{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkForwardListCmd.Command())
 
 	// Show
 	networkForwardShowCmd := cmdNetworkForwardShow{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkForwardShowCmd.Command())
@@ -55,7 +54,7 @@ func (c *CmdNetworkForward) Command() *cobra.Command {
 
 // List network_forwards.
 type cmdNetworkForwardList struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
 	flagFilterExpression string
@@ -105,16 +104,7 @@ func (c *cmdNetworkForwardList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	networkForwards, err := ocClient.GetWithFilterNetworkForwards(filter)
+	networkForwards, err := c.ocClient.GetWithFilterNetworkForwards(filter)
 	if err != nil {
 		return err
 	}
@@ -160,7 +150,7 @@ func (c *cmdNetworkForwardList) Run(cmd *cobra.Command, args []string) error {
 
 // Show network_forward.
 type cmdNetworkForwardShow struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 }
 
 func (c *cmdNetworkForwardShow) Command() *cobra.Command {
@@ -185,16 +175,7 @@ func (c *cmdNetworkForwardShow) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	networkForward, err := ocClient.GetNetworkForward(name)
+	networkForward, err := c.ocClient.GetNetworkForward(name)
 	if err != nil {
 		return err
 	}

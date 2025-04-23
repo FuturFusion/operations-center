@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -21,7 +20,7 @@ import (
 )
 
 type CmdNetworkLoadBalancer struct {
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 }
 
 func (c *CmdNetworkLoadBalancer) Command() *cobra.Command {
@@ -38,14 +37,14 @@ func (c *CmdNetworkLoadBalancer) Command() *cobra.Command {
 
 	// List
 	networkLoadBalancerListCmd := cmdNetworkLoadBalancerList{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkLoadBalancerListCmd.Command())
 
 	// Show
 	networkLoadBalancerShowCmd := cmdNetworkLoadBalancerShow{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkLoadBalancerShowCmd.Command())
@@ -55,7 +54,7 @@ func (c *CmdNetworkLoadBalancer) Command() *cobra.Command {
 
 // List network_load_balancers.
 type cmdNetworkLoadBalancerList struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
 	flagFilterExpression string
@@ -105,16 +104,7 @@ func (c *cmdNetworkLoadBalancerList) Run(cmd *cobra.Command, args []string) erro
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	networkLoadBalancers, err := ocClient.GetWithFilterNetworkLoadBalancers(filter)
+	networkLoadBalancers, err := c.ocClient.GetWithFilterNetworkLoadBalancers(filter)
 	if err != nil {
 		return err
 	}
@@ -160,7 +150,7 @@ func (c *cmdNetworkLoadBalancerList) Run(cmd *cobra.Command, args []string) erro
 
 // Show network_load_balancer.
 type cmdNetworkLoadBalancerShow struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 }
 
 func (c *cmdNetworkLoadBalancerShow) Command() *cobra.Command {
@@ -185,16 +175,7 @@ func (c *cmdNetworkLoadBalancerShow) Run(cmd *cobra.Command, args []string) erro
 
 	name := args[0]
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	networkLoadBalancer, err := ocClient.GetNetworkLoadBalancer(name)
+	networkLoadBalancer, err := c.ocClient.GetNetworkLoadBalancer(name)
 	if err != nil {
 		return err
 	}

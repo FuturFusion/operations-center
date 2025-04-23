@@ -3,12 +3,12 @@ package cmds
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/cmds/inventory"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 )
 
 type CmdInventory struct {
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 }
 
 func (c *CmdInventory) Command() *cobra.Command {
@@ -27,92 +27,92 @@ func (c *CmdInventory) Command() *cobra.Command {
 
 	// Query
 	queryCmd := inventory.CmdQuery{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(queryCmd.Command())
 
 	// Single resources
 	imageCmd := inventory.CmdImage{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(imageCmd.Command())
 
 	instanceCmd := inventory.CmdInstance{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(instanceCmd.Command())
 
 	networkACLCmd := inventory.CmdNetworkACL{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkACLCmd.Command())
 
 	networkForwardCmd := inventory.CmdNetworkForward{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkForwardCmd.Command())
 
 	networkIntegrationCmd := inventory.CmdNetworkIntegration{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkIntegrationCmd.Command())
 
 	networkLoadBalancerCmd := inventory.CmdNetworkLoadBalancer{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkLoadBalancerCmd.Command())
 
 	networkPeerCmd := inventory.CmdNetworkPeer{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkPeerCmd.Command())
 
 	networkZoneCmd := inventory.CmdNetworkZone{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkZoneCmd.Command())
 
 	networkCmd := inventory.CmdNetwork{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkCmd.Command())
 
 	profileCmd := inventory.CmdProfile{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(profileCmd.Command())
 
 	projectCmd := inventory.CmdProject{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(projectCmd.Command())
 
 	storageBucketCmd := inventory.CmdStorageBucket{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(storageBucketCmd.Command())
 
 	storagePoolCmd := inventory.CmdStoragePool{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(storagePoolCmd.Command())
 
 	storageVolumeCmd := inventory.CmdStorageVolume{
-		Config: c.Config,
+		OCClient: c.OCClient,
 	}
 
 	cmd.AddCommand(storageVolumeCmd.Command())

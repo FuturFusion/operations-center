@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -21,7 +20,7 @@ import (
 )
 
 type CmdNetworkIntegration struct {
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 }
 
 func (c *CmdNetworkIntegration) Command() *cobra.Command {
@@ -38,14 +37,14 @@ func (c *CmdNetworkIntegration) Command() *cobra.Command {
 
 	// List
 	networkIntegrationListCmd := cmdNetworkIntegrationList{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkIntegrationListCmd.Command())
 
 	// Show
 	networkIntegrationShowCmd := cmdNetworkIntegrationShow{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(networkIntegrationShowCmd.Command())
@@ -55,7 +54,7 @@ func (c *CmdNetworkIntegration) Command() *cobra.Command {
 
 // List network_integrations.
 type cmdNetworkIntegrationList struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
 	flagFilterExpression string
@@ -105,16 +104,7 @@ func (c *cmdNetworkIntegrationList) Run(cmd *cobra.Command, args []string) error
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	networkIntegrations, err := ocClient.GetWithFilterNetworkIntegrations(filter)
+	networkIntegrations, err := c.ocClient.GetWithFilterNetworkIntegrations(filter)
 	if err != nil {
 		return err
 	}
@@ -160,7 +150,7 @@ func (c *cmdNetworkIntegrationList) Run(cmd *cobra.Command, args []string) error
 
 // Show network_integration.
 type cmdNetworkIntegrationShow struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 }
 
 func (c *cmdNetworkIntegrationShow) Command() *cobra.Command {
@@ -185,16 +175,7 @@ func (c *cmdNetworkIntegrationShow) Run(cmd *cobra.Command, args []string) error
 
 	name := args[0]
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	networkIntegration, err := ocClient.GetNetworkIntegration(name)
+	networkIntegration, err := c.ocClient.GetNetworkIntegration(name)
 	if err != nil {
 		return err
 	}

@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/config"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -21,7 +20,7 @@ import (
 )
 
 type CmdStoragePool struct {
-	Config *config.Config
+	OCClient *client.OperationsCenterClient
 }
 
 func (c *CmdStoragePool) Command() *cobra.Command {
@@ -38,14 +37,14 @@ func (c *CmdStoragePool) Command() *cobra.Command {
 
 	// List
 	storagePoolListCmd := cmdStoragePoolList{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(storagePoolListCmd.Command())
 
 	// Show
 	storagePoolShowCmd := cmdStoragePoolShow{
-		config: c.Config,
+		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(storagePoolShowCmd.Command())
@@ -55,7 +54,7 @@ func (c *CmdStoragePool) Command() *cobra.Command {
 
 // List storage_pools.
 type cmdStoragePoolList struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
 	flagFilterExpression string
@@ -105,16 +104,7 @@ func (c *cmdStoragePoolList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	storagePools, err := ocClient.GetWithFilterStoragePools(filter)
+	storagePools, err := c.ocClient.GetWithFilterStoragePools(filter)
 	if err != nil {
 		return err
 	}
@@ -160,7 +150,7 @@ func (c *cmdStoragePoolList) Run(cmd *cobra.Command, args []string) error {
 
 // Show storage_pool.
 type cmdStoragePoolShow struct {
-	config *config.Config
+	ocClient *client.OperationsCenterClient
 }
 
 func (c *cmdStoragePoolShow) Command() *cobra.Command {
@@ -185,16 +175,7 @@ func (c *cmdStoragePoolShow) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	// Client call
-	ocClient, err := client.New(
-		c.config.OperationsCenterServer,
-		client.WithForceLocal(c.config.ForceLocal),
-	)
-	if err != nil {
-		return err
-	}
-
-	storagePool, err := ocClient.GetStoragePool(name)
+	storagePool, err := c.ocClient.GetStoragePool(name)
 	if err != nil {
 		return err
 	}
