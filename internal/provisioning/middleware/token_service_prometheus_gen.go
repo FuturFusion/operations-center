@@ -38,6 +38,20 @@ func NewTokenServiceWithPrometheus(base provisioning.TokenService, instanceName 
 	}
 }
 
+// Consume implements provisioning.TokenService.
+func (_d TokenServiceWithPrometheus) Consume(ctx context.Context, id uuid.UUID) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Consume", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Consume(ctx, id)
+}
+
 // Create implements provisioning.TokenService.
 func (_d TokenServiceWithPrometheus) Create(ctx context.Context, token provisioning.Token) (token1 provisioning.Token, err error) {
 	_since := time.Now()

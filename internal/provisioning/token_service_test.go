@@ -363,3 +363,111 @@ func TestTokenService_DeleteByUUID(t *testing.T) {
 		})
 	}
 }
+
+func TestTokenService_Consume(t *testing.T) {
+	token := uuid.MustParse(`755d4021-c5c7-47f7-a0f7-4732ffd99dc4`)
+
+	tests := []struct {
+		name     string
+		tokenArg uuid.UUID
+
+		repoGetByUUIDToken *provisioning.Token
+		repoGetByUUIDErr   error
+		repoUpdateErr      error
+
+		assertErr       require.ErrorAssertionFunc
+		wantUsesRemaing int
+	}{
+		{
+			name:     "success",
+			tokenArg: token,
+
+			repoGetByUUIDToken: &provisioning.Token{
+				ID:            1,
+				UUID:          token,
+				UsesRemaining: 10,
+				ExpireAt:      time.Now().Add(1 * time.Minute),
+			},
+
+			assertErr:       require.NoError,
+			wantUsesRemaing: 9,
+		},
+		{
+			name:     "error - GetByUUID",
+			tokenArg: token,
+
+			repoGetByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:     "error - token exhausted",
+			tokenArg: token,
+
+			repoGetByUUIDToken: &provisioning.Token{
+				ID:            1,
+				UUID:          token,
+				UsesRemaining: 0, // no uses remaining
+				ExpireAt:      time.Now().Add(1 * time.Minute),
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "Token exhausted", i...)
+			},
+		},
+		{
+			name:     "error - token exhausted",
+			tokenArg: token,
+
+			repoGetByUUIDToken: &provisioning.Token{
+				ID:            1,
+				UUID:          token,
+				UsesRemaining: 10,
+				ExpireAt:      time.Now().Add(-1 * time.Minute), // Token expired
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "Token expired", i...)
+			},
+		},
+		{
+			name:     "success",
+			tokenArg: token,
+
+			repoGetByUUIDToken: &provisioning.Token{
+				ID:            1,
+				UUID:          token,
+				UsesRemaining: 10,
+				ExpireAt:      time.Now().Add(1 * time.Minute),
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr:       boom.ErrorIs,
+			wantUsesRemaing: 9,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.TokenRepoMock{
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
+					return tc.repoGetByUUIDToken, tc.repoGetByUUIDErr
+				},
+				UpdateFunc: func(ctx context.Context, token provisioning.Token) error {
+					require.Equal(t, tc.tokenArg, token.UUID)
+					require.Equal(t, tc.wantUsesRemaing, token.UsesRemaining)
+					return tc.repoUpdateErr
+				},
+			}
+
+			tokenSvc := provisioning.NewTokenService(repo)
+
+			// Run test
+			err := tokenSvc.Consume(context.Background(), tc.tokenArg)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}

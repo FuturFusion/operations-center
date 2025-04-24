@@ -26,6 +26,36 @@ func NewTokenServiceWithSlog(base provisioning.TokenService, log *slog.Logger) T
 	}
 }
 
+// Consume implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) Consume(ctx context.Context, id uuid.UUID) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+		)
+	}
+	log.Debug("=> calling Consume")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method Consume returned an error")
+		} else {
+			log.Debug("<= method Consume finished")
+		}
+	}()
+	return _d._base.Consume(ctx, id)
+}
+
 // Create implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) Create(ctx context.Context, token provisioning.Token) (token1 provisioning.Token, err error) {
 	log := _d._log.With()
