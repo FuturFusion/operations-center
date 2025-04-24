@@ -76,3 +76,34 @@ func TestServer_Validate(t *testing.T) {
 		})
 	}
 }
+
+func TestServer_Filter(t *testing.T) {
+	tests := []struct {
+		name   string
+		filter provisioning.ServerFilter
+
+		want string
+	}{
+		{
+			name:   "empty filter",
+			filter: provisioning.ServerFilter{},
+
+			want: ``,
+		},
+		{
+			name: "complete filter",
+			filter: provisioning.ServerFilter{
+				Cluster:    ptr.To("cluster"),
+				Expression: ptr.To("true"),
+			},
+
+			want: `cluster=cluster&filter=true`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, tc.filter.String())
+		})
+	}
+}
