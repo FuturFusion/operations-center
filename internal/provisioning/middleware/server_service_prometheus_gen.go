@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -38,7 +39,7 @@ func NewServerServiceWithPrometheus(base provisioning.ServerService, instanceNam
 }
 
 // Create implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) Create(ctx context.Context, server provisioning.Server) (server1 provisioning.Server, err error) {
+func (_d ServerServiceWithPrometheus) Create(ctx context.Context, token uuid.UUID, server provisioning.Server) (server1 provisioning.Server, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -48,7 +49,7 @@ func (_d ServerServiceWithPrometheus) Create(ctx context.Context, server provisi
 
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Create", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.Create(ctx, server)
+	return _d.base.Create(ctx, token, server)
 }
 
 // DeleteByName implements provisioning.ServerService.

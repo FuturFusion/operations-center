@@ -7,6 +7,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 )
 
 func TestCluster_Validate(t *testing.T) {
@@ -85,6 +86,36 @@ func TestCluster_Validate(t *testing.T) {
 			err := tc.cluster.Validate()
 
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestCluster_Filter(t *testing.T) {
+	tests := []struct {
+		name   string
+		filter provisioning.ClusterFilter
+
+		want string
+	}{
+		{
+			name:   "empty filter",
+			filter: provisioning.ClusterFilter{},
+
+			want: ``,
+		},
+		{
+			name: "complete filter",
+			filter: provisioning.ClusterFilter{
+				Expression: ptr.To("true"),
+			},
+
+			want: `filter=true`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, tc.filter.String())
 		})
 	}
 }

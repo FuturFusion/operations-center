@@ -5,10 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
@@ -18,9 +20,10 @@ func TestServerService_Create(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
-		name          string
-		server        provisioning.Server
-		repoCreateErr error
+		name               string
+		server             provisioning.Server
+		repoCreateErr      error
+		tokenSvcConsumeErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -33,6 +36,12 @@ func TestServerService_Create(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+		},
+		{
+			name:               "error - token consume",
+			tokenSvcConsumeErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - validation",
@@ -70,10 +79,18 @@ func TestServerService_Create(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+			tokenSvc := &svcMock.TokenServiceMock{
+				ConsumeFunc: func(ctx context.Context, id uuid.UUID) error {
+					return tc.tokenSvcConsumeErr
+				},
+			}
+
+			token := uuid.MustParse("686d2a12-20f9-11f0-82c6-7fff26bab0c4")
+
+			serverSvc := provisioning.NewServerService(repo, tokenSvc, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
-			_, err := serverSvc.Create(context.Background(), tc.server)
+			_, err := serverSvc.Create(context.Background(), token, tc.server)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -126,7 +143,7 @@ func TestServerService_GetAll(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo)
+			serverSvc := provisioning.NewServerService(repo, nil)
 
 			// Run test
 			servers, err := serverSvc.GetAll(context.Background())
@@ -134,6 +151,127 @@ func TestServerService_GetAll(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Len(t, servers, tc.count)
+		})
+	}
+}
+
+func TestServerService_GetAllWithFilter(t *testing.T) {
+	tests := []struct {
+		name                    string
+		filter                  provisioning.ServerFilter
+		repoGetAllWithFilter    provisioning.Servers
+		repoGetAllWithFilterErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name: "success - no filter expression",
+			filter: provisioning.ServerFilter{
+				Cluster: ptr.To("one"),
+			},
+			repoGetAllWithFilter: provisioning.Servers{
+				provisioning.Server{
+					Name: "one",
+				},
+				provisioning.Server{
+					Name: "two",
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name: "success - with filter expression",
+			filter: provisioning.ServerFilter{
+				Expression: ptr.To(`Name == "one"`),
+			},
+			repoGetAllWithFilter: provisioning.Servers{
+				provisioning.Server{
+					Name: "one",
+				},
+				provisioning.Server{
+					Name: "two",
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     1,
+		},
+		{
+			name: "error - invalid filter expression",
+			filter: provisioning.ServerFilter{
+				Expression: ptr.To(``), // the empty expression is an invalid expression.
+			},
+			repoGetAllWithFilter: provisioning.Servers{
+				provisioning.Server{
+					Name: "one",
+				},
+			},
+
+			assertErr: require.Error,
+			count:     0,
+		},
+		{
+			name: "error - filter expression run",
+			filter: provisioning.ServerFilter{
+				Expression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
+			},
+			repoGetAllWithFilter: provisioning.Servers{
+				provisioning.Server{
+					Name: "one",
+				},
+			},
+
+			assertErr: require.Error,
+			count:     0,
+		},
+		{
+			name: "error - non bool expression",
+			filter: provisioning.ServerFilter{
+				Expression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
+			},
+			repoGetAllWithFilter: provisioning.Servers{
+				provisioning.Server{
+					Name: "one",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "does not evaluate to boolean result")
+			},
+			count: 0,
+		},
+		{
+			name:                    "error - repo",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ServerRepoMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, nil)
+
+			// Run test
+			server, err := serverSvc.GetAllWithFilter(context.Background(), tc.filter)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, server, tc.count)
 		})
 	}
 }
@@ -174,7 +312,7 @@ func TestServerService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo)
+			serverSvc := provisioning.NewServerService(repo, nil)
 
 			// Run test
 			serverNames, err := serverSvc.GetAllNames(context.Background())
@@ -182,6 +320,111 @@ func TestServerService_GetAllNames(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Len(t, serverNames, tc.count)
+		})
+	}
+}
+
+func TestServerService_GetAllIDsWithFilter(t *testing.T) {
+	tests := []struct {
+		name                       string
+		filter                     provisioning.ServerFilter
+		repoGetAllIDsWithFilter    []string
+		repoGetAllIDsWithFilterErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name: "success - no filter expression",
+			filter: provisioning.ServerFilter{
+				Cluster: ptr.To("one"),
+			},
+			repoGetAllIDsWithFilter: []string{
+				"one", "two",
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name: "success - with filter expression",
+			filter: provisioning.ServerFilter{
+				Expression: ptr.To(`Name matches "one"`),
+			},
+			repoGetAllIDsWithFilter: []string{
+				"one", "two",
+			},
+
+			assertErr: require.NoError,
+			count:     1,
+		},
+		{
+			name: "error - invalid filter expression",
+			filter: provisioning.ServerFilter{
+				Expression: ptr.To(``), // the empty expression is an invalid expression.
+			},
+			repoGetAllIDsWithFilter: []string{
+				"one",
+			},
+
+			assertErr: require.Error,
+			count:     0,
+		},
+		{
+			name: "error - filter expression run",
+			filter: provisioning.ServerFilter{
+				Expression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
+			},
+			repoGetAllIDsWithFilter: []string{
+				"one",
+			},
+
+			assertErr: require.Error,
+			count:     0,
+		},
+		{
+			name: "error - non bool expression",
+			filter: provisioning.ServerFilter{
+				Expression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
+			},
+			repoGetAllIDsWithFilter: []string{
+				"one",
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "does not evaluate to boolean result")
+			},
+			count: 0,
+		},
+		{
+			name:                       "error - repo",
+			repoGetAllIDsWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ServerRepoMock{
+				GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
+					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
+				},
+				GetAllNamesWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) ([]string, error) {
+					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, nil)
+
+			// Run test
+			serverIDs, err := serverSvc.GetAllNamesWithFilter(context.Background(), tc.filter)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, serverIDs, tc.count)
 		})
 	}
 }
@@ -224,7 +467,7 @@ func TestServerService_GetByID(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo)
+			serverSvc := provisioning.NewServerService(repo, nil)
 
 			// Run test
 			server, err := serverSvc.GetByName(context.Background(), tc.idArg)
@@ -282,7 +525,7 @@ func TestServerService_GetByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo)
+			serverSvc := provisioning.NewServerService(repo, nil)
 
 			// Run test
 			server, err := serverSvc.GetByName(context.Background(), tc.nameArg)
@@ -363,7 +606,7 @@ func TestServerService_Update(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+			serverSvc := provisioning.NewServerService(repo, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			err := serverSvc.Update(context.Background(), tc.server)
@@ -431,7 +674,7 @@ func TestServerService_Rename(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+			serverSvc := provisioning.NewServerService(repo, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			err := serverSvc.Rename(context.Background(), tc.oldName, tc.newName)
@@ -482,7 +725,7 @@ func TestServerService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo)
+			serverSvc := provisioning.NewServerService(repo, nil)
 
 			// Run test
 			err := serverSvc.DeleteByName(context.Background(), tc.nameArg)

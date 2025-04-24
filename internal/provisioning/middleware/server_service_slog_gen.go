@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/google/uuid"
 )
 
 // ServerServiceWithSlog implements provisioning.ServerService that is instrumented with slog logger.
@@ -26,11 +27,12 @@ func NewServerServiceWithSlog(base provisioning.ServerService, log *slog.Logger)
 }
 
 // Create implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) Create(ctx context.Context, server provisioning.Server) (server1 provisioning.Server, err error) {
+func (_d ServerServiceWithSlog) Create(ctx context.Context, token uuid.UUID, server provisioning.Server) (server1 provisioning.Server, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
+			slog.Any("token", token),
 			slog.Any("server", server),
 		)
 	}
@@ -53,7 +55,7 @@ func (_d ServerServiceWithSlog) Create(ctx context.Context, server provisioning.
 			log.Debug("<= method Create finished")
 		}
 	}()
-	return _d._base.Create(ctx, server)
+	return _d._base.Create(ctx, token, server)
 }
 
 // DeleteByName implements provisioning.ServerService.

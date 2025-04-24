@@ -13,6 +13,7 @@ type TokenService interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Token, error)
 	Update(ctx context.Context, token Token) error
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
+	Consume(ctx context.Context, id uuid.UUID) error
 }
 
 type TokenRepo interface {

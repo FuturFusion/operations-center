@@ -2,8 +2,12 @@ package provisioning
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
 type tokenService struct {
@@ -72,4 +76,30 @@ func (s tokenService) Update(ctx context.Context, newToken Token) error {
 
 func (s tokenService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return s.repo.DeleteByUUID(ctx, id)
+}
+
+func (s tokenService) Consume(ctx context.Context, id uuid.UUID) error {
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		token, err := s.repo.GetByUUID(ctx, id)
+		if err != nil {
+			return fmt.Errorf("Consume token: %w", err)
+		}
+
+		if token.UsesRemaining < 1 {
+			return fmt.Errorf("Token exhausted")
+		}
+
+		if time.Now().After(token.ExpireAt) {
+			return fmt.Errorf("Token expired")
+		}
+
+		token.UsesRemaining--
+
+		err = s.repo.Update(ctx, *token)
+		if err != nil {
+			return fmt.Errorf("Update token: %w", err)
+		}
+
+		return nil
+	})
 }

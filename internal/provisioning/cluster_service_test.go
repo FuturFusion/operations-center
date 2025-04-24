@@ -198,6 +198,122 @@ func TestClusterService_GetAll(t *testing.T) {
 	}
 }
 
+func TestClusterService_GetAllWithFilter(t *testing.T) {
+	tests := []struct {
+		name                    string
+		filter                  provisioning.ClusterFilter
+		repoGetAllWithFilter    provisioning.Clusters
+		repoGetAllWithFilterErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name:   "success - no filter expression",
+			filter: provisioning.ClusterFilter{},
+			repoGetAllWithFilter: provisioning.Clusters{
+				provisioning.Cluster{
+					Name: "one",
+				},
+				provisioning.Cluster{
+					Name: "two",
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name: "success - with filter expression",
+			filter: provisioning.ClusterFilter{
+				Expression: ptr.To(`Name == "one"`),
+			},
+			repoGetAllWithFilter: provisioning.Clusters{
+				provisioning.Cluster{
+					Name: "one",
+				},
+				provisioning.Cluster{
+					Name: "two",
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     1,
+		},
+		{
+			name: "error - invalid filter expression",
+			filter: provisioning.ClusterFilter{
+				Expression: ptr.To(``), // the empty expression is an invalid expression.
+			},
+			repoGetAllWithFilter: provisioning.Clusters{
+				provisioning.Cluster{
+					Name: "one",
+				},
+			},
+
+			assertErr: require.Error,
+			count:     0,
+		},
+		{
+			name: "error - filter expression run",
+			filter: provisioning.ClusterFilter{
+				Expression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
+			},
+			repoGetAllWithFilter: provisioning.Clusters{
+				provisioning.Cluster{
+					Name: "one",
+				},
+			},
+
+			assertErr: require.Error,
+			count:     0,
+		},
+		{
+			name: "error - non bool expression",
+			filter: provisioning.ClusterFilter{
+				Expression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
+			},
+			repoGetAllWithFilter: provisioning.Clusters{
+				provisioning.Cluster{
+					Name: "one",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "does not evaluate to boolean result")
+			},
+			count: 0,
+		},
+		{
+			name:                    "error - repo",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ClusterRepoMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil)
+
+			// Run test
+			cluster, err := clusterSvc.GetAllWithFilter(context.Background(), tc.filter)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, cluster, tc.count)
+		})
+	}
+}
+
 func TestClusterService_GetAllNames(t *testing.T) {
 	tests := []struct {
 		name             string
@@ -242,6 +358,106 @@ func TestClusterService_GetAllNames(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Len(t, clusterNames, tc.count)
+		})
+	}
+}
+
+func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
+	tests := []struct {
+		name                       string
+		filter                     provisioning.ClusterFilter
+		repoGetAllIDsWithFilter    []string
+		repoGetAllIDsWithFilterErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name:   "success - no filter expression",
+			filter: provisioning.ClusterFilter{},
+			repoGetAllIDsWithFilter: []string{
+				"one", "two",
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name: "success - with filter expression",
+			filter: provisioning.ClusterFilter{
+				Expression: ptr.To(`Name matches "one"`),
+			},
+			repoGetAllIDsWithFilter: []string{
+				"one", "two",
+			},
+
+			assertErr: require.NoError,
+			count:     1,
+		},
+		{
+			name: "error - invalid filter expression",
+			filter: provisioning.ClusterFilter{
+				Expression: ptr.To(``), // the empty expression is an invalid expression.
+			},
+			repoGetAllIDsWithFilter: []string{
+				"one",
+			},
+
+			assertErr: require.Error,
+			count:     0,
+		},
+		{
+			name: "error - filter expression run",
+			filter: provisioning.ClusterFilter{
+				Expression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
+			},
+			repoGetAllIDsWithFilter: []string{
+				"one",
+			},
+
+			assertErr: require.Error,
+			count:     0,
+		},
+		{
+			name: "error - non bool expression",
+			filter: provisioning.ClusterFilter{
+				Expression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
+			},
+			repoGetAllIDsWithFilter: []string{
+				"one",
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "does not evaluate to boolean result")
+			},
+			count: 0,
+		},
+		{
+			name:                       "error - repo",
+			repoGetAllIDsWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ClusterRepoMock{
+				GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
+					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil)
+
+			// Run test
+			clusterIDs, err := clusterSvc.GetAllNamesWithFilter(context.Background(), tc.filter)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, clusterIDs, tc.count)
 		})
 	}
 }

@@ -7,12 +7,15 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
 type serverService struct {
-	repo ServerRepo
+	repo     ServerRepo
+	tokenSvc TokenService
 
 	now func() time.Time
 }
@@ -27,9 +30,10 @@ func ServerServiceWithNow(nowFunc func() time.Time) ServerServiceOption {
 	}
 }
 
-func NewServerService(repo ServerRepo, opts ...ServerServiceOption) serverService {
+func NewServerService(repo ServerRepo, tokenSvc TokenService, opts ...ServerServiceOption) serverService {
 	serverSvc := serverService{
-		repo: repo,
+		repo:     repo,
+		tokenSvc: tokenSvc,
 
 		now: time.Now,
 	}
@@ -41,15 +45,27 @@ func NewServerService(repo ServerRepo, opts ...ServerServiceOption) serverServic
 	return serverSvc
 }
 
-func (s serverService) Create(ctx context.Context, newServer Server) (Server, error) {
-	err := newServer.Validate()
-	if err != nil {
-		return Server{}, err
-	}
+func (s serverService) Create(ctx context.Context, token uuid.UUID, newServer Server) (Server, error) {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		err := s.tokenSvc.Consume(ctx, token)
+		if err != nil {
+			return fmt.Errorf("Consume token for server creation: %w", err)
+		}
 
-	newServer.LastUpdated = s.now()
+		err = newServer.Validate()
+		if err != nil {
+			return fmt.Errorf("Validate server: %w", err)
+		}
 
-	newServer.ID, err = s.repo.Create(ctx, newServer)
+		newServer.LastUpdated = s.now()
+
+		newServer.ID, err = s.repo.Create(ctx, newServer)
+		if err != nil {
+			return fmt.Errorf("Create server: %w", err)
+		}
+
+		return nil
+	})
 	if err != nil {
 		return Server{}, err
 	}
