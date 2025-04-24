@@ -3,7 +3,7 @@
 all: False
 template: matryer
 force-file-write: true
-include-interface-regex: "(.+Repo|.*ServerClient|ClusterService|ServerService|InventorySyncer)"
+include-interface-regex: "(.+Repo|.*ServerClient|ClusterService|ServerService|TokenService|InventorySyncer)"
 dir: >-
   {{- $targetDir := "mock" -}}
   {{- if and (.InterfaceName | hasSuffix "ServerClient") -}}
