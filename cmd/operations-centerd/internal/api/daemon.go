@@ -177,6 +177,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 				provisioningSqlite.NewServer(dbWithTransaction),
 				slog.Default(),
 			),
+			tokenSvc,
 		),
 		slog.Default(),
 	)

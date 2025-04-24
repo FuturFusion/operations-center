@@ -60,7 +60,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	server := sqlite.NewServer(tx)
-	serverSvc := provisioning.NewServerService(server, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+	serverSvc := provisioning.NewServerService(server, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), serverSvc, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
 

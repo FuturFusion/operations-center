@@ -24,6 +24,11 @@ import (
 )
 
 func TestInstanceDatabaseActions(t *testing.T) {
+	testToken := provisioning.Token{
+		UsesRemaining: 10,
+		ExpireAt:      time.Now().Add(1 * time.Minute),
+	}
+
 	testClusterA := provisioning.Cluster{
 		Name:          "one",
 		ConnectionURL: "https://cluster-one/",
@@ -89,7 +94,8 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
 
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(tx))
+	tokenSvc := provisioning.NewTokenService(provisioningSqlite.NewToken(tx))
+	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(tx), tokenSvc)
 	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(tx), serverSvc, nil)
 
 	instance := inventorySqlite.NewInstance(tx)
@@ -98,10 +104,14 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	_, err = instance.Create(ctx, instanceA)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
-	// Add dummy servers.
-	_, err = serverSvc.Create(ctx, testServerA)
+	// Add token.
+	testToken, err = tokenSvc.Create(ctx, testToken)
 	require.NoError(t, err)
-	_, err = serverSvc.Create(ctx, testServerB)
+
+	// Add dummy servers.
+	_, err = serverSvc.Create(ctx, testToken.UUID, testServerA)
+	require.NoError(t, err)
+	_, err = serverSvc.Create(ctx, testToken.UUID, testServerB)
 	require.NoError(t, err)
 
 	// Add dummy clusters.

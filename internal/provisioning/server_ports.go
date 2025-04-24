@@ -1,9 +1,13 @@
 package provisioning
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 type ServerService interface {
-	Create(ctx context.Context, server Server) (Server, error)
+	Create(ctx context.Context, token uuid.UUID, server Server) (Server, error)
 	GetAll(ctx context.Context) (Servers, error)
 	GetAllWithFilter(ctx context.Context, filter ServerFilter) (Servers, error)
 	GetAllNames(ctx context.Context) ([]string, error)

@@ -5,10 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
@@ -18,9 +20,10 @@ func TestServerService_Create(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
-		name          string
-		server        provisioning.Server
-		repoCreateErr error
+		name               string
+		server             provisioning.Server
+		repoCreateErr      error
+		tokenSvcConsumeErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -33,6 +36,12 @@ func TestServerService_Create(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+		},
+		{
+			name:               "error - token consume",
+			tokenSvcConsumeErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - validation",
@@ -70,10 +79,18 @@ func TestServerService_Create(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+			tokenSvc := &svcMock.TokenServiceMock{
+				ConsumeFunc: func(ctx context.Context, id uuid.UUID) error {
+					return tc.tokenSvcConsumeErr
+				},
+			}
+
+			token := uuid.MustParse("686d2a12-20f9-11f0-82c6-7fff26bab0c4")
+
+			serverSvc := provisioning.NewServerService(repo, tokenSvc, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
-			_, err := serverSvc.Create(context.Background(), tc.server)
+			_, err := serverSvc.Create(context.Background(), token, tc.server)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -126,7 +143,7 @@ func TestServerService_GetAll(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo)
+			serverSvc := provisioning.NewServerService(repo, nil)
 
 			// Run test
 			servers, err := serverSvc.GetAll(context.Background())
@@ -247,7 +264,7 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo)
+			serverSvc := provisioning.NewServerService(repo, nil)
 
 			// Run test
 			server, err := serverSvc.GetAllWithFilter(context.Background(), tc.filter)
@@ -295,7 +312,7 @@ func TestServerService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo)
+			serverSvc := provisioning.NewServerService(repo, nil)
 
 			// Run test
 			serverNames, err := serverSvc.GetAllNames(context.Background())
@@ -400,7 +417,7 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo)
+			serverSvc := provisioning.NewServerService(repo, nil)
 
 			// Run test
 			serverIDs, err := serverSvc.GetAllNamesWithFilter(context.Background(), tc.filter)
@@ -450,7 +467,7 @@ func TestServerService_GetByID(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo)
+			serverSvc := provisioning.NewServerService(repo, nil)
 
 			// Run test
 			server, err := serverSvc.GetByName(context.Background(), tc.idArg)
@@ -508,7 +525,7 @@ func TestServerService_GetByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo)
+			serverSvc := provisioning.NewServerService(repo, nil)
 
 			// Run test
 			server, err := serverSvc.GetByName(context.Background(), tc.nameArg)
@@ -589,7 +606,7 @@ func TestServerService_Update(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+			serverSvc := provisioning.NewServerService(repo, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			err := serverSvc.Update(context.Background(), tc.server)
@@ -657,7 +674,7 @@ func TestServerService_Rename(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+			serverSvc := provisioning.NewServerService(repo, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			err := serverSvc.Rename(context.Background(), tc.oldName, tc.newName)
@@ -708,7 +725,7 @@ func TestServerService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo)
+			serverSvc := provisioning.NewServerService(repo, nil)
 
 			// Run test
 			err := serverSvc.DeleteByName(context.Background(), tc.nameArg)

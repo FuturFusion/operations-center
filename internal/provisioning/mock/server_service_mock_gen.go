@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/google/uuid"
 )
 
 // Ensure that ServerServiceMock does implement provisioning.ServerService.
@@ -21,7 +22,7 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //
 //		// make and configure a mocked provisioning.ServerService
 //		mockedServerService := &ServerServiceMock{
-//			CreateFunc: func(ctx context.Context, server provisioning.Server) (provisioning.Server, error) {
+//			CreateFunc: func(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error) {
 //				panic("mock out the Create method")
 //			},
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
@@ -56,7 +57,7 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //	}
 type ServerServiceMock struct {
 	// CreateFunc mocks the Create method.
-	CreateFunc func(ctx context.Context, server provisioning.Server) (provisioning.Server, error)
+	CreateFunc func(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error)
 
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
@@ -88,6 +89,8 @@ type ServerServiceMock struct {
 		Create []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// Token is the token argument value.
+			Token uuid.UUID
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
@@ -158,21 +161,23 @@ type ServerServiceMock struct {
 }
 
 // Create calls CreateFunc.
-func (mock *ServerServiceMock) Create(ctx context.Context, server provisioning.Server) (provisioning.Server, error) {
+func (mock *ServerServiceMock) Create(ctx context.Context, token uuid.UUID, server provisioning.Server) (provisioning.Server, error) {
 	if mock.CreateFunc == nil {
 		panic("ServerServiceMock.CreateFunc: method is nil but ServerService.Create was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
+		Token  uuid.UUID
 		Server provisioning.Server
 	}{
 		Ctx:    ctx,
+		Token:  token,
 		Server: server,
 	}
 	mock.lockCreate.Lock()
 	mock.calls.Create = append(mock.calls.Create, callInfo)
 	mock.lockCreate.Unlock()
-	return mock.CreateFunc(ctx, server)
+	return mock.CreateFunc(ctx, token, server)
 }
 
 // CreateCalls gets all the calls that were made to Create.
@@ -181,10 +186,12 @@ func (mock *ServerServiceMock) Create(ctx context.Context, server provisioning.S
 //	len(mockedServerService.CreateCalls())
 func (mock *ServerServiceMock) CreateCalls() []struct {
 	Ctx    context.Context
+	Token  uuid.UUID
 	Server provisioning.Server
 } {
 	var calls []struct {
 		Ctx    context.Context
+		Token  uuid.UUID
 		Server provisioning.Server
 	}
 	mock.lockCreate.RLock()
