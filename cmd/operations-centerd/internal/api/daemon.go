@@ -216,7 +216,16 @@ func (d *Daemon) Start(ctx context.Context) error {
 		registerOIDCHandlers(router, oidcVerifier)
 	}
 
-	api10router := router.SubGroup("/1.0").AddMiddlewares(authenticator.Middleware)
+	api10router := router.SubGroup("/1.0").AddMiddlewares(
+		// POST /1.0/provisioning/servers is authenticated using a token.
+		// Therefore authentication middleware is skipped for this route.
+		unless(
+			authenticator.Middleware,
+			func(r *http.Request) bool {
+				return r.Method == http.MethodPost && r.URL.Path == "/1.0/provisioning/servers"
+			},
+		),
+	)
 	registerAPI10Handler(api10router)
 
 	provisioningRouter := api10router.SubGroup("/provisioning")

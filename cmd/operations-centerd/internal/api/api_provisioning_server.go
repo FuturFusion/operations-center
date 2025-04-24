@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -23,8 +25,11 @@ func registerProvisioningServerHandler(router Router, authorizer authz.Authorize
 		service: service,
 	}
 
+	// Creating new servers (POST requests for servers) is authenticated using
+	// a token. Therefore no authorization is performed for these requests.
+	router.HandleFunc("POST /{$}", response.With(handler.serversPost))
+
 	router.HandleFunc("GET /{$}", response.With(handler.serversGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{$}", response.With(handler.serversPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
 	router.HandleFunc("GET /{name}", response.With(handler.serverGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /{name}", response.With(handler.serverPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}", response.With(handler.serverDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
@@ -213,15 +218,21 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serversPost(r *http.Request) response.Response {
+	// Parse the token.
+	token, err := uuid.Parse(r.URL.Query().Get("token"))
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Invalid token: %v", err))
+	}
+
 	var server api.Server
 
 	// Decode into the new server.
-	err := json.NewDecoder(r.Body).Decode(&server)
+	err = json.NewDecoder(r.Body).Decode(&server)
 	if err != nil {
-		return response.BadRequest(err)
+		return response.BadRequest(fmt.Errorf("Request decoding: %v", err))
 	}
 
-	_, err = s.service.Create(r.Context(), provisioning.Server{
+	_, err = s.service.Create(r.Context(), token, provisioning.Server{
 		Cluster:       ptr.To(server.Cluster),
 		Name:          server.Name,
 		Type:          server.Type,
@@ -231,7 +242,7 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 		LastUpdated:   server.LastUpdated,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating server: %w", err))
+		return response.Forbidden(fmt.Errorf("Failed creating server: %w", err))
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/servers/"+server.Name)

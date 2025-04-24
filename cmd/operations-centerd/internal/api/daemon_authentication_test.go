@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -54,6 +55,8 @@ func TestAuthentication(t *testing.T) {
 	oidcProvider, accessTokens := setupMockOIDC(t)
 
 	openFGAEndpoint, openFGAStoreID := setupOpenFGA(ctx, t)
+
+	var token string
 
 	// Test cases
 	tests := []struct {
@@ -237,7 +240,7 @@ func TestAuthentication(t *testing.T) {
 			wantStatusCode: http.StatusOK,
 		},
 		{
-			name: "oidc http POST /1.0/provisioning/servers as viewer - forbidden",
+			name: "oidc http POST /1.0/provisioning/tokens as viewer - forbidden",
 			client: func() *http.Client {
 				return &http.Client{
 					Transport: &http.Transport{
@@ -249,7 +252,7 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodPost,
-			resource: "https://localhost:17443/1.0/provisioning/servers",
+			resource: "https://localhost:17443/1.0/provisioning/tokens",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[viewer],
 			},
@@ -258,7 +261,7 @@ func TestAuthentication(t *testing.T) {
 			wantStatusCode: http.StatusForbidden,
 		},
 		{
-			name: "oidc http POST /1.0/provisioning/servers as operator - forbidden",
+			name: "oidc http POST /1.0/provisioning/tokens as operator - forbidden",
 			client: func() *http.Client {
 				return &http.Client{
 					Transport: &http.Transport{
@@ -270,20 +273,16 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodPost,
-			resource: "https://localhost:17443/1.0/provisioning/servers",
+			resource: "https://localhost:17443/1.0/provisioning/tokens",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[operator],
 			},
-			body: bytes.NewBufferString(`{
-  "name": "serverA",
-  "connection_url": "https://127.0.0.1:12345/",
-  "server_type": "incus"
-}`),
+			body: http.NoBody,
 
 			wantStatusCode: http.StatusForbidden,
 		},
 		{
-			name: "oidc http POST /1.0/provisioning/servers as admin",
+			name: "oidc http POST /1.0/provisioning/tokens as admin",
 			client: func() *http.Client {
 				return &http.Client{
 					Transport: &http.Transport{
@@ -295,10 +294,33 @@ func TestAuthentication(t *testing.T) {
 				}
 			},
 			method:   http.MethodPost,
-			resource: "https://localhost:17443/1.0/provisioning/servers",
+			resource: "https://localhost:17443/1.0/provisioning/tokens",
 			headers: map[string]string{
 				"Authorization": "Bearer " + accessTokens[admin],
 			},
+			body: bytes.NewBufferString(`{
+  "uses_remaining": 10,
+  "expire_at": "2099-12-31T23:59:59Z"
+}`),
+
+			wantStatusCode: http.StatusCreated,
+		},
+
+		// Create a server using token based authentication in order to have a server
+		// for the subsequent tests.
+		{
+			name: "token http POST /1.0/provisioning/servers",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodPost,
+			resource: "https://localhost:17443/1.0/provisioning/servers?token=TOKEN",
 			body: bytes.NewBufferString(`{
   "name": "serverA",
   "connection_url": "https://127.0.0.1:12345/",
@@ -307,6 +329,70 @@ func TestAuthentication(t *testing.T) {
 
 			wantStatusCode: http.StatusCreated,
 		},
+		{
+			name: "http POST /1.0/provisioning/servers without token",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodPost,
+			resource: "https://localhost:17443/1.0/provisioning/servers",
+			body: bytes.NewBufferString(`{
+  "name": "serverA",
+  "connection_url": "https://127.0.0.1:12345/",
+  "server_type": "incus"
+}`),
+
+			wantStatusCode: http.StatusBadRequest,
+		},
+		{
+			name: "http POST /1.0/provisioning/servers with invalid token",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodPost,
+			resource: "https://localhost:17443/1.0/provisioning/servers?token=invalid",
+			body: bytes.NewBufferString(`{
+  "name": "serverA",
+  "connection_url": "https://127.0.0.1:12345/",
+  "server_type": "incus"
+}`),
+
+			wantStatusCode: http.StatusBadRequest,
+		},
+		{
+			name: "http POST /1.0/provisioning/servers with unknown token",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodPost,
+			resource: "https://localhost:17443/1.0/provisioning/servers?token=01a37f54-4dbd-4d26-a88d-df5a534545fb",
+			body: bytes.NewBufferString(`{
+  "name": "serverA",
+  "connection_url": "https://127.0.0.1:12345/",
+  "server_type": "incus"
+}`),
+
+			wantStatusCode: http.StatusForbidden,
+		},
+
 		{
 			name: "oidc http PUT /1.0/provisioning/servers/serverA as viewer",
 			client: func() *http.Client {
@@ -474,9 +560,12 @@ func TestAuthentication(t *testing.T) {
 
 	setupOpenFGATuples(t, openFGAEndpoint, openFGAStoreID)
 
+	token = setupToken(t, tmpDir)
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			req, err := http.NewRequest(tc.method, tc.resource, tc.body)
+			resource := strings.Replace(tc.resource, "TOKEN", token, 1)
+			req, err := http.NewRequest(tc.method, resource, tc.body)
 			require.NoError(t, err)
 
 			for key, value := range tc.headers {
@@ -584,4 +673,48 @@ func setupOpenFGATuples(t *testing.T, endpoint string, storeID string) {
 		resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	}
+}
+
+func setupToken(t *testing.T, varDir string) string {
+	t.Helper()
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				return net.Dial("unix", filepath.Join(varDir, "unix.socket"))
+			},
+		},
+	}
+
+	req, err := http.NewRequest(http.MethodPost, "http://unix.socket/1.0/provisioning/tokens", bytes.NewBufferString(`{
+  "uses_remaining": 10,
+  "expire_at": "2099-12-31T23:59:59Z"
+}`))
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	req, err = http.NewRequest(http.MethodGet, "http://unix.socket/1.0/provisioning/tokens?recursion=1", http.NoBody)
+	require.NoError(t, err)
+
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	token := struct {
+		Metadata []struct {
+			UUID string `json:"uuid"`
+		} `json:"metadata"`
+	}{}
+
+	err = json.NewDecoder(resp.Body).Decode(&token)
+	require.NoError(t, err)
+
+	return token.Metadata[0].UUID
 }
