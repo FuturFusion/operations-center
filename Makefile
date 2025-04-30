@@ -43,6 +43,13 @@ endif
 	golangci-lint run ./...
 	run-parts $(shell run-parts -V >/dev/null 2>&1 && echo -n "--verbose --exit-on-error --regex '\.sh$$'") scripts/lint
 
+.PHONY: vulncheck
+vulncheck:
+ifeq ($(shell command -v govulncheck),)
+	go install golang.org/x/vuln/cmd/govulncheck@latest
+endif
+	govulncheck ./...
+
 .PHONY: clean
 clean:
 	rm -rf dist/ bin/
