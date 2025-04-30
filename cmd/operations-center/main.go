@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -128,6 +129,10 @@ func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
 
 	if c.config.TLSClientCertFile != "" && c.config.TLSClientKeyFile != "" {
 		opts = append(opts, client.WithClientCertificate(c.config.TLSClientCertFile, c.config.TLSClientKeyFile))
+	}
+
+	if c.config.AuthType == config.AuthTypeOIDC {
+		opts = append(opts, client.WithOIDCTokensFile(filepath.Join(c.env.VarDir(), "oidc-tokens.json")))
 	}
 
 	*c.ocClient, err = client.New(

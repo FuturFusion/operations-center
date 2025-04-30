@@ -12,18 +12,24 @@ import (
 	"strings"
 	"time"
 
+	oidcClient "github.com/FuturFusion/operations-center/cmd/operations-center/internal/client/oidc"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 const apiVersionPrefix = "/1.0"
 
+type httpClient interface {
+	Do(*http.Request) (*http.Response, error)
+}
+
 type OperationsCenterClient struct {
-	httpClient *http.Client
+	httpClient httpClient
 	baseURL    string
 
-	forceLocal    bool
-	unixSocket    string
-	tlsClientCert tls.Certificate
+	forceLocal         bool
+	unixSocket         string
+	tlsClientCert      tls.Certificate
+	oidcTokensFilename *string
 }
 
 type Option func(c *OperationsCenterClient) error
@@ -45,6 +51,18 @@ func WithClientCertificate(clientCertFile string, clientKeyFile string) Option {
 		}
 
 		c.tlsClientCert = cert
+
+		return nil
+	}
+}
+
+func WithOIDCTokensFile(oidcTokensFilename string) Option {
+	return func(c *OperationsCenterClient) error {
+		if c.oidcTokensFilename == nil {
+			c.oidcTokensFilename = new(string)
+		}
+
+		*c.oidcTokensFilename = oidcTokensFilename
 
 		return nil
 	}
@@ -81,11 +99,10 @@ func New(serverPort string, opts ...Option) (OperationsCenterClient, error) {
 		}
 
 		// Define the http client
-		client := &http.Client{
+		c.httpClient = &http.Client{
 			Transport: transport,
 		}
 
-		c.httpClient = client
 		c.baseURL = "http://unix.socket/"
 
 		return c, nil
@@ -101,6 +118,11 @@ func New(serverPort string, opts ...Option) (OperationsCenterClient, error) {
 	}
 
 	c.httpClient = httpClient
+
+	if c.oidcTokensFilename != nil {
+		c.httpClient = oidcClient.NewClient(httpClient, *c.oidcTokensFilename)
+	}
+
 	c.baseURL = fmt.Sprintf("https://%s", serverPort)
 
 	return c, nil
