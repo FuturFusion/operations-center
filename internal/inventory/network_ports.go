@@ -5,25 +5,27 @@ package inventory
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type NetworkService interface {
 	GetAllWithFilter(ctx context.Context, filter NetworkFilter) (Networks, error)
-	GetAllIDsWithFilter(ctx context.Context, filter NetworkFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (Network, error)
-	ResyncByID(ctx context.Context, id int) error
+	GetAllUUIDsWithFilter(ctx context.Context, filter NetworkFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (Network, error)
+	ResyncByUUID(ctx context.Context, id uuid.UUID) error
 	SyncCluster(ctx context.Context, cluster string) error
 }
 
 type NetworkRepo interface {
 	GetAllWithFilter(ctx context.Context, filter NetworkFilter) (Networks, error)
-	GetAllIDsWithFilter(ctx context.Context, filter NetworkFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (Network, error)
+	GetAllUUIDsWithFilter(ctx context.Context, filter NetworkFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (Network, error)
 	Create(ctx context.Context, network Network) (Network, error)
-	DeleteByID(ctx context.Context, id int) error
+	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	DeleteByClusterName(ctx context.Context, cluster string) error
-	UpdateByID(ctx context.Context, network Network) (Network, error)
+	UpdateByUUID(ctx context.Context, network Network) (Network, error)
 }
 
 type NetworkServerClient interface {

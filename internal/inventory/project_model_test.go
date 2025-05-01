@@ -15,27 +15,27 @@ import (
 func TestProject_Validate(t *testing.T) {
 	tests := []struct {
 		name  string
-		image inventory.Project
+		image *inventory.Project
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "valid",
-			image: inventory.Project{
+			image: (&inventory.Project{
 				ID:      1,
 				Cluster: "one",
 				Name:    "one",
-			},
+			}).DeriveUUID(),
 
 			assertErr: require.NoError,
 		},
 		{
 			name: "error - invalid cluster ID",
-			image: inventory.Project{
+			image: (&inventory.Project{
 				ID:      1,
 				Cluster: "", // invalid
 				Name:    "one",
-			},
+			}).DeriveUUID(),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
@@ -44,11 +44,24 @@ func TestProject_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid name",
-			image: inventory.Project{
+			image: (&inventory.Project{
 				ID:      1,
 				Cluster: "one",
 				Name:    "", // invalid
+			}).DeriveUUID(),
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
 			},
+		},
+		{
+			name: "error - UUID not derived",
+			image: &inventory.Project{
+				ID:      1,
+				Cluster: "one",
+				Name:    "one",
+			}, // UUID not derived
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation

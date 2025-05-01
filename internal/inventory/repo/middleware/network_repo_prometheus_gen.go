@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -65,8 +66,8 @@ func (_d NetworkRepoWithPrometheus) DeleteByClusterName(ctx context.Context, clu
 	return _d.base.DeleteByClusterName(ctx, cluster)
 }
 
-// DeleteByID implements inventory.NetworkRepo.
-func (_d NetworkRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByUUID implements inventory.NetworkRepo.
+func (_d NetworkRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d NetworkRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err
 			result = "error"
 		}
 
-		networkRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
+		networkRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByID(ctx, id)
+	return _d.base.DeleteByUUID(ctx, id)
 }
 
-// GetAllIDsWithFilter implements inventory.NetworkRepo.
-func (_d NetworkRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.NetworkRepo.
+func (_d NetworkRepoWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d NetworkRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, fil
 			result = "error"
 		}
 
-		networkRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		networkRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.NetworkRepo.
@@ -107,8 +108,8 @@ func (_d NetworkRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filter
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.NetworkRepo.
-func (_d NetworkRepoWithPrometheus) GetByID(ctx context.Context, id int) (network inventory.Network, err error) {
+// GetByUUID implements inventory.NetworkRepo.
+func (_d NetworkRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (network inventory.Network, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -116,13 +117,13 @@ func (_d NetworkRepoWithPrometheus) GetByID(ctx context.Context, id int) (networ
 			result = "error"
 		}
 
-		networkRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		networkRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements inventory.NetworkRepo.
-func (_d NetworkRepoWithPrometheus) UpdateByID(ctx context.Context, network inventory.Network) (network1 inventory.Network, err error) {
+// UpdateByUUID implements inventory.NetworkRepo.
+func (_d NetworkRepoWithPrometheus) UpdateByUUID(ctx context.Context, network inventory.Network) (network1 inventory.Network, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -130,7 +131,7 @@ func (_d NetworkRepoWithPrometheus) UpdateByID(ctx context.Context, network inve
 			result = "error"
 		}
 
-		networkRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByID", result).Observe(time.Since(_since).Seconds())
+		networkRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByID(ctx, network)
+	return _d.base.UpdateByUUID(ctx, network)
 }

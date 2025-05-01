@@ -31,8 +31,8 @@ func (c OperationsCenterClient) GetWithFilterImages(filter inventory.ImageFilter
 	return images, nil
 }
 
-func (c OperationsCenterClient) GetImage(name string) (api.Image, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/images", name), nil, nil)
+func (c OperationsCenterClient) GetImage(id string) (api.Image, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/images", id), nil, nil)
 	if err != nil {
 		return api.Image{}, err
 	}

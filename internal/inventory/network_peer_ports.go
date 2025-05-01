@@ -5,25 +5,27 @@ package inventory
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type NetworkPeerService interface {
 	GetAllWithFilter(ctx context.Context, filter NetworkPeerFilter) (NetworkPeers, error)
-	GetAllIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (NetworkPeer, error)
-	ResyncByID(ctx context.Context, id int) error
+	GetAllUUIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkPeer, error)
+	ResyncByUUID(ctx context.Context, id uuid.UUID) error
 	SyncCluster(ctx context.Context, cluster string) error
 }
 
 type NetworkPeerRepo interface {
 	GetAllWithFilter(ctx context.Context, filter NetworkPeerFilter) (NetworkPeers, error)
-	GetAllIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (NetworkPeer, error)
+	GetAllUUIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkPeer, error)
 	Create(ctx context.Context, networkPeer NetworkPeer) (NetworkPeer, error)
-	DeleteByID(ctx context.Context, id int) error
+	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	DeleteByClusterName(ctx context.Context, cluster string) error
-	UpdateByID(ctx context.Context, networkPeer NetworkPeer) (NetworkPeer, error)
+	UpdateByUUID(ctx context.Context, networkPeer NetworkPeer) (NetworkPeer, error)
 }
 
 type NetworkPeerServerClient interface {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -65,8 +66,8 @@ func (_d ImageRepoWithPrometheus) DeleteByClusterName(ctx context.Context, clust
 	return _d.base.DeleteByClusterName(ctx, cluster)
 }
 
-// DeleteByID implements inventory.ImageRepo.
-func (_d ImageRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByUUID implements inventory.ImageRepo.
+func (_d ImageRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d ImageRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err e
 			result = "error"
 		}
 
-		imageRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
+		imageRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByID(ctx, id)
+	return _d.base.DeleteByUUID(ctx, id)
 }
 
-// GetAllIDsWithFilter implements inventory.ImageRepo.
-func (_d ImageRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.ImageFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.ImageRepo.
+func (_d ImageRepoWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ImageFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d ImageRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filte
 			result = "error"
 		}
 
-		imageRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		imageRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.ImageRepo.
@@ -107,8 +108,8 @@ func (_d ImageRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filter i
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.ImageRepo.
-func (_d ImageRepoWithPrometheus) GetByID(ctx context.Context, id int) (image inventory.Image, err error) {
+// GetByUUID implements inventory.ImageRepo.
+func (_d ImageRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (image inventory.Image, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -116,13 +117,13 @@ func (_d ImageRepoWithPrometheus) GetByID(ctx context.Context, id int) (image in
 			result = "error"
 		}
 
-		imageRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		imageRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements inventory.ImageRepo.
-func (_d ImageRepoWithPrometheus) UpdateByID(ctx context.Context, image inventory.Image) (image1 inventory.Image, err error) {
+// UpdateByUUID implements inventory.ImageRepo.
+func (_d ImageRepoWithPrometheus) UpdateByUUID(ctx context.Context, image inventory.Image) (image1 inventory.Image, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -130,7 +131,7 @@ func (_d ImageRepoWithPrometheus) UpdateByID(ctx context.Context, image inventor
 			result = "error"
 		}
 
-		imageRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByID", result).Observe(time.Since(_since).Seconds())
+		imageRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByID(ctx, image)
+	return _d.base.UpdateByUUID(ctx, image)
 }

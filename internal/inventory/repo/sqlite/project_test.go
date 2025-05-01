@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -64,12 +65,16 @@ func TestProjectDatabaseActions(t *testing.T) {
 		LastUpdated: time.Now(),
 	}
 
+	projectA.DeriveUUID()
+
 	projectB := inventory.Project{
 		Cluster:     "two",
 		Name:        "two",
 		Object:      incusapi.Project{},
 		LastUpdated: time.Now(),
 	}
+
+	projectB.DeriveUUID()
 
 	ctx := context.Background()
 
@@ -126,10 +131,10 @@ func TestProjectDatabaseActions(t *testing.T) {
 	require.Equal(t, "two", projectB.Cluster)
 
 	// Ensure we have two entries without filter
-	projectIDs, err := project.GetAllIDsWithFilter(ctx, inventory.ProjectFilter{})
+	projectUUIDs, err := project.GetAllUUIDsWithFilter(ctx, inventory.ProjectFilter{})
 	require.NoError(t, err)
-	require.Len(t, projectIDs, 2)
-	require.ElementsMatch(t, []int{1, 2}, projectIDs)
+	require.Len(t, projectUUIDs, 2)
+	require.ElementsMatch(t, []uuid.UUID{projectA.UUID, projectB.UUID}, projectUUIDs)
 
 	// Ensure we have two entries without filter
 	dbProject, err := project.GetAllWithFilter(ctx, inventory.ProjectFilter{})
@@ -139,45 +144,45 @@ func TestProjectDatabaseActions(t *testing.T) {
 	require.Equal(t, projectB.Name, dbProject[1].Name)
 
 	// Ensure we have one entry with filter for cluster, server and project
-	projectIDs, err = project.GetAllIDsWithFilter(ctx, inventory.ProjectFilter{
+	projectUUIDs, err = project.GetAllUUIDsWithFilter(ctx, inventory.ProjectFilter{
 		Cluster: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, projectIDs, 1)
-	require.ElementsMatch(t, []int{1}, projectIDs)
+	require.Len(t, projectUUIDs, 1)
+	require.ElementsMatch(t, []uuid.UUID{projectA.UUID}, projectUUIDs)
 
 	// Ensure we have one entry with filter for cluster, server and project
 	dbProject, err = project.GetAllWithFilter(ctx, inventory.ProjectFilter{
 		Cluster: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, projectIDs, 1)
+	require.Len(t, dbProject, 1)
 	require.Equal(t, "one", dbProject[0].Name)
 
 	// Should get back projectA unchanged.
 	projectA.Cluster = "one"
-	dbProjectA, err := project.GetByID(ctx, projectA.ID)
+	dbProjectA, err := project.GetByUUID(ctx, projectA.UUID)
 	require.NoError(t, err)
 	require.Equal(t, projectA, dbProjectA)
 
 	projectB.LastUpdated = time.Now().UTC().Truncate(0)
-	dbProjectB, err := project.UpdateByID(ctx, projectB)
+	dbProjectB, err := project.UpdateByUUID(ctx, projectB)
 	require.NoError(t, err)
 	require.Equal(t, projectB, dbProjectB)
 
 	// Delete projects by ID.
-	err = project.DeleteByID(ctx, 1)
+	err = project.DeleteByUUID(ctx, projectA.UUID)
 	require.NoError(t, err)
 
 	// Delete projects by cluster Name.
 	err = project.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
-	_, err = project.GetByID(ctx, projectA.ID)
+	_, err = project.GetByUUID(ctx, projectA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no projects remaining.
-	projectIDs, err = project.GetAllIDsWithFilter(ctx, inventory.ProjectFilter{})
+	projectUUIDs, err = project.GetAllUUIDsWithFilter(ctx, inventory.ProjectFilter{})
 	require.NoError(t, err)
-	require.Zero(t, projectIDs)
+	require.Zero(t, projectUUIDs)
 }

@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 )
 
 // Ensure that NetworkIntegrationRepoMock does implement inventory.NetworkIntegrationRepo.
@@ -27,20 +28,20 @@ var _ inventory.NetworkIntegrationRepo = &NetworkIntegrationRepoMock{}
 //			DeleteByClusterNameFunc: func(ctx context.Context, cluster string) error {
 //				panic("mock out the DeleteByClusterName method")
 //			},
-//			DeleteByIDFunc: func(ctx context.Context, id int) error {
-//				panic("mock out the DeleteByID method")
+//			DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+//				panic("mock out the DeleteByUUID method")
 //			},
-//			GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]int, error) {
-//				panic("mock out the GetAllIDsWithFilter method")
+//			GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]uuid.UUID, error) {
+//				panic("mock out the GetAllUUIDsWithFilter method")
 //			},
 //			GetAllWithFilterFunc: func(ctx context.Context, filter inventory.NetworkIntegrationFilter) (inventory.NetworkIntegrations, error) {
 //				panic("mock out the GetAllWithFilter method")
 //			},
-//			GetByIDFunc: func(ctx context.Context, id int) (inventory.NetworkIntegration, error) {
-//				panic("mock out the GetByID method")
+//			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkIntegration, error) {
+//				panic("mock out the GetByUUID method")
 //			},
-//			UpdateByIDFunc: func(ctx context.Context, networkIntegration inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
-//				panic("mock out the UpdateByID method")
+//			UpdateByUUIDFunc: func(ctx context.Context, networkIntegration inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
+//				panic("mock out the UpdateByUUID method")
 //			},
 //		}
 //
@@ -55,20 +56,20 @@ type NetworkIntegrationRepoMock struct {
 	// DeleteByClusterNameFunc mocks the DeleteByClusterName method.
 	DeleteByClusterNameFunc func(ctx context.Context, cluster string) error
 
-	// DeleteByIDFunc mocks the DeleteByID method.
-	DeleteByIDFunc func(ctx context.Context, id int) error
+	// DeleteByUUIDFunc mocks the DeleteByUUID method.
+	DeleteByUUIDFunc func(ctx context.Context, id uuid.UUID) error
 
-	// GetAllIDsWithFilterFunc mocks the GetAllIDsWithFilter method.
-	GetAllIDsWithFilterFunc func(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]int, error)
+	// GetAllUUIDsWithFilterFunc mocks the GetAllUUIDsWithFilter method.
+	GetAllUUIDsWithFilterFunc func(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]uuid.UUID, error)
 
 	// GetAllWithFilterFunc mocks the GetAllWithFilter method.
 	GetAllWithFilterFunc func(ctx context.Context, filter inventory.NetworkIntegrationFilter) (inventory.NetworkIntegrations, error)
 
-	// GetByIDFunc mocks the GetByID method.
-	GetByIDFunc func(ctx context.Context, id int) (inventory.NetworkIntegration, error)
+	// GetByUUIDFunc mocks the GetByUUID method.
+	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (inventory.NetworkIntegration, error)
 
-	// UpdateByIDFunc mocks the UpdateByID method.
-	UpdateByIDFunc func(ctx context.Context, networkIntegration inventory.NetworkIntegration) (inventory.NetworkIntegration, error)
+	// UpdateByUUIDFunc mocks the UpdateByUUID method.
+	UpdateByUUIDFunc func(ctx context.Context, networkIntegration inventory.NetworkIntegration) (inventory.NetworkIntegration, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -86,15 +87,15 @@ type NetworkIntegrationRepoMock struct {
 			// Cluster is the cluster argument value.
 			Cluster string
 		}
-		// DeleteByID holds details about calls to the DeleteByID method.
-		DeleteByID []struct {
+		// DeleteByUUID holds details about calls to the DeleteByUUID method.
+		DeleteByUUID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
-			ID int
+			ID uuid.UUID
 		}
-		// GetAllIDsWithFilter holds details about calls to the GetAllIDsWithFilter method.
-		GetAllIDsWithFilter []struct {
+		// GetAllUUIDsWithFilter holds details about calls to the GetAllUUIDsWithFilter method.
+		GetAllUUIDsWithFilter []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Filter is the filter argument value.
@@ -107,28 +108,28 @@ type NetworkIntegrationRepoMock struct {
 			// Filter is the filter argument value.
 			Filter inventory.NetworkIntegrationFilter
 		}
-		// GetByID holds details about calls to the GetByID method.
-		GetByID []struct {
+		// GetByUUID holds details about calls to the GetByUUID method.
+		GetByUUID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
-			ID int
+			ID uuid.UUID
 		}
-		// UpdateByID holds details about calls to the UpdateByID method.
-		UpdateByID []struct {
+		// UpdateByUUID holds details about calls to the UpdateByUUID method.
+		UpdateByUUID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// NetworkIntegration is the networkIntegration argument value.
 			NetworkIntegration inventory.NetworkIntegration
 		}
 	}
-	lockCreate              sync.RWMutex
-	lockDeleteByClusterName sync.RWMutex
-	lockDeleteByID          sync.RWMutex
-	lockGetAllIDsWithFilter sync.RWMutex
-	lockGetAllWithFilter    sync.RWMutex
-	lockGetByID             sync.RWMutex
-	lockUpdateByID          sync.RWMutex
+	lockCreate                sync.RWMutex
+	lockDeleteByClusterName   sync.RWMutex
+	lockDeleteByUUID          sync.RWMutex
+	lockGetAllUUIDsWithFilter sync.RWMutex
+	lockGetAllWithFilter      sync.RWMutex
+	lockGetByUUID             sync.RWMutex
+	lockUpdateByUUID          sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -203,46 +204,46 @@ func (mock *NetworkIntegrationRepoMock) DeleteByClusterNameCalls() []struct {
 	return calls
 }
 
-// DeleteByID calls DeleteByIDFunc.
-func (mock *NetworkIntegrationRepoMock) DeleteByID(ctx context.Context, id int) error {
-	if mock.DeleteByIDFunc == nil {
-		panic("NetworkIntegrationRepoMock.DeleteByIDFunc: method is nil but NetworkIntegrationRepo.DeleteByID was just called")
+// DeleteByUUID calls DeleteByUUIDFunc.
+func (mock *NetworkIntegrationRepoMock) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	if mock.DeleteByUUIDFunc == nil {
+		panic("NetworkIntegrationRepoMock.DeleteByUUIDFunc: method is nil but NetworkIntegrationRepo.DeleteByUUID was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		ID  int
+		ID  uuid.UUID
 	}{
 		Ctx: ctx,
 		ID:  id,
 	}
-	mock.lockDeleteByID.Lock()
-	mock.calls.DeleteByID = append(mock.calls.DeleteByID, callInfo)
-	mock.lockDeleteByID.Unlock()
-	return mock.DeleteByIDFunc(ctx, id)
+	mock.lockDeleteByUUID.Lock()
+	mock.calls.DeleteByUUID = append(mock.calls.DeleteByUUID, callInfo)
+	mock.lockDeleteByUUID.Unlock()
+	return mock.DeleteByUUIDFunc(ctx, id)
 }
 
-// DeleteByIDCalls gets all the calls that were made to DeleteByID.
+// DeleteByUUIDCalls gets all the calls that were made to DeleteByUUID.
 // Check the length with:
 //
-//	len(mockedNetworkIntegrationRepo.DeleteByIDCalls())
-func (mock *NetworkIntegrationRepoMock) DeleteByIDCalls() []struct {
+//	len(mockedNetworkIntegrationRepo.DeleteByUUIDCalls())
+func (mock *NetworkIntegrationRepoMock) DeleteByUUIDCalls() []struct {
 	Ctx context.Context
-	ID  int
+	ID  uuid.UUID
 } {
 	var calls []struct {
 		Ctx context.Context
-		ID  int
+		ID  uuid.UUID
 	}
-	mock.lockDeleteByID.RLock()
-	calls = mock.calls.DeleteByID
-	mock.lockDeleteByID.RUnlock()
+	mock.lockDeleteByUUID.RLock()
+	calls = mock.calls.DeleteByUUID
+	mock.lockDeleteByUUID.RUnlock()
 	return calls
 }
 
-// GetAllIDsWithFilter calls GetAllIDsWithFilterFunc.
-func (mock *NetworkIntegrationRepoMock) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]int, error) {
-	if mock.GetAllIDsWithFilterFunc == nil {
-		panic("NetworkIntegrationRepoMock.GetAllIDsWithFilterFunc: method is nil but NetworkIntegrationRepo.GetAllIDsWithFilter was just called")
+// GetAllUUIDsWithFilter calls GetAllUUIDsWithFilterFunc.
+func (mock *NetworkIntegrationRepoMock) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]uuid.UUID, error) {
+	if mock.GetAllUUIDsWithFilterFunc == nil {
+		panic("NetworkIntegrationRepoMock.GetAllUUIDsWithFilterFunc: method is nil but NetworkIntegrationRepo.GetAllUUIDsWithFilter was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
@@ -251,17 +252,17 @@ func (mock *NetworkIntegrationRepoMock) GetAllIDsWithFilter(ctx context.Context,
 		Ctx:    ctx,
 		Filter: filter,
 	}
-	mock.lockGetAllIDsWithFilter.Lock()
-	mock.calls.GetAllIDsWithFilter = append(mock.calls.GetAllIDsWithFilter, callInfo)
-	mock.lockGetAllIDsWithFilter.Unlock()
-	return mock.GetAllIDsWithFilterFunc(ctx, filter)
+	mock.lockGetAllUUIDsWithFilter.Lock()
+	mock.calls.GetAllUUIDsWithFilter = append(mock.calls.GetAllUUIDsWithFilter, callInfo)
+	mock.lockGetAllUUIDsWithFilter.Unlock()
+	return mock.GetAllUUIDsWithFilterFunc(ctx, filter)
 }
 
-// GetAllIDsWithFilterCalls gets all the calls that were made to GetAllIDsWithFilter.
+// GetAllUUIDsWithFilterCalls gets all the calls that were made to GetAllUUIDsWithFilter.
 // Check the length with:
 //
-//	len(mockedNetworkIntegrationRepo.GetAllIDsWithFilterCalls())
-func (mock *NetworkIntegrationRepoMock) GetAllIDsWithFilterCalls() []struct {
+//	len(mockedNetworkIntegrationRepo.GetAllUUIDsWithFilterCalls())
+func (mock *NetworkIntegrationRepoMock) GetAllUUIDsWithFilterCalls() []struct {
 	Ctx    context.Context
 	Filter inventory.NetworkIntegrationFilter
 } {
@@ -269,9 +270,9 @@ func (mock *NetworkIntegrationRepoMock) GetAllIDsWithFilterCalls() []struct {
 		Ctx    context.Context
 		Filter inventory.NetworkIntegrationFilter
 	}
-	mock.lockGetAllIDsWithFilter.RLock()
-	calls = mock.calls.GetAllIDsWithFilter
-	mock.lockGetAllIDsWithFilter.RUnlock()
+	mock.lockGetAllUUIDsWithFilter.RLock()
+	calls = mock.calls.GetAllUUIDsWithFilter
+	mock.lockGetAllUUIDsWithFilter.RUnlock()
 	return calls
 }
 
@@ -311,46 +312,46 @@ func (mock *NetworkIntegrationRepoMock) GetAllWithFilterCalls() []struct {
 	return calls
 }
 
-// GetByID calls GetByIDFunc.
-func (mock *NetworkIntegrationRepoMock) GetByID(ctx context.Context, id int) (inventory.NetworkIntegration, error) {
-	if mock.GetByIDFunc == nil {
-		panic("NetworkIntegrationRepoMock.GetByIDFunc: method is nil but NetworkIntegrationRepo.GetByID was just called")
+// GetByUUID calls GetByUUIDFunc.
+func (mock *NetworkIntegrationRepoMock) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.NetworkIntegration, error) {
+	if mock.GetByUUIDFunc == nil {
+		panic("NetworkIntegrationRepoMock.GetByUUIDFunc: method is nil but NetworkIntegrationRepo.GetByUUID was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		ID  int
+		ID  uuid.UUID
 	}{
 		Ctx: ctx,
 		ID:  id,
 	}
-	mock.lockGetByID.Lock()
-	mock.calls.GetByID = append(mock.calls.GetByID, callInfo)
-	mock.lockGetByID.Unlock()
-	return mock.GetByIDFunc(ctx, id)
+	mock.lockGetByUUID.Lock()
+	mock.calls.GetByUUID = append(mock.calls.GetByUUID, callInfo)
+	mock.lockGetByUUID.Unlock()
+	return mock.GetByUUIDFunc(ctx, id)
 }
 
-// GetByIDCalls gets all the calls that were made to GetByID.
+// GetByUUIDCalls gets all the calls that were made to GetByUUID.
 // Check the length with:
 //
-//	len(mockedNetworkIntegrationRepo.GetByIDCalls())
-func (mock *NetworkIntegrationRepoMock) GetByIDCalls() []struct {
+//	len(mockedNetworkIntegrationRepo.GetByUUIDCalls())
+func (mock *NetworkIntegrationRepoMock) GetByUUIDCalls() []struct {
 	Ctx context.Context
-	ID  int
+	ID  uuid.UUID
 } {
 	var calls []struct {
 		Ctx context.Context
-		ID  int
+		ID  uuid.UUID
 	}
-	mock.lockGetByID.RLock()
-	calls = mock.calls.GetByID
-	mock.lockGetByID.RUnlock()
+	mock.lockGetByUUID.RLock()
+	calls = mock.calls.GetByUUID
+	mock.lockGetByUUID.RUnlock()
 	return calls
 }
 
-// UpdateByID calls UpdateByIDFunc.
-func (mock *NetworkIntegrationRepoMock) UpdateByID(ctx context.Context, networkIntegration inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
-	if mock.UpdateByIDFunc == nil {
-		panic("NetworkIntegrationRepoMock.UpdateByIDFunc: method is nil but NetworkIntegrationRepo.UpdateByID was just called")
+// UpdateByUUID calls UpdateByUUIDFunc.
+func (mock *NetworkIntegrationRepoMock) UpdateByUUID(ctx context.Context, networkIntegration inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
+	if mock.UpdateByUUIDFunc == nil {
+		panic("NetworkIntegrationRepoMock.UpdateByUUIDFunc: method is nil but NetworkIntegrationRepo.UpdateByUUID was just called")
 	}
 	callInfo := struct {
 		Ctx                context.Context
@@ -359,17 +360,17 @@ func (mock *NetworkIntegrationRepoMock) UpdateByID(ctx context.Context, networkI
 		Ctx:                ctx,
 		NetworkIntegration: networkIntegration,
 	}
-	mock.lockUpdateByID.Lock()
-	mock.calls.UpdateByID = append(mock.calls.UpdateByID, callInfo)
-	mock.lockUpdateByID.Unlock()
-	return mock.UpdateByIDFunc(ctx, networkIntegration)
+	mock.lockUpdateByUUID.Lock()
+	mock.calls.UpdateByUUID = append(mock.calls.UpdateByUUID, callInfo)
+	mock.lockUpdateByUUID.Unlock()
+	return mock.UpdateByUUIDFunc(ctx, networkIntegration)
 }
 
-// UpdateByIDCalls gets all the calls that were made to UpdateByID.
+// UpdateByUUIDCalls gets all the calls that were made to UpdateByUUID.
 // Check the length with:
 //
-//	len(mockedNetworkIntegrationRepo.UpdateByIDCalls())
-func (mock *NetworkIntegrationRepoMock) UpdateByIDCalls() []struct {
+//	len(mockedNetworkIntegrationRepo.UpdateByUUIDCalls())
+func (mock *NetworkIntegrationRepoMock) UpdateByUUIDCalls() []struct {
 	Ctx                context.Context
 	NetworkIntegration inventory.NetworkIntegration
 } {
@@ -377,8 +378,8 @@ func (mock *NetworkIntegrationRepoMock) UpdateByIDCalls() []struct {
 		Ctx                context.Context
 		NetworkIntegration inventory.NetworkIntegration
 	}
-	mock.lockUpdateByID.RLock()
-	calls = mock.calls.UpdateByID
-	mock.lockUpdateByID.RUnlock()
+	mock.lockUpdateByUUID.RLock()
+	calls = mock.calls.UpdateByUUID
+	mock.lockUpdateByUUID.RUnlock()
 	return calls
 }

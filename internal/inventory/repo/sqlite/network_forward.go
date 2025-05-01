@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
@@ -31,9 +33,9 @@ func (r networkForward) Create(ctx context.Context, in inventory.NetworkForward)
 WITH _lookup AS (
   SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
-INSERT INTO network_forwards (cluster_id, network_name, name, object, last_updated)
-VALUES ( (SELECT cluster_id FROM _lookup), :network_name, :name, :object, :last_updated)
-RETURNING id, :cluster_name, network_name, name, object, last_updated;
+INSERT INTO network_forwards (uuid, cluster_id, network_name, name, object, last_updated)
+VALUES (:uuid, (SELECT cluster_id FROM _lookup), :network_name, :name, :object, :last_updated)
+RETURNING id, :uuid, :cluster_name, network_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -42,6 +44,7 @@ RETURNING id, :cluster_name, network_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
+		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
 		sql.Named("network_name", in.NetworkName),
 		sql.Named("name", in.Name),
@@ -58,7 +61,7 @@ RETURNING id, :cluster_name, network_name, name, object, last_updated;
 func (r networkForward) GetAllWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (inventory.NetworkForwards, error) {
 	const sqlStmt = `
 SELECT
-  network_forwards.id, clusters.name, network_forwards.network_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
+  network_forwards.id, network_forwards.uuid, clusters.name, network_forwards.network_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
 FROM network_forwards
   INNER JOIN clusters ON network_forwards.cluster_id = clusters.id
 WHERE true
@@ -101,9 +104,9 @@ ORDER BY clusters.name, network_forwards.name
 	return networkForwards, nil
 }
 
-func (r networkForward) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) ([]int, error) {
+func (r networkForward) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) ([]uuid.UUID, error) {
 	const sqlStmt = `
-SELECT network_forwards.id
+SELECT network_forwards.uuid
 FROM network_forwards
   INNER JOIN clusters ON network_forwards.cluster_id = clusters.id
 WHERE true
@@ -128,9 +131,9 @@ ORDER BY network_forwards.id
 
 	defer func() { _ = rows.Close() }()
 
-	var ids []int
+	var ids []uuid.UUID
 	for rows.Next() {
-		var id int
+		var id uuid.UUID
 		err := rows.Scan(&id)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
@@ -146,17 +149,17 @@ ORDER BY network_forwards.id
 	return ids, nil
 }
 
-func (r networkForward) GetByID(ctx context.Context, id int) (inventory.NetworkForward, error) {
+func (r networkForward) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.NetworkForward, error) {
 	const sqlStmt = `
 SELECT
-  network_forwards.id, clusters.name, network_forwards.network_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
+  network_forwards.id, network_forwards.uuid, clusters.name, network_forwards.network_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
 FROM
   network_forwards
   INNER JOIN clusters ON network_forwards.cluster_id = clusters.id
-WHERE network_forwards.id=:id;
+WHERE network_forwards.uuid=:uuid;
 `
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
+	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if row.Err() != nil {
 		return inventory.NetworkForward{}, sqlite.MapErr(row.Err())
 	}
@@ -164,10 +167,10 @@ WHERE network_forwards.id=:id;
 	return scanNetworkForward(row)
 }
 
-func (r networkForward) DeleteByID(ctx context.Context, id int) error {
-	const sqlStmt = `DELETE FROM network_forwards WHERE id=:id;`
+func (r networkForward) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	const sqlStmt = `DELETE FROM network_forwards WHERE uuid=:uuid;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -208,14 +211,14 @@ DELETE FROM network_forwards WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
 	return nil
 }
 
-func (r networkForward) UpdateByID(ctx context.Context, in inventory.NetworkForward) (inventory.NetworkForward, error) {
+func (r networkForward) UpdateByUUID(ctx context.Context, in inventory.NetworkForward) (inventory.NetworkForward, error) {
 	const sqlStmt = `
 WITH _lookup AS (
   SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
-UPDATE network_forwards SET cluster_id=(SELECT cluster_id FROM _lookup), network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
-WHERE id=:id
-RETURNING id, :cluster_name, network_name, name, object, last_updated;
+UPDATE network_forwards SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
+WHERE uuid=:uuid
+RETURNING id, :uuid, :cluster_name, network_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -224,7 +227,7 @@ RETURNING id, :cluster_name, network_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("id", in.ID),
+		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
 		sql.Named("network_name", in.NetworkName),
 		sql.Named("name", in.Name),
@@ -244,6 +247,7 @@ func scanNetworkForward(row interface{ Scan(dest ...any) error }) (inventory.Net
 
 	err := row.Scan(
 		&networkForward.ID,
+		&networkForward.UUID,
 		&networkForward.Cluster,
 		&networkForward.NetworkName,
 		&networkForward.Name,

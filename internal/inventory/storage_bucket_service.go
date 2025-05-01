@@ -10,6 +10,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -109,12 +110,12 @@ func (s storageBucketService) GetAllWithFilter(ctx context.Context, filter Stora
 	return storageBuckets, nil
 }
 
-func (s storageBucketService) GetAllIDsWithFilter(ctx context.Context, filter StorageBucketFilter) ([]int, error) {
+func (s storageBucketService) GetAllUUIDsWithFilter(ctx context.Context, filter StorageBucketFilter) ([]uuid.UUID, error) {
 	var filterExpression *vm.Program
 	var err error
 
 	type Env struct {
-		ID int
+		UUID string
 	}
 
 	if filter.Expression != nil {
@@ -124,15 +125,15 @@ func (s storageBucketService) GetAllIDsWithFilter(ctx context.Context, filter St
 		}
 	}
 
-	storageBucketsIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	storageBucketsUUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var filteredStorageBucketsIDs []int
+	var filteredStorageBucketsUUIDs []uuid.UUID
 	if filter.Expression != nil {
-		for _, storageBucketID := range storageBucketsIDs {
-			output, err := expr.Run(filterExpression, Env{storageBucketID})
+		for _, storageBucketUUID := range storageBucketsUUIDs {
+			output, err := expr.Run(filterExpression, Env{storageBucketUUID.String()})
 			if err != nil {
 				return nil, err
 			}
@@ -143,23 +144,23 @@ func (s storageBucketService) GetAllIDsWithFilter(ctx context.Context, filter St
 			}
 
 			if result {
-				filteredStorageBucketsIDs = append(filteredStorageBucketsIDs, storageBucketID)
+				filteredStorageBucketsUUIDs = append(filteredStorageBucketsUUIDs, storageBucketUUID)
 			}
 		}
 
-		return filteredStorageBucketsIDs, nil
+		return filteredStorageBucketsUUIDs, nil
 	}
 
-	return storageBucketsIDs, nil
+	return storageBucketsUUIDs, nil
 }
 
-func (s storageBucketService) GetByID(ctx context.Context, id int) (StorageBucket, error) {
-	return s.repo.GetByID(ctx, id)
+func (s storageBucketService) GetByUUID(ctx context.Context, id uuid.UUID) (StorageBucket, error) {
+	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s storageBucketService) ResyncByID(ctx context.Context, id int) error {
+func (s storageBucketService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		storageBucket, err := s.repo.GetByID(ctx, id)
+		storageBucket, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -171,7 +172,7 @@ func (s storageBucketService) ResyncByID(ctx context.Context, id int) error {
 
 		retrievedStorageBucket, err := s.storageBucketClient.GetStorageBucketByName(ctx, cluster.ConnectionURL, storageBucket.StoragePoolName, storageBucket.Name)
 		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByID(ctx, storageBucket.ID)
+			err = s.repo.DeleteByUUID(ctx, storageBucket.UUID)
 			if err != nil {
 				return err
 			}
@@ -187,13 +188,14 @@ func (s storageBucketService) ResyncByID(ctx context.Context, id int) error {
 		storageBucket.ProjectName = retrievedStorageBucket.Project
 		storageBucket.Object = retrievedStorageBucket
 		storageBucket.LastUpdated = s.now()
+		storageBucket.DeriveUUID()
 
 		err = storageBucket.Validate()
 		if err != nil {
 			return err
 		}
 
-		_, err = s.repo.UpdateByID(ctx, storageBucket)
+		_, err = s.repo.UpdateByUUID(ctx, storageBucket)
 		if err != nil {
 			return err
 		}
@@ -244,6 +246,8 @@ func (s storageBucketService) SyncCluster(ctx context.Context, name string) erro
 					Object:          retrievedStorageBucket,
 					LastUpdated:     s.now(),
 				}
+
+				storageBucket.DeriveUUID()
 
 				if s.clusterSyncFilterFunc(storageBucket) {
 					continue

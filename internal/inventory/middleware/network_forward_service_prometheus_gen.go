@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -37,8 +38,8 @@ func NewNetworkForwardServiceWithPrometheus(base inventory.NetworkForwardService
 	}
 }
 
-// GetAllIDsWithFilter implements inventory.NetworkForwardService.
-func (_d NetworkForwardServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.NetworkForwardService.
+func (_d NetworkForwardServiceWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -46,9 +47,9 @@ func (_d NetworkForwardServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Co
 			result = "error"
 		}
 
-		networkForwardServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		networkForwardServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.NetworkForwardService.
@@ -65,8 +66,8 @@ func (_d NetworkForwardServiceWithPrometheus) GetAllWithFilter(ctx context.Conte
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.NetworkForwardService.
-func (_d NetworkForwardServiceWithPrometheus) GetByID(ctx context.Context, id int) (networkForward inventory.NetworkForward, err error) {
+// GetByUUID implements inventory.NetworkForwardService.
+func (_d NetworkForwardServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (networkForward inventory.NetworkForward, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d NetworkForwardServiceWithPrometheus) GetByID(ctx context.Context, id in
 			result = "error"
 		}
 
-		networkForwardServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		networkForwardServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// ResyncByID implements inventory.NetworkForwardService.
-func (_d NetworkForwardServiceWithPrometheus) ResyncByID(ctx context.Context, id int) (err error) {
+// ResyncByUUID implements inventory.NetworkForwardService.
+func (_d NetworkForwardServiceWithPrometheus) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d NetworkForwardServiceWithPrometheus) ResyncByID(ctx context.Context, id
 			result = "error"
 		}
 
-		networkForwardServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByID", result).Observe(time.Since(_since).Seconds())
+		networkForwardServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.ResyncByID(ctx, id)
+	return _d.base.ResyncByUUID(ctx, id)
 }
 
 // SyncCluster implements inventory.NetworkForwardService.

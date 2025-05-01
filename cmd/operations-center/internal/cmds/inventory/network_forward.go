@@ -63,7 +63,7 @@ type cmdNetworkForwardList struct {
 	flagFormat  string
 }
 
-const networkForwardDefaultColumns = `{{ .ID }},{{ .Cluster }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
+const networkForwardDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
 
 func (c *cmdNetworkForwardList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -155,7 +155,7 @@ type cmdNetworkForwardShow struct {
 
 func (c *cmdNetworkForwardShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <name>"
+	cmd.Use = "show <uuid>"
 	cmd.Short = "Show information about a network_forward"
 	cmd.Long = `Description:
   Show information about a network_forward.
@@ -173,9 +173,9 @@ func (c *cmdNetworkForwardShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	name := args[0]
+	id := args[0]
 
-	networkForward, err := c.ocClient.GetNetworkForward(name)
+	networkForward, err := c.ocClient.GetNetworkForward(id)
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (c *cmdNetworkForwardShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("ID: %d\n", networkForward.ID)
+	fmt.Printf("UUID: %s\n", networkForward.UUID.String())
 	fmt.Printf("Cluster: %s\n", networkForward.Cluster)
 	fmt.Printf("Network Name: %s\n", networkForward.NetworkName)
 	fmt.Printf("Name: %s\n", networkForward.Name)

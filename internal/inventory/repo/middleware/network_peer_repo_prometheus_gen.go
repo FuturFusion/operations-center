@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -65,8 +66,8 @@ func (_d NetworkPeerRepoWithPrometheus) DeleteByClusterName(ctx context.Context,
 	return _d.base.DeleteByClusterName(ctx, cluster)
 }
 
-// DeleteByID implements inventory.NetworkPeerRepo.
-func (_d NetworkPeerRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByUUID implements inventory.NetworkPeerRepo.
+func (_d NetworkPeerRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d NetworkPeerRepoWithPrometheus) DeleteByID(ctx context.Context, id int) 
 			result = "error"
 		}
 
-		networkPeerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
+		networkPeerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByID(ctx, id)
+	return _d.base.DeleteByUUID(ctx, id)
 }
 
-// GetAllIDsWithFilter implements inventory.NetworkPeerRepo.
-func (_d NetworkPeerRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.NetworkPeerRepo.
+func (_d NetworkPeerRepoWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d NetworkPeerRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context,
 			result = "error"
 		}
 
-		networkPeerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		networkPeerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.NetworkPeerRepo.
@@ -107,8 +108,8 @@ func (_d NetworkPeerRepoWithPrometheus) GetAllWithFilter(ctx context.Context, fi
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.NetworkPeerRepo.
-func (_d NetworkPeerRepoWithPrometheus) GetByID(ctx context.Context, id int) (networkPeer inventory.NetworkPeer, err error) {
+// GetByUUID implements inventory.NetworkPeerRepo.
+func (_d NetworkPeerRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (networkPeer inventory.NetworkPeer, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -116,13 +117,13 @@ func (_d NetworkPeerRepoWithPrometheus) GetByID(ctx context.Context, id int) (ne
 			result = "error"
 		}
 
-		networkPeerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		networkPeerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements inventory.NetworkPeerRepo.
-func (_d NetworkPeerRepoWithPrometheus) UpdateByID(ctx context.Context, networkPeer inventory.NetworkPeer) (networkPeer1 inventory.NetworkPeer, err error) {
+// UpdateByUUID implements inventory.NetworkPeerRepo.
+func (_d NetworkPeerRepoWithPrometheus) UpdateByUUID(ctx context.Context, networkPeer inventory.NetworkPeer) (networkPeer1 inventory.NetworkPeer, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -130,7 +131,7 @@ func (_d NetworkPeerRepoWithPrometheus) UpdateByID(ctx context.Context, networkP
 			result = "error"
 		}
 
-		networkPeerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByID", result).Observe(time.Since(_since).Seconds())
+		networkPeerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByID(ctx, networkPeer)
+	return _d.base.UpdateByUUID(ctx, networkPeer)
 }

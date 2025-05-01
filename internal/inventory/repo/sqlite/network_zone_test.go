@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -65,6 +66,8 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 		LastUpdated: time.Now(),
 	}
 
+	networkZoneA.DeriveUUID()
+
 	networkZoneB := inventory.NetworkZone{
 		Cluster:     "two",
 		ProjectName: "two",
@@ -72,6 +75,8 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 		Object:      incusapi.NetworkZone{},
 		LastUpdated: time.Now(),
 	}
+
+	networkZoneB.DeriveUUID()
 
 	ctx := context.Background()
 
@@ -128,10 +133,10 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 	require.Equal(t, "two", networkZoneB.Cluster)
 
 	// Ensure we have two entries without filter
-	networkZoneIDs, err := networkZone.GetAllIDsWithFilter(ctx, inventory.NetworkZoneFilter{})
+	networkZoneUUIDs, err := networkZone.GetAllUUIDsWithFilter(ctx, inventory.NetworkZoneFilter{})
 	require.NoError(t, err)
-	require.Len(t, networkZoneIDs, 2)
-	require.ElementsMatch(t, []int{1, 2}, networkZoneIDs)
+	require.Len(t, networkZoneUUIDs, 2)
+	require.ElementsMatch(t, []uuid.UUID{networkZoneA.UUID, networkZoneB.UUID}, networkZoneUUIDs)
 
 	// Ensure we have two entries without filter
 	dbNetworkZone, err := networkZone.GetAllWithFilter(ctx, inventory.NetworkZoneFilter{})
@@ -141,13 +146,13 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 	require.Equal(t, networkZoneB.Name, dbNetworkZone[1].Name)
 
 	// Ensure we have one entry with filter for cluster, server and project
-	networkZoneIDs, err = networkZone.GetAllIDsWithFilter(ctx, inventory.NetworkZoneFilter{
+	networkZoneUUIDs, err = networkZone.GetAllUUIDsWithFilter(ctx, inventory.NetworkZoneFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, networkZoneIDs, 1)
-	require.ElementsMatch(t, []int{1}, networkZoneIDs)
+	require.Len(t, networkZoneUUIDs, 1)
+	require.ElementsMatch(t, []uuid.UUID{networkZoneA.UUID}, networkZoneUUIDs)
 
 	// Ensure we have one entry with filter for cluster, server and project
 	dbNetworkZone, err = networkZone.GetAllWithFilter(ctx, inventory.NetworkZoneFilter{
@@ -155,33 +160,33 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, networkZoneIDs, 1)
+	require.Len(t, dbNetworkZone, 1)
 	require.Equal(t, "one", dbNetworkZone[0].Name)
 
 	// Should get back networkZoneA unchanged.
 	networkZoneA.Cluster = "one"
-	dbNetworkZoneA, err := networkZone.GetByID(ctx, networkZoneA.ID)
+	dbNetworkZoneA, err := networkZone.GetByUUID(ctx, networkZoneA.UUID)
 	require.NoError(t, err)
 	require.Equal(t, networkZoneA, dbNetworkZoneA)
 
 	networkZoneB.LastUpdated = time.Now().UTC().Truncate(0)
-	dbNetworkZoneB, err := networkZone.UpdateByID(ctx, networkZoneB)
+	dbNetworkZoneB, err := networkZone.UpdateByUUID(ctx, networkZoneB)
 	require.NoError(t, err)
 	require.Equal(t, networkZoneB, dbNetworkZoneB)
 
 	// Delete network_zones by ID.
-	err = networkZone.DeleteByID(ctx, 1)
+	err = networkZone.DeleteByUUID(ctx, networkZoneA.UUID)
 	require.NoError(t, err)
 
 	// Delete network_zones by cluster Name.
 	err = networkZone.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
-	_, err = networkZone.GetByID(ctx, networkZoneA.ID)
+	_, err = networkZone.GetByUUID(ctx, networkZoneA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no network_zones remaining.
-	networkZoneIDs, err = networkZone.GetAllIDsWithFilter(ctx, inventory.NetworkZoneFilter{})
+	networkZoneUUIDs, err = networkZone.GetAllUUIDsWithFilter(ctx, inventory.NetworkZoneFilter{})
 	require.NoError(t, err)
-	require.Zero(t, networkZoneIDs)
+	require.Zero(t, networkZoneUUIDs)
 }

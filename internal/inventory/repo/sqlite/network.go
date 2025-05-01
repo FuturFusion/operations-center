@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
@@ -31,9 +33,9 @@ func (r network) Create(ctx context.Context, in inventory.Network) (inventory.Ne
 WITH _lookup AS (
   SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
-INSERT INTO networks (cluster_id, project_name, name, object, last_updated)
-VALUES ( (SELECT cluster_id FROM _lookup), :project_name, :name, :object, :last_updated)
-RETURNING id, :cluster_name, project_name, name, object, last_updated;
+INSERT INTO networks (uuid, cluster_id, project_name, name, object, last_updated)
+VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :name, :object, :last_updated)
+RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -42,6 +44,7 @@ RETURNING id, :cluster_name, project_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
+		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
@@ -58,7 +61,7 @@ RETURNING id, :cluster_name, project_name, name, object, last_updated;
 func (r network) GetAllWithFilter(ctx context.Context, filter inventory.NetworkFilter) (inventory.Networks, error) {
 	const sqlStmt = `
 SELECT
-  networks.id, clusters.name, networks.project_name, networks.name, networks.object, networks.last_updated
+  networks.id, networks.uuid, clusters.name, networks.project_name, networks.name, networks.object, networks.last_updated
 FROM networks
   INNER JOIN clusters ON networks.cluster_id = clusters.id
 WHERE true
@@ -106,9 +109,9 @@ ORDER BY clusters.name, networks.name
 	return networks, nil
 }
 
-func (r network) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkFilter) ([]int, error) {
+func (r network) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkFilter) ([]uuid.UUID, error) {
 	const sqlStmt = `
-SELECT networks.id
+SELECT networks.uuid
 FROM networks
   INNER JOIN clusters ON networks.cluster_id = clusters.id
 WHERE true
@@ -138,9 +141,9 @@ ORDER BY networks.id
 
 	defer func() { _ = rows.Close() }()
 
-	var ids []int
+	var ids []uuid.UUID
 	for rows.Next() {
-		var id int
+		var id uuid.UUID
 		err := rows.Scan(&id)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
@@ -156,17 +159,17 @@ ORDER BY networks.id
 	return ids, nil
 }
 
-func (r network) GetByID(ctx context.Context, id int) (inventory.Network, error) {
+func (r network) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.Network, error) {
 	const sqlStmt = `
 SELECT
-  networks.id, clusters.name, networks.project_name, networks.name, networks.object, networks.last_updated
+  networks.id, networks.uuid, clusters.name, networks.project_name, networks.name, networks.object, networks.last_updated
 FROM
   networks
   INNER JOIN clusters ON networks.cluster_id = clusters.id
-WHERE networks.id=:id;
+WHERE networks.uuid=:uuid;
 `
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
+	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if row.Err() != nil {
 		return inventory.Network{}, sqlite.MapErr(row.Err())
 	}
@@ -174,10 +177,10 @@ WHERE networks.id=:id;
 	return scanNetwork(row)
 }
 
-func (r network) DeleteByID(ctx context.Context, id int) error {
-	const sqlStmt = `DELETE FROM networks WHERE id=:id;`
+func (r network) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	const sqlStmt = `DELETE FROM networks WHERE uuid=:uuid;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -218,14 +221,14 @@ DELETE FROM networks WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
 	return nil
 }
 
-func (r network) UpdateByID(ctx context.Context, in inventory.Network) (inventory.Network, error) {
+func (r network) UpdateByUUID(ctx context.Context, in inventory.Network) (inventory.Network, error) {
 	const sqlStmt = `
 WITH _lookup AS (
   SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
-UPDATE networks SET cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
-WHERE id=:id
-RETURNING id, :cluster_name, project_name, name, object, last_updated;
+UPDATE networks SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
+WHERE uuid=:uuid
+RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -234,7 +237,7 @@ RETURNING id, :cluster_name, project_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("id", in.ID),
+		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
@@ -254,6 +257,7 @@ func scanNetwork(row interface{ Scan(dest ...any) error }) (inventory.Network, e
 
 	err := row.Scan(
 		&network.ID,
+		&network.UUID,
 		&network.Cluster,
 		&network.ProjectName,
 		&network.Name,

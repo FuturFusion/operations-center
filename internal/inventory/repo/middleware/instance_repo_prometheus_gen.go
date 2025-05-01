@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -65,8 +66,8 @@ func (_d InstanceRepoWithPrometheus) DeleteByClusterName(ctx context.Context, cl
 	return _d.base.DeleteByClusterName(ctx, cluster)
 }
 
-// DeleteByID implements inventory.InstanceRepo.
-func (_d InstanceRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByUUID implements inventory.InstanceRepo.
+func (_d InstanceRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d InstanceRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (er
 			result = "error"
 		}
 
-		instanceRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
+		instanceRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByID(ctx, id)
+	return _d.base.DeleteByUUID(ctx, id)
 }
 
-// GetAllIDsWithFilter implements inventory.InstanceRepo.
-func (_d InstanceRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.InstanceFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.InstanceRepo.
+func (_d InstanceRepoWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.InstanceFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d InstanceRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, fi
 			result = "error"
 		}
 
-		instanceRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		instanceRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.InstanceRepo.
@@ -107,8 +108,8 @@ func (_d InstanceRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filte
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.InstanceRepo.
-func (_d InstanceRepoWithPrometheus) GetByID(ctx context.Context, id int) (instance inventory.Instance, err error) {
+// GetByUUID implements inventory.InstanceRepo.
+func (_d InstanceRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (instance inventory.Instance, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -116,13 +117,13 @@ func (_d InstanceRepoWithPrometheus) GetByID(ctx context.Context, id int) (insta
 			result = "error"
 		}
 
-		instanceRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		instanceRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements inventory.InstanceRepo.
-func (_d InstanceRepoWithPrometheus) UpdateByID(ctx context.Context, instance inventory.Instance) (instance1 inventory.Instance, err error) {
+// UpdateByUUID implements inventory.InstanceRepo.
+func (_d InstanceRepoWithPrometheus) UpdateByUUID(ctx context.Context, instance inventory.Instance) (instance1 inventory.Instance, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -130,7 +131,7 @@ func (_d InstanceRepoWithPrometheus) UpdateByID(ctx context.Context, instance in
 			result = "error"
 		}
 
-		instanceRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByID", result).Observe(time.Since(_since).Seconds())
+		instanceRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByID(ctx, instance)
+	return _d.base.UpdateByUUID(ctx, instance)
 }

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -65,6 +66,8 @@ func TestImageDatabaseActions(t *testing.T) {
 		LastUpdated: time.Now(),
 	}
 
+	imageA.DeriveUUID()
+
 	imageB := inventory.Image{
 		Cluster:     "two",
 		ProjectName: "two",
@@ -72,6 +75,8 @@ func TestImageDatabaseActions(t *testing.T) {
 		Object:      incusapi.Image{},
 		LastUpdated: time.Now(),
 	}
+
+	imageB.DeriveUUID()
 
 	ctx := context.Background()
 
@@ -128,10 +133,10 @@ func TestImageDatabaseActions(t *testing.T) {
 	require.Equal(t, "two", imageB.Cluster)
 
 	// Ensure we have two entries without filter
-	imageIDs, err := image.GetAllIDsWithFilter(ctx, inventory.ImageFilter{})
+	imageUUIDs, err := image.GetAllUUIDsWithFilter(ctx, inventory.ImageFilter{})
 	require.NoError(t, err)
-	require.Len(t, imageIDs, 2)
-	require.ElementsMatch(t, []int{1, 2}, imageIDs)
+	require.Len(t, imageUUIDs, 2)
+	require.ElementsMatch(t, []uuid.UUID{imageA.UUID, imageB.UUID}, imageUUIDs)
 
 	// Ensure we have two entries without filter
 	dbImage, err := image.GetAllWithFilter(ctx, inventory.ImageFilter{})
@@ -141,13 +146,13 @@ func TestImageDatabaseActions(t *testing.T) {
 	require.Equal(t, imageB.Name, dbImage[1].Name)
 
 	// Ensure we have one entry with filter for cluster, server and project
-	imageIDs, err = image.GetAllIDsWithFilter(ctx, inventory.ImageFilter{
+	imageUUIDs, err = image.GetAllUUIDsWithFilter(ctx, inventory.ImageFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, imageIDs, 1)
-	require.ElementsMatch(t, []int{1}, imageIDs)
+	require.Len(t, imageUUIDs, 1)
+	require.ElementsMatch(t, []uuid.UUID{imageA.UUID}, imageUUIDs)
 
 	// Ensure we have one entry with filter for cluster, server and project
 	dbImage, err = image.GetAllWithFilter(ctx, inventory.ImageFilter{
@@ -155,33 +160,33 @@ func TestImageDatabaseActions(t *testing.T) {
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, imageIDs, 1)
+	require.Len(t, dbImage, 1)
 	require.Equal(t, "one", dbImage[0].Name)
 
 	// Should get back imageA unchanged.
 	imageA.Cluster = "one"
-	dbImageA, err := image.GetByID(ctx, imageA.ID)
+	dbImageA, err := image.GetByUUID(ctx, imageA.UUID)
 	require.NoError(t, err)
 	require.Equal(t, imageA, dbImageA)
 
 	imageB.LastUpdated = time.Now().UTC().Truncate(0)
-	dbImageB, err := image.UpdateByID(ctx, imageB)
+	dbImageB, err := image.UpdateByUUID(ctx, imageB)
 	require.NoError(t, err)
 	require.Equal(t, imageB, dbImageB)
 
 	// Delete images by ID.
-	err = image.DeleteByID(ctx, 1)
+	err = image.DeleteByUUID(ctx, imageA.UUID)
 	require.NoError(t, err)
 
 	// Delete images by cluster Name.
 	err = image.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
-	_, err = image.GetByID(ctx, imageA.ID)
+	_, err = image.GetByUUID(ctx, imageA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no images remaining.
-	imageIDs, err = image.GetAllIDsWithFilter(ctx, inventory.ImageFilter{})
+	imageUUIDs, err = image.GetAllUUIDsWithFilter(ctx, inventory.ImageFilter{})
 	require.NoError(t, err)
-	require.Zero(t, imageIDs)
+	require.Zero(t, imageUUIDs)
 }

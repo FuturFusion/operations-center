@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -24,8 +26,8 @@ func registerInventoryNetworkACLHandler(router Router, authorizer authz.Authoriz
 	}
 
 	router.HandleFunc("GET /{$}", response.With(handler.networkACLsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("GET /{id}", response.With(handler.networkACLGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.networkACLResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{uuid}", response.With(handler.networkACLGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{uuid}/resync", response.With(handler.networkACLResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/network_acls network_acls network_acls_get
@@ -171,7 +173,7 @@ func (i *networkACLHandler) networkACLsGet(r *http.Request) response.Response {
 		result := make([]api.NetworkACL, 0, len(networkACLs))
 		for _, networkACL := range networkACLs {
 			result = append(result, api.NetworkACL{
-				ID:          networkACL.ID,
+				UUID:        networkACL.UUID,
 				Cluster:     networkACL.Cluster,
 				ProjectName: networkACL.ProjectName,
 				Name:        networkACL.Name,
@@ -183,20 +185,20 @@ func (i *networkACLHandler) networkACLsGet(r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	networkACLIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
+	networkACLUUIDs, err := i.service.GetAllUUIDsWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(networkACLIDs))
-	for _, id := range networkACLIDs {
+	result := make([]string, 0, len(networkACLUUIDs))
+	for _, id := range networkACLUUIDs {
 		result = append(result, fmt.Sprintf("/%s/inventory/network_acl/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/inventory/network_acls/{id} network_acls network_acl_get
+// swagger:operation GET /1.0/inventory/network_acls/{uuid} network_acls network_acl_get
 //
 //	Get the network_acl
 //
@@ -231,12 +233,12 @@ func (i *networkACLHandler) networkACLsGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkACLHandler) networkACLGet(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	networkACL, err := i.service.GetByID(r.Context(), id)
+	networkACL, err := i.service.GetByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -244,7 +246,7 @@ func (i *networkACLHandler) networkACLGet(r *http.Request) response.Response {
 	return response.SyncResponse(
 		true,
 		api.NetworkACL{
-			ID:          networkACL.ID,
+			UUID:        networkACL.UUID,
 			Cluster:     networkACL.Cluster,
 			ProjectName: networkACL.ProjectName,
 			Name:        networkACL.Name,
@@ -254,7 +256,7 @@ func (i *networkACLHandler) networkACLGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation POST /1.0/inventory/network_acls/{id}/resync network_acls network_acl_get_resync_post
+// swagger:operation POST /1.0/inventory/network_acls/{uuid}/resync network_acls network_acl_get_resync_post
 //
 //	Resync the network_acl
 //
@@ -287,12 +289,12 @@ func (i *networkACLHandler) networkACLGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkACLHandler) networkACLResyncPost(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	err = i.service.ResyncByID(r.Context(), id)
+	err = i.service.ResyncByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync network_acl: %w", err))
 	}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -65,8 +66,8 @@ func (_d StoragePoolRepoWithPrometheus) DeleteByClusterName(ctx context.Context,
 	return _d.base.DeleteByClusterName(ctx, cluster)
 }
 
-// DeleteByID implements inventory.StoragePoolRepo.
-func (_d StoragePoolRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByUUID implements inventory.StoragePoolRepo.
+func (_d StoragePoolRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d StoragePoolRepoWithPrometheus) DeleteByID(ctx context.Context, id int) 
 			result = "error"
 		}
 
-		storagePoolRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
+		storagePoolRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByID(ctx, id)
+	return _d.base.DeleteByUUID(ctx, id)
 }
 
-// GetAllIDsWithFilter implements inventory.StoragePoolRepo.
-func (_d StoragePoolRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.StoragePoolRepo.
+func (_d StoragePoolRepoWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d StoragePoolRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context,
 			result = "error"
 		}
 
-		storagePoolRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		storagePoolRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.StoragePoolRepo.
@@ -107,8 +108,8 @@ func (_d StoragePoolRepoWithPrometheus) GetAllWithFilter(ctx context.Context, fi
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.StoragePoolRepo.
-func (_d StoragePoolRepoWithPrometheus) GetByID(ctx context.Context, id int) (storagePool inventory.StoragePool, err error) {
+// GetByUUID implements inventory.StoragePoolRepo.
+func (_d StoragePoolRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (storagePool inventory.StoragePool, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -116,13 +117,13 @@ func (_d StoragePoolRepoWithPrometheus) GetByID(ctx context.Context, id int) (st
 			result = "error"
 		}
 
-		storagePoolRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		storagePoolRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements inventory.StoragePoolRepo.
-func (_d StoragePoolRepoWithPrometheus) UpdateByID(ctx context.Context, storagePool inventory.StoragePool) (storagePool1 inventory.StoragePool, err error) {
+// UpdateByUUID implements inventory.StoragePoolRepo.
+func (_d StoragePoolRepoWithPrometheus) UpdateByUUID(ctx context.Context, storagePool inventory.StoragePool) (storagePool1 inventory.StoragePool, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -130,7 +131,7 @@ func (_d StoragePoolRepoWithPrometheus) UpdateByID(ctx context.Context, storageP
 			result = "error"
 		}
 
-		storagePoolRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByID", result).Observe(time.Since(_since).Seconds())
+		storagePoolRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByID(ctx, storagePool)
+	return _d.base.UpdateByUUID(ctx, storagePool)
 }

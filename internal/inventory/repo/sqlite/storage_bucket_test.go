@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -67,6 +68,8 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 		LastUpdated:     time.Now(),
 	}
 
+	storageBucketA.DeriveUUID()
+
 	storageBucketB := inventory.StorageBucket{
 		Cluster:         "two",
 		Server:          "two",
@@ -76,6 +79,8 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 		Object:          incusapi.StorageBucket{},
 		LastUpdated:     time.Now(),
 	}
+
+	storageBucketB.DeriveUUID()
 
 	ctx := context.Background()
 
@@ -132,10 +137,10 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	require.Equal(t, "two", storageBucketB.Cluster)
 
 	// Ensure we have two entries without filter
-	storageBucketIDs, err := storageBucket.GetAllIDsWithFilter(ctx, inventory.StorageBucketFilter{})
+	storageBucketUUIDs, err := storageBucket.GetAllUUIDsWithFilter(ctx, inventory.StorageBucketFilter{})
 	require.NoError(t, err)
-	require.Len(t, storageBucketIDs, 2)
-	require.ElementsMatch(t, []int{1, 2}, storageBucketIDs)
+	require.Len(t, storageBucketUUIDs, 2)
+	require.ElementsMatch(t, []uuid.UUID{storageBucketA.UUID, storageBucketB.UUID}, storageBucketUUIDs)
 
 	// Ensure we have two entries without filter
 	dbStorageBucket, err := storageBucket.GetAllWithFilter(ctx, inventory.StorageBucketFilter{})
@@ -145,14 +150,14 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 	require.Equal(t, storageBucketB.Name, dbStorageBucket[1].Name)
 
 	// Ensure we have one entry with filter for cluster, server and project
-	storageBucketIDs, err = storageBucket.GetAllIDsWithFilter(ctx, inventory.StorageBucketFilter{
+	storageBucketUUIDs, err = storageBucket.GetAllUUIDsWithFilter(ctx, inventory.StorageBucketFilter{
 		Cluster: ptr.To("one"),
 		Server:  ptr.To("one"),
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, storageBucketIDs, 1)
-	require.ElementsMatch(t, []int{1}, storageBucketIDs)
+	require.Len(t, storageBucketUUIDs, 1)
+	require.ElementsMatch(t, []uuid.UUID{storageBucketA.UUID}, storageBucketUUIDs)
 
 	// Ensure we have one entry with filter for cluster, server and project
 	dbStorageBucket, err = storageBucket.GetAllWithFilter(ctx, inventory.StorageBucketFilter{
@@ -161,33 +166,33 @@ func TestStorageBucketDatabaseActions(t *testing.T) {
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, storageBucketIDs, 1)
+	require.Len(t, dbStorageBucket, 1)
 	require.Equal(t, "one", dbStorageBucket[0].Name)
 
 	// Should get back storageBucketA unchanged.
 	storageBucketA.Cluster = "one"
-	dbStorageBucketA, err := storageBucket.GetByID(ctx, storageBucketA.ID)
+	dbStorageBucketA, err := storageBucket.GetByUUID(ctx, storageBucketA.UUID)
 	require.NoError(t, err)
 	require.Equal(t, storageBucketA, dbStorageBucketA)
 
 	storageBucketB.LastUpdated = time.Now().UTC().Truncate(0)
-	dbStorageBucketB, err := storageBucket.UpdateByID(ctx, storageBucketB)
+	dbStorageBucketB, err := storageBucket.UpdateByUUID(ctx, storageBucketB)
 	require.NoError(t, err)
 	require.Equal(t, storageBucketB, dbStorageBucketB)
 
 	// Delete storage_buckets by ID.
-	err = storageBucket.DeleteByID(ctx, 1)
+	err = storageBucket.DeleteByUUID(ctx, storageBucketA.UUID)
 	require.NoError(t, err)
 
 	// Delete storage_buckets by cluster Name.
 	err = storageBucket.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
-	_, err = storageBucket.GetByID(ctx, storageBucketA.ID)
+	_, err = storageBucket.GetByUUID(ctx, storageBucketA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no storage_buckets remaining.
-	storageBucketIDs, err = storageBucket.GetAllIDsWithFilter(ctx, inventory.StorageBucketFilter{})
+	storageBucketUUIDs, err = storageBucket.GetAllUUIDsWithFilter(ctx, inventory.StorageBucketFilter{})
 	require.NoError(t, err)
-	require.Zero(t, storageBucketIDs)
+	require.Zero(t, storageBucketUUIDs)
 }

@@ -5,11 +5,13 @@ package api
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type Network struct {
-	ID          int              `json:"id" yaml:"id"`
+	UUID        uuid.UUID        `json:"uuid" yaml:"uuid"`
 	Cluster     string           `json:"cluster" yaml:"cluster"`
 	ProjectName string           `json:"project_name" yaml:"project_name"`
 	Name        string           `json:"name" yaml:"name"`

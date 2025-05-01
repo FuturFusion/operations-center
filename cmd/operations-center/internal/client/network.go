@@ -31,8 +31,8 @@ func (c OperationsCenterClient) GetWithFilterNetworks(filter inventory.NetworkFi
 	return networks, nil
 }
 
-func (c OperationsCenterClient) GetNetwork(name string) (api.Network, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/networks", name), nil, nil)
+func (c OperationsCenterClient) GetNetwork(id string) (api.Network, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/networks", id), nil, nil)
 	if err != nil {
 		return api.Network{}, err
 	}

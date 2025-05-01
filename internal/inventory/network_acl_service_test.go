@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -131,20 +132,21 @@ func TestNetworkACLService_GetAllWithFilter(t *testing.T) {
 	}
 }
 
-func TestNetworkACLService_GetAllIDsWithFilter(t *testing.T) {
+func TestNetworkACLService_GetAllUUIDsWithFilter(t *testing.T) {
 	tests := []struct {
-		name                       string
-		filterExpression           *string
-		repoGetAllIDsWithFilter    []int
-		repoGetAllIDsWithFilterErr error
+		name                         string
+		filterExpression             *string
+		repoGetAllUUIDsWithFilter    []uuid.UUID
+		repoGetAllUUIDsWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success - no filter expression",
-			repoGetAllIDsWithFilter: []int{
-				1, 2,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuid.MustParse(`56d0823e-5c6d-45ff-ac6d-a9ae61026a4e`),
 			},
 
 			assertErr: require.NoError,
@@ -152,9 +154,10 @@ func TestNetworkACLService_GetAllIDsWithFilter(t *testing.T) {
 		},
 		{
 			name:             "success - with filter expression",
-			filterExpression: ptr.To(`ID < 2`),
-			repoGetAllIDsWithFilter: []int{
-				1, 2,
+			filterExpression: ptr.To(`UUID == "6c652183-8d93-4c7d-9510-cd2ae54f31fd"`),
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuid.MustParse(`56d0823e-5c6d-45ff-ac6d-a9ae61026a4e`),
 			},
 
 			assertErr: require.NoError,
@@ -163,8 +166,8 @@ func TestNetworkACLService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - invalid filter expression",
 			filterExpression: ptr.To(``), // the empty expression is an invalid expression.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: require.Error,
@@ -173,8 +176,8 @@ func TestNetworkACLService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - filter expression run",
 			filterExpression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: require.Error,
@@ -183,8 +186,8 @@ func TestNetworkACLService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - non bool expression",
 			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, i ...interface{}) {
@@ -193,8 +196,8 @@ func TestNetworkACLService_GetAllIDsWithFilter(t *testing.T) {
 			count: 0,
 		},
 		{
-			name:                       "error - repo",
-			repoGetAllIDsWithFilterErr: boom.Error,
+			name:                         "error - repo",
+			repoGetAllUUIDsWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -205,8 +208,8 @@ func TestNetworkACLService_GetAllIDsWithFilter(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkACLRepoMock{
-				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkACLFilter) ([]int, error) {
-					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
+				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkACLFilter) ([]uuid.UUID, error) {
+					return tc.repoGetAllUUIDsWithFilter, tc.repoGetAllUUIDsWithFilterErr
 				},
 			}
 
@@ -215,31 +218,31 @@ func TestNetworkACLService_GetAllIDsWithFilter(t *testing.T) {
 			}))
 
 			// Run test
-			networkACLIDs, err := networkACLSvc.GetAllIDsWithFilter(context.Background(), inventory.NetworkACLFilter{
+			networkACLUUIDs, err := networkACLSvc.GetAllUUIDsWithFilter(context.Background(), inventory.NetworkACLFilter{
 				Expression: tc.filterExpression,
 			})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, networkACLIDs, tc.count)
+			require.Len(t, networkACLUUIDs, tc.count)
 		})
 	}
 }
 
-func TestNetworkACLService_GetByID(t *testing.T) {
+func TestNetworkACLService_GetByUUID(t *testing.T) {
 	tests := []struct {
-		name                  string
-		idArg                 int
-		repoGetByIDNetworkACL inventory.NetworkACL
-		repoGetByIDErr        error
+		name                    string
+		idArg                   uuid.UUID
+		repoGetByUUIDNetworkACL inventory.NetworkACL
+		repoGetByUUIDErr        error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name:  "success",
-			idArg: 1,
-			repoGetByIDNetworkACL: inventory.NetworkACL{
-				ID:          1,
+			idArg: uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+			repoGetByUUIDNetworkACL: inventory.NetworkACL{
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:     "one",
 				ProjectName: "one",
 				Name:        "one",
@@ -250,9 +253,9 @@ func TestNetworkACLService_GetByID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:           "error - repo",
-			idArg:          1,
-			repoGetByIDErr: boom.Error,
+			name:             "error - repo",
+			idArg:            uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -262,8 +265,8 @@ func TestNetworkACLService_GetByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkACLRepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (inventory.NetworkACL, error) {
-					return tc.repoGetByIDNetworkACL, tc.repoGetByIDErr
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkACL, error) {
+					return tc.repoGetByUUIDNetworkACL, tc.repoGetByUUIDErr
 				},
 			}
 
@@ -272,33 +275,33 @@ func TestNetworkACLService_GetByID(t *testing.T) {
 			}))
 
 			// Run test
-			networkACL, err := networkACLSvc.GetByID(context.Background(), tc.idArg)
+			networkACL, err := networkACLSvc.GetByUUID(context.Background(), tc.idArg)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByIDNetworkACL, networkACL)
+			require.Equal(t, tc.repoGetByUUIDNetworkACL, networkACL)
 		})
 	}
 }
 
-func TestNetworkACLService_ResyncByID(t *testing.T) {
+func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 	tests := []struct {
 		name                                   string
 		clusterSvcGetByIDCluster               provisioning.Cluster
 		clusterSvcGetByIDErr                   error
 		networkACLClientGetNetworkACLByName    incusapi.NetworkACL
 		networkACLClientGetNetworkACLByNameErr error
-		repoGetByIDNetworkACL                  inventory.NetworkACL
-		repoGetByIDErr                         error
-		repoUpdateByIDErr                      error
-		repoDeleteByIDErr                      error
+		repoGetByUUIDNetworkACL                inventory.NetworkACL
+		repoGetByUUIDErr                       error
+		repoUpdateByUUIDErr                    error
+		repoDeleteByUUIDErr                    error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
-			repoGetByIDNetworkACL: inventory.NetworkACL{
-				ID:      1,
+			repoGetByUUIDNetworkACL: inventory.NetworkACL{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -316,8 +319,8 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 		},
 		{
 			name: "success - networkACL get by name - not found",
-			repoGetByIDNetworkACL: inventory.NetworkACL{
-				ID:      1,
+			repoGetByUUIDNetworkACL: inventory.NetworkACL{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -329,15 +332,15 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:           "error - networkACL get by ID",
-			repoGetByIDErr: boom.Error,
+			name:             "error - networkACL get by UUID",
+			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - cluster get by ID",
-			repoGetByIDNetworkACL: inventory.NetworkACL{
-				ID:      1,
+			repoGetByUUIDNetworkACL: inventory.NetworkACL{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -347,8 +350,8 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 		},
 		{
 			name: "error - networkACL get by name",
-			repoGetByIDNetworkACL: inventory.NetworkACL{
-				ID:      1,
+			repoGetByUUIDNetworkACL: inventory.NetworkACL{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -360,9 +363,9 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - networkACL get by name - not found - delete by id",
-			repoGetByIDNetworkACL: inventory.NetworkACL{
-				ID:      1,
+			name: "error - networkACL get by name - not found - delete by uuid",
+			repoGetByUUIDNetworkACL: inventory.NetworkACL{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -370,14 +373,14 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 				Name: "cluster-one",
 			},
 			networkACLClientGetNetworkACLByNameErr: domain.ErrNotFound,
-			repoDeleteByIDErr:                      boom.Error,
+			repoDeleteByUUIDErr:                    boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - validate",
-			repoGetByIDNetworkACL: inventory.NetworkACL{
-				ID:      1,
+			repoGetByUUIDNetworkACL: inventory.NetworkACL{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "", // invalid
 			},
@@ -397,9 +400,9 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 			},
 		},
 		{
-			name: "error - update by ID",
-			repoGetByIDNetworkACL: inventory.NetworkACL{
-				ID:      1,
+			name: "error - update by UUID",
+			repoGetByUUIDNetworkACL: inventory.NetworkACL{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -412,7 +415,7 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 				},
 				Project: "project one",
 			},
-			repoUpdateByIDErr: boom.Error,
+			repoUpdateByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -422,15 +425,15 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkACLRepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (inventory.NetworkACL, error) {
-					return tc.repoGetByIDNetworkACL, tc.repoGetByIDErr
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkACL, error) {
+					return tc.repoGetByUUIDNetworkACL, tc.repoGetByUUIDErr
 				},
-				UpdateByIDFunc: func(ctx context.Context, networkACL inventory.NetworkACL) (inventory.NetworkACL, error) {
+				UpdateByUUIDFunc: func(ctx context.Context, networkACL inventory.NetworkACL) (inventory.NetworkACL, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkACL.LastUpdated)
-					return inventory.NetworkACL{}, tc.repoUpdateByIDErr
+					return inventory.NetworkACL{}, tc.repoUpdateByUUIDErr
 				},
-				DeleteByIDFunc: func(ctx context.Context, id int) error {
-					return tc.repoDeleteByIDErr
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					return tc.repoDeleteByUUIDErr
 				},
 			}
 
@@ -443,7 +446,7 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 
 			networkACLClient := &serverMock.NetworkACLServerClientMock{
 				GetNetworkACLByNameFunc: func(ctx context.Context, connectionURL string, networkACLName string) (incusapi.NetworkACL, error) {
-					require.Equal(t, tc.repoGetByIDNetworkACL.Name, networkACLName)
+					require.Equal(t, tc.repoGetByUUIDNetworkACL.Name, networkACLName)
 					return tc.networkACLClientGetNetworkACLByName, tc.networkACLClientGetNetworkACLByNameErr
 				},
 			}
@@ -453,7 +456,7 @@ func TestNetworkACLService_ResyncByID(t *testing.T) {
 			}))
 
 			// Run test
-			err := networkACLSvc.ResyncByID(context.Background(), 1)
+			err := networkACLSvc.ResyncByUUID(context.Background(), uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`))
 
 			// Assert
 			tc.assertErr(t, err)

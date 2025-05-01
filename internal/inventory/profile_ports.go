@@ -5,25 +5,27 @@ package inventory
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type ProfileService interface {
 	GetAllWithFilter(ctx context.Context, filter ProfileFilter) (Profiles, error)
-	GetAllIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (Profile, error)
-	ResyncByID(ctx context.Context, id int) error
+	GetAllUUIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (Profile, error)
+	ResyncByUUID(ctx context.Context, id uuid.UUID) error
 	SyncCluster(ctx context.Context, cluster string) error
 }
 
 type ProfileRepo interface {
 	GetAllWithFilter(ctx context.Context, filter ProfileFilter) (Profiles, error)
-	GetAllIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (Profile, error)
+	GetAllUUIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (Profile, error)
 	Create(ctx context.Context, profile Profile) (Profile, error)
-	DeleteByID(ctx context.Context, id int) error
+	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	DeleteByClusterName(ctx context.Context, cluster string) error
-	UpdateByID(ctx context.Context, profile Profile) (Profile, error)
+	UpdateByUUID(ctx context.Context, profile Profile) (Profile, error)
 }
 
 type ProfileServerClient interface {

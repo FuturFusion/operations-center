@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -65,8 +66,8 @@ func (_d NetworkLoadBalancerRepoWithPrometheus) DeleteByClusterName(ctx context.
 	return _d.base.DeleteByClusterName(ctx, cluster)
 }
 
-// DeleteByID implements inventory.NetworkLoadBalancerRepo.
-func (_d NetworkLoadBalancerRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByUUID implements inventory.NetworkLoadBalancerRepo.
+func (_d NetworkLoadBalancerRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d NetworkLoadBalancerRepoWithPrometheus) DeleteByID(ctx context.Context, 
 			result = "error"
 		}
 
-		networkLoadBalancerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
+		networkLoadBalancerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByID(ctx, id)
+	return _d.base.DeleteByUUID(ctx, id)
 }
 
-// GetAllIDsWithFilter implements inventory.NetworkLoadBalancerRepo.
-func (_d NetworkLoadBalancerRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.NetworkLoadBalancerRepo.
+func (_d NetworkLoadBalancerRepoWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d NetworkLoadBalancerRepoWithPrometheus) GetAllIDsWithFilter(ctx context.
 			result = "error"
 		}
 
-		networkLoadBalancerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		networkLoadBalancerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.NetworkLoadBalancerRepo.
@@ -107,8 +108,8 @@ func (_d NetworkLoadBalancerRepoWithPrometheus) GetAllWithFilter(ctx context.Con
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.NetworkLoadBalancerRepo.
-func (_d NetworkLoadBalancerRepoWithPrometheus) GetByID(ctx context.Context, id int) (networkLoadBalancer inventory.NetworkLoadBalancer, err error) {
+// GetByUUID implements inventory.NetworkLoadBalancerRepo.
+func (_d NetworkLoadBalancerRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (networkLoadBalancer inventory.NetworkLoadBalancer, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -116,13 +117,13 @@ func (_d NetworkLoadBalancerRepoWithPrometheus) GetByID(ctx context.Context, id 
 			result = "error"
 		}
 
-		networkLoadBalancerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		networkLoadBalancerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements inventory.NetworkLoadBalancerRepo.
-func (_d NetworkLoadBalancerRepoWithPrometheus) UpdateByID(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (networkLoadBalancer1 inventory.NetworkLoadBalancer, err error) {
+// UpdateByUUID implements inventory.NetworkLoadBalancerRepo.
+func (_d NetworkLoadBalancerRepoWithPrometheus) UpdateByUUID(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (networkLoadBalancer1 inventory.NetworkLoadBalancer, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -130,7 +131,7 @@ func (_d NetworkLoadBalancerRepoWithPrometheus) UpdateByID(ctx context.Context, 
 			result = "error"
 		}
 
-		networkLoadBalancerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByID", result).Observe(time.Since(_since).Seconds())
+		networkLoadBalancerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByID(ctx, networkLoadBalancer)
+	return _d.base.UpdateByUUID(ctx, networkLoadBalancer)
 }

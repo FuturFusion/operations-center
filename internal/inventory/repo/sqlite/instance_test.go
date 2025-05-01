@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -66,6 +67,8 @@ func TestInstanceDatabaseActions(t *testing.T) {
 		LastUpdated: time.Now(),
 	}
 
+	instanceA.DeriveUUID()
+
 	instanceB := inventory.Instance{
 		Cluster:     "two",
 		Server:      "two",
@@ -74,6 +77,8 @@ func TestInstanceDatabaseActions(t *testing.T) {
 		Object:      incusapi.InstanceFull{},
 		LastUpdated: time.Now(),
 	}
+
+	instanceB.DeriveUUID()
 
 	ctx := context.Background()
 
@@ -130,10 +135,10 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.Equal(t, "two", instanceB.Cluster)
 
 	// Ensure we have two entries without filter
-	instanceIDs, err := instance.GetAllIDsWithFilter(ctx, inventory.InstanceFilter{})
+	instanceUUIDs, err := instance.GetAllUUIDsWithFilter(ctx, inventory.InstanceFilter{})
 	require.NoError(t, err)
-	require.Len(t, instanceIDs, 2)
-	require.ElementsMatch(t, []int{1, 2}, instanceIDs)
+	require.Len(t, instanceUUIDs, 2)
+	require.ElementsMatch(t, []uuid.UUID{instanceA.UUID, instanceB.UUID}, instanceUUIDs)
 
 	// Ensure we have two entries without filter
 	dbInstance, err := instance.GetAllWithFilter(ctx, inventory.InstanceFilter{})
@@ -143,14 +148,14 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.Equal(t, instanceB.Name, dbInstance[1].Name)
 
 	// Ensure we have one entry with filter for cluster, server and project
-	instanceIDs, err = instance.GetAllIDsWithFilter(ctx, inventory.InstanceFilter{
+	instanceUUIDs, err = instance.GetAllUUIDsWithFilter(ctx, inventory.InstanceFilter{
 		Cluster: ptr.To("one"),
 		Server:  ptr.To("one"),
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, instanceIDs, 1)
-	require.ElementsMatch(t, []int{1}, instanceIDs)
+	require.Len(t, instanceUUIDs, 1)
+	require.ElementsMatch(t, []uuid.UUID{instanceA.UUID}, instanceUUIDs)
 
 	// Ensure we have one entry with filter for cluster, server and project
 	dbInstance, err = instance.GetAllWithFilter(ctx, inventory.InstanceFilter{
@@ -159,33 +164,33 @@ func TestInstanceDatabaseActions(t *testing.T) {
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, instanceIDs, 1)
+	require.Len(t, dbInstance, 1)
 	require.Equal(t, "one", dbInstance[0].Name)
 
 	// Should get back instanceA unchanged.
 	instanceA.Cluster = "one"
-	dbInstanceA, err := instance.GetByID(ctx, instanceA.ID)
+	dbInstanceA, err := instance.GetByUUID(ctx, instanceA.UUID)
 	require.NoError(t, err)
 	require.Equal(t, instanceA, dbInstanceA)
 
 	instanceB.LastUpdated = time.Now().UTC().Truncate(0)
-	dbInstanceB, err := instance.UpdateByID(ctx, instanceB)
+	dbInstanceB, err := instance.UpdateByUUID(ctx, instanceB)
 	require.NoError(t, err)
 	require.Equal(t, instanceB, dbInstanceB)
 
 	// Delete instances by ID.
-	err = instance.DeleteByID(ctx, 1)
+	err = instance.DeleteByUUID(ctx, instanceA.UUID)
 	require.NoError(t, err)
 
 	// Delete instances by cluster Name.
 	err = instance.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
-	_, err = instance.GetByID(ctx, instanceA.ID)
+	_, err = instance.GetByUUID(ctx, instanceA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no instances remaining.
-	instanceIDs, err = instance.GetAllIDsWithFilter(ctx, inventory.InstanceFilter{})
+	instanceUUIDs, err = instance.GetAllUUIDsWithFilter(ctx, inventory.InstanceFilter{})
 	require.NoError(t, err)
-	require.Zero(t, instanceIDs)
+	require.Zero(t, instanceUUIDs)
 }

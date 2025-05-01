@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -64,12 +65,16 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 		LastUpdated: time.Now(),
 	}
 
+	networkIntegrationA.DeriveUUID()
+
 	networkIntegrationB := inventory.NetworkIntegration{
 		Cluster:     "two",
 		Name:        "two",
 		Object:      incusapi.NetworkIntegration{},
 		LastUpdated: time.Now(),
 	}
+
+	networkIntegrationB.DeriveUUID()
 
 	ctx := context.Background()
 
@@ -126,10 +131,10 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	require.Equal(t, "two", networkIntegrationB.Cluster)
 
 	// Ensure we have two entries without filter
-	networkIntegrationIDs, err := networkIntegration.GetAllIDsWithFilter(ctx, inventory.NetworkIntegrationFilter{})
+	networkIntegrationUUIDs, err := networkIntegration.GetAllUUIDsWithFilter(ctx, inventory.NetworkIntegrationFilter{})
 	require.NoError(t, err)
-	require.Len(t, networkIntegrationIDs, 2)
-	require.ElementsMatch(t, []int{1, 2}, networkIntegrationIDs)
+	require.Len(t, networkIntegrationUUIDs, 2)
+	require.ElementsMatch(t, []uuid.UUID{networkIntegrationA.UUID, networkIntegrationB.UUID}, networkIntegrationUUIDs)
 
 	// Ensure we have two entries without filter
 	dbNetworkIntegration, err := networkIntegration.GetAllWithFilter(ctx, inventory.NetworkIntegrationFilter{})
@@ -139,45 +144,45 @@ func TestNetworkIntegrationDatabaseActions(t *testing.T) {
 	require.Equal(t, networkIntegrationB.Name, dbNetworkIntegration[1].Name)
 
 	// Ensure we have one entry with filter for cluster, server and project
-	networkIntegrationIDs, err = networkIntegration.GetAllIDsWithFilter(ctx, inventory.NetworkIntegrationFilter{
+	networkIntegrationUUIDs, err = networkIntegration.GetAllUUIDsWithFilter(ctx, inventory.NetworkIntegrationFilter{
 		Cluster: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, networkIntegrationIDs, 1)
-	require.ElementsMatch(t, []int{1}, networkIntegrationIDs)
+	require.Len(t, networkIntegrationUUIDs, 1)
+	require.ElementsMatch(t, []uuid.UUID{networkIntegrationA.UUID}, networkIntegrationUUIDs)
 
 	// Ensure we have one entry with filter for cluster, server and project
 	dbNetworkIntegration, err = networkIntegration.GetAllWithFilter(ctx, inventory.NetworkIntegrationFilter{
 		Cluster: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, networkIntegrationIDs, 1)
+	require.Len(t, dbNetworkIntegration, 1)
 	require.Equal(t, "one", dbNetworkIntegration[0].Name)
 
 	// Should get back networkIntegrationA unchanged.
 	networkIntegrationA.Cluster = "one"
-	dbNetworkIntegrationA, err := networkIntegration.GetByID(ctx, networkIntegrationA.ID)
+	dbNetworkIntegrationA, err := networkIntegration.GetByUUID(ctx, networkIntegrationA.UUID)
 	require.NoError(t, err)
 	require.Equal(t, networkIntegrationA, dbNetworkIntegrationA)
 
 	networkIntegrationB.LastUpdated = time.Now().UTC().Truncate(0)
-	dbNetworkIntegrationB, err := networkIntegration.UpdateByID(ctx, networkIntegrationB)
+	dbNetworkIntegrationB, err := networkIntegration.UpdateByUUID(ctx, networkIntegrationB)
 	require.NoError(t, err)
 	require.Equal(t, networkIntegrationB, dbNetworkIntegrationB)
 
 	// Delete network_integrations by ID.
-	err = networkIntegration.DeleteByID(ctx, 1)
+	err = networkIntegration.DeleteByUUID(ctx, networkIntegrationA.UUID)
 	require.NoError(t, err)
 
 	// Delete network_integrations by cluster Name.
 	err = networkIntegration.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
-	_, err = networkIntegration.GetByID(ctx, networkIntegrationA.ID)
+	_, err = networkIntegration.GetByUUID(ctx, networkIntegrationA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no network_integrations remaining.
-	networkIntegrationIDs, err = networkIntegration.GetAllIDsWithFilter(ctx, inventory.NetworkIntegrationFilter{})
+	networkIntegrationUUIDs, err = networkIntegration.GetAllUUIDsWithFilter(ctx, inventory.NetworkIntegrationFilter{})
 	require.NoError(t, err)
-	require.Zero(t, networkIntegrationIDs)
+	require.Zero(t, networkIntegrationUUIDs)
 }

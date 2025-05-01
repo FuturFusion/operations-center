@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -65,6 +66,8 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 		LastUpdated: time.Now(),
 	}
 
+	networkPeerA.DeriveUUID()
+
 	networkPeerB := inventory.NetworkPeer{
 		Cluster:     "two",
 		NetworkName: "parent one",
@@ -72,6 +75,8 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 		Object:      incusapi.NetworkPeer{},
 		LastUpdated: time.Now(),
 	}
+
+	networkPeerB.DeriveUUID()
 
 	ctx := context.Background()
 
@@ -128,10 +133,10 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 	require.Equal(t, "two", networkPeerB.Cluster)
 
 	// Ensure we have two entries without filter
-	networkPeerIDs, err := networkPeer.GetAllIDsWithFilter(ctx, inventory.NetworkPeerFilter{})
+	networkPeerUUIDs, err := networkPeer.GetAllUUIDsWithFilter(ctx, inventory.NetworkPeerFilter{})
 	require.NoError(t, err)
-	require.Len(t, networkPeerIDs, 2)
-	require.ElementsMatch(t, []int{1, 2}, networkPeerIDs)
+	require.Len(t, networkPeerUUIDs, 2)
+	require.ElementsMatch(t, []uuid.UUID{networkPeerA.UUID, networkPeerB.UUID}, networkPeerUUIDs)
 
 	// Ensure we have two entries without filter
 	dbNetworkPeer, err := networkPeer.GetAllWithFilter(ctx, inventory.NetworkPeerFilter{})
@@ -141,45 +146,45 @@ func TestNetworkPeerDatabaseActions(t *testing.T) {
 	require.Equal(t, networkPeerB.Name, dbNetworkPeer[1].Name)
 
 	// Ensure we have one entry with filter for cluster, server and project
-	networkPeerIDs, err = networkPeer.GetAllIDsWithFilter(ctx, inventory.NetworkPeerFilter{
+	networkPeerUUIDs, err = networkPeer.GetAllUUIDsWithFilter(ctx, inventory.NetworkPeerFilter{
 		Cluster: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, networkPeerIDs, 1)
-	require.ElementsMatch(t, []int{1}, networkPeerIDs)
+	require.Len(t, networkPeerUUIDs, 1)
+	require.ElementsMatch(t, []uuid.UUID{networkPeerA.UUID}, networkPeerUUIDs)
 
 	// Ensure we have one entry with filter for cluster, server and project
 	dbNetworkPeer, err = networkPeer.GetAllWithFilter(ctx, inventory.NetworkPeerFilter{
 		Cluster: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, networkPeerIDs, 1)
+	require.Len(t, dbNetworkPeer, 1)
 	require.Equal(t, "one", dbNetworkPeer[0].Name)
 
 	// Should get back networkPeerA unchanged.
 	networkPeerA.Cluster = "one"
-	dbNetworkPeerA, err := networkPeer.GetByID(ctx, networkPeerA.ID)
+	dbNetworkPeerA, err := networkPeer.GetByUUID(ctx, networkPeerA.UUID)
 	require.NoError(t, err)
 	require.Equal(t, networkPeerA, dbNetworkPeerA)
 
 	networkPeerB.LastUpdated = time.Now().UTC().Truncate(0)
-	dbNetworkPeerB, err := networkPeer.UpdateByID(ctx, networkPeerB)
+	dbNetworkPeerB, err := networkPeer.UpdateByUUID(ctx, networkPeerB)
 	require.NoError(t, err)
 	require.Equal(t, networkPeerB, dbNetworkPeerB)
 
 	// Delete network_peers by ID.
-	err = networkPeer.DeleteByID(ctx, 1)
+	err = networkPeer.DeleteByUUID(ctx, networkPeerA.UUID)
 	require.NoError(t, err)
 
 	// Delete network_peers by cluster Name.
 	err = networkPeer.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
-	_, err = networkPeer.GetByID(ctx, networkPeerA.ID)
+	_, err = networkPeer.GetByUUID(ctx, networkPeerA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no network_peers remaining.
-	networkPeerIDs, err = networkPeer.GetAllIDsWithFilter(ctx, inventory.NetworkPeerFilter{})
+	networkPeerUUIDs, err = networkPeer.GetAllUUIDsWithFilter(ctx, inventory.NetworkPeerFilter{})
 	require.NoError(t, err)
-	require.Zero(t, networkPeerIDs)
+	require.Zero(t, networkPeerUUIDs)
 }

@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -24,8 +26,8 @@ func registerInventoryStorageVolumeHandler(router Router, authorizer authz.Autho
 	}
 
 	router.HandleFunc("GET /{$}", response.With(handler.storageVolumesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("GET /{id}", response.With(handler.storageVolumeGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.storageVolumeResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{uuid}", response.With(handler.storageVolumeGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{uuid}/resync", response.With(handler.storageVolumeResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/storage_volumes storage_volumes storage_volumes_get
@@ -185,7 +187,7 @@ func (i *storageVolumeHandler) storageVolumesGet(r *http.Request) response.Respo
 		result := make([]api.StorageVolume, 0, len(storageVolumes))
 		for _, storageVolume := range storageVolumes {
 			result = append(result, api.StorageVolume{
-				ID:              storageVolume.ID,
+				UUID:            storageVolume.UUID,
 				Cluster:         storageVolume.Cluster,
 				Server:          storageVolume.Server,
 				ProjectName:     storageVolume.ProjectName,
@@ -199,20 +201,20 @@ func (i *storageVolumeHandler) storageVolumesGet(r *http.Request) response.Respo
 		return response.SyncResponse(true, result)
 	}
 
-	storageVolumeIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
+	storageVolumeUUIDs, err := i.service.GetAllUUIDsWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(storageVolumeIDs))
-	for _, id := range storageVolumeIDs {
+	result := make([]string, 0, len(storageVolumeUUIDs))
+	for _, id := range storageVolumeUUIDs {
 		result = append(result, fmt.Sprintf("/%s/inventory/storage_volume/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/inventory/storage_volumes/{id} storage_volumes storage_volume_get
+// swagger:operation GET /1.0/inventory/storage_volumes/{uuid} storage_volumes storage_volume_get
 //
 //	Get the storage_volume
 //
@@ -247,12 +249,12 @@ func (i *storageVolumeHandler) storageVolumesGet(r *http.Request) response.Respo
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *storageVolumeHandler) storageVolumeGet(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	storageVolume, err := i.service.GetByID(r.Context(), id)
+	storageVolume, err := i.service.GetByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -260,7 +262,7 @@ func (i *storageVolumeHandler) storageVolumeGet(r *http.Request) response.Respon
 	return response.SyncResponse(
 		true,
 		api.StorageVolume{
-			ID:              storageVolume.ID,
+			UUID:            storageVolume.UUID,
 			Cluster:         storageVolume.Cluster,
 			Server:          storageVolume.Server,
 			ProjectName:     storageVolume.ProjectName,
@@ -272,7 +274,7 @@ func (i *storageVolumeHandler) storageVolumeGet(r *http.Request) response.Respon
 	)
 }
 
-// swagger:operation POST /1.0/inventory/storage_volumes/{id}/resync storage_volumes storage_volume_get_resync_post
+// swagger:operation POST /1.0/inventory/storage_volumes/{uuid}/resync storage_volumes storage_volume_get_resync_post
 //
 //	Resync the storage_volume
 //
@@ -305,12 +307,12 @@ func (i *storageVolumeHandler) storageVolumeGet(r *http.Request) response.Respon
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *storageVolumeHandler) storageVolumeResyncPost(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	err = i.service.ResyncByID(r.Context(), id)
+	err = i.service.ResyncByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync storage_volume: %w", err))
 	}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -37,8 +38,8 @@ func NewNetworkZoneServiceWithPrometheus(base inventory.NetworkZoneService, inst
 	}
 }
 
-// GetAllIDsWithFilter implements inventory.NetworkZoneService.
-func (_d NetworkZoneServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.NetworkZoneService.
+func (_d NetworkZoneServiceWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -46,9 +47,9 @@ func (_d NetworkZoneServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Conte
 			result = "error"
 		}
 
-		networkZoneServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		networkZoneServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.NetworkZoneService.
@@ -65,8 +66,8 @@ func (_d NetworkZoneServiceWithPrometheus) GetAllWithFilter(ctx context.Context,
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.NetworkZoneService.
-func (_d NetworkZoneServiceWithPrometheus) GetByID(ctx context.Context, id int) (networkZone inventory.NetworkZone, err error) {
+// GetByUUID implements inventory.NetworkZoneService.
+func (_d NetworkZoneServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (networkZone inventory.NetworkZone, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d NetworkZoneServiceWithPrometheus) GetByID(ctx context.Context, id int) 
 			result = "error"
 		}
 
-		networkZoneServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		networkZoneServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// ResyncByID implements inventory.NetworkZoneService.
-func (_d NetworkZoneServiceWithPrometheus) ResyncByID(ctx context.Context, id int) (err error) {
+// ResyncByUUID implements inventory.NetworkZoneService.
+func (_d NetworkZoneServiceWithPrometheus) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d NetworkZoneServiceWithPrometheus) ResyncByID(ctx context.Context, id in
 			result = "error"
 		}
 
-		networkZoneServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByID", result).Observe(time.Since(_since).Seconds())
+		networkZoneServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.ResyncByID(ctx, id)
+	return _d.base.ResyncByUUID(ctx, id)
 }
 
 // SyncCluster implements inventory.NetworkZoneService.

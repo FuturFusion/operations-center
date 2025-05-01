@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
@@ -31,9 +33,9 @@ func (r image) Create(ctx context.Context, in inventory.Image) (inventory.Image,
 WITH _lookup AS (
   SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
-INSERT INTO images (cluster_id, project_name, name, object, last_updated)
-VALUES ( (SELECT cluster_id FROM _lookup), :project_name, :name, :object, :last_updated)
-RETURNING id, :cluster_name, project_name, name, object, last_updated;
+INSERT INTO images (uuid, cluster_id, project_name, name, object, last_updated)
+VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :name, :object, :last_updated)
+RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -42,6 +44,7 @@ RETURNING id, :cluster_name, project_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
+		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
@@ -58,7 +61,7 @@ RETURNING id, :cluster_name, project_name, name, object, last_updated;
 func (r image) GetAllWithFilter(ctx context.Context, filter inventory.ImageFilter) (inventory.Images, error) {
 	const sqlStmt = `
 SELECT
-  images.id, clusters.name, images.project_name, images.name, images.object, images.last_updated
+  images.id, images.uuid, clusters.name, images.project_name, images.name, images.object, images.last_updated
 FROM images
   INNER JOIN clusters ON images.cluster_id = clusters.id
 WHERE true
@@ -106,9 +109,9 @@ ORDER BY clusters.name, images.name
 	return images, nil
 }
 
-func (r image) GetAllIDsWithFilter(ctx context.Context, filter inventory.ImageFilter) ([]int, error) {
+func (r image) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ImageFilter) ([]uuid.UUID, error) {
 	const sqlStmt = `
-SELECT images.id
+SELECT images.uuid
 FROM images
   INNER JOIN clusters ON images.cluster_id = clusters.id
 WHERE true
@@ -138,9 +141,9 @@ ORDER BY images.id
 
 	defer func() { _ = rows.Close() }()
 
-	var ids []int
+	var ids []uuid.UUID
 	for rows.Next() {
-		var id int
+		var id uuid.UUID
 		err := rows.Scan(&id)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
@@ -156,17 +159,17 @@ ORDER BY images.id
 	return ids, nil
 }
 
-func (r image) GetByID(ctx context.Context, id int) (inventory.Image, error) {
+func (r image) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.Image, error) {
 	const sqlStmt = `
 SELECT
-  images.id, clusters.name, images.project_name, images.name, images.object, images.last_updated
+  images.id, images.uuid, clusters.name, images.project_name, images.name, images.object, images.last_updated
 FROM
   images
   INNER JOIN clusters ON images.cluster_id = clusters.id
-WHERE images.id=:id;
+WHERE images.uuid=:uuid;
 `
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
+	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if row.Err() != nil {
 		return inventory.Image{}, sqlite.MapErr(row.Err())
 	}
@@ -174,10 +177,10 @@ WHERE images.id=:id;
 	return scanImage(row)
 }
 
-func (r image) DeleteByID(ctx context.Context, id int) error {
-	const sqlStmt = `DELETE FROM images WHERE id=:id;`
+func (r image) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	const sqlStmt = `DELETE FROM images WHERE uuid=:uuid;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -218,14 +221,14 @@ DELETE FROM images WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
 	return nil
 }
 
-func (r image) UpdateByID(ctx context.Context, in inventory.Image) (inventory.Image, error) {
+func (r image) UpdateByUUID(ctx context.Context, in inventory.Image) (inventory.Image, error) {
 	const sqlStmt = `
 WITH _lookup AS (
   SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
-UPDATE images SET cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
-WHERE id=:id
-RETURNING id, :cluster_name, project_name, name, object, last_updated;
+UPDATE images SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
+WHERE uuid=:uuid
+RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -234,7 +237,7 @@ RETURNING id, :cluster_name, project_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("id", in.ID),
+		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
 		sql.Named("project_name", in.ProjectName),
 		sql.Named("name", in.Name),
@@ -254,6 +257,7 @@ func scanImage(row interface{ Scan(dest ...any) error }) (inventory.Image, error
 
 	err := row.Scan(
 		&image.ID,
+		&image.UUID,
 		&image.Cluster,
 		&image.ProjectName,
 		&image.Name,

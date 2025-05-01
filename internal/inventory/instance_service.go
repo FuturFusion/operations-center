@@ -10,6 +10,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -95,12 +96,12 @@ func (s instanceService) GetAllWithFilter(ctx context.Context, filter InstanceFi
 	return instances, nil
 }
 
-func (s instanceService) GetAllIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]int, error) {
+func (s instanceService) GetAllUUIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]uuid.UUID, error) {
 	var filterExpression *vm.Program
 	var err error
 
 	type Env struct {
-		ID int
+		UUID string
 	}
 
 	if filter.Expression != nil {
@@ -110,15 +111,15 @@ func (s instanceService) GetAllIDsWithFilter(ctx context.Context, filter Instanc
 		}
 	}
 
-	instancesIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	instancesUUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var filteredInstancesIDs []int
+	var filteredInstancesUUIDs []uuid.UUID
 	if filter.Expression != nil {
-		for _, instanceID := range instancesIDs {
-			output, err := expr.Run(filterExpression, Env{instanceID})
+		for _, instanceUUID := range instancesUUIDs {
+			output, err := expr.Run(filterExpression, Env{instanceUUID.String()})
 			if err != nil {
 				return nil, err
 			}
@@ -129,23 +130,23 @@ func (s instanceService) GetAllIDsWithFilter(ctx context.Context, filter Instanc
 			}
 
 			if result {
-				filteredInstancesIDs = append(filteredInstancesIDs, instanceID)
+				filteredInstancesUUIDs = append(filteredInstancesUUIDs, instanceUUID)
 			}
 		}
 
-		return filteredInstancesIDs, nil
+		return filteredInstancesUUIDs, nil
 	}
 
-	return instancesIDs, nil
+	return instancesUUIDs, nil
 }
 
-func (s instanceService) GetByID(ctx context.Context, id int) (Instance, error) {
-	return s.repo.GetByID(ctx, id)
+func (s instanceService) GetByUUID(ctx context.Context, id uuid.UUID) (Instance, error) {
+	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s instanceService) ResyncByID(ctx context.Context, id int) error {
+func (s instanceService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		instance, err := s.repo.GetByID(ctx, id)
+		instance, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -157,7 +158,7 @@ func (s instanceService) ResyncByID(ctx context.Context, id int) error {
 
 		retrievedInstance, err := s.instanceClient.GetInstanceByName(ctx, cluster.ConnectionURL, instance.Name)
 		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByID(ctx, instance.ID)
+			err = s.repo.DeleteByUUID(ctx, instance.UUID)
 			if err != nil {
 				return err
 			}
@@ -173,13 +174,14 @@ func (s instanceService) ResyncByID(ctx context.Context, id int) error {
 		instance.ProjectName = retrievedInstance.Project
 		instance.Object = retrievedInstance
 		instance.LastUpdated = s.now()
+		instance.DeriveUUID()
 
 		err = instance.Validate()
 		if err != nil {
 			return err
 		}
 
-		_, err = s.repo.UpdateByID(ctx, instance)
+		_, err = s.repo.UpdateByUUID(ctx, instance)
 		if err != nil {
 			return err
 		}
@@ -219,6 +221,8 @@ func (s instanceService) SyncCluster(ctx context.Context, name string) error {
 				Object:      retrievedInstance,
 				LastUpdated: s.now(),
 			}
+
+			instance.DeriveUUID()
 
 			if s.clusterSyncFilterFunc(instance) {
 				continue

@@ -4,8 +4,10 @@ package inventory
 
 import (
 	"net/url"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -13,11 +15,24 @@ import (
 
 type NetworkForward struct {
 	ID          int
+	UUID        uuid.UUID
 	Cluster     string
 	NetworkName string
 	Name        string
 	Object      incusapi.NetworkForward
 	LastUpdated time.Time
+}
+
+func (m *NetworkForward) DeriveUUID() *NetworkForward {
+	identifier := strings.Join([]string{
+		m.Cluster,
+		m.NetworkName,
+		m.Name,
+	}, ":")
+
+	m.UUID = uuid.NewSHA1(InventorySpaceUUID, []byte(identifier))
+
+	return m
 }
 
 func (m NetworkForward) Validate() error {
@@ -31,6 +46,12 @@ func (m NetworkForward) Validate() error {
 
 	if m.NetworkName == "" {
 		return domain.NewValidationErrf("Invalid NetworkForward, parent name (Network) can not be empty")
+	}
+
+	clone := m
+	clone.DeriveUUID()
+	if clone.UUID != m.UUID {
+		return domain.NewValidationErrf("Invalid UUID, does not match derived value")
 	}
 
 	return nil

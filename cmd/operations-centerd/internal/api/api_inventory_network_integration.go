@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -24,8 +26,8 @@ func registerInventoryNetworkIntegrationHandler(router Router, authorizer authz.
 	}
 
 	router.HandleFunc("GET /{$}", response.With(handler.networkIntegrationsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("GET /{id}", response.With(handler.networkIntegrationGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.networkIntegrationResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{uuid}", response.With(handler.networkIntegrationGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{uuid}/resync", response.With(handler.networkIntegrationResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/network_integrations network_integrations network_integrations_get
@@ -157,7 +159,7 @@ func (i *networkIntegrationHandler) networkIntegrationsGet(r *http.Request) resp
 		result := make([]api.NetworkIntegration, 0, len(networkIntegrations))
 		for _, networkIntegration := range networkIntegrations {
 			result = append(result, api.NetworkIntegration{
-				ID:          networkIntegration.ID,
+				UUID:        networkIntegration.UUID,
 				Cluster:     networkIntegration.Cluster,
 				Name:        networkIntegration.Name,
 				Object:      networkIntegration.Object,
@@ -168,20 +170,20 @@ func (i *networkIntegrationHandler) networkIntegrationsGet(r *http.Request) resp
 		return response.SyncResponse(true, result)
 	}
 
-	networkIntegrationIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
+	networkIntegrationUUIDs, err := i.service.GetAllUUIDsWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(networkIntegrationIDs))
-	for _, id := range networkIntegrationIDs {
+	result := make([]string, 0, len(networkIntegrationUUIDs))
+	for _, id := range networkIntegrationUUIDs {
 		result = append(result, fmt.Sprintf("/%s/inventory/network_integration/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/inventory/network_integrations/{id} network_integrations network_integration_get
+// swagger:operation GET /1.0/inventory/network_integrations/{uuid} network_integrations network_integration_get
 //
 //	Get the network_integration
 //
@@ -216,12 +218,12 @@ func (i *networkIntegrationHandler) networkIntegrationsGet(r *http.Request) resp
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkIntegrationHandler) networkIntegrationGet(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	networkIntegration, err := i.service.GetByID(r.Context(), id)
+	networkIntegration, err := i.service.GetByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -229,7 +231,7 @@ func (i *networkIntegrationHandler) networkIntegrationGet(r *http.Request) respo
 	return response.SyncResponse(
 		true,
 		api.NetworkIntegration{
-			ID:          networkIntegration.ID,
+			UUID:        networkIntegration.UUID,
 			Cluster:     networkIntegration.Cluster,
 			Name:        networkIntegration.Name,
 			Object:      networkIntegration.Object,
@@ -238,7 +240,7 @@ func (i *networkIntegrationHandler) networkIntegrationGet(r *http.Request) respo
 	)
 }
 
-// swagger:operation POST /1.0/inventory/network_integrations/{id}/resync network_integrations network_integration_get_resync_post
+// swagger:operation POST /1.0/inventory/network_integrations/{uuid}/resync network_integrations network_integration_get_resync_post
 //
 //	Resync the network_integration
 //
@@ -271,12 +273,12 @@ func (i *networkIntegrationHandler) networkIntegrationGet(r *http.Request) respo
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkIntegrationHandler) networkIntegrationResyncPost(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	err = i.service.ResyncByID(r.Context(), id)
+	err = i.service.ResyncByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync network_integration: %w", err))
 	}

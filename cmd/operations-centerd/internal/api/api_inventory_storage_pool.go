@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -24,8 +26,8 @@ func registerInventoryStoragePoolHandler(router Router, authorizer authz.Authori
 	}
 
 	router.HandleFunc("GET /{$}", response.With(handler.storagePoolsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("GET /{id}", response.With(handler.storagePoolGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.storagePoolResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{uuid}", response.With(handler.storagePoolGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{uuid}/resync", response.With(handler.storagePoolResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/storage_pools storage_pools storage_pools_get
@@ -157,7 +159,7 @@ func (i *storagePoolHandler) storagePoolsGet(r *http.Request) response.Response 
 		result := make([]api.StoragePool, 0, len(storagePools))
 		for _, storagePool := range storagePools {
 			result = append(result, api.StoragePool{
-				ID:          storagePool.ID,
+				UUID:        storagePool.UUID,
 				Cluster:     storagePool.Cluster,
 				Name:        storagePool.Name,
 				Object:      storagePool.Object,
@@ -168,20 +170,20 @@ func (i *storagePoolHandler) storagePoolsGet(r *http.Request) response.Response 
 		return response.SyncResponse(true, result)
 	}
 
-	storagePoolIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
+	storagePoolUUIDs, err := i.service.GetAllUUIDsWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(storagePoolIDs))
-	for _, id := range storagePoolIDs {
+	result := make([]string, 0, len(storagePoolUUIDs))
+	for _, id := range storagePoolUUIDs {
 		result = append(result, fmt.Sprintf("/%s/inventory/storage_pool/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/inventory/storage_pools/{id} storage_pools storage_pool_get
+// swagger:operation GET /1.0/inventory/storage_pools/{uuid} storage_pools storage_pool_get
 //
 //	Get the storage_pool
 //
@@ -216,12 +218,12 @@ func (i *storagePoolHandler) storagePoolsGet(r *http.Request) response.Response 
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *storagePoolHandler) storagePoolGet(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	storagePool, err := i.service.GetByID(r.Context(), id)
+	storagePool, err := i.service.GetByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -229,7 +231,7 @@ func (i *storagePoolHandler) storagePoolGet(r *http.Request) response.Response {
 	return response.SyncResponse(
 		true,
 		api.StoragePool{
-			ID:          storagePool.ID,
+			UUID:        storagePool.UUID,
 			Cluster:     storagePool.Cluster,
 			Name:        storagePool.Name,
 			Object:      storagePool.Object,
@@ -238,7 +240,7 @@ func (i *storagePoolHandler) storagePoolGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation POST /1.0/inventory/storage_pools/{id}/resync storage_pools storage_pool_get_resync_post
+// swagger:operation POST /1.0/inventory/storage_pools/{uuid}/resync storage_pools storage_pool_get_resync_post
 //
 //	Resync the storage_pool
 //
@@ -271,12 +273,12 @@ func (i *storagePoolHandler) storagePoolGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *storagePoolHandler) storagePoolResyncPost(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	err = i.service.ResyncByID(r.Context(), id)
+	err = i.service.ResyncByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync storage_pool: %w", err))
 	}

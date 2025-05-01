@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -37,8 +38,8 @@ func NewImageServiceWithPrometheus(base inventory.ImageService, instanceName str
 	}
 }
 
-// GetAllIDsWithFilter implements inventory.ImageService.
-func (_d ImageServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.ImageFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.ImageService.
+func (_d ImageServiceWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ImageFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -46,9 +47,9 @@ func (_d ImageServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Context, fi
 			result = "error"
 		}
 
-		imageServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		imageServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.ImageService.
@@ -65,8 +66,8 @@ func (_d ImageServiceWithPrometheus) GetAllWithFilter(ctx context.Context, filte
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.ImageService.
-func (_d ImageServiceWithPrometheus) GetByID(ctx context.Context, id int) (image inventory.Image, err error) {
+// GetByUUID implements inventory.ImageService.
+func (_d ImageServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (image inventory.Image, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d ImageServiceWithPrometheus) GetByID(ctx context.Context, id int) (image
 			result = "error"
 		}
 
-		imageServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		imageServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// ResyncByID implements inventory.ImageService.
-func (_d ImageServiceWithPrometheus) ResyncByID(ctx context.Context, id int) (err error) {
+// ResyncByUUID implements inventory.ImageService.
+func (_d ImageServiceWithPrometheus) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d ImageServiceWithPrometheus) ResyncByID(ctx context.Context, id int) (er
 			result = "error"
 		}
 
-		imageServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByID", result).Observe(time.Since(_since).Seconds())
+		imageServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.ResyncByID(ctx, id)
+	return _d.base.ResyncByUUID(ctx, id)
 }
 
 // SyncCluster implements inventory.ImageService.

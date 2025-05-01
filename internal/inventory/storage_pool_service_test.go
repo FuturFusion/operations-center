@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -131,20 +132,21 @@ func TestStoragePoolService_GetAllWithFilter(t *testing.T) {
 	}
 }
 
-func TestStoragePoolService_GetAllIDsWithFilter(t *testing.T) {
+func TestStoragePoolService_GetAllUUIDsWithFilter(t *testing.T) {
 	tests := []struct {
-		name                       string
-		filterExpression           *string
-		repoGetAllIDsWithFilter    []int
-		repoGetAllIDsWithFilterErr error
+		name                         string
+		filterExpression             *string
+		repoGetAllUUIDsWithFilter    []uuid.UUID
+		repoGetAllUUIDsWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success - no filter expression",
-			repoGetAllIDsWithFilter: []int{
-				1, 2,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuid.MustParse(`56d0823e-5c6d-45ff-ac6d-a9ae61026a4e`),
 			},
 
 			assertErr: require.NoError,
@@ -152,9 +154,10 @@ func TestStoragePoolService_GetAllIDsWithFilter(t *testing.T) {
 		},
 		{
 			name:             "success - with filter expression",
-			filterExpression: ptr.To(`ID < 2`),
-			repoGetAllIDsWithFilter: []int{
-				1, 2,
+			filterExpression: ptr.To(`UUID == "6c652183-8d93-4c7d-9510-cd2ae54f31fd"`),
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuid.MustParse(`56d0823e-5c6d-45ff-ac6d-a9ae61026a4e`),
 			},
 
 			assertErr: require.NoError,
@@ -163,8 +166,8 @@ func TestStoragePoolService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - invalid filter expression",
 			filterExpression: ptr.To(``), // the empty expression is an invalid expression.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: require.Error,
@@ -173,8 +176,8 @@ func TestStoragePoolService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - filter expression run",
 			filterExpression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: require.Error,
@@ -183,8 +186,8 @@ func TestStoragePoolService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - non bool expression",
 			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, i ...interface{}) {
@@ -193,8 +196,8 @@ func TestStoragePoolService_GetAllIDsWithFilter(t *testing.T) {
 			count: 0,
 		},
 		{
-			name:                       "error - repo",
-			repoGetAllIDsWithFilterErr: boom.Error,
+			name:                         "error - repo",
+			repoGetAllUUIDsWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -205,8 +208,8 @@ func TestStoragePoolService_GetAllIDsWithFilter(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.StoragePoolRepoMock{
-				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.StoragePoolFilter) ([]int, error) {
-					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
+				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.StoragePoolFilter) ([]uuid.UUID, error) {
+					return tc.repoGetAllUUIDsWithFilter, tc.repoGetAllUUIDsWithFilterErr
 				},
 			}
 
@@ -215,31 +218,31 @@ func TestStoragePoolService_GetAllIDsWithFilter(t *testing.T) {
 			}))
 
 			// Run test
-			storagePoolIDs, err := storagePoolSvc.GetAllIDsWithFilter(context.Background(), inventory.StoragePoolFilter{
+			storagePoolUUIDs, err := storagePoolSvc.GetAllUUIDsWithFilter(context.Background(), inventory.StoragePoolFilter{
 				Expression: tc.filterExpression,
 			})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, storagePoolIDs, tc.count)
+			require.Len(t, storagePoolUUIDs, tc.count)
 		})
 	}
 }
 
-func TestStoragePoolService_GetByID(t *testing.T) {
+func TestStoragePoolService_GetByUUID(t *testing.T) {
 	tests := []struct {
-		name                   string
-		idArg                  int
-		repoGetByIDStoragePool inventory.StoragePool
-		repoGetByIDErr         error
+		name                     string
+		idArg                    uuid.UUID
+		repoGetByUUIDStoragePool inventory.StoragePool
+		repoGetByUUIDErr         error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name:  "success",
-			idArg: 1,
-			repoGetByIDStoragePool: inventory.StoragePool{
-				ID:          1,
+			idArg: uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+			repoGetByUUIDStoragePool: inventory.StoragePool{
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:     "one",
 				Name:        "one",
 				Object:      incusapi.StoragePool{},
@@ -249,9 +252,9 @@ func TestStoragePoolService_GetByID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:           "error - repo",
-			idArg:          1,
-			repoGetByIDErr: boom.Error,
+			name:             "error - repo",
+			idArg:            uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -261,8 +264,8 @@ func TestStoragePoolService_GetByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.StoragePoolRepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (inventory.StoragePool, error) {
-					return tc.repoGetByIDStoragePool, tc.repoGetByIDErr
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.StoragePool, error) {
+					return tc.repoGetByUUIDStoragePool, tc.repoGetByUUIDErr
 				},
 			}
 
@@ -271,33 +274,33 @@ func TestStoragePoolService_GetByID(t *testing.T) {
 			}))
 
 			// Run test
-			storagePool, err := storagePoolSvc.GetByID(context.Background(), tc.idArg)
+			storagePool, err := storagePoolSvc.GetByUUID(context.Background(), tc.idArg)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByIDStoragePool, storagePool)
+			require.Equal(t, tc.repoGetByUUIDStoragePool, storagePool)
 		})
 	}
 }
 
-func TestStoragePoolService_ResyncByID(t *testing.T) {
+func TestStoragePoolService_ResyncByUUID(t *testing.T) {
 	tests := []struct {
 		name                                     string
 		clusterSvcGetByIDCluster                 provisioning.Cluster
 		clusterSvcGetByIDErr                     error
 		storagePoolClientGetStoragePoolByName    incusapi.StoragePool
 		storagePoolClientGetStoragePoolByNameErr error
-		repoGetByIDStoragePool                   inventory.StoragePool
-		repoGetByIDErr                           error
-		repoUpdateByIDErr                        error
-		repoDeleteByIDErr                        error
+		repoGetByUUIDStoragePool                 inventory.StoragePool
+		repoGetByUUIDErr                         error
+		repoUpdateByUUIDErr                      error
+		repoDeleteByUUIDErr                      error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
-			repoGetByIDStoragePool: inventory.StoragePool{
-				ID:      1,
+			repoGetByUUIDStoragePool: inventory.StoragePool{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -312,8 +315,8 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 		},
 		{
 			name: "success - storagePool get by name - not found",
-			repoGetByIDStoragePool: inventory.StoragePool{
-				ID:      1,
+			repoGetByUUIDStoragePool: inventory.StoragePool{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -325,15 +328,15 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:           "error - storagePool get by ID",
-			repoGetByIDErr: boom.Error,
+			name:             "error - storagePool get by UUID",
+			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - cluster get by ID",
-			repoGetByIDStoragePool: inventory.StoragePool{
-				ID:      1,
+			repoGetByUUIDStoragePool: inventory.StoragePool{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -343,8 +346,8 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 		},
 		{
 			name: "error - storagePool get by name",
-			repoGetByIDStoragePool: inventory.StoragePool{
-				ID:      1,
+			repoGetByUUIDStoragePool: inventory.StoragePool{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -356,9 +359,9 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - storagePool get by name - not found - delete by id",
-			repoGetByIDStoragePool: inventory.StoragePool{
-				ID:      1,
+			name: "error - storagePool get by name - not found - delete by uuid",
+			repoGetByUUIDStoragePool: inventory.StoragePool{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -366,14 +369,14 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 				Name: "cluster-one",
 			},
 			storagePoolClientGetStoragePoolByNameErr: domain.ErrNotFound,
-			repoDeleteByIDErr:                        boom.Error,
+			repoDeleteByUUIDErr:                      boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - validate",
-			repoGetByIDStoragePool: inventory.StoragePool{
-				ID:      1,
+			repoGetByUUIDStoragePool: inventory.StoragePool{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "", // invalid
 			},
@@ -390,9 +393,9 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 			},
 		},
 		{
-			name: "error - update by ID",
-			repoGetByIDStoragePool: inventory.StoragePool{
-				ID:      1,
+			name: "error - update by UUID",
+			repoGetByUUIDStoragePool: inventory.StoragePool{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -402,7 +405,7 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 			storagePoolClientGetStoragePoolByName: incusapi.StoragePool{
 				Name: "storagePool one",
 			},
-			repoUpdateByIDErr: boom.Error,
+			repoUpdateByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -412,15 +415,15 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.StoragePoolRepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (inventory.StoragePool, error) {
-					return tc.repoGetByIDStoragePool, tc.repoGetByIDErr
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.StoragePool, error) {
+					return tc.repoGetByUUIDStoragePool, tc.repoGetByUUIDErr
 				},
-				UpdateByIDFunc: func(ctx context.Context, storagePool inventory.StoragePool) (inventory.StoragePool, error) {
+				UpdateByUUIDFunc: func(ctx context.Context, storagePool inventory.StoragePool) (inventory.StoragePool, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), storagePool.LastUpdated)
-					return inventory.StoragePool{}, tc.repoUpdateByIDErr
+					return inventory.StoragePool{}, tc.repoUpdateByUUIDErr
 				},
-				DeleteByIDFunc: func(ctx context.Context, id int) error {
-					return tc.repoDeleteByIDErr
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					return tc.repoDeleteByUUIDErr
 				},
 			}
 
@@ -433,7 +436,7 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 
 			storagePoolClient := &serverMock.StoragePoolServerClientMock{
 				GetStoragePoolByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string) (incusapi.StoragePool, error) {
-					require.Equal(t, tc.repoGetByIDStoragePool.Name, storagePoolName)
+					require.Equal(t, tc.repoGetByUUIDStoragePool.Name, storagePoolName)
 					return tc.storagePoolClientGetStoragePoolByName, tc.storagePoolClientGetStoragePoolByNameErr
 				},
 			}
@@ -443,7 +446,7 @@ func TestStoragePoolService_ResyncByID(t *testing.T) {
 			}))
 
 			// Run test
-			err := storagePoolSvc.ResyncByID(context.Background(), 1)
+			err := storagePoolSvc.ResyncByUUID(context.Background(), uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`))
 
 			// Assert
 			tc.assertErr(t, err)

@@ -5,11 +5,13 @@ package api
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type StorageBucket struct {
-	ID              int                    `json:"id" yaml:"id"`
+	UUID            uuid.UUID              `json:"uuid" yaml:"uuid"`
 	Cluster         string                 `json:"cluster" yaml:"cluster"`
 	Server          string                 `json:"server" yaml:"server"`
 	ProjectName     string                 `json:"project_name" yaml:"project_name"`

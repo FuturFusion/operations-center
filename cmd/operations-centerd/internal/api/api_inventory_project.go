@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -24,8 +26,8 @@ func registerInventoryProjectHandler(router Router, authorizer authz.Authorizer,
 	}
 
 	router.HandleFunc("GET /{$}", response.With(handler.projectsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("GET /{id}", response.With(handler.projectGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.projectResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{uuid}", response.With(handler.projectGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{uuid}/resync", response.With(handler.projectResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/projects projects projects_get
@@ -157,7 +159,7 @@ func (i *projectHandler) projectsGet(r *http.Request) response.Response {
 		result := make([]api.Project, 0, len(projects))
 		for _, project := range projects {
 			result = append(result, api.Project{
-				ID:          project.ID,
+				UUID:        project.UUID,
 				Cluster:     project.Cluster,
 				Name:        project.Name,
 				Object:      project.Object,
@@ -168,20 +170,20 @@ func (i *projectHandler) projectsGet(r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	projectIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
+	projectUUIDs, err := i.service.GetAllUUIDsWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(projectIDs))
-	for _, id := range projectIDs {
+	result := make([]string, 0, len(projectUUIDs))
+	for _, id := range projectUUIDs {
 		result = append(result, fmt.Sprintf("/%s/inventory/project/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/inventory/projects/{id} projects project_get
+// swagger:operation GET /1.0/inventory/projects/{uuid} projects project_get
 //
 //	Get the project
 //
@@ -216,12 +218,12 @@ func (i *projectHandler) projectsGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *projectHandler) projectGet(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	project, err := i.service.GetByID(r.Context(), id)
+	project, err := i.service.GetByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -229,7 +231,7 @@ func (i *projectHandler) projectGet(r *http.Request) response.Response {
 	return response.SyncResponse(
 		true,
 		api.Project{
-			ID:          project.ID,
+			UUID:        project.UUID,
 			Cluster:     project.Cluster,
 			Name:        project.Name,
 			Object:      project.Object,
@@ -238,7 +240,7 @@ func (i *projectHandler) projectGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation POST /1.0/inventory/projects/{id}/resync projects project_get_resync_post
+// swagger:operation POST /1.0/inventory/projects/{uuid}/resync projects project_get_resync_post
 //
 //	Resync the project
 //
@@ -271,12 +273,12 @@ func (i *projectHandler) projectGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *projectHandler) projectResyncPost(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	err = i.service.ResyncByID(r.Context(), id)
+	err = i.service.ResyncByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync project: %w", err))
 	}

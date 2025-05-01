@@ -5,25 +5,27 @@ package inventory
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type NetworkLoadBalancerService interface {
 	GetAllWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) (NetworkLoadBalancers, error)
-	GetAllIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (NetworkLoadBalancer, error)
-	ResyncByID(ctx context.Context, id int) error
+	GetAllUUIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkLoadBalancer, error)
+	ResyncByUUID(ctx context.Context, id uuid.UUID) error
 	SyncCluster(ctx context.Context, cluster string) error
 }
 
 type NetworkLoadBalancerRepo interface {
 	GetAllWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) (NetworkLoadBalancers, error)
-	GetAllIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (NetworkLoadBalancer, error)
+	GetAllUUIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkLoadBalancer, error)
 	Create(ctx context.Context, networkLoadBalancer NetworkLoadBalancer) (NetworkLoadBalancer, error)
-	DeleteByID(ctx context.Context, id int) error
+	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	DeleteByClusterName(ctx context.Context, cluster string) error
-	UpdateByID(ctx context.Context, networkLoadBalancer NetworkLoadBalancer) (NetworkLoadBalancer, error)
+	UpdateByUUID(ctx context.Context, networkLoadBalancer NetworkLoadBalancer) (NetworkLoadBalancer, error)
 }
 
 type NetworkLoadBalancerServerClient interface {

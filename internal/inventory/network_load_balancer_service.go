@@ -10,6 +10,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -109,12 +110,12 @@ func (s networkLoadBalancerService) GetAllWithFilter(ctx context.Context, filter
 	return networkLoadBalancers, nil
 }
 
-func (s networkLoadBalancerService) GetAllIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]int, error) {
+func (s networkLoadBalancerService) GetAllUUIDsWithFilter(ctx context.Context, filter NetworkLoadBalancerFilter) ([]uuid.UUID, error) {
 	var filterExpression *vm.Program
 	var err error
 
 	type Env struct {
-		ID int
+		UUID string
 	}
 
 	if filter.Expression != nil {
@@ -124,15 +125,15 @@ func (s networkLoadBalancerService) GetAllIDsWithFilter(ctx context.Context, fil
 		}
 	}
 
-	networkLoadBalancersIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	networkLoadBalancersUUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var filteredNetworkLoadBalancersIDs []int
+	var filteredNetworkLoadBalancersUUIDs []uuid.UUID
 	if filter.Expression != nil {
-		for _, networkLoadBalancerID := range networkLoadBalancersIDs {
-			output, err := expr.Run(filterExpression, Env{networkLoadBalancerID})
+		for _, networkLoadBalancerUUID := range networkLoadBalancersUUIDs {
+			output, err := expr.Run(filterExpression, Env{networkLoadBalancerUUID.String()})
 			if err != nil {
 				return nil, err
 			}
@@ -143,23 +144,23 @@ func (s networkLoadBalancerService) GetAllIDsWithFilter(ctx context.Context, fil
 			}
 
 			if result {
-				filteredNetworkLoadBalancersIDs = append(filteredNetworkLoadBalancersIDs, networkLoadBalancerID)
+				filteredNetworkLoadBalancersUUIDs = append(filteredNetworkLoadBalancersUUIDs, networkLoadBalancerUUID)
 			}
 		}
 
-		return filteredNetworkLoadBalancersIDs, nil
+		return filteredNetworkLoadBalancersUUIDs, nil
 	}
 
-	return networkLoadBalancersIDs, nil
+	return networkLoadBalancersUUIDs, nil
 }
 
-func (s networkLoadBalancerService) GetByID(ctx context.Context, id int) (NetworkLoadBalancer, error) {
-	return s.repo.GetByID(ctx, id)
+func (s networkLoadBalancerService) GetByUUID(ctx context.Context, id uuid.UUID) (NetworkLoadBalancer, error) {
+	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s networkLoadBalancerService) ResyncByID(ctx context.Context, id int) error {
+func (s networkLoadBalancerService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		networkLoadBalancer, err := s.repo.GetByID(ctx, id)
+		networkLoadBalancer, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -171,7 +172,7 @@ func (s networkLoadBalancerService) ResyncByID(ctx context.Context, id int) erro
 
 		retrievedNetworkLoadBalancer, err := s.networkLoadBalancerClient.GetNetworkLoadBalancerByName(ctx, cluster.ConnectionURL, networkLoadBalancer.NetworkName, networkLoadBalancer.Name)
 		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByID(ctx, networkLoadBalancer.ID)
+			err = s.repo.DeleteByUUID(ctx, networkLoadBalancer.UUID)
 			if err != nil {
 				return err
 			}
@@ -185,13 +186,14 @@ func (s networkLoadBalancerService) ResyncByID(ctx context.Context, id int) erro
 
 		networkLoadBalancer.Object = retrievedNetworkLoadBalancer
 		networkLoadBalancer.LastUpdated = s.now()
+		networkLoadBalancer.DeriveUUID()
 
 		err = networkLoadBalancer.Validate()
 		if err != nil {
 			return err
 		}
 
-		_, err = s.repo.UpdateByID(ctx, networkLoadBalancer)
+		_, err = s.repo.UpdateByUUID(ctx, networkLoadBalancer)
 		if err != nil {
 			return err
 		}
@@ -240,6 +242,8 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, name string
 					Object:      retrievedNetworkLoadBalancer,
 					LastUpdated: s.now(),
 				}
+
+				networkLoadBalancer.DeriveUUID()
 
 				if s.clusterSyncFilterFunc(networkLoadBalancer) {
 					continue

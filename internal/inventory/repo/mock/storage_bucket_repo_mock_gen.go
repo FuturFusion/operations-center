@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 )
 
 // Ensure that StorageBucketRepoMock does implement inventory.StorageBucketRepo.
@@ -27,20 +28,20 @@ var _ inventory.StorageBucketRepo = &StorageBucketRepoMock{}
 //			DeleteByClusterNameFunc: func(ctx context.Context, cluster string) error {
 //				panic("mock out the DeleteByClusterName method")
 //			},
-//			DeleteByIDFunc: func(ctx context.Context, id int) error {
-//				panic("mock out the DeleteByID method")
+//			DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+//				panic("mock out the DeleteByUUID method")
 //			},
-//			GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.StorageBucketFilter) ([]int, error) {
-//				panic("mock out the GetAllIDsWithFilter method")
+//			GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.StorageBucketFilter) ([]uuid.UUID, error) {
+//				panic("mock out the GetAllUUIDsWithFilter method")
 //			},
 //			GetAllWithFilterFunc: func(ctx context.Context, filter inventory.StorageBucketFilter) (inventory.StorageBuckets, error) {
 //				panic("mock out the GetAllWithFilter method")
 //			},
-//			GetByIDFunc: func(ctx context.Context, id int) (inventory.StorageBucket, error) {
-//				panic("mock out the GetByID method")
+//			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.StorageBucket, error) {
+//				panic("mock out the GetByUUID method")
 //			},
-//			UpdateByIDFunc: func(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error) {
-//				panic("mock out the UpdateByID method")
+//			UpdateByUUIDFunc: func(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error) {
+//				panic("mock out the UpdateByUUID method")
 //			},
 //		}
 //
@@ -55,20 +56,20 @@ type StorageBucketRepoMock struct {
 	// DeleteByClusterNameFunc mocks the DeleteByClusterName method.
 	DeleteByClusterNameFunc func(ctx context.Context, cluster string) error
 
-	// DeleteByIDFunc mocks the DeleteByID method.
-	DeleteByIDFunc func(ctx context.Context, id int) error
+	// DeleteByUUIDFunc mocks the DeleteByUUID method.
+	DeleteByUUIDFunc func(ctx context.Context, id uuid.UUID) error
 
-	// GetAllIDsWithFilterFunc mocks the GetAllIDsWithFilter method.
-	GetAllIDsWithFilterFunc func(ctx context.Context, filter inventory.StorageBucketFilter) ([]int, error)
+	// GetAllUUIDsWithFilterFunc mocks the GetAllUUIDsWithFilter method.
+	GetAllUUIDsWithFilterFunc func(ctx context.Context, filter inventory.StorageBucketFilter) ([]uuid.UUID, error)
 
 	// GetAllWithFilterFunc mocks the GetAllWithFilter method.
 	GetAllWithFilterFunc func(ctx context.Context, filter inventory.StorageBucketFilter) (inventory.StorageBuckets, error)
 
-	// GetByIDFunc mocks the GetByID method.
-	GetByIDFunc func(ctx context.Context, id int) (inventory.StorageBucket, error)
+	// GetByUUIDFunc mocks the GetByUUID method.
+	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (inventory.StorageBucket, error)
 
-	// UpdateByIDFunc mocks the UpdateByID method.
-	UpdateByIDFunc func(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error)
+	// UpdateByUUIDFunc mocks the UpdateByUUID method.
+	UpdateByUUIDFunc func(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -86,15 +87,15 @@ type StorageBucketRepoMock struct {
 			// Cluster is the cluster argument value.
 			Cluster string
 		}
-		// DeleteByID holds details about calls to the DeleteByID method.
-		DeleteByID []struct {
+		// DeleteByUUID holds details about calls to the DeleteByUUID method.
+		DeleteByUUID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
-			ID int
+			ID uuid.UUID
 		}
-		// GetAllIDsWithFilter holds details about calls to the GetAllIDsWithFilter method.
-		GetAllIDsWithFilter []struct {
+		// GetAllUUIDsWithFilter holds details about calls to the GetAllUUIDsWithFilter method.
+		GetAllUUIDsWithFilter []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Filter is the filter argument value.
@@ -107,28 +108,28 @@ type StorageBucketRepoMock struct {
 			// Filter is the filter argument value.
 			Filter inventory.StorageBucketFilter
 		}
-		// GetByID holds details about calls to the GetByID method.
-		GetByID []struct {
+		// GetByUUID holds details about calls to the GetByUUID method.
+		GetByUUID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
-			ID int
+			ID uuid.UUID
 		}
-		// UpdateByID holds details about calls to the UpdateByID method.
-		UpdateByID []struct {
+		// UpdateByUUID holds details about calls to the UpdateByUUID method.
+		UpdateByUUID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// StorageBucket is the storageBucket argument value.
 			StorageBucket inventory.StorageBucket
 		}
 	}
-	lockCreate              sync.RWMutex
-	lockDeleteByClusterName sync.RWMutex
-	lockDeleteByID          sync.RWMutex
-	lockGetAllIDsWithFilter sync.RWMutex
-	lockGetAllWithFilter    sync.RWMutex
-	lockGetByID             sync.RWMutex
-	lockUpdateByID          sync.RWMutex
+	lockCreate                sync.RWMutex
+	lockDeleteByClusterName   sync.RWMutex
+	lockDeleteByUUID          sync.RWMutex
+	lockGetAllUUIDsWithFilter sync.RWMutex
+	lockGetAllWithFilter      sync.RWMutex
+	lockGetByUUID             sync.RWMutex
+	lockUpdateByUUID          sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -203,46 +204,46 @@ func (mock *StorageBucketRepoMock) DeleteByClusterNameCalls() []struct {
 	return calls
 }
 
-// DeleteByID calls DeleteByIDFunc.
-func (mock *StorageBucketRepoMock) DeleteByID(ctx context.Context, id int) error {
-	if mock.DeleteByIDFunc == nil {
-		panic("StorageBucketRepoMock.DeleteByIDFunc: method is nil but StorageBucketRepo.DeleteByID was just called")
+// DeleteByUUID calls DeleteByUUIDFunc.
+func (mock *StorageBucketRepoMock) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	if mock.DeleteByUUIDFunc == nil {
+		panic("StorageBucketRepoMock.DeleteByUUIDFunc: method is nil but StorageBucketRepo.DeleteByUUID was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		ID  int
+		ID  uuid.UUID
 	}{
 		Ctx: ctx,
 		ID:  id,
 	}
-	mock.lockDeleteByID.Lock()
-	mock.calls.DeleteByID = append(mock.calls.DeleteByID, callInfo)
-	mock.lockDeleteByID.Unlock()
-	return mock.DeleteByIDFunc(ctx, id)
+	mock.lockDeleteByUUID.Lock()
+	mock.calls.DeleteByUUID = append(mock.calls.DeleteByUUID, callInfo)
+	mock.lockDeleteByUUID.Unlock()
+	return mock.DeleteByUUIDFunc(ctx, id)
 }
 
-// DeleteByIDCalls gets all the calls that were made to DeleteByID.
+// DeleteByUUIDCalls gets all the calls that were made to DeleteByUUID.
 // Check the length with:
 //
-//	len(mockedStorageBucketRepo.DeleteByIDCalls())
-func (mock *StorageBucketRepoMock) DeleteByIDCalls() []struct {
+//	len(mockedStorageBucketRepo.DeleteByUUIDCalls())
+func (mock *StorageBucketRepoMock) DeleteByUUIDCalls() []struct {
 	Ctx context.Context
-	ID  int
+	ID  uuid.UUID
 } {
 	var calls []struct {
 		Ctx context.Context
-		ID  int
+		ID  uuid.UUID
 	}
-	mock.lockDeleteByID.RLock()
-	calls = mock.calls.DeleteByID
-	mock.lockDeleteByID.RUnlock()
+	mock.lockDeleteByUUID.RLock()
+	calls = mock.calls.DeleteByUUID
+	mock.lockDeleteByUUID.RUnlock()
 	return calls
 }
 
-// GetAllIDsWithFilter calls GetAllIDsWithFilterFunc.
-func (mock *StorageBucketRepoMock) GetAllIDsWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) ([]int, error) {
-	if mock.GetAllIDsWithFilterFunc == nil {
-		panic("StorageBucketRepoMock.GetAllIDsWithFilterFunc: method is nil but StorageBucketRepo.GetAllIDsWithFilter was just called")
+// GetAllUUIDsWithFilter calls GetAllUUIDsWithFilterFunc.
+func (mock *StorageBucketRepoMock) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) ([]uuid.UUID, error) {
+	if mock.GetAllUUIDsWithFilterFunc == nil {
+		panic("StorageBucketRepoMock.GetAllUUIDsWithFilterFunc: method is nil but StorageBucketRepo.GetAllUUIDsWithFilter was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
@@ -251,17 +252,17 @@ func (mock *StorageBucketRepoMock) GetAllIDsWithFilter(ctx context.Context, filt
 		Ctx:    ctx,
 		Filter: filter,
 	}
-	mock.lockGetAllIDsWithFilter.Lock()
-	mock.calls.GetAllIDsWithFilter = append(mock.calls.GetAllIDsWithFilter, callInfo)
-	mock.lockGetAllIDsWithFilter.Unlock()
-	return mock.GetAllIDsWithFilterFunc(ctx, filter)
+	mock.lockGetAllUUIDsWithFilter.Lock()
+	mock.calls.GetAllUUIDsWithFilter = append(mock.calls.GetAllUUIDsWithFilter, callInfo)
+	mock.lockGetAllUUIDsWithFilter.Unlock()
+	return mock.GetAllUUIDsWithFilterFunc(ctx, filter)
 }
 
-// GetAllIDsWithFilterCalls gets all the calls that were made to GetAllIDsWithFilter.
+// GetAllUUIDsWithFilterCalls gets all the calls that were made to GetAllUUIDsWithFilter.
 // Check the length with:
 //
-//	len(mockedStorageBucketRepo.GetAllIDsWithFilterCalls())
-func (mock *StorageBucketRepoMock) GetAllIDsWithFilterCalls() []struct {
+//	len(mockedStorageBucketRepo.GetAllUUIDsWithFilterCalls())
+func (mock *StorageBucketRepoMock) GetAllUUIDsWithFilterCalls() []struct {
 	Ctx    context.Context
 	Filter inventory.StorageBucketFilter
 } {
@@ -269,9 +270,9 @@ func (mock *StorageBucketRepoMock) GetAllIDsWithFilterCalls() []struct {
 		Ctx    context.Context
 		Filter inventory.StorageBucketFilter
 	}
-	mock.lockGetAllIDsWithFilter.RLock()
-	calls = mock.calls.GetAllIDsWithFilter
-	mock.lockGetAllIDsWithFilter.RUnlock()
+	mock.lockGetAllUUIDsWithFilter.RLock()
+	calls = mock.calls.GetAllUUIDsWithFilter
+	mock.lockGetAllUUIDsWithFilter.RUnlock()
 	return calls
 }
 
@@ -311,46 +312,46 @@ func (mock *StorageBucketRepoMock) GetAllWithFilterCalls() []struct {
 	return calls
 }
 
-// GetByID calls GetByIDFunc.
-func (mock *StorageBucketRepoMock) GetByID(ctx context.Context, id int) (inventory.StorageBucket, error) {
-	if mock.GetByIDFunc == nil {
-		panic("StorageBucketRepoMock.GetByIDFunc: method is nil but StorageBucketRepo.GetByID was just called")
+// GetByUUID calls GetByUUIDFunc.
+func (mock *StorageBucketRepoMock) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.StorageBucket, error) {
+	if mock.GetByUUIDFunc == nil {
+		panic("StorageBucketRepoMock.GetByUUIDFunc: method is nil but StorageBucketRepo.GetByUUID was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		ID  int
+		ID  uuid.UUID
 	}{
 		Ctx: ctx,
 		ID:  id,
 	}
-	mock.lockGetByID.Lock()
-	mock.calls.GetByID = append(mock.calls.GetByID, callInfo)
-	mock.lockGetByID.Unlock()
-	return mock.GetByIDFunc(ctx, id)
+	mock.lockGetByUUID.Lock()
+	mock.calls.GetByUUID = append(mock.calls.GetByUUID, callInfo)
+	mock.lockGetByUUID.Unlock()
+	return mock.GetByUUIDFunc(ctx, id)
 }
 
-// GetByIDCalls gets all the calls that were made to GetByID.
+// GetByUUIDCalls gets all the calls that were made to GetByUUID.
 // Check the length with:
 //
-//	len(mockedStorageBucketRepo.GetByIDCalls())
-func (mock *StorageBucketRepoMock) GetByIDCalls() []struct {
+//	len(mockedStorageBucketRepo.GetByUUIDCalls())
+func (mock *StorageBucketRepoMock) GetByUUIDCalls() []struct {
 	Ctx context.Context
-	ID  int
+	ID  uuid.UUID
 } {
 	var calls []struct {
 		Ctx context.Context
-		ID  int
+		ID  uuid.UUID
 	}
-	mock.lockGetByID.RLock()
-	calls = mock.calls.GetByID
-	mock.lockGetByID.RUnlock()
+	mock.lockGetByUUID.RLock()
+	calls = mock.calls.GetByUUID
+	mock.lockGetByUUID.RUnlock()
 	return calls
 }
 
-// UpdateByID calls UpdateByIDFunc.
-func (mock *StorageBucketRepoMock) UpdateByID(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error) {
-	if mock.UpdateByIDFunc == nil {
-		panic("StorageBucketRepoMock.UpdateByIDFunc: method is nil but StorageBucketRepo.UpdateByID was just called")
+// UpdateByUUID calls UpdateByUUIDFunc.
+func (mock *StorageBucketRepoMock) UpdateByUUID(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error) {
+	if mock.UpdateByUUIDFunc == nil {
+		panic("StorageBucketRepoMock.UpdateByUUIDFunc: method is nil but StorageBucketRepo.UpdateByUUID was just called")
 	}
 	callInfo := struct {
 		Ctx           context.Context
@@ -359,17 +360,17 @@ func (mock *StorageBucketRepoMock) UpdateByID(ctx context.Context, storageBucket
 		Ctx:           ctx,
 		StorageBucket: storageBucket,
 	}
-	mock.lockUpdateByID.Lock()
-	mock.calls.UpdateByID = append(mock.calls.UpdateByID, callInfo)
-	mock.lockUpdateByID.Unlock()
-	return mock.UpdateByIDFunc(ctx, storageBucket)
+	mock.lockUpdateByUUID.Lock()
+	mock.calls.UpdateByUUID = append(mock.calls.UpdateByUUID, callInfo)
+	mock.lockUpdateByUUID.Unlock()
+	return mock.UpdateByUUIDFunc(ctx, storageBucket)
 }
 
-// UpdateByIDCalls gets all the calls that were made to UpdateByID.
+// UpdateByUUIDCalls gets all the calls that were made to UpdateByUUID.
 // Check the length with:
 //
-//	len(mockedStorageBucketRepo.UpdateByIDCalls())
-func (mock *StorageBucketRepoMock) UpdateByIDCalls() []struct {
+//	len(mockedStorageBucketRepo.UpdateByUUIDCalls())
+func (mock *StorageBucketRepoMock) UpdateByUUIDCalls() []struct {
 	Ctx           context.Context
 	StorageBucket inventory.StorageBucket
 } {
@@ -377,8 +378,8 @@ func (mock *StorageBucketRepoMock) UpdateByIDCalls() []struct {
 		Ctx           context.Context
 		StorageBucket inventory.StorageBucket
 	}
-	mock.lockUpdateByID.RLock()
-	calls = mock.calls.UpdateByID
-	mock.lockUpdateByID.RUnlock()
+	mock.lockUpdateByUUID.RLock()
+	calls = mock.calls.UpdateByUUID
+	mock.lockUpdateByUUID.RUnlock()
 	return calls
 }

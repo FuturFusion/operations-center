@@ -5,25 +5,27 @@ package inventory
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type NetworkZoneService interface {
 	GetAllWithFilter(ctx context.Context, filter NetworkZoneFilter) (NetworkZones, error)
-	GetAllIDsWithFilter(ctx context.Context, filter NetworkZoneFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (NetworkZone, error)
-	ResyncByID(ctx context.Context, id int) error
+	GetAllUUIDsWithFilter(ctx context.Context, filter NetworkZoneFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkZone, error)
+	ResyncByUUID(ctx context.Context, id uuid.UUID) error
 	SyncCluster(ctx context.Context, cluster string) error
 }
 
 type NetworkZoneRepo interface {
 	GetAllWithFilter(ctx context.Context, filter NetworkZoneFilter) (NetworkZones, error)
-	GetAllIDsWithFilter(ctx context.Context, filter NetworkZoneFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (NetworkZone, error)
+	GetAllUUIDsWithFilter(ctx context.Context, filter NetworkZoneFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkZone, error)
 	Create(ctx context.Context, networkZone NetworkZone) (NetworkZone, error)
-	DeleteByID(ctx context.Context, id int) error
+	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	DeleteByClusterName(ctx context.Context, cluster string) error
-	UpdateByID(ctx context.Context, networkZone NetworkZone) (NetworkZone, error)
+	UpdateByUUID(ctx context.Context, networkZone NetworkZone) (NetworkZone, error)
 }
 
 type NetworkZoneServerClient interface {

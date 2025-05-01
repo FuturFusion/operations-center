@@ -5,25 +5,27 @@ package inventory
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type NetworkForwardService interface {
 	GetAllWithFilter(ctx context.Context, filter NetworkForwardFilter) (NetworkForwards, error)
-	GetAllIDsWithFilter(ctx context.Context, filter NetworkForwardFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (NetworkForward, error)
-	ResyncByID(ctx context.Context, id int) error
+	GetAllUUIDsWithFilter(ctx context.Context, filter NetworkForwardFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkForward, error)
+	ResyncByUUID(ctx context.Context, id uuid.UUID) error
 	SyncCluster(ctx context.Context, cluster string) error
 }
 
 type NetworkForwardRepo interface {
 	GetAllWithFilter(ctx context.Context, filter NetworkForwardFilter) (NetworkForwards, error)
-	GetAllIDsWithFilter(ctx context.Context, filter NetworkForwardFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (NetworkForward, error)
+	GetAllUUIDsWithFilter(ctx context.Context, filter NetworkForwardFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkForward, error)
 	Create(ctx context.Context, networkForward NetworkForward) (NetworkForward, error)
-	DeleteByID(ctx context.Context, id int) error
+	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	DeleteByClusterName(ctx context.Context, cluster string) error
-	UpdateByID(ctx context.Context, networkForward NetworkForward) (NetworkForward, error)
+	UpdateByUUID(ctx context.Context, networkForward NetworkForward) (NetworkForward, error)
 }
 
 type NetworkForwardServerClient interface {

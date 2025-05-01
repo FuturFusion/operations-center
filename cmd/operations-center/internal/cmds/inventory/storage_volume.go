@@ -65,7 +65,7 @@ type cmdStorageVolumeList struct {
 	flagFormat  string
 }
 
-const storageVolumeDefaultColumns = `{{ .ID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
+const storageVolumeDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
 
 func (c *cmdStorageVolumeList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -167,7 +167,7 @@ type cmdStorageVolumeShow struct {
 
 func (c *cmdStorageVolumeShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <name>"
+	cmd.Use = "show <uuid>"
 	cmd.Short = "Show information about a storage_volume"
 	cmd.Long = `Description:
   Show information about a storage_volume.
@@ -185,9 +185,9 @@ func (c *cmdStorageVolumeShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	name := args[0]
+	id := args[0]
 
-	storageVolume, err := c.ocClient.GetStorageVolume(name)
+	storageVolume, err := c.ocClient.GetStorageVolume(id)
 	if err != nil {
 		return err
 	}
@@ -197,7 +197,7 @@ func (c *cmdStorageVolumeShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("ID: %d\n", storageVolume.ID)
+	fmt.Printf("UUID: %s\n", storageVolume.UUID.String())
 	fmt.Printf("Cluster: %s\n", storageVolume.Cluster)
 	fmt.Printf("Server: %s\n", storageVolume.Server)
 	fmt.Printf("Project Name: %s\n", storageVolume.ProjectName)

@@ -257,6 +257,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				},
 				LastUpdated: faker.Date(),
 			}
+
 			project.DeriveUUID()
 			_, err = projectRepo.Create(ctx, project)
 			if err != nil {
@@ -288,6 +289,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				},
 				LastUpdated: faker.Date(),
 			}
+
 			network.DeriveUUID()
 			_, err = networkRepo.Create(ctx, network)
 			if err != nil {
@@ -315,6 +317,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				},
 				LastUpdated: faker.Date(),
 			}
+
 			storagePool.DeriveUUID()
 			_, err = storagePoolRepo.Create(ctx, storagePool)
 			if err != nil {
@@ -363,6 +366,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				},
 				LastUpdated: faker.Date(),
 			}
+
 			image.DeriveUUID()
 			_, err = imageRepo.Create(ctx, image)
 			if err != nil {
@@ -387,6 +391,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				},
 				LastUpdated: faker.Date(),
 			}
+
 			profile.DeriveUUID()
 			_, err = profileRepo.Create(ctx, profile)
 			if err != nil {
@@ -468,6 +473,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				},
 				LastUpdated: faker.Date(),
 			}
+
 			instance.DeriveUUID()
 			_, err = instanceRepo.Create(ctx, instance)
 			if err != nil {
@@ -523,6 +529,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				},
 				LastUpdated: faker.Date(),
 			}
+
 			networkACL.DeriveUUID()
 			_, err = networkACLRepo.Create(ctx, networkACL)
 			if err != nil {
@@ -556,6 +563,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				},
 				LastUpdated: faker.Date(),
 			}
+
 			networkForward.DeriveUUID()
 			_, err = networkForwardRepo.Create(ctx, networkForward)
 			if err != nil {
@@ -579,6 +587,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				},
 				LastUpdated: faker.Date(),
 			}
+
 			networkIntegration.DeriveUUID()
 			_, err = networkIntegrationRepo.Create(ctx, networkIntegration)
 			if err != nil {
@@ -617,6 +626,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				},
 				LastUpdated: faker.Date(),
 			}
+
 			networkLoadBalancer.DeriveUUID()
 			_, err = networkLoadBalancerRepo.Create(ctx, networkLoadBalancer)
 			if err != nil {
@@ -645,6 +655,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				},
 				LastUpdated: faker.Date(),
 			}
+
 			networkPeer.DeriveUUID()
 			_, err = networkPeerRepo.Create(ctx, networkPeer)
 			if err != nil {
@@ -670,6 +681,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				},
 				LastUpdated: faker.Date(),
 			}
+
 			networkZone.DeriveUUID()
 			_, err = networkZoneRepo.Create(ctx, networkZone)
 			if err != nil {
@@ -699,6 +711,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				},
 				LastUpdated: faker.Date(),
 			}
+
 			storageBucket.DeriveUUID()
 			_, err = storageBucketRepo.Create(ctx, storageBucket)
 			if err != nil {
@@ -732,6 +745,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				},
 				LastUpdated: faker.Date(),
 			}
+
 			storageVolume.DeriveUUID()
 			_, err = storageVolumeRepo.Create(ctx, storageVolume)
 			if err != nil {

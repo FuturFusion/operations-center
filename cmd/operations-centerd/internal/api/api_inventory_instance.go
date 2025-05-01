@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -24,8 +26,8 @@ func registerInventoryInstanceHandler(router Router, authorizer authz.Authorizer
 	}
 
 	router.HandleFunc("GET /{$}", response.With(handler.instancesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("GET /{id}", response.With(handler.instanceGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.instanceResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{uuid}", response.With(handler.instanceGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{uuid}/resync", response.With(handler.instanceResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/instances instances instances_get
@@ -185,7 +187,7 @@ func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
 		result := make([]api.Instance, 0, len(instances))
 		for _, instance := range instances {
 			result = append(result, api.Instance{
-				ID:          instance.ID,
+				UUID:        instance.UUID,
 				Cluster:     instance.Cluster,
 				Server:      instance.Server,
 				ProjectName: instance.ProjectName,
@@ -198,20 +200,20 @@ func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	instanceIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
+	instanceUUIDs, err := i.service.GetAllUUIDsWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(instanceIDs))
-	for _, id := range instanceIDs {
+	result := make([]string, 0, len(instanceUUIDs))
+	for _, id := range instanceUUIDs {
 		result = append(result, fmt.Sprintf("/%s/inventory/instance/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/inventory/instances/{id} instances instance_get
+// swagger:operation GET /1.0/inventory/instances/{uuid} instances instance_get
 //
 //	Get the instance
 //
@@ -246,12 +248,12 @@ func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *instanceHandler) instanceGet(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	instance, err := i.service.GetByID(r.Context(), id)
+	instance, err := i.service.GetByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -259,7 +261,7 @@ func (i *instanceHandler) instanceGet(r *http.Request) response.Response {
 	return response.SyncResponse(
 		true,
 		api.Instance{
-			ID:          instance.ID,
+			UUID:        instance.UUID,
 			Cluster:     instance.Cluster,
 			Server:      instance.Server,
 			ProjectName: instance.ProjectName,
@@ -270,7 +272,7 @@ func (i *instanceHandler) instanceGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation POST /1.0/inventory/instances/{id}/resync instances instance_get_resync_post
+// swagger:operation POST /1.0/inventory/instances/{uuid}/resync instances instance_get_resync_post
 //
 //	Resync the instance
 //
@@ -303,12 +305,12 @@ func (i *instanceHandler) instanceGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *instanceHandler) instanceResyncPost(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	err = i.service.ResyncByID(r.Context(), id)
+	err = i.service.ResyncByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync instance: %w", err))
 	}

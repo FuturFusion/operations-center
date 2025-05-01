@@ -64,7 +64,7 @@ type cmdImageList struct {
 	flagFormat  string
 }
 
-const imageDefaultColumns = `{{ .ID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const imageDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
 
 func (c *cmdImageList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -161,7 +161,7 @@ type cmdImageShow struct {
 
 func (c *cmdImageShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <name>"
+	cmd.Use = "show <uuid>"
 	cmd.Short = "Show information about a image"
 	cmd.Long = `Description:
   Show information about a image.
@@ -179,9 +179,9 @@ func (c *cmdImageShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	name := args[0]
+	id := args[0]
 
-	image, err := c.ocClient.GetImage(name)
+	image, err := c.ocClient.GetImage(id)
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func (c *cmdImageShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("ID: %d\n", image.ID)
+	fmt.Printf("UUID: %s\n", image.UUID.String())
 	fmt.Printf("Cluster: %s\n", image.Cluster)
 	fmt.Printf("Project Name: %s\n", image.ProjectName)
 	fmt.Printf("Name: %s\n", image.Name)

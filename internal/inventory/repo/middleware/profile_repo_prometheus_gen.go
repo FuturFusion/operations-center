@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -65,8 +66,8 @@ func (_d ProfileRepoWithPrometheus) DeleteByClusterName(ctx context.Context, clu
 	return _d.base.DeleteByClusterName(ctx, cluster)
 }
 
-// DeleteByID implements inventory.ProfileRepo.
-func (_d ProfileRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByUUID implements inventory.ProfileRepo.
+func (_d ProfileRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d ProfileRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err
 			result = "error"
 		}
 
-		profileRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
+		profileRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByID(ctx, id)
+	return _d.base.DeleteByUUID(ctx, id)
 }
 
-// GetAllIDsWithFilter implements inventory.ProfileRepo.
-func (_d ProfileRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.ProfileFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.ProfileRepo.
+func (_d ProfileRepoWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ProfileFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d ProfileRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, fil
 			result = "error"
 		}
 
-		profileRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		profileRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.ProfileRepo.
@@ -107,8 +108,8 @@ func (_d ProfileRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filter
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.ProfileRepo.
-func (_d ProfileRepoWithPrometheus) GetByID(ctx context.Context, id int) (profile inventory.Profile, err error) {
+// GetByUUID implements inventory.ProfileRepo.
+func (_d ProfileRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (profile inventory.Profile, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -116,13 +117,13 @@ func (_d ProfileRepoWithPrometheus) GetByID(ctx context.Context, id int) (profil
 			result = "error"
 		}
 
-		profileRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		profileRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements inventory.ProfileRepo.
-func (_d ProfileRepoWithPrometheus) UpdateByID(ctx context.Context, profile inventory.Profile) (profile1 inventory.Profile, err error) {
+// UpdateByUUID implements inventory.ProfileRepo.
+func (_d ProfileRepoWithPrometheus) UpdateByUUID(ctx context.Context, profile inventory.Profile) (profile1 inventory.Profile, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -130,7 +131,7 @@ func (_d ProfileRepoWithPrometheus) UpdateByID(ctx context.Context, profile inve
 			result = "error"
 		}
 
-		profileRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByID", result).Observe(time.Since(_since).Seconds())
+		profileRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByID(ctx, profile)
+	return _d.base.UpdateByUUID(ctx, profile)
 }

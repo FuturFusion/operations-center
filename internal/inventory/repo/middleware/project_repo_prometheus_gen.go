@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -65,8 +66,8 @@ func (_d ProjectRepoWithPrometheus) DeleteByClusterName(ctx context.Context, clu
 	return _d.base.DeleteByClusterName(ctx, cluster)
 }
 
-// DeleteByID implements inventory.ProjectRepo.
-func (_d ProjectRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByUUID implements inventory.ProjectRepo.
+func (_d ProjectRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d ProjectRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err
 			result = "error"
 		}
 
-		projectRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
+		projectRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByID(ctx, id)
+	return _d.base.DeleteByUUID(ctx, id)
 }
 
-// GetAllIDsWithFilter implements inventory.ProjectRepo.
-func (_d ProjectRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.ProjectFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.ProjectRepo.
+func (_d ProjectRepoWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ProjectFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d ProjectRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, fil
 			result = "error"
 		}
 
-		projectRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		projectRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.ProjectRepo.
@@ -107,8 +108,8 @@ func (_d ProjectRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filter
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.ProjectRepo.
-func (_d ProjectRepoWithPrometheus) GetByID(ctx context.Context, id int) (project inventory.Project, err error) {
+// GetByUUID implements inventory.ProjectRepo.
+func (_d ProjectRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (project inventory.Project, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -116,13 +117,13 @@ func (_d ProjectRepoWithPrometheus) GetByID(ctx context.Context, id int) (projec
 			result = "error"
 		}
 
-		projectRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		projectRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements inventory.ProjectRepo.
-func (_d ProjectRepoWithPrometheus) UpdateByID(ctx context.Context, project inventory.Project) (project1 inventory.Project, err error) {
+// UpdateByUUID implements inventory.ProjectRepo.
+func (_d ProjectRepoWithPrometheus) UpdateByUUID(ctx context.Context, project inventory.Project) (project1 inventory.Project, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -130,7 +131,7 @@ func (_d ProjectRepoWithPrometheus) UpdateByID(ctx context.Context, project inve
 			result = "error"
 		}
 
-		projectRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByID", result).Observe(time.Since(_since).Seconds())
+		projectRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByID(ctx, project)
+	return _d.base.UpdateByUUID(ctx, project)
 }

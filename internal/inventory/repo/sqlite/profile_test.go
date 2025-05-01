@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -65,6 +66,8 @@ func TestProfileDatabaseActions(t *testing.T) {
 		LastUpdated: time.Now(),
 	}
 
+	profileA.DeriveUUID()
+
 	profileB := inventory.Profile{
 		Cluster:     "two",
 		ProjectName: "two",
@@ -72,6 +75,8 @@ func TestProfileDatabaseActions(t *testing.T) {
 		Object:      incusapi.Profile{},
 		LastUpdated: time.Now(),
 	}
+
+	profileB.DeriveUUID()
 
 	ctx := context.Background()
 
@@ -128,10 +133,10 @@ func TestProfileDatabaseActions(t *testing.T) {
 	require.Equal(t, "two", profileB.Cluster)
 
 	// Ensure we have two entries without filter
-	profileIDs, err := profile.GetAllIDsWithFilter(ctx, inventory.ProfileFilter{})
+	profileUUIDs, err := profile.GetAllUUIDsWithFilter(ctx, inventory.ProfileFilter{})
 	require.NoError(t, err)
-	require.Len(t, profileIDs, 2)
-	require.ElementsMatch(t, []int{1, 2}, profileIDs)
+	require.Len(t, profileUUIDs, 2)
+	require.ElementsMatch(t, []uuid.UUID{profileA.UUID, profileB.UUID}, profileUUIDs)
 
 	// Ensure we have two entries without filter
 	dbProfile, err := profile.GetAllWithFilter(ctx, inventory.ProfileFilter{})
@@ -141,13 +146,13 @@ func TestProfileDatabaseActions(t *testing.T) {
 	require.Equal(t, profileB.Name, dbProfile[1].Name)
 
 	// Ensure we have one entry with filter for cluster, server and project
-	profileIDs, err = profile.GetAllIDsWithFilter(ctx, inventory.ProfileFilter{
+	profileUUIDs, err = profile.GetAllUUIDsWithFilter(ctx, inventory.ProfileFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, profileIDs, 1)
-	require.ElementsMatch(t, []int{1}, profileIDs)
+	require.Len(t, profileUUIDs, 1)
+	require.ElementsMatch(t, []uuid.UUID{profileA.UUID}, profileUUIDs)
 
 	// Ensure we have one entry with filter for cluster, server and project
 	dbProfile, err = profile.GetAllWithFilter(ctx, inventory.ProfileFilter{
@@ -155,33 +160,33 @@ func TestProfileDatabaseActions(t *testing.T) {
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, profileIDs, 1)
+	require.Len(t, dbProfile, 1)
 	require.Equal(t, "one", dbProfile[0].Name)
 
 	// Should get back profileA unchanged.
 	profileA.Cluster = "one"
-	dbProfileA, err := profile.GetByID(ctx, profileA.ID)
+	dbProfileA, err := profile.GetByUUID(ctx, profileA.UUID)
 	require.NoError(t, err)
 	require.Equal(t, profileA, dbProfileA)
 
 	profileB.LastUpdated = time.Now().UTC().Truncate(0)
-	dbProfileB, err := profile.UpdateByID(ctx, profileB)
+	dbProfileB, err := profile.UpdateByUUID(ctx, profileB)
 	require.NoError(t, err)
 	require.Equal(t, profileB, dbProfileB)
 
 	// Delete profiles by ID.
-	err = profile.DeleteByID(ctx, 1)
+	err = profile.DeleteByUUID(ctx, profileA.UUID)
 	require.NoError(t, err)
 
 	// Delete profiles by cluster Name.
 	err = profile.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
-	_, err = profile.GetByID(ctx, profileA.ID)
+	_, err = profile.GetByUUID(ctx, profileA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no profiles remaining.
-	profileIDs, err = profile.GetAllIDsWithFilter(ctx, inventory.ProfileFilter{})
+	profileUUIDs, err = profile.GetAllUUIDsWithFilter(ctx, inventory.ProfileFilter{})
 	require.NoError(t, err)
-	require.Zero(t, profileIDs)
+	require.Zero(t, profileUUIDs)
 }

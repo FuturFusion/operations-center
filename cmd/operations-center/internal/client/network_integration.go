@@ -31,8 +31,8 @@ func (c OperationsCenterClient) GetWithFilterNetworkIntegrations(filter inventor
 	return network_integrations, nil
 }
 
-func (c OperationsCenterClient) GetNetworkIntegration(name string) (api.NetworkIntegration, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_integrations", name), nil, nil)
+func (c OperationsCenterClient) GetNetworkIntegration(id string) (api.NetworkIntegration, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_integrations", id), nil, nil)
 	if err != nil {
 		return api.NetworkIntegration{}, err
 	}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -95,12 +96,12 @@ func (s networkZoneService) GetAllWithFilter(ctx context.Context, filter Network
 	return networkZones, nil
 }
 
-func (s networkZoneService) GetAllIDsWithFilter(ctx context.Context, filter NetworkZoneFilter) ([]int, error) {
+func (s networkZoneService) GetAllUUIDsWithFilter(ctx context.Context, filter NetworkZoneFilter) ([]uuid.UUID, error) {
 	var filterExpression *vm.Program
 	var err error
 
 	type Env struct {
-		ID int
+		UUID string
 	}
 
 	if filter.Expression != nil {
@@ -110,15 +111,15 @@ func (s networkZoneService) GetAllIDsWithFilter(ctx context.Context, filter Netw
 		}
 	}
 
-	networkZonesIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	networkZonesUUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var filteredNetworkZonesIDs []int
+	var filteredNetworkZonesUUIDs []uuid.UUID
 	if filter.Expression != nil {
-		for _, networkZoneID := range networkZonesIDs {
-			output, err := expr.Run(filterExpression, Env{networkZoneID})
+		for _, networkZoneUUID := range networkZonesUUIDs {
+			output, err := expr.Run(filterExpression, Env{networkZoneUUID.String()})
 			if err != nil {
 				return nil, err
 			}
@@ -129,23 +130,23 @@ func (s networkZoneService) GetAllIDsWithFilter(ctx context.Context, filter Netw
 			}
 
 			if result {
-				filteredNetworkZonesIDs = append(filteredNetworkZonesIDs, networkZoneID)
+				filteredNetworkZonesUUIDs = append(filteredNetworkZonesUUIDs, networkZoneUUID)
 			}
 		}
 
-		return filteredNetworkZonesIDs, nil
+		return filteredNetworkZonesUUIDs, nil
 	}
 
-	return networkZonesIDs, nil
+	return networkZonesUUIDs, nil
 }
 
-func (s networkZoneService) GetByID(ctx context.Context, id int) (NetworkZone, error) {
-	return s.repo.GetByID(ctx, id)
+func (s networkZoneService) GetByUUID(ctx context.Context, id uuid.UUID) (NetworkZone, error) {
+	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s networkZoneService) ResyncByID(ctx context.Context, id int) error {
+func (s networkZoneService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		networkZone, err := s.repo.GetByID(ctx, id)
+		networkZone, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -157,7 +158,7 @@ func (s networkZoneService) ResyncByID(ctx context.Context, id int) error {
 
 		retrievedNetworkZone, err := s.networkZoneClient.GetNetworkZoneByName(ctx, cluster.ConnectionURL, networkZone.Name)
 		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByID(ctx, networkZone.ID)
+			err = s.repo.DeleteByUUID(ctx, networkZone.UUID)
 			if err != nil {
 				return err
 			}
@@ -172,13 +173,14 @@ func (s networkZoneService) ResyncByID(ctx context.Context, id int) error {
 		networkZone.ProjectName = retrievedNetworkZone.Project
 		networkZone.Object = retrievedNetworkZone
 		networkZone.LastUpdated = s.now()
+		networkZone.DeriveUUID()
 
 		err = networkZone.Validate()
 		if err != nil {
 			return err
 		}
 
-		_, err = s.repo.UpdateByID(ctx, networkZone)
+		_, err = s.repo.UpdateByUUID(ctx, networkZone)
 		if err != nil {
 			return err
 		}
@@ -217,6 +219,8 @@ func (s networkZoneService) SyncCluster(ctx context.Context, name string) error 
 				Object:      retrievedNetworkZone,
 				LastUpdated: s.now(),
 			}
+
+			networkZone.DeriveUUID()
 
 			if s.clusterSyncFilterFunc(networkZone) {
 				continue

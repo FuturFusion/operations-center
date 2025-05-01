@@ -31,8 +31,8 @@ func (c OperationsCenterClient) GetWithFilterStorageVolumes(filter inventory.Sto
 	return storage_volumes, nil
 }
 
-func (c OperationsCenterClient) GetStorageVolume(name string) (api.StorageVolume, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/storage_volumes", name), nil, nil)
+func (c OperationsCenterClient) GetStorageVolume(id string) (api.StorageVolume, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/storage_volumes", id), nil, nil)
 	if err != nil {
 		return api.StorageVolume{}, err
 	}

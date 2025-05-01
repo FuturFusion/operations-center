@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
@@ -31,9 +33,9 @@ func (r networkLoadBalancer) Create(ctx context.Context, in inventory.NetworkLoa
 WITH _lookup AS (
   SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
-INSERT INTO network_load_balancers (cluster_id, network_name, name, object, last_updated)
-VALUES ( (SELECT cluster_id FROM _lookup), :network_name, :name, :object, :last_updated)
-RETURNING id, :cluster_name, network_name, name, object, last_updated;
+INSERT INTO network_load_balancers (uuid, cluster_id, network_name, name, object, last_updated)
+VALUES (:uuid, (SELECT cluster_id FROM _lookup), :network_name, :name, :object, :last_updated)
+RETURNING id, :uuid, :cluster_name, network_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -42,6 +44,7 @@ RETURNING id, :cluster_name, network_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
+		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
 		sql.Named("network_name", in.NetworkName),
 		sql.Named("name", in.Name),
@@ -58,7 +61,7 @@ RETURNING id, :cluster_name, network_name, name, object, last_updated;
 func (r networkLoadBalancer) GetAllWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (inventory.NetworkLoadBalancers, error) {
 	const sqlStmt = `
 SELECT
-  network_load_balancers.id, clusters.name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
+  network_load_balancers.id, network_load_balancers.uuid, clusters.name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
 FROM network_load_balancers
   INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
 WHERE true
@@ -101,9 +104,9 @@ ORDER BY clusters.name, network_load_balancers.name
 	return networkLoadBalancers, nil
 }
 
-func (r networkLoadBalancer) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) ([]int, error) {
+func (r networkLoadBalancer) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) ([]uuid.UUID, error) {
 	const sqlStmt = `
-SELECT network_load_balancers.id
+SELECT network_load_balancers.uuid
 FROM network_load_balancers
   INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
 WHERE true
@@ -128,9 +131,9 @@ ORDER BY network_load_balancers.id
 
 	defer func() { _ = rows.Close() }()
 
-	var ids []int
+	var ids []uuid.UUID
 	for rows.Next() {
-		var id int
+		var id uuid.UUID
 		err := rows.Scan(&id)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
@@ -146,17 +149,17 @@ ORDER BY network_load_balancers.id
 	return ids, nil
 }
 
-func (r networkLoadBalancer) GetByID(ctx context.Context, id int) (inventory.NetworkLoadBalancer, error) {
+func (r networkLoadBalancer) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.NetworkLoadBalancer, error) {
 	const sqlStmt = `
 SELECT
-  network_load_balancers.id, clusters.name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
+  network_load_balancers.id, network_load_balancers.uuid, clusters.name, network_load_balancers.network_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
 FROM
   network_load_balancers
   INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
-WHERE network_load_balancers.id=:id;
+WHERE network_load_balancers.uuid=:uuid;
 `
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
+	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if row.Err() != nil {
 		return inventory.NetworkLoadBalancer{}, sqlite.MapErr(row.Err())
 	}
@@ -164,10 +167,10 @@ WHERE network_load_balancers.id=:id;
 	return scanNetworkLoadBalancer(row)
 }
 
-func (r networkLoadBalancer) DeleteByID(ctx context.Context, id int) error {
-	const sqlStmt = `DELETE FROM network_load_balancers WHERE id=:id;`
+func (r networkLoadBalancer) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	const sqlStmt = `DELETE FROM network_load_balancers WHERE uuid=:uuid;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -208,14 +211,14 @@ DELETE FROM network_load_balancers WHERE cluster_id=(SELECT cluster_id FROM _loo
 	return nil
 }
 
-func (r networkLoadBalancer) UpdateByID(ctx context.Context, in inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
+func (r networkLoadBalancer) UpdateByUUID(ctx context.Context, in inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
 	const sqlStmt = `
 WITH _lookup AS (
   SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
-UPDATE network_load_balancers SET cluster_id=(SELECT cluster_id FROM _lookup), network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
-WHERE id=:id
-RETURNING id, :cluster_name, network_name, name, object, last_updated;
+UPDATE network_load_balancers SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
+WHERE uuid=:uuid
+RETURNING id, :uuid, :cluster_name, network_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -224,7 +227,7 @@ RETURNING id, :cluster_name, network_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("id", in.ID),
+		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
 		sql.Named("network_name", in.NetworkName),
 		sql.Named("name", in.Name),
@@ -244,6 +247,7 @@ func scanNetworkLoadBalancer(row interface{ Scan(dest ...any) error }) (inventor
 
 	err := row.Scan(
 		&networkLoadBalancer.ID,
+		&networkLoadBalancer.UUID,
 		&networkLoadBalancer.Cluster,
 		&networkLoadBalancer.NetworkName,
 		&networkLoadBalancer.Name,

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -65,8 +66,8 @@ func (_d NetworkZoneRepoWithPrometheus) DeleteByClusterName(ctx context.Context,
 	return _d.base.DeleteByClusterName(ctx, cluster)
 }
 
-// DeleteByID implements inventory.NetworkZoneRepo.
-func (_d NetworkZoneRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByUUID implements inventory.NetworkZoneRepo.
+func (_d NetworkZoneRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d NetworkZoneRepoWithPrometheus) DeleteByID(ctx context.Context, id int) 
 			result = "error"
 		}
 
-		networkZoneRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
+		networkZoneRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByID(ctx, id)
+	return _d.base.DeleteByUUID(ctx, id)
 }
 
-// GetAllIDsWithFilter implements inventory.NetworkZoneRepo.
-func (_d NetworkZoneRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.NetworkZoneRepo.
+func (_d NetworkZoneRepoWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d NetworkZoneRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context,
 			result = "error"
 		}
 
-		networkZoneRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		networkZoneRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.NetworkZoneRepo.
@@ -107,8 +108,8 @@ func (_d NetworkZoneRepoWithPrometheus) GetAllWithFilter(ctx context.Context, fi
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.NetworkZoneRepo.
-func (_d NetworkZoneRepoWithPrometheus) GetByID(ctx context.Context, id int) (networkZone inventory.NetworkZone, err error) {
+// GetByUUID implements inventory.NetworkZoneRepo.
+func (_d NetworkZoneRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (networkZone inventory.NetworkZone, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -116,13 +117,13 @@ func (_d NetworkZoneRepoWithPrometheus) GetByID(ctx context.Context, id int) (ne
 			result = "error"
 		}
 
-		networkZoneRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		networkZoneRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements inventory.NetworkZoneRepo.
-func (_d NetworkZoneRepoWithPrometheus) UpdateByID(ctx context.Context, networkZone inventory.NetworkZone) (networkZone1 inventory.NetworkZone, err error) {
+// UpdateByUUID implements inventory.NetworkZoneRepo.
+func (_d NetworkZoneRepoWithPrometheus) UpdateByUUID(ctx context.Context, networkZone inventory.NetworkZone) (networkZone1 inventory.NetworkZone, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -130,7 +131,7 @@ func (_d NetworkZoneRepoWithPrometheus) UpdateByID(ctx context.Context, networkZ
 			result = "error"
 		}
 
-		networkZoneRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByID", result).Observe(time.Since(_since).Seconds())
+		networkZoneRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByID(ctx, networkZone)
+	return _d.base.UpdateByUUID(ctx, networkZone)
 }

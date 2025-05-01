@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
@@ -31,9 +33,9 @@ func (r storagePool) Create(ctx context.Context, in inventory.StoragePool) (inve
 WITH _lookup AS (
   SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
-INSERT INTO storage_pools (cluster_id, name, object, last_updated)
-VALUES ( (SELECT cluster_id FROM _lookup), :name, :object, :last_updated)
-RETURNING id, :cluster_name, name, object, last_updated;
+INSERT INTO storage_pools (uuid, cluster_id, name, object, last_updated)
+VALUES (:uuid, (SELECT cluster_id FROM _lookup), :name, :object, :last_updated)
+RETURNING id, :uuid, :cluster_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -42,6 +44,7 @@ RETURNING id, :cluster_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
+		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -57,7 +60,7 @@ RETURNING id, :cluster_name, name, object, last_updated;
 func (r storagePool) GetAllWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) (inventory.StoragePools, error) {
 	const sqlStmt = `
 SELECT
-  storage_pools.id, clusters.name, storage_pools.name, storage_pools.object, storage_pools.last_updated
+  storage_pools.id, storage_pools.uuid, clusters.name, storage_pools.name, storage_pools.object, storage_pools.last_updated
 FROM storage_pools
   INNER JOIN clusters ON storage_pools.cluster_id = clusters.id
 WHERE true
@@ -100,9 +103,9 @@ ORDER BY clusters.name, storage_pools.name
 	return storagePools, nil
 }
 
-func (r storagePool) GetAllIDsWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) ([]int, error) {
+func (r storagePool) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) ([]uuid.UUID, error) {
 	const sqlStmt = `
-SELECT storage_pools.id
+SELECT storage_pools.uuid
 FROM storage_pools
   INNER JOIN clusters ON storage_pools.cluster_id = clusters.id
 WHERE true
@@ -127,9 +130,9 @@ ORDER BY storage_pools.id
 
 	defer func() { _ = rows.Close() }()
 
-	var ids []int
+	var ids []uuid.UUID
 	for rows.Next() {
-		var id int
+		var id uuid.UUID
 		err := rows.Scan(&id)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
@@ -145,17 +148,17 @@ ORDER BY storage_pools.id
 	return ids, nil
 }
 
-func (r storagePool) GetByID(ctx context.Context, id int) (inventory.StoragePool, error) {
+func (r storagePool) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.StoragePool, error) {
 	const sqlStmt = `
 SELECT
-  storage_pools.id, clusters.name, storage_pools.name, storage_pools.object, storage_pools.last_updated
+  storage_pools.id, storage_pools.uuid, clusters.name, storage_pools.name, storage_pools.object, storage_pools.last_updated
 FROM
   storage_pools
   INNER JOIN clusters ON storage_pools.cluster_id = clusters.id
-WHERE storage_pools.id=:id;
+WHERE storage_pools.uuid=:uuid;
 `
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
+	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if row.Err() != nil {
 		return inventory.StoragePool{}, sqlite.MapErr(row.Err())
 	}
@@ -163,10 +166,10 @@ WHERE storage_pools.id=:id;
 	return scanStoragePool(row)
 }
 
-func (r storagePool) DeleteByID(ctx context.Context, id int) error {
-	const sqlStmt = `DELETE FROM storage_pools WHERE id=:id;`
+func (r storagePool) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	const sqlStmt = `DELETE FROM storage_pools WHERE uuid=:uuid;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -207,14 +210,14 @@ DELETE FROM storage_pools WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
 	return nil
 }
 
-func (r storagePool) UpdateByID(ctx context.Context, in inventory.StoragePool) (inventory.StoragePool, error) {
+func (r storagePool) UpdateByUUID(ctx context.Context, in inventory.StoragePool) (inventory.StoragePool, error) {
 	const sqlStmt = `
 WITH _lookup AS (
   SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
-UPDATE storage_pools SET cluster_id=(SELECT cluster_id FROM _lookup), name=:name, object=:object, last_updated=:last_updated
-WHERE id=:id
-RETURNING id, :cluster_name, name, object, last_updated;
+UPDATE storage_pools SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), name=:name, object=:object, last_updated=:last_updated
+WHERE uuid=:uuid
+RETURNING id, :uuid, :cluster_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -223,7 +226,7 @@ RETURNING id, :cluster_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("id", in.ID),
+		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -242,6 +245,7 @@ func scanStoragePool(row interface{ Scan(dest ...any) error }) (inventory.Storag
 
 	err := row.Scan(
 		&storagePool.ID,
+		&storagePool.UUID,
 		&storagePool.Cluster,
 		&storagePool.Name,
 		&object,

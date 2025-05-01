@@ -31,8 +31,8 @@ func (c OperationsCenterClient) GetWithFilterProfiles(filter inventory.ProfileFi
 	return profiles, nil
 }
 
-func (c OperationsCenterClient) GetProfile(name string) (api.Profile, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/profiles", name), nil, nil)
+func (c OperationsCenterClient) GetProfile(id string) (api.Profile, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/profiles", id), nil, nil)
 	if err != nil {
 		return api.Profile{}, err
 	}

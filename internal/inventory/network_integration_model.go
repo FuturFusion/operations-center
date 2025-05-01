@@ -4,8 +4,10 @@ package inventory
 
 import (
 	"net/url"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -13,10 +15,22 @@ import (
 
 type NetworkIntegration struct {
 	ID          int
+	UUID        uuid.UUID
 	Cluster     string
 	Name        string
 	Object      incusapi.NetworkIntegration
 	LastUpdated time.Time
+}
+
+func (m *NetworkIntegration) DeriveUUID() *NetworkIntegration {
+	identifier := strings.Join([]string{
+		m.Cluster,
+		m.Name,
+	}, ":")
+
+	m.UUID = uuid.NewSHA1(InventorySpaceUUID, []byte(identifier))
+
+	return m
 }
 
 func (m NetworkIntegration) Validate() error {
@@ -26,6 +40,12 @@ func (m NetworkIntegration) Validate() error {
 
 	if m.Name == "" {
 		return domain.NewValidationErrf("Invalid NetworkIntegration, name can not be empty")
+	}
+
+	clone := m
+	clone.DeriveUUID()
+	if clone.UUID != m.UUID {
+		return domain.NewValidationErrf("Invalid UUID, does not match derived value")
 	}
 
 	return nil

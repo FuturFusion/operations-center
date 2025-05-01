@@ -5,25 +5,27 @@ package inventory
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type NetworkACLService interface {
 	GetAllWithFilter(ctx context.Context, filter NetworkACLFilter) (NetworkACLs, error)
-	GetAllIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (NetworkACL, error)
-	ResyncByID(ctx context.Context, id int) error
+	GetAllUUIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkACL, error)
+	ResyncByUUID(ctx context.Context, id uuid.UUID) error
 	SyncCluster(ctx context.Context, cluster string) error
 }
 
 type NetworkACLRepo interface {
 	GetAllWithFilter(ctx context.Context, filter NetworkACLFilter) (NetworkACLs, error)
-	GetAllIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (NetworkACL, error)
+	GetAllUUIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkACL, error)
 	Create(ctx context.Context, networkACL NetworkACL) (NetworkACL, error)
-	DeleteByID(ctx context.Context, id int) error
+	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	DeleteByClusterName(ctx context.Context, cluster string) error
-	UpdateByID(ctx context.Context, networkACL NetworkACL) (NetworkACL, error)
+	UpdateByUUID(ctx context.Context, networkACL NetworkACL) (NetworkACL, error)
 }
 
 type NetworkACLServerClient interface {

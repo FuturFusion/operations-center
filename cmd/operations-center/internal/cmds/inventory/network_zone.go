@@ -64,7 +64,7 @@ type cmdNetworkZoneList struct {
 	flagFormat  string
 }
 
-const networkZoneDefaultColumns = `{{ .ID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const networkZoneDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
 
 func (c *cmdNetworkZoneList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -161,7 +161,7 @@ type cmdNetworkZoneShow struct {
 
 func (c *cmdNetworkZoneShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <name>"
+	cmd.Use = "show <uuid>"
 	cmd.Short = "Show information about a network_zone"
 	cmd.Long = `Description:
   Show information about a network_zone.
@@ -179,9 +179,9 @@ func (c *cmdNetworkZoneShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	name := args[0]
+	id := args[0]
 
-	networkZone, err := c.ocClient.GetNetworkZone(name)
+	networkZone, err := c.ocClient.GetNetworkZone(id)
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func (c *cmdNetworkZoneShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("ID: %d\n", networkZone.ID)
+	fmt.Printf("UUID: %s\n", networkZone.UUID.String())
 	fmt.Printf("Cluster: %s\n", networkZone.Cluster)
 	fmt.Printf("Project Name: %s\n", networkZone.ProjectName)
 	fmt.Printf("Name: %s\n", networkZone.Name)

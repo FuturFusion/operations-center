@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -65,6 +66,8 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 		LastUpdated: time.Now(),
 	}
 
+	networkLoadBalancerA.DeriveUUID()
+
 	networkLoadBalancerB := inventory.NetworkLoadBalancer{
 		Cluster:     "two",
 		NetworkName: "parent one",
@@ -72,6 +75,8 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 		Object:      incusapi.NetworkLoadBalancer{},
 		LastUpdated: time.Now(),
 	}
+
+	networkLoadBalancerB.DeriveUUID()
 
 	ctx := context.Background()
 
@@ -128,10 +133,10 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	require.Equal(t, "two", networkLoadBalancerB.Cluster)
 
 	// Ensure we have two entries without filter
-	networkLoadBalancerIDs, err := networkLoadBalancer.GetAllIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{})
+	networkLoadBalancerUUIDs, err := networkLoadBalancer.GetAllUUIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{})
 	require.NoError(t, err)
-	require.Len(t, networkLoadBalancerIDs, 2)
-	require.ElementsMatch(t, []int{1, 2}, networkLoadBalancerIDs)
+	require.Len(t, networkLoadBalancerUUIDs, 2)
+	require.ElementsMatch(t, []uuid.UUID{networkLoadBalancerA.UUID, networkLoadBalancerB.UUID}, networkLoadBalancerUUIDs)
 
 	// Ensure we have two entries without filter
 	dbNetworkLoadBalancer, err := networkLoadBalancer.GetAllWithFilter(ctx, inventory.NetworkLoadBalancerFilter{})
@@ -141,45 +146,45 @@ func TestNetworkLoadBalancerDatabaseActions(t *testing.T) {
 	require.Equal(t, networkLoadBalancerB.Name, dbNetworkLoadBalancer[1].Name)
 
 	// Ensure we have one entry with filter for cluster, server and project
-	networkLoadBalancerIDs, err = networkLoadBalancer.GetAllIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{
+	networkLoadBalancerUUIDs, err = networkLoadBalancer.GetAllUUIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{
 		Cluster: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, networkLoadBalancerIDs, 1)
-	require.ElementsMatch(t, []int{1}, networkLoadBalancerIDs)
+	require.Len(t, networkLoadBalancerUUIDs, 1)
+	require.ElementsMatch(t, []uuid.UUID{networkLoadBalancerA.UUID}, networkLoadBalancerUUIDs)
 
 	// Ensure we have one entry with filter for cluster, server and project
 	dbNetworkLoadBalancer, err = networkLoadBalancer.GetAllWithFilter(ctx, inventory.NetworkLoadBalancerFilter{
 		Cluster: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, networkLoadBalancerIDs, 1)
+	require.Len(t, dbNetworkLoadBalancer, 1)
 	require.Equal(t, "one", dbNetworkLoadBalancer[0].Name)
 
 	// Should get back networkLoadBalancerA unchanged.
 	networkLoadBalancerA.Cluster = "one"
-	dbNetworkLoadBalancerA, err := networkLoadBalancer.GetByID(ctx, networkLoadBalancerA.ID)
+	dbNetworkLoadBalancerA, err := networkLoadBalancer.GetByUUID(ctx, networkLoadBalancerA.UUID)
 	require.NoError(t, err)
 	require.Equal(t, networkLoadBalancerA, dbNetworkLoadBalancerA)
 
 	networkLoadBalancerB.LastUpdated = time.Now().UTC().Truncate(0)
-	dbNetworkLoadBalancerB, err := networkLoadBalancer.UpdateByID(ctx, networkLoadBalancerB)
+	dbNetworkLoadBalancerB, err := networkLoadBalancer.UpdateByUUID(ctx, networkLoadBalancerB)
 	require.NoError(t, err)
 	require.Equal(t, networkLoadBalancerB, dbNetworkLoadBalancerB)
 
 	// Delete network_load_balancers by ID.
-	err = networkLoadBalancer.DeleteByID(ctx, 1)
+	err = networkLoadBalancer.DeleteByUUID(ctx, networkLoadBalancerA.UUID)
 	require.NoError(t, err)
 
 	// Delete network_load_balancers by cluster Name.
 	err = networkLoadBalancer.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
-	_, err = networkLoadBalancer.GetByID(ctx, networkLoadBalancerA.ID)
+	_, err = networkLoadBalancer.GetByUUID(ctx, networkLoadBalancerA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no network_load_balancers remaining.
-	networkLoadBalancerIDs, err = networkLoadBalancer.GetAllIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{})
+	networkLoadBalancerUUIDs, err = networkLoadBalancer.GetAllUUIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{})
 	require.NoError(t, err)
-	require.Zero(t, networkLoadBalancerIDs)
+	require.Zero(t, networkLoadBalancerUUIDs)
 }

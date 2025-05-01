@@ -63,7 +63,7 @@ type cmdProjectList struct {
 	flagFormat  string
 }
 
-const projectDefaultColumns = `{{ .ID }},{{ .Cluster }},{{ .Name }},{{ .LastUpdated }}`
+const projectDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Name }},{{ .LastUpdated }}`
 
 func (c *cmdProjectList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -155,7 +155,7 @@ type cmdProjectShow struct {
 
 func (c *cmdProjectShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <name>"
+	cmd.Use = "show <uuid>"
 	cmd.Short = "Show information about a project"
 	cmd.Long = `Description:
   Show information about a project.
@@ -173,9 +173,9 @@ func (c *cmdProjectShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	name := args[0]
+	id := args[0]
 
-	project, err := c.ocClient.GetProject(name)
+	project, err := c.ocClient.GetProject(id)
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (c *cmdProjectShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("ID: %d\n", project.ID)
+	fmt.Printf("UUID: %s\n", project.UUID.String())
 	fmt.Printf("Cluster: %s\n", project.Cluster)
 	fmt.Printf("Name: %s\n", project.Name)
 	fmt.Printf("Last Updated: %s\n", project.LastUpdated.String())

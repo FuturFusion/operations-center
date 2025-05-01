@@ -4,8 +4,10 @@ package inventory
 
 import (
 	"net/url"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -13,11 +15,24 @@ import (
 
 type Image struct {
 	ID          int
+	UUID        uuid.UUID
 	Cluster     string
 	ProjectName string
 	Name        string
 	Object      incusapi.Image
 	LastUpdated time.Time
+}
+
+func (m *Image) DeriveUUID() *Image {
+	identifier := strings.Join([]string{
+		m.Cluster,
+		m.ProjectName,
+		m.Name,
+	}, ":")
+
+	m.UUID = uuid.NewSHA1(InventorySpaceUUID, []byte(identifier))
+
+	return m
 }
 
 func (m Image) Validate() error {
@@ -31,6 +46,12 @@ func (m Image) Validate() error {
 
 	if m.ProjectName == "" {
 		return domain.NewValidationErrf("Invalid Image, project name can not be empty")
+	}
+
+	clone := m
+	clone.DeriveUUID()
+	if clone.UUID != m.UUID {
+		return domain.NewValidationErrf("Invalid UUID, does not match derived value")
 	}
 
 	return nil

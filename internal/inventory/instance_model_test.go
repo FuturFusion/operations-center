@@ -15,31 +15,31 @@ import (
 func TestInstance_Validate(t *testing.T) {
 	tests := []struct {
 		name  string
-		image inventory.Instance
+		image *inventory.Instance
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "valid",
-			image: inventory.Instance{
+			image: (&inventory.Instance{
 				ID:          1,
 				Cluster:     "one",
 				Server:      "one",
 				ProjectName: "project one",
 				Name:        "one",
-			},
+			}).DeriveUUID(),
 
 			assertErr: require.NoError,
 		},
 		{
 			name: "error - invalid cluster ID",
-			image: inventory.Instance{
+			image: (&inventory.Instance{
 				ID:          1,
 				Cluster:     "", // invalid
 				Server:      "one",
 				ProjectName: "project one",
 				Name:        "one",
-			},
+			}).DeriveUUID(),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
@@ -48,13 +48,13 @@ func TestInstance_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid project name",
-			image: inventory.Instance{
+			image: (&inventory.Instance{
 				ID:          1,
 				Cluster:     "one",
 				Server:      "", // invalid
 				ProjectName: "project one",
 				Name:        "one",
-			},
+			}).DeriveUUID(),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
@@ -63,13 +63,13 @@ func TestInstance_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid project name",
-			image: inventory.Instance{
+			image: (&inventory.Instance{
 				ID:          1,
 				Cluster:     "one",
 				Server:      "one",
 				ProjectName: "", // invalid
 				Name:        "one",
-			},
+			}).DeriveUUID(),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
@@ -78,13 +78,28 @@ func TestInstance_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid name",
-			image: inventory.Instance{
+			image: (&inventory.Instance{
 				ID:          1,
 				Cluster:     "one",
 				Server:      "one",
 				ProjectName: "project one",
 				Name:        "", // invalid
+			}).DeriveUUID(),
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
 			},
+		},
+		{
+			name: "error - UUID not derived",
+			image: &inventory.Instance{
+				ID:          1,
+				Cluster:     "one",
+				Server:      "one",
+				ProjectName: "project one",
+				Name:        "one",
+			}, // UUID not derived
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation

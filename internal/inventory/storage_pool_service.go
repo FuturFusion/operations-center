@@ -10,6 +10,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -95,12 +96,12 @@ func (s storagePoolService) GetAllWithFilter(ctx context.Context, filter Storage
 	return storagePools, nil
 }
 
-func (s storagePoolService) GetAllIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]int, error) {
+func (s storagePoolService) GetAllUUIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]uuid.UUID, error) {
 	var filterExpression *vm.Program
 	var err error
 
 	type Env struct {
-		ID int
+		UUID string
 	}
 
 	if filter.Expression != nil {
@@ -110,15 +111,15 @@ func (s storagePoolService) GetAllIDsWithFilter(ctx context.Context, filter Stor
 		}
 	}
 
-	storagePoolsIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	storagePoolsUUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var filteredStoragePoolsIDs []int
+	var filteredStoragePoolsUUIDs []uuid.UUID
 	if filter.Expression != nil {
-		for _, storagePoolID := range storagePoolsIDs {
-			output, err := expr.Run(filterExpression, Env{storagePoolID})
+		for _, storagePoolUUID := range storagePoolsUUIDs {
+			output, err := expr.Run(filterExpression, Env{storagePoolUUID.String()})
 			if err != nil {
 				return nil, err
 			}
@@ -129,23 +130,23 @@ func (s storagePoolService) GetAllIDsWithFilter(ctx context.Context, filter Stor
 			}
 
 			if result {
-				filteredStoragePoolsIDs = append(filteredStoragePoolsIDs, storagePoolID)
+				filteredStoragePoolsUUIDs = append(filteredStoragePoolsUUIDs, storagePoolUUID)
 			}
 		}
 
-		return filteredStoragePoolsIDs, nil
+		return filteredStoragePoolsUUIDs, nil
 	}
 
-	return storagePoolsIDs, nil
+	return storagePoolsUUIDs, nil
 }
 
-func (s storagePoolService) GetByID(ctx context.Context, id int) (StoragePool, error) {
-	return s.repo.GetByID(ctx, id)
+func (s storagePoolService) GetByUUID(ctx context.Context, id uuid.UUID) (StoragePool, error) {
+	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s storagePoolService) ResyncByID(ctx context.Context, id int) error {
+func (s storagePoolService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		storagePool, err := s.repo.GetByID(ctx, id)
+		storagePool, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -157,7 +158,7 @@ func (s storagePoolService) ResyncByID(ctx context.Context, id int) error {
 
 		retrievedStoragePool, err := s.storagePoolClient.GetStoragePoolByName(ctx, cluster.ConnectionURL, storagePool.Name)
 		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByID(ctx, storagePool.ID)
+			err = s.repo.DeleteByUUID(ctx, storagePool.UUID)
 			if err != nil {
 				return err
 			}
@@ -171,13 +172,14 @@ func (s storagePoolService) ResyncByID(ctx context.Context, id int) error {
 
 		storagePool.Object = retrievedStoragePool
 		storagePool.LastUpdated = s.now()
+		storagePool.DeriveUUID()
 
 		err = storagePool.Validate()
 		if err != nil {
 			return err
 		}
 
-		_, err = s.repo.UpdateByID(ctx, storagePool)
+		_, err = s.repo.UpdateByUUID(ctx, storagePool)
 		if err != nil {
 			return err
 		}
@@ -215,6 +217,8 @@ func (s storagePoolService) SyncCluster(ctx context.Context, name string) error 
 				Object:      retrievedStoragePool,
 				LastUpdated: s.now(),
 			}
+
+			storagePool.DeriveUUID()
 
 			if s.clusterSyncFilterFunc(storagePool) {
 				continue

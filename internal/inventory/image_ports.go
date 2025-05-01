@@ -5,25 +5,27 @@ package inventory
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type ImageService interface {
 	GetAllWithFilter(ctx context.Context, filter ImageFilter) (Images, error)
-	GetAllIDsWithFilter(ctx context.Context, filter ImageFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (Image, error)
-	ResyncByID(ctx context.Context, id int) error
+	GetAllUUIDsWithFilter(ctx context.Context, filter ImageFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (Image, error)
+	ResyncByUUID(ctx context.Context, id uuid.UUID) error
 	SyncCluster(ctx context.Context, cluster string) error
 }
 
 type ImageRepo interface {
 	GetAllWithFilter(ctx context.Context, filter ImageFilter) (Images, error)
-	GetAllIDsWithFilter(ctx context.Context, filter ImageFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (Image, error)
+	GetAllUUIDsWithFilter(ctx context.Context, filter ImageFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (Image, error)
 	Create(ctx context.Context, image Image) (Image, error)
-	DeleteByID(ctx context.Context, id int) error
+	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	DeleteByClusterName(ctx context.Context, cluster string) error
-	UpdateByID(ctx context.Context, image Image) (Image, error)
+	UpdateByUUID(ctx context.Context, image Image) (Image, error)
 }
 
 type ImageServerClient interface {
