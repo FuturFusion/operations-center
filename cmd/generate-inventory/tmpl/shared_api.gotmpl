@@ -3,11 +3,13 @@ package api
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type {{ .Name | pascalcase }} struct {
-	ID          int                   `json:"id" yaml:"id"`
+	UUID        uuid.UUID             `json:"uuid" yaml:"uuid"`
 	Cluster     string                `json:"cluster" yaml:"cluster"`
 {{- if .ServerIDByLocation }}
 	Server      string                `json:"server" yaml:"server"`

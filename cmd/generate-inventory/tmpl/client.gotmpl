@@ -29,8 +29,8 @@ func (c OperationsCenterClient) GetWithFilter{{ .PluralName | pascalcase }}(filt
 	return {{ .PluralName }}, nil
 }
 
-func (c OperationsCenterClient) Get{{ .Name | pascalcase }}(name string) (api.{{ .Name | pascalcase }}, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/{{ .PluralName }}", name), nil, nil)
+func (c OperationsCenterClient) Get{{ .Name | pascalcase }}(id string) (api.{{ .Name | pascalcase }}, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/{{ .PluralName }}", id), nil, nil)
 	if err != nil {
 		return api.{{ .Name | pascalcase }}{}, err
 	}

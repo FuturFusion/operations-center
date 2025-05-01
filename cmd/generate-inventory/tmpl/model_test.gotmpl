@@ -13,13 +13,13 @@ import (
 func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 	tests := []struct {
 		name  string
-		image inventory.{{ .Name | pascalcase }}
+		image *inventory.{{ .Name | pascalcase }}
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "valid",
-			image: inventory.{{ .Name | pascalcase }}{
+			image: (&inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "one",
 {{- if .ServerIDByLocation }}
@@ -32,13 +32,13 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase }} one",
 {{- end }}
 				Name:        "one",
-			},
+			}).DeriveUUID(),
 
 			assertErr: require.NoError,
 		},
 		{
 			name: "error - invalid cluster ID",
-			image: inventory.{{ .Name | pascalcase }}{
+			image: (&inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "", // invalid
 {{- if .ServerIDByLocation }}
@@ -51,7 +51,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase }} one",
 {{- end }}
 				Name:        "one",
-			},
+			}).DeriveUUID(),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
@@ -61,7 +61,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 {{- if and .ServerIDByLocation ( not .IsServerIDOptional ) }}
 		{
 			name: "error - invalid project name",
-			image: inventory.{{ .Name | pascalcase }}{
+			image: (&inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "one",
 				Server:      "", // invalid
@@ -70,7 +70,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase }} one",
 {{- end }}
 				Name:        "one",
-			},
+			}).DeriveUUID(),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
@@ -81,7 +81,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 {{- if .HasProject }}
 		{
 			name: "error - invalid project name",
-			image: inventory.{{ .Name | pascalcase }}{
+			image: (&inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "one",
 {{- if .ServerIDByLocation }}
@@ -92,7 +92,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase }} one",
 {{- end }}
 				Name:        "one",
-			},
+			}).DeriveUUID(),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
@@ -103,7 +103,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 {{- if .HasParent }}
 		{
 			name: "error - invalid project name",
-			image: inventory.{{ .Name | pascalcase }}{
+			image: (&inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "one",
 {{- if .ServerIDByLocation }}
@@ -114,7 +114,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 {{- end }}
 				{{ .ParentName | pascalcase }}Name: "", // invalid
 				Name:        "one",
-			},
+			}).DeriveUUID(),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
@@ -124,7 +124,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 {{- end }}
 		{
 			name: "error - invalid name",
-			image: inventory.{{ .Name | pascalcase }}{
+			image: (&inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "one",
 {{- if .ServerIDByLocation }}
@@ -137,7 +137,29 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase }} one",
 {{- end }}
 				Name:        "", // invalid
+			}).DeriveUUID(),
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
 			},
+		},
+		{
+			name: "error - UUID not derived",
+			image: &inventory.{{ .Name | pascalcase }}{
+				ID:          1,
+				Cluster:     "one",
+{{- if .ServerIDByLocation }}
+				Server:      "one",
+{{- end }}
+{{- if .HasProject }}
+				ProjectName: "project one",
+{{- end }}
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: "{{ .ParentName | camelcase }} one",
+{{- end }}
+				Name:        "one",
+			}, // UUID not derived
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation

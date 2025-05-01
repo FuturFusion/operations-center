@@ -238,7 +238,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		for projectIdx := 0; projectIdx < projectCount; projectIdx++ {
 			projectName := fmt.Sprintf("project-%08x-%08x", clusterIdx, projectIdx)
 			projects = append(projects, projectName)
-			_, err = projectRepo.Create(ctx, inventory.Project{
+			project := inventory.Project{
 				Cluster: clusterName,
 				Name:    projectName,
 				Object: incusapi.Project{
@@ -256,7 +256,9 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 					},
 				},
 				LastUpdated: faker.Date(),
-			})
+			}
+			project.DeriveUUID()
+			_, err = projectRepo.Create(ctx, project)
 			if err != nil {
 				return err
 			}
@@ -268,7 +270,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 			networkName := fmt.Sprintf("network-%08x-%08x", clusterIdx, networkIdx)
 			projectName := faker.RandomString(projects)
 			networks = append(networks, networkName)
-			_, err = networkRepo.Create(ctx, inventory.Network{
+			network := inventory.Network{
 				Cluster:     clusterName,
 				Name:        networkName,
 				ProjectName: projectName,
@@ -285,7 +287,9 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 					Project:   projectName,
 				},
 				LastUpdated: faker.Date(),
-			})
+			}
+			network.DeriveUUID()
+			_, err = networkRepo.Create(ctx, network)
 			if err != nil {
 				return err
 			}
@@ -296,7 +300,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		for storagePoolIdx := 0; storagePoolIdx < storagePoolCount; storagePoolIdx++ {
 			storagePoolName := fmt.Sprintf("storagePool-%08x-%08x", clusterIdx, storagePoolIdx)
 			storagePools = append(storagePools, storagePoolName)
-			_, err = storagePoolRepo.Create(ctx, inventory.StoragePool{
+			storagePool := inventory.StoragePool{
 				Cluster: clusterName,
 				Name:    storagePoolName,
 				Object: incusapi.StoragePool{
@@ -310,7 +314,9 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 					Locations: randomSelection(servers),
 				},
 				LastUpdated: faker.Date(),
-			})
+			}
+			storagePool.DeriveUUID()
+			_, err = storagePoolRepo.Create(ctx, storagePool)
 			if err != nil {
 				return err
 			}
@@ -320,7 +326,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		for imageIdx := 0; imageIdx < imageCount; imageIdx++ {
 			imageName := fmt.Sprintf("image-%08x-%08x", clusterIdx, imageIdx)
 			projectName := faker.RandomString(projects)
-			_, err = imageRepo.Create(ctx, inventory.Image{
+			image := inventory.Image{
 				Cluster:     clusterName,
 				Name:        imageName,
 				ProjectName: projectName,
@@ -356,7 +362,9 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 					Type:    randomType(),
 				},
 				LastUpdated: faker.Date(),
-			})
+			}
+			image.DeriveUUID()
+			_, err = imageRepo.Create(ctx, image)
 			if err != nil {
 				return err
 			}
@@ -365,7 +373,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		profileCount := randBetween(config.ProfilesMin, config.ProfilesMax)
 		for profileIdx := 0; profileIdx < profileCount; profileIdx++ {
 			profileName := fmt.Sprintf("profile-%08x-%08x", clusterIdx, profileIdx)
-			_, err = profileRepo.Create(ctx, inventory.Profile{
+			profile := inventory.Profile{
 				Cluster:     clusterName,
 				Name:        profileName,
 				ProjectName: faker.RandomString(projects),
@@ -378,7 +386,9 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 					},
 				},
 				LastUpdated: faker.Date(),
-			})
+			}
+			profile.DeriveUUID()
+			_, err = profileRepo.Create(ctx, profile)
 			if err != nil {
 				return err
 			}
@@ -390,7 +400,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 			serverName := faker.RandomString(servers)
 			projectName := faker.RandomString(projects)
 			instanceState := randomInstanceState()
-			_, err = instanceRepo.Create(ctx, inventory.Instance{
+			instance := inventory.Instance{
 				Cluster:     clusterName,
 				Server:      serverName,
 				Name:        instanceName,
@@ -457,7 +467,9 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 					},
 				},
 				LastUpdated: faker.Date(),
-			})
+			}
+			instance.DeriveUUID()
+			_, err = instanceRepo.Create(ctx, instance)
 			if err != nil {
 				return err
 			}
@@ -467,7 +479,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		for networkACLIdx := 0; networkACLIdx < networkACLCount; networkACLIdx++ {
 			networkACLName := fmt.Sprintf("networkACL-%08x-%08x", clusterIdx, networkACLIdx)
 			projectName := faker.RandomString(projects)
-			_, err = networkACLRepo.Create(ctx, inventory.NetworkACL{
+			networkACL := inventory.NetworkACL{
 				Cluster:     clusterName,
 				Name:        networkACLName,
 				ProjectName: projectName,
@@ -510,7 +522,9 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 					Project: projectName,
 				},
 				LastUpdated: faker.Date(),
-			})
+			}
+			networkACL.DeriveUUID()
+			_, err = networkACLRepo.Create(ctx, networkACL)
 			if err != nil {
 				return err
 			}
@@ -519,7 +533,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		networkForwardCount := randBetween(config.NetworkForwardsMin, config.NetworkForwardsMax)
 		for networkForwardIdx := 0; networkForwardIdx < networkForwardCount; networkForwardIdx++ {
 			networkForwardName := fmt.Sprintf("networkForward-%08x-%08x", clusterIdx, networkForwardIdx)
-			_, err = networkForwardRepo.Create(ctx, inventory.NetworkForward{
+			networkForward := inventory.NetworkForward{
 				Cluster:     clusterName,
 				Name:        networkForwardName,
 				NetworkName: faker.RandomString(networks),
@@ -541,7 +555,9 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 					Location:      gofakeit.RandomString(servers),
 				},
 				LastUpdated: faker.Date(),
-			})
+			}
+			networkForward.DeriveUUID()
+			_, err = networkForwardRepo.Create(ctx, networkForward)
 			if err != nil {
 				return err
 			}
@@ -550,7 +566,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		networkIntegrationCount := randBetween(config.NetworkIntegrationsMin, config.NetworkIntegrationsMax)
 		for networkIntegrationIdx := 0; networkIntegrationIdx < networkIntegrationCount; networkIntegrationIdx++ {
 			networkIntegrationName := fmt.Sprintf("networkIntegration-%08x-%08x", clusterIdx, networkIntegrationIdx)
-			_, err = networkIntegrationRepo.Create(ctx, inventory.NetworkIntegration{
+			networkIntegration := inventory.NetworkIntegration{
 				Cluster: clusterName,
 				Name:    networkIntegrationName,
 				Object: incusapi.NetworkIntegration{
@@ -562,7 +578,9 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 					Type: randomNetworkType(),
 				},
 				LastUpdated: faker.Date(),
-			})
+			}
+			networkIntegration.DeriveUUID()
+			_, err = networkIntegrationRepo.Create(ctx, networkIntegration)
 			if err != nil {
 				return err
 			}
@@ -571,7 +589,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		networkLoadBalancerCount := randBetween(config.NetworkLoadBalancersMin, config.NetworkLoadBalancersMax)
 		for networkLoadBalancerIdx := 0; networkLoadBalancerIdx < networkLoadBalancerCount; networkLoadBalancerIdx++ {
 			networkLoadBalancerName := fmt.Sprintf("networkLoadBalancer-%08x-%08x", clusterIdx, networkLoadBalancerIdx)
-			_, err = networkLoadBalancerRepo.Create(ctx, inventory.NetworkLoadBalancer{
+			networkLoadBalancer := inventory.NetworkLoadBalancer{
 				Cluster:     clusterName,
 				Name:        networkLoadBalancerName,
 				NetworkName: faker.RandomString(networks),
@@ -598,7 +616,9 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 					},
 				},
 				LastUpdated: faker.Date(),
-			})
+			}
+			networkLoadBalancer.DeriveUUID()
+			_, err = networkLoadBalancerRepo.Create(ctx, networkLoadBalancer)
 			if err != nil {
 				return err
 			}
@@ -607,7 +627,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		networkPeerCount := randBetween(config.NetworkPeersMin, config.NetworkPeersMax)
 		for networkPeerIdx := 0; networkPeerIdx < networkPeerCount; networkPeerIdx++ {
 			networkPeerName := fmt.Sprintf("networkPeer-%08x-%08x", clusterIdx, networkPeerIdx)
-			_, err = networkPeerRepo.Create(ctx, inventory.NetworkPeer{
+			networkPeer := inventory.NetworkPeer{
 				Cluster:     clusterName,
 				Name:        networkPeerName,
 				NetworkName: faker.RandomString(networks),
@@ -624,7 +644,9 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 					TargetIntegration: "ovn-ic1",
 				},
 				LastUpdated: faker.Date(),
-			})
+			}
+			networkPeer.DeriveUUID()
+			_, err = networkPeerRepo.Create(ctx, networkPeer)
 			if err != nil {
 				return err
 			}
@@ -634,7 +656,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		for networkZoneIdx := 0; networkZoneIdx < networkZoneCount; networkZoneIdx++ {
 			networkZoneName := fmt.Sprintf("networkZone-%08x-%08x", clusterIdx, networkZoneIdx)
 			projectName := faker.RandomString(projects)
-			_, err = networkZoneRepo.Create(ctx, inventory.NetworkZone{
+			networkZone := inventory.NetworkZone{
 				Cluster:     clusterName,
 				Name:        networkZoneName,
 				ProjectName: projectName,
@@ -647,7 +669,9 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 					Project: projectName,
 				},
 				LastUpdated: faker.Date(),
-			})
+			}
+			networkZone.DeriveUUID()
+			_, err = networkZoneRepo.Create(ctx, networkZone)
 			if err != nil {
 				return err
 			}
@@ -657,7 +681,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		for storageBucketIdx := 0; storageBucketIdx < storageBucketCount; storageBucketIdx++ {
 			storageBucketName := fmt.Sprintf("storageBucket-%08x-%08x", clusterIdx, storageBucketIdx)
 			projectName := faker.RandomString(projects)
-			_, err = storageBucketRepo.Create(ctx, inventory.StorageBucket{
+			storageBucket := inventory.StorageBucket{
 				Cluster:         clusterName,
 				Server:          faker.RandomString(servers),
 				Name:            storageBucketName,
@@ -674,7 +698,9 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 					Project:  projectName,
 				},
 				LastUpdated: faker.Date(),
-			})
+			}
+			storageBucket.DeriveUUID()
+			_, err = storageBucketRepo.Create(ctx, storageBucket)
 			if err != nil {
 				return err
 			}
@@ -684,7 +710,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		for storageVolumeIdx := 0; storageVolumeIdx < storageVolumeCount; storageVolumeIdx++ {
 			storageVolumeName := fmt.Sprintf("storageVolume-%08x-%08x", clusterIdx, storageVolumeIdx)
 			projectName := faker.RandomString(projects)
-			_, err = storageVolumeRepo.Create(ctx, inventory.StorageVolume{
+			storageVolume := inventory.StorageVolume{
 				Cluster:         clusterName,
 				Server:          faker.RandomString(servers),
 				Name:            storageVolumeName,
@@ -705,7 +731,9 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 					CreatedAt:   gofakeit.Date(),
 				},
 				LastUpdated: faker.Date(),
-			})
+			}
+			storageVolume.DeriveUUID()
+			_, err = storageVolumeRepo.Create(ctx, storageVolume)
 			if err != nil {
 				return err
 			}

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -129,20 +130,21 @@ func Test{{ .Name | pascalcase }}Service_GetAllWithFilter(t *testing.T) {
 	}
 }
 
-func Test{{ .Name | pascalcase }}Service_GetAllIDsWithFilter(t *testing.T) {
+func Test{{ .Name | pascalcase }}Service_GetAllUUIDsWithFilter(t *testing.T) {
 	tests := []struct {
 		name                       string
 		filterExpression           *string
-		repoGetAllIDsWithFilter    []int
-		repoGetAllIDsWithFilterErr error
+		repoGetAllUUIDsWithFilter    []uuid.UUID
+		repoGetAllUUIDsWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success - no filter expression",
-			repoGetAllIDsWithFilter: []int{
-				1, 2,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuid.MustParse(`56d0823e-5c6d-45ff-ac6d-a9ae61026a4e`),
 			},
 
 			assertErr: require.NoError,
@@ -150,9 +152,10 @@ func Test{{ .Name | pascalcase }}Service_GetAllIDsWithFilter(t *testing.T) {
 		},
 		{
 			name: "success - with filter expression",
-			filterExpression: ptr.To(`ID < 2`),
-			repoGetAllIDsWithFilter: []int{
-				1, 2,
+			filterExpression: ptr.To(`UUID == "6c652183-8d93-4c7d-9510-cd2ae54f31fd"`),
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuid.MustParse(`56d0823e-5c6d-45ff-ac6d-a9ae61026a4e`),
 			},
 
 			assertErr: require.NoError,
@@ -161,8 +164,8 @@ func Test{{ .Name | pascalcase }}Service_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - invalid filter expression",
 			filterExpression: ptr.To(``), // the empty expression is an invalid expression.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: require.Error,
@@ -171,8 +174,8 @@ func Test{{ .Name | pascalcase }}Service_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - filter expression run",
 			filterExpression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: require.Error,
@@ -181,8 +184,8 @@ func Test{{ .Name | pascalcase }}Service_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - non bool expression",
 			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, i ...interface{}) {
@@ -192,7 +195,7 @@ func Test{{ .Name | pascalcase }}Service_GetAllIDsWithFilter(t *testing.T) {
 		},
 		{
 			name:             "error - repo",
-			repoGetAllIDsWithFilterErr: boom.Error,
+			repoGetAllUUIDsWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -203,8 +206,8 @@ func Test{{ .Name | pascalcase }}Service_GetAllIDsWithFilter(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
-				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) ([]int, error) {
-					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
+				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) ([]uuid.UUID, error) {
+					return tc.repoGetAllUUIDsWithFilter, tc.repoGetAllUUIDsWithFilterErr
 				},
 			}
 
@@ -213,31 +216,31 @@ func Test{{ .Name | pascalcase }}Service_GetAllIDsWithFilter(t *testing.T) {
 			}))
 
 			// Run test
-			{{ .Name | camelcase }}IDs, err := {{ .Name | camelcase }}Svc.GetAllIDsWithFilter(context.Background(), inventory.{{ .Name | pascalcase }}Filter{
+			{{ .Name | camelcase }}UUIDs, err := {{ .Name | camelcase }}Svc.GetAllUUIDsWithFilter(context.Background(), inventory.{{ .Name | pascalcase }}Filter{
 				Expression: tc.filterExpression,
 			})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, {{ .Name | camelcase }}IDs, tc.count)
+			require.Len(t, {{ .Name | camelcase }}UUIDs, tc.count)
 		})
 	}
 }
 
-func Test{{ .Name | pascalcase }}Service_GetByID(t *testing.T) {
+func Test{{ .Name | pascalcase }}Service_GetByUUID(t *testing.T) {
 	tests := []struct {
 		name                string
-		idArg               int
-		repoGetByID{{ .Name | pascalcase }} inventory.{{ .Name | pascalcase }}
-		repoGetByIDErr      error
+		idArg               uuid.UUID
+		repoGetByUUID{{ .Name | pascalcase }} inventory.{{ .Name | pascalcase }}
+		repoGetByUUIDErr      error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name:  "success",
-			idArg: 1,
-			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
-				ID:          1,
+			idArg: uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+			repoGetByUUID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				UUID:          uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:     "one",
 {{- if .HasProject }}
 				ProjectName: "one",
@@ -254,8 +257,8 @@ func Test{{ .Name | pascalcase }}Service_GetByID(t *testing.T) {
 		},
 		{
 			name:           "error - repo",
-			idArg:          1,
-			repoGetByIDErr: boom.Error,
+			idArg:          uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -265,8 +268,8 @@ func Test{{ .Name | pascalcase }}Service_GetByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (inventory.{{ .Name | pascalcase }}, error) {
-					return tc.repoGetByID{{ .Name | pascalcase }}, tc.repoGetByIDErr
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.{{ .Name | pascalcase }}, error) {
+					return tc.repoGetByUUID{{ .Name | pascalcase }}, tc.repoGetByUUIDErr
 				},
 			}
 
@@ -275,33 +278,33 @@ func Test{{ .Name | pascalcase }}Service_GetByID(t *testing.T) {
 			}))
 
 			// Run test
-			{{ .Name | camelcase }}, err := {{ .Name | camelcase }}Svc.GetByID(context.Background(), tc.idArg)
+			{{ .Name | camelcase }}, err := {{ .Name | camelcase }}Svc.GetByUUID(context.Background(), tc.idArg)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByID{{ .Name | pascalcase }}, {{ .Name | camelcase }})
+			require.Equal(t, tc.repoGetByUUID{{ .Name | pascalcase }}, {{ .Name | camelcase }})
 		})
 	}
 }
 
-func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
+func Test{{ .Name | pascalcase }}Service_ResyncByUUID(t *testing.T) {
 	tests := []struct {
-		name                   string
+		name                     string
 		clusterSvcGetByIDCluster provisioning.Cluster
-		clusterSvcGetByIDErr    error
+		clusterSvcGetByIDErr     error
 		{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName    incusapi.{{ .ObjectType | pascalcase }}
 		{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr error
-		repoGetByID{{ .Name | pascalcase }} inventory.{{ .Name | pascalcase }}
-		repoGetByIDErr    error
-		repoUpdateByIDErr error
-		repoDeleteByIDErr error
+		repoGetByUUID{{ .Name | pascalcase }} inventory.{{ .Name | pascalcase }}
+		repoGetByUUIDErr    error
+		repoUpdateByUUIDErr error
+		repoDeleteByUUIDErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
-			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
-				ID:       1,
+			repoGetByUUID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				UUID:     uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:  "one",
 				Name:     "one",
 {{- if .HasParent }}
@@ -337,8 +340,8 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 		},
 		{
 			name: "success - {{ .Name | camelcase }} get by name - not found",
-			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
-				ID:       1,
+			repoGetByUUID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				UUID:     uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:  "one",
 				Name:     "one",
 {{- if .HasParent }}
@@ -353,15 +356,15 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:           "error - {{ .Name | camelcase }} get by ID",
-			repoGetByIDErr: boom.Error,
+			name:           "error - {{ .Name | camelcase }} get by UUID",
+			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - cluster get by ID",
-			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
-				ID:       1,
+			repoGetByUUID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				UUID:     uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:  "one",
 				Name:     "one",
 {{- if .HasParent }}
@@ -374,8 +377,8 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 		},
 		{
 			name: "error - {{ .Name | camelcase }} get by name",
-			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
-				ID:       1,
+			repoGetByUUID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				UUID:     uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:  "one",
 				Name:     "one",
 {{- if .HasParent }}
@@ -390,9 +393,9 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - {{ .Name | camelcase }} get by name - not found - delete by id",
-			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
-				ID:       1,
+			name: "error - {{ .Name | camelcase }} get by name - not found - delete by uuid",
+			repoGetByUUID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				UUID:     uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:  "one",
 				Name:     "one",
 {{- if .HasParent }}
@@ -403,15 +406,15 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 				Name:  "cluster-one",
 			},
 			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr: domain.ErrNotFound,
-			repoDeleteByIDErr: boom.Error,
+			repoDeleteByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - validate",
-			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
-				ID:       1,
-				Cluster:   "one",
+			repoGetByUUID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				UUID:     uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:  "one",
 				Name:     "", // invalid
 {{- if .HasParent }}
 				{{ .ParentName | pascalcase }}Name: "{{ .ParentName }}",
@@ -448,9 +451,9 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			},
 		},
 		{
-			name: "error - update by ID",
-			repoGetByID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
-				ID:       1,
+			name: "error - update by UUID",
+			repoGetByUUID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				UUID:     uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:  "one",
 				Name:     "one",
 {{- if .HasParent }}
@@ -481,7 +484,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 				},
 {{- end }}
 			},
-			repoUpdateByIDErr: boom.Error,
+			repoUpdateByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -491,15 +494,15 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (inventory.{{ .Name | pascalcase }}, error) {
-					return tc.repoGetByID{{ .Name | pascalcase }}, tc.repoGetByIDErr
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.{{ .Name | pascalcase }}, error) {
+					return tc.repoGetByUUID{{ .Name | pascalcase }}, tc.repoGetByUUIDErr
 				},
-				UpdateByIDFunc: func(ctx context.Context, {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
+				UpdateByUUIDFunc: func(ctx context.Context, {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), {{ .Name | camelcase }}.LastUpdated)
-					return inventory.{{ .Name | pascalcase }}{}, tc.repoUpdateByIDErr
+					return inventory.{{ .Name | pascalcase }}{}, tc.repoUpdateByUUIDErr
 				},
-				DeleteByIDFunc: func(ctx context.Context, id int) error{
-					return tc.repoDeleteByIDErr
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error{
+					return tc.repoDeleteByUUIDErr
 				},
 			}
 
@@ -512,7 +515,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 
 			{{ .Name | camelcase }}Client := &serverMock.{{ .Name | pascalcase }}ServerClientMock{
 				Get{{ .Name | pascalcase }}ByNameFunc: func(ctx context.Context, connectionURL string, {{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }} {{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error) {
-					require.Equal(t, tc.repoGetByID{{ .Name | pascalcase }}.Name, {{ .Name | camelcase }}Name)
+					require.Equal(t, tc.repoGetByUUID{{ .Name | pascalcase }}.Name, {{ .Name | camelcase }}Name)
 {{- if .HasParent }}
 					require.Equal(t, "{{ .ParentName }}", {{ .ParentName | camelcase }}Name)
 {{- end }}
@@ -525,7 +528,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByID(t *testing.T) {
 			}))
 
 			// Run test
-			err := {{ .Name | camelcase }}Svc.ResyncByID(context.Background(), 1)
+			err := {{ .Name | camelcase }}Svc.ResyncByUUID(context.Background(), uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`))
 
 			// Assert
 			tc.assertErr(t, err)
