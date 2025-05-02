@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -37,8 +38,8 @@ func NewStorageBucketServiceWithPrometheus(base inventory.StorageBucketService, 
 	}
 }
 
-// GetAllIDsWithFilter implements inventory.StorageBucketService.
-func (_d StorageBucketServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.StorageBucketService.
+func (_d StorageBucketServiceWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -46,9 +47,9 @@ func (_d StorageBucketServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Con
 			result = "error"
 		}
 
-		storageBucketServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		storageBucketServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.StorageBucketService.
@@ -65,8 +66,8 @@ func (_d StorageBucketServiceWithPrometheus) GetAllWithFilter(ctx context.Contex
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.StorageBucketService.
-func (_d StorageBucketServiceWithPrometheus) GetByID(ctx context.Context, id int) (storageBucket inventory.StorageBucket, err error) {
+// GetByUUID implements inventory.StorageBucketService.
+func (_d StorageBucketServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (storageBucket inventory.StorageBucket, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d StorageBucketServiceWithPrometheus) GetByID(ctx context.Context, id int
 			result = "error"
 		}
 
-		storageBucketServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		storageBucketServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// ResyncByID implements inventory.StorageBucketService.
-func (_d StorageBucketServiceWithPrometheus) ResyncByID(ctx context.Context, id int) (err error) {
+// ResyncByUUID implements inventory.StorageBucketService.
+func (_d StorageBucketServiceWithPrometheus) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d StorageBucketServiceWithPrometheus) ResyncByID(ctx context.Context, id 
 			result = "error"
 		}
 
-		storageBucketServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByID", result).Observe(time.Since(_since).Seconds())
+		storageBucketServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.ResyncByID(ctx, id)
+	return _d.base.ResyncByUUID(ctx, id)
 }
 
 // SyncCluster implements inventory.StorageBucketService.

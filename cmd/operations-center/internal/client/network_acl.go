@@ -31,8 +31,8 @@ func (c OperationsCenterClient) GetWithFilterNetworkACLs(filter inventory.Networ
 	return network_acls, nil
 }
 
-func (c OperationsCenterClient) GetNetworkACL(name string) (api.NetworkACL, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_acls", name), nil, nil)
+func (c OperationsCenterClient) GetNetworkACL(id string) (api.NetworkACL, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_acls", id), nil, nil)
 	if err != nil {
 		return api.NetworkACL{}, err
 	}

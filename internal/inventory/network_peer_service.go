@@ -10,6 +10,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -109,12 +110,12 @@ func (s networkPeerService) GetAllWithFilter(ctx context.Context, filter Network
 	return networkPeers, nil
 }
 
-func (s networkPeerService) GetAllIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]int, error) {
+func (s networkPeerService) GetAllUUIDsWithFilter(ctx context.Context, filter NetworkPeerFilter) ([]uuid.UUID, error) {
 	var filterExpression *vm.Program
 	var err error
 
 	type Env struct {
-		ID int
+		UUID string
 	}
 
 	if filter.Expression != nil {
@@ -124,15 +125,15 @@ func (s networkPeerService) GetAllIDsWithFilter(ctx context.Context, filter Netw
 		}
 	}
 
-	networkPeersIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	networkPeersUUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var filteredNetworkPeersIDs []int
+	var filteredNetworkPeersUUIDs []uuid.UUID
 	if filter.Expression != nil {
-		for _, networkPeerID := range networkPeersIDs {
-			output, err := expr.Run(filterExpression, Env{networkPeerID})
+		for _, networkPeerUUID := range networkPeersUUIDs {
+			output, err := expr.Run(filterExpression, Env{networkPeerUUID.String()})
 			if err != nil {
 				return nil, err
 			}
@@ -143,23 +144,23 @@ func (s networkPeerService) GetAllIDsWithFilter(ctx context.Context, filter Netw
 			}
 
 			if result {
-				filteredNetworkPeersIDs = append(filteredNetworkPeersIDs, networkPeerID)
+				filteredNetworkPeersUUIDs = append(filteredNetworkPeersUUIDs, networkPeerUUID)
 			}
 		}
 
-		return filteredNetworkPeersIDs, nil
+		return filteredNetworkPeersUUIDs, nil
 	}
 
-	return networkPeersIDs, nil
+	return networkPeersUUIDs, nil
 }
 
-func (s networkPeerService) GetByID(ctx context.Context, id int) (NetworkPeer, error) {
-	return s.repo.GetByID(ctx, id)
+func (s networkPeerService) GetByUUID(ctx context.Context, id uuid.UUID) (NetworkPeer, error) {
+	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s networkPeerService) ResyncByID(ctx context.Context, id int) error {
+func (s networkPeerService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		networkPeer, err := s.repo.GetByID(ctx, id)
+		networkPeer, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -171,7 +172,7 @@ func (s networkPeerService) ResyncByID(ctx context.Context, id int) error {
 
 		retrievedNetworkPeer, err := s.networkPeerClient.GetNetworkPeerByName(ctx, cluster.ConnectionURL, networkPeer.NetworkName, networkPeer.Name)
 		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByID(ctx, networkPeer.ID)
+			err = s.repo.DeleteByUUID(ctx, networkPeer.UUID)
 			if err != nil {
 				return err
 			}
@@ -185,13 +186,14 @@ func (s networkPeerService) ResyncByID(ctx context.Context, id int) error {
 
 		networkPeer.Object = retrievedNetworkPeer
 		networkPeer.LastUpdated = s.now()
+		networkPeer.DeriveUUID()
 
 		err = networkPeer.Validate()
 		if err != nil {
 			return err
 		}
 
-		_, err = s.repo.UpdateByID(ctx, networkPeer)
+		_, err = s.repo.UpdateByUUID(ctx, networkPeer)
 		if err != nil {
 			return err
 		}
@@ -240,6 +242,8 @@ func (s networkPeerService) SyncCluster(ctx context.Context, name string) error 
 					Object:      retrievedNetworkPeer,
 					LastUpdated: s.now(),
 				}
+
+				networkPeer.DeriveUUID()
 
 				if s.clusterSyncFilterFunc(networkPeer) {
 					continue

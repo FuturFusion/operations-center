@@ -10,6 +10,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -95,12 +96,12 @@ func (s profileService) GetAllWithFilter(ctx context.Context, filter ProfileFilt
 	return profiles, nil
 }
 
-func (s profileService) GetAllIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]int, error) {
+func (s profileService) GetAllUUIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]uuid.UUID, error) {
 	var filterExpression *vm.Program
 	var err error
 
 	type Env struct {
-		ID int
+		UUID string
 	}
 
 	if filter.Expression != nil {
@@ -110,15 +111,15 @@ func (s profileService) GetAllIDsWithFilter(ctx context.Context, filter ProfileF
 		}
 	}
 
-	profilesIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	profilesUUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var filteredProfilesIDs []int
+	var filteredProfilesUUIDs []uuid.UUID
 	if filter.Expression != nil {
-		for _, profileID := range profilesIDs {
-			output, err := expr.Run(filterExpression, Env{profileID})
+		for _, profileUUID := range profilesUUIDs {
+			output, err := expr.Run(filterExpression, Env{profileUUID.String()})
 			if err != nil {
 				return nil, err
 			}
@@ -129,23 +130,23 @@ func (s profileService) GetAllIDsWithFilter(ctx context.Context, filter ProfileF
 			}
 
 			if result {
-				filteredProfilesIDs = append(filteredProfilesIDs, profileID)
+				filteredProfilesUUIDs = append(filteredProfilesUUIDs, profileUUID)
 			}
 		}
 
-		return filteredProfilesIDs, nil
+		return filteredProfilesUUIDs, nil
 	}
 
-	return profilesIDs, nil
+	return profilesUUIDs, nil
 }
 
-func (s profileService) GetByID(ctx context.Context, id int) (Profile, error) {
-	return s.repo.GetByID(ctx, id)
+func (s profileService) GetByUUID(ctx context.Context, id uuid.UUID) (Profile, error) {
+	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s profileService) ResyncByID(ctx context.Context, id int) error {
+func (s profileService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		profile, err := s.repo.GetByID(ctx, id)
+		profile, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -157,7 +158,7 @@ func (s profileService) ResyncByID(ctx context.Context, id int) error {
 
 		retrievedProfile, err := s.profileClient.GetProfileByName(ctx, cluster.ConnectionURL, profile.Name)
 		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByID(ctx, profile.ID)
+			err = s.repo.DeleteByUUID(ctx, profile.UUID)
 			if err != nil {
 				return err
 			}
@@ -172,13 +173,14 @@ func (s profileService) ResyncByID(ctx context.Context, id int) error {
 		profile.ProjectName = retrievedProfile.Project
 		profile.Object = retrievedProfile
 		profile.LastUpdated = s.now()
+		profile.DeriveUUID()
 
 		err = profile.Validate()
 		if err != nil {
 			return err
 		}
 
-		_, err = s.repo.UpdateByID(ctx, profile)
+		_, err = s.repo.UpdateByUUID(ctx, profile)
 		if err != nil {
 			return err
 		}
@@ -217,6 +219,8 @@ func (s profileService) SyncCluster(ctx context.Context, name string) error {
 				Object:      retrievedProfile,
 				LastUpdated: s.now(),
 			}
+
+			profile.DeriveUUID()
 
 			if s.clusterSyncFilterFunc(profile) {
 				continue

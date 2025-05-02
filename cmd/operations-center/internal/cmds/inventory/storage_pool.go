@@ -63,7 +63,7 @@ type cmdStoragePoolList struct {
 	flagFormat  string
 }
 
-const storagePoolDefaultColumns = `{{ .ID }},{{ .Cluster }},{{ .Name }},{{ .LastUpdated }}`
+const storagePoolDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Name }},{{ .LastUpdated }}`
 
 func (c *cmdStoragePoolList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -155,7 +155,7 @@ type cmdStoragePoolShow struct {
 
 func (c *cmdStoragePoolShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <name>"
+	cmd.Use = "show <uuid>"
 	cmd.Short = "Show information about a storage_pool"
 	cmd.Long = `Description:
   Show information about a storage_pool.
@@ -173,9 +173,9 @@ func (c *cmdStoragePoolShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	name := args[0]
+	id := args[0]
 
-	storagePool, err := c.ocClient.GetStoragePool(name)
+	storagePool, err := c.ocClient.GetStoragePool(id)
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (c *cmdStoragePoolShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("ID: %d\n", storagePool.ID)
+	fmt.Printf("UUID: %s\n", storagePool.UUID.String())
 	fmt.Printf("Cluster: %s\n", storagePool.Cluster)
 	fmt.Printf("Name: %s\n", storagePool.Name)
 	fmt.Printf("Last Updated: %s\n", storagePool.LastUpdated.String())

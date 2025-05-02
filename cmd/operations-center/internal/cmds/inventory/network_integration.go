@@ -63,7 +63,7 @@ type cmdNetworkIntegrationList struct {
 	flagFormat  string
 }
 
-const networkIntegrationDefaultColumns = `{{ .ID }},{{ .Cluster }},{{ .Name }},{{ .LastUpdated }}`
+const networkIntegrationDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Name }},{{ .LastUpdated }}`
 
 func (c *cmdNetworkIntegrationList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -155,7 +155,7 @@ type cmdNetworkIntegrationShow struct {
 
 func (c *cmdNetworkIntegrationShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <name>"
+	cmd.Use = "show <uuid>"
 	cmd.Short = "Show information about a network_integration"
 	cmd.Long = `Description:
   Show information about a network_integration.
@@ -173,9 +173,9 @@ func (c *cmdNetworkIntegrationShow) Run(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	name := args[0]
+	id := args[0]
 
-	networkIntegration, err := c.ocClient.GetNetworkIntegration(name)
+	networkIntegration, err := c.ocClient.GetNetworkIntegration(id)
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (c *cmdNetworkIntegrationShow) Run(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	fmt.Printf("ID: %d\n", networkIntegration.ID)
+	fmt.Printf("UUID: %s\n", networkIntegration.UUID.String())
 	fmt.Printf("Cluster: %s\n", networkIntegration.Cluster)
 	fmt.Printf("Name: %s\n", networkIntegration.Name)
 	fmt.Printf("Last Updated: %s\n", networkIntegration.LastUpdated.String())

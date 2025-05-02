@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/google/uuid"
 )
 
 // StorageBucketServiceWithSlog implements inventory.StorageBucketService that is instrumented with slog logger.
@@ -25,8 +26,8 @@ func NewStorageBucketServiceWithSlog(base inventory.StorageBucketService, log *s
 	}
 }
 
-// GetAllIDsWithFilter implements inventory.StorageBucketService.
-func (_d StorageBucketServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.StorageBucketService.
+func (_d StorageBucketServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) (uUIDs []uuid.UUID, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -34,12 +35,12 @@ func (_d StorageBucketServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, 
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("=> calling GetAllIDsWithFilter")
+	log.Debug("=> calling GetAllUUIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("ints", ints),
+				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
@@ -48,12 +49,12 @@ func (_d StorageBucketServiceWithSlog) GetAllIDsWithFilter(ctx context.Context, 
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllIDsWithFilter returned an error")
+			log.Error("<= method GetAllUUIDsWithFilter returned an error")
 		} else {
-			log.Debug("<= method GetAllIDsWithFilter finished")
+			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
 	}()
-	return _d._base.GetAllIDsWithFilter(ctx, filter)
+	return _d._base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.StorageBucketService.
@@ -87,16 +88,16 @@ func (_d StorageBucketServiceWithSlog) GetAllWithFilter(ctx context.Context, fil
 	return _d._base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.StorageBucketService.
-func (_d StorageBucketServiceWithSlog) GetByID(ctx context.Context, id int) (storageBucket inventory.StorageBucket, err error) {
+// GetByUUID implements inventory.StorageBucketService.
+func (_d StorageBucketServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (storageBucket inventory.StorageBucket, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("id", id),
+			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling GetByID")
+	log.Debug("=> calling GetByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -110,24 +111,24 @@ func (_d StorageBucketServiceWithSlog) GetByID(ctx context.Context, id int) (sto
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByID returned an error")
+			log.Error("<= method GetByUUID returned an error")
 		} else {
-			log.Debug("<= method GetByID finished")
+			log.Debug("<= method GetByUUID finished")
 		}
 	}()
-	return _d._base.GetByID(ctx, id)
+	return _d._base.GetByUUID(ctx, id)
 }
 
-// ResyncByID implements inventory.StorageBucketService.
-func (_d StorageBucketServiceWithSlog) ResyncByID(ctx context.Context, id int) (err error) {
+// ResyncByUUID implements inventory.StorageBucketService.
+func (_d StorageBucketServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("id", id),
+			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling ResyncByID")
+	log.Debug("=> calling ResyncByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -140,12 +141,12 @@ func (_d StorageBucketServiceWithSlog) ResyncByID(ctx context.Context, id int) (
 			}
 		}
 		if err != nil {
-			log.Error("<= method ResyncByID returned an error")
+			log.Error("<= method ResyncByUUID returned an error")
 		} else {
-			log.Debug("<= method ResyncByID finished")
+			log.Debug("<= method ResyncByUUID finished")
 		}
 	}()
-	return _d._base.ResyncByID(ctx, id)
+	return _d._base.ResyncByUUID(ctx, id)
 }
 
 // SyncCluster implements inventory.StorageBucketService.

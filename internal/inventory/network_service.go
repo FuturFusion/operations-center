@@ -10,6 +10,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -95,12 +96,12 @@ func (s networkService) GetAllWithFilter(ctx context.Context, filter NetworkFilt
 	return networks, nil
 }
 
-func (s networkService) GetAllIDsWithFilter(ctx context.Context, filter NetworkFilter) ([]int, error) {
+func (s networkService) GetAllUUIDsWithFilter(ctx context.Context, filter NetworkFilter) ([]uuid.UUID, error) {
 	var filterExpression *vm.Program
 	var err error
 
 	type Env struct {
-		ID int
+		UUID string
 	}
 
 	if filter.Expression != nil {
@@ -110,15 +111,15 @@ func (s networkService) GetAllIDsWithFilter(ctx context.Context, filter NetworkF
 		}
 	}
 
-	networksIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	networksUUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var filteredNetworksIDs []int
+	var filteredNetworksUUIDs []uuid.UUID
 	if filter.Expression != nil {
-		for _, networkID := range networksIDs {
-			output, err := expr.Run(filterExpression, Env{networkID})
+		for _, networkUUID := range networksUUIDs {
+			output, err := expr.Run(filterExpression, Env{networkUUID.String()})
 			if err != nil {
 				return nil, err
 			}
@@ -129,23 +130,23 @@ func (s networkService) GetAllIDsWithFilter(ctx context.Context, filter NetworkF
 			}
 
 			if result {
-				filteredNetworksIDs = append(filteredNetworksIDs, networkID)
+				filteredNetworksUUIDs = append(filteredNetworksUUIDs, networkUUID)
 			}
 		}
 
-		return filteredNetworksIDs, nil
+		return filteredNetworksUUIDs, nil
 	}
 
-	return networksIDs, nil
+	return networksUUIDs, nil
 }
 
-func (s networkService) GetByID(ctx context.Context, id int) (Network, error) {
-	return s.repo.GetByID(ctx, id)
+func (s networkService) GetByUUID(ctx context.Context, id uuid.UUID) (Network, error) {
+	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s networkService) ResyncByID(ctx context.Context, id int) error {
+func (s networkService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		network, err := s.repo.GetByID(ctx, id)
+		network, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -157,7 +158,7 @@ func (s networkService) ResyncByID(ctx context.Context, id int) error {
 
 		retrievedNetwork, err := s.networkClient.GetNetworkByName(ctx, cluster.ConnectionURL, network.Name)
 		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByID(ctx, network.ID)
+			err = s.repo.DeleteByUUID(ctx, network.UUID)
 			if err != nil {
 				return err
 			}
@@ -172,13 +173,14 @@ func (s networkService) ResyncByID(ctx context.Context, id int) error {
 		network.ProjectName = retrievedNetwork.Project
 		network.Object = retrievedNetwork
 		network.LastUpdated = s.now()
+		network.DeriveUUID()
 
 		err = network.Validate()
 		if err != nil {
 			return err
 		}
 
-		_, err = s.repo.UpdateByID(ctx, network)
+		_, err = s.repo.UpdateByUUID(ctx, network)
 		if err != nil {
 			return err
 		}
@@ -217,6 +219,8 @@ func (s networkService) SyncCluster(ctx context.Context, name string) error {
 				Object:      retrievedNetwork,
 				LastUpdated: s.now(),
 			}
+
+			network.DeriveUUID()
 
 			if s.clusterSyncFilterFunc(network) {
 				continue

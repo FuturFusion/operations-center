@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -64,12 +65,16 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 		LastUpdated: time.Now(),
 	}
 
+	storagePoolA.DeriveUUID()
+
 	storagePoolB := inventory.StoragePool{
 		Cluster:     "two",
 		Name:        "two",
 		Object:      incusapi.StoragePool{},
 		LastUpdated: time.Now(),
 	}
+
+	storagePoolB.DeriveUUID()
 
 	ctx := context.Background()
 
@@ -126,10 +131,10 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	require.Equal(t, "two", storagePoolB.Cluster)
 
 	// Ensure we have two entries without filter
-	storagePoolIDs, err := storagePool.GetAllIDsWithFilter(ctx, inventory.StoragePoolFilter{})
+	storagePoolUUIDs, err := storagePool.GetAllUUIDsWithFilter(ctx, inventory.StoragePoolFilter{})
 	require.NoError(t, err)
-	require.Len(t, storagePoolIDs, 2)
-	require.ElementsMatch(t, []int{1, 2}, storagePoolIDs)
+	require.Len(t, storagePoolUUIDs, 2)
+	require.ElementsMatch(t, []uuid.UUID{storagePoolA.UUID, storagePoolB.UUID}, storagePoolUUIDs)
 
 	// Ensure we have two entries without filter
 	dbStoragePool, err := storagePool.GetAllWithFilter(ctx, inventory.StoragePoolFilter{})
@@ -139,45 +144,45 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	require.Equal(t, storagePoolB.Name, dbStoragePool[1].Name)
 
 	// Ensure we have one entry with filter for cluster, server and project
-	storagePoolIDs, err = storagePool.GetAllIDsWithFilter(ctx, inventory.StoragePoolFilter{
+	storagePoolUUIDs, err = storagePool.GetAllUUIDsWithFilter(ctx, inventory.StoragePoolFilter{
 		Cluster: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, storagePoolIDs, 1)
-	require.ElementsMatch(t, []int{1}, storagePoolIDs)
+	require.Len(t, storagePoolUUIDs, 1)
+	require.ElementsMatch(t, []uuid.UUID{storagePoolA.UUID}, storagePoolUUIDs)
 
 	// Ensure we have one entry with filter for cluster, server and project
 	dbStoragePool, err = storagePool.GetAllWithFilter(ctx, inventory.StoragePoolFilter{
 		Cluster: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, storagePoolIDs, 1)
+	require.Len(t, dbStoragePool, 1)
 	require.Equal(t, "one", dbStoragePool[0].Name)
 
 	// Should get back storagePoolA unchanged.
 	storagePoolA.Cluster = "one"
-	dbStoragePoolA, err := storagePool.GetByID(ctx, storagePoolA.ID)
+	dbStoragePoolA, err := storagePool.GetByUUID(ctx, storagePoolA.UUID)
 	require.NoError(t, err)
 	require.Equal(t, storagePoolA, dbStoragePoolA)
 
 	storagePoolB.LastUpdated = time.Now().UTC().Truncate(0)
-	dbStoragePoolB, err := storagePool.UpdateByID(ctx, storagePoolB)
+	dbStoragePoolB, err := storagePool.UpdateByUUID(ctx, storagePoolB)
 	require.NoError(t, err)
 	require.Equal(t, storagePoolB, dbStoragePoolB)
 
 	// Delete storage_pools by ID.
-	err = storagePool.DeleteByID(ctx, 1)
+	err = storagePool.DeleteByUUID(ctx, storagePoolA.UUID)
 	require.NoError(t, err)
 
 	// Delete storage_pools by cluster Name.
 	err = storagePool.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
-	_, err = storagePool.GetByID(ctx, storagePoolA.ID)
+	_, err = storagePool.GetByUUID(ctx, storagePoolA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no storage_pools remaining.
-	storagePoolIDs, err = storagePool.GetAllIDsWithFilter(ctx, inventory.StoragePoolFilter{})
+	storagePoolUUIDs, err = storagePool.GetAllUUIDsWithFilter(ctx, inventory.StoragePoolFilter{})
 	require.NoError(t, err)
-	require.Zero(t, storagePoolIDs)
+	require.Zero(t, storagePoolUUIDs)
 }

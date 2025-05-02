@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -65,8 +66,8 @@ func (_d NetworkForwardRepoWithPrometheus) DeleteByClusterName(ctx context.Conte
 	return _d.base.DeleteByClusterName(ctx, cluster)
 }
 
-// DeleteByID implements inventory.NetworkForwardRepo.
-func (_d NetworkForwardRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByUUID implements inventory.NetworkForwardRepo.
+func (_d NetworkForwardRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d NetworkForwardRepoWithPrometheus) DeleteByID(ctx context.Context, id in
 			result = "error"
 		}
 
-		networkForwardRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
+		networkForwardRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByID(ctx, id)
+	return _d.base.DeleteByUUID(ctx, id)
 }
 
-// GetAllIDsWithFilter implements inventory.NetworkForwardRepo.
-func (_d NetworkForwardRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.NetworkForwardRepo.
+func (_d NetworkForwardRepoWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d NetworkForwardRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Conte
 			result = "error"
 		}
 
-		networkForwardRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		networkForwardRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.NetworkForwardRepo.
@@ -107,8 +108,8 @@ func (_d NetworkForwardRepoWithPrometheus) GetAllWithFilter(ctx context.Context,
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.NetworkForwardRepo.
-func (_d NetworkForwardRepoWithPrometheus) GetByID(ctx context.Context, id int) (networkForward inventory.NetworkForward, err error) {
+// GetByUUID implements inventory.NetworkForwardRepo.
+func (_d NetworkForwardRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (networkForward inventory.NetworkForward, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -116,13 +117,13 @@ func (_d NetworkForwardRepoWithPrometheus) GetByID(ctx context.Context, id int) 
 			result = "error"
 		}
 
-		networkForwardRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		networkForwardRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements inventory.NetworkForwardRepo.
-func (_d NetworkForwardRepoWithPrometheus) UpdateByID(ctx context.Context, networkForward inventory.NetworkForward) (networkForward1 inventory.NetworkForward, err error) {
+// UpdateByUUID implements inventory.NetworkForwardRepo.
+func (_d NetworkForwardRepoWithPrometheus) UpdateByUUID(ctx context.Context, networkForward inventory.NetworkForward) (networkForward1 inventory.NetworkForward, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -130,7 +131,7 @@ func (_d NetworkForwardRepoWithPrometheus) UpdateByID(ctx context.Context, netwo
 			result = "error"
 		}
 
-		networkForwardRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByID", result).Observe(time.Since(_since).Seconds())
+		networkForwardRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByID(ctx, networkForward)
+	return _d.base.UpdateByUUID(ctx, networkForward)
 }

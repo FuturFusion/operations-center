@@ -64,7 +64,7 @@ type cmdNetworkList struct {
 	flagFormat  string
 }
 
-const networkDefaultColumns = `{{ .ID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const networkDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
 
 func (c *cmdNetworkList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -161,7 +161,7 @@ type cmdNetworkShow struct {
 
 func (c *cmdNetworkShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <name>"
+	cmd.Use = "show <uuid>"
 	cmd.Short = "Show information about a network"
 	cmd.Long = `Description:
   Show information about a network.
@@ -179,9 +179,9 @@ func (c *cmdNetworkShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	name := args[0]
+	id := args[0]
 
-	network, err := c.ocClient.GetNetwork(name)
+	network, err := c.ocClient.GetNetwork(id)
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func (c *cmdNetworkShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("ID: %d\n", network.ID)
+	fmt.Printf("UUID: %s\n", network.UUID.String())
 	fmt.Printf("Cluster: %s\n", network.Cluster)
 	fmt.Printf("Project Name: %s\n", network.ProjectName)
 	fmt.Printf("Name: %s\n", network.Name)

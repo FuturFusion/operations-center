@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/google/uuid"
 )
 
 // NetworkPeerRepoWithSlog implements inventory.NetworkPeerRepo that is instrumented with slog logger.
@@ -86,16 +87,16 @@ func (_d NetworkPeerRepoWithSlog) DeleteByClusterName(ctx context.Context, clust
 	return _d._base.DeleteByClusterName(ctx, cluster)
 }
 
-// DeleteByID implements inventory.NetworkPeerRepo.
-func (_d NetworkPeerRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByUUID implements inventory.NetworkPeerRepo.
+func (_d NetworkPeerRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("id", id),
+			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling DeleteByID")
+	log.Debug("=> calling DeleteByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -108,16 +109,16 @@ func (_d NetworkPeerRepoWithSlog) DeleteByID(ctx context.Context, id int) (err e
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByID returned an error")
+			log.Error("<= method DeleteByUUID returned an error")
 		} else {
-			log.Debug("<= method DeleteByID finished")
+			log.Debug("<= method DeleteByUUID finished")
 		}
 	}()
-	return _d._base.DeleteByID(ctx, id)
+	return _d._base.DeleteByUUID(ctx, id)
 }
 
-// GetAllIDsWithFilter implements inventory.NetworkPeerRepo.
-func (_d NetworkPeerRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.NetworkPeerRepo.
+func (_d NetworkPeerRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (uUIDs []uuid.UUID, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -125,12 +126,12 @@ func (_d NetworkPeerRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filte
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("=> calling GetAllIDsWithFilter")
+	log.Debug("=> calling GetAllUUIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("ints", ints),
+				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
@@ -139,12 +140,12 @@ func (_d NetworkPeerRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filte
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllIDsWithFilter returned an error")
+			log.Error("<= method GetAllUUIDsWithFilter returned an error")
 		} else {
-			log.Debug("<= method GetAllIDsWithFilter finished")
+			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
 	}()
-	return _d._base.GetAllIDsWithFilter(ctx, filter)
+	return _d._base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.NetworkPeerRepo.
@@ -178,16 +179,16 @@ func (_d NetworkPeerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter i
 	return _d._base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.NetworkPeerRepo.
-func (_d NetworkPeerRepoWithSlog) GetByID(ctx context.Context, id int) (networkPeer inventory.NetworkPeer, err error) {
+// GetByUUID implements inventory.NetworkPeerRepo.
+func (_d NetworkPeerRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkPeer inventory.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("id", id),
+			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling GetByID")
+	log.Debug("=> calling GetByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -201,16 +202,16 @@ func (_d NetworkPeerRepoWithSlog) GetByID(ctx context.Context, id int) (networkP
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByID returned an error")
+			log.Error("<= method GetByUUID returned an error")
 		} else {
-			log.Debug("<= method GetByID finished")
+			log.Debug("<= method GetByUUID finished")
 		}
 	}()
-	return _d._base.GetByID(ctx, id)
+	return _d._base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements inventory.NetworkPeerRepo.
-func (_d NetworkPeerRepoWithSlog) UpdateByID(ctx context.Context, networkPeer inventory.NetworkPeer) (networkPeer1 inventory.NetworkPeer, err error) {
+// UpdateByUUID implements inventory.NetworkPeerRepo.
+func (_d NetworkPeerRepoWithSlog) UpdateByUUID(ctx context.Context, networkPeer inventory.NetworkPeer) (networkPeer1 inventory.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -218,7 +219,7 @@ func (_d NetworkPeerRepoWithSlog) UpdateByID(ctx context.Context, networkPeer in
 			slog.Any("networkPeer", networkPeer),
 		)
 	}
-	log.Debug("=> calling UpdateByID")
+	log.Debug("=> calling UpdateByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -232,10 +233,10 @@ func (_d NetworkPeerRepoWithSlog) UpdateByID(ctx context.Context, networkPeer in
 			}
 		}
 		if err != nil {
-			log.Error("<= method UpdateByID returned an error")
+			log.Error("<= method UpdateByUUID returned an error")
 		} else {
-			log.Debug("<= method UpdateByID finished")
+			log.Debug("<= method UpdateByUUID finished")
 		}
 	}()
-	return _d._base.UpdateByID(ctx, networkPeer)
+	return _d._base.UpdateByUUID(ctx, networkPeer)
 }

@@ -31,8 +31,8 @@ func (c OperationsCenterClient) GetWithFilterNetworkZones(filter inventory.Netwo
 	return network_zones, nil
 }
 
-func (c OperationsCenterClient) GetNetworkZone(name string) (api.NetworkZone, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_zones", name), nil, nil)
+func (c OperationsCenterClient) GetNetworkZone(id string) (api.NetworkZone, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_zones", id), nil, nil)
 	if err != nil {
 		return api.NetworkZone{}, err
 	}

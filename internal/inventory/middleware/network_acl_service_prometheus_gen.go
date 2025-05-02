@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -37,8 +38,8 @@ func NewNetworkACLServiceWithPrometheus(base inventory.NetworkACLService, instan
 	}
 }
 
-// GetAllIDsWithFilter implements inventory.NetworkACLService.
-func (_d NetworkACLServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.NetworkACLService.
+func (_d NetworkACLServiceWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -46,9 +47,9 @@ func (_d NetworkACLServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Contex
 			result = "error"
 		}
 
-		networkACLServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		networkACLServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.NetworkACLService.
@@ -65,8 +66,8 @@ func (_d NetworkACLServiceWithPrometheus) GetAllWithFilter(ctx context.Context, 
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.NetworkACLService.
-func (_d NetworkACLServiceWithPrometheus) GetByID(ctx context.Context, id int) (networkACL inventory.NetworkACL, err error) {
+// GetByUUID implements inventory.NetworkACLService.
+func (_d NetworkACLServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (networkACL inventory.NetworkACL, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d NetworkACLServiceWithPrometheus) GetByID(ctx context.Context, id int) (
 			result = "error"
 		}
 
-		networkACLServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		networkACLServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// ResyncByID implements inventory.NetworkACLService.
-func (_d NetworkACLServiceWithPrometheus) ResyncByID(ctx context.Context, id int) (err error) {
+// ResyncByUUID implements inventory.NetworkACLService.
+func (_d NetworkACLServiceWithPrometheus) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d NetworkACLServiceWithPrometheus) ResyncByID(ctx context.Context, id int
 			result = "error"
 		}
 
-		networkACLServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByID", result).Observe(time.Since(_since).Seconds())
+		networkACLServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.ResyncByID(ctx, id)
+	return _d.base.ResyncByUUID(ctx, id)
 }
 
 // SyncCluster implements inventory.NetworkACLService.

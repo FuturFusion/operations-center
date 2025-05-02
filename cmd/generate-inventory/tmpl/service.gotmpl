@@ -8,6 +8,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 {{- if .HasParent }}
 	incusapi "github.com/lxc/incus/v6/shared/api"
 {{- end }}
@@ -121,12 +122,12 @@ func (s {{ .Name | camelcase }}Service) GetAllWithFilter(ctx context.Context, fi
 	return {{ .PluralName | camelcase }}, nil
 }
 
-func (s {{ .Name | camelcase }}Service) GetAllIDsWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) ([]int, error) {
+func (s {{ .Name | camelcase }}Service) GetAllUUIDsWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) ([]uuid.UUID, error) {
 	var filterExpression *vm.Program
 	var err error
 
 	type Env struct {
-		ID int
+		UUID string
 	}
 
 	if filter.Expression != nil {
@@ -136,15 +137,15 @@ func (s {{ .Name | camelcase }}Service) GetAllIDsWithFilter(ctx context.Context,
 		}
 	}
 
-	{{ .PluralName | camelcase }}IDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	{{ .PluralName | camelcase }}UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var filtered{{ .PluralName | pascalcase }}IDs []int
+	var filtered{{ .PluralName | pascalcase }}UUIDs []uuid.UUID
 	if filter.Expression != nil {
-		for _, {{ .Name | camelcase }}ID := range {{ .PluralName | camelcase }}IDs {
-			output, err := expr.Run(filterExpression, Env{ {{ .Name | camelcase }}ID })
+		for _, {{ .Name | camelcase }}UUID := range {{ .PluralName | camelcase }}UUIDs {
+			output, err := expr.Run(filterExpression, Env{ {{ .Name | camelcase }}UUID.String() })
 			if err != nil {
 				return nil, err
 			}
@@ -155,23 +156,23 @@ func (s {{ .Name | camelcase }}Service) GetAllIDsWithFilter(ctx context.Context,
 			}
 
 			if result {
-				filtered{{ .PluralName | pascalcase }}IDs = append(filtered{{ .PluralName | pascalcase }}IDs, {{ .Name | camelcase }}ID)
+				filtered{{ .PluralName | pascalcase }}UUIDs = append(filtered{{ .PluralName | pascalcase }}UUIDs, {{ .Name | camelcase }}UUID)
 			}
 		}
 
-		return filtered{{ .PluralName | pascalcase }}IDs, nil
+		return filtered{{ .PluralName | pascalcase }}UUIDs, nil
 	}
 
-	return {{ .PluralName | camelcase }}IDs, nil
+	return {{ .PluralName | camelcase }}UUIDs, nil
 }
 
-func (s {{ .Name | camelcase }}Service) GetByID(ctx context.Context, id int) ({{ .Name | pascalcase }}, error) {
-	return s.repo.GetByID(ctx, id)
+func (s {{ .Name | camelcase }}Service) GetByUUID(ctx context.Context, id uuid.UUID) ({{ .Name | pascalcase }}, error) {
+	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) error {
+func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		{{ .Name | camelcase }}, err := s.repo.GetByID(ctx, id)
+		{{ .Name | camelcase }}, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -183,7 +184,7 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 
 		retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, cluster.ConnectionURL, {{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}.{{ .Name | pascalcase }} {{- end}})
 		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByID(ctx, {{ .Name | camelcase }}.ID)
+			err = s.repo.DeleteByUUID(ctx, {{ .Name | camelcase }}.UUID)
 			if err != nil {
 				return err
 			}
@@ -206,13 +207,14 @@ func (s {{ .Name | camelcase }}Service) ResyncByID(ctx context.Context, id int) 
 {{- end }}
 		{{ .Name | camelcase }}.Object = retrieved{{ .Name | pascalcase }}
 		{{ .Name | camelcase }}.LastUpdated = s.now()
+		{{ .Name | camelcase }}.DeriveUUID()
 
 		err = {{ .Name | camelcase }}.Validate()
 		if err != nil {
 			return err
 		}
 
-		_, err = s.repo.UpdateByID(ctx, {{ .Name | camelcase }})
+		_, err = s.repo.UpdateByUUID(ctx, {{ .Name | camelcase }})
 		if err != nil {
 			return err
 		}
@@ -282,6 +284,8 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 				Object:      retrieved{{ .Name | pascalcase }},
 				LastUpdated: s.now(),
 			}
+
+			{{ .Name | camelcase }}.DeriveUUID()
 
 			if s.clusterSyncFilterFunc({{ .Name | camelcase }}) {
 				continue

@@ -5,25 +5,27 @@ package inventory
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type InstanceService interface {
 	GetAllWithFilter(ctx context.Context, filter InstanceFilter) (Instances, error)
-	GetAllIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (Instance, error)
-	ResyncByID(ctx context.Context, id int) error
+	GetAllUUIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (Instance, error)
+	ResyncByUUID(ctx context.Context, id uuid.UUID) error
 	SyncCluster(ctx context.Context, cluster string) error
 }
 
 type InstanceRepo interface {
 	GetAllWithFilter(ctx context.Context, filter InstanceFilter) (Instances, error)
-	GetAllIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (Instance, error)
+	GetAllUUIDsWithFilter(ctx context.Context, filter InstanceFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (Instance, error)
 	Create(ctx context.Context, instance Instance) (Instance, error)
-	DeleteByID(ctx context.Context, id int) error
+	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	DeleteByClusterName(ctx context.Context, cluster string) error
-	UpdateByID(ctx context.Context, instance Instance) (Instance, error)
+	UpdateByUUID(ctx context.Context, instance Instance) (Instance, error)
 }
 
 type InstanceServerClient interface {

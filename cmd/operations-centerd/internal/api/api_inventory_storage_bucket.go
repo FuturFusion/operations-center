@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -24,8 +26,8 @@ func registerInventoryStorageBucketHandler(router Router, authorizer authz.Autho
 	}
 
 	router.HandleFunc("GET /{$}", response.With(handler.storageBucketsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("GET /{id}", response.With(handler.storageBucketGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.storageBucketResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{uuid}", response.With(handler.storageBucketGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{uuid}/resync", response.With(handler.storageBucketResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/storage_buckets storage_buckets storage_buckets_get
@@ -185,7 +187,7 @@ func (i *storageBucketHandler) storageBucketsGet(r *http.Request) response.Respo
 		result := make([]api.StorageBucket, 0, len(storageBuckets))
 		for _, storageBucket := range storageBuckets {
 			result = append(result, api.StorageBucket{
-				ID:              storageBucket.ID,
+				UUID:            storageBucket.UUID,
 				Cluster:         storageBucket.Cluster,
 				Server:          storageBucket.Server,
 				ProjectName:     storageBucket.ProjectName,
@@ -199,20 +201,20 @@ func (i *storageBucketHandler) storageBucketsGet(r *http.Request) response.Respo
 		return response.SyncResponse(true, result)
 	}
 
-	storageBucketIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
+	storageBucketUUIDs, err := i.service.GetAllUUIDsWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(storageBucketIDs))
-	for _, id := range storageBucketIDs {
+	result := make([]string, 0, len(storageBucketUUIDs))
+	for _, id := range storageBucketUUIDs {
 		result = append(result, fmt.Sprintf("/%s/inventory/storage_bucket/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/inventory/storage_buckets/{id} storage_buckets storage_bucket_get
+// swagger:operation GET /1.0/inventory/storage_buckets/{uuid} storage_buckets storage_bucket_get
 //
 //	Get the storage_bucket
 //
@@ -247,12 +249,12 @@ func (i *storageBucketHandler) storageBucketsGet(r *http.Request) response.Respo
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *storageBucketHandler) storageBucketGet(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	storageBucket, err := i.service.GetByID(r.Context(), id)
+	storageBucket, err := i.service.GetByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -260,7 +262,7 @@ func (i *storageBucketHandler) storageBucketGet(r *http.Request) response.Respon
 	return response.SyncResponse(
 		true,
 		api.StorageBucket{
-			ID:              storageBucket.ID,
+			UUID:            storageBucket.UUID,
 			Cluster:         storageBucket.Cluster,
 			Server:          storageBucket.Server,
 			ProjectName:     storageBucket.ProjectName,
@@ -272,7 +274,7 @@ func (i *storageBucketHandler) storageBucketGet(r *http.Request) response.Respon
 	)
 }
 
-// swagger:operation POST /1.0/inventory/storage_buckets/{id}/resync storage_buckets storage_bucket_get_resync_post
+// swagger:operation POST /1.0/inventory/storage_buckets/{uuid}/resync storage_buckets storage_bucket_get_resync_post
 //
 //	Resync the storage_bucket
 //
@@ -305,12 +307,12 @@ func (i *storageBucketHandler) storageBucketGet(r *http.Request) response.Respon
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *storageBucketHandler) storageBucketResyncPost(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	err = i.service.ResyncByID(r.Context(), id)
+	err = i.service.ResyncByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync storage_bucket: %w", err))
 	}

@@ -1,9 +1,14 @@
 package inventory
 
 import (
+{{- with .ExtraAttributes }}
+	"fmt"
+{{- end }}
 	"net/url"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -11,6 +16,7 @@ import (
 
 type {{ .Name | pascalcase }} struct {
 	ID          int
+	UUID        uuid.UUID
 	Cluster     string
 {{- if .ServerIDByLocation }}
 	Server      string
@@ -27,6 +33,29 @@ type {{ .Name | pascalcase }} struct {
 {{- end }}
 	Object      incusapi.{{ .ObjectType | pascalcase }}
 	LastUpdated time.Time
+}
+
+func (m *{{ .Name | pascalcase }}) DeriveUUID() *{{ .Name | pascalcase }} {
+	identifier := strings.Join([]string{
+		m.Cluster,
+{{- if .ServerIDByLocation }}
+		m.Server,
+{{- end }}
+{{- if .HasProject }}
+		m.ProjectName,
+{{- end }}
+{{- if .HasParent }}
+		m.{{ .ParentName | pascalcase }}Name,
+{{- end }}
+{{- range .ExtraAttributes }}
+		fmt.Sprintf("%v", m.{{ .Name | pascalcase }}),
+{{- end }}
+		m.Name,
+	}, ":")
+
+	m.UUID = uuid.NewSHA1(InventorySpaceUUID, []byte(identifier))
+
+	return m
 }
 
 func (m {{ .Name | pascalcase }}) Validate() error {
@@ -55,6 +84,12 @@ func (m {{ .Name | pascalcase }}) Validate() error {
 		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, parent name ({{ .ParentName | pascalcase}}) can not be empty")
 	}
 {{- end }}
+
+	clone := m
+	clone.DeriveUUID()
+	if clone.UUID != m.UUID {
+		return domain.NewValidationErrf("Invalid UUID, does not match derived value")
+	}
 
 	return nil
 }

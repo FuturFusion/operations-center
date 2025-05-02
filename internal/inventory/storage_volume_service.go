@@ -10,6 +10,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -109,12 +110,12 @@ func (s storageVolumeService) GetAllWithFilter(ctx context.Context, filter Stora
 	return storageVolumes, nil
 }
 
-func (s storageVolumeService) GetAllIDsWithFilter(ctx context.Context, filter StorageVolumeFilter) ([]int, error) {
+func (s storageVolumeService) GetAllUUIDsWithFilter(ctx context.Context, filter StorageVolumeFilter) ([]uuid.UUID, error) {
 	var filterExpression *vm.Program
 	var err error
 
 	type Env struct {
-		ID int
+		UUID string
 	}
 
 	if filter.Expression != nil {
@@ -124,15 +125,15 @@ func (s storageVolumeService) GetAllIDsWithFilter(ctx context.Context, filter St
 		}
 	}
 
-	storageVolumesIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	storageVolumesUUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var filteredStorageVolumesIDs []int
+	var filteredStorageVolumesUUIDs []uuid.UUID
 	if filter.Expression != nil {
-		for _, storageVolumeID := range storageVolumesIDs {
-			output, err := expr.Run(filterExpression, Env{storageVolumeID})
+		for _, storageVolumeUUID := range storageVolumesUUIDs {
+			output, err := expr.Run(filterExpression, Env{storageVolumeUUID.String()})
 			if err != nil {
 				return nil, err
 			}
@@ -143,23 +144,23 @@ func (s storageVolumeService) GetAllIDsWithFilter(ctx context.Context, filter St
 			}
 
 			if result {
-				filteredStorageVolumesIDs = append(filteredStorageVolumesIDs, storageVolumeID)
+				filteredStorageVolumesUUIDs = append(filteredStorageVolumesUUIDs, storageVolumeUUID)
 			}
 		}
 
-		return filteredStorageVolumesIDs, nil
+		return filteredStorageVolumesUUIDs, nil
 	}
 
-	return storageVolumesIDs, nil
+	return storageVolumesUUIDs, nil
 }
 
-func (s storageVolumeService) GetByID(ctx context.Context, id int) (StorageVolume, error) {
-	return s.repo.GetByID(ctx, id)
+func (s storageVolumeService) GetByUUID(ctx context.Context, id uuid.UUID) (StorageVolume, error) {
+	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s storageVolumeService) ResyncByID(ctx context.Context, id int) error {
+func (s storageVolumeService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		storageVolume, err := s.repo.GetByID(ctx, id)
+		storageVolume, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -171,7 +172,7 @@ func (s storageVolumeService) ResyncByID(ctx context.Context, id int) error {
 
 		retrievedStorageVolume, err := s.storageVolumeClient.GetStorageVolumeByName(ctx, cluster.ConnectionURL, storageVolume.StoragePoolName, storageVolume.Name, storageVolume.Type)
 		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByID(ctx, storageVolume.ID)
+			err = s.repo.DeleteByUUID(ctx, storageVolume.UUID)
 			if err != nil {
 				return err
 			}
@@ -188,13 +189,14 @@ func (s storageVolumeService) ResyncByID(ctx context.Context, id int) error {
 		storageVolume.Type = retrievedStorageVolume.Type
 		storageVolume.Object = retrievedStorageVolume
 		storageVolume.LastUpdated = s.now()
+		storageVolume.DeriveUUID()
 
 		err = storageVolume.Validate()
 		if err != nil {
 			return err
 		}
 
-		_, err = s.repo.UpdateByID(ctx, storageVolume)
+		_, err = s.repo.UpdateByUUID(ctx, storageVolume)
 		if err != nil {
 			return err
 		}
@@ -246,6 +248,8 @@ func (s storageVolumeService) SyncCluster(ctx context.Context, name string) erro
 					Object:          retrievedStorageVolume,
 					LastUpdated:     s.now(),
 				}
+
+				storageVolume.DeriveUUID()
 
 				if s.clusterSyncFilterFunc(storageVolume) {
 					continue

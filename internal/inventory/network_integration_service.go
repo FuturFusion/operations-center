@@ -10,6 +10,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -95,12 +96,12 @@ func (s networkIntegrationService) GetAllWithFilter(ctx context.Context, filter 
 	return networkIntegrations, nil
 }
 
-func (s networkIntegrationService) GetAllIDsWithFilter(ctx context.Context, filter NetworkIntegrationFilter) ([]int, error) {
+func (s networkIntegrationService) GetAllUUIDsWithFilter(ctx context.Context, filter NetworkIntegrationFilter) ([]uuid.UUID, error) {
 	var filterExpression *vm.Program
 	var err error
 
 	type Env struct {
-		ID int
+		UUID string
 	}
 
 	if filter.Expression != nil {
@@ -110,15 +111,15 @@ func (s networkIntegrationService) GetAllIDsWithFilter(ctx context.Context, filt
 		}
 	}
 
-	networkIntegrationsIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	networkIntegrationsUUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var filteredNetworkIntegrationsIDs []int
+	var filteredNetworkIntegrationsUUIDs []uuid.UUID
 	if filter.Expression != nil {
-		for _, networkIntegrationID := range networkIntegrationsIDs {
-			output, err := expr.Run(filterExpression, Env{networkIntegrationID})
+		for _, networkIntegrationUUID := range networkIntegrationsUUIDs {
+			output, err := expr.Run(filterExpression, Env{networkIntegrationUUID.String()})
 			if err != nil {
 				return nil, err
 			}
@@ -129,23 +130,23 @@ func (s networkIntegrationService) GetAllIDsWithFilter(ctx context.Context, filt
 			}
 
 			if result {
-				filteredNetworkIntegrationsIDs = append(filteredNetworkIntegrationsIDs, networkIntegrationID)
+				filteredNetworkIntegrationsUUIDs = append(filteredNetworkIntegrationsUUIDs, networkIntegrationUUID)
 			}
 		}
 
-		return filteredNetworkIntegrationsIDs, nil
+		return filteredNetworkIntegrationsUUIDs, nil
 	}
 
-	return networkIntegrationsIDs, nil
+	return networkIntegrationsUUIDs, nil
 }
 
-func (s networkIntegrationService) GetByID(ctx context.Context, id int) (NetworkIntegration, error) {
-	return s.repo.GetByID(ctx, id)
+func (s networkIntegrationService) GetByUUID(ctx context.Context, id uuid.UUID) (NetworkIntegration, error) {
+	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s networkIntegrationService) ResyncByID(ctx context.Context, id int) error {
+func (s networkIntegrationService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		networkIntegration, err := s.repo.GetByID(ctx, id)
+		networkIntegration, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -157,7 +158,7 @@ func (s networkIntegrationService) ResyncByID(ctx context.Context, id int) error
 
 		retrievedNetworkIntegration, err := s.networkIntegrationClient.GetNetworkIntegrationByName(ctx, cluster.ConnectionURL, networkIntegration.Name)
 		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByID(ctx, networkIntegration.ID)
+			err = s.repo.DeleteByUUID(ctx, networkIntegration.UUID)
 			if err != nil {
 				return err
 			}
@@ -171,13 +172,14 @@ func (s networkIntegrationService) ResyncByID(ctx context.Context, id int) error
 
 		networkIntegration.Object = retrievedNetworkIntegration
 		networkIntegration.LastUpdated = s.now()
+		networkIntegration.DeriveUUID()
 
 		err = networkIntegration.Validate()
 		if err != nil {
 			return err
 		}
 
-		_, err = s.repo.UpdateByID(ctx, networkIntegration)
+		_, err = s.repo.UpdateByUUID(ctx, networkIntegration)
 		if err != nil {
 			return err
 		}
@@ -215,6 +217,8 @@ func (s networkIntegrationService) SyncCluster(ctx context.Context, name string)
 				Object:      retrievedNetworkIntegration,
 				LastUpdated: s.now(),
 			}
+
+			networkIntegration.DeriveUUID()
 
 			if s.clusterSyncFilterFunc(networkIntegration) {
 				continue

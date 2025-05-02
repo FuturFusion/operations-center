@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
@@ -35,9 +37,9 @@ WITH _lookup AS (
     WHERE clusters.name = :cluster_name AND servers.name = :server_name
   ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
 )
-INSERT INTO storage_volumes (cluster_id, server_id, project_name, storage_pool_name, name, type, object, last_updated)
-VALUES ( (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :storage_pool_name, :name, :type, :object, :last_updated)
-RETURNING id, :cluster_name, :server_name, project_name, storage_pool_name, name, type, object, last_updated;
+INSERT INTO storage_volumes (uuid, cluster_id, server_id, project_name, storage_pool_name, name, type, object, last_updated)
+VALUES (:uuid, (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :storage_pool_name, :name, :type, :object, :last_updated)
+RETURNING id, :uuid, :cluster_name, :server_name, project_name, storage_pool_name, name, type, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -46,6 +48,7 @@ RETURNING id, :cluster_name, :server_name, project_name, storage_pool_name, name
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
+		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
 		sql.Named("server_name", in.Server),
 		sql.Named("project_name", in.ProjectName),
@@ -65,7 +68,7 @@ RETURNING id, :cluster_name, :server_name, project_name, storage_pool_name, name
 func (r storageVolume) GetAllWithFilter(ctx context.Context, filter inventory.StorageVolumeFilter) (inventory.StorageVolumes, error) {
 	const sqlStmt = `
 SELECT
-  storage_volumes.id, clusters.name, servers.name, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.name, storage_volumes.type, storage_volumes.object, storage_volumes.last_updated
+  storage_volumes.id, storage_volumes.uuid, clusters.name, servers.name, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.name, storage_volumes.type, storage_volumes.object, storage_volumes.last_updated
 FROM storage_volumes
   INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
   INNER JOIN servers ON storage_volumes.server_id = servers.id
@@ -119,9 +122,9 @@ ORDER BY clusters.name, servers.name, storage_volumes.name
 	return storageVolumes, nil
 }
 
-func (r storageVolume) GetAllIDsWithFilter(ctx context.Context, filter inventory.StorageVolumeFilter) ([]int, error) {
+func (r storageVolume) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StorageVolumeFilter) ([]uuid.UUID, error) {
 	const sqlStmt = `
-SELECT storage_volumes.id
+SELECT storage_volumes.uuid
 FROM storage_volumes
   INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
   INNER JOIN servers ON storage_volumes.server_id = servers.id
@@ -157,9 +160,9 @@ ORDER BY storage_volumes.id
 
 	defer func() { _ = rows.Close() }()
 
-	var ids []int
+	var ids []uuid.UUID
 	for rows.Next() {
-		var id int
+		var id uuid.UUID
 		err := rows.Scan(&id)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
@@ -175,18 +178,18 @@ ORDER BY storage_volumes.id
 	return ids, nil
 }
 
-func (r storageVolume) GetByID(ctx context.Context, id int) (inventory.StorageVolume, error) {
+func (r storageVolume) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.StorageVolume, error) {
 	const sqlStmt = `
 SELECT
-  storage_volumes.id, clusters.name, servers.name, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.name, storage_volumes.type, storage_volumes.object, storage_volumes.last_updated
+  storage_volumes.id, storage_volumes.uuid, clusters.name, servers.name, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.name, storage_volumes.type, storage_volumes.object, storage_volumes.last_updated
 FROM
   storage_volumes
   INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
   INNER JOIN servers ON storage_volumes.server_id = servers.id
-WHERE storage_volumes.id=:id;
+WHERE storage_volumes.uuid=:uuid;
 `
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
+	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if row.Err() != nil {
 		return inventory.StorageVolume{}, sqlite.MapErr(row.Err())
 	}
@@ -194,10 +197,10 @@ WHERE storage_volumes.id=:id;
 	return scanStorageVolume(row)
 }
 
-func (r storageVolume) DeleteByID(ctx context.Context, id int) error {
-	const sqlStmt = `DELETE FROM storage_volumes WHERE id=:id;`
+func (r storageVolume) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	const sqlStmt = `DELETE FROM storage_volumes WHERE uuid=:uuid;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -238,7 +241,7 @@ DELETE FROM storage_volumes WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
 	return nil
 }
 
-func (r storageVolume) UpdateByID(ctx context.Context, in inventory.StorageVolume) (inventory.StorageVolume, error) {
+func (r storageVolume) UpdateByUUID(ctx context.Context, in inventory.StorageVolume) (inventory.StorageVolume, error) {
 	const sqlStmt = `
 WITH _lookup AS (
   SELECT id AS cluster_id , (
@@ -247,9 +250,9 @@ WITH _lookup AS (
     WHERE clusters.name = :cluster_name AND servers.name = :server_name
   ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
 )
-UPDATE storage_volumes SET cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, storage_pool_name=:storage_pool_name, name=:name, type=:type, object=:object, last_updated=:last_updated
-WHERE id=:id
-RETURNING id, :cluster_name, :server_name, project_name, storage_pool_name, name, type, object, last_updated;
+UPDATE storage_volumes SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, storage_pool_name=:storage_pool_name, name=:name, type=:type, object=:object, last_updated=:last_updated
+WHERE uuid=:uuid
+RETURNING id, :uuid, :cluster_name, :server_name, project_name, storage_pool_name, name, type, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -258,7 +261,7 @@ RETURNING id, :cluster_name, :server_name, project_name, storage_pool_name, name
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("id", in.ID),
+		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
 		sql.Named("server_name", in.Server),
 		sql.Named("project_name", in.ProjectName),
@@ -281,6 +284,7 @@ func scanStorageVolume(row interface{ Scan(dest ...any) error }) (inventory.Stor
 
 	err := row.Scan(
 		&storageVolume.ID,
+		&storageVolume.UUID,
 		&storageVolume.Cluster,
 		&storageVolume.Server,
 		&storageVolume.ProjectName,

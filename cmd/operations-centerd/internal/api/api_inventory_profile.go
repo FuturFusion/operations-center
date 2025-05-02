@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -24,8 +26,8 @@ func registerInventoryProfileHandler(router Router, authorizer authz.Authorizer,
 	}
 
 	router.HandleFunc("GET /{$}", response.With(handler.profilesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("GET /{id}", response.With(handler.profileGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.profileResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{uuid}", response.With(handler.profileGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{uuid}/resync", response.With(handler.profileResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/profiles profiles profiles_get
@@ -171,7 +173,7 @@ func (i *profileHandler) profilesGet(r *http.Request) response.Response {
 		result := make([]api.Profile, 0, len(profiles))
 		for _, profile := range profiles {
 			result = append(result, api.Profile{
-				ID:          profile.ID,
+				UUID:        profile.UUID,
 				Cluster:     profile.Cluster,
 				ProjectName: profile.ProjectName,
 				Name:        profile.Name,
@@ -183,20 +185,20 @@ func (i *profileHandler) profilesGet(r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	profileIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
+	profileUUIDs, err := i.service.GetAllUUIDsWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(profileIDs))
-	for _, id := range profileIDs {
+	result := make([]string, 0, len(profileUUIDs))
+	for _, id := range profileUUIDs {
 		result = append(result, fmt.Sprintf("/%s/inventory/profile/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/inventory/profiles/{id} profiles profile_get
+// swagger:operation GET /1.0/inventory/profiles/{uuid} profiles profile_get
 //
 //	Get the profile
 //
@@ -231,12 +233,12 @@ func (i *profileHandler) profilesGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *profileHandler) profileGet(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	profile, err := i.service.GetByID(r.Context(), id)
+	profile, err := i.service.GetByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -244,7 +246,7 @@ func (i *profileHandler) profileGet(r *http.Request) response.Response {
 	return response.SyncResponse(
 		true,
 		api.Profile{
-			ID:          profile.ID,
+			UUID:        profile.UUID,
 			Cluster:     profile.Cluster,
 			ProjectName: profile.ProjectName,
 			Name:        profile.Name,
@@ -254,7 +256,7 @@ func (i *profileHandler) profileGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation POST /1.0/inventory/profiles/{id}/resync profiles profile_get_resync_post
+// swagger:operation POST /1.0/inventory/profiles/{uuid}/resync profiles profile_get_resync_post
 //
 //	Resync the profile
 //
@@ -287,12 +289,12 @@ func (i *profileHandler) profileGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *profileHandler) profileResyncPost(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	err = i.service.ResyncByID(r.Context(), id)
+	err = i.service.ResyncByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync profile: %w", err))
 	}

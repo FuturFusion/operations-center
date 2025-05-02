@@ -10,6 +10,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -95,12 +96,12 @@ func (s imageService) GetAllWithFilter(ctx context.Context, filter ImageFilter) 
 	return images, nil
 }
 
-func (s imageService) GetAllIDsWithFilter(ctx context.Context, filter ImageFilter) ([]int, error) {
+func (s imageService) GetAllUUIDsWithFilter(ctx context.Context, filter ImageFilter) ([]uuid.UUID, error) {
 	var filterExpression *vm.Program
 	var err error
 
 	type Env struct {
-		ID int
+		UUID string
 	}
 
 	if filter.Expression != nil {
@@ -110,15 +111,15 @@ func (s imageService) GetAllIDsWithFilter(ctx context.Context, filter ImageFilte
 		}
 	}
 
-	imagesIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	imagesUUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var filteredImagesIDs []int
+	var filteredImagesUUIDs []uuid.UUID
 	if filter.Expression != nil {
-		for _, imageID := range imagesIDs {
-			output, err := expr.Run(filterExpression, Env{imageID})
+		for _, imageUUID := range imagesUUIDs {
+			output, err := expr.Run(filterExpression, Env{imageUUID.String()})
 			if err != nil {
 				return nil, err
 			}
@@ -129,23 +130,23 @@ func (s imageService) GetAllIDsWithFilter(ctx context.Context, filter ImageFilte
 			}
 
 			if result {
-				filteredImagesIDs = append(filteredImagesIDs, imageID)
+				filteredImagesUUIDs = append(filteredImagesUUIDs, imageUUID)
 			}
 		}
 
-		return filteredImagesIDs, nil
+		return filteredImagesUUIDs, nil
 	}
 
-	return imagesIDs, nil
+	return imagesUUIDs, nil
 }
 
-func (s imageService) GetByID(ctx context.Context, id int) (Image, error) {
-	return s.repo.GetByID(ctx, id)
+func (s imageService) GetByUUID(ctx context.Context, id uuid.UUID) (Image, error) {
+	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s imageService) ResyncByID(ctx context.Context, id int) error {
+func (s imageService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		image, err := s.repo.GetByID(ctx, id)
+		image, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -157,7 +158,7 @@ func (s imageService) ResyncByID(ctx context.Context, id int) error {
 
 		retrievedImage, err := s.imageClient.GetImageByName(ctx, cluster.ConnectionURL, image.Name)
 		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByID(ctx, image.ID)
+			err = s.repo.DeleteByUUID(ctx, image.UUID)
 			if err != nil {
 				return err
 			}
@@ -172,13 +173,14 @@ func (s imageService) ResyncByID(ctx context.Context, id int) error {
 		image.ProjectName = retrievedImage.Project
 		image.Object = retrievedImage
 		image.LastUpdated = s.now()
+		image.DeriveUUID()
 
 		err = image.Validate()
 		if err != nil {
 			return err
 		}
 
-		_, err = s.repo.UpdateByID(ctx, image)
+		_, err = s.repo.UpdateByUUID(ctx, image)
 		if err != nil {
 			return err
 		}
@@ -217,6 +219,8 @@ func (s imageService) SyncCluster(ctx context.Context, name string) error {
 				Object:      retrievedImage,
 				LastUpdated: s.now(),
 			}
+
+			image.DeriveUUID()
 
 			if s.clusterSyncFilterFunc(image) {
 				continue

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -68,6 +69,8 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 		LastUpdated:     time.Now(),
 	}
 
+	storageVolumeA.DeriveUUID()
+
 	storageVolumeB := inventory.StorageVolume{
 		Cluster:         "two",
 		Server:          "two",
@@ -78,6 +81,8 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 		Object:          incusapi.StorageVolume{},
 		LastUpdated:     time.Now(),
 	}
+
+	storageVolumeB.DeriveUUID()
 
 	ctx := context.Background()
 
@@ -134,10 +139,10 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	require.Equal(t, "two", storageVolumeB.Cluster)
 
 	// Ensure we have two entries without filter
-	storageVolumeIDs, err := storageVolume.GetAllIDsWithFilter(ctx, inventory.StorageVolumeFilter{})
+	storageVolumeUUIDs, err := storageVolume.GetAllUUIDsWithFilter(ctx, inventory.StorageVolumeFilter{})
 	require.NoError(t, err)
-	require.Len(t, storageVolumeIDs, 2)
-	require.ElementsMatch(t, []int{1, 2}, storageVolumeIDs)
+	require.Len(t, storageVolumeUUIDs, 2)
+	require.ElementsMatch(t, []uuid.UUID{storageVolumeA.UUID, storageVolumeB.UUID}, storageVolumeUUIDs)
 
 	// Ensure we have two entries without filter
 	dbStorageVolume, err := storageVolume.GetAllWithFilter(ctx, inventory.StorageVolumeFilter{})
@@ -147,14 +152,14 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 	require.Equal(t, storageVolumeB.Name, dbStorageVolume[1].Name)
 
 	// Ensure we have one entry with filter for cluster, server and project
-	storageVolumeIDs, err = storageVolume.GetAllIDsWithFilter(ctx, inventory.StorageVolumeFilter{
+	storageVolumeUUIDs, err = storageVolume.GetAllUUIDsWithFilter(ctx, inventory.StorageVolumeFilter{
 		Cluster: ptr.To("one"),
 		Server:  ptr.To("one"),
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, storageVolumeIDs, 1)
-	require.ElementsMatch(t, []int{1}, storageVolumeIDs)
+	require.Len(t, storageVolumeUUIDs, 1)
+	require.ElementsMatch(t, []uuid.UUID{storageVolumeA.UUID}, storageVolumeUUIDs)
 
 	// Ensure we have one entry with filter for cluster, server and project
 	dbStorageVolume, err = storageVolume.GetAllWithFilter(ctx, inventory.StorageVolumeFilter{
@@ -163,33 +168,33 @@ func TestStorageVolumeDatabaseActions(t *testing.T) {
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, storageVolumeIDs, 1)
+	require.Len(t, dbStorageVolume, 1)
 	require.Equal(t, "one", dbStorageVolume[0].Name)
 
 	// Should get back storageVolumeA unchanged.
 	storageVolumeA.Cluster = "one"
-	dbStorageVolumeA, err := storageVolume.GetByID(ctx, storageVolumeA.ID)
+	dbStorageVolumeA, err := storageVolume.GetByUUID(ctx, storageVolumeA.UUID)
 	require.NoError(t, err)
 	require.Equal(t, storageVolumeA, dbStorageVolumeA)
 
 	storageVolumeB.LastUpdated = time.Now().UTC().Truncate(0)
-	dbStorageVolumeB, err := storageVolume.UpdateByID(ctx, storageVolumeB)
+	dbStorageVolumeB, err := storageVolume.UpdateByUUID(ctx, storageVolumeB)
 	require.NoError(t, err)
 	require.Equal(t, storageVolumeB, dbStorageVolumeB)
 
 	// Delete storage_volumes by ID.
-	err = storageVolume.DeleteByID(ctx, 1)
+	err = storageVolume.DeleteByUUID(ctx, storageVolumeA.UUID)
 	require.NoError(t, err)
 
 	// Delete storage_volumes by cluster Name.
 	err = storageVolume.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
-	_, err = storageVolume.GetByID(ctx, storageVolumeA.ID)
+	_, err = storageVolume.GetByUUID(ctx, storageVolumeA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no storage_volumes remaining.
-	storageVolumeIDs, err = storageVolume.GetAllIDsWithFilter(ctx, inventory.StorageVolumeFilter{})
+	storageVolumeUUIDs, err = storageVolume.GetAllUUIDsWithFilter(ctx, inventory.StorageVolumeFilter{})
 	require.NoError(t, err)
-	require.Zero(t, storageVolumeIDs)
+	require.Zero(t, storageVolumeUUIDs)
 }

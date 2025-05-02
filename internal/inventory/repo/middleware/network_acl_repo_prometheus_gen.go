@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -65,8 +66,8 @@ func (_d NetworkACLRepoWithPrometheus) DeleteByClusterName(ctx context.Context, 
 	return _d.base.DeleteByClusterName(ctx, cluster)
 }
 
-// DeleteByID implements inventory.NetworkACLRepo.
-func (_d NetworkACLRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByUUID implements inventory.NetworkACLRepo.
+func (_d NetworkACLRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d NetworkACLRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (
 			result = "error"
 		}
 
-		networkACLRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
+		networkACLRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByID(ctx, id)
+	return _d.base.DeleteByUUID(ctx, id)
 }
 
-// GetAllIDsWithFilter implements inventory.NetworkACLRepo.
-func (_d NetworkACLRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.NetworkACLRepo.
+func (_d NetworkACLRepoWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d NetworkACLRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, 
 			result = "error"
 		}
 
-		networkACLRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		networkACLRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.NetworkACLRepo.
@@ -107,8 +108,8 @@ func (_d NetworkACLRepoWithPrometheus) GetAllWithFilter(ctx context.Context, fil
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.NetworkACLRepo.
-func (_d NetworkACLRepoWithPrometheus) GetByID(ctx context.Context, id int) (networkACL inventory.NetworkACL, err error) {
+// GetByUUID implements inventory.NetworkACLRepo.
+func (_d NetworkACLRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (networkACL inventory.NetworkACL, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -116,13 +117,13 @@ func (_d NetworkACLRepoWithPrometheus) GetByID(ctx context.Context, id int) (net
 			result = "error"
 		}
 
-		networkACLRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		networkACLRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements inventory.NetworkACLRepo.
-func (_d NetworkACLRepoWithPrometheus) UpdateByID(ctx context.Context, networkACL inventory.NetworkACL) (networkACL1 inventory.NetworkACL, err error) {
+// UpdateByUUID implements inventory.NetworkACLRepo.
+func (_d NetworkACLRepoWithPrometheus) UpdateByUUID(ctx context.Context, networkACL inventory.NetworkACL) (networkACL1 inventory.NetworkACL, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -130,7 +131,7 @@ func (_d NetworkACLRepoWithPrometheus) UpdateByID(ctx context.Context, networkAC
 			result = "error"
 		}
 
-		networkACLRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByID", result).Observe(time.Since(_since).Seconds())
+		networkACLRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByID(ctx, networkACL)
+	return _d.base.UpdateByUUID(ctx, networkACL)
 }

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -65,6 +66,8 @@ func TestNetworkDatabaseActions(t *testing.T) {
 		LastUpdated: time.Now(),
 	}
 
+	networkA.DeriveUUID()
+
 	networkB := inventory.Network{
 		Cluster:     "two",
 		ProjectName: "two",
@@ -72,6 +75,8 @@ func TestNetworkDatabaseActions(t *testing.T) {
 		Object:      incusapi.Network{},
 		LastUpdated: time.Now(),
 	}
+
+	networkB.DeriveUUID()
 
 	ctx := context.Background()
 
@@ -128,10 +133,10 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	require.Equal(t, "two", networkB.Cluster)
 
 	// Ensure we have two entries without filter
-	networkIDs, err := network.GetAllIDsWithFilter(ctx, inventory.NetworkFilter{})
+	networkUUIDs, err := network.GetAllUUIDsWithFilter(ctx, inventory.NetworkFilter{})
 	require.NoError(t, err)
-	require.Len(t, networkIDs, 2)
-	require.ElementsMatch(t, []int{1, 2}, networkIDs)
+	require.Len(t, networkUUIDs, 2)
+	require.ElementsMatch(t, []uuid.UUID{networkA.UUID, networkB.UUID}, networkUUIDs)
 
 	// Ensure we have two entries without filter
 	dbNetwork, err := network.GetAllWithFilter(ctx, inventory.NetworkFilter{})
@@ -141,13 +146,13 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	require.Equal(t, networkB.Name, dbNetwork[1].Name)
 
 	// Ensure we have one entry with filter for cluster, server and project
-	networkIDs, err = network.GetAllIDsWithFilter(ctx, inventory.NetworkFilter{
+	networkUUIDs, err = network.GetAllUUIDsWithFilter(ctx, inventory.NetworkFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, networkIDs, 1)
-	require.ElementsMatch(t, []int{1}, networkIDs)
+	require.Len(t, networkUUIDs, 1)
+	require.ElementsMatch(t, []uuid.UUID{networkA.UUID}, networkUUIDs)
 
 	// Ensure we have one entry with filter for cluster, server and project
 	dbNetwork, err = network.GetAllWithFilter(ctx, inventory.NetworkFilter{
@@ -155,33 +160,33 @@ func TestNetworkDatabaseActions(t *testing.T) {
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, networkIDs, 1)
+	require.Len(t, dbNetwork, 1)
 	require.Equal(t, "one", dbNetwork[0].Name)
 
 	// Should get back networkA unchanged.
 	networkA.Cluster = "one"
-	dbNetworkA, err := network.GetByID(ctx, networkA.ID)
+	dbNetworkA, err := network.GetByUUID(ctx, networkA.UUID)
 	require.NoError(t, err)
 	require.Equal(t, networkA, dbNetworkA)
 
 	networkB.LastUpdated = time.Now().UTC().Truncate(0)
-	dbNetworkB, err := network.UpdateByID(ctx, networkB)
+	dbNetworkB, err := network.UpdateByUUID(ctx, networkB)
 	require.NoError(t, err)
 	require.Equal(t, networkB, dbNetworkB)
 
 	// Delete networks by ID.
-	err = network.DeleteByID(ctx, 1)
+	err = network.DeleteByUUID(ctx, networkA.UUID)
 	require.NoError(t, err)
 
 	// Delete networks by cluster Name.
 	err = network.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
-	_, err = network.GetByID(ctx, networkA.ID)
+	_, err = network.GetByUUID(ctx, networkA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no networks remaining.
-	networkIDs, err = network.GetAllIDsWithFilter(ctx, inventory.NetworkFilter{})
+	networkUUIDs, err = network.GetAllUUIDsWithFilter(ctx, inventory.NetworkFilter{})
 	require.NoError(t, err)
-	require.Zero(t, networkIDs)
+	require.Zero(t, networkUUIDs)
 }

@@ -65,7 +65,7 @@ type cmdInstanceList struct {
 	flagFormat  string
 }
 
-const instanceDefaultColumns = `{{ .ID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const instanceDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
 
 func (c *cmdInstanceList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -167,7 +167,7 @@ type cmdInstanceShow struct {
 
 func (c *cmdInstanceShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <name>"
+	cmd.Use = "show <uuid>"
 	cmd.Short = "Show information about a instance"
 	cmd.Long = `Description:
   Show information about a instance.
@@ -185,9 +185,9 @@ func (c *cmdInstanceShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	name := args[0]
+	id := args[0]
 
-	instance, err := c.ocClient.GetInstance(name)
+	instance, err := c.ocClient.GetInstance(id)
 	if err != nil {
 		return err
 	}
@@ -197,7 +197,7 @@ func (c *cmdInstanceShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("ID: %d\n", instance.ID)
+	fmt.Printf("UUID: %s\n", instance.UUID.String())
 	fmt.Printf("Cluster: %s\n", instance.Cluster)
 	fmt.Printf("Server: %s\n", instance.Server)
 	fmt.Printf("Project Name: %s\n", instance.ProjectName)

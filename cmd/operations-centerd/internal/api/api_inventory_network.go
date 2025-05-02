@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -24,8 +26,8 @@ func registerInventoryNetworkHandler(router Router, authorizer authz.Authorizer,
 	}
 
 	router.HandleFunc("GET /{$}", response.With(handler.networksGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("GET /{id}", response.With(handler.networkGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.networkResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{uuid}", response.With(handler.networkGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{uuid}/resync", response.With(handler.networkResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/networks networks networks_get
@@ -171,7 +173,7 @@ func (i *networkHandler) networksGet(r *http.Request) response.Response {
 		result := make([]api.Network, 0, len(networks))
 		for _, network := range networks {
 			result = append(result, api.Network{
-				ID:          network.ID,
+				UUID:        network.UUID,
 				Cluster:     network.Cluster,
 				ProjectName: network.ProjectName,
 				Name:        network.Name,
@@ -183,20 +185,20 @@ func (i *networkHandler) networksGet(r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	networkIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
+	networkUUIDs, err := i.service.GetAllUUIDsWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(networkIDs))
-	for _, id := range networkIDs {
+	result := make([]string, 0, len(networkUUIDs))
+	for _, id := range networkUUIDs {
 		result = append(result, fmt.Sprintf("/%s/inventory/network/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/inventory/networks/{id} networks network_get
+// swagger:operation GET /1.0/inventory/networks/{uuid} networks network_get
 //
 //	Get the network
 //
@@ -231,12 +233,12 @@ func (i *networkHandler) networksGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkHandler) networkGet(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	network, err := i.service.GetByID(r.Context(), id)
+	network, err := i.service.GetByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -244,7 +246,7 @@ func (i *networkHandler) networkGet(r *http.Request) response.Response {
 	return response.SyncResponse(
 		true,
 		api.Network{
-			ID:          network.ID,
+			UUID:        network.UUID,
 			Cluster:     network.Cluster,
 			ProjectName: network.ProjectName,
 			Name:        network.Name,
@@ -254,7 +256,7 @@ func (i *networkHandler) networkGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation POST /1.0/inventory/networks/{id}/resync networks network_get_resync_post
+// swagger:operation POST /1.0/inventory/networks/{uuid}/resync networks network_get_resync_post
 //
 //	Resync the network
 //
@@ -287,12 +289,12 @@ func (i *networkHandler) networkGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkHandler) networkResyncPost(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	err = i.service.ResyncByID(r.Context(), id)
+	err = i.service.ResyncByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync network: %w", err))
 	}

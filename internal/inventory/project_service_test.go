@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -131,20 +132,21 @@ func TestProjectService_GetAllWithFilter(t *testing.T) {
 	}
 }
 
-func TestProjectService_GetAllIDsWithFilter(t *testing.T) {
+func TestProjectService_GetAllUUIDsWithFilter(t *testing.T) {
 	tests := []struct {
-		name                       string
-		filterExpression           *string
-		repoGetAllIDsWithFilter    []int
-		repoGetAllIDsWithFilterErr error
+		name                         string
+		filterExpression             *string
+		repoGetAllUUIDsWithFilter    []uuid.UUID
+		repoGetAllUUIDsWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success - no filter expression",
-			repoGetAllIDsWithFilter: []int{
-				1, 2,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuid.MustParse(`56d0823e-5c6d-45ff-ac6d-a9ae61026a4e`),
 			},
 
 			assertErr: require.NoError,
@@ -152,9 +154,10 @@ func TestProjectService_GetAllIDsWithFilter(t *testing.T) {
 		},
 		{
 			name:             "success - with filter expression",
-			filterExpression: ptr.To(`ID < 2`),
-			repoGetAllIDsWithFilter: []int{
-				1, 2,
+			filterExpression: ptr.To(`UUID == "6c652183-8d93-4c7d-9510-cd2ae54f31fd"`),
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuid.MustParse(`56d0823e-5c6d-45ff-ac6d-a9ae61026a4e`),
 			},
 
 			assertErr: require.NoError,
@@ -163,8 +166,8 @@ func TestProjectService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - invalid filter expression",
 			filterExpression: ptr.To(``), // the empty expression is an invalid expression.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: require.Error,
@@ -173,8 +176,8 @@ func TestProjectService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - filter expression run",
 			filterExpression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: require.Error,
@@ -183,8 +186,8 @@ func TestProjectService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - non bool expression",
 			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, i ...interface{}) {
@@ -193,8 +196,8 @@ func TestProjectService_GetAllIDsWithFilter(t *testing.T) {
 			count: 0,
 		},
 		{
-			name:                       "error - repo",
-			repoGetAllIDsWithFilterErr: boom.Error,
+			name:                         "error - repo",
+			repoGetAllUUIDsWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -205,8 +208,8 @@ func TestProjectService_GetAllIDsWithFilter(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ProjectRepoMock{
-				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.ProjectFilter) ([]int, error) {
-					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
+				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.ProjectFilter) ([]uuid.UUID, error) {
+					return tc.repoGetAllUUIDsWithFilter, tc.repoGetAllUUIDsWithFilterErr
 				},
 			}
 
@@ -215,31 +218,31 @@ func TestProjectService_GetAllIDsWithFilter(t *testing.T) {
 			}))
 
 			// Run test
-			projectIDs, err := projectSvc.GetAllIDsWithFilter(context.Background(), inventory.ProjectFilter{
+			projectUUIDs, err := projectSvc.GetAllUUIDsWithFilter(context.Background(), inventory.ProjectFilter{
 				Expression: tc.filterExpression,
 			})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, projectIDs, tc.count)
+			require.Len(t, projectUUIDs, tc.count)
 		})
 	}
 }
 
-func TestProjectService_GetByID(t *testing.T) {
+func TestProjectService_GetByUUID(t *testing.T) {
 	tests := []struct {
-		name               string
-		idArg              int
-		repoGetByIDProject inventory.Project
-		repoGetByIDErr     error
+		name                 string
+		idArg                uuid.UUID
+		repoGetByUUIDProject inventory.Project
+		repoGetByUUIDErr     error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name:  "success",
-			idArg: 1,
-			repoGetByIDProject: inventory.Project{
-				ID:          1,
+			idArg: uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+			repoGetByUUIDProject: inventory.Project{
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:     "one",
 				Name:        "one",
 				Object:      incusapi.Project{},
@@ -249,9 +252,9 @@ func TestProjectService_GetByID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:           "error - repo",
-			idArg:          1,
-			repoGetByIDErr: boom.Error,
+			name:             "error - repo",
+			idArg:            uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -261,8 +264,8 @@ func TestProjectService_GetByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ProjectRepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (inventory.Project, error) {
-					return tc.repoGetByIDProject, tc.repoGetByIDErr
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.Project, error) {
+					return tc.repoGetByUUIDProject, tc.repoGetByUUIDErr
 				},
 			}
 
@@ -271,33 +274,33 @@ func TestProjectService_GetByID(t *testing.T) {
 			}))
 
 			// Run test
-			project, err := projectSvc.GetByID(context.Background(), tc.idArg)
+			project, err := projectSvc.GetByUUID(context.Background(), tc.idArg)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByIDProject, project)
+			require.Equal(t, tc.repoGetByUUIDProject, project)
 		})
 	}
 }
 
-func TestProjectService_ResyncByID(t *testing.T) {
+func TestProjectService_ResyncByUUID(t *testing.T) {
 	tests := []struct {
 		name                             string
 		clusterSvcGetByIDCluster         provisioning.Cluster
 		clusterSvcGetByIDErr             error
 		projectClientGetProjectByName    incusapi.Project
 		projectClientGetProjectByNameErr error
-		repoGetByIDProject               inventory.Project
-		repoGetByIDErr                   error
-		repoUpdateByIDErr                error
-		repoDeleteByIDErr                error
+		repoGetByUUIDProject             inventory.Project
+		repoGetByUUIDErr                 error
+		repoUpdateByUUIDErr              error
+		repoDeleteByUUIDErr              error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
-			repoGetByIDProject: inventory.Project{
-				ID:      1,
+			repoGetByUUIDProject: inventory.Project{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -312,8 +315,8 @@ func TestProjectService_ResyncByID(t *testing.T) {
 		},
 		{
 			name: "success - project get by name - not found",
-			repoGetByIDProject: inventory.Project{
-				ID:      1,
+			repoGetByUUIDProject: inventory.Project{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -325,15 +328,15 @@ func TestProjectService_ResyncByID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:           "error - project get by ID",
-			repoGetByIDErr: boom.Error,
+			name:             "error - project get by UUID",
+			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - cluster get by ID",
-			repoGetByIDProject: inventory.Project{
-				ID:      1,
+			repoGetByUUIDProject: inventory.Project{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -343,8 +346,8 @@ func TestProjectService_ResyncByID(t *testing.T) {
 		},
 		{
 			name: "error - project get by name",
-			repoGetByIDProject: inventory.Project{
-				ID:      1,
+			repoGetByUUIDProject: inventory.Project{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -356,9 +359,9 @@ func TestProjectService_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - project get by name - not found - delete by id",
-			repoGetByIDProject: inventory.Project{
-				ID:      1,
+			name: "error - project get by name - not found - delete by uuid",
+			repoGetByUUIDProject: inventory.Project{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -366,14 +369,14 @@ func TestProjectService_ResyncByID(t *testing.T) {
 				Name: "cluster-one",
 			},
 			projectClientGetProjectByNameErr: domain.ErrNotFound,
-			repoDeleteByIDErr:                boom.Error,
+			repoDeleteByUUIDErr:              boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - validate",
-			repoGetByIDProject: inventory.Project{
-				ID:      1,
+			repoGetByUUIDProject: inventory.Project{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "", // invalid
 			},
@@ -390,9 +393,9 @@ func TestProjectService_ResyncByID(t *testing.T) {
 			},
 		},
 		{
-			name: "error - update by ID",
-			repoGetByIDProject: inventory.Project{
-				ID:      1,
+			name: "error - update by UUID",
+			repoGetByUUIDProject: inventory.Project{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -402,7 +405,7 @@ func TestProjectService_ResyncByID(t *testing.T) {
 			projectClientGetProjectByName: incusapi.Project{
 				Name: "project one",
 			},
-			repoUpdateByIDErr: boom.Error,
+			repoUpdateByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -412,15 +415,15 @@ func TestProjectService_ResyncByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ProjectRepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (inventory.Project, error) {
-					return tc.repoGetByIDProject, tc.repoGetByIDErr
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.Project, error) {
+					return tc.repoGetByUUIDProject, tc.repoGetByUUIDErr
 				},
-				UpdateByIDFunc: func(ctx context.Context, project inventory.Project) (inventory.Project, error) {
+				UpdateByUUIDFunc: func(ctx context.Context, project inventory.Project) (inventory.Project, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), project.LastUpdated)
-					return inventory.Project{}, tc.repoUpdateByIDErr
+					return inventory.Project{}, tc.repoUpdateByUUIDErr
 				},
-				DeleteByIDFunc: func(ctx context.Context, id int) error {
-					return tc.repoDeleteByIDErr
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					return tc.repoDeleteByUUIDErr
 				},
 			}
 
@@ -433,7 +436,7 @@ func TestProjectService_ResyncByID(t *testing.T) {
 
 			projectClient := &serverMock.ProjectServerClientMock{
 				GetProjectByNameFunc: func(ctx context.Context, connectionURL string, projectName string) (incusapi.Project, error) {
-					require.Equal(t, tc.repoGetByIDProject.Name, projectName)
+					require.Equal(t, tc.repoGetByUUIDProject.Name, projectName)
 					return tc.projectClientGetProjectByName, tc.projectClientGetProjectByNameErr
 				},
 			}
@@ -443,7 +446,7 @@ func TestProjectService_ResyncByID(t *testing.T) {
 			}))
 
 			// Run test
-			err := projectSvc.ResyncByID(context.Background(), 1)
+			err := projectSvc.ResyncByUUID(context.Background(), uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`))
 
 			// Assert
 			tc.assertErr(t, err)

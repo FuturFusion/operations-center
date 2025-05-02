@@ -31,8 +31,8 @@ func (c OperationsCenterClient) GetWithFilterProjects(filter inventory.ProjectFi
 	return projects, nil
 }
 
-func (c OperationsCenterClient) GetProject(name string) (api.Project, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/projects", name), nil, nil)
+func (c OperationsCenterClient) GetProject(id string) (api.Project, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/projects", id), nil, nil)
 	if err != nil {
 		return api.Project{}, err
 	}

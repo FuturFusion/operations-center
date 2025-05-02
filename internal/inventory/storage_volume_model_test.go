@@ -15,33 +15,33 @@ import (
 func TestStorageVolume_Validate(t *testing.T) {
 	tests := []struct {
 		name  string
-		image inventory.StorageVolume
+		image *inventory.StorageVolume
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "valid",
-			image: inventory.StorageVolume{
+			image: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
 				Server:          "one",
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "one",
-			},
+			}).DeriveUUID(),
 
 			assertErr: require.NoError,
 		},
 		{
 			name: "error - invalid cluster ID",
-			image: inventory.StorageVolume{
+			image: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "", // invalid
 				Server:          "one",
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "one",
-			},
+			}).DeriveUUID(),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
@@ -50,14 +50,14 @@ func TestStorageVolume_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid project name",
-			image: inventory.StorageVolume{
+			image: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
 				Server:          "one",
 				ProjectName:     "", // invalid
 				StoragePoolName: "storagePool one",
 				Name:            "one",
-			},
+			}).DeriveUUID(),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
@@ -66,14 +66,14 @@ func TestStorageVolume_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid project name",
-			image: inventory.StorageVolume{
+			image: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
 				Server:          "one",
 				ProjectName:     "project one",
 				StoragePoolName: "", // invalid
 				Name:            "one",
-			},
+			}).DeriveUUID(),
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
@@ -82,14 +82,30 @@ func TestStorageVolume_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid name",
-			image: inventory.StorageVolume{
+			image: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
 				Server:          "one",
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "", // invalid
+			}).DeriveUUID(),
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
 			},
+		},
+		{
+			name: "error - UUID not derived",
+			image: &inventory.StorageVolume{
+				ID:              1,
+				Cluster:         "one",
+				Server:          "one",
+				ProjectName:     "project one",
+				StoragePoolName: "storagePool one",
+				Name:            "one",
+			}, // UUID not derived
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation

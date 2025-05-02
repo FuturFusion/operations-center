@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -74,6 +75,8 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 		LastUpdated: time.Now(),
 	}
 
+	{{ .Name | camelcase }}A.DeriveUUID()
+
 	{{ .Name | camelcase }}B := inventory.{{ .Name | pascalcase }}{
 		Cluster:     "two",
 {{- if .ServerIDByLocation }}
@@ -92,6 +95,8 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 		Object:      incusapi.{{ .ObjectType | pascalcase }}{},
 		LastUpdated: time.Now(),
 	}
+
+	{{ .Name | camelcase }}B.DeriveUUID()
 
 	ctx := context.Background()
 
@@ -148,10 +153,10 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	require.Equal(t, "two", {{ .Name | camelcase }}B.Cluster)
 
 	// Ensure we have two entries without filter
-	{{ .Name | camelcase }}IDs, err := {{ .Name | camelcase }}.GetAllIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{})
+	{{ .Name | camelcase }}UUIDs, err := {{ .Name | camelcase }}.GetAllUUIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{})
 	require.NoError(t, err)
-	require.Len(t, {{ .Name | camelcase }}IDs, 2)
-	require.ElementsMatch(t, []int{1, 2}, {{ .Name | camelcase }}IDs)
+	require.Len(t, {{ .Name | camelcase }}UUIDs, 2)
+	require.ElementsMatch(t, []uuid.UUID{ {{ .Name | camelcase }}A.UUID, {{ .Name | camelcase }}B.UUID }, {{ .Name | camelcase }}UUIDs)
 
 	// Ensure we have two entries without filter
 	db{{ .Name | pascalcase }}, err := {{ .Name | camelcase }}.GetAllWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{})
@@ -161,7 +166,7 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	require.Equal(t, {{ .Name | camelcase }}B.Name, db{{ .Name | pascalcase }}[1].Name)
 
 	// Ensure we have one entry with filter for cluster, server and project
-	{{ .Name | camelcase }}IDs, err = {{ .Name | camelcase }}.GetAllIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{
+	{{ .Name | camelcase }}UUIDs, err = {{ .Name | camelcase }}.GetAllUUIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{
 		Cluster: ptr.To("one"),
 {{- if .ServerIDByLocation }}
 		Server:  ptr.To("one"),
@@ -171,8 +176,8 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 {{- end }}
 	})
 	require.NoError(t, err)
-	require.Len(t, {{ .Name | camelcase }}IDs, 1)
-	require.ElementsMatch(t, []int{1}, {{ .Name | camelcase }}IDs)
+	require.Len(t, {{ .Name | camelcase }}UUIDs, 1)
+	require.ElementsMatch(t, []uuid.UUID{ {{ .Name | camelcase }}A.UUID }, {{ .Name | camelcase }}UUIDs)
 
 	// Ensure we have one entry with filter for cluster, server and project
 	db{{ .Name | pascalcase }}, err = {{ .Name | camelcase }}.GetAllWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{
@@ -185,33 +190,33 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 {{- end }}
 	})
 	require.NoError(t, err)
-	require.Len(t, {{ .Name | camelcase }}IDs, 1)
+	require.Len(t, db{{ .Name | pascalcase }}, 1)
 	require.Equal(t, "one", db{{ .Name | pascalcase }}[0].Name)
 
 	// Should get back {{ .Name | camelcase }}A unchanged.
 	{{ .Name | camelcase }}A.Cluster = "one"
-	db{{ .Name | camelcase | pascalcase }}A, err := {{ .Name | camelcase }}.GetByID(ctx, {{ .Name | camelcase }}A.ID)
+	db{{ .Name | camelcase | pascalcase }}A, err := {{ .Name | camelcase }}.GetByUUID(ctx, {{ .Name | camelcase }}A.UUID)
 	require.NoError(t, err)
 	require.Equal(t, {{ .Name | camelcase }}A, db{{ .Name | pascalcase }}A)
 
 	{{ .Name | camelcase }}B.LastUpdated = time.Now().UTC().Truncate(0)
-	db{{ .Name | pascalcase }}B, err := {{ .Name | camelcase }}.UpdateByID(ctx, {{ .Name | camelcase }}B)
+	db{{ .Name | pascalcase }}B, err := {{ .Name | camelcase }}.UpdateByUUID(ctx, {{ .Name | camelcase }}B)
 	require.NoError(t, err)
 	require.Equal(t, {{ .Name | camelcase }}B, db{{ .Name | pascalcase }}B)
 
 	// Delete {{ .PluralName }} by ID.
-	err = {{ .Name | camelcase }}.DeleteByID(ctx, 1)
+	err = {{ .Name | camelcase }}.DeleteByUUID(ctx, {{ .Name | camelcase }}A.UUID)
 	require.NoError(t, err)
 
 	// Delete {{ .PluralName }} by cluster Name.
 	err = {{ .Name | camelcase }}.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
-	_, err = {{ .Name | camelcase }}.GetByID(ctx, {{ .Name | camelcase }}A.ID)
+	_, err = {{ .Name | camelcase }}.GetByUUID(ctx, {{ .Name | camelcase }}A.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no {{ .PluralName }} remaining.
-	{{ .Name | camelcase }}IDs, err = {{ .Name | camelcase }}.GetAllIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{})
+	{{ .Name | camelcase }}UUIDs, err = {{ .Name | camelcase }}.GetAllUUIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{})
 	require.NoError(t, err)
-	require.Zero(t, {{ .Name | camelcase }}IDs)
+	require.Zero(t, {{ .Name | camelcase }}UUIDs)
 }

@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -24,8 +26,8 @@ func registerInventoryNetworkForwardHandler(router Router, authorizer authz.Auth
 	}
 
 	router.HandleFunc("GET /{$}", response.With(handler.networkForwardsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("GET /{id}", response.With(handler.networkForwardGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.networkForwardResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{uuid}", response.With(handler.networkForwardGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{uuid}/resync", response.With(handler.networkForwardResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/network_forwards network_forwards network_forwards_get
@@ -157,7 +159,7 @@ func (i *networkForwardHandler) networkForwardsGet(r *http.Request) response.Res
 		result := make([]api.NetworkForward, 0, len(networkForwards))
 		for _, networkForward := range networkForwards {
 			result = append(result, api.NetworkForward{
-				ID:          networkForward.ID,
+				UUID:        networkForward.UUID,
 				Cluster:     networkForward.Cluster,
 				NetworkName: networkForward.NetworkName,
 				Name:        networkForward.Name,
@@ -169,20 +171,20 @@ func (i *networkForwardHandler) networkForwardsGet(r *http.Request) response.Res
 		return response.SyncResponse(true, result)
 	}
 
-	networkForwardIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
+	networkForwardUUIDs, err := i.service.GetAllUUIDsWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(networkForwardIDs))
-	for _, id := range networkForwardIDs {
+	result := make([]string, 0, len(networkForwardUUIDs))
+	for _, id := range networkForwardUUIDs {
 		result = append(result, fmt.Sprintf("/%s/inventory/network_forward/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/inventory/network_forwards/{id} network_forwards network_forward_get
+// swagger:operation GET /1.0/inventory/network_forwards/{uuid} network_forwards network_forward_get
 //
 //	Get the network_forward
 //
@@ -217,12 +219,12 @@ func (i *networkForwardHandler) networkForwardsGet(r *http.Request) response.Res
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkForwardHandler) networkForwardGet(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	networkForward, err := i.service.GetByID(r.Context(), id)
+	networkForward, err := i.service.GetByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -230,7 +232,7 @@ func (i *networkForwardHandler) networkForwardGet(r *http.Request) response.Resp
 	return response.SyncResponse(
 		true,
 		api.NetworkForward{
-			ID:          networkForward.ID,
+			UUID:        networkForward.UUID,
 			Cluster:     networkForward.Cluster,
 			NetworkName: networkForward.NetworkName,
 			Name:        networkForward.Name,
@@ -240,7 +242,7 @@ func (i *networkForwardHandler) networkForwardGet(r *http.Request) response.Resp
 	)
 }
 
-// swagger:operation POST /1.0/inventory/network_forwards/{id}/resync network_forwards network_forward_get_resync_post
+// swagger:operation POST /1.0/inventory/network_forwards/{uuid}/resync network_forwards network_forward_get_resync_post
 //
 //	Resync the network_forward
 //
@@ -273,12 +275,12 @@ func (i *networkForwardHandler) networkForwardGet(r *http.Request) response.Resp
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkForwardHandler) networkForwardResyncPost(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	err = i.service.ResyncByID(r.Context(), id)
+	err = i.service.ResyncByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync network_forward: %w", err))
 	}

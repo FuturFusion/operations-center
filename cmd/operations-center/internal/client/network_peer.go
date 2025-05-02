@@ -31,8 +31,8 @@ func (c OperationsCenterClient) GetWithFilterNetworkPeers(filter inventory.Netwo
 	return network_peers, nil
 }
 
-func (c OperationsCenterClient) GetNetworkPeer(name string) (api.NetworkPeer, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_peers", name), nil, nil)
+func (c OperationsCenterClient) GetNetworkPeer(id string) (api.NetworkPeer, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_peers", id), nil, nil)
 	if err != nil {
 		return api.NetworkPeer{}, err
 	}

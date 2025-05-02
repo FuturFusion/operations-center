@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -65,6 +66,8 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 		LastUpdated: time.Now(),
 	}
 
+	networkForwardA.DeriveUUID()
+
 	networkForwardB := inventory.NetworkForward{
 		Cluster:     "two",
 		NetworkName: "parent one",
@@ -72,6 +75,8 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 		Object:      incusapi.NetworkForward{},
 		LastUpdated: time.Now(),
 	}
+
+	networkForwardB.DeriveUUID()
 
 	ctx := context.Background()
 
@@ -128,10 +133,10 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 	require.Equal(t, "two", networkForwardB.Cluster)
 
 	// Ensure we have two entries without filter
-	networkForwardIDs, err := networkForward.GetAllIDsWithFilter(ctx, inventory.NetworkForwardFilter{})
+	networkForwardUUIDs, err := networkForward.GetAllUUIDsWithFilter(ctx, inventory.NetworkForwardFilter{})
 	require.NoError(t, err)
-	require.Len(t, networkForwardIDs, 2)
-	require.ElementsMatch(t, []int{1, 2}, networkForwardIDs)
+	require.Len(t, networkForwardUUIDs, 2)
+	require.ElementsMatch(t, []uuid.UUID{networkForwardA.UUID, networkForwardB.UUID}, networkForwardUUIDs)
 
 	// Ensure we have two entries without filter
 	dbNetworkForward, err := networkForward.GetAllWithFilter(ctx, inventory.NetworkForwardFilter{})
@@ -141,45 +146,45 @@ func TestNetworkForwardDatabaseActions(t *testing.T) {
 	require.Equal(t, networkForwardB.Name, dbNetworkForward[1].Name)
 
 	// Ensure we have one entry with filter for cluster, server and project
-	networkForwardIDs, err = networkForward.GetAllIDsWithFilter(ctx, inventory.NetworkForwardFilter{
+	networkForwardUUIDs, err = networkForward.GetAllUUIDsWithFilter(ctx, inventory.NetworkForwardFilter{
 		Cluster: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, networkForwardIDs, 1)
-	require.ElementsMatch(t, []int{1}, networkForwardIDs)
+	require.Len(t, networkForwardUUIDs, 1)
+	require.ElementsMatch(t, []uuid.UUID{networkForwardA.UUID}, networkForwardUUIDs)
 
 	// Ensure we have one entry with filter for cluster, server and project
 	dbNetworkForward, err = networkForward.GetAllWithFilter(ctx, inventory.NetworkForwardFilter{
 		Cluster: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, networkForwardIDs, 1)
+	require.Len(t, dbNetworkForward, 1)
 	require.Equal(t, "one", dbNetworkForward[0].Name)
 
 	// Should get back networkForwardA unchanged.
 	networkForwardA.Cluster = "one"
-	dbNetworkForwardA, err := networkForward.GetByID(ctx, networkForwardA.ID)
+	dbNetworkForwardA, err := networkForward.GetByUUID(ctx, networkForwardA.UUID)
 	require.NoError(t, err)
 	require.Equal(t, networkForwardA, dbNetworkForwardA)
 
 	networkForwardB.LastUpdated = time.Now().UTC().Truncate(0)
-	dbNetworkForwardB, err := networkForward.UpdateByID(ctx, networkForwardB)
+	dbNetworkForwardB, err := networkForward.UpdateByUUID(ctx, networkForwardB)
 	require.NoError(t, err)
 	require.Equal(t, networkForwardB, dbNetworkForwardB)
 
 	// Delete network_forwards by ID.
-	err = networkForward.DeleteByID(ctx, 1)
+	err = networkForward.DeleteByUUID(ctx, networkForwardA.UUID)
 	require.NoError(t, err)
 
 	// Delete network_forwards by cluster Name.
 	err = networkForward.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
-	_, err = networkForward.GetByID(ctx, networkForwardA.ID)
+	_, err = networkForward.GetByUUID(ctx, networkForwardA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no network_forwards remaining.
-	networkForwardIDs, err = networkForward.GetAllIDsWithFilter(ctx, inventory.NetworkForwardFilter{})
+	networkForwardUUIDs, err = networkForward.GetAllUUIDsWithFilter(ctx, inventory.NetworkForwardFilter{})
 	require.NoError(t, err)
-	require.Zero(t, networkForwardIDs)
+	require.Zero(t, networkForwardUUIDs)
 }

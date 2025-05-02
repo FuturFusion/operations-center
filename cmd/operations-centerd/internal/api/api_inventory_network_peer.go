@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -24,8 +26,8 @@ func registerInventoryNetworkPeerHandler(router Router, authorizer authz.Authori
 	}
 
 	router.HandleFunc("GET /{$}", response.With(handler.networkPeersGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("GET /{id}", response.With(handler.networkPeerGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.networkPeerResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{uuid}", response.With(handler.networkPeerGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{uuid}/resync", response.With(handler.networkPeerResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/network_peers network_peers network_peers_get
@@ -157,7 +159,7 @@ func (i *networkPeerHandler) networkPeersGet(r *http.Request) response.Response 
 		result := make([]api.NetworkPeer, 0, len(networkPeers))
 		for _, networkPeer := range networkPeers {
 			result = append(result, api.NetworkPeer{
-				ID:          networkPeer.ID,
+				UUID:        networkPeer.UUID,
 				Cluster:     networkPeer.Cluster,
 				NetworkName: networkPeer.NetworkName,
 				Name:        networkPeer.Name,
@@ -169,20 +171,20 @@ func (i *networkPeerHandler) networkPeersGet(r *http.Request) response.Response 
 		return response.SyncResponse(true, result)
 	}
 
-	networkPeerIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
+	networkPeerUUIDs, err := i.service.GetAllUUIDsWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(networkPeerIDs))
-	for _, id := range networkPeerIDs {
+	result := make([]string, 0, len(networkPeerUUIDs))
+	for _, id := range networkPeerUUIDs {
 		result = append(result, fmt.Sprintf("/%s/inventory/network_peer/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/inventory/network_peers/{id} network_peers network_peer_get
+// swagger:operation GET /1.0/inventory/network_peers/{uuid} network_peers network_peer_get
 //
 //	Get the network_peer
 //
@@ -217,12 +219,12 @@ func (i *networkPeerHandler) networkPeersGet(r *http.Request) response.Response 
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkPeerHandler) networkPeerGet(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	networkPeer, err := i.service.GetByID(r.Context(), id)
+	networkPeer, err := i.service.GetByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -230,7 +232,7 @@ func (i *networkPeerHandler) networkPeerGet(r *http.Request) response.Response {
 	return response.SyncResponse(
 		true,
 		api.NetworkPeer{
-			ID:          networkPeer.ID,
+			UUID:        networkPeer.UUID,
 			Cluster:     networkPeer.Cluster,
 			NetworkName: networkPeer.NetworkName,
 			Name:        networkPeer.Name,
@@ -240,7 +242,7 @@ func (i *networkPeerHandler) networkPeerGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation POST /1.0/inventory/network_peers/{id}/resync network_peers network_peer_get_resync_post
+// swagger:operation POST /1.0/inventory/network_peers/{uuid}/resync network_peers network_peer_get_resync_post
 //
 //	Resync the network_peer
 //
@@ -273,12 +275,12 @@ func (i *networkPeerHandler) networkPeerGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkPeerHandler) networkPeerResyncPost(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	err = i.service.ResyncByID(r.Context(), id)
+	err = i.service.ResyncByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync network_peer: %w", err))
 	}

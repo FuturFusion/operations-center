@@ -63,7 +63,7 @@ type cmdNetworkPeerList struct {
 	flagFormat  string
 }
 
-const networkPeerDefaultColumns = `{{ .ID }},{{ .Cluster }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
+const networkPeerDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
 
 func (c *cmdNetworkPeerList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -155,7 +155,7 @@ type cmdNetworkPeerShow struct {
 
 func (c *cmdNetworkPeerShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <name>"
+	cmd.Use = "show <uuid>"
 	cmd.Short = "Show information about a network_peer"
 	cmd.Long = `Description:
   Show information about a network_peer.
@@ -173,9 +173,9 @@ func (c *cmdNetworkPeerShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	name := args[0]
+	id := args[0]
 
-	networkPeer, err := c.ocClient.GetNetworkPeer(name)
+	networkPeer, err := c.ocClient.GetNetworkPeer(id)
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (c *cmdNetworkPeerShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("ID: %d\n", networkPeer.ID)
+	fmt.Printf("UUID: %s\n", networkPeer.UUID.String())
 	fmt.Printf("Cluster: %s\n", networkPeer.Cluster)
 	fmt.Printf("Network Name: %s\n", networkPeer.NetworkName)
 	fmt.Printf("Name: %s\n", networkPeer.Name)

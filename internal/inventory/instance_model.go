@@ -4,8 +4,10 @@ package inventory
 
 import (
 	"net/url"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -13,12 +15,26 @@ import (
 
 type Instance struct {
 	ID          int
+	UUID        uuid.UUID
 	Cluster     string
 	Server      string
 	ProjectName string
 	Name        string
 	Object      incusapi.InstanceFull
 	LastUpdated time.Time
+}
+
+func (m *Instance) DeriveUUID() *Instance {
+	identifier := strings.Join([]string{
+		m.Cluster,
+		m.Server,
+		m.ProjectName,
+		m.Name,
+	}, ":")
+
+	m.UUID = uuid.NewSHA1(InventorySpaceUUID, []byte(identifier))
+
+	return m
 }
 
 func (m Instance) Validate() error {
@@ -36,6 +52,12 @@ func (m Instance) Validate() error {
 
 	if m.ProjectName == "" {
 		return domain.NewValidationErrf("Invalid Instance, project name can not be empty")
+	}
+
+	clone := m
+	clone.DeriveUUID()
+	if clone.UUID != m.UUID {
+		return domain.NewValidationErrf("Invalid UUID, does not match derived value")
 	}
 
 	return nil

@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/google/uuid"
 )
 
 // NetworkForwardRepoWithSlog implements inventory.NetworkForwardRepo that is instrumented with slog logger.
@@ -86,16 +87,16 @@ func (_d NetworkForwardRepoWithSlog) DeleteByClusterName(ctx context.Context, cl
 	return _d._base.DeleteByClusterName(ctx, cluster)
 }
 
-// DeleteByID implements inventory.NetworkForwardRepo.
-func (_d NetworkForwardRepoWithSlog) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByUUID implements inventory.NetworkForwardRepo.
+func (_d NetworkForwardRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("id", id),
+			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling DeleteByID")
+	log.Debug("=> calling DeleteByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -108,16 +109,16 @@ func (_d NetworkForwardRepoWithSlog) DeleteByID(ctx context.Context, id int) (er
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByID returned an error")
+			log.Error("<= method DeleteByUUID returned an error")
 		} else {
-			log.Debug("<= method DeleteByID finished")
+			log.Debug("<= method DeleteByUUID finished")
 		}
 	}()
-	return _d._base.DeleteByID(ctx, id)
+	return _d._base.DeleteByUUID(ctx, id)
 }
 
-// GetAllIDsWithFilter implements inventory.NetworkForwardRepo.
-func (_d NetworkForwardRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.NetworkForwardRepo.
+func (_d NetworkForwardRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) (uUIDs []uuid.UUID, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -125,12 +126,12 @@ func (_d NetworkForwardRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, fi
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("=> calling GetAllIDsWithFilter")
+	log.Debug("=> calling GetAllUUIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("ints", ints),
+				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
@@ -139,12 +140,12 @@ func (_d NetworkForwardRepoWithSlog) GetAllIDsWithFilter(ctx context.Context, fi
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllIDsWithFilter returned an error")
+			log.Error("<= method GetAllUUIDsWithFilter returned an error")
 		} else {
-			log.Debug("<= method GetAllIDsWithFilter finished")
+			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
 	}()
-	return _d._base.GetAllIDsWithFilter(ctx, filter)
+	return _d._base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.NetworkForwardRepo.
@@ -178,16 +179,16 @@ func (_d NetworkForwardRepoWithSlog) GetAllWithFilter(ctx context.Context, filte
 	return _d._base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.NetworkForwardRepo.
-func (_d NetworkForwardRepoWithSlog) GetByID(ctx context.Context, id int) (networkForward inventory.NetworkForward, err error) {
+// GetByUUID implements inventory.NetworkForwardRepo.
+func (_d NetworkForwardRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (networkForward inventory.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Int("id", id),
+			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling GetByID")
+	log.Debug("=> calling GetByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -201,16 +202,16 @@ func (_d NetworkForwardRepoWithSlog) GetByID(ctx context.Context, id int) (netwo
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByID returned an error")
+			log.Error("<= method GetByUUID returned an error")
 		} else {
-			log.Debug("<= method GetByID finished")
+			log.Debug("<= method GetByUUID finished")
 		}
 	}()
-	return _d._base.GetByID(ctx, id)
+	return _d._base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements inventory.NetworkForwardRepo.
-func (_d NetworkForwardRepoWithSlog) UpdateByID(ctx context.Context, networkForward inventory.NetworkForward) (networkForward1 inventory.NetworkForward, err error) {
+// UpdateByUUID implements inventory.NetworkForwardRepo.
+func (_d NetworkForwardRepoWithSlog) UpdateByUUID(ctx context.Context, networkForward inventory.NetworkForward) (networkForward1 inventory.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -218,7 +219,7 @@ func (_d NetworkForwardRepoWithSlog) UpdateByID(ctx context.Context, networkForw
 			slog.Any("networkForward", networkForward),
 		)
 	}
-	log.Debug("=> calling UpdateByID")
+	log.Debug("=> calling UpdateByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -232,10 +233,10 @@ func (_d NetworkForwardRepoWithSlog) UpdateByID(ctx context.Context, networkForw
 			}
 		}
 		if err != nil {
-			log.Error("<= method UpdateByID returned an error")
+			log.Error("<= method UpdateByUUID returned an error")
 		} else {
-			log.Debug("<= method UpdateByID finished")
+			log.Debug("<= method UpdateByUUID finished")
 		}
 	}()
-	return _d._base.UpdateByID(ctx, networkForward)
+	return _d._base.UpdateByUUID(ctx, networkForward)
 }

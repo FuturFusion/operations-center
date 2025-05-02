@@ -64,7 +64,7 @@ type cmdProfileList struct {
 	flagFormat  string
 }
 
-const profileDefaultColumns = `{{ .ID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const profileDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
 
 func (c *cmdProfileList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -161,7 +161,7 @@ type cmdProfileShow struct {
 
 func (c *cmdProfileShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <name>"
+	cmd.Use = "show <uuid>"
 	cmd.Short = "Show information about a profile"
 	cmd.Long = `Description:
   Show information about a profile.
@@ -179,9 +179,9 @@ func (c *cmdProfileShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	name := args[0]
+	id := args[0]
 
-	profile, err := c.ocClient.GetProfile(name)
+	profile, err := c.ocClient.GetProfile(id)
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func (c *cmdProfileShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("ID: %d\n", profile.ID)
+	fmt.Printf("UUID: %s\n", profile.UUID.String())
 	fmt.Printf("Cluster: %s\n", profile.Cluster)
 	fmt.Printf("Project Name: %s\n", profile.ProjectName)
 	fmt.Printf("Name: %s\n", profile.Name)

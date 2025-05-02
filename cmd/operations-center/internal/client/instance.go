@@ -31,8 +31,8 @@ func (c OperationsCenterClient) GetWithFilterInstances(filter inventory.Instance
 	return instances, nil
 }
 
-func (c OperationsCenterClient) GetInstance(name string) (api.Instance, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/instances", name), nil, nil)
+func (c OperationsCenterClient) GetInstance(id string) (api.Instance, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/instances", id), nil, nil)
 	if err != nil {
 		return api.Instance{}, err
 	}

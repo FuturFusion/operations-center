@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
@@ -35,9 +37,9 @@ WITH _lookup AS (
     WHERE clusters.name = :cluster_name AND servers.name = :server_name
   ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
 )
-INSERT INTO instances (cluster_id, server_id, project_name, name, object, last_updated)
-VALUES ( (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :name, :object, :last_updated)
-RETURNING id, :cluster_name, :server_name, project_name, name, object, last_updated;
+INSERT INTO instances (uuid, cluster_id, server_id, project_name, name, object, last_updated)
+VALUES (:uuid, (SELECT cluster_id FROM _lookup), (SELECT server_id FROM _lookup), :project_name, :name, :object, :last_updated)
+RETURNING id, :uuid, :cluster_name, :server_name, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -46,6 +48,7 @@ RETURNING id, :cluster_name, :server_name, project_name, name, object, last_upda
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
+		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
 		sql.Named("server_name", in.Server),
 		sql.Named("project_name", in.ProjectName),
@@ -63,7 +66,7 @@ RETURNING id, :cluster_name, :server_name, project_name, name, object, last_upda
 func (r instance) GetAllWithFilter(ctx context.Context, filter inventory.InstanceFilter) (inventory.Instances, error) {
 	const sqlStmt = `
 SELECT
-  instances.id, clusters.name, servers.name, instances.project_name, instances.name, instances.object, instances.last_updated
+  instances.id, instances.uuid, clusters.name, servers.name, instances.project_name, instances.name, instances.object, instances.last_updated
 FROM instances
   INNER JOIN clusters ON instances.cluster_id = clusters.id
   INNER JOIN servers ON instances.server_id = servers.id
@@ -117,9 +120,9 @@ ORDER BY clusters.name, servers.name, instances.name
 	return instances, nil
 }
 
-func (r instance) GetAllIDsWithFilter(ctx context.Context, filter inventory.InstanceFilter) ([]int, error) {
+func (r instance) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.InstanceFilter) ([]uuid.UUID, error) {
 	const sqlStmt = `
-SELECT instances.id
+SELECT instances.uuid
 FROM instances
   INNER JOIN clusters ON instances.cluster_id = clusters.id
   INNER JOIN servers ON instances.server_id = servers.id
@@ -155,9 +158,9 @@ ORDER BY instances.id
 
 	defer func() { _ = rows.Close() }()
 
-	var ids []int
+	var ids []uuid.UUID
 	for rows.Next() {
-		var id int
+		var id uuid.UUID
 		err := rows.Scan(&id)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
@@ -173,18 +176,18 @@ ORDER BY instances.id
 	return ids, nil
 }
 
-func (r instance) GetByID(ctx context.Context, id int) (inventory.Instance, error) {
+func (r instance) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.Instance, error) {
 	const sqlStmt = `
 SELECT
-  instances.id, clusters.name, servers.name, instances.project_name, instances.name, instances.object, instances.last_updated
+  instances.id, instances.uuid, clusters.name, servers.name, instances.project_name, instances.name, instances.object, instances.last_updated
 FROM
   instances
   INNER JOIN clusters ON instances.cluster_id = clusters.id
   INNER JOIN servers ON instances.server_id = servers.id
-WHERE instances.id=:id;
+WHERE instances.uuid=:uuid;
 `
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
+	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if row.Err() != nil {
 		return inventory.Instance{}, sqlite.MapErr(row.Err())
 	}
@@ -192,10 +195,10 @@ WHERE instances.id=:id;
 	return scanInstance(row)
 }
 
-func (r instance) DeleteByID(ctx context.Context, id int) error {
-	const sqlStmt = `DELETE FROM instances WHERE id=:id;`
+func (r instance) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	const sqlStmt = `DELETE FROM instances WHERE uuid=:uuid;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -236,7 +239,7 @@ DELETE FROM instances WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
 	return nil
 }
 
-func (r instance) UpdateByID(ctx context.Context, in inventory.Instance) (inventory.Instance, error) {
+func (r instance) UpdateByUUID(ctx context.Context, in inventory.Instance) (inventory.Instance, error) {
 	const sqlStmt = `
 WITH _lookup AS (
   SELECT id AS cluster_id , (
@@ -245,9 +248,9 @@ WITH _lookup AS (
     WHERE clusters.name = :cluster_name AND servers.name = :server_name
   ) AS server_id FROM clusters WHERE clusters.name = :cluster_name
 )
-UPDATE instances SET cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
-WHERE id=:id
-RETURNING id, :cluster_name, :server_name, project_name, name, object, last_updated;
+UPDATE instances SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), server_id=(SELECT server_id FROM _lookup), project_name=:project_name, name=:name, object=:object, last_updated=:last_updated
+WHERE uuid=:uuid
+RETURNING id, :uuid, :cluster_name, :server_name, project_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -256,7 +259,7 @@ RETURNING id, :cluster_name, :server_name, project_name, name, object, last_upda
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("id", in.ID),
+		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
 		sql.Named("server_name", in.Server),
 		sql.Named("project_name", in.ProjectName),
@@ -277,6 +280,7 @@ func scanInstance(row interface{ Scan(dest ...any) error }) (inventory.Instance,
 
 	err := row.Scan(
 		&instance.ID,
+		&instance.UUID,
 		&instance.Cluster,
 		&instance.Server,
 		&instance.ProjectName,

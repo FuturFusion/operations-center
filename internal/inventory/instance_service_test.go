@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -131,20 +132,21 @@ func TestInstanceService_GetAllWithFilter(t *testing.T) {
 	}
 }
 
-func TestInstanceService_GetAllIDsWithFilter(t *testing.T) {
+func TestInstanceService_GetAllUUIDsWithFilter(t *testing.T) {
 	tests := []struct {
-		name                       string
-		filterExpression           *string
-		repoGetAllIDsWithFilter    []int
-		repoGetAllIDsWithFilterErr error
+		name                         string
+		filterExpression             *string
+		repoGetAllUUIDsWithFilter    []uuid.UUID
+		repoGetAllUUIDsWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success - no filter expression",
-			repoGetAllIDsWithFilter: []int{
-				1, 2,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuid.MustParse(`56d0823e-5c6d-45ff-ac6d-a9ae61026a4e`),
 			},
 
 			assertErr: require.NoError,
@@ -152,9 +154,10 @@ func TestInstanceService_GetAllIDsWithFilter(t *testing.T) {
 		},
 		{
 			name:             "success - with filter expression",
-			filterExpression: ptr.To(`ID < 2`),
-			repoGetAllIDsWithFilter: []int{
-				1, 2,
+			filterExpression: ptr.To(`UUID == "6c652183-8d93-4c7d-9510-cd2ae54f31fd"`),
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuid.MustParse(`56d0823e-5c6d-45ff-ac6d-a9ae61026a4e`),
 			},
 
 			assertErr: require.NoError,
@@ -163,8 +166,8 @@ func TestInstanceService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - invalid filter expression",
 			filterExpression: ptr.To(``), // the empty expression is an invalid expression.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: require.Error,
@@ -173,8 +176,8 @@ func TestInstanceService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - filter expression run",
 			filterExpression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: require.Error,
@@ -183,8 +186,8 @@ func TestInstanceService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - non bool expression",
 			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, i ...interface{}) {
@@ -193,8 +196,8 @@ func TestInstanceService_GetAllIDsWithFilter(t *testing.T) {
 			count: 0,
 		},
 		{
-			name:                       "error - repo",
-			repoGetAllIDsWithFilterErr: boom.Error,
+			name:                         "error - repo",
+			repoGetAllUUIDsWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -205,8 +208,8 @@ func TestInstanceService_GetAllIDsWithFilter(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.InstanceRepoMock{
-				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.InstanceFilter) ([]int, error) {
-					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
+				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.InstanceFilter) ([]uuid.UUID, error) {
+					return tc.repoGetAllUUIDsWithFilter, tc.repoGetAllUUIDsWithFilterErr
 				},
 			}
 
@@ -215,31 +218,31 @@ func TestInstanceService_GetAllIDsWithFilter(t *testing.T) {
 			}))
 
 			// Run test
-			instanceIDs, err := instanceSvc.GetAllIDsWithFilter(context.Background(), inventory.InstanceFilter{
+			instanceUUIDs, err := instanceSvc.GetAllUUIDsWithFilter(context.Background(), inventory.InstanceFilter{
 				Expression: tc.filterExpression,
 			})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, instanceIDs, tc.count)
+			require.Len(t, instanceUUIDs, tc.count)
 		})
 	}
 }
 
-func TestInstanceService_GetByID(t *testing.T) {
+func TestInstanceService_GetByUUID(t *testing.T) {
 	tests := []struct {
-		name                string
-		idArg               int
-		repoGetByIDInstance inventory.Instance
-		repoGetByIDErr      error
+		name                  string
+		idArg                 uuid.UUID
+		repoGetByUUIDInstance inventory.Instance
+		repoGetByUUIDErr      error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name:  "success",
-			idArg: 1,
-			repoGetByIDInstance: inventory.Instance{
-				ID:          1,
+			idArg: uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+			repoGetByUUIDInstance: inventory.Instance{
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:     "one",
 				ProjectName: "one",
 				Name:        "one",
@@ -250,9 +253,9 @@ func TestInstanceService_GetByID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:           "error - repo",
-			idArg:          1,
-			repoGetByIDErr: boom.Error,
+			name:             "error - repo",
+			idArg:            uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -262,8 +265,8 @@ func TestInstanceService_GetByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.InstanceRepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (inventory.Instance, error) {
-					return tc.repoGetByIDInstance, tc.repoGetByIDErr
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.Instance, error) {
+					return tc.repoGetByUUIDInstance, tc.repoGetByUUIDErr
 				},
 			}
 
@@ -272,33 +275,33 @@ func TestInstanceService_GetByID(t *testing.T) {
 			}))
 
 			// Run test
-			instance, err := instanceSvc.GetByID(context.Background(), tc.idArg)
+			instance, err := instanceSvc.GetByUUID(context.Background(), tc.idArg)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByIDInstance, instance)
+			require.Equal(t, tc.repoGetByUUIDInstance, instance)
 		})
 	}
 }
 
-func TestInstanceService_ResyncByID(t *testing.T) {
+func TestInstanceService_ResyncByUUID(t *testing.T) {
 	tests := []struct {
 		name                               string
 		clusterSvcGetByIDCluster           provisioning.Cluster
 		clusterSvcGetByIDErr               error
 		instanceClientGetInstanceByName    incusapi.InstanceFull
 		instanceClientGetInstanceByNameErr error
-		repoGetByIDInstance                inventory.Instance
-		repoGetByIDErr                     error
-		repoUpdateByIDErr                  error
-		repoDeleteByIDErr                  error
+		repoGetByUUIDInstance              inventory.Instance
+		repoGetByUUIDErr                   error
+		repoUpdateByUUIDErr                error
+		repoDeleteByUUIDErr                error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
-			repoGetByIDInstance: inventory.Instance{
-				ID:      1,
+			repoGetByUUIDInstance: inventory.Instance{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -317,8 +320,8 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 		},
 		{
 			name: "success - instance get by name - not found",
-			repoGetByIDInstance: inventory.Instance{
-				ID:      1,
+			repoGetByUUIDInstance: inventory.Instance{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -330,15 +333,15 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:           "error - instance get by ID",
-			repoGetByIDErr: boom.Error,
+			name:             "error - instance get by UUID",
+			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - cluster get by ID",
-			repoGetByIDInstance: inventory.Instance{
-				ID:      1,
+			repoGetByUUIDInstance: inventory.Instance{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -348,8 +351,8 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 		},
 		{
 			name: "error - instance get by name",
-			repoGetByIDInstance: inventory.Instance{
-				ID:      1,
+			repoGetByUUIDInstance: inventory.Instance{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -361,9 +364,9 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - instance get by name - not found - delete by id",
-			repoGetByIDInstance: inventory.Instance{
-				ID:      1,
+			name: "error - instance get by name - not found - delete by uuid",
+			repoGetByUUIDInstance: inventory.Instance{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -371,14 +374,14 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 				Name: "cluster-one",
 			},
 			instanceClientGetInstanceByNameErr: domain.ErrNotFound,
-			repoDeleteByIDErr:                  boom.Error,
+			repoDeleteByUUIDErr:                boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - validate",
-			repoGetByIDInstance: inventory.Instance{
-				ID:      1,
+			repoGetByUUIDInstance: inventory.Instance{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "", // invalid
 			},
@@ -399,9 +402,9 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 			},
 		},
 		{
-			name: "error - update by ID",
-			repoGetByIDInstance: inventory.Instance{
-				ID:      1,
+			name: "error - update by UUID",
+			repoGetByUUIDInstance: inventory.Instance{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -415,7 +418,7 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 					Project:  "project one",
 				},
 			},
-			repoUpdateByIDErr: boom.Error,
+			repoUpdateByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -425,15 +428,15 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.InstanceRepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (inventory.Instance, error) {
-					return tc.repoGetByIDInstance, tc.repoGetByIDErr
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.Instance, error) {
+					return tc.repoGetByUUIDInstance, tc.repoGetByUUIDErr
 				},
-				UpdateByIDFunc: func(ctx context.Context, instance inventory.Instance) (inventory.Instance, error) {
+				UpdateByUUIDFunc: func(ctx context.Context, instance inventory.Instance) (inventory.Instance, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), instance.LastUpdated)
-					return inventory.Instance{}, tc.repoUpdateByIDErr
+					return inventory.Instance{}, tc.repoUpdateByUUIDErr
 				},
-				DeleteByIDFunc: func(ctx context.Context, id int) error {
-					return tc.repoDeleteByIDErr
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					return tc.repoDeleteByUUIDErr
 				},
 			}
 
@@ -446,7 +449,7 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 
 			instanceClient := &serverMock.InstanceServerClientMock{
 				GetInstanceByNameFunc: func(ctx context.Context, connectionURL string, instanceName string) (incusapi.InstanceFull, error) {
-					require.Equal(t, tc.repoGetByIDInstance.Name, instanceName)
+					require.Equal(t, tc.repoGetByUUIDInstance.Name, instanceName)
 					return tc.instanceClientGetInstanceByName, tc.instanceClientGetInstanceByNameErr
 				},
 			}
@@ -456,7 +459,7 @@ func TestInstanceService_ResyncByID(t *testing.T) {
 			}))
 
 			// Run test
-			err := instanceSvc.ResyncByID(context.Background(), 1)
+			err := instanceSvc.ResyncByUUID(context.Background(), uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`))
 
 			// Assert
 			tc.assertErr(t, err)

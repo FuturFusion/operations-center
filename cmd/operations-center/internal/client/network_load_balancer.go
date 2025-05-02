@@ -31,8 +31,8 @@ func (c OperationsCenterClient) GetWithFilterNetworkLoadBalancers(filter invento
 	return network_load_balancers, nil
 }
 
-func (c OperationsCenterClient) GetNetworkLoadBalancer(name string) (api.NetworkLoadBalancer, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_load_balancers", name), nil, nil)
+func (c OperationsCenterClient) GetNetworkLoadBalancer(id string) (api.NetworkLoadBalancer, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_load_balancers", id), nil, nil)
 	if err != nil {
 		return api.NetworkLoadBalancer{}, err
 	}

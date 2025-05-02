@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -37,8 +38,8 @@ func NewInstanceServiceWithPrometheus(base inventory.InstanceService, instanceNa
 	}
 }
 
-// GetAllIDsWithFilter implements inventory.InstanceService.
-func (_d InstanceServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.InstanceFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.InstanceService.
+func (_d InstanceServiceWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.InstanceFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -46,9 +47,9 @@ func (_d InstanceServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Context,
 			result = "error"
 		}
 
-		instanceServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		instanceServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.InstanceService.
@@ -65,8 +66,8 @@ func (_d InstanceServiceWithPrometheus) GetAllWithFilter(ctx context.Context, fi
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.InstanceService.
-func (_d InstanceServiceWithPrometheus) GetByID(ctx context.Context, id int) (instance inventory.Instance, err error) {
+// GetByUUID implements inventory.InstanceService.
+func (_d InstanceServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (instance inventory.Instance, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d InstanceServiceWithPrometheus) GetByID(ctx context.Context, id int) (in
 			result = "error"
 		}
 
-		instanceServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		instanceServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// ResyncByID implements inventory.InstanceService.
-func (_d InstanceServiceWithPrometheus) ResyncByID(ctx context.Context, id int) (err error) {
+// ResyncByUUID implements inventory.InstanceService.
+func (_d InstanceServiceWithPrometheus) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d InstanceServiceWithPrometheus) ResyncByID(ctx context.Context, id int) 
 			result = "error"
 		}
 
-		instanceServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByID", result).Observe(time.Since(_since).Seconds())
+		instanceServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.ResyncByID(ctx, id)
+	return _d.base.ResyncByUUID(ctx, id)
 }
 
 // SyncCluster implements inventory.InstanceService.

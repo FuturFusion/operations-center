@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -131,20 +132,21 @@ func TestImageService_GetAllWithFilter(t *testing.T) {
 	}
 }
 
-func TestImageService_GetAllIDsWithFilter(t *testing.T) {
+func TestImageService_GetAllUUIDsWithFilter(t *testing.T) {
 	tests := []struct {
-		name                       string
-		filterExpression           *string
-		repoGetAllIDsWithFilter    []int
-		repoGetAllIDsWithFilterErr error
+		name                         string
+		filterExpression             *string
+		repoGetAllUUIDsWithFilter    []uuid.UUID
+		repoGetAllUUIDsWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success - no filter expression",
-			repoGetAllIDsWithFilter: []int{
-				1, 2,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuid.MustParse(`56d0823e-5c6d-45ff-ac6d-a9ae61026a4e`),
 			},
 
 			assertErr: require.NoError,
@@ -152,9 +154,10 @@ func TestImageService_GetAllIDsWithFilter(t *testing.T) {
 		},
 		{
 			name:             "success - with filter expression",
-			filterExpression: ptr.To(`ID < 2`),
-			repoGetAllIDsWithFilter: []int{
-				1, 2,
+			filterExpression: ptr.To(`UUID == "6c652183-8d93-4c7d-9510-cd2ae54f31fd"`),
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuid.MustParse(`56d0823e-5c6d-45ff-ac6d-a9ae61026a4e`),
 			},
 
 			assertErr: require.NoError,
@@ -163,8 +166,8 @@ func TestImageService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - invalid filter expression",
 			filterExpression: ptr.To(``), // the empty expression is an invalid expression.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: require.Error,
@@ -173,8 +176,8 @@ func TestImageService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - filter expression run",
 			filterExpression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: require.Error,
@@ -183,8 +186,8 @@ func TestImageService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:             "error - non bool expression",
 			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
-			repoGetAllIDsWithFilter: []int{
-				1,
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, i ...interface{}) {
@@ -193,8 +196,8 @@ func TestImageService_GetAllIDsWithFilter(t *testing.T) {
 			count: 0,
 		},
 		{
-			name:                       "error - repo",
-			repoGetAllIDsWithFilterErr: boom.Error,
+			name:                         "error - repo",
+			repoGetAllUUIDsWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -205,8 +208,8 @@ func TestImageService_GetAllIDsWithFilter(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ImageRepoMock{
-				GetAllIDsWithFilterFunc: func(ctx context.Context, filter inventory.ImageFilter) ([]int, error) {
-					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
+				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.ImageFilter) ([]uuid.UUID, error) {
+					return tc.repoGetAllUUIDsWithFilter, tc.repoGetAllUUIDsWithFilterErr
 				},
 			}
 
@@ -215,31 +218,31 @@ func TestImageService_GetAllIDsWithFilter(t *testing.T) {
 			}))
 
 			// Run test
-			imageIDs, err := imageSvc.GetAllIDsWithFilter(context.Background(), inventory.ImageFilter{
+			imageUUIDs, err := imageSvc.GetAllUUIDsWithFilter(context.Background(), inventory.ImageFilter{
 				Expression: tc.filterExpression,
 			})
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Len(t, imageIDs, tc.count)
+			require.Len(t, imageUUIDs, tc.count)
 		})
 	}
 }
 
-func TestImageService_GetByID(t *testing.T) {
+func TestImageService_GetByUUID(t *testing.T) {
 	tests := []struct {
-		name             string
-		idArg            int
-		repoGetByIDImage inventory.Image
-		repoGetByIDErr   error
+		name               string
+		idArg              uuid.UUID
+		repoGetByUUIDImage inventory.Image
+		repoGetByUUIDErr   error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name:  "success",
-			idArg: 1,
-			repoGetByIDImage: inventory.Image{
-				ID:          1,
+			idArg: uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+			repoGetByUUIDImage: inventory.Image{
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:     "one",
 				ProjectName: "one",
 				Name:        "one",
@@ -250,9 +253,9 @@ func TestImageService_GetByID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:           "error - repo",
-			idArg:          1,
-			repoGetByIDErr: boom.Error,
+			name:             "error - repo",
+			idArg:            uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -262,8 +265,8 @@ func TestImageService_GetByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ImageRepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (inventory.Image, error) {
-					return tc.repoGetByIDImage, tc.repoGetByIDErr
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.Image, error) {
+					return tc.repoGetByUUIDImage, tc.repoGetByUUIDErr
 				},
 			}
 
@@ -272,33 +275,33 @@ func TestImageService_GetByID(t *testing.T) {
 			}))
 
 			// Run test
-			image, err := imageSvc.GetByID(context.Background(), tc.idArg)
+			image, err := imageSvc.GetByUUID(context.Background(), tc.idArg)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByIDImage, image)
+			require.Equal(t, tc.repoGetByUUIDImage, image)
 		})
 	}
 }
 
-func TestImageService_ResyncByID(t *testing.T) {
+func TestImageService_ResyncByUUID(t *testing.T) {
 	tests := []struct {
 		name                         string
 		clusterSvcGetByIDCluster     provisioning.Cluster
 		clusterSvcGetByIDErr         error
 		imageClientGetImageByName    incusapi.Image
 		imageClientGetImageByNameErr error
-		repoGetByIDImage             inventory.Image
-		repoGetByIDErr               error
-		repoUpdateByIDErr            error
-		repoDeleteByIDErr            error
+		repoGetByUUIDImage           inventory.Image
+		repoGetByUUIDErr             error
+		repoUpdateByUUIDErr          error
+		repoDeleteByUUIDErr          error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
-			repoGetByIDImage: inventory.Image{
-				ID:      1,
+			repoGetByUUIDImage: inventory.Image{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -314,8 +317,8 @@ func TestImageService_ResyncByID(t *testing.T) {
 		},
 		{
 			name: "success - image get by name - not found",
-			repoGetByIDImage: inventory.Image{
-				ID:      1,
+			repoGetByUUIDImage: inventory.Image{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -327,15 +330,15 @@ func TestImageService_ResyncByID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:           "error - image get by ID",
-			repoGetByIDErr: boom.Error,
+			name:             "error - image get by UUID",
+			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - cluster get by ID",
-			repoGetByIDImage: inventory.Image{
-				ID:      1,
+			repoGetByUUIDImage: inventory.Image{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -345,8 +348,8 @@ func TestImageService_ResyncByID(t *testing.T) {
 		},
 		{
 			name: "error - image get by name",
-			repoGetByIDImage: inventory.Image{
-				ID:      1,
+			repoGetByUUIDImage: inventory.Image{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -358,9 +361,9 @@ func TestImageService_ResyncByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - image get by name - not found - delete by id",
-			repoGetByIDImage: inventory.Image{
-				ID:      1,
+			name: "error - image get by name - not found - delete by uuid",
+			repoGetByUUIDImage: inventory.Image{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -368,14 +371,14 @@ func TestImageService_ResyncByID(t *testing.T) {
 				Name: "cluster-one",
 			},
 			imageClientGetImageByNameErr: domain.ErrNotFound,
-			repoDeleteByIDErr:            boom.Error,
+			repoDeleteByUUIDErr:          boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - validate",
-			repoGetByIDImage: inventory.Image{
-				ID:      1,
+			repoGetByUUIDImage: inventory.Image{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "", // invalid
 			},
@@ -393,9 +396,9 @@ func TestImageService_ResyncByID(t *testing.T) {
 			},
 		},
 		{
-			name: "error - update by ID",
-			repoGetByIDImage: inventory.Image{
-				ID:      1,
+			name: "error - update by UUID",
+			repoGetByUUIDImage: inventory.Image{
+				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster: "one",
 				Name:    "one",
 			},
@@ -406,7 +409,7 @@ func TestImageService_ResyncByID(t *testing.T) {
 				Fingerprint: "image one",
 				Project:     "project one",
 			},
-			repoUpdateByIDErr: boom.Error,
+			repoUpdateByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -416,15 +419,15 @@ func TestImageService_ResyncByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ImageRepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (inventory.Image, error) {
-					return tc.repoGetByIDImage, tc.repoGetByIDErr
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.Image, error) {
+					return tc.repoGetByUUIDImage, tc.repoGetByUUIDErr
 				},
-				UpdateByIDFunc: func(ctx context.Context, image inventory.Image) (inventory.Image, error) {
+				UpdateByUUIDFunc: func(ctx context.Context, image inventory.Image) (inventory.Image, error) {
 					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), image.LastUpdated)
-					return inventory.Image{}, tc.repoUpdateByIDErr
+					return inventory.Image{}, tc.repoUpdateByUUIDErr
 				},
-				DeleteByIDFunc: func(ctx context.Context, id int) error {
-					return tc.repoDeleteByIDErr
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					return tc.repoDeleteByUUIDErr
 				},
 			}
 
@@ -437,7 +440,7 @@ func TestImageService_ResyncByID(t *testing.T) {
 
 			imageClient := &serverMock.ImageServerClientMock{
 				GetImageByNameFunc: func(ctx context.Context, connectionURL string, imageName string) (incusapi.Image, error) {
-					require.Equal(t, tc.repoGetByIDImage.Name, imageName)
+					require.Equal(t, tc.repoGetByUUIDImage.Name, imageName)
 					return tc.imageClientGetImageByName, tc.imageClientGetImageByNameErr
 				},
 			}
@@ -447,7 +450,7 @@ func TestImageService_ResyncByID(t *testing.T) {
 			}))
 
 			// Run test
-			err := imageSvc.ResyncByID(context.Background(), 1)
+			err := imageSvc.ResyncByUUID(context.Background(), uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`))
 
 			// Assert
 			tc.assertErr(t, err)

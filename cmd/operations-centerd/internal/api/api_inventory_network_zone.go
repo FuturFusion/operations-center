@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -24,8 +26,8 @@ func registerInventoryNetworkZoneHandler(router Router, authorizer authz.Authori
 	}
 
 	router.HandleFunc("GET /{$}", response.With(handler.networkZonesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("GET /{id}", response.With(handler.networkZoneGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.networkZoneResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{uuid}", response.With(handler.networkZoneGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{uuid}/resync", response.With(handler.networkZoneResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/network_zones network_zones network_zones_get
@@ -171,7 +173,7 @@ func (i *networkZoneHandler) networkZonesGet(r *http.Request) response.Response 
 		result := make([]api.NetworkZone, 0, len(networkZones))
 		for _, networkZone := range networkZones {
 			result = append(result, api.NetworkZone{
-				ID:          networkZone.ID,
+				UUID:        networkZone.UUID,
 				Cluster:     networkZone.Cluster,
 				ProjectName: networkZone.ProjectName,
 				Name:        networkZone.Name,
@@ -183,20 +185,20 @@ func (i *networkZoneHandler) networkZonesGet(r *http.Request) response.Response 
 		return response.SyncResponse(true, result)
 	}
 
-	networkZoneIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
+	networkZoneUUIDs, err := i.service.GetAllUUIDsWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(networkZoneIDs))
-	for _, id := range networkZoneIDs {
+	result := make([]string, 0, len(networkZoneUUIDs))
+	for _, id := range networkZoneUUIDs {
 		result = append(result, fmt.Sprintf("/%s/inventory/network_zone/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/inventory/network_zones/{id} network_zones network_zone_get
+// swagger:operation GET /1.0/inventory/network_zones/{uuid} network_zones network_zone_get
 //
 //	Get the network_zone
 //
@@ -231,12 +233,12 @@ func (i *networkZoneHandler) networkZonesGet(r *http.Request) response.Response 
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkZoneHandler) networkZoneGet(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	networkZone, err := i.service.GetByID(r.Context(), id)
+	networkZone, err := i.service.GetByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -244,7 +246,7 @@ func (i *networkZoneHandler) networkZoneGet(r *http.Request) response.Response {
 	return response.SyncResponse(
 		true,
 		api.NetworkZone{
-			ID:          networkZone.ID,
+			UUID:        networkZone.UUID,
 			Cluster:     networkZone.Cluster,
 			ProjectName: networkZone.ProjectName,
 			Name:        networkZone.Name,
@@ -254,7 +256,7 @@ func (i *networkZoneHandler) networkZoneGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation POST /1.0/inventory/network_zones/{id}/resync network_zones network_zone_get_resync_post
+// swagger:operation POST /1.0/inventory/network_zones/{uuid}/resync network_zones network_zone_get_resync_post
 //
 //	Resync the network_zone
 //
@@ -287,12 +289,12 @@ func (i *networkZoneHandler) networkZoneGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *networkZoneHandler) networkZoneResyncPost(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	err = i.service.ResyncByID(r.Context(), id)
+	err = i.service.ResyncByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync network_zone: %w", err))
 	}

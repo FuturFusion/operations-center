@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
@@ -65,6 +66,8 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 		LastUpdated: time.Now(),
 	}
 
+	networkACLA.DeriveUUID()
+
 	networkACLB := inventory.NetworkACL{
 		Cluster:     "two",
 		ProjectName: "two",
@@ -72,6 +75,8 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 		Object:      incusapi.NetworkACL{},
 		LastUpdated: time.Now(),
 	}
+
+	networkACLB.DeriveUUID()
 
 	ctx := context.Background()
 
@@ -128,10 +133,10 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 	require.Equal(t, "two", networkACLB.Cluster)
 
 	// Ensure we have two entries without filter
-	networkACLIDs, err := networkACL.GetAllIDsWithFilter(ctx, inventory.NetworkACLFilter{})
+	networkACLUUIDs, err := networkACL.GetAllUUIDsWithFilter(ctx, inventory.NetworkACLFilter{})
 	require.NoError(t, err)
-	require.Len(t, networkACLIDs, 2)
-	require.ElementsMatch(t, []int{1, 2}, networkACLIDs)
+	require.Len(t, networkACLUUIDs, 2)
+	require.ElementsMatch(t, []uuid.UUID{networkACLA.UUID, networkACLB.UUID}, networkACLUUIDs)
 
 	// Ensure we have two entries without filter
 	dbNetworkACL, err := networkACL.GetAllWithFilter(ctx, inventory.NetworkACLFilter{})
@@ -141,13 +146,13 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 	require.Equal(t, networkACLB.Name, dbNetworkACL[1].Name)
 
 	// Ensure we have one entry with filter for cluster, server and project
-	networkACLIDs, err = networkACL.GetAllIDsWithFilter(ctx, inventory.NetworkACLFilter{
+	networkACLUUIDs, err = networkACL.GetAllUUIDsWithFilter(ctx, inventory.NetworkACLFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, networkACLIDs, 1)
-	require.ElementsMatch(t, []int{1}, networkACLIDs)
+	require.Len(t, networkACLUUIDs, 1)
+	require.ElementsMatch(t, []uuid.UUID{networkACLA.UUID}, networkACLUUIDs)
 
 	// Ensure we have one entry with filter for cluster, server and project
 	dbNetworkACL, err = networkACL.GetAllWithFilter(ctx, inventory.NetworkACLFilter{
@@ -155,33 +160,33 @@ func TestNetworkACLDatabaseActions(t *testing.T) {
 		Project: ptr.To("one"),
 	})
 	require.NoError(t, err)
-	require.Len(t, networkACLIDs, 1)
+	require.Len(t, dbNetworkACL, 1)
 	require.Equal(t, "one", dbNetworkACL[0].Name)
 
 	// Should get back networkACLA unchanged.
 	networkACLA.Cluster = "one"
-	dbNetworkACLA, err := networkACL.GetByID(ctx, networkACLA.ID)
+	dbNetworkACLA, err := networkACL.GetByUUID(ctx, networkACLA.UUID)
 	require.NoError(t, err)
 	require.Equal(t, networkACLA, dbNetworkACLA)
 
 	networkACLB.LastUpdated = time.Now().UTC().Truncate(0)
-	dbNetworkACLB, err := networkACL.UpdateByID(ctx, networkACLB)
+	dbNetworkACLB, err := networkACL.UpdateByUUID(ctx, networkACLB)
 	require.NoError(t, err)
 	require.Equal(t, networkACLB, dbNetworkACLB)
 
 	// Delete network_acls by ID.
-	err = networkACL.DeleteByID(ctx, 1)
+	err = networkACL.DeleteByUUID(ctx, networkACLA.UUID)
 	require.NoError(t, err)
 
 	// Delete network_acls by cluster Name.
 	err = networkACL.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
 
-	_, err = networkACL.GetByID(ctx, networkACLA.ID)
+	_, err = networkACL.GetByUUID(ctx, networkACLA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Should have no network_acls remaining.
-	networkACLIDs, err = networkACL.GetAllIDsWithFilter(ctx, inventory.NetworkACLFilter{})
+	networkACLUUIDs, err = networkACL.GetAllUUIDsWithFilter(ctx, inventory.NetworkACLFilter{})
 	require.NoError(t, err)
-	require.Zero(t, networkACLIDs)
+	require.Zero(t, networkACLUUIDs)
 }

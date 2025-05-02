@@ -31,8 +31,8 @@ func (c OperationsCenterClient) GetWithFilterNetworkForwards(filter inventory.Ne
 	return network_forwards, nil
 }
 
-func (c OperationsCenterClient) GetNetworkForward(name string) (api.NetworkForward, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_forwards", name), nil, nil)
+func (c OperationsCenterClient) GetNetworkForward(id string) (api.NetworkForward, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_forwards", id), nil, nil)
 	if err != nil {
 		return api.NetworkForward{}, err
 	}

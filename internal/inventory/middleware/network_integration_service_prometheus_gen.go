@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -37,8 +38,8 @@ func NewNetworkIntegrationServiceWithPrometheus(base inventory.NetworkIntegratio
 	}
 }
 
-// GetAllIDsWithFilter implements inventory.NetworkIntegrationService.
-func (_d NetworkIntegrationServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkIntegrationFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.NetworkIntegrationService.
+func (_d NetworkIntegrationServiceWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkIntegrationFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -46,9 +47,9 @@ func (_d NetworkIntegrationServiceWithPrometheus) GetAllIDsWithFilter(ctx contex
 			result = "error"
 		}
 
-		networkIntegrationServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		networkIntegrationServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.NetworkIntegrationService.
@@ -65,8 +66,8 @@ func (_d NetworkIntegrationServiceWithPrometheus) GetAllWithFilter(ctx context.C
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.NetworkIntegrationService.
-func (_d NetworkIntegrationServiceWithPrometheus) GetByID(ctx context.Context, id int) (networkIntegration inventory.NetworkIntegration, err error) {
+// GetByUUID implements inventory.NetworkIntegrationService.
+func (_d NetworkIntegrationServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (networkIntegration inventory.NetworkIntegration, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d NetworkIntegrationServiceWithPrometheus) GetByID(ctx context.Context, i
 			result = "error"
 		}
 
-		networkIntegrationServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		networkIntegrationServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// ResyncByID implements inventory.NetworkIntegrationService.
-func (_d NetworkIntegrationServiceWithPrometheus) ResyncByID(ctx context.Context, id int) (err error) {
+// ResyncByUUID implements inventory.NetworkIntegrationService.
+func (_d NetworkIntegrationServiceWithPrometheus) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d NetworkIntegrationServiceWithPrometheus) ResyncByID(ctx context.Context
 			result = "error"
 		}
 
-		networkIntegrationServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByID", result).Observe(time.Since(_since).Seconds())
+		networkIntegrationServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.ResyncByID(ctx, id)
+	return _d.base.ResyncByUUID(ctx, id)
 }
 
 // SyncCluster implements inventory.NetworkIntegrationService.

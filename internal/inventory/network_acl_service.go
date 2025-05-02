@@ -10,6 +10,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -95,12 +96,12 @@ func (s networkACLService) GetAllWithFilter(ctx context.Context, filter NetworkA
 	return networkACLs, nil
 }
 
-func (s networkACLService) GetAllIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]int, error) {
+func (s networkACLService) GetAllUUIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]uuid.UUID, error) {
 	var filterExpression *vm.Program
 	var err error
 
 	type Env struct {
-		ID int
+		UUID string
 	}
 
 	if filter.Expression != nil {
@@ -110,15 +111,15 @@ func (s networkACLService) GetAllIDsWithFilter(ctx context.Context, filter Netwo
 		}
 	}
 
-	networkACLsIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	networkACLsUUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var filteredNetworkACLsIDs []int
+	var filteredNetworkACLsUUIDs []uuid.UUID
 	if filter.Expression != nil {
-		for _, networkACLID := range networkACLsIDs {
-			output, err := expr.Run(filterExpression, Env{networkACLID})
+		for _, networkACLUUID := range networkACLsUUIDs {
+			output, err := expr.Run(filterExpression, Env{networkACLUUID.String()})
 			if err != nil {
 				return nil, err
 			}
@@ -129,23 +130,23 @@ func (s networkACLService) GetAllIDsWithFilter(ctx context.Context, filter Netwo
 			}
 
 			if result {
-				filteredNetworkACLsIDs = append(filteredNetworkACLsIDs, networkACLID)
+				filteredNetworkACLsUUIDs = append(filteredNetworkACLsUUIDs, networkACLUUID)
 			}
 		}
 
-		return filteredNetworkACLsIDs, nil
+		return filteredNetworkACLsUUIDs, nil
 	}
 
-	return networkACLsIDs, nil
+	return networkACLsUUIDs, nil
 }
 
-func (s networkACLService) GetByID(ctx context.Context, id int) (NetworkACL, error) {
-	return s.repo.GetByID(ctx, id)
+func (s networkACLService) GetByUUID(ctx context.Context, id uuid.UUID) (NetworkACL, error) {
+	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s networkACLService) ResyncByID(ctx context.Context, id int) error {
+func (s networkACLService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		networkACL, err := s.repo.GetByID(ctx, id)
+		networkACL, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -157,7 +158,7 @@ func (s networkACLService) ResyncByID(ctx context.Context, id int) error {
 
 		retrievedNetworkACL, err := s.networkACLClient.GetNetworkACLByName(ctx, cluster.ConnectionURL, networkACL.Name)
 		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByID(ctx, networkACL.ID)
+			err = s.repo.DeleteByUUID(ctx, networkACL.UUID)
 			if err != nil {
 				return err
 			}
@@ -172,13 +173,14 @@ func (s networkACLService) ResyncByID(ctx context.Context, id int) error {
 		networkACL.ProjectName = retrievedNetworkACL.Project
 		networkACL.Object = retrievedNetworkACL
 		networkACL.LastUpdated = s.now()
+		networkACL.DeriveUUID()
 
 		err = networkACL.Validate()
 		if err != nil {
 			return err
 		}
 
-		_, err = s.repo.UpdateByID(ctx, networkACL)
+		_, err = s.repo.UpdateByUUID(ctx, networkACL)
 		if err != nil {
 			return err
 		}
@@ -217,6 +219,8 @@ func (s networkACLService) SyncCluster(ctx context.Context, name string) error {
 				Object:      retrievedNetworkACL,
 				LastUpdated: s.now(),
 			}
+
+			networkACL.DeriveUUID()
 
 			if s.clusterSyncFilterFunc(networkACL) {
 				continue

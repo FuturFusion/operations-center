@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -24,8 +26,8 @@ func registerInventoryImageHandler(router Router, authorizer authz.Authorizer, s
 	}
 
 	router.HandleFunc("GET /{$}", response.With(handler.imagesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("GET /{id}", response.With(handler.imageGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{id}/resync", response.With(handler.imageResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{uuid}", response.With(handler.imageGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{uuid}/resync", response.With(handler.imageResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/images images images_get
@@ -171,7 +173,7 @@ func (i *imageHandler) imagesGet(r *http.Request) response.Response {
 		result := make([]api.Image, 0, len(images))
 		for _, image := range images {
 			result = append(result, api.Image{
-				ID:          image.ID,
+				UUID:        image.UUID,
 				Cluster:     image.Cluster,
 				ProjectName: image.ProjectName,
 				Name:        image.Name,
@@ -183,20 +185,20 @@ func (i *imageHandler) imagesGet(r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	imageIDs, err := i.service.GetAllIDsWithFilter(r.Context(), filter)
+	imageUUIDs, err := i.service.GetAllUUIDsWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(imageIDs))
-	for _, id := range imageIDs {
+	result := make([]string, 0, len(imageUUIDs))
+	for _, id := range imageUUIDs {
 		result = append(result, fmt.Sprintf("/%s/inventory/image/%d", api.APIVersion, id))
 	}
 
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/inventory/images/{id} images image_get
+// swagger:operation GET /1.0/inventory/images/{uuid} images image_get
 //
 //	Get the image
 //
@@ -231,12 +233,12 @@ func (i *imageHandler) imagesGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageHandler) imageGet(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	image, err := i.service.GetByID(r.Context(), id)
+	image, err := i.service.GetByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -244,7 +246,7 @@ func (i *imageHandler) imageGet(r *http.Request) response.Response {
 	return response.SyncResponse(
 		true,
 		api.Image{
-			ID:          image.ID,
+			UUID:        image.UUID,
 			Cluster:     image.Cluster,
 			ProjectName: image.ProjectName,
 			Name:        image.Name,
@@ -254,7 +256,7 @@ func (i *imageHandler) imageGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation POST /1.0/inventory/images/{id}/resync images image_get_resync_post
+// swagger:operation POST /1.0/inventory/images/{uuid}/resync images image_get_resync_post
 //
 //	Resync the image
 //
@@ -287,12 +289,12 @@ func (i *imageHandler) imageGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (i *imageHandler) imageResyncPost(r *http.Request) response.Response {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := uuid.Parse(r.PathValue("uuid"))
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	err = i.service.ResyncByID(r.Context(), id)
+	err = i.service.ResyncByUUID(r.Context(), id)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync image: %w", err))
 	}

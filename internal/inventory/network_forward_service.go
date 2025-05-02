@@ -10,6 +10,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -109,12 +110,12 @@ func (s networkForwardService) GetAllWithFilter(ctx context.Context, filter Netw
 	return networkForwards, nil
 }
 
-func (s networkForwardService) GetAllIDsWithFilter(ctx context.Context, filter NetworkForwardFilter) ([]int, error) {
+func (s networkForwardService) GetAllUUIDsWithFilter(ctx context.Context, filter NetworkForwardFilter) ([]uuid.UUID, error) {
 	var filterExpression *vm.Program
 	var err error
 
 	type Env struct {
-		ID int
+		UUID string
 	}
 
 	if filter.Expression != nil {
@@ -124,15 +125,15 @@ func (s networkForwardService) GetAllIDsWithFilter(ctx context.Context, filter N
 		}
 	}
 
-	networkForwardsIDs, err := s.repo.GetAllIDsWithFilter(ctx, filter)
+	networkForwardsUUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var filteredNetworkForwardsIDs []int
+	var filteredNetworkForwardsUUIDs []uuid.UUID
 	if filter.Expression != nil {
-		for _, networkForwardID := range networkForwardsIDs {
-			output, err := expr.Run(filterExpression, Env{networkForwardID})
+		for _, networkForwardUUID := range networkForwardsUUIDs {
+			output, err := expr.Run(filterExpression, Env{networkForwardUUID.String()})
 			if err != nil {
 				return nil, err
 			}
@@ -143,23 +144,23 @@ func (s networkForwardService) GetAllIDsWithFilter(ctx context.Context, filter N
 			}
 
 			if result {
-				filteredNetworkForwardsIDs = append(filteredNetworkForwardsIDs, networkForwardID)
+				filteredNetworkForwardsUUIDs = append(filteredNetworkForwardsUUIDs, networkForwardUUID)
 			}
 		}
 
-		return filteredNetworkForwardsIDs, nil
+		return filteredNetworkForwardsUUIDs, nil
 	}
 
-	return networkForwardsIDs, nil
+	return networkForwardsUUIDs, nil
 }
 
-func (s networkForwardService) GetByID(ctx context.Context, id int) (NetworkForward, error) {
-	return s.repo.GetByID(ctx, id)
+func (s networkForwardService) GetByUUID(ctx context.Context, id uuid.UUID) (NetworkForward, error) {
+	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s networkForwardService) ResyncByID(ctx context.Context, id int) error {
+func (s networkForwardService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		networkForward, err := s.repo.GetByID(ctx, id)
+		networkForward, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -171,7 +172,7 @@ func (s networkForwardService) ResyncByID(ctx context.Context, id int) error {
 
 		retrievedNetworkForward, err := s.networkForwardClient.GetNetworkForwardByName(ctx, cluster.ConnectionURL, networkForward.NetworkName, networkForward.Name)
 		if errors.Is(err, domain.ErrNotFound) {
-			err = s.repo.DeleteByID(ctx, networkForward.ID)
+			err = s.repo.DeleteByUUID(ctx, networkForward.UUID)
 			if err != nil {
 				return err
 			}
@@ -185,13 +186,14 @@ func (s networkForwardService) ResyncByID(ctx context.Context, id int) error {
 
 		networkForward.Object = retrievedNetworkForward
 		networkForward.LastUpdated = s.now()
+		networkForward.DeriveUUID()
 
 		err = networkForward.Validate()
 		if err != nil {
 			return err
 		}
 
-		_, err = s.repo.UpdateByID(ctx, networkForward)
+		_, err = s.repo.UpdateByUUID(ctx, networkForward)
 		if err != nil {
 			return err
 		}
@@ -240,6 +242,8 @@ func (s networkForwardService) SyncCluster(ctx context.Context, name string) err
 					Object:      retrievedNetworkForward,
 					LastUpdated: s.now(),
 				}
+
+				networkForward.DeriveUUID()
 
 				if s.clusterSyncFilterFunc(networkForward) {
 					continue

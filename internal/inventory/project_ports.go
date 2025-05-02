@@ -5,25 +5,27 @@ package inventory
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type ProjectService interface {
 	GetAllWithFilter(ctx context.Context, filter ProjectFilter) (Projects, error)
-	GetAllIDsWithFilter(ctx context.Context, filter ProjectFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (Project, error)
-	ResyncByID(ctx context.Context, id int) error
+	GetAllUUIDsWithFilter(ctx context.Context, filter ProjectFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (Project, error)
+	ResyncByUUID(ctx context.Context, id uuid.UUID) error
 	SyncCluster(ctx context.Context, cluster string) error
 }
 
 type ProjectRepo interface {
 	GetAllWithFilter(ctx context.Context, filter ProjectFilter) (Projects, error)
-	GetAllIDsWithFilter(ctx context.Context, filter ProjectFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (Project, error)
+	GetAllUUIDsWithFilter(ctx context.Context, filter ProjectFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (Project, error)
 	Create(ctx context.Context, project Project) (Project, error)
-	DeleteByID(ctx context.Context, id int) error
+	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	DeleteByClusterName(ctx context.Context, cluster string) error
-	UpdateByID(ctx context.Context, project Project) (Project, error)
+	UpdateByUUID(ctx context.Context, project Project) (Project, error)
 }
 
 type ProjectServerClient interface {

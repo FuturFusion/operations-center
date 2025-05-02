@@ -31,8 +31,8 @@ func (c OperationsCenterClient) GetWithFilterStoragePools(filter inventory.Stora
 	return storage_pools, nil
 }
 
-func (c OperationsCenterClient) GetStoragePool(name string) (api.StoragePool, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/storage_pools", name), nil, nil)
+func (c OperationsCenterClient) GetStoragePool(id string) (api.StoragePool, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/storage_pools", id), nil, nil)
 	if err != nil {
 		return api.StoragePool{}, err
 	}

@@ -63,7 +63,7 @@ type cmdNetworkLoadBalancerList struct {
 	flagFormat  string
 }
 
-const networkLoadBalancerDefaultColumns = `{{ .ID }},{{ .Cluster }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
+const networkLoadBalancerDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
 
 func (c *cmdNetworkLoadBalancerList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
@@ -155,7 +155,7 @@ type cmdNetworkLoadBalancerShow struct {
 
 func (c *cmdNetworkLoadBalancerShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <name>"
+	cmd.Use = "show <uuid>"
 	cmd.Short = "Show information about a network_load_balancer"
 	cmd.Long = `Description:
   Show information about a network_load_balancer.
@@ -173,9 +173,9 @@ func (c *cmdNetworkLoadBalancerShow) Run(cmd *cobra.Command, args []string) erro
 		return err
 	}
 
-	name := args[0]
+	id := args[0]
 
-	networkLoadBalancer, err := c.ocClient.GetNetworkLoadBalancer(name)
+	networkLoadBalancer, err := c.ocClient.GetNetworkLoadBalancer(id)
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (c *cmdNetworkLoadBalancerShow) Run(cmd *cobra.Command, args []string) erro
 		return err
 	}
 
-	fmt.Printf("ID: %d\n", networkLoadBalancer.ID)
+	fmt.Printf("UUID: %s\n", networkLoadBalancer.UUID.String())
 	fmt.Printf("Cluster: %s\n", networkLoadBalancer.Cluster)
 	fmt.Printf("Network Name: %s\n", networkLoadBalancer.NetworkName)
 	fmt.Printf("Name: %s\n", networkLoadBalancer.Name)

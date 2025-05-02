@@ -3,9 +3,12 @@
 package inventory
 
 import (
+	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -13,6 +16,7 @@ import (
 
 type StorageVolume struct {
 	ID              int
+	UUID            uuid.UUID
 	Cluster         string
 	Server          string
 	ProjectName     string
@@ -21,6 +25,21 @@ type StorageVolume struct {
 	Type            string
 	Object          incusapi.StorageVolume
 	LastUpdated     time.Time
+}
+
+func (m *StorageVolume) DeriveUUID() *StorageVolume {
+	identifier := strings.Join([]string{
+		m.Cluster,
+		m.Server,
+		m.ProjectName,
+		m.StoragePoolName,
+		fmt.Sprintf("%v", m.Type),
+		m.Name,
+	}, ":")
+
+	m.UUID = uuid.NewSHA1(InventorySpaceUUID, []byte(identifier))
+
+	return m
 }
 
 func (m StorageVolume) Validate() error {
@@ -38,6 +57,12 @@ func (m StorageVolume) Validate() error {
 
 	if m.StoragePoolName == "" {
 		return domain.NewValidationErrf("Invalid StorageVolume, parent name (StoragePool) can not be empty")
+	}
+
+	clone := m
+	clone.DeriveUUID()
+	if clone.UUID != m.UUID {
+		return domain.NewValidationErrf("Invalid UUID, does not match derived value")
 	}
 
 	return nil

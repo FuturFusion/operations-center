@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -65,8 +66,8 @@ func (_d NetworkIntegrationRepoWithPrometheus) DeleteByClusterName(ctx context.C
 	return _d.base.DeleteByClusterName(ctx, cluster)
 }
 
-// DeleteByID implements inventory.NetworkIntegrationRepo.
-func (_d NetworkIntegrationRepoWithPrometheus) DeleteByID(ctx context.Context, id int) (err error) {
+// DeleteByUUID implements inventory.NetworkIntegrationRepo.
+func (_d NetworkIntegrationRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d NetworkIntegrationRepoWithPrometheus) DeleteByID(ctx context.Context, i
 			result = "error"
 		}
 
-		networkIntegrationRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByID", result).Observe(time.Since(_since).Seconds())
+		networkIntegrationRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByID(ctx, id)
+	return _d.base.DeleteByUUID(ctx, id)
 }
 
-// GetAllIDsWithFilter implements inventory.NetworkIntegrationRepo.
-func (_d NetworkIntegrationRepoWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.NetworkIntegrationFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.NetworkIntegrationRepo.
+func (_d NetworkIntegrationRepoWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkIntegrationFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d NetworkIntegrationRepoWithPrometheus) GetAllIDsWithFilter(ctx context.C
 			result = "error"
 		}
 
-		networkIntegrationRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		networkIntegrationRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.NetworkIntegrationRepo.
@@ -107,8 +108,8 @@ func (_d NetworkIntegrationRepoWithPrometheus) GetAllWithFilter(ctx context.Cont
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.NetworkIntegrationRepo.
-func (_d NetworkIntegrationRepoWithPrometheus) GetByID(ctx context.Context, id int) (networkIntegration inventory.NetworkIntegration, err error) {
+// GetByUUID implements inventory.NetworkIntegrationRepo.
+func (_d NetworkIntegrationRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (networkIntegration inventory.NetworkIntegration, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -116,13 +117,13 @@ func (_d NetworkIntegrationRepoWithPrometheus) GetByID(ctx context.Context, id i
 			result = "error"
 		}
 
-		networkIntegrationRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		networkIntegrationRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// UpdateByID implements inventory.NetworkIntegrationRepo.
-func (_d NetworkIntegrationRepoWithPrometheus) UpdateByID(ctx context.Context, networkIntegration inventory.NetworkIntegration) (networkIntegration1 inventory.NetworkIntegration, err error) {
+// UpdateByUUID implements inventory.NetworkIntegrationRepo.
+func (_d NetworkIntegrationRepoWithPrometheus) UpdateByUUID(ctx context.Context, networkIntegration inventory.NetworkIntegration) (networkIntegration1 inventory.NetworkIntegration, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -130,7 +131,7 @@ func (_d NetworkIntegrationRepoWithPrometheus) UpdateByID(ctx context.Context, n
 			result = "error"
 		}
 
-		networkIntegrationRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByID", result).Observe(time.Since(_since).Seconds())
+		networkIntegrationRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateByID(ctx, networkIntegration)
+	return _d.base.UpdateByUUID(ctx, networkIntegration)
 }

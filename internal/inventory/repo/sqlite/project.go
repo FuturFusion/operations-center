@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
@@ -31,9 +33,9 @@ func (r project) Create(ctx context.Context, in inventory.Project) (inventory.Pr
 WITH _lookup AS (
   SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
-INSERT INTO projects (cluster_id, name, object, last_updated)
-VALUES ( (SELECT cluster_id FROM _lookup), :name, :object, :last_updated)
-RETURNING id, :cluster_name, name, object, last_updated;
+INSERT INTO projects (uuid, cluster_id, name, object, last_updated)
+VALUES (:uuid, (SELECT cluster_id FROM _lookup), :name, :object, :last_updated)
+RETURNING id, :uuid, :cluster_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -42,6 +44,7 @@ RETURNING id, :cluster_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
+		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -57,7 +60,7 @@ RETURNING id, :cluster_name, name, object, last_updated;
 func (r project) GetAllWithFilter(ctx context.Context, filter inventory.ProjectFilter) (inventory.Projects, error) {
 	const sqlStmt = `
 SELECT
-  projects.id, clusters.name, projects.name, projects.object, projects.last_updated
+  projects.id, projects.uuid, clusters.name, projects.name, projects.object, projects.last_updated
 FROM projects
   INNER JOIN clusters ON projects.cluster_id = clusters.id
 WHERE true
@@ -100,9 +103,9 @@ ORDER BY clusters.name, projects.name
 	return projects, nil
 }
 
-func (r project) GetAllIDsWithFilter(ctx context.Context, filter inventory.ProjectFilter) ([]int, error) {
+func (r project) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ProjectFilter) ([]uuid.UUID, error) {
 	const sqlStmt = `
-SELECT projects.id
+SELECT projects.uuid
 FROM projects
   INNER JOIN clusters ON projects.cluster_id = clusters.id
 WHERE true
@@ -127,9 +130,9 @@ ORDER BY projects.id
 
 	defer func() { _ = rows.Close() }()
 
-	var ids []int
+	var ids []uuid.UUID
 	for rows.Next() {
-		var id int
+		var id uuid.UUID
 		err := rows.Scan(&id)
 		if err != nil {
 			return nil, sqlite.MapErr(err)
@@ -145,17 +148,17 @@ ORDER BY projects.id
 	return ids, nil
 }
 
-func (r project) GetByID(ctx context.Context, id int) (inventory.Project, error) {
+func (r project) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.Project, error) {
 	const sqlStmt = `
 SELECT
-  projects.id, clusters.name, projects.name, projects.object, projects.last_updated
+  projects.id, projects.uuid, clusters.name, projects.name, projects.object, projects.last_updated
 FROM
   projects
   INNER JOIN clusters ON projects.cluster_id = clusters.id
-WHERE projects.id=:id;
+WHERE projects.uuid=:uuid;
 `
 
-	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("id", id))
+	row := r.db.QueryRowContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if row.Err() != nil {
 		return inventory.Project{}, sqlite.MapErr(row.Err())
 	}
@@ -163,10 +166,10 @@ WHERE projects.id=:id;
 	return scanProject(row)
 }
 
-func (r project) DeleteByID(ctx context.Context, id int) error {
-	const sqlStmt = `DELETE FROM projects WHERE id=:id;`
+func (r project) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	const sqlStmt = `DELETE FROM projects WHERE uuid=:uuid;`
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("id", id))
+	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("uuid", id))
 	if err != nil {
 		return sqlite.MapErr(err)
 	}
@@ -207,14 +210,14 @@ DELETE FROM projects WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
 	return nil
 }
 
-func (r project) UpdateByID(ctx context.Context, in inventory.Project) (inventory.Project, error) {
+func (r project) UpdateByUUID(ctx context.Context, in inventory.Project) (inventory.Project, error) {
 	const sqlStmt = `
 WITH _lookup AS (
   SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
 )
-UPDATE projects SET cluster_id=(SELECT cluster_id FROM _lookup), name=:name, object=:object, last_updated=:last_updated
-WHERE id=:id
-RETURNING id, :cluster_name, name, object, last_updated;
+UPDATE projects SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), name=:name, object=:object, last_updated=:last_updated
+WHERE uuid=:uuid
+RETURNING id, :uuid, :cluster_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -223,7 +226,7 @@ RETURNING id, :cluster_name, name, object, last_updated;
 	}
 
 	row := r.db.QueryRowContext(ctx, sqlStmt,
-		sql.Named("id", in.ID),
+		sql.Named("uuid", in.UUID),
 		sql.Named("cluster_name", in.Cluster),
 		sql.Named("name", in.Name),
 		sql.Named("object", marshaledObject),
@@ -242,6 +245,7 @@ func scanProject(row interface{ Scan(dest ...any) error }) (inventory.Project, e
 
 	err := row.Scan(
 		&project.ID,
+		&project.UUID,
 		&project.Cluster,
 		&project.Name,
 		&object,

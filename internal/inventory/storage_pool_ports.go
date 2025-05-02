@@ -5,25 +5,27 @@ package inventory
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type StoragePoolService interface {
 	GetAllWithFilter(ctx context.Context, filter StoragePoolFilter) (StoragePools, error)
-	GetAllIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (StoragePool, error)
-	ResyncByID(ctx context.Context, id int) error
+	GetAllUUIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (StoragePool, error)
+	ResyncByUUID(ctx context.Context, id uuid.UUID) error
 	SyncCluster(ctx context.Context, cluster string) error
 }
 
 type StoragePoolRepo interface {
 	GetAllWithFilter(ctx context.Context, filter StoragePoolFilter) (StoragePools, error)
-	GetAllIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]int, error)
-	GetByID(ctx context.Context, id int) (StoragePool, error)
+	GetAllUUIDsWithFilter(ctx context.Context, filter StoragePoolFilter) ([]uuid.UUID, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (StoragePool, error)
 	Create(ctx context.Context, storagePool StoragePool) (StoragePool, error)
-	DeleteByID(ctx context.Context, id int) error
+	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	DeleteByClusterName(ctx context.Context, cluster string) error
-	UpdateByID(ctx context.Context, storagePool StoragePool) (StoragePool, error)
+	UpdateByUUID(ctx context.Context, storagePool StoragePool) (StoragePool, error)
 }
 
 type StoragePoolServerClient interface {

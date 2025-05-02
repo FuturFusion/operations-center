@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -37,8 +38,8 @@ func NewProfileServiceWithPrometheus(base inventory.ProfileService, instanceName
 	}
 }
 
-// GetAllIDsWithFilter implements inventory.ProfileService.
-func (_d ProfileServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Context, filter inventory.ProfileFilter) (ints []int, err error) {
+// GetAllUUIDsWithFilter implements inventory.ProfileService.
+func (_d ProfileServiceWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ProfileFilter) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -46,9 +47,9 @@ func (_d ProfileServiceWithPrometheus) GetAllIDsWithFilter(ctx context.Context, 
 			result = "error"
 		}
 
-		profileServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+		profileServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDsWithFilter(ctx, filter)
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
 }
 
 // GetAllWithFilter implements inventory.ProfileService.
@@ -65,8 +66,8 @@ func (_d ProfileServiceWithPrometheus) GetAllWithFilter(ctx context.Context, fil
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
-// GetByID implements inventory.ProfileService.
-func (_d ProfileServiceWithPrometheus) GetByID(ctx context.Context, id int) (profile inventory.Profile, err error) {
+// GetByUUID implements inventory.ProfileService.
+func (_d ProfileServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (profile inventory.Profile, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -74,13 +75,13 @@ func (_d ProfileServiceWithPrometheus) GetByID(ctx context.Context, id int) (pro
 			result = "error"
 		}
 
-		profileServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		profileServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
-// ResyncByID implements inventory.ProfileService.
-func (_d ProfileServiceWithPrometheus) ResyncByID(ctx context.Context, id int) (err error) {
+// ResyncByUUID implements inventory.ProfileService.
+func (_d ProfileServiceWithPrometheus) ResyncByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -88,9 +89,9 @@ func (_d ProfileServiceWithPrometheus) ResyncByID(ctx context.Context, id int) (
 			result = "error"
 		}
 
-		profileServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByID", result).Observe(time.Since(_since).Seconds())
+		profileServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.ResyncByID(ctx, id)
+	return _d.base.ResyncByUUID(ctx, id)
 }
 
 // SyncCluster implements inventory.ProfileService.

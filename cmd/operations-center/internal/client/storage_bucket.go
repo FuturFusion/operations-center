@@ -31,8 +31,8 @@ func (c OperationsCenterClient) GetWithFilterStorageBuckets(filter inventory.Sto
 	return storage_buckets, nil
 }
 
-func (c OperationsCenterClient) GetStorageBucket(name string) (api.StorageBucket, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/storage_buckets", name), nil, nil)
+func (c OperationsCenterClient) GetStorageBucket(id string) (api.StorageBucket, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/storage_buckets", id), nil, nil)
 	if err != nil {
 		return api.StorageBucket{}, err
 	}
