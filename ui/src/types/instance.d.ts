@@ -1,5 +1,5 @@
 export interface Instance {
-  id: number;
+  uuid: string;
   cluster: string;
   server: string;
   project_name: string;

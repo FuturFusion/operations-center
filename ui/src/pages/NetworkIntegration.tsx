@@ -20,12 +20,12 @@ const NetworkIntegration = () => {
     return <div>Error while loading network integrations: {error.message}</div>;
   }
 
-  const headers = ["ID", "Cluster", "Name", "Last updated"];
+  const headers = ["UUID", "Cluster", "Name", "Last updated"];
   const rows = network_integrations.map((item) => {
     return [
       {
-        content: item.id,
-        sortKey: item.id,
+        content: item.uuid,
+        sortKey: item.uuid,
       },
       {
         content: item.cluster,

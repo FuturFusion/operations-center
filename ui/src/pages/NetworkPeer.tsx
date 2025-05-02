@@ -20,12 +20,12 @@ const NetworkPeer = () => {
     return <div>Error while loading network peers: {error.message}</div>;
   }
 
-  const headers = ["ID", "Cluster", "Network name", "Name", "Last updated"];
+  const headers = ["UUID", "Cluster", "Network name", "Name", "Last updated"];
   const rows = peers.map((item) => {
     return [
       {
-        content: item.id,
-        sortKey: item.id,
+        content: item.uuid,
+        sortKey: item.uuid,
       },
       {
         content: item.cluster,

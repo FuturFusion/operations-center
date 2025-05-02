@@ -20,12 +20,12 @@ const StoragePool = () => {
     return <div>Error while loading storage pools: {error.message}</div>;
   }
 
-  const headers = ["ID", "Cluster", "Name", "Last updated"];
+  const headers = ["UUID", "Cluster", "Name", "Last updated"];
   const rows = pools.map((item) => {
     return [
       {
-        content: item.id,
-        sortKey: item.id,
+        content: item.uuid,
+        sortKey: item.uuid,
       },
       {
         content: item.cluster,

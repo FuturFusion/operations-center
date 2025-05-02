@@ -21,7 +21,7 @@ const Instance = () => {
   }
 
   const headers = [
-    "ID",
+    "UUID",
     "Cluster",
     "Server",
     "Project name",
@@ -31,8 +31,8 @@ const Instance = () => {
   const rows = instances.map((item) => {
     return [
       {
-        content: item.id,
-        sortKey: item.id,
+        content: item.uuid,
+        sortKey: item.uuid,
       },
       {
         content: item.cluster,

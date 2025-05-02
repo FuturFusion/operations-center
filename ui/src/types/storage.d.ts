@@ -1,5 +1,5 @@
 export interface StorageBucket {
-  id: number;
+  uuid: string;
   cluster: string;
   server: string;
   project_name: string;
@@ -10,7 +10,7 @@ export interface StorageBucket {
 }
 
 export interface StoragePool {
-  id: number;
+  uuid: string;
   cluster: string;
   name: string;
   object: string;
@@ -18,7 +18,7 @@ export interface StoragePool {
 }
 
 export interface StorageVolume {
-  id: number;
+  uuid: string;
   cluster: string;
   server: string;
   project_name: string;

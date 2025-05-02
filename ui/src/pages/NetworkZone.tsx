@@ -20,12 +20,12 @@ const NetworkZone = () => {
     return <div>Error while loading network zones: {error.message}</div>;
   }
 
-  const headers = ["ID", "Cluster", "Project name", "Name", "Last updated"];
+  const headers = ["UUID", "Cluster", "Project name", "Name", "Last updated"];
   const rows = zones.map((item) => {
     return [
       {
-        content: item.id,
-        sortKey: item.id,
+        content: item.uuid,
+        sortKey: item.uuid,
       },
       {
         content: item.cluster,

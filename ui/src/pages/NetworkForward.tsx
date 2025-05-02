@@ -20,12 +20,12 @@ const NetworkForward = () => {
     return <div>Error while loading network forwards: {error.message}</div>;
   }
 
-  const headers = ["ID", "Cluster", "Network name", "Name", "Last updated"];
+  const headers = ["UUID", "Cluster", "Network name", "Name", "Last updated"];
   const rows = network_forwards.map((item) => {
     return [
       {
-        content: item.id,
-        sortKey: item.id,
+        content: item.uuid,
+        sortKey: item.uuid,
       },
       {
         content: item.cluster,
