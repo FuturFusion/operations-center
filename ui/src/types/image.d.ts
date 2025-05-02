@@ -1,5 +1,5 @@
 export interface Image {
-  id: number;
+  uuid: string;
   cluster: string;
   project_name: string;
   name: string;

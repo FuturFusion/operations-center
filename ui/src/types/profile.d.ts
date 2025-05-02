@@ -1,5 +1,5 @@
 export interface Profile {
-  id: number;
+  uuid: string;
   cluster: string;
   project_name: string;
   name: string;

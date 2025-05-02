@@ -1,5 +1,5 @@
 export interface Network {
-  id: number;
+  uuid: string;
   cluster: string;
   project_name: string;
   name: string;
@@ -8,7 +8,7 @@ export interface Network {
 }
 
 export interface NetworkACL {
-  id: number;
+  uuid: string;
   cluster: string;
   project_name: string;
   name: string;
@@ -17,7 +17,7 @@ export interface NetworkACL {
 }
 
 export interface NetworkForward {
-  id: number;
+  uuid: string;
   cluster: string;
   parent_name: string;
   name: string;
@@ -26,7 +26,7 @@ export interface NetworkForward {
 }
 
 export interface NetworkIntegration {
-  id: number;
+  uuid: string;
   cluster: string;
   name: string;
   object: string;
@@ -34,7 +34,7 @@ export interface NetworkIntegration {
 }
 
 export interface NetworkLoadBalancer {
-  id: number;
+  uuid: string;
   cluster: string;
   parent_name: string;
   name: string;
@@ -43,7 +43,7 @@ export interface NetworkLoadBalancer {
 }
 
 export interface NetworkPeer {
-  id: number;
+  uuid: string;
   cluster: string;
   parent_name: string;
   name: string;
@@ -52,7 +52,7 @@ export interface NetworkPeer {
 }
 
 export interface NetworkZone {
-  id: number;
+  uuid: string;
   cluster: string;
   project_name: string;
   name: string;

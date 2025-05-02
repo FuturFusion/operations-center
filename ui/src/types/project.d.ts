@@ -1,5 +1,5 @@
 export interface Project {
-  id: number;
+  uuid: string;
   cluster: string;
   name: string;
   object: string;
