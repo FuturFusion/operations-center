@@ -20,6 +20,12 @@ network_acl:
   incus-get-all-method: GetNetworkACLsAllProjects
   incus-get-method: GetNetworkACL
 
+network_address_set:
+  requires-extension: network_address_set
+  uses-embedded-post-type: true
+  incus-get-all-method: GetNetworkAddressSetsAllProjects
+  incus-get-method: GetNetworkAddressSet
+
 network_forward:
   object-name-property-name: listen_address
   omit-project: true

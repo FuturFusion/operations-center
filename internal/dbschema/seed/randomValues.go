@@ -80,3 +80,17 @@ func instanceStateCode(state string) incusapi.StatusCode {
 
 	return incusapi.StatusCode(s)
 }
+
+func ipAddresses(count int) []string {
+	addresses := make([]string, 0, count)
+
+	for i := range count {
+		if i%2 == 0 {
+			addresses = append(addresses, gofakeit.IPv4Address())
+		} else {
+			addresses = append(addresses, gofakeit.IPv6Address())
+		}
+	}
+
+	return addresses
+}

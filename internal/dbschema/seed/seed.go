@@ -31,6 +31,8 @@ type Config struct {
 	NetworksMax             int
 	NetworkACLsMin          int
 	NetworkACLsMax          int
+	NetworkAddressSetsMin   int
+	NetworkAddressSetsMax   int
 	NetworkForwardsMin      int
 	NetworkForwardsMax      int
 	NetworkIntegrationsMin  int
@@ -102,6 +104,14 @@ func configDefaults(config Config) Config {
 
 	if config.NetworkACLsMax == 0 {
 		config.NetworkACLsMax = 5
+	}
+
+	if config.NetworkAddressSetsMin == 0 {
+		config.NetworkAddressSetsMin = 1
+	}
+
+	if config.NetworkAddressSetsMax == 0 {
+		config.NetworkAddressSetsMax = 5
 	}
 
 	if config.NetworkForwardsMin == 0 {
@@ -193,6 +203,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 	profileRepo := inventorySqlite.NewProfile(db)
 	instanceRepo := inventorySqlite.NewInstance(db)
 	networkACLRepo := inventorySqlite.NewNetworkACL(db)
+	networkAddressSetRepo := inventorySqlite.NewNetworkAddressSet(db)
 	networkForwardRepo := inventorySqlite.NewNetworkForward(db)
 	networkIntegrationRepo := inventorySqlite.NewNetworkIntegration(db)
 	networkLoadBalancerRepo := inventorySqlite.NewNetworkLoadBalancer(db)
@@ -532,6 +543,35 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 
 			networkACL.DeriveUUID()
 			_, err = networkACLRepo.Create(ctx, networkACL)
+			if err != nil {
+				return err
+			}
+		}
+
+		networkAddressSetCount := randBetween(config.NetworkAddressSetsMin, config.NetworkAddressSetsMax)
+		for networkAddressSetIdx := 0; networkAddressSetIdx < networkAddressSetCount; networkAddressSetIdx++ {
+			networkAddressSetName := fmt.Sprintf("networkAddressSet-%08x-%08x", clusterIdx, networkAddressSetIdx)
+			projectName := faker.RandomString(projects)
+			networkAddressSet := inventory.NetworkAddressSet{
+				Cluster:     clusterName,
+				Name:        networkAddressSetName,
+				ProjectName: projectName,
+				Object: incusapi.NetworkAddressSet{
+					NetworkAddressSetPost: incusapi.NetworkAddressSetPost{
+						Name: networkAddressSetName,
+					},
+					NetworkAddressSetPut: incusapi.NetworkAddressSetPut{
+						Description: networkAddressSetName + " " + gofakeit.Sentence(5),
+						Addresses:   ipAddresses(randBetween(0, 10)),
+						Config:      map[string]string{},
+					},
+					Project: projectName,
+				},
+				LastUpdated: faker.Date(),
+			}
+
+			networkAddressSet.DeriveUUID()
+			_, err = networkAddressSetRepo.Create(ctx, networkAddressSet)
 			if err != nil {
 				return err
 			}

@@ -77,6 +77,18 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 		slog.Default(),
 	)
 
+	inventoryNetworkAddressSetSvc := inventoryServiceMiddleware.NewNetworkAddressSetServiceWithSlog(
+		inventory.NewNetworkAddressSetService(
+			inventoryRepoMiddleware.NewNetworkAddressSetRepoWithSlog(
+				inventorySqlite.NewNetworkAddressSet(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverClient,
+		),
+		slog.Default(),
+	)
+
 	inventoryNetworkForwardSvc := inventoryServiceMiddleware.NewNetworkForwardServiceWithSlog(
 		inventory.NewNetworkForwardService(
 			inventoryRepoMiddleware.NewNetworkForwardRepoWithSlog(
@@ -258,6 +270,9 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 	inventoryNetworkACLRouter := inventoryRouter.SubGroup("/network_acls")
 	registerInventoryNetworkACLHandler(inventoryNetworkACLRouter, authorizer, inventoryNetworkACLSvc)
 
+	inventoryNetworkAddressSetRouter := inventoryRouter.SubGroup("/network_address_sets")
+	registerInventoryNetworkAddressSetHandler(inventoryNetworkAddressSetRouter, authorizer, inventoryNetworkAddressSetSvc)
+
 	inventoryNetworkForwardRouter := inventoryRouter.SubGroup("/network_forwards")
 	registerInventoryNetworkForwardHandler(inventoryNetworkForwardRouter, authorizer, inventoryNetworkForwardSvc)
 
@@ -293,6 +308,7 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 		inventoryInstanceSvc,
 		inventoryNetworkSvc,
 		inventoryNetworkACLSvc,
+		inventoryNetworkAddressSetSvc,
 		inventoryNetworkForwardSvc,
 		inventoryNetworkIntegrationSvc,
 		inventoryNetworkLoadBalancerSvc,
