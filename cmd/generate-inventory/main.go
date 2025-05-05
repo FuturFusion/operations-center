@@ -151,6 +151,7 @@ func main() {
 
 		args := struct {
 			Name                   string
+			RequiresExtension      string
 			PluralName             string
 			ObjectType             string
 			ObjectEmbedded         bool
@@ -168,6 +169,7 @@ func main() {
 			ExtraAttributes        []ExtraAttribute
 		}{
 			Name:                   name,
+			RequiresExtension:      entity.RequiresExtension,
 			PluralName:             entity.PluralName,
 			ObjectType:             entity.ObjectType,
 			ObjectEmbedded:         entity.ObjectEmbedded,
