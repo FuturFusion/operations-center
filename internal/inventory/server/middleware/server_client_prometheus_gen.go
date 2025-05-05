@@ -122,6 +122,34 @@ func (_d ServerClientWithPrometheus) GetNetworkACLs(ctx context.Context, connect
 	return _d.base.GetNetworkACLs(ctx, connectionURL)
 }
 
+// GetNetworkAddressSetByName implements inventory.ServerClient.
+func (_d ServerClientWithPrometheus) GetNetworkAddressSetByName(ctx context.Context, connectionURL string, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkAddressSetByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetNetworkAddressSetByName(ctx, connectionURL, networkAddressSetName)
+}
+
+// GetNetworkAddressSets implements inventory.ServerClient.
+func (_d ServerClientWithPrometheus) GetNetworkAddressSets(ctx context.Context, connectionURL string) (networkAddressSets []api.NetworkAddressSet, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkAddressSets", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetNetworkAddressSets(ctx, connectionURL)
+}
+
 // GetNetworkByName implements inventory.ServerClient.
 func (_d ServerClientWithPrometheus) GetNetworkByName(ctx context.Context, connectionURL string, networkName string) (network api.Network, err error) {
 	_since := time.Now()
@@ -428,4 +456,14 @@ func (_d ServerClientWithPrometheus) GetStorageVolumes(ctx context.Context, conn
 		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetStorageVolumes", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetStorageVolumes(ctx, connectionURL, storagePoolName)
+}
+
+// HasExtension implements inventory.ServerClient.
+func (_d ServerClientWithPrometheus) HasExtension(ctx context.Context, connectionURL string, extension string) (exists bool) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "HasExtension", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.HasExtension(ctx, connectionURL, extension)
 }

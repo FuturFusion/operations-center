@@ -215,6 +215,69 @@ func (_d ServerClientWithSlog) GetNetworkACLs(ctx context.Context, connectionURL
 	return _d._base.GetNetworkACLs(ctx, connectionURL)
 }
 
+// GetNetworkAddressSetByName implements inventory.ServerClient.
+func (_d ServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, connectionURL string, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("networkAddressSetName", networkAddressSetName),
+		)
+	}
+	log.Debug("=> calling GetNetworkAddressSetByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("networkAddressSet", networkAddressSet),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method GetNetworkAddressSetByName returned an error")
+		} else {
+			log.Debug("<= method GetNetworkAddressSetByName finished")
+		}
+	}()
+	return _d._base.GetNetworkAddressSetByName(ctx, connectionURL, networkAddressSetName)
+}
+
+// GetNetworkAddressSets implements inventory.ServerClient.
+func (_d ServerClientWithSlog) GetNetworkAddressSets(ctx context.Context, connectionURL string) (networkAddressSets []api.NetworkAddressSet, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+		)
+	}
+	log.Debug("=> calling GetNetworkAddressSets")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("networkAddressSets", networkAddressSets),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method GetNetworkAddressSets returned an error")
+		} else {
+			log.Debug("<= method GetNetworkAddressSets finished")
+		}
+	}()
+	return _d._base.GetNetworkAddressSets(ctx, connectionURL)
+}
+
 // GetNetworkByName implements inventory.ServerClient.
 func (_d ServerClientWithSlog) GetNetworkByName(ctx context.Context, connectionURL string, networkName string) (network api.Network, err error) {
 	log := _d._log.With()
@@ -917,4 +980,28 @@ func (_d ServerClientWithSlog) GetStorageVolumes(ctx context.Context, connection
 		}
 	}()
 	return _d._base.GetStorageVolumes(ctx, connectionURL, storagePoolName)
+}
+
+// HasExtension implements inventory.ServerClient.
+func (_d ServerClientWithSlog) HasExtension(ctx context.Context, connectionURL string, extension string) (exists bool) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("connectionURL", connectionURL),
+			slog.String("extension", extension),
+		)
+	}
+	log.Debug("=> calling HasExtension")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Bool("exists", exists),
+			)
+		} else {
+		}
+		log.Debug("<= method HasExtension finished")
+	}()
+	return _d._base.HasExtension(ctx, connectionURL, extension)
 }

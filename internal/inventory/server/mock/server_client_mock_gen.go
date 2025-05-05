@@ -40,6 +40,12 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //			GetNetworkACLsFunc: func(ctx context.Context, connectionURL string) ([]api.NetworkACL, error) {
 //				panic("mock out the GetNetworkACLs method")
 //			},
+//			GetNetworkAddressSetByNameFunc: func(ctx context.Context, connectionURL string, networkAddressSetName string) (api.NetworkAddressSet, error) {
+//				panic("mock out the GetNetworkAddressSetByName method")
+//			},
+//			GetNetworkAddressSetsFunc: func(ctx context.Context, connectionURL string) ([]api.NetworkAddressSet, error) {
+//				panic("mock out the GetNetworkAddressSets method")
+//			},
 //			GetNetworkByNameFunc: func(ctx context.Context, connectionURL string, networkName string) (api.Network, error) {
 //				panic("mock out the GetNetworkByName method")
 //			},
@@ -106,6 +112,9 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //			GetStorageVolumesFunc: func(ctx context.Context, connectionURL string, storagePoolName string) ([]api.StorageVolume, error) {
 //				panic("mock out the GetStorageVolumes method")
 //			},
+//			HasExtensionFunc: func(ctx context.Context, connectionURL string, extension string) bool {
+//				panic("mock out the HasExtension method")
+//			},
 //		}
 //
 //		// use mockedServerClient in code that requires inventory.ServerClient
@@ -130,6 +139,12 @@ type ServerClientMock struct {
 
 	// GetNetworkACLsFunc mocks the GetNetworkACLs method.
 	GetNetworkACLsFunc func(ctx context.Context, connectionURL string) ([]api.NetworkACL, error)
+
+	// GetNetworkAddressSetByNameFunc mocks the GetNetworkAddressSetByName method.
+	GetNetworkAddressSetByNameFunc func(ctx context.Context, connectionURL string, networkAddressSetName string) (api.NetworkAddressSet, error)
+
+	// GetNetworkAddressSetsFunc mocks the GetNetworkAddressSets method.
+	GetNetworkAddressSetsFunc func(ctx context.Context, connectionURL string) ([]api.NetworkAddressSet, error)
 
 	// GetNetworkByNameFunc mocks the GetNetworkByName method.
 	GetNetworkByNameFunc func(ctx context.Context, connectionURL string, networkName string) (api.Network, error)
@@ -197,6 +212,9 @@ type ServerClientMock struct {
 	// GetStorageVolumesFunc mocks the GetStorageVolumes method.
 	GetStorageVolumesFunc func(ctx context.Context, connectionURL string, storagePoolName string) ([]api.StorageVolume, error)
 
+	// HasExtensionFunc mocks the HasExtension method.
+	HasExtensionFunc func(ctx context.Context, connectionURL string, extension string) bool
+
 	// calls tracks calls to the methods.
 	calls struct {
 		// GetImageByName holds details about calls to the GetImageByName method.
@@ -242,6 +260,22 @@ type ServerClientMock struct {
 		}
 		// GetNetworkACLs holds details about calls to the GetNetworkACLs method.
 		GetNetworkACLs []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+		}
+		// GetNetworkAddressSetByName holds details about calls to the GetNetworkAddressSetByName method.
+		GetNetworkAddressSetByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// NetworkAddressSetName is the networkAddressSetName argument value.
+			NetworkAddressSetName string
+		}
+		// GetNetworkAddressSets holds details about calls to the GetNetworkAddressSets method.
+		GetNetworkAddressSets []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ConnectionURL is the connectionURL argument value.
@@ -445,6 +479,15 @@ type ServerClientMock struct {
 			// StoragePoolName is the storagePoolName argument value.
 			StoragePoolName string
 		}
+		// HasExtension holds details about calls to the HasExtension method.
+		HasExtension []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ConnectionURL is the connectionURL argument value.
+			ConnectionURL string
+			// Extension is the extension argument value.
+			Extension string
+		}
 	}
 	lockGetImageByName               sync.RWMutex
 	lockGetImages                    sync.RWMutex
@@ -452,6 +495,8 @@ type ServerClientMock struct {
 	lockGetInstances                 sync.RWMutex
 	lockGetNetworkACLByName          sync.RWMutex
 	lockGetNetworkACLs               sync.RWMutex
+	lockGetNetworkAddressSetByName   sync.RWMutex
+	lockGetNetworkAddressSets        sync.RWMutex
 	lockGetNetworkByName             sync.RWMutex
 	lockGetNetworkForwardByName      sync.RWMutex
 	lockGetNetworkForwards           sync.RWMutex
@@ -474,6 +519,7 @@ type ServerClientMock struct {
 	lockGetStoragePools              sync.RWMutex
 	lockGetStorageVolumeByName       sync.RWMutex
 	lockGetStorageVolumes            sync.RWMutex
+	lockHasExtension                 sync.RWMutex
 }
 
 // GetImageByName calls GetImageByNameFunc.
@@ -701,6 +747,82 @@ func (mock *ServerClientMock) GetNetworkACLsCalls() []struct {
 	mock.lockGetNetworkACLs.RLock()
 	calls = mock.calls.GetNetworkACLs
 	mock.lockGetNetworkACLs.RUnlock()
+	return calls
+}
+
+// GetNetworkAddressSetByName calls GetNetworkAddressSetByNameFunc.
+func (mock *ServerClientMock) GetNetworkAddressSetByName(ctx context.Context, connectionURL string, networkAddressSetName string) (api.NetworkAddressSet, error) {
+	if mock.GetNetworkAddressSetByNameFunc == nil {
+		panic("ServerClientMock.GetNetworkAddressSetByNameFunc: method is nil but ServerClient.GetNetworkAddressSetByName was just called")
+	}
+	callInfo := struct {
+		Ctx                   context.Context
+		ConnectionURL         string
+		NetworkAddressSetName string
+	}{
+		Ctx:                   ctx,
+		ConnectionURL:         connectionURL,
+		NetworkAddressSetName: networkAddressSetName,
+	}
+	mock.lockGetNetworkAddressSetByName.Lock()
+	mock.calls.GetNetworkAddressSetByName = append(mock.calls.GetNetworkAddressSetByName, callInfo)
+	mock.lockGetNetworkAddressSetByName.Unlock()
+	return mock.GetNetworkAddressSetByNameFunc(ctx, connectionURL, networkAddressSetName)
+}
+
+// GetNetworkAddressSetByNameCalls gets all the calls that were made to GetNetworkAddressSetByName.
+// Check the length with:
+//
+//	len(mockedServerClient.GetNetworkAddressSetByNameCalls())
+func (mock *ServerClientMock) GetNetworkAddressSetByNameCalls() []struct {
+	Ctx                   context.Context
+	ConnectionURL         string
+	NetworkAddressSetName string
+} {
+	var calls []struct {
+		Ctx                   context.Context
+		ConnectionURL         string
+		NetworkAddressSetName string
+	}
+	mock.lockGetNetworkAddressSetByName.RLock()
+	calls = mock.calls.GetNetworkAddressSetByName
+	mock.lockGetNetworkAddressSetByName.RUnlock()
+	return calls
+}
+
+// GetNetworkAddressSets calls GetNetworkAddressSetsFunc.
+func (mock *ServerClientMock) GetNetworkAddressSets(ctx context.Context, connectionURL string) ([]api.NetworkAddressSet, error) {
+	if mock.GetNetworkAddressSetsFunc == nil {
+		panic("ServerClientMock.GetNetworkAddressSetsFunc: method is nil but ServerClient.GetNetworkAddressSets was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+	}
+	mock.lockGetNetworkAddressSets.Lock()
+	mock.calls.GetNetworkAddressSets = append(mock.calls.GetNetworkAddressSets, callInfo)
+	mock.lockGetNetworkAddressSets.Unlock()
+	return mock.GetNetworkAddressSetsFunc(ctx, connectionURL)
+}
+
+// GetNetworkAddressSetsCalls gets all the calls that were made to GetNetworkAddressSets.
+// Check the length with:
+//
+//	len(mockedServerClient.GetNetworkAddressSetsCalls())
+func (mock *ServerClientMock) GetNetworkAddressSetsCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+	}
+	mock.lockGetNetworkAddressSets.RLock()
+	calls = mock.calls.GetNetworkAddressSets
+	mock.lockGetNetworkAddressSets.RUnlock()
 	return calls
 }
 
@@ -1581,5 +1703,45 @@ func (mock *ServerClientMock) GetStorageVolumesCalls() []struct {
 	mock.lockGetStorageVolumes.RLock()
 	calls = mock.calls.GetStorageVolumes
 	mock.lockGetStorageVolumes.RUnlock()
+	return calls
+}
+
+// HasExtension calls HasExtensionFunc.
+func (mock *ServerClientMock) HasExtension(ctx context.Context, connectionURL string, extension string) bool {
+	if mock.HasExtensionFunc == nil {
+		panic("ServerClientMock.HasExtensionFunc: method is nil but ServerClient.HasExtension was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ConnectionURL string
+		Extension     string
+	}{
+		Ctx:           ctx,
+		ConnectionURL: connectionURL,
+		Extension:     extension,
+	}
+	mock.lockHasExtension.Lock()
+	mock.calls.HasExtension = append(mock.calls.HasExtension, callInfo)
+	mock.lockHasExtension.Unlock()
+	return mock.HasExtensionFunc(ctx, connectionURL, extension)
+}
+
+// HasExtensionCalls gets all the calls that were made to HasExtension.
+// Check the length with:
+//
+//	len(mockedServerClient.HasExtensionCalls())
+func (mock *ServerClientMock) HasExtensionCalls() []struct {
+	Ctx           context.Context
+	ConnectionURL string
+	Extension     string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ConnectionURL string
+		Extension     string
+	}
+	mock.lockHasExtension.RLock()
+	calls = mock.calls.HasExtension
+	mock.lockHasExtension.RUnlock()
 	return calls
 }
