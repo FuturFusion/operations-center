@@ -103,7 +103,7 @@ func New(serverPort string, opts ...Option) (OperationsCenterClient, error) {
 			Transport: transport,
 		}
 
-		c.baseURL = "http://unix.socket/"
+		c.baseURL = "http://unix.socket"
 
 		return c, nil
 	}
