@@ -92,9 +92,11 @@ func New{{$decorator}}(base {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}, log *slo
 						{{end}}
 					)
 				} else {
-					if err != nil {
-						log = _d._log.With("err", err)
-					}
+					{{- if $method.ReturnsError }}
+						if err != nil {
+							log = _d._log.With("err", err)
+						}
+					{{- end }}
 				}
 			{{- end }}
 
