@@ -32,9 +32,9 @@ func registerInventoryNetworkForwardHandler(router Router, authorizer authz.Auth
 
 // swagger:operation GET /1.0/inventory/network_forwards network_forwards network_forwards_get
 //
-//	Get the network_forward
+//	Get the network_forwards
 //
-//	Returns a list of network_forward (list of relative URLs).
+//	Returns a list of network forwards (list of relative URLs).
 //
 //	---
 //	produces:
@@ -52,7 +52,7 @@ func registerInventoryNetworkForwardHandler(router Router, authorizer authz.Auth
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network_forward
+//	    description: API network forwards
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -71,7 +71,7 @@ func registerInventoryNetworkForwardHandler(router Router, authorizer authz.Auth
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of network_forward
+//	          description: List of network forwards
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -86,9 +86,9 @@ func registerInventoryNetworkForwardHandler(router Router, authorizer authz.Auth
 
 // swagger:operation GET /1.0/inventory/network_forwards?recursion=1 network_forwards network_forwards_get_recursion
 //
-//	Get the network_forwards
+//	Get the network forwards
 //
-//	Returns a list of network_forwards (structs).
+//	Returns a list of network forwards (structs).
 //
 //	---
 //	produces:
@@ -106,7 +106,7 @@ func registerInventoryNetworkForwardHandler(router Router, authorizer authz.Auth
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network_forwards
+//	    description: API network forwards
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -125,7 +125,7 @@ func registerInventoryNetworkForwardHandler(router Router, authorizer authz.Auth
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of network_forwards
+//	          description: List of network forwards
 //	          items:
 //	            $ref: "#/definitions/networkForward"
 //	  "403":
@@ -186,16 +186,16 @@ func (i *networkForwardHandler) networkForwardsGet(r *http.Request) response.Res
 
 // swagger:operation GET /1.0/inventory/network_forwards/{uuid} network_forwards network_forward_get
 //
-//	Get the network_forward
+//	Get the network forward
 //
-//	Gets a specific network_forward.
+//	Gets a specific network forward.
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: NetworkForward
+//	    description: network forward
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -244,9 +244,9 @@ func (i *networkForwardHandler) networkForwardGet(r *http.Request) response.Resp
 
 // swagger:operation POST /1.0/inventory/network_forwards/{uuid}/resync network_forwards network_forward_get_resync_post
 //
-//	Resync the network_forward
+//	Resync the network forward
 //
-//	Resync a specific network_forward.
+//	Resync a specific network forward.
 //
 //	---
 //	produces:

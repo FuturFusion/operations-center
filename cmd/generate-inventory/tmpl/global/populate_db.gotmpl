@@ -1,0 +1,98 @@
+package main
+
+import (
+	"context"
+	"log/slog"
+	"os"
+	"path/filepath"
+
+	"github.com/spf13/pflag"
+
+	"github.com/FuturFusion/operations-center/internal/dbschema"
+	"github.com/FuturFusion/operations-center/internal/dbschema/seed"
+	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/internal/transaction"
+)
+
+func main() {
+	ctx := context.Background()
+
+	flagLogDebug := pflag.BoolP("debug", "d", false, "Show all debug messages")
+	flagLogVerbose := pflag.BoolP("verbose", "v", false, "Show all information messages")
+	flagDBDir := pflag.String("db-dir", "./", "directory path to store the local.db. Directory is created, if it does not exist.")
+	flagDBForceOverwrite := pflag.BoolP("force", "f", false, "if force flag is provided, an existing DB is overwritten")
+
+	flagClustersCount := pflag.Int("clusters", 2, "number of clusters to create")
+	flagServersMin := pflag.Int("servers-min", 1, "min servers to create per cluster")
+	flagServersMax := pflag.Int("servers-max", 10, "max servers to create per cluster")
+
+{{ range . }}
+	flag{{ .PluralName | pascalcase }}Min := pflag.Int("{{ .PluralName | kebabcase }}-min", 2, "min {{ .PluralName | words }} to create per cluster")
+	flag{{ .PluralName | pascalcase }}Max := pflag.Int("{{ .PluralName | kebabcase }}-max", 5, "max {{ .PluralName | words }} to create per cluster")
+{{- end }}
+
+	pflag.Parse()
+
+	err := logger.InitLogger(os.Stderr, "", *flagLogVerbose, *flagLogDebug)
+	die(err)
+
+	err = os.MkdirAll(*flagDBDir, 0o700)
+	die(err)
+
+	dbFilename := filepath.Join(*flagDBDir, "local.db")
+	_, err = os.Stat(dbFilename)
+	if err == nil {
+		if !*flagDBForceOverwrite {
+			slog.ErrorContext(ctx, "DB file does already exist and --force is not provided", slog.String("db", dbFilename))
+			os.Exit(1)
+		}
+
+		err = os.Remove(dbFilename)
+		die(err)
+	}
+
+	if err != nil && !os.IsNotExist(err) {
+		die(err)
+	}
+
+	db, err := dbdriver.Open(*flagDBDir)
+	die(err)
+
+	// The main performance boost originates from `synchronous = 0`
+	_, err = db.ExecContext(ctx, `
+PRAGMA journal_mode = OFF;
+PRAGMA synchronous = 0;
+PRAGMA cache_size = 1000000;
+PRAGMA locking_mode = EXCLUSIVE;
+PRAGMA temp_store = MEMORY;
+`)
+	die(err)
+
+	_, err = dbschema.Ensure(ctx, db, *flagDBDir)
+	die(err)
+
+	dbWithTransaction := transaction.Enable(db)
+	entities.PreparedStmts, err = entities.PrepareStmts(dbWithTransaction, false)
+	die(err)
+
+	err = seed.DB(ctx, db, seed.Config{
+		ClustersCount:           *flagClustersCount,
+		ServersMin:              *flagServersMin,
+		ServersMax:              *flagServersMax,
+{{- range . }}
+		{{ .PluralName | pascalcase }}Min: *flag{{ .PluralName | pascalcase }}Min,
+		{{ .PluralName | pascalcase }}Max: *flag{{ .PluralName | pascalcase }}Max,
+{{- end }}
+	})
+	die(err)
+}
+
+// die is a convenience function to end the processing with a panic in the case of an error.
+func die(err error) {
+	if err != nil {
+		slog.ErrorContext(context.Background(), "generate-inventory failed", slog.Any("err", err))
+		panic("die")
+	}
+}

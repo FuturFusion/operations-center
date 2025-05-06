@@ -32,9 +32,9 @@ func registerInventoryProjectHandler(router Router, authorizer authz.Authorizer,
 
 // swagger:operation GET /1.0/inventory/projects projects projects_get
 //
-//	Get the project
+//	Get the projects
 //
-//	Returns a list of project (list of relative URLs).
+//	Returns a list of projects (list of relative URLs).
 //
 //	---
 //	produces:
@@ -52,7 +52,7 @@ func registerInventoryProjectHandler(router Router, authorizer authz.Authorizer,
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API project
+//	    description: API projects
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -71,7 +71,7 @@ func registerInventoryProjectHandler(router Router, authorizer authz.Authorizer,
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of project
+//	          description: List of projects
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -194,7 +194,7 @@ func (i *projectHandler) projectsGet(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Project
+//	    description: project
 //	    schema:
 //	      type: object
 //	      description: Sync response

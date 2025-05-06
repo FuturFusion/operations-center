@@ -23,10 +23,10 @@ type Cmd{{ .Name | pascalcase }} struct{
 
 func (c *Cmd{{ .Name | pascalcase }}) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "{{ .Name }}"
-	cmd.Short = "Interact with {{ .PluralName }}"
+	cmd.Use = "{{ .Name | kebabcase }}"
+	cmd.Short = "Interact with {{ .PluralName | words }}"
 	cmd.Long = `Description:
-  Interact with {{ .PluralName }}
+  Interact with {{ .PluralName | words }}
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706

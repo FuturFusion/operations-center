@@ -30,9 +30,9 @@ func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer 
 
 // swagger:operation GET /1.0/inventory/{{ .PluralName }} {{ .PluralName }} {{ .PluralName }}_get
 //
-//	Get the {{ .Name }}
+//	Get the {{ .PluralName }}
 //
-//	Returns a list of {{ .Name }} (list of relative URLs).
+//	Returns a list of {{ .PluralName | words }} (list of relative URLs).
 //
 //	---
 //	produces:
@@ -64,7 +64,7 @@ func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer 
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API {{ .Name }}
+//	    description: API {{ .PluralName | words }}
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -83,7 +83,7 @@ func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer 
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of {{ .Name }}
+//	          description: List of {{ .PluralName | words }}
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -98,9 +98,9 @@ func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer 
 
 // swagger:operation GET /1.0/inventory/{{ .PluralName }}?recursion=1 {{ .PluralName }} {{ .PluralName }}_get_recursion
 //
-//	Get the {{ .PluralName }}
+//	Get the {{ .PluralName | words }}
 //
-//	Returns a list of {{ .PluralName }} (structs).
+//	Returns a list of {{ .PluralName | words }} (structs).
 //
 //	---
 //	produces:
@@ -132,7 +132,7 @@ func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer 
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API {{ .PluralName }}
+//	    description: API {{ .PluralName | words }}
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -151,7 +151,7 @@ func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer 
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of {{ .PluralName }}
+//	          description: List of {{ .PluralName | words }}
 //	          items:
 //	            $ref: "#/definitions/{{ .Name | camelcase }}"
 //	  "403":
@@ -232,16 +232,16 @@ func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *htt
 
 // swagger:operation GET /1.0/inventory/{{ .PluralName }}/{uuid} {{ .PluralName }} {{ .Name }}_get
 //
-//	Get the {{ .Name }}
+//	Get the {{ .Name | words }}
 //
-//	Gets a specific {{ .Name }}.
+//	Gets a specific {{ .Name | words }}.
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: {{ .Name | pascalcase }}
+//	    description: {{ .Name | words }}
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -298,9 +298,9 @@ func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}Get(r *http.Requ
 
 // swagger:operation POST /1.0/inventory/{{ .PluralName }}/{uuid}/resync {{ .PluralName }} {{ .Name }}_get_resync_post
 //
-//	Resync the {{ .Name }}
+//	Resync the {{ .Name | words}}
 //
-//	Resync a specific {{ .Name }}.
+//	Resync a specific {{ .Name | words }}.
 //
 //	---
 //	produces:

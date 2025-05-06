@@ -32,9 +32,9 @@ func registerInventoryStorageBucketHandler(router Router, authorizer authz.Autho
 
 // swagger:operation GET /1.0/inventory/storage_buckets storage_buckets storage_buckets_get
 //
-//	Get the storage_bucket
+//	Get the storage_buckets
 //
-//	Returns a list of storage_bucket (list of relative URLs).
+//	Returns a list of storage buckets (list of relative URLs).
 //
 //	---
 //	produces:
@@ -62,7 +62,7 @@ func registerInventoryStorageBucketHandler(router Router, authorizer authz.Autho
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API storage_bucket
+//	    description: API storage buckets
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -81,7 +81,7 @@ func registerInventoryStorageBucketHandler(router Router, authorizer authz.Autho
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of storage_bucket
+//	          description: List of storage buckets
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -96,9 +96,9 @@ func registerInventoryStorageBucketHandler(router Router, authorizer authz.Autho
 
 // swagger:operation GET /1.0/inventory/storage_buckets?recursion=1 storage_buckets storage_buckets_get_recursion
 //
-//	Get the storage_buckets
+//	Get the storage buckets
 //
-//	Returns a list of storage_buckets (structs).
+//	Returns a list of storage buckets (structs).
 //
 //	---
 //	produces:
@@ -126,7 +126,7 @@ func registerInventoryStorageBucketHandler(router Router, authorizer authz.Autho
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API storage_buckets
+//	    description: API storage buckets
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -145,7 +145,7 @@ func registerInventoryStorageBucketHandler(router Router, authorizer authz.Autho
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of storage_buckets
+//	          description: List of storage buckets
 //	          items:
 //	            $ref: "#/definitions/storageBucket"
 //	  "403":
@@ -216,16 +216,16 @@ func (i *storageBucketHandler) storageBucketsGet(r *http.Request) response.Respo
 
 // swagger:operation GET /1.0/inventory/storage_buckets/{uuid} storage_buckets storage_bucket_get
 //
-//	Get the storage_bucket
+//	Get the storage bucket
 //
-//	Gets a specific storage_bucket.
+//	Gets a specific storage bucket.
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: StorageBucket
+//	    description: storage bucket
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -276,9 +276,9 @@ func (i *storageBucketHandler) storageBucketGet(r *http.Request) response.Respon
 
 // swagger:operation POST /1.0/inventory/storage_buckets/{uuid}/resync storage_buckets storage_bucket_get_resync_post
 //
-//	Resync the storage_bucket
+//	Resync the storage bucket
 //
-//	Resync a specific storage_bucket.
+//	Resync a specific storage bucket.
 //
 //	---
 //	produces:

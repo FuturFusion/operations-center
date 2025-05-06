@@ -24,6 +24,8 @@ type Entity struct {
 	ParentPluralName       string           `yaml:"parent-plural"`           // plural form of the parent entity
 	ParentObjectType       string           `yaml:"parent-object-type"`      // Go type used for object in model for the parent entity
 	ExtraAttributes        []ExtraAttribute `yaml:"extra-attributes"`        // TODO: hack in order to add the "type" attribute for storage_volumes, semantically not totally correct approach.
+	HasSyncFilter          bool             `yaml:"has-sync-filter"`         // if a resource has a sync filter, it is passed to the service. The implementation needs to be provided separately.
+	HasParentFilter        bool             `yaml:"has-parent-filter"`       // if a resource has a parent filter, it is passed to the service. The implementation needs to be provided separately.
 }
 
 type ExtraAttribute struct {

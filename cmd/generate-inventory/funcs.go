@@ -2,6 +2,7 @@ package main
 
 import (
 	"strings"
+	"unicode"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -12,15 +13,6 @@ func Capital(s string) string {
 	return cases.Title(language.English, cases.NoLower).String(s)
 }
 
-// Minuscule turns the first character to lower case ("Foo" -> "foo") or the whole word if it is all uppercase ("UUID" -> "uuid").
-func Minuscule(s string) string {
-	if strings.ToUpper(s) == s {
-		return strings.ToLower(s)
-	}
-
-	return strings.ToLower(s[:1]) + s[1:]
-}
-
 var acronyms = map[string]struct{}{
 	"acl": {},
 }
@@ -29,7 +21,9 @@ var acronyms = map[string]struct{}{
 // If a segment (with the exception of the first one) is a known acronym,
 // it is returned in all upper case.
 func CamelCase(s string) string {
-	return Minuscule(PascalCase(s))
+	words := capitalizedWords(s)
+	words[0] = strings.ToLower(words[0])
+	return strings.Join(words, "")
 }
 
 // PascalCase converts to pascal case ("foo_bar" -> "FooBar").
@@ -38,10 +32,31 @@ func PascalCase(s string) string {
 	return strings.Join(capitalizedWords(s), "")
 }
 
+// KebabCase converts to kebab case ("foo_bar" -> "foo-bar").
+func KebabCase(s string) string {
+	return strings.ToLower(strings.Join(capitalizedWords(s), "-"))
+}
+
 // TitleCase converts to title case ("foo_bar" -> "Foo Bar").
 // If a segment is a known acronym, it is returned in all upper case.
 func TitleCase(s string) string {
 	return strings.Join(capitalizedWords(s), " ")
+}
+
+// Words converts to space delimited words ("foo_bar" -> "foo bar").
+// If a segment is a known acronym, it is returned in all upper case.
+func Words(s string) string {
+	words := capitalizedWords(s)
+	for i, w := range words {
+		runes := []rune(w)
+		if len(runes) > 1 && unicode.IsUpper(runes[1]) {
+			continue
+		}
+
+		words[i] = strings.ToLower(w)
+	}
+
+	return strings.Join(words, " ")
 }
 
 func capitalizedWords(s string) []string {

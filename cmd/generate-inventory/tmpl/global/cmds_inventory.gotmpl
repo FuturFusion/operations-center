@@ -1,0 +1,45 @@
+package cmds
+
+import (
+	"github.com/spf13/cobra"
+
+	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/cmds/inventory"
+)
+
+type CmdInventory struct {
+	OCClient *client.OperationsCenterClient
+}
+
+func (c *CmdInventory) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "inventory"
+	cmd.Short = "Interact with inventory"
+	cmd.Long = `Description:
+  Interact with operations center inventory
+
+  Configure inventory of operations center.
+`
+
+	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
+	cmd.Args = cobra.NoArgs
+	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
+
+	// Query
+	queryCmd := inventory.CmdQuery{
+		OCClient: c.OCClient,
+	}
+
+	cmd.AddCommand(queryCmd.Command())
+
+	// Single resources
+{{- range . }}
+	{{ .Name | camelcase }}Cmd := inventory.Cmd{{ .Name | pascalcase }}{
+		OCClient: c.OCClient,
+	}
+
+	cmd.AddCommand({{ .Name | camelcase }}Cmd.Command())
+
+{{ end }}
+	return cmd
+}

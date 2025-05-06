@@ -85,6 +85,54 @@ var targets = []struct {
 	},
 }
 
+var globalTargets = []struct {
+	TemplateName string
+	TargetName   string
+}{
+	{
+		TemplateName: "api_inventory.gotmpl",
+		TargetName:   "cmd/operations-centerd/internal/api/api_inventory.go",
+	},
+	{
+		TemplateName: "cmds_inventory.gotmpl",
+		TargetName:   "cmd/operations-center/internal/cmds/inventory.go",
+	},
+	{
+		TemplateName: "inventory_ports.gotmpl",
+		TargetName:   "internal/inventory/ports.go",
+	},
+	{
+		TemplateName: "populate_db.gotmpl",
+		TargetName:   "cmd/populate-db/main.go",
+	},
+	{
+		TemplateName: "seed_config.gotmpl",
+		TargetName:   "internal/dbschema/seed/config.go",
+	},
+}
+
+type entityArgs struct {
+	Name                   string
+	RequiresExtension      string
+	PluralName             string
+	ObjectType             string
+	ObjectEmbedded         bool
+	ObjectNamePropertyName string
+	HasProject             bool
+	UsesEmbeddedPostType   bool
+	ServerIDByLocation     bool
+	IsServerIDOptional     bool
+	IncusGetAllMethod      string
+	IncusGetMethod         string
+	HasParent              bool
+	ParentName             string
+	ParentPluralName       string
+	ParentObjectType       string
+	ExtraAttributes        []ExtraAttribute
+	HasSyncFilter          bool
+	HasParentFilter        bool
+}
+
 func main() {
 	ctx := context.Background()
 
@@ -105,6 +153,8 @@ func main() {
 	var cfg Config
 	err = cfg.LoadConfig(*flagConfigFile)
 	die(err)
+
+	allEntities := make(map[string]entityArgs, len(cfg))
 
 	for name, entity := range maps.OrderedByKey(cfg) {
 		if entity.PluralName == "" {
@@ -137,7 +187,9 @@ func main() {
 	funcsMap := sprig.FuncMap()
 	funcsMap["pascalcase"] = PascalCase
 	funcsMap["camelcase"] = CamelCase
+	funcsMap["kebabcase"] = KebabCase
 	funcsMap["titlecase"] = TitleCase
+	funcsMap["words"] = Words
 
 	t := template.New("")
 	t = t.Funcs(funcsMap)
@@ -145,29 +197,7 @@ func main() {
 	die(err)
 
 	for name, entity := range maps.OrderedByKey(cfg) {
-		if *flagOnlyEntity != "" && *flagOnlyEntity != name {
-			continue
-		}
-
-		args := struct {
-			Name                   string
-			RequiresExtension      string
-			PluralName             string
-			ObjectType             string
-			ObjectEmbedded         bool
-			ObjectNamePropertyName string
-			HasProject             bool
-			UsesEmbeddedPostType   bool
-			ServerIDByLocation     bool
-			IsServerIDOptional     bool
-			IncusGetAllMethod      string
-			IncusGetMethod         string
-			HasParent              bool
-			ParentName             string
-			ParentPluralName       string
-			ParentObjectType       string
-			ExtraAttributes        []ExtraAttribute
-		}{
+		args := entityArgs{
 			Name:                   name,
 			RequiresExtension:      entity.RequiresExtension,
 			PluralName:             entity.PluralName,
@@ -185,6 +215,14 @@ func main() {
 			ParentPluralName:       entity.ParentPluralName,
 			ParentObjectType:       entity.ParentObjectType,
 			ExtraAttributes:        entity.ExtraAttributes,
+			HasSyncFilter:          entity.HasSyncFilter,
+			HasParentFilter:        entity.HasParentFilter,
+		}
+
+		allEntities[name] = args
+
+		if *flagOnlyEntity != "" && *flagOnlyEntity != name {
+			continue
 		}
 
 		for _, target := range targets {
@@ -193,39 +231,74 @@ func main() {
 			}
 
 			slog.InfoContext(ctx, "generating", slog.String("name", args.Name), slog.String("template", target.TemplateName))
-			func() {
-				filename := strings.Builder{}
 
-				filenameTmpl, err := template.New("name").Funcs(funcsMap).Parse(target.TargetName)
+			filename := strings.Builder{}
+
+			filenameTmpl, err := template.New("name").Funcs(funcsMap).Parse(target.TargetName)
+			die(err)
+
+			err = filenameTmpl.Execute(&filename, args)
+			die(err)
+
+			targetDir := filepath.Dir(filename.String())
+			if !directoryExists(targetDir) {
+				err = os.MkdirAll(targetDir, 0o700)
 				die(err)
+			}
 
-				err = filenameTmpl.Execute(&filename, args)
-				die(err)
+			buf := bytes.Buffer{}
 
-				targetDir := filepath.Dir(filename.String())
-				if !directoryExists(targetDir) {
-					err = os.MkdirAll(targetDir, 0o700)
-					die(err)
-				}
+			_, err = buf.WriteString(generatedByPreamble)
+			die(err)
 
-				buf := bytes.Buffer{}
+			err = t.ExecuteTemplate(&buf, target.TemplateName, args)
+			die(err)
 
-				_, err = buf.WriteString(generatedByPreamble)
-				die(err)
+			formattedSource, err := format.Source(buf.Bytes())
+			if err != nil {
+				formattedSource = buf.Bytes()
+				slog.ErrorContext(ctx, "failed to format source", slog.Any("err", err), slog.String("target_filename", filename.String()))
+			}
 
-				err = t.ExecuteTemplate(&buf, target.TemplateName, args)
-				die(err)
-
-				formattedSource, err := format.Source(buf.Bytes())
-				if err != nil {
-					formattedSource = buf.Bytes()
-					slog.ErrorContext(ctx, "failed to format source", slog.Any("err", err), slog.String("target_filename", filename.String()))
-				}
-
-				err = os.WriteFile(filename.String(), formattedSource, 0o600)
-				die(err)
-			}()
+			err = os.WriteFile(filename.String(), formattedSource, 0o600)
+			die(err)
 		}
+	}
+
+	t = template.New("")
+	t = t.Funcs(funcsMap)
+	t, err = t.ParseFS(templateFS, "tmpl/global/*.gotmpl")
+	die(err)
+
+	for _, target := range globalTargets {
+		if *flagOnlyTemplate != "" && *flagOnlyTemplate != target.TemplateName {
+			continue
+		}
+
+		slog.InfoContext(ctx, "generating global", slog.String("template", target.TemplateName))
+
+		targetDir := filepath.Dir(target.TargetName)
+		if !directoryExists(targetDir) {
+			err = os.MkdirAll(targetDir, 0o700)
+			die(err)
+		}
+
+		buf := bytes.Buffer{}
+
+		_, err = buf.WriteString(generatedByPreamble)
+		die(err)
+
+		err = t.ExecuteTemplate(&buf, target.TemplateName, allEntities)
+		die(err)
+
+		formattedSource, err := format.Source(buf.Bytes())
+		if err != nil {
+			formattedSource = buf.Bytes()
+			slog.ErrorContext(ctx, "failed to format source", slog.Any("err", err), slog.String("target_filename", target.TargetName))
+		}
+
+		err = os.WriteFile(target.TargetName, formattedSource, 0o600)
+		die(err)
 	}
 }
 

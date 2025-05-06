@@ -32,9 +32,9 @@ func registerInventoryInstanceHandler(router Router, authorizer authz.Authorizer
 
 // swagger:operation GET /1.0/inventory/instances instances instances_get
 //
-//	Get the instance
+//	Get the instances
 //
-//	Returns a list of instance (list of relative URLs).
+//	Returns a list of instances (list of relative URLs).
 //
 //	---
 //	produces:
@@ -62,7 +62,7 @@ func registerInventoryInstanceHandler(router Router, authorizer authz.Authorizer
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API instance
+//	    description: API instances
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -81,7 +81,7 @@ func registerInventoryInstanceHandler(router Router, authorizer authz.Authorizer
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of instance
+//	          description: List of instances
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -224,7 +224,7 @@ func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Instance
+//	    description: instance
 //	    schema:
 //	      type: object
 //	      description: Sync response

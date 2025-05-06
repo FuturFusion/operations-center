@@ -14,6 +14,7 @@ instance:
 network:
   incus-get-all-method: GetNetworksAllProjects
   incus-get-method: GetNetwork
+  has-sync-filter: true
 
 network_acl:
   uses-embedded-post-type: true
@@ -32,6 +33,7 @@ network_forward:
   parent: network
   incus-get-all-method: GetNetworkForwards
   incus-get-method: GetNetworkForward
+  has-parent-filter: true
 
 network_integration:
   omit-project: true
@@ -44,12 +46,14 @@ network_load_balancer:
   parent: network
   incus-get-all-method: GetNetworkLoadBalancers
   incus-get-method: GetNetworkLoadBalancer
+  has-parent-filter: true
 
 network_peer:
   omit-project: true
   parent: network
   incus-get-all-method: GetNetworkPeers
   incus-get-method: GetNetworkPeer
+  has-parent-filter: true
 
 network_zone:
   incus-get-all-method: GetNetworkZonesAllProjects
@@ -69,6 +73,7 @@ storage_bucket:
   parent: storage_pool
   incus-get-all-method: GetStoragePoolBucketsAllProjects
   incus-get-method: GetStoragePoolBucket
+  has-parent-filter: true
 
 storage_pool:
   omit-project: true

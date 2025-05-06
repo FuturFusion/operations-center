@@ -32,9 +32,9 @@ func registerInventoryNetworkZoneHandler(router Router, authorizer authz.Authori
 
 // swagger:operation GET /1.0/inventory/network_zones network_zones network_zones_get
 //
-//	Get the network_zone
+//	Get the network_zones
 //
-//	Returns a list of network_zone (list of relative URLs).
+//	Returns a list of network zones (list of relative URLs).
 //
 //	---
 //	produces:
@@ -57,7 +57,7 @@ func registerInventoryNetworkZoneHandler(router Router, authorizer authz.Authori
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network_zone
+//	    description: API network zones
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -76,7 +76,7 @@ func registerInventoryNetworkZoneHandler(router Router, authorizer authz.Authori
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of network_zone
+//	          description: List of network zones
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -91,9 +91,9 @@ func registerInventoryNetworkZoneHandler(router Router, authorizer authz.Authori
 
 // swagger:operation GET /1.0/inventory/network_zones?recursion=1 network_zones network_zones_get_recursion
 //
-//	Get the network_zones
+//	Get the network zones
 //
-//	Returns a list of network_zones (structs).
+//	Returns a list of network zones (structs).
 //
 //	---
 //	produces:
@@ -116,7 +116,7 @@ func registerInventoryNetworkZoneHandler(router Router, authorizer authz.Authori
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network_zones
+//	    description: API network zones
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -135,7 +135,7 @@ func registerInventoryNetworkZoneHandler(router Router, authorizer authz.Authori
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of network_zones
+//	          description: List of network zones
 //	          items:
 //	            $ref: "#/definitions/networkZone"
 //	  "403":
@@ -200,16 +200,16 @@ func (i *networkZoneHandler) networkZonesGet(r *http.Request) response.Response 
 
 // swagger:operation GET /1.0/inventory/network_zones/{uuid} network_zones network_zone_get
 //
-//	Get the network_zone
+//	Get the network zone
 //
-//	Gets a specific network_zone.
+//	Gets a specific network zone.
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: NetworkZone
+//	    description: network zone
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -258,9 +258,9 @@ func (i *networkZoneHandler) networkZoneGet(r *http.Request) response.Response {
 
 // swagger:operation POST /1.0/inventory/network_zones/{uuid}/resync network_zones network_zone_get_resync_post
 //
-//	Resync the network_zone
+//	Resync the network zone
 //
-//	Resync a specific network_zone.
+//	Resync a specific network zone.
 //
 //	---
 //	produces:

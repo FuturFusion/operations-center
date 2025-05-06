@@ -25,10 +25,10 @@ type CmdNetworkForward struct {
 
 func (c *CmdNetworkForward) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "network_forward"
-	cmd.Short = "Interact with network_forwards"
+	cmd.Use = "network-forward"
+	cmd.Short = "Interact with network forwards"
 	cmd.Long = `Description:
-  Interact with network_forwards
+  Interact with network forwards
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
