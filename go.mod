@@ -171,7 +171,7 @@ require (
 	github.com/google/go-github/v69 v69.0.0
 	github.com/google/uuid v1.6.0
 	github.com/lmittmann/tint v1.0.7
-	github.com/lxc/incus/v6 v6.12.0
+	github.com/lxc/incus/v6 v6.12.1-0.20250506142216-59fb539d5428
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/oauth2-proxy/mockoidc v0.0.0-20240214162133-caebfff84d25
 	github.com/olekukonko/tablewriter v0.0.5
