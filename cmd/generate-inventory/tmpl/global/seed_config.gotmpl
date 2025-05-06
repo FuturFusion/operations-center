@@ -1,0 +1,38 @@
+package seed
+
+type Config struct {
+	ClustersCount           int
+	ServersMin              int
+	ServersMax              int
+{{- range . }}
+	{{ .PluralName | pascalcase }}Min int
+	{{ .PluralName | pascalcase }}Max int
+{{- end }}
+}
+
+func configDefaults(config Config) Config {
+	if config.ClustersCount == 0 {
+		config.ClustersCount = 2
+	}
+
+	if config.ServersMin == 0 {
+		config.ServersMin = 1
+	}
+
+	if config.ServersMax == 0 {
+		config.ServersMax = 10
+	}
+
+{{ range . }}
+	if config.{{ .PluralName | pascalcase }}Min == 0 {
+		config.{{ .PluralName | pascalcase }}Min = 2
+	}
+
+	if config.{{ .PluralName | pascalcase }}Max == 0 {
+		config.{{ .PluralName | pascalcase }}Max = 5
+	}
+
+{{ end }}
+
+	return config
+}

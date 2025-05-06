@@ -101,6 +101,14 @@ var globalTargets = []struct {
 		TemplateName: "inventory_ports.gotmpl",
 		TargetName:   "internal/inventory/ports.go",
 	},
+	{
+		TemplateName: "populate_db.gotmpl",
+		TargetName:   "cmd/populate-db/main.go",
+	},
+	{
+		TemplateName: "seed_config.gotmpl",
+		TargetName:   "internal/dbschema/seed/config.go",
+	},
 }
 
 type entityArgs struct {
