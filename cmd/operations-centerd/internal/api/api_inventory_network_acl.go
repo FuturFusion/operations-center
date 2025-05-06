@@ -32,9 +32,9 @@ func registerInventoryNetworkACLHandler(router Router, authorizer authz.Authoriz
 
 // swagger:operation GET /1.0/inventory/network_acls network_acls network_acls_get
 //
-//	Get the network_acl
+//	Get the network_acls
 //
-//	Returns a list of network_acl (list of relative URLs).
+//	Returns a list of network ACLs (list of relative URLs).
 //
 //	---
 //	produces:
@@ -57,7 +57,7 @@ func registerInventoryNetworkACLHandler(router Router, authorizer authz.Authoriz
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network_acl
+//	    description: API network ACLs
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -76,7 +76,7 @@ func registerInventoryNetworkACLHandler(router Router, authorizer authz.Authoriz
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of network_acl
+//	          description: List of network ACLs
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -91,9 +91,9 @@ func registerInventoryNetworkACLHandler(router Router, authorizer authz.Authoriz
 
 // swagger:operation GET /1.0/inventory/network_acls?recursion=1 network_acls network_acls_get_recursion
 //
-//	Get the network_acls
+//	Get the network ACLs
 //
-//	Returns a list of network_acls (structs).
+//	Returns a list of network ACLs (structs).
 //
 //	---
 //	produces:
@@ -116,7 +116,7 @@ func registerInventoryNetworkACLHandler(router Router, authorizer authz.Authoriz
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network_acls
+//	    description: API network ACLs
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -135,7 +135,7 @@ func registerInventoryNetworkACLHandler(router Router, authorizer authz.Authoriz
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of network_acls
+//	          description: List of network ACLs
 //	          items:
 //	            $ref: "#/definitions/networkACL"
 //	  "403":
@@ -200,16 +200,16 @@ func (i *networkACLHandler) networkACLsGet(r *http.Request) response.Response {
 
 // swagger:operation GET /1.0/inventory/network_acls/{uuid} network_acls network_acl_get
 //
-//	Get the network_acl
+//	Get the network ACL
 //
-//	Gets a specific network_acl.
+//	Gets a specific network ACL.
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: NetworkACL
+//	    description: network ACL
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -258,9 +258,9 @@ func (i *networkACLHandler) networkACLGet(r *http.Request) response.Response {
 
 // swagger:operation POST /1.0/inventory/network_acls/{uuid}/resync network_acls network_acl_get_resync_post
 //
-//	Resync the network_acl
+//	Resync the network ACL
 //
-//	Resync a specific network_acl.
+//	Resync a specific network ACL.
 //
 //	---
 //	produces:

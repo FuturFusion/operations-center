@@ -32,9 +32,9 @@ func registerInventoryNetworkIntegrationHandler(router Router, authorizer authz.
 
 // swagger:operation GET /1.0/inventory/network_integrations network_integrations network_integrations_get
 //
-//	Get the network_integration
+//	Get the network_integrations
 //
-//	Returns a list of network_integration (list of relative URLs).
+//	Returns a list of network integrations (list of relative URLs).
 //
 //	---
 //	produces:
@@ -52,7 +52,7 @@ func registerInventoryNetworkIntegrationHandler(router Router, authorizer authz.
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network_integration
+//	    description: API network integrations
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -71,7 +71,7 @@ func registerInventoryNetworkIntegrationHandler(router Router, authorizer authz.
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of network_integration
+//	          description: List of network integrations
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -86,9 +86,9 @@ func registerInventoryNetworkIntegrationHandler(router Router, authorizer authz.
 
 // swagger:operation GET /1.0/inventory/network_integrations?recursion=1 network_integrations network_integrations_get_recursion
 //
-//	Get the network_integrations
+//	Get the network integrations
 //
-//	Returns a list of network_integrations (structs).
+//	Returns a list of network integrations (structs).
 //
 //	---
 //	produces:
@@ -106,7 +106,7 @@ func registerInventoryNetworkIntegrationHandler(router Router, authorizer authz.
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network_integrations
+//	    description: API network integrations
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -125,7 +125,7 @@ func registerInventoryNetworkIntegrationHandler(router Router, authorizer authz.
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of network_integrations
+//	          description: List of network integrations
 //	          items:
 //	            $ref: "#/definitions/networkIntegration"
 //	  "403":
@@ -185,16 +185,16 @@ func (i *networkIntegrationHandler) networkIntegrationsGet(r *http.Request) resp
 
 // swagger:operation GET /1.0/inventory/network_integrations/{uuid} network_integrations network_integration_get
 //
-//	Get the network_integration
+//	Get the network integration
 //
-//	Gets a specific network_integration.
+//	Gets a specific network integration.
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: NetworkIntegration
+//	    description: network integration
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -242,9 +242,9 @@ func (i *networkIntegrationHandler) networkIntegrationGet(r *http.Request) respo
 
 // swagger:operation POST /1.0/inventory/network_integrations/{uuid}/resync network_integrations network_integration_get_resync_post
 //
-//	Resync the network_integration
+//	Resync the network integration
 //
-//	Resync a specific network_integration.
+//	Resync a specific network integration.
 //
 //	---
 //	produces:

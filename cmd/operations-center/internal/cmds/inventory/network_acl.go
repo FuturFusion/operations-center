@@ -25,10 +25,10 @@ type CmdNetworkACL struct {
 
 func (c *CmdNetworkACL) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "network_acl"
-	cmd.Short = "Interact with network_acls"
+	cmd.Use = "network-acl"
+	cmd.Short = "Interact with network ACLs"
 	cmd.Long = `Description:
-  Interact with network_acls
+  Interact with network ACLs
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706

@@ -32,9 +32,9 @@ func registerInventoryImageHandler(router Router, authorizer authz.Authorizer, s
 
 // swagger:operation GET /1.0/inventory/images images images_get
 //
-//	Get the image
+//	Get the images
 //
-//	Returns a list of image (list of relative URLs).
+//	Returns a list of images (list of relative URLs).
 //
 //	---
 //	produces:
@@ -57,7 +57,7 @@ func registerInventoryImageHandler(router Router, authorizer authz.Authorizer, s
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API image
+//	    description: API images
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -76,7 +76,7 @@ func registerInventoryImageHandler(router Router, authorizer authz.Authorizer, s
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of image
+//	          description: List of images
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -209,7 +209,7 @@ func (i *imageHandler) imagesGet(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Image
+//	    description: image
 //	    schema:
 //	      type: object
 //	      description: Sync response

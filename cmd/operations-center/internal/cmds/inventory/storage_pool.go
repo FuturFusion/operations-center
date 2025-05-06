@@ -25,10 +25,10 @@ type CmdStoragePool struct {
 
 func (c *CmdStoragePool) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "storage_pool"
-	cmd.Short = "Interact with storage_pools"
+	cmd.Use = "storage-pool"
+	cmd.Short = "Interact with storage pools"
 	cmd.Long = `Description:
-  Interact with storage_pools
+  Interact with storage pools
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706

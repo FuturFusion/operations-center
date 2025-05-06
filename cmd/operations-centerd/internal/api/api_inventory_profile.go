@@ -32,9 +32,9 @@ func registerInventoryProfileHandler(router Router, authorizer authz.Authorizer,
 
 // swagger:operation GET /1.0/inventory/profiles profiles profiles_get
 //
-//	Get the profile
+//	Get the profiles
 //
-//	Returns a list of profile (list of relative URLs).
+//	Returns a list of profiles (list of relative URLs).
 //
 //	---
 //	produces:
@@ -57,7 +57,7 @@ func registerInventoryProfileHandler(router Router, authorizer authz.Authorizer,
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API profile
+//	    description: API profiles
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -76,7 +76,7 @@ func registerInventoryProfileHandler(router Router, authorizer authz.Authorizer,
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of profile
+//	          description: List of profiles
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -209,7 +209,7 @@ func (i *profileHandler) profilesGet(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Profile
+//	    description: profile
 //	    schema:
 //	      type: object
 //	      description: Sync response

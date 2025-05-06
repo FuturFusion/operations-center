@@ -25,10 +25,10 @@ type CmdNetworkIntegration struct {
 
 func (c *CmdNetworkIntegration) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "network_integration"
-	cmd.Short = "Interact with network_integrations"
+	cmd.Use = "network-integration"
+	cmd.Short = "Interact with network integrations"
 	cmd.Long = `Description:
-  Interact with network_integrations
+  Interact with network integrations
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706

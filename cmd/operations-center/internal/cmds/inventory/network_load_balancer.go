@@ -25,10 +25,10 @@ type CmdNetworkLoadBalancer struct {
 
 func (c *CmdNetworkLoadBalancer) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "network_load_balancer"
-	cmd.Short = "Interact with network_load_balancers"
+	cmd.Use = "network-load-balancer"
+	cmd.Short = "Interact with network load balancers"
 	cmd.Long = `Description:
-  Interact with network_load_balancers
+  Interact with network load balancers
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706

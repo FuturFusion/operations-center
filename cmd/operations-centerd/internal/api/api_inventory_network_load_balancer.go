@@ -32,9 +32,9 @@ func registerInventoryNetworkLoadBalancerHandler(router Router, authorizer authz
 
 // swagger:operation GET /1.0/inventory/network_load_balancers network_load_balancers network_load_balancers_get
 //
-//	Get the network_load_balancer
+//	Get the network_load_balancers
 //
-//	Returns a list of network_load_balancer (list of relative URLs).
+//	Returns a list of network load balancers (list of relative URLs).
 //
 //	---
 //	produces:
@@ -52,7 +52,7 @@ func registerInventoryNetworkLoadBalancerHandler(router Router, authorizer authz
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network_load_balancer
+//	    description: API network load balancers
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -71,7 +71,7 @@ func registerInventoryNetworkLoadBalancerHandler(router Router, authorizer authz
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of network_load_balancer
+//	          description: List of network load balancers
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -86,9 +86,9 @@ func registerInventoryNetworkLoadBalancerHandler(router Router, authorizer authz
 
 // swagger:operation GET /1.0/inventory/network_load_balancers?recursion=1 network_load_balancers network_load_balancers_get_recursion
 //
-//	Get the network_load_balancers
+//	Get the network load balancers
 //
-//	Returns a list of network_load_balancers (structs).
+//	Returns a list of network load balancers (structs).
 //
 //	---
 //	produces:
@@ -106,7 +106,7 @@ func registerInventoryNetworkLoadBalancerHandler(router Router, authorizer authz
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network_load_balancers
+//	    description: API network load balancers
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -125,7 +125,7 @@ func registerInventoryNetworkLoadBalancerHandler(router Router, authorizer authz
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of network_load_balancers
+//	          description: List of network load balancers
 //	          items:
 //	            $ref: "#/definitions/networkLoadBalancer"
 //	  "403":
@@ -186,16 +186,16 @@ func (i *networkLoadBalancerHandler) networkLoadBalancersGet(r *http.Request) re
 
 // swagger:operation GET /1.0/inventory/network_load_balancers/{uuid} network_load_balancers network_load_balancer_get
 //
-//	Get the network_load_balancer
+//	Get the network load balancer
 //
-//	Gets a specific network_load_balancer.
+//	Gets a specific network load balancer.
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: NetworkLoadBalancer
+//	    description: network load balancer
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -244,9 +244,9 @@ func (i *networkLoadBalancerHandler) networkLoadBalancerGet(r *http.Request) res
 
 // swagger:operation POST /1.0/inventory/network_load_balancers/{uuid}/resync network_load_balancers network_load_balancer_get_resync_post
 //
-//	Resync the network_load_balancer
+//	Resync the network load balancer
 //
-//	Resync a specific network_load_balancer.
+//	Resync a specific network load balancer.
 //
 //	---
 //	produces:

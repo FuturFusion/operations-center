@@ -32,9 +32,9 @@ func registerInventoryNetworkAddressSetHandler(router Router, authorizer authz.A
 
 // swagger:operation GET /1.0/inventory/network_address_sets network_address_sets network_address_sets_get
 //
-//	Get the network_address_set
+//	Get the network_address_sets
 //
-//	Returns a list of network_address_set (list of relative URLs).
+//	Returns a list of network address sets (list of relative URLs).
 //
 //	---
 //	produces:
@@ -57,7 +57,7 @@ func registerInventoryNetworkAddressSetHandler(router Router, authorizer authz.A
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network_address_set
+//	    description: API network address sets
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -76,7 +76,7 @@ func registerInventoryNetworkAddressSetHandler(router Router, authorizer authz.A
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of network_address_set
+//	          description: List of network address sets
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -91,9 +91,9 @@ func registerInventoryNetworkAddressSetHandler(router Router, authorizer authz.A
 
 // swagger:operation GET /1.0/inventory/network_address_sets?recursion=1 network_address_sets network_address_sets_get_recursion
 //
-//	Get the network_address_sets
+//	Get the network address sets
 //
-//	Returns a list of network_address_sets (structs).
+//	Returns a list of network address sets (structs).
 //
 //	---
 //	produces:
@@ -116,7 +116,7 @@ func registerInventoryNetworkAddressSetHandler(router Router, authorizer authz.A
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network_address_sets
+//	    description: API network address sets
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -135,7 +135,7 @@ func registerInventoryNetworkAddressSetHandler(router Router, authorizer authz.A
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of network_address_sets
+//	          description: List of network address sets
 //	          items:
 //	            $ref: "#/definitions/networkAddressSet"
 //	  "403":
@@ -200,16 +200,16 @@ func (i *networkAddressSetHandler) networkAddressSetsGet(r *http.Request) respon
 
 // swagger:operation GET /1.0/inventory/network_address_sets/{uuid} network_address_sets network_address_set_get
 //
-//	Get the network_address_set
+//	Get the network address set
 //
-//	Gets a specific network_address_set.
+//	Gets a specific network address set.
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: NetworkAddressSet
+//	    description: network address set
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -258,9 +258,9 @@ func (i *networkAddressSetHandler) networkAddressSetGet(r *http.Request) respons
 
 // swagger:operation POST /1.0/inventory/network_address_sets/{uuid}/resync network_address_sets network_address_set_get_resync_post
 //
-//	Resync the network_address_set
+//	Resync the network address set
 //
-//	Resync a specific network_address_set.
+//	Resync a specific network address set.
 //
 //	---
 //	produces:

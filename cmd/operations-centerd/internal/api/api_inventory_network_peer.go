@@ -32,9 +32,9 @@ func registerInventoryNetworkPeerHandler(router Router, authorizer authz.Authori
 
 // swagger:operation GET /1.0/inventory/network_peers network_peers network_peers_get
 //
-//	Get the network_peer
+//	Get the network_peers
 //
-//	Returns a list of network_peer (list of relative URLs).
+//	Returns a list of network peers (list of relative URLs).
 //
 //	---
 //	produces:
@@ -52,7 +52,7 @@ func registerInventoryNetworkPeerHandler(router Router, authorizer authz.Authori
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network_peer
+//	    description: API network peers
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -71,7 +71,7 @@ func registerInventoryNetworkPeerHandler(router Router, authorizer authz.Authori
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of network_peer
+//	          description: List of network peers
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -86,9 +86,9 @@ func registerInventoryNetworkPeerHandler(router Router, authorizer authz.Authori
 
 // swagger:operation GET /1.0/inventory/network_peers?recursion=1 network_peers network_peers_get_recursion
 //
-//	Get the network_peers
+//	Get the network peers
 //
-//	Returns a list of network_peers (structs).
+//	Returns a list of network peers (structs).
 //
 //	---
 //	produces:
@@ -106,7 +106,7 @@ func registerInventoryNetworkPeerHandler(router Router, authorizer authz.Authori
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network_peers
+//	    description: API network peers
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -125,7 +125,7 @@ func registerInventoryNetworkPeerHandler(router Router, authorizer authz.Authori
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of network_peers
+//	          description: List of network peers
 //	          items:
 //	            $ref: "#/definitions/networkPeer"
 //	  "403":
@@ -186,16 +186,16 @@ func (i *networkPeerHandler) networkPeersGet(r *http.Request) response.Response 
 
 // swagger:operation GET /1.0/inventory/network_peers/{uuid} network_peers network_peer_get
 //
-//	Get the network_peer
+//	Get the network peer
 //
-//	Gets a specific network_peer.
+//	Gets a specific network peer.
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: NetworkPeer
+//	    description: network peer
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -244,9 +244,9 @@ func (i *networkPeerHandler) networkPeerGet(r *http.Request) response.Response {
 
 // swagger:operation POST /1.0/inventory/network_peers/{uuid}/resync network_peers network_peer_get_resync_post
 //
-//	Resync the network_peer
+//	Resync the network peer
 //
-//	Resync a specific network_peer.
+//	Resync a specific network peer.
 //
 //	---
 //	produces:

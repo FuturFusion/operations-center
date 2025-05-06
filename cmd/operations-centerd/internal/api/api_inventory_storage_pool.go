@@ -32,9 +32,9 @@ func registerInventoryStoragePoolHandler(router Router, authorizer authz.Authori
 
 // swagger:operation GET /1.0/inventory/storage_pools storage_pools storage_pools_get
 //
-//	Get the storage_pool
+//	Get the storage_pools
 //
-//	Returns a list of storage_pool (list of relative URLs).
+//	Returns a list of storage pools (list of relative URLs).
 //
 //	---
 //	produces:
@@ -52,7 +52,7 @@ func registerInventoryStoragePoolHandler(router Router, authorizer authz.Authori
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API storage_pool
+//	    description: API storage pools
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -71,7 +71,7 @@ func registerInventoryStoragePoolHandler(router Router, authorizer authz.Authori
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of storage_pool
+//	          description: List of storage pools
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -86,9 +86,9 @@ func registerInventoryStoragePoolHandler(router Router, authorizer authz.Authori
 
 // swagger:operation GET /1.0/inventory/storage_pools?recursion=1 storage_pools storage_pools_get_recursion
 //
-//	Get the storage_pools
+//	Get the storage pools
 //
-//	Returns a list of storage_pools (structs).
+//	Returns a list of storage pools (structs).
 //
 //	---
 //	produces:
@@ -106,7 +106,7 @@ func registerInventoryStoragePoolHandler(router Router, authorizer authz.Authori
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API storage_pools
+//	    description: API storage pools
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -125,7 +125,7 @@ func registerInventoryStoragePoolHandler(router Router, authorizer authz.Authori
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of storage_pools
+//	          description: List of storage pools
 //	          items:
 //	            $ref: "#/definitions/storagePool"
 //	  "403":
@@ -185,16 +185,16 @@ func (i *storagePoolHandler) storagePoolsGet(r *http.Request) response.Response 
 
 // swagger:operation GET /1.0/inventory/storage_pools/{uuid} storage_pools storage_pool_get
 //
-//	Get the storage_pool
+//	Get the storage pool
 //
-//	Gets a specific storage_pool.
+//	Gets a specific storage pool.
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: StoragePool
+//	    description: storage pool
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -242,9 +242,9 @@ func (i *storagePoolHandler) storagePoolGet(r *http.Request) response.Response {
 
 // swagger:operation POST /1.0/inventory/storage_pools/{uuid}/resync storage_pools storage_pool_get_resync_post
 //
-//	Resync the storage_pool
+//	Resync the storage pool
 //
-//	Resync a specific storage_pool.
+//	Resync a specific storage pool.
 //
 //	---
 //	produces:

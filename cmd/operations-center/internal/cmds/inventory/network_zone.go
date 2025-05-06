@@ -25,10 +25,10 @@ type CmdNetworkZone struct {
 
 func (c *CmdNetworkZone) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "network_zone"
-	cmd.Short = "Interact with network_zones"
+	cmd.Use = "network-zone"
+	cmd.Short = "Interact with network zones"
 	cmd.Long = `Description:
-  Interact with network_zones
+  Interact with network zones
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706

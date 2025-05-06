@@ -32,9 +32,9 @@ func registerInventoryStorageVolumeHandler(router Router, authorizer authz.Autho
 
 // swagger:operation GET /1.0/inventory/storage_volumes storage_volumes storage_volumes_get
 //
-//	Get the storage_volume
+//	Get the storage_volumes
 //
-//	Returns a list of storage_volume (list of relative URLs).
+//	Returns a list of storage volumes (list of relative URLs).
 //
 //	---
 //	produces:
@@ -62,7 +62,7 @@ func registerInventoryStorageVolumeHandler(router Router, authorizer authz.Autho
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API storage_volume
+//	    description: API storage volumes
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -81,7 +81,7 @@ func registerInventoryStorageVolumeHandler(router Router, authorizer authz.Autho
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of storage_volume
+//	          description: List of storage volumes
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -96,9 +96,9 @@ func registerInventoryStorageVolumeHandler(router Router, authorizer authz.Autho
 
 // swagger:operation GET /1.0/inventory/storage_volumes?recursion=1 storage_volumes storage_volumes_get_recursion
 //
-//	Get the storage_volumes
+//	Get the storage volumes
 //
-//	Returns a list of storage_volumes (structs).
+//	Returns a list of storage volumes (structs).
 //
 //	---
 //	produces:
@@ -126,7 +126,7 @@ func registerInventoryStorageVolumeHandler(router Router, authorizer authz.Autho
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API storage_volumes
+//	    description: API storage volumes
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -145,7 +145,7 @@ func registerInventoryStorageVolumeHandler(router Router, authorizer authz.Autho
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of storage_volumes
+//	          description: List of storage volumes
 //	          items:
 //	            $ref: "#/definitions/storageVolume"
 //	  "403":
@@ -216,16 +216,16 @@ func (i *storageVolumeHandler) storageVolumesGet(r *http.Request) response.Respo
 
 // swagger:operation GET /1.0/inventory/storage_volumes/{uuid} storage_volumes storage_volume_get
 //
-//	Get the storage_volume
+//	Get the storage volume
 //
-//	Gets a specific storage_volume.
+//	Gets a specific storage volume.
 //
 //	---
 //	produces:
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: StorageVolume
+//	    description: storage volume
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -276,9 +276,9 @@ func (i *storageVolumeHandler) storageVolumeGet(r *http.Request) response.Respon
 
 // swagger:operation POST /1.0/inventory/storage_volumes/{uuid}/resync storage_volumes storage_volume_get_resync_post
 //
-//	Resync the storage_volume
+//	Resync the storage volume
 //
-//	Resync a specific storage_volume.
+//	Resync a specific storage volume.
 //
 //	---
 //	produces:

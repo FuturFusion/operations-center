@@ -25,10 +25,10 @@ type CmdNetworkPeer struct {
 
 func (c *CmdNetworkPeer) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "network_peer"
-	cmd.Short = "Interact with network_peers"
+	cmd.Use = "network-peer"
+	cmd.Short = "Interact with network peers"
 	cmd.Long = `Description:
-  Interact with network_peers
+  Interact with network peers
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706

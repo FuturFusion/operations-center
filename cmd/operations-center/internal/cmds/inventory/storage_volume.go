@@ -25,10 +25,10 @@ type CmdStorageVolume struct {
 
 func (c *CmdStorageVolume) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "storage_volume"
-	cmd.Short = "Interact with storage_volumes"
+	cmd.Use = "storage-volume"
+	cmd.Short = "Interact with storage volumes"
 	cmd.Long = `Description:
-  Interact with storage_volumes
+  Interact with storage volumes
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706

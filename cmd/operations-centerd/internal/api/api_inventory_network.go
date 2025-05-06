@@ -32,9 +32,9 @@ func registerInventoryNetworkHandler(router Router, authorizer authz.Authorizer,
 
 // swagger:operation GET /1.0/inventory/networks networks networks_get
 //
-//	Get the network
+//	Get the networks
 //
-//	Returns a list of network (list of relative URLs).
+//	Returns a list of networks (list of relative URLs).
 //
 //	---
 //	produces:
@@ -57,7 +57,7 @@ func registerInventoryNetworkHandler(router Router, authorizer authz.Authorizer,
 //	    example: name == "value"
 //	responses:
 //	  "200":
-//	    description: API network
+//	    description: API networks
 //	    schema:
 //	      type: object
 //	      description: Sync response
@@ -76,7 +76,7 @@ func registerInventoryNetworkHandler(router Router, authorizer authz.Authorizer,
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of network
+//	          description: List of networks
 //	               items:
 //	                 type: string
 //	               example: |-
@@ -209,7 +209,7 @@ func (i *networkHandler) networksGet(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    description: Network
+//	    description: network
 //	    schema:
 //	      type: object
 //	      description: Sync response

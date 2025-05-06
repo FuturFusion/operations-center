@@ -25,10 +25,10 @@ type CmdNetworkAddressSet struct {
 
 func (c *CmdNetworkAddressSet) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "network_address_set"
-	cmd.Short = "Interact with network_address_sets"
+	cmd.Use = "network-address-set"
+	cmd.Short = "Interact with network address sets"
 	cmd.Long = `Description:
-  Interact with network_address_sets
+  Interact with network address sets
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
