@@ -233,6 +233,12 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 	if err != nil {
 		return err
 	}
+{{- with .RequiresExtension }}
+
+	if !s.networkAddressSetClient.HasExtension(ctx, cluster.ConnectionURL, "{{ . }}") {
+		return nil
+	}
+{{ end }}
 
 {{ if .HasParent }}
 	retrieved{{ .ParentPluralName | pascalcase }}, err := s.{{ .ParentName | camelcase }}Client.Get{{ .ParentName | pascalcase }}s(ctx, cluster.ConnectionURL)

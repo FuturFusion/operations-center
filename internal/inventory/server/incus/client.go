@@ -27,3 +27,12 @@ func (s serverClient) getClient(ctx context.Context, connectionURL string) (incu
 		InsecureSkipVerify: true,
 	})
 }
+
+func (s serverClient) HasExtension(ctx context.Context, connectionURL string, extension string) (exists bool) {
+	client, err := s.getClient(ctx, connectionURL)
+	if err != nil {
+		return false
+	}
+
+	return client.HasExtension(extension)
+}

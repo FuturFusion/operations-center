@@ -542,6 +542,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 		name                              string
 		clusterSvcGetByIDCluster            provisioning.Cluster
 		clusterSvcGetByIDErr               error
+{{- with .RequiresExtension }}
+		{{ $.Name | camelcase }}ClientHasExtension bool
+{{- end }}
 {{- if .HasParent }}
 		{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }} []incusapi.{{ .ParentObjectType | pascalcase }}
 		{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}Err error
@@ -559,6 +562,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				Name:  "cluster-one",
 			},
+{{- with .RequiresExtension }}
+			{{ $.Name | camelcase }}ClientHasExtension: true,
+{{- end }}
 {{- if .HasParent }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
 				{
@@ -598,6 +604,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				Name:  "cluster-one",
 			},
+{{- with .RequiresExtension }}
+			{{ $.Name | camelcase }}ClientHasExtension: true,
+{{- end }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
 				{
 					Name: "{{ .ParentName | camelcase }} one",
@@ -643,6 +652,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				Name:  "cluster-one",
 			},
+{{- with .RequiresExtension }}
+			{{ $.Name | camelcase }}ClientHasExtension: true,
+{{- end }}
 {{- if .HasParent }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
 				{
@@ -702,6 +714,17 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 
 			assertErr: require.NoError,
 		},
+{{- with .RequiresExtension }}
+		{
+			name: "success - does not have extension",
+			clusterSvcGetByIDCluster: provisioning.Cluster{
+				Name: "cluster-one",
+			},
+			{{ $.Name | camelcase }}ClientHasExtension: false,
+
+			assertErr: require.NoError,
+		},
+{{- end }}
 		{
 			name: "error - cluster service get by ID",
 			clusterSvcGetByIDErr: boom.Error,
@@ -714,6 +737,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				Name:  "cluster-one",
 			},
+{{- with .RequiresExtension }}
+			{{ $.Name | camelcase }}ClientHasExtension: true,
+{{- end }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}Err: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -724,6 +750,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				Name:  "cluster-one",
 			},
+{{- with .RequiresExtension }}
+			{{ $.Name | camelcase }}ClientHasExtension: true,
+{{- end }}
 {{- if .HasParent }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
 				{
@@ -740,6 +769,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				Name:  "cluster-one",
 			},
+{{- with .RequiresExtension }}
+			{{ $.Name | camelcase }}ClientHasExtension: true,
+{{- end }}
 {{- if .HasParent }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
 				{
@@ -779,6 +811,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				Name:  "cluster-one",
 			},
+{{- with .RequiresExtension }}
+			{{ $.Name | camelcase }}ClientHasExtension: true,
+{{- end }}
 {{- if .HasParent }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
 				{
@@ -820,6 +855,9 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 			clusterSvcGetByIDCluster: provisioning.Cluster{
 				Name:  "cluster-one",
 			},
+{{- with .RequiresExtension }}
+			{{ $.Name | camelcase }}ClientHasExtension: true,
+{{- end }}
 {{- if .HasParent }}
 			{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}: []incusapi.{{ .ParentObjectType | pascalcase }}{
 				{
@@ -883,6 +921,11 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- end }}
 
 			{{ .Name | camelcase }}Client := &serverMock.{{ .Name | pascalcase }}ServerClientMock{
+{{- with .RequiresExtension }}
+				HasExtensionFunc: func(ctx context.Context, connectionURL, extension string) bool {
+					return tc.{{ $.Name | camelcase }}ClientHasExtension
+				},
+{{- end }}
 				Get{{ .PluralName | pascalcase }}Func: func(ctx context.Context, connectionURL string {{- if .HasParent }}, {{ .ParentName | camelcase }}Name string {{ end }}) ([]incusapi.{{ .ObjectType | pascalcase }}, error) {
 					return tc.{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}, tc.{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}Err
 				},

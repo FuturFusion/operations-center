@@ -37,6 +37,8 @@ func main() {
 	flagNetworksMax := pflag.Int("networks-max", 10, "max networks to create per cluster")
 	flagNetworkACLsMin := pflag.Int("network-acls-min", 1, "min network acls to create per cluster")
 	flagNetworkACLsMax := pflag.Int("network-acls-max", 5, "max network acls to create per cluster")
+	flagNetworkAddressSetsMin := pflag.Int("network-address-sets-min", 1, "min network address-sets to create per cluster")
+	flagNetworkAddressSetsMax := pflag.Int("network-address-sets-max", 5, "max network address-sets to create per cluster")
 	flagNetworkForwardsMin := pflag.Int("network-forwards-min", 1, "min network forwards to create per cluster")
 	flagNetworkForwardsMax := pflag.Int("network-forwards-max", 5, "max network forwards to create per cluster")
 	flagNetworkIntegrationsMin := pflag.Int("network-integrations-min", 1, "min network integrations to create per cluster")
@@ -114,6 +116,8 @@ PRAGMA temp_store = MEMORY;
 		NetworksMax:             *flagNetworksMax,
 		NetworkACLsMin:          *flagNetworkACLsMin,
 		NetworkACLsMax:          *flagNetworkACLsMax,
+		NetworkAddressSetsMin:   *flagNetworkAddressSetsMin,
+		NetworkAddressSetsMax:   *flagNetworkAddressSetsMax,
 		NetworkForwardsMin:      *flagNetworkForwardsMin,
 		NetworkForwardsMax:      *flagNetworkForwardsMax,
 		NetworkIntegrationsMin:  *flagNetworkIntegrationsMin,

@@ -51,6 +51,12 @@ func (c *CmdInventory) Command() *cobra.Command {
 
 	cmd.AddCommand(networkACLCmd.Command())
 
+	networkAddressSetCmd := inventory.CmdNetworkAddressSet{
+		OCClient: c.OCClient,
+	}
+
+	cmd.AddCommand(networkAddressSetCmd.Command())
+
 	networkForwardCmd := inventory.CmdNetworkForward{
 		OCClient: c.OCClient,
 	}

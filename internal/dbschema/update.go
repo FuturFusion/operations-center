@@ -123,6 +123,19 @@ CREATE TABLE IF NOT EXISTS network_acls (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
+CREATE TABLE IF NOT EXISTS network_address_sets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  uuid TEXT NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  project_name TEXT NOT NULL,
+  name TEXT NOT NULL,
+  object TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (uuid),
+  UNIQUE (cluster_id, project_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+);
+
 CREATE TABLE IF NOT EXISTS network_forwards (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
