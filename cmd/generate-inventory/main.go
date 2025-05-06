@@ -137,7 +137,9 @@ func main() {
 	funcsMap := sprig.FuncMap()
 	funcsMap["pascalcase"] = PascalCase
 	funcsMap["camelcase"] = CamelCase
+	funcsMap["kebabcase"] = KebabCase
 	funcsMap["titlecase"] = TitleCase
+	funcsMap["words"] = Words
 
 	t := template.New("")
 	t = t.Funcs(funcsMap)
