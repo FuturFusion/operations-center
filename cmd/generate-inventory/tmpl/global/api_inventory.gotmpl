@@ -1,0 +1,65 @@
+package api
+
+import (
+	"log/slog"
+
+	"github.com/FuturFusion/operations-center/internal/authz"
+	"github.com/FuturFusion/operations-center/internal/inventory"
+	inventoryServiceMiddleware "github.com/FuturFusion/operations-center/internal/inventory/middleware"
+	inventoryRepoMiddleware "github.com/FuturFusion/operations-center/internal/inventory/repo/middleware"
+	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+)
+
+func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverClient inventory.ServerClient, authorizer authz.Authorizer, inventoryRouter Router) []provisioning.InventorySyncer {
+	// Service
+	inventoryInventoryAggregateSvc := inventoryServiceMiddleware.NewInventoryAggregateServiceWithSlog(
+		inventory.NewInventoryAggregateService(
+			inventoryRepoMiddleware.NewInventoryAggregateRepoWithSlog(
+				inventorySqlite.NewInventoryAggregate(db),
+				slog.Default(),
+			),
+		),
+		slog.Default(),
+	)
+
+{{ range . }}
+	inventory{{ .Name | pascalcase }}Svc := inventoryServiceMiddleware.New{{ .Name | pascalcase }}ServiceWithSlog(
+		inventory.New{{ .Name | pascalcase }}Service(
+			inventoryRepoMiddleware.New{{ .Name | pascalcase }}RepoWithSlog(
+				inventorySqlite.New{{ .Name | pascalcase }}(db),
+				slog.Default(),
+			),
+			clusterSvc,
+			serverClient,
+			{{- if .HasParent }}
+				serverClient,
+			{{- end }}
+			{{- if .HasSyncFilter }}
+			inventory.{{ .Name | pascalcase }}WithSyncFilter({{ .Name | camelcase }}WithSyncFilter),
+			{{- end }}
+			{{- if .HasParentFilter }}
+			inventory.{{ .Name | pascalcase }}WithParentFilter({{ .Name | camelcase }}WithParentFilter),
+			{{- end }}
+		),
+		slog.Default(),
+	)
+
+{{ end }}
+
+	// API routes
+	inventoryQueryRouter := inventoryRouter.SubGroup("/query")
+	registerInventoryQueryHandler(inventoryQueryRouter, authorizer, inventoryInventoryAggregateSvc)
+
+{{ range . }}
+	inventory{{ .Name | pascalcase }}Router := inventoryRouter.SubGroup("/{{ .PluralName }}")
+	registerInventory{{ .Name | pascalcase }}Handler(inventory{{ .Name | pascalcase }}Router, authorizer, inventory{{ .Name | pascalcase }}Svc)
+{{ end }}
+
+	return []provisioning.InventorySyncer{
+{{- range . }}
+		inventory{{ .Name | pascalcase }}Svc,
+{{- end }}
+	}
+}
