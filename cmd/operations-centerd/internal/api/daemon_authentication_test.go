@@ -531,6 +531,25 @@ func TestAuthentication(t *testing.T) {
 
 			wantStatusCode: http.StatusOK,
 		},
+
+		// ANY /1.0/provisioning/updates routes do not need authentication
+		{
+			name: "plain http GET /1.0/provisioning/updates",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodGet,
+			resource: "https://localhost:17443/1.0/provisioning/updates",
+			body:     http.NoBody,
+
+			wantStatusCode: http.StatusOK,
+		},
 	}
 
 	d := api.NewDaemon(

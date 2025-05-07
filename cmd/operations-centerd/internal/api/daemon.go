@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	ghClient "github.com/google/go-github/v69/github"
@@ -216,14 +217,25 @@ func (d *Daemon) Start(ctx context.Context) error {
 		registerOIDCHandlers(router, oidcVerifier)
 	}
 
-	api10router := router.SubGroup("/1.0").AddMiddlewares(
+	isNoAuthenticationRequired := func(r *http.Request) bool {
 		// POST /1.0/provisioning/servers is authenticated using a token.
-		// Therefore authentication middleware is skipped for this route.
+		if r.Method == http.MethodPost && r.URL.Path == "/1.0/provisioning/servers" {
+			return true
+		}
+
+		// ANY /1.0/provisioning/updates no authentication required for all routes.
+		if strings.HasPrefix(r.URL.Path, "/1.0/provisioning/updates") {
+			return true
+		}
+
+		return false
+	}
+
+	api10router := router.SubGroup("/1.0").AddMiddlewares(
+		// Authentication middleware is skipped if isNoAuthenticationRequired applies.
 		unless(
 			authenticator.Middleware,
-			func(r *http.Request) bool {
-				return r.Method == http.MethodPost && r.URL.Path == "/1.0/provisioning/servers"
-			},
+			isNoAuthenticationRequired,
 		),
 	)
 	registerAPI10Handler(api10router)
@@ -240,7 +252,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	registerProvisioningServerHandler(provisioningServerRouter, authorizer, serverSvc)
 
 	updateRouter := provisioningRouter.SubGroup("/updates")
-	registerUpdateHandler(updateRouter, authorizer, updateSvc)
+	registerUpdateHandler(updateRouter, updateSvc)
 
 	inventoryRouter := api10router.SubGroup("/inventory")
 
