@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/response"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -15,15 +14,16 @@ type updateHandler struct {
 	service provisioning.UpdateService
 }
 
-func registerUpdateHandler(router Router, authorizer authz.Authorizer, service provisioning.UpdateService) {
+func registerUpdateHandler(router Router, service provisioning.UpdateService) {
 	handler := &updateHandler{
 		service: service,
 	}
 
-	router.HandleFunc("GET /{$}", response.With(handler.updatesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("GET /{id}", response.With(handler.updateGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("GET /{id}/files", response.With(handler.updateFilesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("GET /{id}/files/{filename}", response.With(handler.updateFileGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	// no authentication required for all routes
+	router.HandleFunc("GET /{$}", response.With(handler.updatesGet))
+	router.HandleFunc("GET /{id}", response.With(handler.updateGet))
+	router.HandleFunc("GET /{id}/files", response.With(handler.updateFilesGet))
+	router.HandleFunc("GET /{id}/files/{filename}", response.With(handler.updateFileGet))
 }
 
 // swagger:operation GET /1.0/provisioning/updates updates updates_get
