@@ -3,7 +3,7 @@
 all: False
 template: matryer
 force-file-write: true
-include-interface-regex: "(.+Repo|.*ServerClient|ClusterService|ServerService|TokenService|InventorySyncer)"
+include-interface-regex: "(.+Repo|.+Port|.*ServerClient|ClusterService|ServerService|TokenService|InventorySyncer)"
 dir: >-
   {{- $targetDir := "mock" -}}
   {{- if and (.InterfaceName | hasSuffix "ServerClient") -}}
@@ -11,6 +11,9 @@ dir: >-
   {{- end -}}
   {{- if .InterfaceName | hasSuffix "Repo" -}}
   {{- $targetDir = "repo/mock" -}}
+  {{- end -}}
+  {{- if .InterfaceName | hasSuffix "Port" -}}
+  {{- $targetDir = "adapter/mock" -}}
   {{- end -}}
   {{- .InterfaceDir -}}/{{- $targetDir -}}
 filename: "{{ .InterfaceName | snakecase }}_mock_gen.go"
