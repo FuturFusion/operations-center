@@ -33,6 +33,19 @@ CREATE TABLE IF NOT EXISTS servers (
   FOREIGN KEY(cluster_id) REFERENCES clusters(id)
 );
 
+CREATE TABLE IF NOT EXISTS updates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  uuid TEXT NOT NULL,
+  external_id TEXT NOT NULL,
+  components TEXT NOT NULL,
+  "version" TEXT NOT NULL,
+  published_at DATETIME NOT NULL,
+  severity TEXT NOT NULL,
+  channel TEXT NOT NULL,
+  files TEXT NOT NULL,
+  UNIQUE(uuid)
+);
+
 CREATE TABLE IF NOT EXISTS images (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
