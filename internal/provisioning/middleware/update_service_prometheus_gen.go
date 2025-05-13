@@ -108,3 +108,13 @@ func (_d UpdateServiceWithPrometheus) GetUpdateFileByFilename(ctx context.Contex
 	}()
 	return _d.base.GetUpdateFileByFilename(ctx, id, filename)
 }
+
+// Refresh implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) Refresh(ctx context.Context) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Refresh", result).Observe(time.Since(_since).Seconds())
+	}()
+	_d.base.Refresh(ctx)
+}

@@ -81,6 +81,10 @@ func (u *UpdateComponents) UnmarshalText(text []byte) error {
 	components := bytes.Split(text, []byte(","))
 	*u = make(UpdateComponents, 0, len(components))
 	for _, component := range components {
+		if len(component) == 0 {
+			continue
+		}
+
 		var c UpdateComponent
 		err := c.UnmarshalText(component)
 		if err != nil {
@@ -203,10 +207,6 @@ type Update struct {
 //
 // swagger:model
 type UpdateFile struct {
-	// ID of the Update, this file belongs to.
-	// Example: lxc$incus-os$123
-	UpdateID string `json:"update_id" yaml:"update_id"`
-
 	// Filename of the File.
 	// Example: IncusOS_202501311418.efi.gz
 	Filename string `json:"filename" yaml:"filename"`

@@ -6,12 +6,11 @@ import (
 	"math"
 	"os"
 	"testing"
-	"time"
 
 	ghClient "github.com/google/go-github/v69/github"
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/provisioning/repo/github"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/github"
 )
 
 func TestUpdate(t *testing.T) {
@@ -23,32 +22,19 @@ func TestUpdate(t *testing.T) {
 	// Setup
 	ctx := context.Background()
 	gh := ghClient.NewClient(nil).WithAuthToken(ghToken)
-	updateRepo := github.NewUpdate(gh)
+	updateRepo := github.New(gh)
 
-	// GetAll
-	updates, err := updateRepo.GetAll(ctx)
+	// GetLatest
+	updates, err := updateRepo.GetLatest(ctx, 3)
 	require.NoError(t, err)
 	require.NotEmpty(t, updates)
 
-	// GetAllIDs
-	updateIDs, err := updateRepo.GetAllIDs(ctx)
-	require.NoError(t, err)
-	require.NotEmpty(t, updateIDs)
-
-	// GetByID
-	update, err := updateRepo.GetByID(ctx, updateIDs[0])
-	require.NoError(t, err)
-	require.Equal(t, updateIDs[0], update.ID)
-	require.NotEmpty(t, update.Version)
-	require.True(t, update.PublishedAt.After(time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)))
-
 	// GetUpdateAllFiles
-	updateFiles, err := updateRepo.GetUpdateAllFiles(ctx, updateIDs[0])
+	updateFiles, err := updateRepo.GetUpdateAllFiles(ctx, updates[0])
 	require.NoError(t, err)
 	require.Greater(t, len(updateFiles), 2)
-	require.Equal(t, updateIDs[0], updateFiles[0].UpdateID)
 	require.NotEmpty(t, updateFiles[0].Filename)
-	require.NotEmpty(t, updateFiles[0].URL.String())
+	require.NotEmpty(t, updateFiles[0].URL)
 
 	// Find smallest asset to download
 	filename := updateFiles[0].Filename
@@ -61,11 +47,15 @@ func TestUpdate(t *testing.T) {
 	}
 
 	// GetUpdateFileByFilename
-	rc, retSize, err := updateRepo.GetUpdateFileByFilename(ctx, updateIDs[0], filename)
+	rc, retSize, err := updateRepo.GetUpdateFileByFilename(ctx, updates[0], filename)
 	require.NoError(t, err)
 	defer rc.Close()
 	body, err := io.ReadAll(rc)
 	require.NoError(t, err)
 	require.Len(t, body, size)
 	require.Equal(t, size, retSize)
+
+	// ForgetUpdate
+	err = updateRepo.ForgetUpdate(ctx, updates[0])
+	require.NoError(t, err)
 }

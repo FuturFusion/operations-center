@@ -181,3 +181,19 @@ func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, id 
 	}()
 	return _d._base.GetUpdateFileByFilename(ctx, id, filename)
 }
+
+// Refresh implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.Debug("=> calling Refresh")
+	defer func() {
+		log := _d._log.With()
+		log.Debug("<= method Refresh finished")
+	}()
+	_d._base.Refresh(ctx)
+}

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v69/github"
+	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -17,31 +18,31 @@ import (
 )
 
 const (
-	ghOrganization     = "lxc"
-	ghRepository       = "incus-os"
-	ghNumberOfReleases = 20
+	ghOrganization = "lxc"
+	ghRepository   = "incus-os"
 )
+
+var GHUpdateSourceSpaceUUID = uuid.MustParse(`00000000-0000-0000-0000-000000000000`)
 
 type update struct {
 	gh *github.Client
 }
 
-var _ provisioning.UpdateRepo = &update{}
+var _ provisioning.UpdateSourcePort = &update{}
 
-func NewUpdate(gh *github.Client) *update {
+func New(gh *github.Client) *update {
 	return &update{
 		gh: gh,
 	}
 }
 
-// GetAll returns a list of updates.
+// GetLatest returns a list of the latest updates available.
 //
-// As of now, GetAll does not actually return all updates. It has a built in
-// limit to return only the 20 most recent updates.
-func (u update) GetAll(ctx context.Context) (provisioning.Updates, error) {
+// The argument limit defines the maximum number of updates, that should be returned.
+func (u update) GetLatest(ctx context.Context, limit int) (provisioning.Updates, error) {
 	ghReleases, _, err := u.gh.Repositories.ListReleases(ctx, ghOrganization, ghRepository, &github.ListOptions{
 		Page:    0,
-		PerPage: ghNumberOfReleases,
+		PerPage: limit,
 	})
 	if err != nil {
 		return nil, err
@@ -60,35 +61,8 @@ func (u update) GetAll(ctx context.Context) (provisioning.Updates, error) {
 	return updates, nil
 }
 
-// GetAllIDs returns a list of updates.
-//
-// As of now, GetAllIDs does not actually return all update IDs. It has a built in
-// limit to return only the IDs of the 20 most recent updates.
-func (u update) GetAllIDs(ctx context.Context) ([]string, error) {
-	updates, err := u.GetAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	ids := make([]string, 0, len(updates))
-	for _, update := range updates {
-		ids = append(ids, update.ID)
-	}
-
-	return ids, nil
-}
-
-func (u update) GetByID(ctx context.Context, id string) (provisioning.Update, error) {
-	ghRelease, err := u.getGHRelease(ctx, id)
-	if err != nil {
-		return provisioning.Update{}, err
-	}
-
-	return fromGHRelease(ghRelease)
-}
-
-func (u update) GetUpdateAllFiles(ctx context.Context, updateID string) (provisioning.UpdateFiles, error) {
-	ghRelease, err := u.getGHRelease(ctx, updateID)
+func (u update) GetUpdateAllFiles(ctx context.Context, update provisioning.Update) (provisioning.UpdateFiles, error) {
+	ghRelease, err := u.getGHRelease(ctx, update)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +75,6 @@ func (u update) GetUpdateAllFiles(ctx context.Context, updateID string) (provisi
 		}
 
 		files = append(files, provisioning.UpdateFile{
-			UpdateID: updateID,
 			Filename: ptr.From(asset.Name),
 			URL:      ptr.From(fileURL),
 			Size:     ptr.From(asset.Size),
@@ -115,8 +88,8 @@ func (u update) GetUpdateAllFiles(ctx context.Context, updateID string) (provisi
 //
 // GetUpdateFileByFilename returns an io.ReadCloser that reads the contents of the specified release asset.
 // It is the caller's responsibility to close the ReadCloser.
-func (u update) GetUpdateFileByFilename(ctx context.Context, updateID string, filename string) (io.ReadCloser, int, error) {
-	ghRelease, err := u.getGHRelease(ctx, updateID)
+func (u update) GetUpdateFileByFilename(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+	ghRelease, err := u.getGHRelease(ctx, update)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -139,8 +112,12 @@ func (u update) GetUpdateFileByFilename(ctx context.Context, updateID string, fi
 	return rc, size, nil
 }
 
-func (u update) getGHRelease(ctx context.Context, id string) (*github.RepositoryRelease, error) {
-	ghReleaseID, err := releaseIDFromID(id)
+func (u update) ForgetUpdate(ctx context.Context, update provisioning.Update) error {
+	return nil
+}
+
+func (u update) getGHRelease(ctx context.Context, update provisioning.Update) (*github.RepositoryRelease, error) {
+	ghReleaseID, err := releaseIDFromID(update.ExternalID)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +141,9 @@ func fromGHRelease(ghRelease *github.RepositoryRelease) (provisioning.Update, er
 	}
 
 	return provisioning.Update{
-		ID:          idFromGHRelease(ghRelease),
+		UUID:        uuidFromGHRelease(ghRelease),
+		ExternalID:  externalIDFromGHRelease(ghRelease),
+		Components:  api.UpdateComponents{},
 		Version:     ptr.From(ghRelease.Name),
 		PublishedAt: ghRelease.PublishedAt.Time,
 		Severity:    api.UpdateSeverityNone,
@@ -173,8 +152,18 @@ func fromGHRelease(ghRelease *github.RepositoryRelease) (provisioning.Update, er
 
 const idSeparator = ":"
 
-func idFromGHRelease(ghRelease *github.RepositoryRelease) string {
+func externalIDFromGHRelease(ghRelease *github.RepositoryRelease) string {
 	return strings.Join([]string{ghOrganization, ghRepository, strconv.FormatInt(*ghRelease.ID, 10)}, idSeparator)
+}
+
+func uuidFromGHRelease(ghRelease *github.RepositoryRelease) uuid.UUID {
+	identifier := strings.Join([]string{
+		ghOrganization,
+		ghRepository,
+		strconv.FormatInt(*ghRelease.ID, 10),
+	}, idSeparator)
+
+	return uuid.NewSHA1(GHUpdateSourceSpaceUUID, []byte(identifier))
 }
 
 func releaseIDFromID(id string) (int64, error) {
