@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -15,7 +16,9 @@ type Config struct {
 	ClientCertificateFilename string `yaml:"-"`
 	ClientKeyFilename         string `yaml:"-"`
 
-	GithubToken string `yaml:"github.token"`
+	UpdatesSource             string        `yaml:"update.source"`
+	UpdatesSourcePollInterval time.Duration `yaml:"-"`
+	GithubToken               string        `yaml:"github.token"`
 
 	// An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
 	TrustedTLSClientCertFingerprints []string `yaml:"trusted_tls_client_cert_fingerprints"`
