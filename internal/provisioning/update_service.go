@@ -3,6 +3,8 @@ package provisioning
 import (
 	"context"
 	"io"
+
+	"github.com/google/uuid"
 )
 
 type updateService struct {
@@ -21,22 +23,32 @@ func (s updateService) GetAll(ctx context.Context) (Updates, error) {
 	return s.repo.GetAll(ctx)
 }
 
-func (s updateService) GetAllIDs(ctx context.Context) ([]string, error) {
-	return s.repo.GetAllIDs(ctx)
+func (s updateService) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
+	return s.repo.GetAllUUIDs(ctx)
 }
 
-func (s updateService) GetByID(ctx context.Context, id string) (Update, error) {
-	return s.repo.GetByID(ctx, id)
+func (s updateService) GetByUUID(ctx context.Context, id uuid.UUID) (*Update, error) {
+	return s.repo.GetByUUID(ctx, id)
 }
 
-func (s updateService) GetUpdateAllFiles(ctx context.Context, updateID string) (UpdateFiles, error) {
-	return s.repo.GetUpdateAllFiles(ctx, updateID)
+func (s updateService) GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (UpdateFiles, error) {
+	update, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return update.Files, nil
 }
 
 // GetUpdateFileByFilename downloads a file of an update.
 //
 // GetUpdateFileByFilename returns an io.ReadCloser that reads the contents of the specified release asset.
 // It is the caller's responsibility to close the ReadCloser.
-func (s updateService) GetUpdateFileByFilename(ctx context.Context, updateID string, filename string) (io.ReadCloser, int, error) {
-	return s.repo.GetUpdateFileByFilename(ctx, updateID, filename)
+func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID, filename string) (io.ReadCloser, int, error) {
+	update, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return s.source.GetUpdateFileByFilename(ctx, *update, filename)
 }

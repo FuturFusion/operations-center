@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -52,8 +53,8 @@ func (_d UpdateServiceWithPrometheus) GetAll(ctx context.Context) (updates provi
 	return _d.base.GetAll(ctx)
 }
 
-// GetAllIDs implements provisioning.UpdateService.
-func (_d UpdateServiceWithPrometheus) GetAllIDs(ctx context.Context) (strings []string, err error) {
+// GetAllUUIDs implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -61,13 +62,13 @@ func (_d UpdateServiceWithPrometheus) GetAllIDs(ctx context.Context) (strings []
 			result = "error"
 		}
 
-		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDs", result).Observe(time.Since(_since).Seconds())
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDs", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDs(ctx)
+	return _d.base.GetAllUUIDs(ctx)
 }
 
-// GetByID implements provisioning.UpdateService.
-func (_d UpdateServiceWithPrometheus) GetByID(ctx context.Context, id string) (update provisioning.Update, err error) {
+// GetByUUID implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (update *provisioning.Update, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -75,13 +76,13 @@ func (_d UpdateServiceWithPrometheus) GetByID(ctx context.Context, id string) (u
 			result = "error"
 		}
 
-		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
+	return _d.base.GetByUUID(ctx, id)
 }
 
 // GetUpdateAllFiles implements provisioning.UpdateService.
-func (_d UpdateServiceWithPrometheus) GetUpdateAllFiles(ctx context.Context, updateID string) (updateFiles provisioning.UpdateFiles, err error) {
+func (_d UpdateServiceWithPrometheus) GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (updateFiles provisioning.UpdateFiles, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -91,11 +92,11 @@ func (_d UpdateServiceWithPrometheus) GetUpdateAllFiles(ctx context.Context, upd
 
 		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdateAllFiles", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetUpdateAllFiles(ctx, updateID)
+	return _d.base.GetUpdateAllFiles(ctx, id)
 }
 
 // GetUpdateFileByFilename implements provisioning.UpdateService.
-func (_d UpdateServiceWithPrometheus) GetUpdateFileByFilename(ctx context.Context, updateID string, filename string) (readCloser io.ReadCloser, n int, err error) {
+func (_d UpdateServiceWithPrometheus) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID, filename string) (readCloser io.ReadCloser, n int, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -105,5 +106,5 @@ func (_d UpdateServiceWithPrometheus) GetUpdateFileByFilename(ctx context.Contex
 
 		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdateFileByFilename", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetUpdateFileByFilename(ctx, updateID, filename)
+	return _d.base.GetUpdateFileByFilename(ctx, id, filename)
 }

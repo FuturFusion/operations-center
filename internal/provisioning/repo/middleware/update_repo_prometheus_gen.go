@@ -5,10 +5,10 @@ package middleware
 
 import (
 	"context"
-	"io"
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -38,6 +38,34 @@ func NewUpdateRepoWithPrometheus(base provisioning.UpdateRepo, instanceName stri
 	}
 }
 
+// Create implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithPrometheus) Create(ctx context.Context, update provisioning.Update) (n int64, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "Create", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Create(ctx, update)
+}
+
+// DeleteByUUID implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteByUUID(ctx, id)
+}
+
 // GetAll implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithPrometheus) GetAll(ctx context.Context) (updates provisioning.Updates, err error) {
 	_since := time.Now()
@@ -52,8 +80,8 @@ func (_d UpdateRepoWithPrometheus) GetAll(ctx context.Context) (updates provisio
 	return _d.base.GetAll(ctx)
 }
 
-// GetAllIDs implements provisioning.UpdateRepo.
-func (_d UpdateRepoWithPrometheus) GetAllIDs(ctx context.Context) (strings []string, err error) {
+// GetAllUUIDs implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithPrometheus) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -61,13 +89,13 @@ func (_d UpdateRepoWithPrometheus) GetAllIDs(ctx context.Context) (strings []str
 			result = "error"
 		}
 
-		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllIDs", result).Observe(time.Since(_since).Seconds())
+		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDs", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetAllIDs(ctx)
+	return _d.base.GetAllUUIDs(ctx)
 }
 
-// GetByID implements provisioning.UpdateRepo.
-func (_d UpdateRepoWithPrometheus) GetByID(ctx context.Context, id string) (update provisioning.Update, err error) {
+// GetByUUID implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (update *provisioning.Update, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -75,35 +103,7 @@ func (_d UpdateRepoWithPrometheus) GetByID(ctx context.Context, id string) (upda
 			result = "error"
 		}
 
-		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByID", result).Observe(time.Since(_since).Seconds())
+		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetByID(ctx, id)
-}
-
-// GetUpdateAllFiles implements provisioning.UpdateRepo.
-func (_d UpdateRepoWithPrometheus) GetUpdateAllFiles(ctx context.Context, updateID string) (updateFiles provisioning.UpdateFiles, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdateAllFiles", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.GetUpdateAllFiles(ctx, updateID)
-}
-
-// GetUpdateFileByFilename implements provisioning.UpdateRepo.
-func (_d UpdateRepoWithPrometheus) GetUpdateFileByFilename(ctx context.Context, updateID string, filename string) (readCloser io.ReadCloser, n int, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdateFileByFilename", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.GetUpdateFileByFilename(ctx, updateID, filename)
+	return _d.base.GetByUUID(ctx, id)
 }

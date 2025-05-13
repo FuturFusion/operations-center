@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type UpdateComponent string
@@ -172,9 +174,8 @@ func (u *UpdateSeverity) Scan(value any) error {
 //
 // swagger:model
 type Update struct {
-	// Opaque ID of the update.
-	// Example: lxc$incus-os$123
-	ID string `json:"id" yaml:"id"`
+	// UUID of the update.
+	UUID uuid.UUID `json:"uuid" yaml:"uuid"`
 
 	// List of Components, that are available with the Update. Allowed entries:
 	// HypervisorOS, Migration Manager, Migration Manager Worker, Operations Center

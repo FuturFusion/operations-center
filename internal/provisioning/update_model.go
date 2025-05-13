@@ -4,11 +4,14 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type Update struct {
 	ID          string
+	UUID        uuid.UUID `db:"primary=yes"`
 	Components  api.UpdateComponents
 	Version     string
 	PublishedAt time.Time

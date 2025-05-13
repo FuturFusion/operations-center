@@ -5,11 +5,11 @@ package middleware
 
 import (
 	"context"
-	"io"
 	"log/slog"
 
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/google/uuid"
 )
 
 // UpdateRepoWithSlog implements provisioning.UpdateRepo that is instrumented with slog logger.
@@ -24,6 +24,67 @@ func NewUpdateRepoWithSlog(base provisioning.UpdateRepo, log *slog.Logger) Updat
 		_base: base,
 		_log:  log,
 	}
+}
+
+// Create implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithSlog) Create(ctx context.Context, update provisioning.Update) (n int64, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("update", update),
+		)
+	}
+	log.Debug("=> calling Create")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Int64("n", n),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method Create returned an error")
+		} else {
+			log.Debug("<= method Create finished")
+		}
+	}()
+	return _d._base.Create(ctx, update)
+}
+
+// DeleteByUUID implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+		)
+	}
+	log.Debug("=> calling DeleteByUUID")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method DeleteByUUID returned an error")
+		} else {
+			log.Debug("<= method DeleteByUUID finished")
+		}
+	}()
+	return _d._base.DeleteByUUID(ctx, id)
 }
 
 // GetAll implements provisioning.UpdateRepo.
@@ -56,20 +117,20 @@ func (_d UpdateRepoWithSlog) GetAll(ctx context.Context) (updates provisioning.U
 	return _d._base.GetAll(ctx)
 }
 
-// GetAllIDs implements provisioning.UpdateRepo.
-func (_d UpdateRepoWithSlog) GetAllIDs(ctx context.Context) (strings []string, err error) {
+// GetAllUUIDs implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling GetAllIDs")
+	log.Debug("=> calling GetAllUUIDs")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("strings", strings),
+				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
@@ -78,24 +139,24 @@ func (_d UpdateRepoWithSlog) GetAllIDs(ctx context.Context) (strings []string, e
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllIDs returned an error")
+			log.Error("<= method GetAllUUIDs returned an error")
 		} else {
-			log.Debug("<= method GetAllIDs finished")
+			log.Debug("<= method GetAllUUIDs finished")
 		}
 	}()
-	return _d._base.GetAllIDs(ctx)
+	return _d._base.GetAllUUIDs(ctx)
 }
 
-// GetByID implements provisioning.UpdateRepo.
-func (_d UpdateRepoWithSlog) GetByID(ctx context.Context, id string) (update provisioning.Update, err error) {
+// GetByUUID implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (update *provisioning.Update, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("id", id),
+			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling GetByID")
+	log.Debug("=> calling GetByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -109,74 +170,10 @@ func (_d UpdateRepoWithSlog) GetByID(ctx context.Context, id string) (update pro
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByID returned an error")
+			log.Error("<= method GetByUUID returned an error")
 		} else {
-			log.Debug("<= method GetByID finished")
+			log.Debug("<= method GetByUUID finished")
 		}
 	}()
-	return _d._base.GetByID(ctx, id)
-}
-
-// GetUpdateAllFiles implements provisioning.UpdateRepo.
-func (_d UpdateRepoWithSlog) GetUpdateAllFiles(ctx context.Context, updateID string) (updateFiles provisioning.UpdateFiles, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.String("updateID", updateID),
-		)
-	}
-	log.Debug("=> calling GetUpdateAllFiles")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("updateFiles", updateFiles),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("<= method GetUpdateAllFiles returned an error")
-		} else {
-			log.Debug("<= method GetUpdateAllFiles finished")
-		}
-	}()
-	return _d._base.GetUpdateAllFiles(ctx, updateID)
-}
-
-// GetUpdateFileByFilename implements provisioning.UpdateRepo.
-func (_d UpdateRepoWithSlog) GetUpdateFileByFilename(ctx context.Context, updateID string, filename string) (readCloser io.ReadCloser, n int, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.String("updateID", updateID),
-			slog.String("filename", filename),
-		)
-	}
-	log.Debug("=> calling GetUpdateFileByFilename")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("readCloser", readCloser),
-				slog.Int("n", n),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			log.Error("<= method GetUpdateFileByFilename returned an error")
-		} else {
-			log.Debug("<= method GetUpdateFileByFilename finished")
-		}
-	}()
-	return _d._base.GetUpdateFileByFilename(ctx, updateID, filename)
+	return _d._base.GetByUUID(ctx, id)
 }
