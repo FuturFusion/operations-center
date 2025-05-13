@@ -133,7 +133,6 @@ func (_d UpdateSourcePortWithSlog) GetUpdateFileByFilename(ctx context.Context, 
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				// slog.Any("readCloser", reflect.TypeOf(readCloser).Size()),
 				slog.Any("readCloser", readCloser),
 				slog.Int("n", n),
 				slog.Any("err", err),

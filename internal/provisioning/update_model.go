@@ -4,7 +4,6 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,9 +26,9 @@ type Update struct {
 type Updates []Update
 
 type UpdateFile struct {
-	Filename string  `json:"filename"`
-	URL      url.URL `json:"url"`
-	Size     int     `json:"size"`
+	Filename string `json:"filename"`
+	URL      string `json:"url"`
+	Size     int    `json:"size"`
 }
 
 type UpdateFiles []UpdateFile

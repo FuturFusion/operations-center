@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 
@@ -69,14 +68,9 @@ func (u update) GetUpdateAllFiles(ctx context.Context, update provisioning.Updat
 
 	files := make(provisioning.UpdateFiles, 0, len(ghRelease.Assets))
 	for _, asset := range ghRelease.Assets {
-		fileURL, err := url.Parse(ptr.From(asset.URL))
-		if err != nil {
-			return nil, err
-		}
-
 		files = append(files, provisioning.UpdateFile{
 			Filename: ptr.From(asset.Name),
-			URL:      ptr.From(fileURL),
+			URL:      ptr.From(asset.URL),
 			Size:     ptr.From(asset.Size),
 		})
 	}

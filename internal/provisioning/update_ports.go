@@ -16,7 +16,7 @@ type UpdateService interface {
 	GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (UpdateFiles, error)
 	GetUpdateFileByFilename(ctx context.Context, id uuid.UUID, filename string) (io.ReadCloser, int, error)
 
-	Refresh(ctx context.Context)
+	Refresh(ctx context.Context) error
 }
 
 type UpdateRepo interface {

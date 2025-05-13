@@ -5,13 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"sort"
 
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
@@ -65,7 +63,7 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 	return s.source.GetUpdateFileByFilename(ctx, *update, filename)
 }
 
-func (s updateService) Refresh(ctx context.Context) {
+func (s updateService) Refresh(ctx context.Context) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		updates, err := s.source.GetLatest(ctx, s.latestLimit)
 		if err != nil {
@@ -92,6 +90,10 @@ func (s updateService) Refresh(ctx context.Context) {
 			update.Files = updateFiles
 
 			for _, updateFile := range updateFiles {
+				if ctx.Err() != nil {
+					return fmt.Errorf("stop refresh, context cancelled: %w", context.Cause(ctx))
+				}
+
 				err := func() (err error) {
 					stream, _, err := s.source.GetUpdateFileByFilename(ctx, update, updateFile.Filename)
 					if err != nil {
@@ -101,7 +103,7 @@ func (s updateService) Refresh(ctx context.Context) {
 					defer func() {
 						closeErr := stream.Close()
 						if closeErr != nil {
-							err = errors.Join(err, fmt.Errorf(`Failed to close stream for file %q of update "%s:%s": %w`, updateFile.Filename, update.Channel, update.Version, err))
+							err = errors.Join(err, fmt.Errorf(`Failed to close stream for file %q of update "%s:%s": %w`, updateFile.Filename, update.Channel, update.Version, closeErr))
 						}
 					}()
 
@@ -120,7 +122,6 @@ func (s updateService) Refresh(ctx context.Context) {
 				}
 			}
 
-			// FIXME: add all the files to the update
 			_, err = s.repo.Create(ctx, update)
 			if err != nil {
 				return fmt.Errorf("Failed to persist the update in the repository: %w", err)
@@ -153,8 +154,8 @@ func (s updateService) Refresh(ctx context.Context) {
 		return nil
 	})
 	if err != nil {
-		slog.Error("Unable to refresh updates from source", logger.Err(err))
+		return fmt.Errorf("Unable to refresh updates from source: %w", err)
 	}
 
-	return
+	return nil
 }

@@ -183,7 +183,7 @@ func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, id 
 }
 
 // Refresh implements provisioning.UpdateService.
-func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) {
+func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -193,7 +193,20 @@ func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) {
 	log.Debug("=> calling Refresh")
 	defer func() {
 		log := _d._log.With()
-		log.Debug("<= method Refresh finished")
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			log.Error("<= method Refresh returned an error")
+		} else {
+			log.Debug("<= method Refresh finished")
+		}
 	}()
-	_d._base.Refresh(ctx)
+	return _d._base.Refresh(ctx)
 }

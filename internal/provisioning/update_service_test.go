@@ -5,12 +5,18 @@ import (
 	"context"
 	"io"
 	"testing"
+	"testing/iotest"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
+	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
+	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/testing/queue"
 )
 
 func TestUpdateService_GetAll(t *testing.T) {
@@ -38,13 +44,13 @@ func TestUpdateService_GetAll(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &mock.UpdateRepoMock{
+			repo := &repoMock.UpdateRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
 					return tc.repoGetAllUpdates, tc.repoGetAllErr
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo)
+			updateSvc := provisioning.NewUpdateService(repo, nil, 3)
 
 			// Run test
 			updates, err := updateSvc.GetAll(context.Background())
@@ -56,23 +62,72 @@ func TestUpdateService_GetAll(t *testing.T) {
 	}
 }
 
-func TestUpdateService_GetAllIDs(t *testing.T) {
+func TestUpdateService_GetAllUUIDs(t *testing.T) {
 	tests := []struct {
-		name             string
-		repoGetAllIDs    []string
-		repoGetAllIDsErr error
+		name               string
+		repoGetAllUUIDs    []uuid.UUID
+		repoGetAllUUIDsErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name:          "success",
-			repoGetAllIDs: []string{"foo", "bar"},
+			name: "success",
+			repoGetAllUUIDs: []uuid.UUID{
+				uuid.MustParse(`8926daa1-3a48-4739-9a82-e32ebd22d343`),
+				uuid.MustParse(`84156d67-0bcb-4b60-ac23-2c67f552fb8c`),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:               "error - repo",
+			repoGetAllUUIDsErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.UpdateRepoMock{
+				GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
+					return tc.repoGetAllUUIDs, tc.repoGetAllUUIDsErr
+				},
+			}
+
+			updateSvc := provisioning.NewUpdateService(repo, nil, 3)
+
+			// Run test
+			updates, err := updateSvc.GetAllUUIDs(context.Background())
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.repoGetAllUUIDs, updates)
+		})
+	}
+}
+
+func TestUpdateService_GetByUUID(t *testing.T) {
+	tests := []struct {
+		name                string
+		idArg               uuid.UUID
+		repoGetByUUIDUpdate *provisioning.Update
+		repoGetByUUIDErr    error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:                "success",
+			idArg:               uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
+			repoGetByUUIDUpdate: &provisioning.Update{},
 
 			assertErr: require.NoError,
 		},
 		{
 			name:             "error - repo",
-			repoGetAllIDsErr: boom.Error,
+			idArg:            uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
+			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -81,90 +136,53 @@ func TestUpdateService_GetAllIDs(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &mock.UpdateRepoMock{
-				GetAllIDsFunc: func(ctx context.Context) ([]string, error) {
-					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
+			repo := &repoMock.UpdateRepoMock{
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
+					return tc.repoGetByUUIDUpdate, tc.repoGetByUUIDErr
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo)
+			updateSvc := provisioning.NewUpdateService(repo, nil, 3)
 
 			// Run test
-			updates, err := updateSvc.GetAllIDs(context.Background())
+			update, err := updateSvc.GetByUUID(context.Background(), tc.idArg)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetAllIDs, updates)
-		})
-	}
-}
-
-func TestUpdateService_GetByID(t *testing.T) {
-	tests := []struct {
-		name              string
-		idArg             string
-		repoGetByIDUpdate provisioning.Update
-		repoGetByIDErr    error
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name:              "success",
-			idArg:             "foo",
-			repoGetByIDUpdate: provisioning.Update{},
-
-			assertErr: require.NoError,
-		},
-		{
-			name:           "error - repo",
-			idArg:          "foo",
-			repoGetByIDErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			repo := &mock.UpdateRepoMock{
-				GetByIDFunc: func(ctx context.Context, id string) (provisioning.Update, error) {
-					return tc.repoGetByIDUpdate, tc.repoGetByIDErr
-				},
-			}
-
-			updateSvc := provisioning.NewUpdateService(repo)
-
-			// Run test
-			update, err := updateSvc.GetByID(context.Background(), tc.idArg)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByIDUpdate, update)
+			require.Equal(t, tc.repoGetByUUIDUpdate, update)
 		})
 	}
 }
 
 func TestUpdateService_GetUpdateAllFiles(t *testing.T) {
 	tests := []struct {
-		name                     string
-		idArg                    string
-		repoGetUpdateAllFiles    provisioning.UpdateFiles
-		repoGetUpdateAllFilesErr error
+		name                string
+		idArg               uuid.UUID
+		repoGetByUUIDUpdate *provisioning.Update
+		repoGetByUUIDErr    error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name:                  "success",
-			idArg:                 "foo",
-			repoGetUpdateAllFiles: provisioning.UpdateFiles{},
+			name:  "success",
+			idArg: uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
+			repoGetByUUIDUpdate: &provisioning.Update{
+				Files: provisioning.UpdateFiles{
+					provisioning.UpdateFile{
+						Filename: "dummy.txt",
+						URL:      "https://localhost/dummy.txt",
+						Size:     1,
+					},
+				},
+			},
 
 			assertErr: require.NoError,
 		},
 		{
-			name:                     "error - repo",
-			idArg:                    "foo",
-			repoGetUpdateAllFilesErr: boom.Error,
+			name:                "error - repo",
+			idArg:               uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
+			repoGetByUUIDErr:    boom.Error,
+			repoGetByUUIDUpdate: &provisioning.Update{},
 
 			assertErr: boom.ErrorIs,
 		},
@@ -173,51 +191,63 @@ func TestUpdateService_GetUpdateAllFiles(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &mock.UpdateRepoMock{
-				GetUpdateAllFilesFunc: func(ctx context.Context, updateID string) (provisioning.UpdateFiles, error) {
-					return tc.repoGetUpdateAllFiles, tc.repoGetUpdateAllFilesErr
+			repo := &repoMock.UpdateRepoMock{
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
+					return tc.repoGetByUUIDUpdate, tc.repoGetByUUIDErr
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo)
+			updateSvc := provisioning.NewUpdateService(repo, nil, 3)
 
 			// Run test
 			updateFiles, err := updateSvc.GetUpdateAllFiles(context.Background(), tc.idArg)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetUpdateAllFiles, updateFiles)
+			require.Equal(t, tc.repoGetByUUIDUpdate.Files, updateFiles)
 		})
 	}
 }
 
 func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 	tests := []struct {
-		name                            string
-		idArg                           string
-		repoGetUpdateFileByFilename     io.ReadCloser
-		repoGetUpdateFileByFilenameSize int
-		repoGetUpdateFileByFilenameErr  error
+		name                              string
+		idArg                             uuid.UUID
+		repoGetByUUIDUpdate               *provisioning.Update
+		repoGetByUUIDErr                  error
+		sourceGetUpdateFileByFilename     io.ReadCloser
+		sourceGetUpdateFileByFilenameSize int
+		sourceGetUpdateFileByFilenameErr  error
 
 		assertErr require.ErrorAssertionFunc
 		wantBody  []byte
 		wantSize  int
 	}{
 		{
-			name:                            "success",
-			idArg:                           "foo",
-			repoGetUpdateFileByFilename:     io.NopCloser(bytes.NewBuffer([]byte("foobar"))),
-			repoGetUpdateFileByFilenameSize: 6,
+			name:                              "success",
+			idArg:                             uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
+			repoGetByUUIDUpdate:               &provisioning.Update{},
+			sourceGetUpdateFileByFilename:     io.NopCloser(bytes.NewBuffer([]byte("foobar"))),
+			sourceGetUpdateFileByFilenameSize: 6,
 
 			assertErr: require.NoError,
 			wantBody:  []byte("foobar"),
 			wantSize:  6,
 		},
 		{
-			name:                           "error - repo",
-			idArg:                          "foo",
-			repoGetUpdateFileByFilename:    io.NopCloser(bytes.NewBuffer([]byte{})),
-			repoGetUpdateFileByFilenameErr: boom.Error,
+			name:             "error - repo",
+			idArg:            uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
+			repoGetByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			wantBody:  []byte{},
+		},
+		{
+			name:                             "error - source",
+			idArg:                            uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
+			repoGetByUUIDUpdate:              &provisioning.Update{},
+			sourceGetUpdateFileByFilename:    io.NopCloser(bytes.NewBuffer([]byte{})),
+			sourceGetUpdateFileByFilenameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			wantBody:  []byte{},
@@ -227,24 +257,515 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &mock.UpdateRepoMock{
-				GetUpdateFileByFilenameFunc: func(ctx context.Context, updateID, filename string) (io.ReadCloser, int, error) {
-					return tc.repoGetUpdateFileByFilename, tc.repoGetUpdateFileByFilenameSize, tc.repoGetUpdateFileByFilenameErr
+			repo := &repoMock.UpdateRepoMock{
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
+					return tc.repoGetByUUIDUpdate, tc.repoGetByUUIDErr
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo)
+			source := &adapterMock.UpdateSourcePortMock{
+				GetUpdateFileByFilenameFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+					return tc.sourceGetUpdateFileByFilename, tc.sourceGetUpdateFileByFilenameSize, tc.sourceGetUpdateFileByFilenameErr
+				},
+			}
+
+			updateSvc := provisioning.NewUpdateService(repo, source, 3)
 
 			// Run test
 			rc, size, err := updateSvc.GetUpdateFileByFilename(context.Background(), tc.idArg, "foo.bar")
 
 			// Assert
 			tc.assertErr(t, err)
-			defer rc.Close()
-			body, err := io.ReadAll(rc)
-			require.NoError(t, err)
-			require.Equal(t, tc.wantBody, body)
-			require.Equal(t, tc.wantSize, size)
+			if rc != nil {
+				defer rc.Close()
+				body, err := io.ReadAll(rc)
+
+				require.NoError(t, err)
+				require.Equal(t, tc.wantBody, body)
+				require.Equal(t, tc.wantSize, size)
+			}
 		})
 	}
 }
+
+func TestUpdateService_Refresh(t *testing.T) {
+	tests := []struct {
+		name string
+		ctx  context.Context
+
+		sourceGetLatestUpdates        provisioning.Updates
+		sourceGetLatestErr            error
+		sourceGetUpdateAllFiles       []queue.Item[provisioning.UpdateFiles]
+		sourceGetUpdateFileByFilename []queue.Item[struct {
+			stream io.ReadCloser
+			size   int
+		}]
+		sourceForgetUpdate []queue.Item[struct{}]
+
+		repoGetByUUID     []queue.Item[*provisioning.Update]
+		repoCreate        []queue.Item[int64]
+		repoGetAllUpdates provisioning.Updates
+		repoGetAllErr     error
+		repoDeleteByUUID  []queue.Item[struct{}]
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		// Success cases
+		{
+			name: "success - no updates, no state in the DB",
+			ctx:  context.Background(),
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - one update, already present",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				provisioning.Update{},
+			},
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				{
+					Value: &provisioning.Update{},
+					Err:   nil,
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - one update, not present, without files",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				provisioning.Update{},
+			},
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				{
+					Err: domain.ErrNotFound, // Update is not yet present in the DB.
+				},
+			},
+			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+				{
+					Value: provisioning.UpdateFiles{},
+				},
+			},
+			repoCreate: []queue.Item[int64]{
+				{},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - one update, not present, with files",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				provisioning.Update{},
+			},
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				{
+					Err: domain.ErrNotFound, // Update is not yet present in the DB.
+				},
+			},
+			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+				{
+					Value: provisioning.UpdateFiles{
+						provisioning.UpdateFile{
+							Filename: "dummy.txt",
+							URL:      "http://localhost/dummy.txt",
+							Size:     5,
+						},
+					},
+				},
+			},
+			sourceGetUpdateFileByFilename: []queue.Item[struct {
+				stream io.ReadCloser
+				size   int
+			}]{
+				{
+					Value: struct {
+						stream io.ReadCloser
+						size   int
+					}{
+						stream: io.NopCloser(bytes.NewBufferString(`dummy`)),
+						size:   5,
+					},
+				},
+			},
+			repoCreate: []queue.Item[int64]{
+				{},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - no updates, cleanup state in DB",
+			ctx:  context.Background(),
+			repoGetAllUpdates: provisioning.Updates{
+				{
+					UUID:        uuid.MustParse(`223795ef-a126-4e91-8d19-9d550ff928d6`),
+					PublishedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+				},
+				{
+					UUID:        uuid.MustParse(`af49c1b9-4fdf-4542-a113-456316d045f4`),
+					PublishedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
+				},
+			},
+			sourceForgetUpdate: []queue.Item[struct{}]{
+				{},
+			},
+			repoDeleteByUUID: []queue.Item[struct{}]{
+				{},
+			},
+
+			assertErr: require.NoError,
+		},
+
+		// Error cases
+		{
+			name:               "error - source.GetLatest",
+			ctx:                context.Background(),
+			sourceGetLatestErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.GetByUUID",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				provisioning.Update{},
+			},
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - source.GetUpdateAllFiles",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				provisioning.Update{},
+			},
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				{
+					Err: domain.ErrNotFound, // Update is not yet present in the DB.
+				},
+			},
+			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - context cancelled",
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancelCause(context.Background())
+				cancel(boom.Error)
+				return ctx
+			}(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				provisioning.Update{},
+			},
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				{
+					Err: domain.ErrNotFound, // Update is not yet present in the DB.
+				},
+			},
+			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+				{
+					Value: provisioning.UpdateFiles{
+						provisioning.UpdateFile{
+							Filename: "dummy.txt",
+							URL:      "http://localhost/dummy.txt",
+							Size:     5,
+						},
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - source.GetUpdateFileByFilename",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				provisioning.Update{},
+			},
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				{
+					Err: domain.ErrNotFound, // Update is not yet present in the DB.
+				},
+			},
+			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+				{
+					Value: provisioning.UpdateFiles{
+						provisioning.UpdateFile{
+							Filename: "dummy.txt",
+							URL:      "http://localhost/dummy.txt",
+							Size:     5,
+						},
+					},
+				},
+			},
+			sourceGetUpdateFileByFilename: []queue.Item[struct {
+				stream io.ReadCloser
+				size   int
+			}]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - file download error",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				provisioning.Update{},
+			},
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				{
+					Err: domain.ErrNotFound, // Update is not yet present in the DB.
+				},
+			},
+			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+				{
+					Value: provisioning.UpdateFiles{
+						provisioning.UpdateFile{
+							Filename: "dummy.txt",
+							URL:      "http://localhost/dummy.txt",
+							Size:     5,
+						},
+					},
+				},
+			},
+			sourceGetUpdateFileByFilename: []queue.Item[struct {
+				stream io.ReadCloser
+				size   int
+			}]{
+				{
+					Value: struct {
+						stream io.ReadCloser
+						size   int
+					}{
+						stream: io.NopCloser(iotest.ErrReader(boom.Error)),
+						size:   5,
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - file download close error",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				provisioning.Update{},
+			},
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				{
+					Err: domain.ErrNotFound, // Update is not yet present in the DB.
+				},
+			},
+			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+				{
+					Value: provisioning.UpdateFiles{
+						provisioning.UpdateFile{
+							Filename: "dummy.txt",
+							URL:      "http://localhost/dummy.txt",
+							Size:     5,
+						},
+					},
+				},
+			},
+			sourceGetUpdateFileByFilename: []queue.Item[struct {
+				stream io.ReadCloser
+				size   int
+			}]{
+				{
+					Value: struct {
+						stream io.ReadCloser
+						size   int
+					}{
+						stream: func() io.ReadCloser {
+							return errCloser(bytes.NewBufferString(``), boom.Error)
+						}(),
+						size: 5,
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.Create",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				provisioning.Update{},
+			},
+			repoGetByUUID: []queue.Item[*provisioning.Update]{
+				{
+					Err: domain.ErrNotFound, // Update is not yet present in the DB.
+				},
+			},
+			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+				{
+					Value: provisioning.UpdateFiles{
+						provisioning.UpdateFile{
+							Filename: "dummy.txt",
+							URL:      "http://localhost/dummy.txt",
+							Size:     5,
+						},
+					},
+				},
+			},
+			sourceGetUpdateFileByFilename: []queue.Item[struct {
+				stream io.ReadCloser
+				size   int
+			}]{
+				{
+					Value: struct {
+						stream io.ReadCloser
+						size   int
+					}{
+						stream: io.NopCloser(bytes.NewBufferString(`dummy`)),
+						size:   5,
+					},
+				},
+			},
+			repoCreate: []queue.Item[int64]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:          "error - repo.GetAll",
+			ctx:           context.Background(),
+			repoGetAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - source.ForgetUpdate",
+			ctx:  context.Background(),
+			repoGetAllUpdates: provisioning.Updates{
+				{
+					UUID:        uuid.MustParse(`223795ef-a126-4e91-8d19-9d550ff928d6`),
+					PublishedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+				},
+				{
+					UUID:        uuid.MustParse(`af49c1b9-4fdf-4542-a113-456316d045f4`),
+					PublishedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
+				},
+			},
+			sourceForgetUpdate: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.DeleteByUUID",
+			ctx:  context.Background(),
+			repoGetAllUpdates: provisioning.Updates{
+				{
+					UUID:        uuid.MustParse(`223795ef-a126-4e91-8d19-9d550ff928d6`),
+					PublishedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+				},
+				{
+					UUID:        uuid.MustParse(`af49c1b9-4fdf-4542-a113-456316d045f4`),
+					PublishedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
+				},
+			},
+			sourceForgetUpdate: []queue.Item[struct{}]{
+				{},
+			},
+			repoDeleteByUUID: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.UpdateRepoMock{
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
+					return queue.Pop(t, &tc.repoGetByUUID)
+				},
+				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
+					return tc.repoGetAllUpdates, tc.repoGetAllErr
+				},
+				CreateFunc: func(ctx context.Context, update provisioning.Update) (int64, error) {
+					return queue.Pop(t, &tc.repoCreate)
+				},
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					_, err := queue.Pop(t, &tc.repoDeleteByUUID)
+					return err
+				},
+			}
+
+			source := &adapterMock.UpdateSourcePortMock{
+				GetLatestFunc: func(ctx context.Context, limit int) (provisioning.Updates, error) {
+					return tc.sourceGetLatestUpdates, tc.sourceGetLatestErr
+				},
+				GetUpdateAllFilesFunc: func(ctx context.Context, update provisioning.Update) (provisioning.UpdateFiles, error) {
+					return queue.Pop(t, &tc.sourceGetUpdateAllFiles)
+				},
+				GetUpdateFileByFilenameFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+					value, err := queue.Pop(t, &tc.sourceGetUpdateFileByFilename)
+					return value.stream, value.size, err
+				},
+				ForgetUpdateFunc: func(ctx context.Context, update provisioning.Update) error {
+					_, err := queue.Pop(t, &tc.sourceForgetUpdate)
+					return err
+				},
+			}
+
+			updateSvc := provisioning.NewUpdateService(repo, source, 1)
+
+			// Run test
+			err := updateSvc.Refresh(tc.ctx)
+
+			// Assert
+			tc.assertErr(t, err)
+
+			// Ensure queues are completely drained.
+			require.Empty(t, tc.sourceGetUpdateAllFiles)
+			require.Empty(t, tc.sourceGetUpdateFileByFilename)
+			require.Empty(t, tc.sourceForgetUpdate)
+			require.Empty(t, tc.repoGetByUUID)
+			require.Empty(t, tc.repoCreate)
+			require.Empty(t, tc.repoDeleteByUUID)
+		})
+	}
+}
+
+func errCloser(r io.Reader, err error) io.ReadCloser {
+	return nopCloser{
+		Reader: r,
+		err:    err,
+	}
+}
+
+type nopCloser struct {
+	io.Reader
+
+	err error
+}
+
+func (n nopCloser) Close() error { return n.err }

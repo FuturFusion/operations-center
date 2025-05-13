@@ -264,7 +264,7 @@ func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
 	for _, updateFile := range updateFiles {
 		result = append(result, api.UpdateFile{
 			Filename: updateFile.Filename,
-			URL:      updateFile.URL.String(),
+			URL:      updateFile.URL,
 			Size:     updateFile.Size,
 		})
 	}
