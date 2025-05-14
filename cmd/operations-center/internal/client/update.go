@@ -41,3 +41,18 @@ func (c OperationsCenterClient) GetUpdate(id string) (api.Update, error) {
 
 	return update, nil
 }
+
+func (c OperationsCenterClient) GetUpdateFiles(id string) ([]api.UpdateFile, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/provisioning/updates", id, "files"), nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	updateFiles := []api.UpdateFile{}
+	err = json.Unmarshal(response.Metadata, &updateFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	return updateFiles, nil
+}
