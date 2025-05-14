@@ -14,16 +14,32 @@ import (
 
 // NetworkZoneServiceWithSlog implements inventory.NetworkZoneService that is instrumented with slog logger.
 type NetworkZoneServiceWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkZoneService
+	_log                  *slog.Logger
+	_base                 inventory.NetworkZoneService
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkZoneServiceWithSlogOption func(s *NetworkZoneServiceWithSlog)
+
+func NetworkZoneServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkZoneServiceWithSlogOption {
+	return func(_base *NetworkZoneServiceWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkZoneServiceWithSlog instruments an implementation of the inventory.NetworkZoneService with simple logging.
-func NewNetworkZoneServiceWithSlog(base inventory.NetworkZoneService, log *slog.Logger) NetworkZoneServiceWithSlog {
-	return NetworkZoneServiceWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkZoneServiceWithSlog(base inventory.NetworkZoneService, log *slog.Logger, opts ...NetworkZoneServiceWithSlogOption) NetworkZoneServiceWithSlog {
+	this := NetworkZoneServiceWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetAllUUIDsWithFilter implements inventory.NetworkZoneService.
@@ -49,7 +65,11 @@ func (_d NetworkZoneServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, 
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
@@ -80,7 +100,11 @@ func (_d NetworkZoneServiceWithSlog) GetAllWithFilter(ctx context.Context, filte
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -111,7 +135,11 @@ func (_d NetworkZoneServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -141,7 +169,11 @@ func (_d NetworkZoneServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.U
 			}
 		}
 		if err != nil {
-			log.Error("<= method ResyncByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method ResyncByUUID returned an informative error")
+			} else {
+				log.Error("<= method ResyncByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method ResyncByUUID finished")
 		}
@@ -171,7 +203,11 @@ func (_d NetworkZoneServiceWithSlog) SyncCluster(ctx context.Context, cluster st
 			}
 		}
 		if err != nil {
-			log.Error("<= method SyncCluster returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method SyncCluster returned an informative error")
+			} else {
+				log.Error("<= method SyncCluster returned an error")
+			}
 		} else {
 			log.Debug("<= method SyncCluster finished")
 		}

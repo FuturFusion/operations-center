@@ -13,16 +13,32 @@ import (
 
 // ServerRepoWithSlog implements provisioning.ServerRepo that is instrumented with slog logger.
 type ServerRepoWithSlog struct {
-	_log  *slog.Logger
-	_base provisioning.ServerRepo
+	_log                  *slog.Logger
+	_base                 provisioning.ServerRepo
+	_isInformativeErrFunc func(error) bool
+}
+
+type ServerRepoWithSlogOption func(s *ServerRepoWithSlog)
+
+func ServerRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ServerRepoWithSlogOption {
+	return func(_base *ServerRepoWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewServerRepoWithSlog instruments an implementation of the provisioning.ServerRepo with simple logging.
-func NewServerRepoWithSlog(base provisioning.ServerRepo, log *slog.Logger) ServerRepoWithSlog {
-	return ServerRepoWithSlog{
-		_base: base,
-		_log:  log,
+func NewServerRepoWithSlog(base provisioning.ServerRepo, log *slog.Logger, opts ...ServerRepoWithSlogOption) ServerRepoWithSlog {
+	this := ServerRepoWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // Create implements provisioning.ServerRepo.
@@ -48,7 +64,11 @@ func (_d ServerRepoWithSlog) Create(ctx context.Context, server provisioning.Ser
 			}
 		}
 		if err != nil {
-			log.Error("<= method Create returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Create returned an informative error")
+			} else {
+				log.Error("<= method Create returned an error")
+			}
 		} else {
 			log.Debug("<= method Create finished")
 		}
@@ -78,7 +98,11 @@ func (_d ServerRepoWithSlog) DeleteByName(ctx context.Context, name string) (err
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByName returned an informative error")
+			} else {
+				log.Error("<= method DeleteByName returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByName finished")
 		}
@@ -108,7 +132,11 @@ func (_d ServerRepoWithSlog) GetAll(ctx context.Context) (servers provisioning.S
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAll returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAll returned an informative error")
+			} else {
+				log.Error("<= method GetAll returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAll finished")
 		}
@@ -138,7 +166,11 @@ func (_d ServerRepoWithSlog) GetAllNames(ctx context.Context) (strings []string,
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllNames returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllNames returned an informative error")
+			} else {
+				log.Error("<= method GetAllNames returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllNames finished")
 		}
@@ -169,7 +201,11 @@ func (_d ServerRepoWithSlog) GetAllNamesWithFilter(ctx context.Context, filter p
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllNamesWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllNamesWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllNamesWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllNamesWithFilter finished")
 		}
@@ -200,7 +236,11 @@ func (_d ServerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter provis
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -231,7 +271,11 @@ func (_d ServerRepoWithSlog) GetByName(ctx context.Context, name string) (server
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByName returned an informative error")
+			} else {
+				log.Error("<= method GetByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByName finished")
 		}
@@ -262,7 +306,11 @@ func (_d ServerRepoWithSlog) Rename(ctx context.Context, oldName string, newName
 			}
 		}
 		if err != nil {
-			log.Error("<= method Rename returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Rename returned an informative error")
+			} else {
+				log.Error("<= method Rename returned an error")
+			}
 		} else {
 			log.Debug("<= method Rename finished")
 		}
@@ -292,7 +340,11 @@ func (_d ServerRepoWithSlog) Update(ctx context.Context, server provisioning.Ser
 			}
 		}
 		if err != nil {
-			log.Error("<= method Update returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Update returned an informative error")
+			} else {
+				log.Error("<= method Update returned an error")
+			}
 		} else {
 			log.Debug("<= method Update finished")
 		}

@@ -14,16 +14,32 @@ import (
 
 // NetworkPeerServiceWithSlog implements inventory.NetworkPeerService that is instrumented with slog logger.
 type NetworkPeerServiceWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkPeerService
+	_log                  *slog.Logger
+	_base                 inventory.NetworkPeerService
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkPeerServiceWithSlogOption func(s *NetworkPeerServiceWithSlog)
+
+func NetworkPeerServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkPeerServiceWithSlogOption {
+	return func(_base *NetworkPeerServiceWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkPeerServiceWithSlog instruments an implementation of the inventory.NetworkPeerService with simple logging.
-func NewNetworkPeerServiceWithSlog(base inventory.NetworkPeerService, log *slog.Logger) NetworkPeerServiceWithSlog {
-	return NetworkPeerServiceWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkPeerServiceWithSlog(base inventory.NetworkPeerService, log *slog.Logger, opts ...NetworkPeerServiceWithSlogOption) NetworkPeerServiceWithSlog {
+	this := NetworkPeerServiceWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetAllUUIDsWithFilter implements inventory.NetworkPeerService.
@@ -49,7 +65,11 @@ func (_d NetworkPeerServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, 
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
@@ -80,7 +100,11 @@ func (_d NetworkPeerServiceWithSlog) GetAllWithFilter(ctx context.Context, filte
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -111,7 +135,11 @@ func (_d NetworkPeerServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -141,7 +169,11 @@ func (_d NetworkPeerServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.U
 			}
 		}
 		if err != nil {
-			log.Error("<= method ResyncByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method ResyncByUUID returned an informative error")
+			} else {
+				log.Error("<= method ResyncByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method ResyncByUUID finished")
 		}
@@ -171,7 +203,11 @@ func (_d NetworkPeerServiceWithSlog) SyncCluster(ctx context.Context, cluster st
 			}
 		}
 		if err != nil {
-			log.Error("<= method SyncCluster returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method SyncCluster returned an informative error")
+			} else {
+				log.Error("<= method SyncCluster returned an error")
+			}
 		} else {
 			log.Debug("<= method SyncCluster finished")
 		}

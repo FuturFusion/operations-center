@@ -14,16 +14,32 @@ import (
 
 // StorageBucketServiceWithSlog implements inventory.StorageBucketService that is instrumented with slog logger.
 type StorageBucketServiceWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.StorageBucketService
+	_log                  *slog.Logger
+	_base                 inventory.StorageBucketService
+	_isInformativeErrFunc func(error) bool
+}
+
+type StorageBucketServiceWithSlogOption func(s *StorageBucketServiceWithSlog)
+
+func StorageBucketServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) StorageBucketServiceWithSlogOption {
+	return func(_base *StorageBucketServiceWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewStorageBucketServiceWithSlog instruments an implementation of the inventory.StorageBucketService with simple logging.
-func NewStorageBucketServiceWithSlog(base inventory.StorageBucketService, log *slog.Logger) StorageBucketServiceWithSlog {
-	return StorageBucketServiceWithSlog{
-		_base: base,
-		_log:  log,
+func NewStorageBucketServiceWithSlog(base inventory.StorageBucketService, log *slog.Logger, opts ...StorageBucketServiceWithSlogOption) StorageBucketServiceWithSlog {
+	this := StorageBucketServiceWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetAllUUIDsWithFilter implements inventory.StorageBucketService.
@@ -49,7 +65,11 @@ func (_d StorageBucketServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
@@ -80,7 +100,11 @@ func (_d StorageBucketServiceWithSlog) GetAllWithFilter(ctx context.Context, fil
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -111,7 +135,11 @@ func (_d StorageBucketServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UU
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -141,7 +169,11 @@ func (_d StorageBucketServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid
 			}
 		}
 		if err != nil {
-			log.Error("<= method ResyncByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method ResyncByUUID returned an informative error")
+			} else {
+				log.Error("<= method ResyncByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method ResyncByUUID finished")
 		}
@@ -171,7 +203,11 @@ func (_d StorageBucketServiceWithSlog) SyncCluster(ctx context.Context, cluster 
 			}
 		}
 		if err != nil {
-			log.Error("<= method SyncCluster returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method SyncCluster returned an informative error")
+			} else {
+				log.Error("<= method SyncCluster returned an error")
+			}
 		} else {
 			log.Debug("<= method SyncCluster finished")
 		}

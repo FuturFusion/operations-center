@@ -14,16 +14,32 @@ import (
 
 // ProjectServerClientWithSlog implements inventory.ProjectServerClient that is instrumented with slog logger.
 type ProjectServerClientWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.ProjectServerClient
+	_log                  *slog.Logger
+	_base                 inventory.ProjectServerClient
+	_isInformativeErrFunc func(error) bool
+}
+
+type ProjectServerClientWithSlogOption func(s *ProjectServerClientWithSlog)
+
+func ProjectServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ProjectServerClientWithSlogOption {
+	return func(_base *ProjectServerClientWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewProjectServerClientWithSlog instruments an implementation of the inventory.ProjectServerClient with simple logging.
-func NewProjectServerClientWithSlog(base inventory.ProjectServerClient, log *slog.Logger) ProjectServerClientWithSlog {
-	return ProjectServerClientWithSlog{
-		_base: base,
-		_log:  log,
+func NewProjectServerClientWithSlog(base inventory.ProjectServerClient, log *slog.Logger, opts ...ProjectServerClientWithSlogOption) ProjectServerClientWithSlog {
+	this := ProjectServerClientWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetProjectByName implements inventory.ProjectServerClient.
@@ -50,7 +66,11 @@ func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, conn
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetProjectByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetProjectByName returned an informative error")
+			} else {
+				log.Error("<= method GetProjectByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetProjectByName finished")
 		}
@@ -81,7 +101,11 @@ func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, connectio
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetProjects returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetProjects returned an informative error")
+			} else {
+				log.Error("<= method GetProjects returned an error")
+			}
 		} else {
 			log.Debug("<= method GetProjects finished")
 		}

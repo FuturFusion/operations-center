@@ -14,16 +14,32 @@ import (
 
 // NetworkLoadBalancerRepoWithSlog implements inventory.NetworkLoadBalancerRepo that is instrumented with slog logger.
 type NetworkLoadBalancerRepoWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkLoadBalancerRepo
+	_log                  *slog.Logger
+	_base                 inventory.NetworkLoadBalancerRepo
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkLoadBalancerRepoWithSlogOption func(s *NetworkLoadBalancerRepoWithSlog)
+
+func NetworkLoadBalancerRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkLoadBalancerRepoWithSlogOption {
+	return func(_base *NetworkLoadBalancerRepoWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkLoadBalancerRepoWithSlog instruments an implementation of the inventory.NetworkLoadBalancerRepo with simple logging.
-func NewNetworkLoadBalancerRepoWithSlog(base inventory.NetworkLoadBalancerRepo, log *slog.Logger) NetworkLoadBalancerRepoWithSlog {
-	return NetworkLoadBalancerRepoWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkLoadBalancerRepoWithSlog(base inventory.NetworkLoadBalancerRepo, log *slog.Logger, opts ...NetworkLoadBalancerRepoWithSlogOption) NetworkLoadBalancerRepoWithSlog {
+	this := NetworkLoadBalancerRepoWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // Create implements inventory.NetworkLoadBalancerRepo.
@@ -49,7 +65,11 @@ func (_d NetworkLoadBalancerRepoWithSlog) Create(ctx context.Context, networkLoa
 			}
 		}
 		if err != nil {
-			log.Error("<= method Create returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Create returned an informative error")
+			} else {
+				log.Error("<= method Create returned an error")
+			}
 		} else {
 			log.Debug("<= method Create finished")
 		}
@@ -79,7 +99,11 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteByClusterName(ctx context.Contex
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByClusterName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByClusterName returned an informative error")
+			} else {
+				log.Error("<= method DeleteByClusterName returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByClusterName finished")
 		}
@@ -109,7 +133,11 @@ func (_d NetworkLoadBalancerRepoWithSlog) DeleteByUUID(ctx context.Context, id u
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByUUID returned an informative error")
+			} else {
+				log.Error("<= method DeleteByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByUUID finished")
 		}
@@ -140,7 +168,11 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Cont
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
@@ -171,7 +203,11 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetAllWithFilter(ctx context.Context, 
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -202,7 +238,11 @@ func (_d NetworkLoadBalancerRepoWithSlog) GetByUUID(ctx context.Context, id uuid
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -233,7 +273,11 @@ func (_d NetworkLoadBalancerRepoWithSlog) UpdateByUUID(ctx context.Context, netw
 			}
 		}
 		if err != nil {
-			log.Error("<= method UpdateByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method UpdateByUUID returned an informative error")
+			} else {
+				log.Error("<= method UpdateByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method UpdateByUUID finished")
 		}

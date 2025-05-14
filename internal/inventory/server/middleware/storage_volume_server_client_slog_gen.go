@@ -14,16 +14,32 @@ import (
 
 // StorageVolumeServerClientWithSlog implements inventory.StorageVolumeServerClient that is instrumented with slog logger.
 type StorageVolumeServerClientWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.StorageVolumeServerClient
+	_log                  *slog.Logger
+	_base                 inventory.StorageVolumeServerClient
+	_isInformativeErrFunc func(error) bool
+}
+
+type StorageVolumeServerClientWithSlogOption func(s *StorageVolumeServerClientWithSlog)
+
+func StorageVolumeServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) StorageVolumeServerClientWithSlogOption {
+	return func(_base *StorageVolumeServerClientWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewStorageVolumeServerClientWithSlog instruments an implementation of the inventory.StorageVolumeServerClient with simple logging.
-func NewStorageVolumeServerClientWithSlog(base inventory.StorageVolumeServerClient, log *slog.Logger) StorageVolumeServerClientWithSlog {
-	return StorageVolumeServerClientWithSlog{
-		_base: base,
-		_log:  log,
+func NewStorageVolumeServerClientWithSlog(base inventory.StorageVolumeServerClient, log *slog.Logger, opts ...StorageVolumeServerClientWithSlogOption) StorageVolumeServerClientWithSlog {
+	this := StorageVolumeServerClientWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetStorageVolumeByName implements inventory.StorageVolumeServerClient.
@@ -52,7 +68,11 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.C
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetStorageVolumeByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetStorageVolumeByName returned an informative error")
+			} else {
+				log.Error("<= method GetStorageVolumeByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetStorageVolumeByName finished")
 		}
@@ -84,7 +104,11 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Contex
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetStorageVolumes returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetStorageVolumes returned an informative error")
+			} else {
+				log.Error("<= method GetStorageVolumes returned an error")
+			}
 		} else {
 			log.Debug("<= method GetStorageVolumes finished")
 		}

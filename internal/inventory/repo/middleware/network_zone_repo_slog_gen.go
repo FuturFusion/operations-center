@@ -14,16 +14,32 @@ import (
 
 // NetworkZoneRepoWithSlog implements inventory.NetworkZoneRepo that is instrumented with slog logger.
 type NetworkZoneRepoWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkZoneRepo
+	_log                  *slog.Logger
+	_base                 inventory.NetworkZoneRepo
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkZoneRepoWithSlogOption func(s *NetworkZoneRepoWithSlog)
+
+func NetworkZoneRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkZoneRepoWithSlogOption {
+	return func(_base *NetworkZoneRepoWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkZoneRepoWithSlog instruments an implementation of the inventory.NetworkZoneRepo with simple logging.
-func NewNetworkZoneRepoWithSlog(base inventory.NetworkZoneRepo, log *slog.Logger) NetworkZoneRepoWithSlog {
-	return NetworkZoneRepoWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkZoneRepoWithSlog(base inventory.NetworkZoneRepo, log *slog.Logger, opts ...NetworkZoneRepoWithSlogOption) NetworkZoneRepoWithSlog {
+	this := NetworkZoneRepoWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // Create implements inventory.NetworkZoneRepo.
@@ -49,7 +65,11 @@ func (_d NetworkZoneRepoWithSlog) Create(ctx context.Context, networkZone invent
 			}
 		}
 		if err != nil {
-			log.Error("<= method Create returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Create returned an informative error")
+			} else {
+				log.Error("<= method Create returned an error")
+			}
 		} else {
 			log.Debug("<= method Create finished")
 		}
@@ -79,7 +99,11 @@ func (_d NetworkZoneRepoWithSlog) DeleteByClusterName(ctx context.Context, clust
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByClusterName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByClusterName returned an informative error")
+			} else {
+				log.Error("<= method DeleteByClusterName returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByClusterName finished")
 		}
@@ -109,7 +133,11 @@ func (_d NetworkZoneRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByUUID returned an informative error")
+			} else {
+				log.Error("<= method DeleteByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByUUID finished")
 		}
@@ -140,7 +168,11 @@ func (_d NetworkZoneRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, fil
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
@@ -171,7 +203,11 @@ func (_d NetworkZoneRepoWithSlog) GetAllWithFilter(ctx context.Context, filter i
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -202,7 +238,11 @@ func (_d NetworkZoneRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -233,7 +273,11 @@ func (_d NetworkZoneRepoWithSlog) UpdateByUUID(ctx context.Context, networkZone 
 			}
 		}
 		if err != nil {
-			log.Error("<= method UpdateByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method UpdateByUUID returned an informative error")
+			} else {
+				log.Error("<= method UpdateByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method UpdateByUUID finished")
 		}

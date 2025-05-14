@@ -14,16 +14,32 @@ import (
 
 // ServerClientWithSlog implements inventory.ServerClient that is instrumented with slog logger.
 type ServerClientWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.ServerClient
+	_log                  *slog.Logger
+	_base                 inventory.ServerClient
+	_isInformativeErrFunc func(error) bool
+}
+
+type ServerClientWithSlogOption func(s *ServerClientWithSlog)
+
+func ServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ServerClientWithSlogOption {
+	return func(_base *ServerClientWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewServerClientWithSlog instruments an implementation of the inventory.ServerClient with simple logging.
-func NewServerClientWithSlog(base inventory.ServerClient, log *slog.Logger) ServerClientWithSlog {
-	return ServerClientWithSlog{
-		_base: base,
-		_log:  log,
+func NewServerClientWithSlog(base inventory.ServerClient, log *slog.Logger, opts ...ServerClientWithSlogOption) ServerClientWithSlog {
+	this := ServerClientWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetImageByName implements inventory.ServerClient.
@@ -50,7 +66,11 @@ func (_d ServerClientWithSlog) GetImageByName(ctx context.Context, connectionURL
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetImageByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetImageByName returned an informative error")
+			} else {
+				log.Error("<= method GetImageByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetImageByName finished")
 		}
@@ -81,7 +101,11 @@ func (_d ServerClientWithSlog) GetImages(ctx context.Context, connectionURL stri
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetImages returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetImages returned an informative error")
+			} else {
+				log.Error("<= method GetImages returned an error")
+			}
 		} else {
 			log.Debug("<= method GetImages finished")
 		}
@@ -113,7 +137,11 @@ func (_d ServerClientWithSlog) GetInstanceByName(ctx context.Context, connection
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetInstanceByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetInstanceByName returned an informative error")
+			} else {
+				log.Error("<= method GetInstanceByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetInstanceByName finished")
 		}
@@ -144,7 +172,11 @@ func (_d ServerClientWithSlog) GetInstances(ctx context.Context, connectionURL s
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetInstances returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetInstances returned an informative error")
+			} else {
+				log.Error("<= method GetInstances returned an error")
+			}
 		} else {
 			log.Debug("<= method GetInstances finished")
 		}
@@ -176,7 +208,11 @@ func (_d ServerClientWithSlog) GetNetworkACLByName(ctx context.Context, connecti
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkACLByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkACLByName returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkACLByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkACLByName finished")
 		}
@@ -207,7 +243,11 @@ func (_d ServerClientWithSlog) GetNetworkACLs(ctx context.Context, connectionURL
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkACLs returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkACLs returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkACLs returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkACLs finished")
 		}
@@ -239,7 +279,11 @@ func (_d ServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, c
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkAddressSetByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkAddressSetByName returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkAddressSetByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkAddressSetByName finished")
 		}
@@ -270,7 +314,11 @@ func (_d ServerClientWithSlog) GetNetworkAddressSets(ctx context.Context, connec
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkAddressSets returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkAddressSets returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkAddressSets returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkAddressSets finished")
 		}
@@ -302,7 +350,11 @@ func (_d ServerClientWithSlog) GetNetworkByName(ctx context.Context, connectionU
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkByName returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkByName finished")
 		}
@@ -335,7 +387,11 @@ func (_d ServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, conn
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkForwardByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkForwardByName returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkForwardByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkForwardByName finished")
 		}
@@ -367,7 +423,11 @@ func (_d ServerClientWithSlog) GetNetworkForwards(ctx context.Context, connectio
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkForwards returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkForwards returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkForwards returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkForwards finished")
 		}
@@ -399,7 +459,11 @@ func (_d ServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, 
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkIntegrationByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkIntegrationByName returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkIntegrationByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkIntegrationByName finished")
 		}
@@ -430,7 +494,11 @@ func (_d ServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, conne
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkIntegrations returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkIntegrations returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkIntegrations returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkIntegrations finished")
 		}
@@ -463,7 +531,11 @@ func (_d ServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context,
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkLoadBalancerByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkLoadBalancerByName returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkLoadBalancerByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkLoadBalancerByName finished")
 		}
@@ -495,7 +567,11 @@ func (_d ServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, conn
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkLoadBalancers returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkLoadBalancers returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkLoadBalancers returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkLoadBalancers finished")
 		}
@@ -528,7 +604,11 @@ func (_d ServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, connect
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkPeerByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkPeerByName returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkPeerByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkPeerByName finished")
 		}
@@ -560,7 +640,11 @@ func (_d ServerClientWithSlog) GetNetworkPeers(ctx context.Context, connectionUR
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkPeers returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkPeers returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkPeers returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkPeers finished")
 		}
@@ -592,7 +676,11 @@ func (_d ServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, connect
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkZoneByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkZoneByName returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkZoneByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkZoneByName finished")
 		}
@@ -623,7 +711,11 @@ func (_d ServerClientWithSlog) GetNetworkZones(ctx context.Context, connectionUR
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkZones returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkZones returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkZones returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkZones finished")
 		}
@@ -654,7 +746,11 @@ func (_d ServerClientWithSlog) GetNetworks(ctx context.Context, connectionURL st
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworks returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworks returned an informative error")
+			} else {
+				log.Error("<= method GetNetworks returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworks finished")
 		}
@@ -686,7 +782,11 @@ func (_d ServerClientWithSlog) GetProfileByName(ctx context.Context, connectionU
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetProfileByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetProfileByName returned an informative error")
+			} else {
+				log.Error("<= method GetProfileByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetProfileByName finished")
 		}
@@ -717,7 +817,11 @@ func (_d ServerClientWithSlog) GetProfiles(ctx context.Context, connectionURL st
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetProfiles returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetProfiles returned an informative error")
+			} else {
+				log.Error("<= method GetProfiles returned an error")
+			}
 		} else {
 			log.Debug("<= method GetProfiles finished")
 		}
@@ -749,7 +853,11 @@ func (_d ServerClientWithSlog) GetProjectByName(ctx context.Context, connectionU
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetProjectByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetProjectByName returned an informative error")
+			} else {
+				log.Error("<= method GetProjectByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetProjectByName finished")
 		}
@@ -780,7 +888,11 @@ func (_d ServerClientWithSlog) GetProjects(ctx context.Context, connectionURL st
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetProjects returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetProjects returned an informative error")
+			} else {
+				log.Error("<= method GetProjects returned an error")
+			}
 		} else {
 			log.Debug("<= method GetProjects finished")
 		}
@@ -813,7 +925,11 @@ func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, conne
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetStorageBucketByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetStorageBucketByName returned an informative error")
+			} else {
+				log.Error("<= method GetStorageBucketByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetStorageBucketByName finished")
 		}
@@ -845,7 +961,11 @@ func (_d ServerClientWithSlog) GetStorageBuckets(ctx context.Context, connection
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetStorageBuckets returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetStorageBuckets returned an informative error")
+			} else {
+				log.Error("<= method GetStorageBuckets returned an error")
+			}
 		} else {
 			log.Debug("<= method GetStorageBuckets finished")
 		}
@@ -877,7 +997,11 @@ func (_d ServerClientWithSlog) GetStoragePoolByName(ctx context.Context, connect
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetStoragePoolByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetStoragePoolByName returned an informative error")
+			} else {
+				log.Error("<= method GetStoragePoolByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetStoragePoolByName finished")
 		}
@@ -908,7 +1032,11 @@ func (_d ServerClientWithSlog) GetStoragePools(ctx context.Context, connectionUR
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetStoragePools returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetStoragePools returned an informative error")
+			} else {
+				log.Error("<= method GetStoragePools returned an error")
+			}
 		} else {
 			log.Debug("<= method GetStoragePools finished")
 		}
@@ -942,7 +1070,11 @@ func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, conne
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetStorageVolumeByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetStorageVolumeByName returned an informative error")
+			} else {
+				log.Error("<= method GetStorageVolumeByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetStorageVolumeByName finished")
 		}
@@ -974,7 +1106,11 @@ func (_d ServerClientWithSlog) GetStorageVolumes(ctx context.Context, connection
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetStorageVolumes returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetStorageVolumes returned an informative error")
+			} else {
+				log.Error("<= method GetStorageVolumes returned an error")
+			}
 		} else {
 			log.Debug("<= method GetStorageVolumes finished")
 		}

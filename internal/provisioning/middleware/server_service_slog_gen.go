@@ -14,16 +14,32 @@ import (
 
 // ServerServiceWithSlog implements provisioning.ServerService that is instrumented with slog logger.
 type ServerServiceWithSlog struct {
-	_log  *slog.Logger
-	_base provisioning.ServerService
+	_log                  *slog.Logger
+	_base                 provisioning.ServerService
+	_isInformativeErrFunc func(error) bool
+}
+
+type ServerServiceWithSlogOption func(s *ServerServiceWithSlog)
+
+func ServerServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ServerServiceWithSlogOption {
+	return func(_base *ServerServiceWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewServerServiceWithSlog instruments an implementation of the provisioning.ServerService with simple logging.
-func NewServerServiceWithSlog(base provisioning.ServerService, log *slog.Logger) ServerServiceWithSlog {
-	return ServerServiceWithSlog{
-		_base: base,
-		_log:  log,
+func NewServerServiceWithSlog(base provisioning.ServerService, log *slog.Logger, opts ...ServerServiceWithSlogOption) ServerServiceWithSlog {
+	this := ServerServiceWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // Create implements provisioning.ServerService.
@@ -50,7 +66,11 @@ func (_d ServerServiceWithSlog) Create(ctx context.Context, token uuid.UUID, ser
 			}
 		}
 		if err != nil {
-			log.Error("<= method Create returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Create returned an informative error")
+			} else {
+				log.Error("<= method Create returned an error")
+			}
 		} else {
 			log.Debug("<= method Create finished")
 		}
@@ -80,7 +100,11 @@ func (_d ServerServiceWithSlog) DeleteByName(ctx context.Context, name string) (
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByName returned an informative error")
+			} else {
+				log.Error("<= method DeleteByName returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByName finished")
 		}
@@ -110,7 +134,11 @@ func (_d ServerServiceWithSlog) GetAll(ctx context.Context) (servers provisionin
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAll returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAll returned an informative error")
+			} else {
+				log.Error("<= method GetAll returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAll finished")
 		}
@@ -140,7 +168,11 @@ func (_d ServerServiceWithSlog) GetAllNames(ctx context.Context) (strings []stri
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllNames returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllNames returned an informative error")
+			} else {
+				log.Error("<= method GetAllNames returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllNames finished")
 		}
@@ -171,7 +203,11 @@ func (_d ServerServiceWithSlog) GetAllNamesWithFilter(ctx context.Context, filte
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllNamesWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllNamesWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllNamesWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllNamesWithFilter finished")
 		}
@@ -202,7 +238,11 @@ func (_d ServerServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pro
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -233,7 +273,11 @@ func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (ser
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByName returned an informative error")
+			} else {
+				log.Error("<= method GetByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByName finished")
 		}
@@ -264,7 +308,11 @@ func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newN
 			}
 		}
 		if err != nil {
-			log.Error("<= method Rename returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Rename returned an informative error")
+			} else {
+				log.Error("<= method Rename returned an error")
+			}
 		} else {
 			log.Debug("<= method Rename finished")
 		}
@@ -294,7 +342,11 @@ func (_d ServerServiceWithSlog) Update(ctx context.Context, server provisioning.
 			}
 		}
 		if err != nil {
-			log.Error("<= method Update returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Update returned an informative error")
+			} else {
+				log.Error("<= method Update returned an error")
+			}
 		} else {
 			log.Debug("<= method Update finished")
 		}

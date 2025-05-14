@@ -14,16 +14,32 @@ import (
 
 // ProfileServiceWithSlog implements inventory.ProfileService that is instrumented with slog logger.
 type ProfileServiceWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.ProfileService
+	_log                  *slog.Logger
+	_base                 inventory.ProfileService
+	_isInformativeErrFunc func(error) bool
+}
+
+type ProfileServiceWithSlogOption func(s *ProfileServiceWithSlog)
+
+func ProfileServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ProfileServiceWithSlogOption {
+	return func(_base *ProfileServiceWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewProfileServiceWithSlog instruments an implementation of the inventory.ProfileService with simple logging.
-func NewProfileServiceWithSlog(base inventory.ProfileService, log *slog.Logger) ProfileServiceWithSlog {
-	return ProfileServiceWithSlog{
-		_base: base,
-		_log:  log,
+func NewProfileServiceWithSlog(base inventory.ProfileService, log *slog.Logger, opts ...ProfileServiceWithSlogOption) ProfileServiceWithSlog {
+	this := ProfileServiceWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetAllUUIDsWithFilter implements inventory.ProfileService.
@@ -49,7 +65,11 @@ func (_d ProfileServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filt
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
@@ -80,7 +100,11 @@ func (_d ProfileServiceWithSlog) GetAllWithFilter(ctx context.Context, filter in
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -111,7 +135,11 @@ func (_d ProfileServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (p
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -141,7 +169,11 @@ func (_d ProfileServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID)
 			}
 		}
 		if err != nil {
-			log.Error("<= method ResyncByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method ResyncByUUID returned an informative error")
+			} else {
+				log.Error("<= method ResyncByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method ResyncByUUID finished")
 		}
@@ -171,7 +203,11 @@ func (_d ProfileServiceWithSlog) SyncCluster(ctx context.Context, cluster string
 			}
 		}
 		if err != nil {
-			log.Error("<= method SyncCluster returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method SyncCluster returned an informative error")
+			} else {
+				log.Error("<= method SyncCluster returned an error")
+			}
 		} else {
 			log.Debug("<= method SyncCluster finished")
 		}

@@ -14,16 +14,32 @@ import (
 
 // ProvisioningServerServiceWithSlog implements inventory.ProvisioningServerService that is instrumented with slog logger.
 type ProvisioningServerServiceWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.ProvisioningServerService
+	_log                  *slog.Logger
+	_base                 inventory.ProvisioningServerService
+	_isInformativeErrFunc func(error) bool
+}
+
+type ProvisioningServerServiceWithSlogOption func(s *ProvisioningServerServiceWithSlog)
+
+func ProvisioningServerServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ProvisioningServerServiceWithSlogOption {
+	return func(_base *ProvisioningServerServiceWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewProvisioningServerServiceWithSlog instruments an implementation of the inventory.ProvisioningServerService with simple logging.
-func NewProvisioningServerServiceWithSlog(base inventory.ProvisioningServerService, log *slog.Logger) ProvisioningServerServiceWithSlog {
-	return ProvisioningServerServiceWithSlog{
-		_base: base,
-		_log:  log,
+func NewProvisioningServerServiceWithSlog(base inventory.ProvisioningServerService, log *slog.Logger, opts ...ProvisioningServerServiceWithSlogOption) ProvisioningServerServiceWithSlog {
+	this := ProvisioningServerServiceWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetAllByClusterName implements inventory.ProvisioningServerService.
@@ -49,7 +65,11 @@ func (_d ProvisioningServerServiceWithSlog) GetAllByClusterName(ctx context.Cont
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllByClusterName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllByClusterName returned an informative error")
+			} else {
+				log.Error("<= method GetAllByClusterName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllByClusterName finished")
 		}
@@ -80,7 +100,11 @@ func (_d ProvisioningServerServiceWithSlog) GetByName(ctx context.Context, name 
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByName returned an informative error")
+			} else {
+				log.Error("<= method GetByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByName finished")
 		}

@@ -13,16 +13,32 @@ import (
 
 // ClusterRepoWithSlog implements provisioning.ClusterRepo that is instrumented with slog logger.
 type ClusterRepoWithSlog struct {
-	_log  *slog.Logger
-	_base provisioning.ClusterRepo
+	_log                  *slog.Logger
+	_base                 provisioning.ClusterRepo
+	_isInformativeErrFunc func(error) bool
+}
+
+type ClusterRepoWithSlogOption func(s *ClusterRepoWithSlog)
+
+func ClusterRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ClusterRepoWithSlogOption {
+	return func(_base *ClusterRepoWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewClusterRepoWithSlog instruments an implementation of the provisioning.ClusterRepo with simple logging.
-func NewClusterRepoWithSlog(base provisioning.ClusterRepo, log *slog.Logger) ClusterRepoWithSlog {
-	return ClusterRepoWithSlog{
-		_base: base,
-		_log:  log,
+func NewClusterRepoWithSlog(base provisioning.ClusterRepo, log *slog.Logger, opts ...ClusterRepoWithSlogOption) ClusterRepoWithSlog {
+	this := ClusterRepoWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // Create implements provisioning.ClusterRepo.
@@ -48,7 +64,11 @@ func (_d ClusterRepoWithSlog) Create(ctx context.Context, cluster provisioning.C
 			}
 		}
 		if err != nil {
-			log.Error("<= method Create returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Create returned an informative error")
+			} else {
+				log.Error("<= method Create returned an error")
+			}
 		} else {
 			log.Debug("<= method Create finished")
 		}
@@ -78,7 +98,11 @@ func (_d ClusterRepoWithSlog) DeleteByName(ctx context.Context, name string) (er
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByName returned an informative error")
+			} else {
+				log.Error("<= method DeleteByName returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByName finished")
 		}
@@ -108,7 +132,11 @@ func (_d ClusterRepoWithSlog) GetAll(ctx context.Context) (clusters provisioning
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAll returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAll returned an informative error")
+			} else {
+				log.Error("<= method GetAll returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAll finished")
 		}
@@ -138,7 +166,11 @@ func (_d ClusterRepoWithSlog) GetAllNames(ctx context.Context) (strings []string
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllNames returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllNames returned an informative error")
+			} else {
+				log.Error("<= method GetAllNames returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllNames finished")
 		}
@@ -169,7 +201,11 @@ func (_d ClusterRepoWithSlog) GetByName(ctx context.Context, name string) (clust
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByName returned an informative error")
+			} else {
+				log.Error("<= method GetByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByName finished")
 		}
@@ -200,7 +236,11 @@ func (_d ClusterRepoWithSlog) Rename(ctx context.Context, oldName string, newNam
 			}
 		}
 		if err != nil {
-			log.Error("<= method Rename returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Rename returned an informative error")
+			} else {
+				log.Error("<= method Rename returned an error")
+			}
 		} else {
 			log.Debug("<= method Rename finished")
 		}
@@ -230,7 +270,11 @@ func (_d ClusterRepoWithSlog) Update(ctx context.Context, cluster provisioning.C
 			}
 		}
 		if err != nil {
-			log.Error("<= method Update returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Update returned an informative error")
+			} else {
+				log.Error("<= method Update returned an error")
+			}
 		} else {
 			log.Debug("<= method Update finished")
 		}

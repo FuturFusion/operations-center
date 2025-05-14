@@ -14,16 +14,32 @@ import (
 
 // StorageBucketServerClientWithSlog implements inventory.StorageBucketServerClient that is instrumented with slog logger.
 type StorageBucketServerClientWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.StorageBucketServerClient
+	_log                  *slog.Logger
+	_base                 inventory.StorageBucketServerClient
+	_isInformativeErrFunc func(error) bool
+}
+
+type StorageBucketServerClientWithSlogOption func(s *StorageBucketServerClientWithSlog)
+
+func StorageBucketServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) StorageBucketServerClientWithSlogOption {
+	return func(_base *StorageBucketServerClientWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewStorageBucketServerClientWithSlog instruments an implementation of the inventory.StorageBucketServerClient with simple logging.
-func NewStorageBucketServerClientWithSlog(base inventory.StorageBucketServerClient, log *slog.Logger) StorageBucketServerClientWithSlog {
-	return StorageBucketServerClientWithSlog{
-		_base: base,
-		_log:  log,
+func NewStorageBucketServerClientWithSlog(base inventory.StorageBucketServerClient, log *slog.Logger, opts ...StorageBucketServerClientWithSlogOption) StorageBucketServerClientWithSlog {
+	this := StorageBucketServerClientWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetStorageBucketByName implements inventory.StorageBucketServerClient.
@@ -51,7 +67,11 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.C
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetStorageBucketByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetStorageBucketByName returned an informative error")
+			} else {
+				log.Error("<= method GetStorageBucketByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetStorageBucketByName finished")
 		}
@@ -83,7 +103,11 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBuckets(ctx context.Contex
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetStorageBuckets returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetStorageBuckets returned an informative error")
+			} else {
+				log.Error("<= method GetStorageBuckets returned an error")
+			}
 		} else {
 			log.Debug("<= method GetStorageBuckets finished")
 		}

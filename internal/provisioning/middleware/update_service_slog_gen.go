@@ -15,16 +15,32 @@ import (
 
 // UpdateServiceWithSlog implements provisioning.UpdateService that is instrumented with slog logger.
 type UpdateServiceWithSlog struct {
-	_log  *slog.Logger
-	_base provisioning.UpdateService
+	_log                  *slog.Logger
+	_base                 provisioning.UpdateService
+	_isInformativeErrFunc func(error) bool
+}
+
+type UpdateServiceWithSlogOption func(s *UpdateServiceWithSlog)
+
+func UpdateServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) UpdateServiceWithSlogOption {
+	return func(_base *UpdateServiceWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewUpdateServiceWithSlog instruments an implementation of the provisioning.UpdateService with simple logging.
-func NewUpdateServiceWithSlog(base provisioning.UpdateService, log *slog.Logger) UpdateServiceWithSlog {
-	return UpdateServiceWithSlog{
-		_base: base,
-		_log:  log,
+func NewUpdateServiceWithSlog(base provisioning.UpdateService, log *slog.Logger, opts ...UpdateServiceWithSlogOption) UpdateServiceWithSlog {
+	this := UpdateServiceWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetAll implements provisioning.UpdateService.
@@ -49,7 +65,11 @@ func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisionin
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAll returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAll returned an informative error")
+			} else {
+				log.Error("<= method GetAll returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAll finished")
 		}
@@ -79,7 +99,11 @@ func (_d UpdateServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.U
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDs returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDs returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDs returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDs finished")
 		}
@@ -110,7 +134,11 @@ func (_d UpdateServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (up
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -141,7 +169,11 @@ func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, id uuid.U
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetUpdateAllFiles returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetUpdateAllFiles returned an informative error")
+			} else {
+				log.Error("<= method GetUpdateAllFiles returned an error")
+			}
 		} else {
 			log.Debug("<= method GetUpdateAllFiles finished")
 		}
@@ -174,7 +206,11 @@ func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, id 
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetUpdateFileByFilename returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetUpdateFileByFilename returned an informative error")
+			} else {
+				log.Error("<= method GetUpdateFileByFilename returned an error")
+			}
 		} else {
 			log.Debug("<= method GetUpdateFileByFilename finished")
 		}
@@ -203,7 +239,11 @@ func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) (err error) {
 			}
 		}
 		if err != nil {
-			log.Error("<= method Refresh returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Refresh returned an informative error")
+			} else {
+				log.Error("<= method Refresh returned an error")
+			}
 		} else {
 			log.Debug("<= method Refresh finished")
 		}

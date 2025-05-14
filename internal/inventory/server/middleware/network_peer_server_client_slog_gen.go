@@ -14,16 +14,32 @@ import (
 
 // NetworkPeerServerClientWithSlog implements inventory.NetworkPeerServerClient that is instrumented with slog logger.
 type NetworkPeerServerClientWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkPeerServerClient
+	_log                  *slog.Logger
+	_base                 inventory.NetworkPeerServerClient
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkPeerServerClientWithSlogOption func(s *NetworkPeerServerClientWithSlog)
+
+func NetworkPeerServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkPeerServerClientWithSlogOption {
+	return func(_base *NetworkPeerServerClientWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkPeerServerClientWithSlog instruments an implementation of the inventory.NetworkPeerServerClient with simple logging.
-func NewNetworkPeerServerClientWithSlog(base inventory.NetworkPeerServerClient, log *slog.Logger) NetworkPeerServerClientWithSlog {
-	return NetworkPeerServerClientWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkPeerServerClientWithSlog(base inventory.NetworkPeerServerClient, log *slog.Logger, opts ...NetworkPeerServerClientWithSlogOption) NetworkPeerServerClientWithSlog {
+	this := NetworkPeerServerClientWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetNetworkPeerByName implements inventory.NetworkPeerServerClient.
@@ -51,7 +67,11 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Conte
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkPeerByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkPeerByName returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkPeerByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkPeerByName finished")
 		}
@@ -83,7 +103,11 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, c
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkPeers returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkPeers returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkPeers returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkPeers finished")
 		}

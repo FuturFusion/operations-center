@@ -14,16 +14,32 @@ import (
 
 // ProjectServiceWithSlog implements inventory.ProjectService that is instrumented with slog logger.
 type ProjectServiceWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.ProjectService
+	_log                  *slog.Logger
+	_base                 inventory.ProjectService
+	_isInformativeErrFunc func(error) bool
+}
+
+type ProjectServiceWithSlogOption func(s *ProjectServiceWithSlog)
+
+func ProjectServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ProjectServiceWithSlogOption {
+	return func(_base *ProjectServiceWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewProjectServiceWithSlog instruments an implementation of the inventory.ProjectService with simple logging.
-func NewProjectServiceWithSlog(base inventory.ProjectService, log *slog.Logger) ProjectServiceWithSlog {
-	return ProjectServiceWithSlog{
-		_base: base,
-		_log:  log,
+func NewProjectServiceWithSlog(base inventory.ProjectService, log *slog.Logger, opts ...ProjectServiceWithSlogOption) ProjectServiceWithSlog {
+	this := ProjectServiceWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetAllUUIDsWithFilter implements inventory.ProjectService.
@@ -49,7 +65,11 @@ func (_d ProjectServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filt
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
@@ -80,7 +100,11 @@ func (_d ProjectServiceWithSlog) GetAllWithFilter(ctx context.Context, filter in
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -111,7 +135,11 @@ func (_d ProjectServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (p
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -141,7 +169,11 @@ func (_d ProjectServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UUID)
 			}
 		}
 		if err != nil {
-			log.Error("<= method ResyncByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method ResyncByUUID returned an informative error")
+			} else {
+				log.Error("<= method ResyncByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method ResyncByUUID finished")
 		}
@@ -171,7 +203,11 @@ func (_d ProjectServiceWithSlog) SyncCluster(ctx context.Context, cluster string
 			}
 		}
 		if err != nil {
-			log.Error("<= method SyncCluster returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method SyncCluster returned an informative error")
+			} else {
+				log.Error("<= method SyncCluster returned an error")
+			}
 		} else {
 			log.Debug("<= method SyncCluster finished")
 		}

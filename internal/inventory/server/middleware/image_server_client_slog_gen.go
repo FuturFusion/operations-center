@@ -14,16 +14,32 @@ import (
 
 // ImageServerClientWithSlog implements inventory.ImageServerClient that is instrumented with slog logger.
 type ImageServerClientWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.ImageServerClient
+	_log                  *slog.Logger
+	_base                 inventory.ImageServerClient
+	_isInformativeErrFunc func(error) bool
+}
+
+type ImageServerClientWithSlogOption func(s *ImageServerClientWithSlog)
+
+func ImageServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ImageServerClientWithSlogOption {
+	return func(_base *ImageServerClientWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewImageServerClientWithSlog instruments an implementation of the inventory.ImageServerClient with simple logging.
-func NewImageServerClientWithSlog(base inventory.ImageServerClient, log *slog.Logger) ImageServerClientWithSlog {
-	return ImageServerClientWithSlog{
-		_base: base,
-		_log:  log,
+func NewImageServerClientWithSlog(base inventory.ImageServerClient, log *slog.Logger, opts ...ImageServerClientWithSlogOption) ImageServerClientWithSlog {
+	this := ImageServerClientWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetImageByName implements inventory.ImageServerClient.
@@ -50,7 +66,11 @@ func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, connecti
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetImageByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetImageByName returned an informative error")
+			} else {
+				log.Error("<= method GetImageByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetImageByName finished")
 		}
@@ -81,7 +101,11 @@ func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, connectionURL
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetImages returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetImages returned an informative error")
+			} else {
+				log.Error("<= method GetImages returned an error")
+			}
 		} else {
 			log.Debug("<= method GetImages finished")
 		}

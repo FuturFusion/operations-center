@@ -14,16 +14,32 @@ import (
 
 // UpdateRepoWithSlog implements provisioning.UpdateRepo that is instrumented with slog logger.
 type UpdateRepoWithSlog struct {
-	_log  *slog.Logger
-	_base provisioning.UpdateRepo
+	_log                  *slog.Logger
+	_base                 provisioning.UpdateRepo
+	_isInformativeErrFunc func(error) bool
+}
+
+type UpdateRepoWithSlogOption func(s *UpdateRepoWithSlog)
+
+func UpdateRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) UpdateRepoWithSlogOption {
+	return func(_base *UpdateRepoWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewUpdateRepoWithSlog instruments an implementation of the provisioning.UpdateRepo with simple logging.
-func NewUpdateRepoWithSlog(base provisioning.UpdateRepo, log *slog.Logger) UpdateRepoWithSlog {
-	return UpdateRepoWithSlog{
-		_base: base,
-		_log:  log,
+func NewUpdateRepoWithSlog(base provisioning.UpdateRepo, log *slog.Logger, opts ...UpdateRepoWithSlogOption) UpdateRepoWithSlog {
+	this := UpdateRepoWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // Create implements provisioning.UpdateRepo.
@@ -49,7 +65,11 @@ func (_d UpdateRepoWithSlog) Create(ctx context.Context, update provisioning.Upd
 			}
 		}
 		if err != nil {
-			log.Error("<= method Create returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Create returned an informative error")
+			} else {
+				log.Error("<= method Create returned an error")
+			}
 		} else {
 			log.Debug("<= method Create finished")
 		}
@@ -79,7 +99,11 @@ func (_d UpdateRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (er
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByUUID returned an informative error")
+			} else {
+				log.Error("<= method DeleteByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByUUID finished")
 		}
@@ -109,7 +133,11 @@ func (_d UpdateRepoWithSlog) GetAll(ctx context.Context) (updates provisioning.U
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAll returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAll returned an informative error")
+			} else {
+				log.Error("<= method GetAll returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAll finished")
 		}
@@ -139,7 +167,11 @@ func (_d UpdateRepoWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDs returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDs returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDs returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDs finished")
 		}
@@ -170,7 +202,11 @@ func (_d UpdateRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (updat
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}

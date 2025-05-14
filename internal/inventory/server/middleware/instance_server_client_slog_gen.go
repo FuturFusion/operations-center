@@ -14,16 +14,32 @@ import (
 
 // InstanceServerClientWithSlog implements inventory.InstanceServerClient that is instrumented with slog logger.
 type InstanceServerClientWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.InstanceServerClient
+	_log                  *slog.Logger
+	_base                 inventory.InstanceServerClient
+	_isInformativeErrFunc func(error) bool
+}
+
+type InstanceServerClientWithSlogOption func(s *InstanceServerClientWithSlog)
+
+func InstanceServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) InstanceServerClientWithSlogOption {
+	return func(_base *InstanceServerClientWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewInstanceServerClientWithSlog instruments an implementation of the inventory.InstanceServerClient with simple logging.
-func NewInstanceServerClientWithSlog(base inventory.InstanceServerClient, log *slog.Logger) InstanceServerClientWithSlog {
-	return InstanceServerClientWithSlog{
-		_base: base,
-		_log:  log,
+func NewInstanceServerClientWithSlog(base inventory.InstanceServerClient, log *slog.Logger, opts ...InstanceServerClientWithSlogOption) InstanceServerClientWithSlog {
+	this := InstanceServerClientWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetInstanceByName implements inventory.InstanceServerClient.
@@ -50,7 +66,11 @@ func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, co
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetInstanceByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetInstanceByName returned an informative error")
+			} else {
+				log.Error("<= method GetInstanceByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetInstanceByName finished")
 		}
@@ -81,7 +101,11 @@ func (_d InstanceServerClientWithSlog) GetInstances(ctx context.Context, connect
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetInstances returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetInstances returned an informative error")
+			} else {
+				log.Error("<= method GetInstances returned an error")
+			}
 		} else {
 			log.Debug("<= method GetInstances finished")
 		}

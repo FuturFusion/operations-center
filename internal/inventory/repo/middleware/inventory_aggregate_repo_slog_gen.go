@@ -13,16 +13,32 @@ import (
 
 // InventoryAggregateRepoWithSlog implements inventory.InventoryAggregateRepo that is instrumented with slog logger.
 type InventoryAggregateRepoWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.InventoryAggregateRepo
+	_log                  *slog.Logger
+	_base                 inventory.InventoryAggregateRepo
+	_isInformativeErrFunc func(error) bool
+}
+
+type InventoryAggregateRepoWithSlogOption func(s *InventoryAggregateRepoWithSlog)
+
+func InventoryAggregateRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) InventoryAggregateRepoWithSlogOption {
+	return func(_base *InventoryAggregateRepoWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewInventoryAggregateRepoWithSlog instruments an implementation of the inventory.InventoryAggregateRepo with simple logging.
-func NewInventoryAggregateRepoWithSlog(base inventory.InventoryAggregateRepo, log *slog.Logger) InventoryAggregateRepoWithSlog {
-	return InventoryAggregateRepoWithSlog{
-		_base: base,
-		_log:  log,
+func NewInventoryAggregateRepoWithSlog(base inventory.InventoryAggregateRepo, log *slog.Logger, opts ...InventoryAggregateRepoWithSlogOption) InventoryAggregateRepoWithSlog {
+	this := InventoryAggregateRepoWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetAllWithFilter implements inventory.InventoryAggregateRepo.
@@ -48,7 +64,11 @@ func (_d InventoryAggregateRepoWithSlog) GetAllWithFilter(ctx context.Context, f
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}

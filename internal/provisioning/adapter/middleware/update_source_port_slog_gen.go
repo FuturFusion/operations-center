@@ -14,16 +14,32 @@ import (
 
 // UpdateSourcePortWithSlog implements provisioning.UpdateSourcePort that is instrumented with slog logger.
 type UpdateSourcePortWithSlog struct {
-	_log  *slog.Logger
-	_base provisioning.UpdateSourcePort
+	_log                  *slog.Logger
+	_base                 provisioning.UpdateSourcePort
+	_isInformativeErrFunc func(error) bool
+}
+
+type UpdateSourcePortWithSlogOption func(s *UpdateSourcePortWithSlog)
+
+func UpdateSourcePortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) UpdateSourcePortWithSlogOption {
+	return func(_base *UpdateSourcePortWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewUpdateSourcePortWithSlog instruments an implementation of the provisioning.UpdateSourcePort with simple logging.
-func NewUpdateSourcePortWithSlog(base provisioning.UpdateSourcePort, log *slog.Logger) UpdateSourcePortWithSlog {
-	return UpdateSourcePortWithSlog{
-		_base: base,
-		_log:  log,
+func NewUpdateSourcePortWithSlog(base provisioning.UpdateSourcePort, log *slog.Logger, opts ...UpdateSourcePortWithSlogOption) UpdateSourcePortWithSlog {
+	this := UpdateSourcePortWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // ForgetUpdate implements provisioning.UpdateSourcePort.
@@ -48,7 +64,11 @@ func (_d UpdateSourcePortWithSlog) ForgetUpdate(ctx context.Context, update prov
 			}
 		}
 		if err != nil {
-			log.Error("<= method ForgetUpdate returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method ForgetUpdate returned an informative error")
+			} else {
+				log.Error("<= method ForgetUpdate returned an error")
+			}
 		} else {
 			log.Debug("<= method ForgetUpdate finished")
 		}
@@ -79,7 +99,11 @@ func (_d UpdateSourcePortWithSlog) GetLatest(ctx context.Context, limit int) (up
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetLatest returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetLatest returned an informative error")
+			} else {
+				log.Error("<= method GetLatest returned an error")
+			}
 		} else {
 			log.Debug("<= method GetLatest finished")
 		}
@@ -110,7 +134,11 @@ func (_d UpdateSourcePortWithSlog) GetUpdateAllFiles(ctx context.Context, update
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetUpdateAllFiles returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetUpdateAllFiles returned an informative error")
+			} else {
+				log.Error("<= method GetUpdateAllFiles returned an error")
+			}
 		} else {
 			log.Debug("<= method GetUpdateAllFiles finished")
 		}
@@ -143,7 +171,11 @@ func (_d UpdateSourcePortWithSlog) GetUpdateFileByFilename(ctx context.Context, 
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetUpdateFileByFilename returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetUpdateFileByFilename returned an informative error")
+			} else {
+				log.Error("<= method GetUpdateFileByFilename returned an error")
+			}
 		} else {
 			log.Debug("<= method GetUpdateFileByFilename finished")
 		}

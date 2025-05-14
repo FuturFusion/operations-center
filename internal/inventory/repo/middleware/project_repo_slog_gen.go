@@ -14,16 +14,32 @@ import (
 
 // ProjectRepoWithSlog implements inventory.ProjectRepo that is instrumented with slog logger.
 type ProjectRepoWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.ProjectRepo
+	_log                  *slog.Logger
+	_base                 inventory.ProjectRepo
+	_isInformativeErrFunc func(error) bool
+}
+
+type ProjectRepoWithSlogOption func(s *ProjectRepoWithSlog)
+
+func ProjectRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ProjectRepoWithSlogOption {
+	return func(_base *ProjectRepoWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewProjectRepoWithSlog instruments an implementation of the inventory.ProjectRepo with simple logging.
-func NewProjectRepoWithSlog(base inventory.ProjectRepo, log *slog.Logger) ProjectRepoWithSlog {
-	return ProjectRepoWithSlog{
-		_base: base,
-		_log:  log,
+func NewProjectRepoWithSlog(base inventory.ProjectRepo, log *slog.Logger, opts ...ProjectRepoWithSlogOption) ProjectRepoWithSlog {
+	this := ProjectRepoWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // Create implements inventory.ProjectRepo.
@@ -49,7 +65,11 @@ func (_d ProjectRepoWithSlog) Create(ctx context.Context, project inventory.Proj
 			}
 		}
 		if err != nil {
-			log.Error("<= method Create returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Create returned an informative error")
+			} else {
+				log.Error("<= method Create returned an error")
+			}
 		} else {
 			log.Debug("<= method Create finished")
 		}
@@ -79,7 +99,11 @@ func (_d ProjectRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster s
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByClusterName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByClusterName returned an informative error")
+			} else {
+				log.Error("<= method DeleteByClusterName returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByClusterName finished")
 		}
@@ -109,7 +133,11 @@ func (_d ProjectRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (e
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByUUID returned an informative error")
+			} else {
+				log.Error("<= method DeleteByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByUUID finished")
 		}
@@ -140,7 +168,11 @@ func (_d ProjectRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter 
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
@@ -171,7 +203,11 @@ func (_d ProjectRepoWithSlog) GetAllWithFilter(ctx context.Context, filter inven
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -202,7 +238,11 @@ func (_d ProjectRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (proj
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -233,7 +273,11 @@ func (_d ProjectRepoWithSlog) UpdateByUUID(ctx context.Context, project inventor
 			}
 		}
 		if err != nil {
-			log.Error("<= method UpdateByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method UpdateByUUID returned an informative error")
+			} else {
+				log.Error("<= method UpdateByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method UpdateByUUID finished")
 		}

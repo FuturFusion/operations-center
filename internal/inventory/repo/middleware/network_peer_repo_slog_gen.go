@@ -14,16 +14,32 @@ import (
 
 // NetworkPeerRepoWithSlog implements inventory.NetworkPeerRepo that is instrumented with slog logger.
 type NetworkPeerRepoWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkPeerRepo
+	_log                  *slog.Logger
+	_base                 inventory.NetworkPeerRepo
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkPeerRepoWithSlogOption func(s *NetworkPeerRepoWithSlog)
+
+func NetworkPeerRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkPeerRepoWithSlogOption {
+	return func(_base *NetworkPeerRepoWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkPeerRepoWithSlog instruments an implementation of the inventory.NetworkPeerRepo with simple logging.
-func NewNetworkPeerRepoWithSlog(base inventory.NetworkPeerRepo, log *slog.Logger) NetworkPeerRepoWithSlog {
-	return NetworkPeerRepoWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkPeerRepoWithSlog(base inventory.NetworkPeerRepo, log *slog.Logger, opts ...NetworkPeerRepoWithSlogOption) NetworkPeerRepoWithSlog {
+	this := NetworkPeerRepoWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // Create implements inventory.NetworkPeerRepo.
@@ -49,7 +65,11 @@ func (_d NetworkPeerRepoWithSlog) Create(ctx context.Context, networkPeer invent
 			}
 		}
 		if err != nil {
-			log.Error("<= method Create returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Create returned an informative error")
+			} else {
+				log.Error("<= method Create returned an error")
+			}
 		} else {
 			log.Debug("<= method Create finished")
 		}
@@ -79,7 +99,11 @@ func (_d NetworkPeerRepoWithSlog) DeleteByClusterName(ctx context.Context, clust
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByClusterName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByClusterName returned an informative error")
+			} else {
+				log.Error("<= method DeleteByClusterName returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByClusterName finished")
 		}
@@ -109,7 +133,11 @@ func (_d NetworkPeerRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByUUID returned an informative error")
+			} else {
+				log.Error("<= method DeleteByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByUUID finished")
 		}
@@ -140,7 +168,11 @@ func (_d NetworkPeerRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, fil
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
@@ -171,7 +203,11 @@ func (_d NetworkPeerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter i
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -202,7 +238,11 @@ func (_d NetworkPeerRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -233,7 +273,11 @@ func (_d NetworkPeerRepoWithSlog) UpdateByUUID(ctx context.Context, networkPeer 
 			}
 		}
 		if err != nil {
-			log.Error("<= method UpdateByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method UpdateByUUID returned an informative error")
+			} else {
+				log.Error("<= method UpdateByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method UpdateByUUID finished")
 		}
