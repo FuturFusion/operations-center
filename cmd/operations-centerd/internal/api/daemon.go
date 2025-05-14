@@ -350,9 +350,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 	})
 
 	refreshTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "Refresh updates triggered")
 		err := updateSvc.Refresh(ctx)
 		if err != nil {
 			slog.ErrorContext(ctx, "Refresh updates failed: %w", logger.Err(err))
+		} else {
+			slog.InfoContext(ctx, "Refresh updates completed")
 		}
 	}
 
