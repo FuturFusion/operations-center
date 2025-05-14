@@ -103,7 +103,7 @@ func (c *cmdServerList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	servers, err := c.ocClient.GetWithFilterServers(filter)
+	servers, err := c.ocClient.GetWithFilterServers(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ func (c *cmddServerRemove) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	err = c.ocClient.DeleteServer(name)
+	err = c.ocClient.DeleteServer(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (c *cmddServerShow) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	server, err := c.ocClient.GetServer(name)
+	server, err := c.ocClient.GetServer(cmd.Context(), name)
 	if err != nil {
 		return err
 	}

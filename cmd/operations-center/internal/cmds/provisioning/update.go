@@ -99,7 +99,7 @@ func (c *cmdUpdateList) Run(cmd *cobra.Command, args []string) error {
 		filter.Channel = ptr.To(c.flagFilterChannel)
 	}
 
-	updates, err := c.ocClient.GetWithFilterUpdates(filter)
+	updates, err := c.ocClient.GetWithFilterUpdates(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -144,12 +144,12 @@ func (c *cmddUpdateShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	update, err := c.ocClient.GetUpdate(id)
+	update, err := c.ocClient.GetUpdate(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
 
-	updateFiles, err := c.ocClient.GetUpdateFiles(id)
+	updateFiles, err := c.ocClient.GetUpdateFiles(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
@@ -238,7 +238,7 @@ func (c *cmdUpdateFileList) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	updateFiles, err := c.ocClient.GetUpdateFiles(id)
+	updateFiles, err := c.ocClient.GetUpdateFiles(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
@@ -284,7 +284,7 @@ func (c *cmddUpdateFileShow) Run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 	filename := args[1]
 
-	updateFiles, err := c.ocClient.GetUpdateFiles(id)
+	updateFiles, err := c.ocClient.GetUpdateFiles(cmd.Context(), id)
 	if err != nil {
 		return err
 	}

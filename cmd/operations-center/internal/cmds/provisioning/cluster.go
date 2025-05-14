@@ -110,7 +110,7 @@ func (c *cmdClusterAdd) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	err = c.ocClient.CreateCluster(api.ClusterPost{
+	err = c.ocClient.CreateCluster(cmd.Context(), api.ClusterPost{
 		Cluster: api.Cluster{
 			Name:          name,
 			ConnectionURL: c.connectionURL,
@@ -166,7 +166,7 @@ func (c *cmdClusterList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	clusters, err := c.ocClient.GetWithFilterClusters(filter)
+	clusters, err := c.ocClient.GetWithFilterClusters(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -213,7 +213,7 @@ func (c *cmdClusterRemove) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	err = c.ocClient.DeleteCluster(name)
+	err = c.ocClient.DeleteCluster(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
@@ -248,7 +248,7 @@ func (c *cmdClusterShow) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	cluster, err := c.ocClient.GetCluster(name)
+	cluster, err := c.ocClient.GetCluster(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
@@ -287,7 +287,7 @@ func (c *cmdClusterResync) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	err = c.ocClient.ResyncCluster(name)
+	err = c.ocClient.ResyncCluster(cmd.Context(), name)
 	if err != nil {
 		return err
 	}

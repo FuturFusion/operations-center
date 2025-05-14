@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -10,16 +11,16 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetServers() ([]api.Server, error) {
-	return c.GetWithFilterServers(provisioning.ServerFilter{})
+func (c OperationsCenterClient) GetServers(ctx context.Context) ([]api.Server, error) {
+	return c.GetWithFilterServers(ctx, provisioning.ServerFilter{})
 }
 
-func (c OperationsCenterClient) GetWithFilterServers(filter provisioning.ServerFilter) ([]api.Server, error) {
+func (c OperationsCenterClient) GetWithFilterServers(ctx context.Context, filter provisioning.ServerFilter) ([]api.Server, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/provisioning/servers", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/provisioning/servers", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,8 +34,8 @@ func (c OperationsCenterClient) GetWithFilterServers(filter provisioning.ServerF
 	return servers, nil
 }
 
-func (c OperationsCenterClient) GetServer(name string) (api.Server, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/provisioning/servers", name), nil, nil)
+func (c OperationsCenterClient) GetServer(ctx context.Context, name string) (api.Server, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name), nil, nil)
 	if err != nil {
 		return api.Server{}, err
 	}
@@ -48,13 +49,13 @@ func (c OperationsCenterClient) GetServer(name string) (api.Server, error) {
 	return server, nil
 }
 
-func (c OperationsCenterClient) CreateServer(server api.Server) error {
+func (c OperationsCenterClient) CreateServer(ctx context.Context, server api.Server) error {
 	content, err := json.Marshal(server)
 	if err != nil {
 		return err
 	}
 
-	response, err := c.doRequest(http.MethodPost, "/provisioning/servers", nil, content)
+	response, err := c.doRequest(ctx, http.MethodPost, "/provisioning/servers", nil, content)
 	if err != nil {
 		return err
 	}
@@ -68,8 +69,8 @@ func (c OperationsCenterClient) CreateServer(server api.Server) error {
 	return nil
 }
 
-func (c OperationsCenterClient) DeleteServer(name string) error {
-	_, err := c.doRequest(http.MethodDelete, path.Join("/provisioning/servers", name), nil, nil)
+func (c OperationsCenterClient) DeleteServer(ctx context.Context, name string) error {
+	_, err := c.doRequest(ctx, http.MethodDelete, path.Join("/provisioning/servers", name), nil, nil)
 	if err != nil {
 		return err
 	}

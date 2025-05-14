@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -9,11 +10,11 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterInventoryAggregates(filter inventory.InventoryAggregateFilter) ([]api.InventoryAggregate, error) {
+func (c OperationsCenterClient) GetWithFilterInventoryAggregates(ctx context.Context, filter inventory.InventoryAggregateFilter) ([]api.InventoryAggregate, error) {
 	query := url.Values{}
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/query", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/query", query, nil)
 	if err != nil {
 		return nil, err
 	}

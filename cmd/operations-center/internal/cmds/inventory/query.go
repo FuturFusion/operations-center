@@ -134,7 +134,7 @@ func (c *CmdQuery) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	inventoryAggregates, err := c.OCClient.GetWithFilterInventoryAggregates(filter)
+	inventoryAggregates, err := c.OCClient.GetWithFilterInventoryAggregates(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
