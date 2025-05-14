@@ -128,7 +128,7 @@ func New(serverPort string, opts ...Option) (OperationsCenterClient, error) {
 	return c, nil
 }
 
-func (c OperationsCenterClient) doRequest(method string, endpoint string, query url.Values, content []byte) (*api.Response, error) {
+func (c OperationsCenterClient) doRequest(ctx context.Context, method string, endpoint string, query url.Values, content []byte) (*api.Response, error) {
 	apiEndpoint, err := url.JoinPath(apiVersionPrefix, endpoint)
 	if err != nil {
 		return nil, err
@@ -139,7 +139,7 @@ func (c OperationsCenterClient) doRequest(method string, endpoint string, query 
 		return nil, err
 	}
 
-	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(content))
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), bytes.NewBuffer(content))
 	if err != nil {
 		return nil, err
 	}

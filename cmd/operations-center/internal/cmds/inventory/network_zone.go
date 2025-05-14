@@ -110,7 +110,7 @@ func (c *cmdNetworkZoneList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	networkZones, err := c.ocClient.GetWithFilterNetworkZones(filter)
+	networkZones, err := c.ocClient.GetWithFilterNetworkZones(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func (c *cmdNetworkZoneShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	networkZone, err := c.ocClient.GetNetworkZone(id)
+	networkZone, err := c.ocClient.GetNetworkZone(cmd.Context(), id)
 	if err != nil {
 		return err
 	}

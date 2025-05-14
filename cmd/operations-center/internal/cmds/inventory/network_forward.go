@@ -104,7 +104,7 @@ func (c *cmdNetworkForwardList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	networkForwards, err := c.ocClient.GetWithFilterNetworkForwards(filter)
+	networkForwards, err := c.ocClient.GetWithFilterNetworkForwards(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,7 @@ func (c *cmdNetworkForwardShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	networkForward, err := c.ocClient.GetNetworkForward(id)
+	networkForward, err := c.ocClient.GetNetworkForward(cmd.Context(), id)
 	if err != nil {
 		return err
 	}

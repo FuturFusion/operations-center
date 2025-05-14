@@ -100,7 +100,7 @@ func (c *cmdTokenAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = c.ocClient.CreateToken(api.TokenPut{
+	err = c.ocClient.CreateToken(cmd.Context(), api.TokenPut{
 		UsesRemaining: c.uses,
 		ExpireAt:      time.Now().Add(c.validDuration),
 		Description:   c.description,
@@ -156,7 +156,7 @@ func (c *cmdTokenList) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	tokens, err := c.ocClient.GetTokens()
+	tokens, err := c.ocClient.GetTokens(cmd.Context())
 	if err != nil {
 		return err
 	}
@@ -203,7 +203,7 @@ func (c *cmddTokenRemove) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	err = c.ocClient.DeleteToken(id)
+	err = c.ocClient.DeleteToken(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
@@ -238,7 +238,7 @@ func (c *cmddTokenShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	token, err := c.ocClient.GetToken(id)
+	token, err := c.ocClient.GetToken(cmd.Context(), id)
 	if err != nil {
 		return err
 	}

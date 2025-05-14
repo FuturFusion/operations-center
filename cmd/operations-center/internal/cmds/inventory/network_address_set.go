@@ -110,7 +110,7 @@ func (c *cmdNetworkAddressSetList) Run(cmd *cobra.Command, args []string) error 
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	networkAddressSets, err := c.ocClient.GetWithFilterNetworkAddressSets(filter)
+	networkAddressSets, err := c.ocClient.GetWithFilterNetworkAddressSets(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func (c *cmdNetworkAddressSetShow) Run(cmd *cobra.Command, args []string) error 
 
 	id := args[0]
 
-	networkAddressSet, err := c.ocClient.GetNetworkAddressSet(id)
+	networkAddressSet, err := c.ocClient.GetNetworkAddressSet(cmd.Context(), id)
 	if err != nil {
 		return err
 	}

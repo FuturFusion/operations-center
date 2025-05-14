@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -12,12 +13,12 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterNetworkAddressSets(filter inventory.NetworkAddressSetFilter) ([]api.NetworkAddressSet, error) {
+func (c OperationsCenterClient) GetWithFilterNetworkAddressSets(ctx context.Context, filter inventory.NetworkAddressSetFilter) ([]api.NetworkAddressSet, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/network_address_sets", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/network_address_sets", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +32,8 @@ func (c OperationsCenterClient) GetWithFilterNetworkAddressSets(filter inventory
 	return network_address_sets, nil
 }
 
-func (c OperationsCenterClient) GetNetworkAddressSet(id string) (api.NetworkAddressSet, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_address_sets", id), nil, nil)
+func (c OperationsCenterClient) GetNetworkAddressSet(ctx context.Context, id string) (api.NetworkAddressSet, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/network_address_sets", id), nil, nil)
 	if err != nil {
 		return api.NetworkAddressSet{}, err
 	}

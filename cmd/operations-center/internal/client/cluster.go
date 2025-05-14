@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -10,16 +11,16 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetClusters() ([]api.Cluster, error) {
-	return c.GetWithFilterClusters(provisioning.ClusterFilter{})
+func (c OperationsCenterClient) GetClusters(ctx context.Context) ([]api.Cluster, error) {
+	return c.GetWithFilterClusters(ctx, provisioning.ClusterFilter{})
 }
 
-func (c OperationsCenterClient) GetWithFilterClusters(filter provisioning.ClusterFilter) ([]api.Cluster, error) {
+func (c OperationsCenterClient) GetWithFilterClusters(ctx context.Context, filter provisioning.ClusterFilter) ([]api.Cluster, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/provisioning/clusters", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/provisioning/clusters", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,8 +34,8 @@ func (c OperationsCenterClient) GetWithFilterClusters(filter provisioning.Cluste
 	return clusters, nil
 }
 
-func (c OperationsCenterClient) GetCluster(name string) (api.Cluster, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/provisioning/clusters", name), nil, nil)
+func (c OperationsCenterClient) GetCluster(ctx context.Context, name string) (api.Cluster, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/clusters", name), nil, nil)
 	if err != nil {
 		return api.Cluster{}, err
 	}
@@ -48,13 +49,13 @@ func (c OperationsCenterClient) GetCluster(name string) (api.Cluster, error) {
 	return cluster, nil
 }
 
-func (c OperationsCenterClient) CreateCluster(cluster api.ClusterPost) error {
+func (c OperationsCenterClient) CreateCluster(ctx context.Context, cluster api.ClusterPost) error {
 	content, err := json.Marshal(cluster)
 	if err != nil {
 		return err
 	}
 
-	response, err := c.doRequest(http.MethodPost, "/provisioning/clusters", nil, content)
+	response, err := c.doRequest(ctx, http.MethodPost, "/provisioning/clusters", nil, content)
 	if err != nil {
 		return err
 	}
@@ -68,8 +69,8 @@ func (c OperationsCenterClient) CreateCluster(cluster api.ClusterPost) error {
 	return nil
 }
 
-func (c OperationsCenterClient) DeleteCluster(name string) error {
-	_, err := c.doRequest(http.MethodDelete, path.Join("/provisioning/clusters", name), nil, nil)
+func (c OperationsCenterClient) DeleteCluster(ctx context.Context, name string) error {
+	_, err := c.doRequest(ctx, http.MethodDelete, path.Join("/provisioning/clusters", name), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -77,8 +78,8 @@ func (c OperationsCenterClient) DeleteCluster(name string) error {
 	return nil
 }
 
-func (c OperationsCenterClient) ResyncCluster(name string) error {
-	_, err := c.doRequest(http.MethodPost, path.Join("/provisioning/clusters", name, "resync-inventory"), nil, nil)
+func (c OperationsCenterClient) ResyncCluster(ctx context.Context, name string) error {
+	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, "resync-inventory"), nil, nil)
 	if err != nil {
 		return err
 	}

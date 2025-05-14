@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -12,12 +13,12 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterNetworkIntegrations(filter inventory.NetworkIntegrationFilter) ([]api.NetworkIntegration, error) {
+func (c OperationsCenterClient) GetWithFilterNetworkIntegrations(ctx context.Context, filter inventory.NetworkIntegrationFilter) ([]api.NetworkIntegration, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/network_integrations", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/network_integrations", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +32,8 @@ func (c OperationsCenterClient) GetWithFilterNetworkIntegrations(filter inventor
 	return network_integrations, nil
 }
 
-func (c OperationsCenterClient) GetNetworkIntegration(id string) (api.NetworkIntegration, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_integrations", id), nil, nil)
+func (c OperationsCenterClient) GetNetworkIntegration(ctx context.Context, id string) (api.NetworkIntegration, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/network_integrations", id), nil, nil)
 	if err != nil {
 		return api.NetworkIntegration{}, err
 	}

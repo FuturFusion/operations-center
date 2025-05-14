@@ -147,7 +147,7 @@ func (c *cmd{{ .Name | pascalcase }}List) Run(cmd *cobra.Command, args []string)
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	{{ .PluralName | camelcase }}, err := c.ocClient.GetWithFilter{{ .PluralName | pascalcase }}(filter)
+	{{ .PluralName | camelcase }}, err := c.ocClient.GetWithFilter{{ .PluralName | pascalcase }}(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func (c *cmd{{ .Name | pascalcase }}Show) Run(cmd *cobra.Command, args []string)
 
 	id := args[0]
 
-	{{ .Name | camelcase }}, err := c.ocClient.Get{{ .Name | pascalcase }}(id)
+	{{ .Name | camelcase }}, err := c.ocClient.Get{{ .Name | pascalcase }}(cmd.Context(), id)
 	if err != nil {
 		return err
 	}

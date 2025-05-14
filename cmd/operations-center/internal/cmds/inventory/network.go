@@ -110,7 +110,7 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	networks, err := c.ocClient.GetWithFilterNetworks(filter)
+	networks, err := c.ocClient.GetWithFilterNetworks(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func (c *cmdNetworkShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	network, err := c.ocClient.GetNetwork(id)
+	network, err := c.ocClient.GetNetwork(cmd.Context(), id)
 	if err != nil {
 		return err
 	}

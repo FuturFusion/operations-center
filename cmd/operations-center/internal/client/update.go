@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -10,16 +11,16 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetUpdates() ([]api.Update, error) {
-	return c.GetWithFilterUpdates(provisioning.UpdateFilter{})
+func (c OperationsCenterClient) GetUpdates(ctx context.Context) ([]api.Update, error) {
+	return c.GetWithFilterUpdates(ctx, provisioning.UpdateFilter{})
 }
 
-func (c OperationsCenterClient) GetWithFilterUpdates(filter provisioning.UpdateFilter) ([]api.Update, error) {
+func (c OperationsCenterClient) GetWithFilterUpdates(ctx context.Context, filter provisioning.UpdateFilter) ([]api.Update, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/provisioning/updates", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/provisioning/updates", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -33,8 +34,8 @@ func (c OperationsCenterClient) GetWithFilterUpdates(filter provisioning.UpdateF
 	return updates, nil
 }
 
-func (c OperationsCenterClient) GetUpdate(id string) (api.Update, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/provisioning/updates", id), nil, nil)
+func (c OperationsCenterClient) GetUpdate(ctx context.Context, id string) (api.Update, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/updates", id), nil, nil)
 	if err != nil {
 		return api.Update{}, err
 	}
@@ -48,8 +49,8 @@ func (c OperationsCenterClient) GetUpdate(id string) (api.Update, error) {
 	return update, nil
 }
 
-func (c OperationsCenterClient) GetUpdateFiles(id string) ([]api.UpdateFile, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/provisioning/updates", id, "files"), nil, nil)
+func (c OperationsCenterClient) GetUpdateFiles(ctx context.Context, id string) ([]api.UpdateFile, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/updates", id, "files"), nil, nil)
 	if err != nil {
 		return nil, err
 	}

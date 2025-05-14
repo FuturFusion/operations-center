@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -12,12 +13,12 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterNetworkForwards(filter inventory.NetworkForwardFilter) ([]api.NetworkForward, error) {
+func (c OperationsCenterClient) GetWithFilterNetworkForwards(ctx context.Context, filter inventory.NetworkForwardFilter) ([]api.NetworkForward, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/network_forwards", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/network_forwards", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +32,8 @@ func (c OperationsCenterClient) GetWithFilterNetworkForwards(filter inventory.Ne
 	return network_forwards, nil
 }
 
-func (c OperationsCenterClient) GetNetworkForward(id string) (api.NetworkForward, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_forwards", id), nil, nil)
+func (c OperationsCenterClient) GetNetworkForward(ctx context.Context, id string) (api.NetworkForward, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/network_forwards", id), nil, nil)
 	if err != nil {
 		return api.NetworkForward{}, err
 	}

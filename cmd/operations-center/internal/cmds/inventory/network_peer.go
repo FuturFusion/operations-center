@@ -104,7 +104,7 @@ func (c *cmdNetworkPeerList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	networkPeers, err := c.ocClient.GetWithFilterNetworkPeers(filter)
+	networkPeers, err := c.ocClient.GetWithFilterNetworkPeers(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,7 @@ func (c *cmdNetworkPeerShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	networkPeer, err := c.ocClient.GetNetworkPeer(id)
+	networkPeer, err := c.ocClient.GetNetworkPeer(cmd.Context(), id)
 	if err != nil {
 		return err
 	}

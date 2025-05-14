@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -9,11 +10,11 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetTokens() ([]api.Token, error) {
+func (c OperationsCenterClient) GetTokens(ctx context.Context) ([]api.Token, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 
-	response, err := c.doRequest(http.MethodGet, "/provisioning/tokens", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/provisioning/tokens", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -27,8 +28,8 @@ func (c OperationsCenterClient) GetTokens() ([]api.Token, error) {
 	return tokens, nil
 }
 
-func (c OperationsCenterClient) GetToken(id string) (api.Token, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/provisioning/tokens", id), nil, nil)
+func (c OperationsCenterClient) GetToken(ctx context.Context, id string) (api.Token, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/tokens", id), nil, nil)
 	if err != nil {
 		return api.Token{}, err
 	}
@@ -42,13 +43,13 @@ func (c OperationsCenterClient) GetToken(id string) (api.Token, error) {
 	return token, nil
 }
 
-func (c OperationsCenterClient) CreateToken(token api.TokenPut) error {
+func (c OperationsCenterClient) CreateToken(ctx context.Context, token api.TokenPut) error {
 	content, err := json.Marshal(token)
 	if err != nil {
 		return err
 	}
 
-	response, err := c.doRequest(http.MethodPost, "/provisioning/tokens", nil, content)
+	response, err := c.doRequest(ctx, http.MethodPost, "/provisioning/tokens", nil, content)
 	if err != nil {
 		return err
 	}
@@ -62,8 +63,8 @@ func (c OperationsCenterClient) CreateToken(token api.TokenPut) error {
 	return nil
 }
 
-func (c OperationsCenterClient) DeleteToken(id string) error {
-	_, err := c.doRequest(http.MethodDelete, path.Join("/provisioning/tokens", id), nil, nil)
+func (c OperationsCenterClient) DeleteToken(ctx context.Context, id string) error {
+	_, err := c.doRequest(ctx, http.MethodDelete, path.Join("/provisioning/tokens", id), nil, nil)
 	if err != nil {
 		return err
 	}

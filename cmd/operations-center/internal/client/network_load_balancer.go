@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -12,12 +13,12 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterNetworkLoadBalancers(filter inventory.NetworkLoadBalancerFilter) ([]api.NetworkLoadBalancer, error) {
+func (c OperationsCenterClient) GetWithFilterNetworkLoadBalancers(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) ([]api.NetworkLoadBalancer, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/network_load_balancers", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/network_load_balancers", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +32,8 @@ func (c OperationsCenterClient) GetWithFilterNetworkLoadBalancers(filter invento
 	return network_load_balancers, nil
 }
 
-func (c OperationsCenterClient) GetNetworkLoadBalancer(id string) (api.NetworkLoadBalancer, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_load_balancers", id), nil, nil)
+func (c OperationsCenterClient) GetNetworkLoadBalancer(ctx context.Context, id string) (api.NetworkLoadBalancer, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/network_load_balancers", id), nil, nil)
 	if err != nil {
 		return api.NetworkLoadBalancer{}, err
 	}

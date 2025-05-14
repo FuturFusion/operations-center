@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -12,12 +13,12 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterStorageBuckets(filter inventory.StorageBucketFilter) ([]api.StorageBucket, error) {
+func (c OperationsCenterClient) GetWithFilterStorageBuckets(ctx context.Context, filter inventory.StorageBucketFilter) ([]api.StorageBucket, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/storage_buckets", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/storage_buckets", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +32,8 @@ func (c OperationsCenterClient) GetWithFilterStorageBuckets(filter inventory.Sto
 	return storage_buckets, nil
 }
 
-func (c OperationsCenterClient) GetStorageBucket(id string) (api.StorageBucket, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/storage_buckets", id), nil, nil)
+func (c OperationsCenterClient) GetStorageBucket(ctx context.Context, id string) (api.StorageBucket, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/storage_buckets", id), nil, nil)
 	if err != nil {
 		return api.StorageBucket{}, err
 	}

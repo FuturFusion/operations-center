@@ -116,7 +116,7 @@ func (c *cmdStorageVolumeList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	storageVolumes, err := c.ocClient.GetWithFilterStorageVolumes(filter)
+	storageVolumes, err := c.ocClient.GetWithFilterStorageVolumes(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -187,7 +187,7 @@ func (c *cmdStorageVolumeShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	storageVolume, err := c.ocClient.GetStorageVolume(id)
+	storageVolume, err := c.ocClient.GetStorageVolume(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
