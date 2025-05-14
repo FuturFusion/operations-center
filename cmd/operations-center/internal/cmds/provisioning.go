@@ -43,5 +43,11 @@ func (c *CmdProvisioning) Command() *cobra.Command {
 
 	cmd.AddCommand(tokenCmd.Command())
 
+	updateCmd := provisioning.CmdUpdate{
+		OCClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateCmd.Command())
+
 	return cmd
 }
