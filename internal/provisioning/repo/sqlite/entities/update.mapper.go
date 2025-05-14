@@ -27,9 +27,23 @@ SELECT updates.id, updates.uuid, updates.external_id, updates.components, update
   ORDER BY updates.uuid
 `)
 
+var updateObjectsByChannel = RegisterStmt(`
+SELECT updates.id, updates.uuid, updates.external_id, updates.components, updates.version, updates.published_at, updates.severity, updates.channel, updates.files
+  FROM updates
+  WHERE ( updates.channel = ? )
+  ORDER BY updates.uuid
+`)
+
 var updateNames = RegisterStmt(`
 SELECT updates.uuid
   FROM updates
+  ORDER BY updates.uuid
+`)
+
+var updateNamesByChannel = RegisterStmt(`
+SELECT updates.uuid
+  FROM updates
+  WHERE ( updates.channel = ? )
   ORDER BY updates.uuid
 `)
 
@@ -112,7 +126,7 @@ func GetUpdate(ctx context.Context, db dbtx, uuid uuid.UUID) (_ *provisioning.Up
 		_err = mapErr(_err, "Update")
 	}()
 
-	filter := UpdateFilter{}
+	filter := provisioning.UpdateFilter{}
 	filter.UUID = &uuid
 
 	objects, err := GetUpdates(ctx, db, filter)
@@ -186,7 +200,7 @@ func getUpdatesRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]pro
 
 // GetUpdates returns all available updates.
 // generator: update GetMany
-func GetUpdates(ctx context.Context, db dbtx, filters ...UpdateFilter) (_ []provisioning.Update, _err error) {
+func GetUpdates(ctx context.Context, db dbtx, filters ...provisioning.UpdateFilter) (_ []provisioning.Update, _err error) {
 	defer func() {
 		_err = mapErr(_err, "Update")
 	}()
@@ -209,7 +223,7 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...UpdateFilter) (_ []prov
 	}
 
 	for i, filter := range filters {
-		if filter.UUID != nil {
+		if filter.UUID != nil && filter.Channel == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, updateObjectsByUUID)
@@ -233,7 +247,31 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...UpdateFilter) (_ []prov
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.UUID == nil {
+		} else if filter.Channel != nil && filter.UUID == nil {
+			args = append(args, []any{filter.Channel}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, updateObjectsByChannel)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"updateObjectsByChannel\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(updateObjectsByChannel)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"updateObjects\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.UUID == nil && filter.Channel == nil {
 			return nil, fmt.Errorf("Cannot filter on empty UpdateFilter")
 		} else {
 			return nil, fmt.Errorf("No statement exists for the given Filter")
@@ -257,7 +295,7 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...UpdateFilter) (_ []prov
 
 // GetUpdateNames returns the identifying field of update.
 // generator: update GetNames
-func GetUpdateNames(ctx context.Context, db dbtx, filters ...UpdateFilter) (_ []uuid.UUID, _err error) {
+func GetUpdateNames(ctx context.Context, db dbtx, filters ...provisioning.UpdateFilter) (_ []uuid.UUID, _err error) {
 	defer func() {
 		_err = mapErr(_err, "Update")
 	}()
@@ -279,8 +317,32 @@ func GetUpdateNames(ctx context.Context, db dbtx, filters ...UpdateFilter) (_ []
 		}
 	}
 
-	for _, filter := range filters {
-		if filter.UUID == nil {
+	for i, filter := range filters {
+		if filter.Channel != nil && filter.UUID == nil {
+			args = append(args, []any{filter.Channel}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, updateNamesByChannel)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"updateNamesByChannel\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(updateNamesByChannel)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"updateNames\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.UUID == nil && filter.Channel == nil {
 			return nil, fmt.Errorf("Cannot filter on empty UpdateFilter")
 		} else {
 			return nil, fmt.Errorf("No statement exists for the given Filter")

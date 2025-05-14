@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -37,6 +38,12 @@ func registerUpdateHandler(router Router, service provisioning.UpdateService) {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: channel
+//	    description: Channel to filter for.
+//	    type: string
+//	    example: stable
 //	responses:
 //	  "200":
 //	    description: API updates
@@ -80,6 +87,12 @@ func registerUpdateHandler(router Router, service provisioning.UpdateService) {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: channel
+//	    description: Channel to filter for.
+//	    type: string
+//	    example: stable
 //	responses:
 //	  "200":
 //	    description: API updates
@@ -115,8 +128,14 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 		recursion = 0
 	}
 
+	var filter provisioning.UpdateFilter
+
+	if r.URL.Query().Get("channel") != "" {
+		filter.Channel = ptr.To(r.URL.Query().Get("channel"))
+	}
+
 	if recursion == 1 {
-		updates, err := u.service.GetAll(r.Context())
+		updates, err := u.service.GetAllWithFilter(r.Context(), filter)
 		if err != nil {
 			return response.SmartError(err)
 		}
@@ -136,7 +155,7 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	updateIDs, err := u.service.GetAllUUIDs(r.Context())
+	updateIDs, err := u.service.GetAllUUIDsWithFilter(r.Context(), filter)
 	if err != nil {
 		return response.SmartError(err)
 	}

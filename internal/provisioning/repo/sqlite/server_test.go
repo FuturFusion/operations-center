@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -126,13 +127,30 @@ func TestServerDatabaseActions(t *testing.T) {
 	_, err = server.Create(ctx, serverB)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
-	// Ensure deletion of cluster fails if a linked server is present.
+	// Add server one to a cluster
 	_, err = clusterSvc.Create(ctx, provisioning.Cluster{
 		Name:          "one",
 		ConnectionURL: "https://one/",
 		ServerNames:   []string{"two-new"},
 	})
 	require.NoError(t, err)
+
+	// Get all with filter
+	servers, err = server.GetAllWithFilter(ctx, provisioning.ServerFilter{
+		Cluster: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, servers, 1)
+
+	// Get all names with filter
+	serverIDs, err = server.GetAllNamesWithFilter(ctx, provisioning.ServerFilter{
+		Cluster: ptr.To("one"),
+	})
+	require.NoError(t, err)
+	require.Len(t, serverIDs, 1)
+	require.ElementsMatch(t, []string{"two-new"}, serverIDs)
+
+	// Ensure deletion of cluster fails if a linked server is present.
 	err = clusterSvc.DeleteByName(ctx, "one")
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 }

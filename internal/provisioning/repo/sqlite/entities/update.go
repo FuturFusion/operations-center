@@ -9,7 +9,9 @@ import "github.com/google/uuid"
 //
 //generate-database:mapper stmt -e update objects
 //generate-database:mapper stmt -e update objects-by-UUID
+//generate-database:mapper stmt -e update objects-by-Channel
 //generate-database:mapper stmt -e update names
+//generate-database:mapper stmt -e update names-by-Channel
 //generate-database:mapper stmt -e update id
 //generate-database:mapper stmt -e update create
 //generate-database:mapper stmt -e update update

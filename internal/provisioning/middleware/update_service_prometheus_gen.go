@@ -67,6 +67,34 @@ func (_d UpdateServiceWithPrometheus) GetAllUUIDs(ctx context.Context) (uUIDs []
 	return _d.base.GetAllUUIDs(ctx)
 }
 
+// GetAllUUIDsWithFilter implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) GetAllUUIDsWithFilter(ctx context.Context, filter provisioning.UpdateFilter) (uUIDs []uuid.UUID, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllUUIDsWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllUUIDsWithFilter(ctx, filter)
+}
+
+// GetAllWithFilter implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) GetAllWithFilter(ctx context.Context, filter provisioning.UpdateFilter) (updates provisioning.Updates, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByUUID implements provisioning.UpdateService.
 func (_d UpdateServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (update *provisioning.Update, err error) {
 	_since := time.Now()

@@ -6,12 +6,18 @@ import (
 	"net/url"
 	"path"
 
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func (c OperationsCenterClient) GetUpdates() ([]api.Update, error) {
+	return c.GetWithFilterUpdates(provisioning.UpdateFilter{})
+}
+
+func (c OperationsCenterClient) GetWithFilterUpdates(filter provisioning.UpdateFilter) ([]api.Update, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
+	query = filter.AppendToURLValues(query)
 
 	response, err := c.doRequest(http.MethodGet, "/provisioning/updates", query, nil)
 	if err != nil {

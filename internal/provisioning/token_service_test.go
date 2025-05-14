@@ -157,16 +157,16 @@ func TestTokenService_GetAll(t *testing.T) {
 
 func TestTokenService_GetAllNames(t *testing.T) {
 	tests := []struct {
-		name             string
-		repoGetAllIDs    []uuid.UUID
-		repoGetAllIDsErr error
+		name               string
+		repoGetAllUUIDs    []uuid.UUID
+		repoGetAllUUIDsErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success",
-			repoGetAllIDs: []uuid.UUID{
+			repoGetAllUUIDs: []uuid.UUID{
 				uuid.MustParse("b32d0079-c48b-4957-b1cb-bef54125c861"),
 				uuid.MustParse("464d229b-3069-4a82-bc59-b215a7c6ed1b"),
 			},
@@ -175,8 +175,8 @@ func TestTokenService_GetAllNames(t *testing.T) {
 			count:     2,
 		},
 		{
-			name:             "error - repo",
-			repoGetAllIDsErr: boom.Error,
+			name:               "error - repo",
+			repoGetAllUUIDsErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -188,7 +188,7 @@ func TestTokenService_GetAllNames(t *testing.T) {
 			// Setup
 			repo := &mock.TokenRepoMock{
 				GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
-					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
+					return tc.repoGetAllUUIDs, tc.repoGetAllUUIDsErr
 				},
 			}
 
@@ -206,17 +206,17 @@ func TestTokenService_GetAllNames(t *testing.T) {
 
 func TestTokenService_GetByID(t *testing.T) {
 	tests := []struct {
-		name             string
-		idArg            uuid.UUID
-		repoGetByIDToken *provisioning.Token
-		repoGetByIDErr   error
+		name               string
+		idArg              uuid.UUID
+		repoGetByUUIDToken *provisioning.Token
+		repoGetByUUIDErr   error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name:  "success",
 			idArg: uuidA,
-			repoGetByIDToken: &provisioning.Token{
+			repoGetByUUIDToken: &provisioning.Token{
 				UUID:          uuidA,
 				UsesRemaining: 1,
 				ExpireAt:      time.Now().Add(1 * time.Minute),
@@ -226,9 +226,9 @@ func TestTokenService_GetByID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:           "error - repo",
-			idArg:          uuidA,
-			repoGetByIDErr: boom.Error,
+			name:             "error - repo",
+			idArg:            uuidA,
+			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -239,7 +239,7 @@ func TestTokenService_GetByID(t *testing.T) {
 			// Setup
 			repo := &mock.TokenRepoMock{
 				GetByUUIDFunc: func(ctx context.Context, uuid uuid.UUID) (*provisioning.Token, error) {
-					return tc.repoGetByIDToken, tc.repoGetByIDErr
+					return tc.repoGetByUUIDToken, tc.repoGetByUUIDErr
 				},
 			}
 
@@ -250,7 +250,7 @@ func TestTokenService_GetByID(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByIDToken, token)
+			require.Equal(t, tc.repoGetByUUIDToken, token)
 		})
 	}
 }
@@ -324,9 +324,9 @@ func TestTokenService_Update(t *testing.T) {
 
 func TestTokenService_DeleteByUUID(t *testing.T) {
 	tests := []struct {
-		name              string
-		idArg             uuid.UUID
-		repoDeleteByIDErr error
+		name                string
+		idArg               uuid.UUID
+		repoDeleteByUUIDErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -337,9 +337,9 @@ func TestTokenService_DeleteByUUID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:              "error - repo",
-			idArg:             uuidA,
-			repoDeleteByIDErr: boom.Error,
+			name:                "error - repo",
+			idArg:               uuidA,
+			repoDeleteByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -350,7 +350,7 @@ func TestTokenService_DeleteByUUID(t *testing.T) {
 			// Setup
 			repo := &mock.TokenRepoMock{
 				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
-					return tc.repoDeleteByIDErr
+					return tc.repoDeleteByUUIDErr
 				},
 			}
 

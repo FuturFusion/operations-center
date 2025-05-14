@@ -111,6 +111,76 @@ func (_d UpdateServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.U
 	return _d._base.GetAllUUIDs(ctx)
 }
 
+// GetAllUUIDsWithFilter implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter provisioning.UpdateFilter) (uUIDs []uuid.UUID, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.Debug("=> calling GetAllUUIDsWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("uUIDs", uUIDs),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
+		} else {
+			log.Debug("<= method GetAllUUIDsWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllUUIDsWithFilter(ctx, filter)
+}
+
+// GetAllWithFilter implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) GetAllWithFilter(ctx context.Context, filter provisioning.UpdateFilter) (updates provisioning.Updates, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.Debug("=> calling GetAllWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("updates", updates),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
+		} else {
+			log.Debug("<= method GetAllWithFilter finished")
+		}
+	}()
+	return _d._base.GetAllWithFilter(ctx, filter)
+}
+
 // GetByUUID implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (update *provisioning.Update, err error) {
 	log := _d._log.With()

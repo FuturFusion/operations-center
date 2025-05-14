@@ -316,16 +316,16 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 
 func TestClusterService_GetAllNames(t *testing.T) {
 	tests := []struct {
-		name             string
-		repoGetAllIDs    []string
-		repoGetAllIDsErr error
+		name               string
+		repoGetAllNames    []string
+		repoGetAllNamesErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success",
-			repoGetAllIDs: []string{
+			repoGetAllNames: []string{
 				"one", "two",
 			},
 
@@ -333,8 +333,8 @@ func TestClusterService_GetAllNames(t *testing.T) {
 			count:     2,
 		},
 		{
-			name:             "error - repo",
-			repoGetAllIDsErr: boom.Error,
+			name:               "error - repo",
+			repoGetAllNamesErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -346,7 +346,7 @@ func TestClusterService_GetAllNames(t *testing.T) {
 			// Setup
 			repo := &mock.ClusterRepoMock{
 				GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
-					return tc.repoGetAllIDs, tc.repoGetAllIDsErr
+					return tc.repoGetAllNames, tc.repoGetAllNamesErr
 				},
 			}
 
@@ -364,10 +364,10 @@ func TestClusterService_GetAllNames(t *testing.T) {
 
 func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 	tests := []struct {
-		name                       string
-		filter                     provisioning.ClusterFilter
-		repoGetAllIDsWithFilter    []string
-		repoGetAllIDsWithFilterErr error
+		name                         string
+		filter                       provisioning.ClusterFilter
+		repoGetAllNamesWithFilter    []string
+		repoGetAllNamesWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
@@ -375,7 +375,7 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name:   "success - no filter expression",
 			filter: provisioning.ClusterFilter{},
-			repoGetAllIDsWithFilter: []string{
+			repoGetAllNamesWithFilter: []string{
 				"one", "two",
 			},
 
@@ -387,7 +387,7 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 			filter: provisioning.ClusterFilter{
 				Expression: ptr.To(`Name matches "one"`),
 			},
-			repoGetAllIDsWithFilter: []string{
+			repoGetAllNamesWithFilter: []string{
 				"one", "two",
 			},
 
@@ -399,7 +399,7 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 			filter: provisioning.ClusterFilter{
 				Expression: ptr.To(``), // the empty expression is an invalid expression.
 			},
-			repoGetAllIDsWithFilter: []string{
+			repoGetAllNamesWithFilter: []string{
 				"one",
 			},
 
@@ -411,7 +411,7 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 			filter: provisioning.ClusterFilter{
 				Expression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
 			},
-			repoGetAllIDsWithFilter: []string{
+			repoGetAllNamesWithFilter: []string{
 				"one",
 			},
 
@@ -423,7 +423,7 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 			filter: provisioning.ClusterFilter{
 				Expression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
 			},
-			repoGetAllIDsWithFilter: []string{
+			repoGetAllNamesWithFilter: []string{
 				"one",
 			},
 
@@ -433,8 +433,8 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 			count: 0,
 		},
 		{
-			name:                       "error - repo",
-			repoGetAllIDsWithFilterErr: boom.Error,
+			name:                         "error - repo",
+			repoGetAllNamesWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -446,7 +446,7 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 			// Setup
 			repo := &mock.ClusterRepoMock{
 				GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
-					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
+					return tc.repoGetAllNamesWithFilter, tc.repoGetAllNamesWithFilterErr
 				},
 			}
 
@@ -464,17 +464,17 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 
 func TestClusterService_GetByID(t *testing.T) {
 	tests := []struct {
-		name               string
-		idArg              string
-		repoGetByIDCluster *provisioning.Cluster
-		repoGetByIDErr     error
+		name                 string
+		idArg                string
+		repoGetByNameCluster *provisioning.Cluster
+		repoGetByNameErr     error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name:  "success",
 			idArg: "one",
-			repoGetByIDCluster: &provisioning.Cluster{
+			repoGetByNameCluster: &provisioning.Cluster{
 				Name:          "one",
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
@@ -483,9 +483,9 @@ func TestClusterService_GetByID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:           "error - repo",
-			idArg:          "one",
-			repoGetByIDErr: boom.Error,
+			name:             "error - repo",
+			idArg:            "one",
+			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -496,7 +496,7 @@ func TestClusterService_GetByID(t *testing.T) {
 			// Setup
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
-					return tc.repoGetByIDCluster, tc.repoGetByIDErr
+					return tc.repoGetByNameCluster, tc.repoGetByNameErr
 				},
 			}
 
@@ -507,24 +507,24 @@ func TestClusterService_GetByID(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByIDCluster, cluster)
+			require.Equal(t, tc.repoGetByNameCluster, cluster)
 		})
 	}
 }
 
 func TestClusterService_GetByName(t *testing.T) {
 	tests := []struct {
-		name               string
-		nameArg            string
-		repoGetByIDCluster *provisioning.Cluster
-		repoGetByIDErr     error
+		name                 string
+		nameArg              string
+		repoGetByNameCluster *provisioning.Cluster
+		repoGetByNameErr     error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name:    "success",
 			nameArg: "one",
-			repoGetByIDCluster: &provisioning.Cluster{
+			repoGetByNameCluster: &provisioning.Cluster{
 				Name:          "one",
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
@@ -541,9 +541,9 @@ func TestClusterService_GetByName(t *testing.T) {
 			},
 		},
 		{
-			name:           "error - repo",
-			nameArg:        "one",
-			repoGetByIDErr: boom.Error,
+			name:             "error - repo",
+			nameArg:          "one",
+			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -554,7 +554,7 @@ func TestClusterService_GetByName(t *testing.T) {
 			// Setup
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
-					return tc.repoGetByIDCluster, tc.repoGetByIDErr
+					return tc.repoGetByNameCluster, tc.repoGetByNameErr
 				},
 			}
 
@@ -565,7 +565,7 @@ func TestClusterService_GetByName(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByIDCluster, cluster)
+			require.Equal(t, tc.repoGetByNameCluster, cluster)
 		})
 	}
 }

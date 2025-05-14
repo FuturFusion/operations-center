@@ -36,8 +36,42 @@ func (s updateService) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
 	return s.repo.GetAllUUIDs(ctx)
 }
 
+func (s updateService) GetAllWithFilter(ctx context.Context, filter UpdateFilter) (Updates, error) {
+	var err error
+	var updates Updates
+
+	if filter.UUID == nil && filter.Channel == nil {
+		updates, err = s.repo.GetAll(ctx)
+	} else {
+		updates, err = s.repo.GetAllWithFilter(ctx, filter)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return updates, nil
+}
+
 func (s updateService) GetByUUID(ctx context.Context, id uuid.UUID) (*Update, error) {
 	return s.repo.GetByUUID(ctx, id)
+}
+
+func (s updateService) GetAllUUIDsWithFilter(ctx context.Context, filter UpdateFilter) ([]uuid.UUID, error) {
+	var err error
+	var updateIDs []uuid.UUID
+
+	if filter.UUID == nil && filter.Channel == nil {
+		updateIDs, err = s.repo.GetAllUUIDs(ctx)
+	} else {
+		updateIDs, err = s.repo.GetAllUUIDsWithFilter(ctx, filter)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return updateIDs, nil
 }
 
 func (s updateService) GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (UpdateFiles, error) {
