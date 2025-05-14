@@ -66,6 +66,15 @@ func (u *UpdateComponent) Scan(value any) error {
 
 type UpdateComponents []UpdateComponent
 
+func (u UpdateComponents) String() string {
+	strs := make([]string, 0, len(u))
+	for _, uc := range u {
+		strs = append(strs, string(uc))
+	}
+
+	return strings.Join(strs, ", ")
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (u UpdateComponents) MarshalText() ([]byte, error) {
 	s := make([]string, 0, len(u))
@@ -134,6 +143,10 @@ var updateSeverities = map[UpdateSeverity]struct{}{
 	UpdateSeverityMedium:   {},
 	UpdateSeverityHigh:     {},
 	UpdateSeverityCritical: {},
+}
+
+func (u UpdateSeverity) String() string {
+	return string(u)
 }
 
 // MarshalText implements the encoding.TextMarshaler interface.
