@@ -27,8 +27,8 @@ func (c OperationsCenterClient) GetTokens() ([]api.Token, error) {
 	return tokens, nil
 }
 
-func (c OperationsCenterClient) GetToken(name string) (api.Token, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/provisioning/tokens", name), nil, nil)
+func (c OperationsCenterClient) GetToken(id string) (api.Token, error) {
+	response, err := c.doRequest(http.MethodGet, path.Join("/provisioning/tokens", id), nil, nil)
 	if err != nil {
 		return api.Token{}, err
 	}
@@ -62,8 +62,8 @@ func (c OperationsCenterClient) CreateToken(token api.TokenPut) error {
 	return nil
 }
 
-func (c OperationsCenterClient) DeleteToken(name string) error {
-	_, err := c.doRequest(http.MethodDelete, path.Join("/provisioning/tokens", name), nil, nil)
+func (c OperationsCenterClient) DeleteToken(id string) error {
+	_, err := c.doRequest(http.MethodDelete, path.Join("/provisioning/tokens", id), nil, nil)
 	if err != nil {
 		return err
 	}

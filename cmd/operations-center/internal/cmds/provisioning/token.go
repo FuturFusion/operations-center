@@ -181,7 +181,7 @@ type cmddTokenRemove struct {
 
 func (c *cmddTokenRemove) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "remove <name>"
+	cmd.Use = "remove <uuid>"
 	cmd.Short = "Remove a token"
 	cmd.Long = `Description:
   Remove a token
@@ -201,9 +201,9 @@ func (c *cmddTokenRemove) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	name := args[0]
+	id := args[0]
 
-	err = c.ocClient.DeleteToken(name)
+	err = c.ocClient.DeleteToken(id)
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ type cmddTokenShow struct {
 
 func (c *cmddTokenShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <name>"
+	cmd.Use = "show <uuid>"
 	cmd.Short = "Show information about a token"
 	cmd.Long = `Description:
   Show information about a token.
@@ -236,9 +236,9 @@ func (c *cmddTokenShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	name := args[0]
+	id := args[0]
 
-	token, err := c.ocClient.GetToken(name)
+	token, err := c.ocClient.GetToken(id)
 	if err != nil {
 		return err
 	}
