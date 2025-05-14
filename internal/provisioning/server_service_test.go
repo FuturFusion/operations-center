@@ -326,10 +326,10 @@ func TestServerService_GetAllNames(t *testing.T) {
 
 func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 	tests := []struct {
-		name                       string
-		filter                     provisioning.ServerFilter
-		repoGetAllIDsWithFilter    []string
-		repoGetAllIDsWithFilterErr error
+		name                         string
+		filter                       provisioning.ServerFilter
+		repoGetAllNamesWithFilter    []string
+		repoGetAllNamesWithFilterErr error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
@@ -339,7 +339,7 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 			filter: provisioning.ServerFilter{
 				Cluster: ptr.To("one"),
 			},
-			repoGetAllIDsWithFilter: []string{
+			repoGetAllNamesWithFilter: []string{
 				"one", "two",
 			},
 
@@ -351,7 +351,7 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 			filter: provisioning.ServerFilter{
 				Expression: ptr.To(`Name matches "one"`),
 			},
-			repoGetAllIDsWithFilter: []string{
+			repoGetAllNamesWithFilter: []string{
 				"one", "two",
 			},
 
@@ -363,7 +363,7 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 			filter: provisioning.ServerFilter{
 				Expression: ptr.To(``), // the empty expression is an invalid expression.
 			},
-			repoGetAllIDsWithFilter: []string{
+			repoGetAllNamesWithFilter: []string{
 				"one",
 			},
 
@@ -375,7 +375,7 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 			filter: provisioning.ServerFilter{
 				Expression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
 			},
-			repoGetAllIDsWithFilter: []string{
+			repoGetAllNamesWithFilter: []string{
 				"one",
 			},
 
@@ -387,7 +387,7 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 			filter: provisioning.ServerFilter{
 				Expression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
 			},
-			repoGetAllIDsWithFilter: []string{
+			repoGetAllNamesWithFilter: []string{
 				"one",
 			},
 
@@ -397,8 +397,8 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 			count: 0,
 		},
 		{
-			name:                       "error - repo",
-			repoGetAllIDsWithFilterErr: boom.Error,
+			name:                         "error - repo",
+			repoGetAllNamesWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -410,10 +410,10 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 			// Setup
 			repo := &mock.ServerRepoMock{
 				GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
-					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
+					return tc.repoGetAllNamesWithFilter, tc.repoGetAllNamesWithFilterErr
 				},
 				GetAllNamesWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) ([]string, error) {
-					return tc.repoGetAllIDsWithFilter, tc.repoGetAllIDsWithFilterErr
+					return tc.repoGetAllNamesWithFilter, tc.repoGetAllNamesWithFilterErr
 				},
 			}
 
@@ -431,17 +431,17 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 
 func TestServerService_GetByID(t *testing.T) {
 	tests := []struct {
-		name              string
-		idArg             string
-		repoGetByIDServer *provisioning.Server
-		repoGetByIDErr    error
+		name                string
+		idArg               string
+		repoGetByNameServer *provisioning.Server
+		repoGetByNameErr    error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name:  "success",
 			idArg: "one",
-			repoGetByIDServer: &provisioning.Server{
+			repoGetByNameServer: &provisioning.Server{
 				Name:          "one",
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
@@ -450,9 +450,9 @@ func TestServerService_GetByID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:           "error - repo",
-			idArg:          "one",
-			repoGetByIDErr: boom.Error,
+			name:             "error - repo",
+			idArg:            "one",
+			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -463,7 +463,7 @@ func TestServerService_GetByID(t *testing.T) {
 			// Setup
 			repo := &mock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
-					return tc.repoGetByIDServer, tc.repoGetByIDErr
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
 				},
 			}
 
@@ -474,24 +474,24 @@ func TestServerService_GetByID(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByIDServer, server)
+			require.Equal(t, tc.repoGetByNameServer, server)
 		})
 	}
 }
 
 func TestServerService_GetByName(t *testing.T) {
 	tests := []struct {
-		name              string
-		nameArg           string
-		repoGetByIDServer *provisioning.Server
-		repoGetByIDErr    error
+		name                string
+		nameArg             string
+		repoGetByNameServer *provisioning.Server
+		repoGetByNameErr    error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name:    "success",
 			nameArg: "one",
-			repoGetByIDServer: &provisioning.Server{
+			repoGetByNameServer: &provisioning.Server{
 				Name:          "one",
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
@@ -508,9 +508,9 @@ func TestServerService_GetByName(t *testing.T) {
 			},
 		},
 		{
-			name:           "error - repo",
-			nameArg:        "one",
-			repoGetByIDErr: boom.Error,
+			name:             "error - repo",
+			nameArg:          "one",
+			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -521,7 +521,7 @@ func TestServerService_GetByName(t *testing.T) {
 			// Setup
 			repo := &mock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
-					return tc.repoGetByIDServer, tc.repoGetByIDErr
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
 				},
 			}
 
@@ -532,7 +532,7 @@ func TestServerService_GetByName(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByIDServer, server)
+			require.Equal(t, tc.repoGetByNameServer, server)
 		})
 	}
 }
@@ -687,9 +687,9 @@ func TestServerService_Rename(t *testing.T) {
 
 func TestServerService_DeleteByName(t *testing.T) {
 	tests := []struct {
-		name              string
-		nameArg           string
-		repoDeleteByIDErr error
+		name                string
+		nameArg             string
+		repoDeleteByNameErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -708,9 +708,9 @@ func TestServerService_DeleteByName(t *testing.T) {
 			},
 		},
 		{
-			name:              "error - repo.DeleteByID",
-			nameArg:           "one",
-			repoDeleteByIDErr: boom.Error,
+			name:                "error - repo.DeleteByID",
+			nameArg:             "one",
+			repoDeleteByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -721,7 +721,7 @@ func TestServerService_DeleteByName(t *testing.T) {
 			// Setup
 			repo := &mock.ServerRepoMock{
 				DeleteByNameFunc: func(ctx context.Context, name string) error {
-					return tc.repoDeleteByIDErr
+					return tc.repoDeleteByNameErr
 				},
 			}
 
