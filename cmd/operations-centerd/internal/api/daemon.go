@@ -29,6 +29,7 @@ import (
 	authztlz "github.com/FuturFusion/operations-center/internal/authz/tls"
 	"github.com/FuturFusion/operations-center/internal/authz/unixsocket"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/file"
 	incusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
@@ -204,6 +205,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 			provisioningRepoMiddleware.NewUpdateRepoWithSlog(
 				provisioningSqlite.NewUpdate(dbWithTransaction),
 				slog.Default(),
+				provisioningRepoMiddleware.UpdateRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
 				filecache.New(
