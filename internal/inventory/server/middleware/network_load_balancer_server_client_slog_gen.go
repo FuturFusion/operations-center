@@ -14,16 +14,32 @@ import (
 
 // NetworkLoadBalancerServerClientWithSlog implements inventory.NetworkLoadBalancerServerClient that is instrumented with slog logger.
 type NetworkLoadBalancerServerClientWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkLoadBalancerServerClient
+	_log                  *slog.Logger
+	_base                 inventory.NetworkLoadBalancerServerClient
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkLoadBalancerServerClientWithSlogOption func(s *NetworkLoadBalancerServerClientWithSlog)
+
+func NetworkLoadBalancerServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkLoadBalancerServerClientWithSlogOption {
+	return func(_base *NetworkLoadBalancerServerClientWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkLoadBalancerServerClientWithSlog instruments an implementation of the inventory.NetworkLoadBalancerServerClient with simple logging.
-func NewNetworkLoadBalancerServerClientWithSlog(base inventory.NetworkLoadBalancerServerClient, log *slog.Logger) NetworkLoadBalancerServerClientWithSlog {
-	return NetworkLoadBalancerServerClientWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkLoadBalancerServerClientWithSlog(base inventory.NetworkLoadBalancerServerClient, log *slog.Logger, opts ...NetworkLoadBalancerServerClientWithSlogOption) NetworkLoadBalancerServerClientWithSlog {
+	this := NetworkLoadBalancerServerClientWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetNetworkLoadBalancerByName implements inventory.NetworkLoadBalancerServerClient.
@@ -51,7 +67,11 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(c
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkLoadBalancerByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkLoadBalancerByName returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkLoadBalancerByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkLoadBalancerByName finished")
 		}
@@ -83,7 +103,11 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx co
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkLoadBalancers returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkLoadBalancers returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkLoadBalancers returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkLoadBalancers finished")
 		}

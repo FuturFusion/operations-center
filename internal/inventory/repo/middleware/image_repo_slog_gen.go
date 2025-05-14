@@ -14,16 +14,32 @@ import (
 
 // ImageRepoWithSlog implements inventory.ImageRepo that is instrumented with slog logger.
 type ImageRepoWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.ImageRepo
+	_log                  *slog.Logger
+	_base                 inventory.ImageRepo
+	_isInformativeErrFunc func(error) bool
+}
+
+type ImageRepoWithSlogOption func(s *ImageRepoWithSlog)
+
+func ImageRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ImageRepoWithSlogOption {
+	return func(_base *ImageRepoWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewImageRepoWithSlog instruments an implementation of the inventory.ImageRepo with simple logging.
-func NewImageRepoWithSlog(base inventory.ImageRepo, log *slog.Logger) ImageRepoWithSlog {
-	return ImageRepoWithSlog{
-		_base: base,
-		_log:  log,
+func NewImageRepoWithSlog(base inventory.ImageRepo, log *slog.Logger, opts ...ImageRepoWithSlogOption) ImageRepoWithSlog {
+	this := ImageRepoWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // Create implements inventory.ImageRepo.
@@ -49,7 +65,11 @@ func (_d ImageRepoWithSlog) Create(ctx context.Context, image inventory.Image) (
 			}
 		}
 		if err != nil {
-			log.Error("<= method Create returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Create returned an informative error")
+			} else {
+				log.Error("<= method Create returned an error")
+			}
 		} else {
 			log.Debug("<= method Create finished")
 		}
@@ -79,7 +99,11 @@ func (_d ImageRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster str
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByClusterName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByClusterName returned an informative error")
+			} else {
+				log.Error("<= method DeleteByClusterName returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByClusterName finished")
 		}
@@ -109,7 +133,11 @@ func (_d ImageRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByUUID returned an informative error")
+			} else {
+				log.Error("<= method DeleteByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByUUID finished")
 		}
@@ -140,7 +168,11 @@ func (_d ImageRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filter in
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
@@ -171,7 +203,11 @@ func (_d ImageRepoWithSlog) GetAllWithFilter(ctx context.Context, filter invento
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -202,7 +238,11 @@ func (_d ImageRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (image 
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -233,7 +273,11 @@ func (_d ImageRepoWithSlog) UpdateByUUID(ctx context.Context, image inventory.Im
 			}
 		}
 		if err != nil {
-			log.Error("<= method UpdateByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method UpdateByUUID returned an informative error")
+			} else {
+				log.Error("<= method UpdateByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method UpdateByUUID finished")
 		}

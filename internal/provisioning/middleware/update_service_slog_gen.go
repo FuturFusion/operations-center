@@ -10,20 +10,37 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/google/uuid"
 )
 
 // UpdateServiceWithSlog implements provisioning.UpdateService that is instrumented with slog logger.
 type UpdateServiceWithSlog struct {
-	_log  *slog.Logger
-	_base provisioning.UpdateService
+	_log                  *slog.Logger
+	_base                 provisioning.UpdateService
+	_isInformativeErrFunc func(error) bool
+}
+
+type UpdateServiceWithSlogOption func(s *UpdateServiceWithSlog)
+
+func UpdateServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) UpdateServiceWithSlogOption {
+	return func(_base *UpdateServiceWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewUpdateServiceWithSlog instruments an implementation of the provisioning.UpdateService with simple logging.
-func NewUpdateServiceWithSlog(base provisioning.UpdateService, log *slog.Logger) UpdateServiceWithSlog {
-	return UpdateServiceWithSlog{
-		_base: base,
-		_log:  log,
+func NewUpdateServiceWithSlog(base provisioning.UpdateService, log *slog.Logger, opts ...UpdateServiceWithSlogOption) UpdateServiceWithSlog {
+	this := UpdateServiceWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetAll implements provisioning.UpdateService.
@@ -48,7 +65,11 @@ func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisionin
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAll returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAll returned an informative error")
+			} else {
+				log.Error("<= method GetAll returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAll finished")
 		}
@@ -56,20 +77,20 @@ func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisionin
 	return _d._base.GetAll(ctx)
 }
 
-// GetAllIDs implements provisioning.UpdateService.
-func (_d UpdateServiceWithSlog) GetAllIDs(ctx context.Context) (strings []string, err error) {
+// GetAllUUIDs implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling GetAllIDs")
+	log.Debug("=> calling GetAllUUIDs")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("strings", strings),
+				slog.Any("uUIDs", uUIDs),
 				slog.Any("err", err),
 			)
 		} else {
@@ -78,24 +99,28 @@ func (_d UpdateServiceWithSlog) GetAllIDs(ctx context.Context) (strings []string
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllIDs returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDs returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDs returned an error")
+			}
 		} else {
-			log.Debug("<= method GetAllIDs finished")
+			log.Debug("<= method GetAllUUIDs finished")
 		}
 	}()
-	return _d._base.GetAllIDs(ctx)
+	return _d._base.GetAllUUIDs(ctx)
 }
 
-// GetByID implements provisioning.UpdateService.
-func (_d UpdateServiceWithSlog) GetByID(ctx context.Context, id string) (update provisioning.Update, err error) {
+// GetByUUID implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (update *provisioning.Update, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("id", id),
+			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling GetByID")
+	log.Debug("=> calling GetByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -109,21 +134,25 @@ func (_d UpdateServiceWithSlog) GetByID(ctx context.Context, id string) (update 
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
-			log.Debug("<= method GetByID finished")
+			log.Debug("<= method GetByUUID finished")
 		}
 	}()
-	return _d._base.GetByID(ctx, id)
+	return _d._base.GetByUUID(ctx, id)
 }
 
 // GetUpdateAllFiles implements provisioning.UpdateService.
-func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, updateID string) (updateFiles provisioning.UpdateFiles, err error) {
+func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (updateFiles provisioning.UpdateFiles, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("updateID", updateID),
+			slog.Any("id", id),
 		)
 	}
 	log.Debug("=> calling GetUpdateAllFiles")
@@ -140,21 +169,25 @@ func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, updateID 
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetUpdateAllFiles returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetUpdateAllFiles returned an informative error")
+			} else {
+				log.Error("<= method GetUpdateAllFiles returned an error")
+			}
 		} else {
 			log.Debug("<= method GetUpdateAllFiles finished")
 		}
 	}()
-	return _d._base.GetUpdateAllFiles(ctx, updateID)
+	return _d._base.GetUpdateAllFiles(ctx, id)
 }
 
 // GetUpdateFileByFilename implements provisioning.UpdateService.
-func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, updateID string, filename string) (readCloser io.ReadCloser, n int, err error) {
+func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID, filename string) (readCloser io.ReadCloser, n int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("updateID", updateID),
+			slog.Any("id", id),
 			slog.String("filename", filename),
 		)
 	}
@@ -173,10 +206,47 @@ func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, upd
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetUpdateFileByFilename returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetUpdateFileByFilename returned an informative error")
+			} else {
+				log.Error("<= method GetUpdateFileByFilename returned an error")
+			}
 		} else {
 			log.Debug("<= method GetUpdateFileByFilename finished")
 		}
 	}()
-	return _d._base.GetUpdateFileByFilename(ctx, updateID, filename)
+	return _d._base.GetUpdateFileByFilename(ctx, id, filename)
+}
+
+// Refresh implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.Debug("=> calling Refresh")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Refresh returned an informative error")
+			} else {
+				log.Error("<= method Refresh returned an error")
+			}
+		} else {
+			log.Debug("<= method Refresh finished")
+		}
+	}()
+	return _d._base.Refresh(ctx)
 }

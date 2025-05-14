@@ -14,16 +14,32 @@ import (
 
 // NetworkAddressSetServerClientWithSlog implements inventory.NetworkAddressSetServerClient that is instrumented with slog logger.
 type NetworkAddressSetServerClientWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkAddressSetServerClient
+	_log                  *slog.Logger
+	_base                 inventory.NetworkAddressSetServerClient
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkAddressSetServerClientWithSlogOption func(s *NetworkAddressSetServerClientWithSlog)
+
+func NetworkAddressSetServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkAddressSetServerClientWithSlogOption {
+	return func(_base *NetworkAddressSetServerClientWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkAddressSetServerClientWithSlog instruments an implementation of the inventory.NetworkAddressSetServerClient with simple logging.
-func NewNetworkAddressSetServerClientWithSlog(base inventory.NetworkAddressSetServerClient, log *slog.Logger) NetworkAddressSetServerClientWithSlog {
-	return NetworkAddressSetServerClientWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkAddressSetServerClientWithSlog(base inventory.NetworkAddressSetServerClient, log *slog.Logger, opts ...NetworkAddressSetServerClientWithSlogOption) NetworkAddressSetServerClientWithSlog {
+	this := NetworkAddressSetServerClientWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetNetworkAddressSetByName implements inventory.NetworkAddressSetServerClient.
@@ -50,7 +66,11 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSetByName(ctx c
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkAddressSetByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkAddressSetByName returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkAddressSetByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkAddressSetByName finished")
 		}
@@ -81,7 +101,11 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSets(ctx contex
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkAddressSets returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkAddressSets returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkAddressSets returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkAddressSets finished")
 		}

@@ -14,16 +14,32 @@ import (
 
 // NetworkAddressSetServiceWithSlog implements inventory.NetworkAddressSetService that is instrumented with slog logger.
 type NetworkAddressSetServiceWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkAddressSetService
+	_log                  *slog.Logger
+	_base                 inventory.NetworkAddressSetService
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkAddressSetServiceWithSlogOption func(s *NetworkAddressSetServiceWithSlog)
+
+func NetworkAddressSetServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkAddressSetServiceWithSlogOption {
+	return func(_base *NetworkAddressSetServiceWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkAddressSetServiceWithSlog instruments an implementation of the inventory.NetworkAddressSetService with simple logging.
-func NewNetworkAddressSetServiceWithSlog(base inventory.NetworkAddressSetService, log *slog.Logger) NetworkAddressSetServiceWithSlog {
-	return NetworkAddressSetServiceWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkAddressSetServiceWithSlog(base inventory.NetworkAddressSetService, log *slog.Logger, opts ...NetworkAddressSetServiceWithSlogOption) NetworkAddressSetServiceWithSlog {
+	this := NetworkAddressSetServiceWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetAllUUIDsWithFilter implements inventory.NetworkAddressSetService.
@@ -49,7 +65,11 @@ func (_d NetworkAddressSetServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Con
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
@@ -80,7 +100,11 @@ func (_d NetworkAddressSetServiceWithSlog) GetAllWithFilter(ctx context.Context,
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -111,7 +135,11 @@ func (_d NetworkAddressSetServiceWithSlog) GetByUUID(ctx context.Context, id uui
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -141,7 +169,11 @@ func (_d NetworkAddressSetServiceWithSlog) ResyncByUUID(ctx context.Context, id 
 			}
 		}
 		if err != nil {
-			log.Error("<= method ResyncByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method ResyncByUUID returned an informative error")
+			} else {
+				log.Error("<= method ResyncByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method ResyncByUUID finished")
 		}
@@ -171,7 +203,11 @@ func (_d NetworkAddressSetServiceWithSlog) SyncCluster(ctx context.Context, clus
 			}
 		}
 		if err != nil {
-			log.Error("<= method SyncCluster returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method SyncCluster returned an informative error")
+			} else {
+				log.Error("<= method SyncCluster returned an error")
+			}
 		} else {
 			log.Debug("<= method SyncCluster finished")
 		}

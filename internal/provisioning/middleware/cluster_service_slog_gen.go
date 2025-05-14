@@ -13,16 +13,32 @@ import (
 
 // ClusterServiceWithSlog implements provisioning.ClusterService that is instrumented with slog logger.
 type ClusterServiceWithSlog struct {
-	_log  *slog.Logger
-	_base provisioning.ClusterService
+	_log                  *slog.Logger
+	_base                 provisioning.ClusterService
+	_isInformativeErrFunc func(error) bool
+}
+
+type ClusterServiceWithSlogOption func(s *ClusterServiceWithSlog)
+
+func ClusterServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ClusterServiceWithSlogOption {
+	return func(_base *ClusterServiceWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewClusterServiceWithSlog instruments an implementation of the provisioning.ClusterService with simple logging.
-func NewClusterServiceWithSlog(base provisioning.ClusterService, log *slog.Logger) ClusterServiceWithSlog {
-	return ClusterServiceWithSlog{
-		_base: base,
-		_log:  log,
+func NewClusterServiceWithSlog(base provisioning.ClusterService, log *slog.Logger, opts ...ClusterServiceWithSlogOption) ClusterServiceWithSlog {
+	this := ClusterServiceWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // Create implements provisioning.ClusterService.
@@ -48,7 +64,11 @@ func (_d ClusterServiceWithSlog) Create(ctx context.Context, cluster provisionin
 			}
 		}
 		if err != nil {
-			log.Error("<= method Create returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Create returned an informative error")
+			} else {
+				log.Error("<= method Create returned an error")
+			}
 		} else {
 			log.Debug("<= method Create finished")
 		}
@@ -78,7 +98,11 @@ func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string) 
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByName returned an informative error")
+			} else {
+				log.Error("<= method DeleteByName returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByName finished")
 		}
@@ -108,7 +132,11 @@ func (_d ClusterServiceWithSlog) GetAll(ctx context.Context) (clusters provision
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAll returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAll returned an informative error")
+			} else {
+				log.Error("<= method GetAll returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAll finished")
 		}
@@ -138,7 +166,11 @@ func (_d ClusterServiceWithSlog) GetAllNames(ctx context.Context) (strings []str
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllNames returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllNames returned an informative error")
+			} else {
+				log.Error("<= method GetAllNames returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllNames finished")
 		}
@@ -169,7 +201,11 @@ func (_d ClusterServiceWithSlog) GetAllNamesWithFilter(ctx context.Context, filt
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllNamesWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllNamesWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllNamesWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllNamesWithFilter finished")
 		}
@@ -200,7 +236,11 @@ func (_d ClusterServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pr
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -231,7 +271,11 @@ func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cl
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByName returned an informative error")
+			} else {
+				log.Error("<= method GetByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByName finished")
 		}
@@ -262,7 +306,11 @@ func (_d ClusterServiceWithSlog) Rename(ctx context.Context, oldName string, new
 			}
 		}
 		if err != nil {
-			log.Error("<= method Rename returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Rename returned an informative error")
+			} else {
+				log.Error("<= method Rename returned an error")
+			}
 		} else {
 			log.Debug("<= method Rename finished")
 		}
@@ -292,7 +340,11 @@ func (_d ClusterServiceWithSlog) ResyncInventoryByName(ctx context.Context, name
 			}
 		}
 		if err != nil {
-			log.Error("<= method ResyncInventoryByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method ResyncInventoryByName returned an informative error")
+			} else {
+				log.Error("<= method ResyncInventoryByName returned an error")
+			}
 		} else {
 			log.Debug("<= method ResyncInventoryByName finished")
 		}
@@ -322,7 +374,11 @@ func (_d ClusterServiceWithSlog) Update(ctx context.Context, cluster provisionin
 			}
 		}
 		if err != nil {
-			log.Error("<= method Update returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Update returned an informative error")
+			} else {
+				log.Error("<= method Update returned an error")
+			}
 		} else {
 			log.Debug("<= method Update finished")
 		}

@@ -14,16 +14,32 @@ import (
 
 // NetworkLoadBalancerServiceWithSlog implements inventory.NetworkLoadBalancerService that is instrumented with slog logger.
 type NetworkLoadBalancerServiceWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkLoadBalancerService
+	_log                  *slog.Logger
+	_base                 inventory.NetworkLoadBalancerService
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkLoadBalancerServiceWithSlogOption func(s *NetworkLoadBalancerServiceWithSlog)
+
+func NetworkLoadBalancerServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkLoadBalancerServiceWithSlogOption {
+	return func(_base *NetworkLoadBalancerServiceWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkLoadBalancerServiceWithSlog instruments an implementation of the inventory.NetworkLoadBalancerService with simple logging.
-func NewNetworkLoadBalancerServiceWithSlog(base inventory.NetworkLoadBalancerService, log *slog.Logger) NetworkLoadBalancerServiceWithSlog {
-	return NetworkLoadBalancerServiceWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkLoadBalancerServiceWithSlog(base inventory.NetworkLoadBalancerService, log *slog.Logger, opts ...NetworkLoadBalancerServiceWithSlogOption) NetworkLoadBalancerServiceWithSlog {
+	this := NetworkLoadBalancerServiceWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetAllUUIDsWithFilter implements inventory.NetworkLoadBalancerService.
@@ -49,7 +65,11 @@ func (_d NetworkLoadBalancerServiceWithSlog) GetAllUUIDsWithFilter(ctx context.C
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
@@ -80,7 +100,11 @@ func (_d NetworkLoadBalancerServiceWithSlog) GetAllWithFilter(ctx context.Contex
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -111,7 +135,11 @@ func (_d NetworkLoadBalancerServiceWithSlog) GetByUUID(ctx context.Context, id u
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -141,7 +169,11 @@ func (_d NetworkLoadBalancerServiceWithSlog) ResyncByUUID(ctx context.Context, i
 			}
 		}
 		if err != nil {
-			log.Error("<= method ResyncByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method ResyncByUUID returned an informative error")
+			} else {
+				log.Error("<= method ResyncByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method ResyncByUUID finished")
 		}
@@ -171,7 +203,11 @@ func (_d NetworkLoadBalancerServiceWithSlog) SyncCluster(ctx context.Context, cl
 			}
 		}
 		if err != nil {
-			log.Error("<= method SyncCluster returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method SyncCluster returned an informative error")
+			} else {
+				log.Error("<= method SyncCluster returned an error")
+			}
 		} else {
 			log.Debug("<= method SyncCluster finished")
 		}

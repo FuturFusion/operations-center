@@ -14,16 +14,32 @@ import (
 
 // NetworkACLRepoWithSlog implements inventory.NetworkACLRepo that is instrumented with slog logger.
 type NetworkACLRepoWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkACLRepo
+	_log                  *slog.Logger
+	_base                 inventory.NetworkACLRepo
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkACLRepoWithSlogOption func(s *NetworkACLRepoWithSlog)
+
+func NetworkACLRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkACLRepoWithSlogOption {
+	return func(_base *NetworkACLRepoWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkACLRepoWithSlog instruments an implementation of the inventory.NetworkACLRepo with simple logging.
-func NewNetworkACLRepoWithSlog(base inventory.NetworkACLRepo, log *slog.Logger) NetworkACLRepoWithSlog {
-	return NetworkACLRepoWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkACLRepoWithSlog(base inventory.NetworkACLRepo, log *slog.Logger, opts ...NetworkACLRepoWithSlogOption) NetworkACLRepoWithSlog {
+	this := NetworkACLRepoWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // Create implements inventory.NetworkACLRepo.
@@ -49,7 +65,11 @@ func (_d NetworkACLRepoWithSlog) Create(ctx context.Context, networkACL inventor
 			}
 		}
 		if err != nil {
-			log.Error("<= method Create returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Create returned an informative error")
+			} else {
+				log.Error("<= method Create returned an error")
+			}
 		} else {
 			log.Debug("<= method Create finished")
 		}
@@ -79,7 +99,11 @@ func (_d NetworkACLRepoWithSlog) DeleteByClusterName(ctx context.Context, cluste
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByClusterName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByClusterName returned an informative error")
+			} else {
+				log.Error("<= method DeleteByClusterName returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByClusterName finished")
 		}
@@ -109,7 +133,11 @@ func (_d NetworkACLRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID)
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByUUID returned an informative error")
+			} else {
+				log.Error("<= method DeleteByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByUUID finished")
 		}
@@ -140,7 +168,11 @@ func (_d NetworkACLRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filt
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
@@ -171,7 +203,11 @@ func (_d NetworkACLRepoWithSlog) GetAllWithFilter(ctx context.Context, filter in
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -202,7 +238,11 @@ func (_d NetworkACLRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (n
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -233,7 +273,11 @@ func (_d NetworkACLRepoWithSlog) UpdateByUUID(ctx context.Context, networkACL in
 			}
 		}
 		if err != nil {
-			log.Error("<= method UpdateByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method UpdateByUUID returned an informative error")
+			} else {
+				log.Error("<= method UpdateByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method UpdateByUUID finished")
 		}

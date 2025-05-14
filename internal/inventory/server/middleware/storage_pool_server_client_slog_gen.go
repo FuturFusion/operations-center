@@ -14,16 +14,32 @@ import (
 
 // StoragePoolServerClientWithSlog implements inventory.StoragePoolServerClient that is instrumented with slog logger.
 type StoragePoolServerClientWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.StoragePoolServerClient
+	_log                  *slog.Logger
+	_base                 inventory.StoragePoolServerClient
+	_isInformativeErrFunc func(error) bool
+}
+
+type StoragePoolServerClientWithSlogOption func(s *StoragePoolServerClientWithSlog)
+
+func StoragePoolServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) StoragePoolServerClientWithSlogOption {
+	return func(_base *StoragePoolServerClientWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewStoragePoolServerClientWithSlog instruments an implementation of the inventory.StoragePoolServerClient with simple logging.
-func NewStoragePoolServerClientWithSlog(base inventory.StoragePoolServerClient, log *slog.Logger) StoragePoolServerClientWithSlog {
-	return StoragePoolServerClientWithSlog{
-		_base: base,
-		_log:  log,
+func NewStoragePoolServerClientWithSlog(base inventory.StoragePoolServerClient, log *slog.Logger, opts ...StoragePoolServerClientWithSlogOption) StoragePoolServerClientWithSlog {
+	this := StoragePoolServerClientWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetStoragePoolByName implements inventory.StoragePoolServerClient.
@@ -50,7 +66,11 @@ func (_d StoragePoolServerClientWithSlog) GetStoragePoolByName(ctx context.Conte
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetStoragePoolByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetStoragePoolByName returned an informative error")
+			} else {
+				log.Error("<= method GetStoragePoolByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetStoragePoolByName finished")
 		}
@@ -81,7 +101,11 @@ func (_d StoragePoolServerClientWithSlog) GetStoragePools(ctx context.Context, c
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetStoragePools returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetStoragePools returned an informative error")
+			} else {
+				log.Error("<= method GetStoragePools returned an error")
+			}
 		} else {
 			log.Debug("<= method GetStoragePools finished")
 		}

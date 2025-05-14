@@ -14,16 +14,32 @@ import (
 
 // ProfileServerClientWithSlog implements inventory.ProfileServerClient that is instrumented with slog logger.
 type ProfileServerClientWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.ProfileServerClient
+	_log                  *slog.Logger
+	_base                 inventory.ProfileServerClient
+	_isInformativeErrFunc func(error) bool
+}
+
+type ProfileServerClientWithSlogOption func(s *ProfileServerClientWithSlog)
+
+func ProfileServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) ProfileServerClientWithSlogOption {
+	return func(_base *ProfileServerClientWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewProfileServerClientWithSlog instruments an implementation of the inventory.ProfileServerClient with simple logging.
-func NewProfileServerClientWithSlog(base inventory.ProfileServerClient, log *slog.Logger) ProfileServerClientWithSlog {
-	return ProfileServerClientWithSlog{
-		_base: base,
-		_log:  log,
+func NewProfileServerClientWithSlog(base inventory.ProfileServerClient, log *slog.Logger, opts ...ProfileServerClientWithSlogOption) ProfileServerClientWithSlog {
+	this := ProfileServerClientWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetProfileByName implements inventory.ProfileServerClient.
@@ -50,7 +66,11 @@ func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, conn
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetProfileByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetProfileByName returned an informative error")
+			} else {
+				log.Error("<= method GetProfileByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetProfileByName finished")
 		}
@@ -81,7 +101,11 @@ func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, connectio
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetProfiles returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetProfiles returned an informative error")
+			} else {
+				log.Error("<= method GetProfiles returned an error")
+			}
 		} else {
 			log.Debug("<= method GetProfiles finished")
 		}

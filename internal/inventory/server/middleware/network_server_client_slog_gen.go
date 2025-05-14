@@ -14,16 +14,32 @@ import (
 
 // NetworkServerClientWithSlog implements inventory.NetworkServerClient that is instrumented with slog logger.
 type NetworkServerClientWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkServerClient
+	_log                  *slog.Logger
+	_base                 inventory.NetworkServerClient
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkServerClientWithSlogOption func(s *NetworkServerClientWithSlog)
+
+func NetworkServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkServerClientWithSlogOption {
+	return func(_base *NetworkServerClientWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkServerClientWithSlog instruments an implementation of the inventory.NetworkServerClient with simple logging.
-func NewNetworkServerClientWithSlog(base inventory.NetworkServerClient, log *slog.Logger) NetworkServerClientWithSlog {
-	return NetworkServerClientWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkServerClientWithSlog(base inventory.NetworkServerClient, log *slog.Logger, opts ...NetworkServerClientWithSlogOption) NetworkServerClientWithSlog {
+	this := NetworkServerClientWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetNetworkByName implements inventory.NetworkServerClient.
@@ -50,7 +66,11 @@ func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, conn
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkByName returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkByName finished")
 		}
@@ -81,7 +101,11 @@ func (_d NetworkServerClientWithSlog) GetNetworks(ctx context.Context, connectio
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworks returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworks returned an informative error")
+			} else {
+				log.Error("<= method GetNetworks returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworks finished")
 		}

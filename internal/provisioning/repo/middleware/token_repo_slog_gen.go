@@ -14,16 +14,32 @@ import (
 
 // TokenRepoWithSlog implements provisioning.TokenRepo that is instrumented with slog logger.
 type TokenRepoWithSlog struct {
-	_log  *slog.Logger
-	_base provisioning.TokenRepo
+	_log                  *slog.Logger
+	_base                 provisioning.TokenRepo
+	_isInformativeErrFunc func(error) bool
+}
+
+type TokenRepoWithSlogOption func(s *TokenRepoWithSlog)
+
+func TokenRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) TokenRepoWithSlogOption {
+	return func(_base *TokenRepoWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewTokenRepoWithSlog instruments an implementation of the provisioning.TokenRepo with simple logging.
-func NewTokenRepoWithSlog(base provisioning.TokenRepo, log *slog.Logger) TokenRepoWithSlog {
-	return TokenRepoWithSlog{
-		_base: base,
-		_log:  log,
+func NewTokenRepoWithSlog(base provisioning.TokenRepo, log *slog.Logger, opts ...TokenRepoWithSlogOption) TokenRepoWithSlog {
+	this := TokenRepoWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // Create implements provisioning.TokenRepo.
@@ -49,7 +65,11 @@ func (_d TokenRepoWithSlog) Create(ctx context.Context, token provisioning.Token
 			}
 		}
 		if err != nil {
-			log.Error("<= method Create returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Create returned an informative error")
+			} else {
+				log.Error("<= method Create returned an error")
+			}
 		} else {
 			log.Debug("<= method Create finished")
 		}
@@ -79,7 +99,11 @@ func (_d TokenRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByUUID returned an informative error")
+			} else {
+				log.Error("<= method DeleteByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByUUID finished")
 		}
@@ -109,7 +133,11 @@ func (_d TokenRepoWithSlog) GetAll(ctx context.Context) (tokens provisioning.Tok
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAll returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAll returned an informative error")
+			} else {
+				log.Error("<= method GetAll returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAll finished")
 		}
@@ -139,7 +167,11 @@ func (_d TokenRepoWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UUID,
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDs returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDs returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDs returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDs finished")
 		}
@@ -170,7 +202,11 @@ func (_d TokenRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (token 
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -200,7 +236,11 @@ func (_d TokenRepoWithSlog) Update(ctx context.Context, token provisioning.Token
 			}
 		}
 		if err != nil {
-			log.Error("<= method Update returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Update returned an informative error")
+			} else {
+				log.Error("<= method Update returned an error")
+			}
 		} else {
 			log.Debug("<= method Update finished")
 		}

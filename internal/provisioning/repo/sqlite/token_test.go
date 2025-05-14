@@ -19,14 +19,14 @@ import (
 
 func TestTokenDatabaseActions(t *testing.T) {
 	tokenA := provisioning.Token{
-		UUID:          uuid.Must(uuid.Parse(`8dae5ba3-2ad9-48a5-a7c4-188efb36fbb6`)),
+		UUID:          uuid.MustParse(`8dae5ba3-2ad9-48a5-a7c4-188efb36fbb6`),
 		UsesRemaining: 1,
 		ExpireAt:      time.Now().Add(1 * time.Minute).UTC().Truncate(0), // Truncate to remove the monotonic clock.
 		Description:   "token A",
 	}
 
 	tokenB := provisioning.Token{
-		UUID:          uuid.Must(uuid.Parse(`e74417e0-e6d8-465a-b7bc-86d99a45ba49`)),
+		UUID:          uuid.MustParse(`e74417e0-e6d8-465a-b7bc-86d99a45ba49`),
 		UsesRemaining: 10,
 		ExpireAt:      time.Now().Add(10 * time.Minute).UTC().Truncate(0), // Truncate to remove the monotonic clock.
 		Description:   "token B",
@@ -67,7 +67,10 @@ func TestTokenDatabaseActions(t *testing.T) {
 	tokenIDs, err := token.GetAllUUIDs(ctx)
 	require.NoError(t, err)
 	require.Len(t, tokenIDs, 2)
-	require.ElementsMatch(t, []uuid.UUID{uuid.Must(uuid.Parse("8dae5ba3-2ad9-48a5-a7c4-188efb36fbb6")), uuid.Must(uuid.Parse("e74417e0-e6d8-465a-b7bc-86d99a45ba49"))}, tokenIDs)
+	require.ElementsMatch(t, []uuid.UUID{
+		uuid.MustParse("8dae5ba3-2ad9-48a5-a7c4-188efb36fbb6"),
+		uuid.MustParse("e74417e0-e6d8-465a-b7bc-86d99a45ba49"),
+	}, tokenIDs)
 
 	// Should get back tokenA unchanged.
 	dbTokenA, err := token.GetByUUID(ctx, tokenA.UUID)
@@ -96,7 +99,7 @@ func TestTokenDatabaseActions(t *testing.T) {
 	require.Len(t, tokens, 1)
 
 	// Can't delete a token that doesn't exist.
-	err = token.DeleteByUUID(ctx, uuid.Must(uuid.Parse(`66307d51-c379-4fb3-be5d-5c4c24ba7b21`)))
+	err = token.DeleteByUUID(ctx, uuid.MustParse(`66307d51-c379-4fb3-be5d-5c4c24ba7b21`))
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Can't update a token that doesn't exist.

@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/response"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -21,9 +23,9 @@ func registerUpdateHandler(router Router, service provisioning.UpdateService) {
 
 	// no authentication required for all routes
 	router.HandleFunc("GET /{$}", response.With(handler.updatesGet))
-	router.HandleFunc("GET /{id}", response.With(handler.updateGet))
-	router.HandleFunc("GET /{id}/files", response.With(handler.updateFilesGet))
-	router.HandleFunc("GET /{id}/files/{filename}", response.With(handler.updateFileGet))
+	router.HandleFunc("GET /{uuid}", response.With(handler.updateGet))
+	router.HandleFunc("GET /{uuid}/files", response.With(handler.updateFilesGet))
+	router.HandleFunc("GET /{uuid}/files/{filename}", response.With(handler.updateFileGet))
 }
 
 // swagger:operation GET /1.0/provisioning/updates updates updates_get
@@ -122,7 +124,7 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 		result := make([]api.Update, 0, len(updates))
 		for _, update := range updates {
 			result = append(result, api.Update{
-				ID:          update.ID,
+				UUID:        update.UUID,
 				Components:  update.Components,
 				Version:     update.Version,
 				PublishedAt: update.PublishedAt,
@@ -134,7 +136,7 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	updateIDs, err := u.service.GetAllIDs(r.Context())
+	updateIDs, err := u.service.GetAllUUIDs(r.Context())
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -147,7 +149,7 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/provisioning/updates/{id} updates update_get
+// swagger:operation GET /1.0/provisioning/updates/{uuid} updates update_get
 //
 //	Get the update
 //
@@ -182,9 +184,14 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updateGet(r *http.Request) response.Response {
-	id := r.PathValue("id")
+	UUIDString := r.PathValue("uuid")
 
-	update, err := u.service.GetByID(r.Context(), id)
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	update, err := u.service.GetByUUID(r.Context(), UUID)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -192,7 +199,7 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		api.Update{
-			ID:          update.ID,
+			UUID:        update.UUID,
 			Components:  update.Components,
 			Version:     update.Version,
 			PublishedAt: update.PublishedAt,
@@ -203,7 +210,7 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation GET /1.0/provisioning/updates/{id}/files updates updates_files_get
+// swagger:operation GET /1.0/provisioning/updates/{uuid}/files updates updates_files_get
 //
 //	Get the update files
 //
@@ -241,9 +248,14 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
-	id := r.PathValue("id")
+	UUIDString := r.PathValue("uuid")
 
-	updateFiles, err := u.service.GetUpdateAllFiles(r.Context(), id)
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	updateFiles, err := u.service.GetUpdateAllFiles(r.Context(), UUID)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -251,9 +263,8 @@ func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
 	result := make([]api.UpdateFile, 0, len(updateFiles))
 	for _, updateFile := range updateFiles {
 		result = append(result, api.UpdateFile{
-			UpdateID: updateFile.UpdateID,
 			Filename: updateFile.Filename,
-			URL:      updateFile.URL.String(),
+			URL:      updateFile.URL,
 			Size:     updateFile.Size,
 		})
 	}
@@ -261,7 +272,7 @@ func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/provisioning/updates/{id}/files/{filename} update update_file_get
+// swagger:operation GET /1.0/provisioning/updates/{uuid}/files/{filename} update update_file_get
 //
 //	Get the update file
 //
@@ -278,10 +289,15 @@ func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updateFileGet(r *http.Request) response.Response {
-	id := r.PathValue("id")
+	UUIDString := r.PathValue("uuid")
 	filename := r.PathValue("filename")
 
-	rc, fileSize, err := u.service.GetUpdateFileByFilename(r.Context(), id, filename)
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	rc, fileSize, err := u.service.GetUpdateFileByFilename(r.Context(), UUID, filename)
 	if err != nil {
 		return response.SmartError(err)
 	}

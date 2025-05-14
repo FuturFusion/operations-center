@@ -14,16 +14,32 @@ import (
 
 // StorageBucketRepoWithSlog implements inventory.StorageBucketRepo that is instrumented with slog logger.
 type StorageBucketRepoWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.StorageBucketRepo
+	_log                  *slog.Logger
+	_base                 inventory.StorageBucketRepo
+	_isInformativeErrFunc func(error) bool
+}
+
+type StorageBucketRepoWithSlogOption func(s *StorageBucketRepoWithSlog)
+
+func StorageBucketRepoWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) StorageBucketRepoWithSlogOption {
+	return func(_base *StorageBucketRepoWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewStorageBucketRepoWithSlog instruments an implementation of the inventory.StorageBucketRepo with simple logging.
-func NewStorageBucketRepoWithSlog(base inventory.StorageBucketRepo, log *slog.Logger) StorageBucketRepoWithSlog {
-	return StorageBucketRepoWithSlog{
-		_base: base,
-		_log:  log,
+func NewStorageBucketRepoWithSlog(base inventory.StorageBucketRepo, log *slog.Logger, opts ...StorageBucketRepoWithSlogOption) StorageBucketRepoWithSlog {
+	this := StorageBucketRepoWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // Create implements inventory.StorageBucketRepo.
@@ -49,7 +65,11 @@ func (_d StorageBucketRepoWithSlog) Create(ctx context.Context, storageBucket in
 			}
 		}
 		if err != nil {
-			log.Error("<= method Create returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Create returned an informative error")
+			} else {
+				log.Error("<= method Create returned an error")
+			}
 		} else {
 			log.Debug("<= method Create finished")
 		}
@@ -79,7 +99,11 @@ func (_d StorageBucketRepoWithSlog) DeleteByClusterName(ctx context.Context, clu
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByClusterName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByClusterName returned an informative error")
+			} else {
+				log.Error("<= method DeleteByClusterName returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByClusterName finished")
 		}
@@ -109,7 +133,11 @@ func (_d StorageBucketRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UU
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByUUID returned an informative error")
+			} else {
+				log.Error("<= method DeleteByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByUUID finished")
 		}
@@ -140,7 +168,11 @@ func (_d StorageBucketRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, f
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
@@ -171,7 +203,11 @@ func (_d StorageBucketRepoWithSlog) GetAllWithFilter(ctx context.Context, filter
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -202,7 +238,11 @@ func (_d StorageBucketRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID)
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -233,7 +273,11 @@ func (_d StorageBucketRepoWithSlog) UpdateByUUID(ctx context.Context, storageBuc
 			}
 		}
 		if err != nil {
-			log.Error("<= method UpdateByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method UpdateByUUID returned an informative error")
+			} else {
+				log.Error("<= method UpdateByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method UpdateByUUID finished")
 		}

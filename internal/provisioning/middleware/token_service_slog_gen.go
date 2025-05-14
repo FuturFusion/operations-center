@@ -14,16 +14,32 @@ import (
 
 // TokenServiceWithSlog implements provisioning.TokenService that is instrumented with slog logger.
 type TokenServiceWithSlog struct {
-	_log  *slog.Logger
-	_base provisioning.TokenService
+	_log                  *slog.Logger
+	_base                 provisioning.TokenService
+	_isInformativeErrFunc func(error) bool
+}
+
+type TokenServiceWithSlogOption func(s *TokenServiceWithSlog)
+
+func TokenServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) TokenServiceWithSlogOption {
+	return func(_base *TokenServiceWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewTokenServiceWithSlog instruments an implementation of the provisioning.TokenService with simple logging.
-func NewTokenServiceWithSlog(base provisioning.TokenService, log *slog.Logger) TokenServiceWithSlog {
-	return TokenServiceWithSlog{
-		_base: base,
-		_log:  log,
+func NewTokenServiceWithSlog(base provisioning.TokenService, log *slog.Logger, opts ...TokenServiceWithSlogOption) TokenServiceWithSlog {
+	this := TokenServiceWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // Consume implements provisioning.TokenService.
@@ -48,7 +64,11 @@ func (_d TokenServiceWithSlog) Consume(ctx context.Context, id uuid.UUID) (err e
 			}
 		}
 		if err != nil {
-			log.Error("<= method Consume returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Consume returned an informative error")
+			} else {
+				log.Error("<= method Consume returned an error")
+			}
 		} else {
 			log.Debug("<= method Consume finished")
 		}
@@ -79,7 +99,11 @@ func (_d TokenServiceWithSlog) Create(ctx context.Context, token provisioning.To
 			}
 		}
 		if err != nil {
-			log.Error("<= method Create returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Create returned an informative error")
+			} else {
+				log.Error("<= method Create returned an error")
+			}
 		} else {
 			log.Debug("<= method Create finished")
 		}
@@ -109,7 +133,11 @@ func (_d TokenServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (
 			}
 		}
 		if err != nil {
-			log.Error("<= method DeleteByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method DeleteByUUID returned an informative error")
+			} else {
+				log.Error("<= method DeleteByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method DeleteByUUID finished")
 		}
@@ -139,7 +167,11 @@ func (_d TokenServiceWithSlog) GetAll(ctx context.Context) (tokens provisioning.
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAll returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAll returned an informative error")
+			} else {
+				log.Error("<= method GetAll returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAll finished")
 		}
@@ -169,7 +201,11 @@ func (_d TokenServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UU
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDs returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDs returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDs returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDs finished")
 		}
@@ -200,7 +236,11 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -230,7 +270,11 @@ func (_d TokenServiceWithSlog) Update(ctx context.Context, token provisioning.To
 			}
 		}
 		if err != nil {
-			log.Error("<= method Update returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Update returned an informative error")
+			} else {
+				log.Error("<= method Update returned an error")
+			}
 		} else {
 			log.Debug("<= method Update finished")
 		}

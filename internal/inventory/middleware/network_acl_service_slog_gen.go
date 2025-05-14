@@ -14,16 +14,32 @@ import (
 
 // NetworkACLServiceWithSlog implements inventory.NetworkACLService that is instrumented with slog logger.
 type NetworkACLServiceWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkACLService
+	_log                  *slog.Logger
+	_base                 inventory.NetworkACLService
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkACLServiceWithSlogOption func(s *NetworkACLServiceWithSlog)
+
+func NetworkACLServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkACLServiceWithSlogOption {
+	return func(_base *NetworkACLServiceWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkACLServiceWithSlog instruments an implementation of the inventory.NetworkACLService with simple logging.
-func NewNetworkACLServiceWithSlog(base inventory.NetworkACLService, log *slog.Logger) NetworkACLServiceWithSlog {
-	return NetworkACLServiceWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkACLServiceWithSlog(base inventory.NetworkACLService, log *slog.Logger, opts ...NetworkACLServiceWithSlogOption) NetworkACLServiceWithSlog {
+	this := NetworkACLServiceWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetAllUUIDsWithFilter implements inventory.NetworkACLService.
@@ -49,7 +65,11 @@ func (_d NetworkACLServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, f
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
@@ -80,7 +100,11 @@ func (_d NetworkACLServiceWithSlog) GetAllWithFilter(ctx context.Context, filter
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -111,7 +135,11 @@ func (_d NetworkACLServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID)
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -141,7 +169,11 @@ func (_d NetworkACLServiceWithSlog) ResyncByUUID(ctx context.Context, id uuid.UU
 			}
 		}
 		if err != nil {
-			log.Error("<= method ResyncByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method ResyncByUUID returned an informative error")
+			} else {
+				log.Error("<= method ResyncByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method ResyncByUUID finished")
 		}
@@ -171,7 +203,11 @@ func (_d NetworkACLServiceWithSlog) SyncCluster(ctx context.Context, cluster str
 			}
 		}
 		if err != nil {
-			log.Error("<= method SyncCluster returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method SyncCluster returned an informative error")
+			} else {
+				log.Error("<= method SyncCluster returned an error")
+			}
 		} else {
 			log.Debug("<= method SyncCluster finished")
 		}

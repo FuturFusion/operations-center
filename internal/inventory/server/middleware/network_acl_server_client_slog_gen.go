@@ -14,16 +14,32 @@ import (
 
 // NetworkACLServerClientWithSlog implements inventory.NetworkACLServerClient that is instrumented with slog logger.
 type NetworkACLServerClientWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkACLServerClient
+	_log                  *slog.Logger
+	_base                 inventory.NetworkACLServerClient
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkACLServerClientWithSlogOption func(s *NetworkACLServerClientWithSlog)
+
+func NetworkACLServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkACLServerClientWithSlogOption {
+	return func(_base *NetworkACLServerClientWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkACLServerClientWithSlog instruments an implementation of the inventory.NetworkACLServerClient with simple logging.
-func NewNetworkACLServerClientWithSlog(base inventory.NetworkACLServerClient, log *slog.Logger) NetworkACLServerClientWithSlog {
-	return NetworkACLServerClientWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkACLServerClientWithSlog(base inventory.NetworkACLServerClient, log *slog.Logger, opts ...NetworkACLServerClientWithSlogOption) NetworkACLServerClientWithSlog {
+	this := NetworkACLServerClientWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetNetworkACLByName implements inventory.NetworkACLServerClient.
@@ -50,7 +66,11 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkACLByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkACLByName returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkACLByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkACLByName finished")
 		}
@@ -81,7 +101,11 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLs(ctx context.Context, con
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkACLs returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkACLs returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkACLs returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkACLs finished")
 		}

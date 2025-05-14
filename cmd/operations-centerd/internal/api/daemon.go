@@ -29,17 +29,21 @@ import (
 	authztlz "github.com/FuturFusion/operations-center/internal/authz/tls"
 	"github.com/FuturFusion/operations-center/internal/authz/unixsocket"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/file"
 	incusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/filecache"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/github"
+	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
 	provisioningServiceMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/middleware"
-	"github.com/FuturFusion/operations-center/internal/provisioning/repo/github"
 	provisioningRepoMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/repo/middleware"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/internal/task"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/internal/version"
 )
@@ -199,9 +203,22 @@ func (d *Daemon) Start(ctx context.Context) error {
 	updateSvc := provisioningServiceMiddleware.NewUpdateServiceWithSlog(
 		provisioning.NewUpdateService(
 			provisioningRepoMiddleware.NewUpdateRepoWithSlog(
-				github.NewUpdate(gh),
+				provisioningSqlite.NewUpdate(dbWithTransaction),
+				slog.Default(),
+				provisioningRepoMiddleware.UpdateRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
+			),
+			provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
+				filecache.New(
+					github.New(gh),
+					filepath.Join(d.env.VarDir(), "updates"),
+				),
 				slog.Default(),
 			),
+			3,
 		),
 		slog.Default(),
 	)
@@ -330,6 +347,33 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 
 		return err
+	})
+
+	refreshTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "Refresh updates triggered")
+		err := updateSvc.Refresh(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Refresh updates failed: %w", logger.Err(err))
+		} else {
+			slog.InfoContext(ctx, "Refresh updates completed")
+		}
+	}
+
+	updateSourceStop, _ := task.Start(ctx, refreshTask, task.Every(d.config.UpdatesSourcePollInterval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		// Default grace period for tasks to finish during shutdown, if no deadline
+		// is defined on the context.
+		d := 60 * time.Second
+
+		deadline, ok := ctx.Deadline()
+		if ok {
+			deadlineDuration := time.Until(deadline)
+			if deadlineDuration > 0 {
+				d = deadlineDuration
+			}
+		}
+
+		return updateSourceStop(d)
 	})
 
 	select {

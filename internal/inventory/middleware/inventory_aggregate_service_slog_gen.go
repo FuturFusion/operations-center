@@ -13,16 +13,32 @@ import (
 
 // InventoryAggregateServiceWithSlog implements inventory.InventoryAggregateService that is instrumented with slog logger.
 type InventoryAggregateServiceWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.InventoryAggregateService
+	_log                  *slog.Logger
+	_base                 inventory.InventoryAggregateService
+	_isInformativeErrFunc func(error) bool
+}
+
+type InventoryAggregateServiceWithSlogOption func(s *InventoryAggregateServiceWithSlog)
+
+func InventoryAggregateServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) InventoryAggregateServiceWithSlogOption {
+	return func(_base *InventoryAggregateServiceWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewInventoryAggregateServiceWithSlog instruments an implementation of the inventory.InventoryAggregateService with simple logging.
-func NewInventoryAggregateServiceWithSlog(base inventory.InventoryAggregateService, log *slog.Logger) InventoryAggregateServiceWithSlog {
-	return InventoryAggregateServiceWithSlog{
-		_base: base,
-		_log:  log,
+func NewInventoryAggregateServiceWithSlog(base inventory.InventoryAggregateService, log *slog.Logger, opts ...InventoryAggregateServiceWithSlogOption) InventoryAggregateServiceWithSlog {
+	this := InventoryAggregateServiceWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetAllWithFilter implements inventory.InventoryAggregateService.
@@ -48,7 +64,11 @@ func (_d InventoryAggregateServiceWithSlog) GetAllWithFilter(ctx context.Context
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}

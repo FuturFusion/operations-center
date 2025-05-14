@@ -14,16 +14,32 @@ import (
 
 // NetworkForwardServiceWithSlog implements inventory.NetworkForwardService that is instrumented with slog logger.
 type NetworkForwardServiceWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkForwardService
+	_log                  *slog.Logger
+	_base                 inventory.NetworkForwardService
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkForwardServiceWithSlogOption func(s *NetworkForwardServiceWithSlog)
+
+func NetworkForwardServiceWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkForwardServiceWithSlogOption {
+	return func(_base *NetworkForwardServiceWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkForwardServiceWithSlog instruments an implementation of the inventory.NetworkForwardService with simple logging.
-func NewNetworkForwardServiceWithSlog(base inventory.NetworkForwardService, log *slog.Logger) NetworkForwardServiceWithSlog {
-	return NetworkForwardServiceWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkForwardServiceWithSlog(base inventory.NetworkForwardService, log *slog.Logger, opts ...NetworkForwardServiceWithSlogOption) NetworkForwardServiceWithSlog {
+	this := NetworkForwardServiceWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetAllUUIDsWithFilter implements inventory.NetworkForwardService.
@@ -49,7 +65,11 @@ func (_d NetworkForwardServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Contex
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllUUIDsWithFilter finished")
 		}
@@ -80,7 +100,11 @@ func (_d NetworkForwardServiceWithSlog) GetAllWithFilter(ctx context.Context, fi
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetAllWithFilter returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetAllWithFilter returned an informative error")
+			} else {
+				log.Error("<= method GetAllWithFilter returned an error")
+			}
 		} else {
 			log.Debug("<= method GetAllWithFilter finished")
 		}
@@ -111,7 +135,11 @@ func (_d NetworkForwardServiceWithSlog) GetByUUID(ctx context.Context, id uuid.U
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByUUID returned an informative error")
+			} else {
+				log.Error("<= method GetByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method GetByUUID finished")
 		}
@@ -141,7 +169,11 @@ func (_d NetworkForwardServiceWithSlog) ResyncByUUID(ctx context.Context, id uui
 			}
 		}
 		if err != nil {
-			log.Error("<= method ResyncByUUID returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method ResyncByUUID returned an informative error")
+			} else {
+				log.Error("<= method ResyncByUUID returned an error")
+			}
 		} else {
 			log.Debug("<= method ResyncByUUID finished")
 		}
@@ -171,7 +203,11 @@ func (_d NetworkForwardServiceWithSlog) SyncCluster(ctx context.Context, cluster
 			}
 		}
 		if err != nil {
-			log.Error("<= method SyncCluster returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method SyncCluster returned an informative error")
+			} else {
+				log.Error("<= method SyncCluster returned an error")
+			}
 		} else {
 			log.Debug("<= method SyncCluster finished")
 		}

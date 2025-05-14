@@ -14,16 +14,32 @@ import (
 
 // NetworkZoneServerClientWithSlog implements inventory.NetworkZoneServerClient that is instrumented with slog logger.
 type NetworkZoneServerClientWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkZoneServerClient
+	_log                  *slog.Logger
+	_base                 inventory.NetworkZoneServerClient
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkZoneServerClientWithSlogOption func(s *NetworkZoneServerClientWithSlog)
+
+func NetworkZoneServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkZoneServerClientWithSlogOption {
+	return func(_base *NetworkZoneServerClientWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkZoneServerClientWithSlog instruments an implementation of the inventory.NetworkZoneServerClient with simple logging.
-func NewNetworkZoneServerClientWithSlog(base inventory.NetworkZoneServerClient, log *slog.Logger) NetworkZoneServerClientWithSlog {
-	return NetworkZoneServerClientWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkZoneServerClientWithSlog(base inventory.NetworkZoneServerClient, log *slog.Logger, opts ...NetworkZoneServerClientWithSlogOption) NetworkZoneServerClientWithSlog {
+	this := NetworkZoneServerClientWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetNetworkZoneByName implements inventory.NetworkZoneServerClient.
@@ -50,7 +66,11 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Conte
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkZoneByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkZoneByName returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkZoneByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkZoneByName finished")
 		}
@@ -81,7 +101,11 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZones(ctx context.Context, c
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkZones returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkZones returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkZones returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkZones finished")
 		}

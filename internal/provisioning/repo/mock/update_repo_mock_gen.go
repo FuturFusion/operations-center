@@ -6,10 +6,10 @@ package mock
 
 import (
 	"context"
-	"io"
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/google/uuid"
 )
 
 // Ensure that UpdateRepoMock does implement provisioning.UpdateRepo.
@@ -22,20 +22,20 @@ var _ provisioning.UpdateRepo = &UpdateRepoMock{}
 //
 //		// make and configure a mocked provisioning.UpdateRepo
 //		mockedUpdateRepo := &UpdateRepoMock{
+//			DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+//				panic("mock out the DeleteByUUID method")
+//			},
 //			GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
 //				panic("mock out the GetAll method")
 //			},
-//			GetAllIDsFunc: func(ctx context.Context) ([]string, error) {
-//				panic("mock out the GetAllIDs method")
+//			GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
+//				panic("mock out the GetAllUUIDs method")
 //			},
-//			GetByIDFunc: func(ctx context.Context, id string) (provisioning.Update, error) {
-//				panic("mock out the GetByID method")
+//			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
+//				panic("mock out the GetByUUID method")
 //			},
-//			GetUpdateAllFilesFunc: func(ctx context.Context, updateID string) (provisioning.UpdateFiles, error) {
-//				panic("mock out the GetUpdateAllFiles method")
-//			},
-//			GetUpdateFileByFilenameFunc: func(ctx context.Context, updateID string, filename string) (io.ReadCloser, int, error) {
-//				panic("mock out the GetUpdateFileByFilename method")
+//			UpsertFunc: func(ctx context.Context, update provisioning.Update) error {
+//				panic("mock out the Upsert method")
 //			},
 //		}
 //
@@ -44,62 +44,96 @@ var _ provisioning.UpdateRepo = &UpdateRepoMock{}
 //
 //	}
 type UpdateRepoMock struct {
+	// DeleteByUUIDFunc mocks the DeleteByUUID method.
+	DeleteByUUIDFunc func(ctx context.Context, id uuid.UUID) error
+
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Updates, error)
 
-	// GetAllIDsFunc mocks the GetAllIDs method.
-	GetAllIDsFunc func(ctx context.Context) ([]string, error)
+	// GetAllUUIDsFunc mocks the GetAllUUIDs method.
+	GetAllUUIDsFunc func(ctx context.Context) ([]uuid.UUID, error)
 
-	// GetByIDFunc mocks the GetByID method.
-	GetByIDFunc func(ctx context.Context, id string) (provisioning.Update, error)
+	// GetByUUIDFunc mocks the GetByUUID method.
+	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error)
 
-	// GetUpdateAllFilesFunc mocks the GetUpdateAllFiles method.
-	GetUpdateAllFilesFunc func(ctx context.Context, updateID string) (provisioning.UpdateFiles, error)
-
-	// GetUpdateFileByFilenameFunc mocks the GetUpdateFileByFilename method.
-	GetUpdateFileByFilenameFunc func(ctx context.Context, updateID string, filename string) (io.ReadCloser, int, error)
+	// UpsertFunc mocks the Upsert method.
+	UpsertFunc func(ctx context.Context, update provisioning.Update) error
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// DeleteByUUID holds details about calls to the DeleteByUUID method.
+		DeleteByUUID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetAllIDs holds details about calls to the GetAllIDs method.
-		GetAllIDs []struct {
+		// GetAllUUIDs holds details about calls to the GetAllUUIDs method.
+		GetAllUUIDs []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetByID holds details about calls to the GetByID method.
-		GetByID []struct {
+		// GetByUUID holds details about calls to the GetByUUID method.
+		GetByUUID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
-			ID string
+			ID uuid.UUID
 		}
-		// GetUpdateAllFiles holds details about calls to the GetUpdateAllFiles method.
-		GetUpdateAllFiles []struct {
+		// Upsert holds details about calls to the Upsert method.
+		Upsert []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// UpdateID is the updateID argument value.
-			UpdateID string
-		}
-		// GetUpdateFileByFilename holds details about calls to the GetUpdateFileByFilename method.
-		GetUpdateFileByFilename []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// UpdateID is the updateID argument value.
-			UpdateID string
-			// Filename is the filename argument value.
-			Filename string
+			// Update is the update argument value.
+			Update provisioning.Update
 		}
 	}
-	lockGetAll                  sync.RWMutex
-	lockGetAllIDs               sync.RWMutex
-	lockGetByID                 sync.RWMutex
-	lockGetUpdateAllFiles       sync.RWMutex
-	lockGetUpdateFileByFilename sync.RWMutex
+	lockDeleteByUUID sync.RWMutex
+	lockGetAll       sync.RWMutex
+	lockGetAllUUIDs  sync.RWMutex
+	lockGetByUUID    sync.RWMutex
+	lockUpsert       sync.RWMutex
+}
+
+// DeleteByUUID calls DeleteByUUIDFunc.
+func (mock *UpdateRepoMock) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	if mock.DeleteByUUIDFunc == nil {
+		panic("UpdateRepoMock.DeleteByUUIDFunc: method is nil but UpdateRepo.DeleteByUUID was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockDeleteByUUID.Lock()
+	mock.calls.DeleteByUUID = append(mock.calls.DeleteByUUID, callInfo)
+	mock.lockDeleteByUUID.Unlock()
+	return mock.DeleteByUUIDFunc(ctx, id)
+}
+
+// DeleteByUUIDCalls gets all the calls that were made to DeleteByUUID.
+// Check the length with:
+//
+//	len(mockedUpdateRepo.DeleteByUUIDCalls())
+func (mock *UpdateRepoMock) DeleteByUUIDCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockDeleteByUUID.RLock()
+	calls = mock.calls.DeleteByUUID
+	mock.lockDeleteByUUID.RUnlock()
+	return calls
 }
 
 // GetAll calls GetAllFunc.
@@ -134,146 +168,106 @@ func (mock *UpdateRepoMock) GetAllCalls() []struct {
 	return calls
 }
 
-// GetAllIDs calls GetAllIDsFunc.
-func (mock *UpdateRepoMock) GetAllIDs(ctx context.Context) ([]string, error) {
-	if mock.GetAllIDsFunc == nil {
-		panic("UpdateRepoMock.GetAllIDsFunc: method is nil but UpdateRepo.GetAllIDs was just called")
+// GetAllUUIDs calls GetAllUUIDsFunc.
+func (mock *UpdateRepoMock) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
+	if mock.GetAllUUIDsFunc == nil {
+		panic("UpdateRepoMock.GetAllUUIDsFunc: method is nil but UpdateRepo.GetAllUUIDs was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
 	}{
 		Ctx: ctx,
 	}
-	mock.lockGetAllIDs.Lock()
-	mock.calls.GetAllIDs = append(mock.calls.GetAllIDs, callInfo)
-	mock.lockGetAllIDs.Unlock()
-	return mock.GetAllIDsFunc(ctx)
+	mock.lockGetAllUUIDs.Lock()
+	mock.calls.GetAllUUIDs = append(mock.calls.GetAllUUIDs, callInfo)
+	mock.lockGetAllUUIDs.Unlock()
+	return mock.GetAllUUIDsFunc(ctx)
 }
 
-// GetAllIDsCalls gets all the calls that were made to GetAllIDs.
+// GetAllUUIDsCalls gets all the calls that were made to GetAllUUIDs.
 // Check the length with:
 //
-//	len(mockedUpdateRepo.GetAllIDsCalls())
-func (mock *UpdateRepoMock) GetAllIDsCalls() []struct {
+//	len(mockedUpdateRepo.GetAllUUIDsCalls())
+func (mock *UpdateRepoMock) GetAllUUIDsCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {
 		Ctx context.Context
 	}
-	mock.lockGetAllIDs.RLock()
-	calls = mock.calls.GetAllIDs
-	mock.lockGetAllIDs.RUnlock()
+	mock.lockGetAllUUIDs.RLock()
+	calls = mock.calls.GetAllUUIDs
+	mock.lockGetAllUUIDs.RUnlock()
 	return calls
 }
 
-// GetByID calls GetByIDFunc.
-func (mock *UpdateRepoMock) GetByID(ctx context.Context, id string) (provisioning.Update, error) {
-	if mock.GetByIDFunc == nil {
-		panic("UpdateRepoMock.GetByIDFunc: method is nil but UpdateRepo.GetByID was just called")
+// GetByUUID calls GetByUUIDFunc.
+func (mock *UpdateRepoMock) GetByUUID(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
+	if mock.GetByUUIDFunc == nil {
+		panic("UpdateRepoMock.GetByUUIDFunc: method is nil but UpdateRepo.GetByUUID was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
-		ID  string
+		ID  uuid.UUID
 	}{
 		Ctx: ctx,
 		ID:  id,
 	}
-	mock.lockGetByID.Lock()
-	mock.calls.GetByID = append(mock.calls.GetByID, callInfo)
-	mock.lockGetByID.Unlock()
-	return mock.GetByIDFunc(ctx, id)
+	mock.lockGetByUUID.Lock()
+	mock.calls.GetByUUID = append(mock.calls.GetByUUID, callInfo)
+	mock.lockGetByUUID.Unlock()
+	return mock.GetByUUIDFunc(ctx, id)
 }
 
-// GetByIDCalls gets all the calls that were made to GetByID.
+// GetByUUIDCalls gets all the calls that were made to GetByUUID.
 // Check the length with:
 //
-//	len(mockedUpdateRepo.GetByIDCalls())
-func (mock *UpdateRepoMock) GetByIDCalls() []struct {
+//	len(mockedUpdateRepo.GetByUUIDCalls())
+func (mock *UpdateRepoMock) GetByUUIDCalls() []struct {
 	Ctx context.Context
-	ID  string
+	ID  uuid.UUID
 } {
 	var calls []struct {
 		Ctx context.Context
-		ID  string
+		ID  uuid.UUID
 	}
-	mock.lockGetByID.RLock()
-	calls = mock.calls.GetByID
-	mock.lockGetByID.RUnlock()
+	mock.lockGetByUUID.RLock()
+	calls = mock.calls.GetByUUID
+	mock.lockGetByUUID.RUnlock()
 	return calls
 }
 
-// GetUpdateAllFiles calls GetUpdateAllFilesFunc.
-func (mock *UpdateRepoMock) GetUpdateAllFiles(ctx context.Context, updateID string) (provisioning.UpdateFiles, error) {
-	if mock.GetUpdateAllFilesFunc == nil {
-		panic("UpdateRepoMock.GetUpdateAllFilesFunc: method is nil but UpdateRepo.GetUpdateAllFiles was just called")
+// Upsert calls UpsertFunc.
+func (mock *UpdateRepoMock) Upsert(ctx context.Context, update provisioning.Update) error {
+	if mock.UpsertFunc == nil {
+		panic("UpdateRepoMock.UpsertFunc: method is nil but UpdateRepo.Upsert was just called")
 	}
 	callInfo := struct {
-		Ctx      context.Context
-		UpdateID string
+		Ctx    context.Context
+		Update provisioning.Update
 	}{
-		Ctx:      ctx,
-		UpdateID: updateID,
+		Ctx:    ctx,
+		Update: update,
 	}
-	mock.lockGetUpdateAllFiles.Lock()
-	mock.calls.GetUpdateAllFiles = append(mock.calls.GetUpdateAllFiles, callInfo)
-	mock.lockGetUpdateAllFiles.Unlock()
-	return mock.GetUpdateAllFilesFunc(ctx, updateID)
+	mock.lockUpsert.Lock()
+	mock.calls.Upsert = append(mock.calls.Upsert, callInfo)
+	mock.lockUpsert.Unlock()
+	return mock.UpsertFunc(ctx, update)
 }
 
-// GetUpdateAllFilesCalls gets all the calls that were made to GetUpdateAllFiles.
+// UpsertCalls gets all the calls that were made to Upsert.
 // Check the length with:
 //
-//	len(mockedUpdateRepo.GetUpdateAllFilesCalls())
-func (mock *UpdateRepoMock) GetUpdateAllFilesCalls() []struct {
-	Ctx      context.Context
-	UpdateID string
+//	len(mockedUpdateRepo.UpsertCalls())
+func (mock *UpdateRepoMock) UpsertCalls() []struct {
+	Ctx    context.Context
+	Update provisioning.Update
 } {
 	var calls []struct {
-		Ctx      context.Context
-		UpdateID string
+		Ctx    context.Context
+		Update provisioning.Update
 	}
-	mock.lockGetUpdateAllFiles.RLock()
-	calls = mock.calls.GetUpdateAllFiles
-	mock.lockGetUpdateAllFiles.RUnlock()
-	return calls
-}
-
-// GetUpdateFileByFilename calls GetUpdateFileByFilenameFunc.
-func (mock *UpdateRepoMock) GetUpdateFileByFilename(ctx context.Context, updateID string, filename string) (io.ReadCloser, int, error) {
-	if mock.GetUpdateFileByFilenameFunc == nil {
-		panic("UpdateRepoMock.GetUpdateFileByFilenameFunc: method is nil but UpdateRepo.GetUpdateFileByFilename was just called")
-	}
-	callInfo := struct {
-		Ctx      context.Context
-		UpdateID string
-		Filename string
-	}{
-		Ctx:      ctx,
-		UpdateID: updateID,
-		Filename: filename,
-	}
-	mock.lockGetUpdateFileByFilename.Lock()
-	mock.calls.GetUpdateFileByFilename = append(mock.calls.GetUpdateFileByFilename, callInfo)
-	mock.lockGetUpdateFileByFilename.Unlock()
-	return mock.GetUpdateFileByFilenameFunc(ctx, updateID, filename)
-}
-
-// GetUpdateFileByFilenameCalls gets all the calls that were made to GetUpdateFileByFilename.
-// Check the length with:
-//
-//	len(mockedUpdateRepo.GetUpdateFileByFilenameCalls())
-func (mock *UpdateRepoMock) GetUpdateFileByFilenameCalls() []struct {
-	Ctx      context.Context
-	UpdateID string
-	Filename string
-} {
-	var calls []struct {
-		Ctx      context.Context
-		UpdateID string
-		Filename string
-	}
-	mock.lockGetUpdateFileByFilename.RLock()
-	calls = mock.calls.GetUpdateFileByFilename
-	mock.lockGetUpdateFileByFilename.RUnlock()
+	mock.lockUpsert.RLock()
+	calls = mock.calls.Upsert
+	mock.lockUpsert.RUnlock()
 	return calls
 }

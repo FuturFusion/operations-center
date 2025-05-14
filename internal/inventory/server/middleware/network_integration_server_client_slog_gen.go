@@ -14,16 +14,32 @@ import (
 
 // NetworkIntegrationServerClientWithSlog implements inventory.NetworkIntegrationServerClient that is instrumented with slog logger.
 type NetworkIntegrationServerClientWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkIntegrationServerClient
+	_log                  *slog.Logger
+	_base                 inventory.NetworkIntegrationServerClient
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkIntegrationServerClientWithSlogOption func(s *NetworkIntegrationServerClientWithSlog)
+
+func NetworkIntegrationServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkIntegrationServerClientWithSlogOption {
+	return func(_base *NetworkIntegrationServerClientWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkIntegrationServerClientWithSlog instruments an implementation of the inventory.NetworkIntegrationServerClient with simple logging.
-func NewNetworkIntegrationServerClientWithSlog(base inventory.NetworkIntegrationServerClient, log *slog.Logger) NetworkIntegrationServerClientWithSlog {
-	return NetworkIntegrationServerClientWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkIntegrationServerClientWithSlog(base inventory.NetworkIntegrationServerClient, log *slog.Logger, opts ...NetworkIntegrationServerClientWithSlogOption) NetworkIntegrationServerClientWithSlog {
+	this := NetworkIntegrationServerClientWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetNetworkIntegrationByName implements inventory.NetworkIntegrationServerClient.
@@ -50,7 +66,11 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkIntegrationByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkIntegrationByName returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkIntegrationByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkIntegrationByName finished")
 		}
@@ -81,7 +101,11 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx cont
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkIntegrations returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkIntegrations returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkIntegrations returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkIntegrations finished")
 		}

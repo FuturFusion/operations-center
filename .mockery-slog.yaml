@@ -4,7 +4,7 @@ all: False
 template: file://./internal/logger/slog.gotmpl
 require-template-schema-exists: false
 force-file-write: true
-include-interface-regex: "(.+Repo|.*ServerClient|.+Service)"
+include-interface-regex: "(.+Repo|.+Port|.*ServerClient|.+Service)"
 dir: >-
   {{- $targetDir := "middleware" -}}
   {{- if and (.InterfaceName | hasSuffix "ServerClient") -}}
@@ -12,6 +12,9 @@ dir: >-
   {{- end -}}
   {{- if .InterfaceName | hasSuffix "Repo" -}}
   {{- $targetDir = "repo/middleware" -}}
+  {{- end -}}
+  {{- if .InterfaceName | hasSuffix "Port" -}}
+  {{- $targetDir = "adapter/middleware" -}}
   {{- end -}}
   {{- .InterfaceDir -}}/{{- $targetDir -}}
 filename: >-

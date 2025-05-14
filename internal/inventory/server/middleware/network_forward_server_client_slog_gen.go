@@ -14,16 +14,32 @@ import (
 
 // NetworkForwardServerClientWithSlog implements inventory.NetworkForwardServerClient that is instrumented with slog logger.
 type NetworkForwardServerClientWithSlog struct {
-	_log  *slog.Logger
-	_base inventory.NetworkForwardServerClient
+	_log                  *slog.Logger
+	_base                 inventory.NetworkForwardServerClient
+	_isInformativeErrFunc func(error) bool
+}
+
+type NetworkForwardServerClientWithSlogOption func(s *NetworkForwardServerClientWithSlog)
+
+func NetworkForwardServerClientWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) NetworkForwardServerClientWithSlogOption {
+	return func(_base *NetworkForwardServerClientWithSlog) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // NewNetworkForwardServerClientWithSlog instruments an implementation of the inventory.NetworkForwardServerClient with simple logging.
-func NewNetworkForwardServerClientWithSlog(base inventory.NetworkForwardServerClient, log *slog.Logger) NetworkForwardServerClientWithSlog {
-	return NetworkForwardServerClientWithSlog{
-		_base: base,
-		_log:  log,
+func NewNetworkForwardServerClientWithSlog(base inventory.NetworkForwardServerClient, log *slog.Logger, opts ...NetworkForwardServerClientWithSlogOption) NetworkForwardServerClientWithSlog {
+	this := NetworkForwardServerClientWithSlog{
+		_base:                 base,
+		_log:                  log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 // GetNetworkForwardByName implements inventory.NetworkForwardServerClient.
@@ -51,7 +67,11 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkForwardByName returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkForwardByName returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkForwardByName returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkForwardByName finished")
 		}
@@ -83,7 +103,11 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Cont
 			}
 		}
 		if err != nil {
-			log.Error("<= method GetNetworkForwards returned an error")
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetNetworkForwards returned an informative error")
+			} else {
+				log.Error("<= method GetNetworkForwards returned an error")
+			}
 		} else {
 			log.Debug("<= method GetNetworkForwards finished")
 		}
