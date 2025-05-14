@@ -43,6 +43,12 @@ INSERT INTO updates (uuid, external_id, components, version, published_at, sever
   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
+var updateUpdate = RegisterStmt(`
+UPDATE updates
+  SET uuid = ?, external_id = ?, components = ?, version = ?, published_at = ?, severity = ?, channel = ?, files = ?
+ WHERE id = ?
+`)
+
 var updateDeleteByUUID = RegisterStmt(`
 DELETE FROM updates WHERE uuid = ?
 `)
@@ -357,6 +363,40 @@ func CreateUpdate(ctx context.Context, db dbtx, object provisioning.Update) (_ i
 	}
 
 	return id, nil
+}
+
+// UpdateUpdate updates the update matching the given key parameters.
+// generator: update Update
+func UpdateUpdate(ctx context.Context, db tx, uuid uuid.UUID, object provisioning.Update) (_err error) {
+	defer func() {
+		_err = mapErr(_err, "Update")
+	}()
+
+	id, err := GetUpdateID(ctx, db, uuid)
+	if err != nil {
+		return err
+	}
+
+	stmt, err := Stmt(db, updateUpdate)
+	if err != nil {
+		return fmt.Errorf("Failed to get \"updateUpdate\" prepared statement: %w", err)
+	}
+
+	result, err := stmt.Exec(object.UUID, object.ExternalID, object.Components, object.Version, object.PublishedAt, object.Severity, object.Channel, object.Files, id)
+	if err != nil {
+		return fmt.Errorf("Update \"updates\" entry failed: %w", err)
+	}
+
+	n, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("Fetch affected rows: %w", err)
+	}
+
+	if n != 1 {
+		return fmt.Errorf("Query updated %d rows instead of 1", n)
+	}
+
+	return nil
 }
 
 // DeleteUpdate deletes the update matching the given key parameters.

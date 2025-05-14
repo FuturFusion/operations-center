@@ -2,9 +2,11 @@ package sqlite
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
@@ -23,8 +25,27 @@ func NewUpdate(db sqlite.DBTX) *update {
 	}
 }
 
-func (u update) Create(ctx context.Context, in provisioning.Update) (int64, error) {
-	return entities.CreateUpdate(ctx, transaction.GetDBTX(ctx, u.db), in)
+func (u update) Upsert(ctx context.Context, in provisioning.Update) error {
+	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, u.db), func(ctx context.Context, tx transaction.TX) error {
+		_, err := entities.GetUpdate(ctx, transaction.GetDBTX(ctx, u.db), in.UUID)
+		if errors.Is(err, domain.ErrNotFound) {
+			_, err = entities.CreateUpdate(ctx, transaction.GetDBTX(ctx, u.db), in)
+			if err != nil {
+				return err
+			}
+		}
+
+		if err != nil {
+			return err
+		}
+
+		err = entities.UpdateUpdate(ctx, tx, in.UUID, in)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func (u update) GetAll(ctx context.Context) (provisioning.Updates, error) {

@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
@@ -302,8 +301,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		}]
 		sourceForgetUpdate []queue.Item[struct{}]
 
-		repoGetByUUID     []queue.Item[*provisioning.Update]
-		repoCreate        []queue.Item[int64]
+		repoUpsert        []queue.Item[struct{}]
 		repoGetAllUpdates provisioning.Updates
 		repoGetAllErr     error
 		repoDeleteByUUID  []queue.Item[struct{}]
@@ -318,52 +316,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "success - one update, already present",
-			ctx:  context.Background(),
-			sourceGetLatestUpdates: provisioning.Updates{
-				provisioning.Update{},
-			},
-			repoGetByUUID: []queue.Item[*provisioning.Update]{
-				{
-					Value: &provisioning.Update{},
-					Err:   nil,
-				},
-			},
-
-			assertErr: require.NoError,
-		},
-		{
-			name: "success - one update, not present, without files",
-			ctx:  context.Background(),
-			sourceGetLatestUpdates: provisioning.Updates{
-				provisioning.Update{},
-			},
-			repoGetByUUID: []queue.Item[*provisioning.Update]{
-				{
-					Err: domain.ErrNotFound, // Update is not yet present in the DB.
-				},
-			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{},
-				},
-			},
-			repoCreate: []queue.Item[int64]{
-				{},
-			},
-
-			assertErr: require.NoError,
-		},
-		{
 			name: "success - one update, not present, with files",
 			ctx:  context.Background(),
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
-			},
-			repoGetByUUID: []queue.Item[*provisioning.Update]{
-				{
-					Err: domain.ErrNotFound, // Update is not yet present in the DB.
-				},
 			},
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
@@ -390,7 +346,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoCreate: []queue.Item[int64]{
+			repoUpsert: []queue.Item[struct{}]{
 				{},
 			},
 
@@ -428,29 +384,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - repo.GetByUUID",
-			ctx:  context.Background(),
-			sourceGetLatestUpdates: provisioning.Updates{
-				provisioning.Update{},
-			},
-			repoGetByUUID: []queue.Item[*provisioning.Update]{
-				{
-					Err: boom.Error,
-				},
-			},
-
-			assertErr: boom.ErrorIs,
-		},
-		{
 			name: "error - source.GetUpdateAllFiles",
 			ctx:  context.Background(),
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
-			},
-			repoGetByUUID: []queue.Item[*provisioning.Update]{
-				{
-					Err: domain.ErrNotFound, // Update is not yet present in the DB.
-				},
 			},
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
@@ -469,11 +406,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			}(),
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
-			},
-			repoGetByUUID: []queue.Item[*provisioning.Update]{
-				{
-					Err: domain.ErrNotFound, // Update is not yet present in the DB.
-				},
 			},
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
@@ -494,11 +426,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			ctx:  context.Background(),
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
-			},
-			repoGetByUUID: []queue.Item[*provisioning.Update]{
-				{
-					Err: domain.ErrNotFound, // Update is not yet present in the DB.
-				},
 			},
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
@@ -527,11 +454,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			ctx:  context.Background(),
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
-			},
-			repoGetByUUID: []queue.Item[*provisioning.Update]{
-				{
-					Err: domain.ErrNotFound, // Update is not yet present in the DB.
-				},
 			},
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
@@ -567,11 +489,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
 			},
-			repoGetByUUID: []queue.Item[*provisioning.Update]{
-				{
-					Err: domain.ErrNotFound, // Update is not yet present in the DB.
-				},
-			},
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
@@ -603,15 +520,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - repo.Create",
+			name: "error - repo.Upsert",
 			ctx:  context.Background(),
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
-			},
-			repoGetByUUID: []queue.Item[*provisioning.Update]{
-				{
-					Err: domain.ErrNotFound, // Update is not yet present in the DB.
-				},
 			},
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
@@ -638,7 +550,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoCreate: []queue.Item[int64]{
+			repoUpsert: []queue.Item[struct{}]{
 				{
 					Err: boom.Error,
 				},
@@ -704,14 +616,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
-				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
-					return queue.Pop(t, &tc.repoGetByUUID)
-				},
 				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
 					return tc.repoGetAllUpdates, tc.repoGetAllErr
 				},
-				CreateFunc: func(ctx context.Context, update provisioning.Update) (int64, error) {
-					return queue.Pop(t, &tc.repoCreate)
+				UpsertFunc: func(ctx context.Context, update provisioning.Update) error {
+					_, err := queue.Pop(t, &tc.repoUpsert)
+					return err
 				},
 				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
 					_, err := queue.Pop(t, &tc.repoDeleteByUUID)
@@ -748,8 +658,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			require.Empty(t, tc.sourceGetUpdateAllFiles)
 			require.Empty(t, tc.sourceGetUpdateFileByFilename)
 			require.Empty(t, tc.sourceForgetUpdate)
-			require.Empty(t, tc.repoGetByUUID)
-			require.Empty(t, tc.repoCreate)
+			require.Empty(t, tc.repoUpsert)
 			require.Empty(t, tc.repoDeleteByUUID)
 		})
 	}

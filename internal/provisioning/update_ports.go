@@ -20,7 +20,7 @@ type UpdateService interface {
 }
 
 type UpdateRepo interface {
-	Create(ctx context.Context, update Update) (int64, error)
+	Upsert(ctx context.Context, update Update) error
 	GetAll(ctx context.Context) (Updates, error)
 	GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error)
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Update, error)

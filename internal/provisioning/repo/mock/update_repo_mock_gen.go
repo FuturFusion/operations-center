@@ -22,9 +22,6 @@ var _ provisioning.UpdateRepo = &UpdateRepoMock{}
 //
 //		// make and configure a mocked provisioning.UpdateRepo
 //		mockedUpdateRepo := &UpdateRepoMock{
-//			CreateFunc: func(ctx context.Context, update provisioning.Update) (int64, error) {
-//				panic("mock out the Create method")
-//			},
 //			DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
 //				panic("mock out the DeleteByUUID method")
 //			},
@@ -37,6 +34,9 @@ var _ provisioning.UpdateRepo = &UpdateRepoMock{}
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
 //				panic("mock out the GetByUUID method")
 //			},
+//			UpsertFunc: func(ctx context.Context, update provisioning.Update) error {
+//				panic("mock out the Upsert method")
+//			},
 //		}
 //
 //		// use mockedUpdateRepo in code that requires provisioning.UpdateRepo
@@ -44,9 +44,6 @@ var _ provisioning.UpdateRepo = &UpdateRepoMock{}
 //
 //	}
 type UpdateRepoMock struct {
-	// CreateFunc mocks the Create method.
-	CreateFunc func(ctx context.Context, update provisioning.Update) (int64, error)
-
 	// DeleteByUUIDFunc mocks the DeleteByUUID method.
 	DeleteByUUIDFunc func(ctx context.Context, id uuid.UUID) error
 
@@ -59,15 +56,11 @@ type UpdateRepoMock struct {
 	// GetByUUIDFunc mocks the GetByUUID method.
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error)
 
+	// UpsertFunc mocks the Upsert method.
+	UpsertFunc func(ctx context.Context, update provisioning.Update) error
+
 	// calls tracks calls to the methods.
 	calls struct {
-		// Create holds details about calls to the Create method.
-		Create []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Update is the update argument value.
-			Update provisioning.Update
-		}
 		// DeleteByUUID holds details about calls to the DeleteByUUID method.
 		DeleteByUUID []struct {
 			// Ctx is the ctx argument value.
@@ -92,48 +85,19 @@ type UpdateRepoMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
+		// Upsert holds details about calls to the Upsert method.
+		Upsert []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Update is the update argument value.
+			Update provisioning.Update
+		}
 	}
-	lockCreate       sync.RWMutex
 	lockDeleteByUUID sync.RWMutex
 	lockGetAll       sync.RWMutex
 	lockGetAllUUIDs  sync.RWMutex
 	lockGetByUUID    sync.RWMutex
-}
-
-// Create calls CreateFunc.
-func (mock *UpdateRepoMock) Create(ctx context.Context, update provisioning.Update) (int64, error) {
-	if mock.CreateFunc == nil {
-		panic("UpdateRepoMock.CreateFunc: method is nil but UpdateRepo.Create was just called")
-	}
-	callInfo := struct {
-		Ctx    context.Context
-		Update provisioning.Update
-	}{
-		Ctx:    ctx,
-		Update: update,
-	}
-	mock.lockCreate.Lock()
-	mock.calls.Create = append(mock.calls.Create, callInfo)
-	mock.lockCreate.Unlock()
-	return mock.CreateFunc(ctx, update)
-}
-
-// CreateCalls gets all the calls that were made to Create.
-// Check the length with:
-//
-//	len(mockedUpdateRepo.CreateCalls())
-func (mock *UpdateRepoMock) CreateCalls() []struct {
-	Ctx    context.Context
-	Update provisioning.Update
-} {
-	var calls []struct {
-		Ctx    context.Context
-		Update provisioning.Update
-	}
-	mock.lockCreate.RLock()
-	calls = mock.calls.Create
-	mock.lockCreate.RUnlock()
-	return calls
+	lockUpsert       sync.RWMutex
 }
 
 // DeleteByUUID calls DeleteByUUIDFunc.
@@ -269,5 +233,41 @@ func (mock *UpdateRepoMock) GetByUUIDCalls() []struct {
 	mock.lockGetByUUID.RLock()
 	calls = mock.calls.GetByUUID
 	mock.lockGetByUUID.RUnlock()
+	return calls
+}
+
+// Upsert calls UpsertFunc.
+func (mock *UpdateRepoMock) Upsert(ctx context.Context, update provisioning.Update) error {
+	if mock.UpsertFunc == nil {
+		panic("UpdateRepoMock.UpsertFunc: method is nil but UpdateRepo.Upsert was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Update provisioning.Update
+	}{
+		Ctx:    ctx,
+		Update: update,
+	}
+	mock.lockUpsert.Lock()
+	mock.calls.Upsert = append(mock.calls.Upsert, callInfo)
+	mock.lockUpsert.Unlock()
+	return mock.UpsertFunc(ctx, update)
+}
+
+// UpsertCalls gets all the calls that were made to Upsert.
+// Check the length with:
+//
+//	len(mockedUpdateRepo.UpsertCalls())
+func (mock *UpdateRepoMock) UpsertCalls() []struct {
+	Ctx    context.Context
+	Update provisioning.Update
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Update provisioning.Update
+	}
+	mock.lockUpsert.RLock()
+	calls = mock.calls.Upsert
+	mock.lockUpsert.RUnlock()
 	return calls
 }

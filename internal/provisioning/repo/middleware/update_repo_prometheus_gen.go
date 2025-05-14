@@ -38,20 +38,6 @@ func NewUpdateRepoWithPrometheus(base provisioning.UpdateRepo, instanceName stri
 	}
 }
 
-// Create implements provisioning.UpdateRepo.
-func (_d UpdateRepoWithPrometheus) Create(ctx context.Context, update provisioning.Update) (n int64, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "Create", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.Create(ctx, update)
-}
-
 // DeleteByUUID implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
@@ -106,4 +92,18 @@ func (_d UpdateRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) 
 		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetByUUID(ctx, id)
+}
+
+// Upsert implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithPrometheus) Upsert(ctx context.Context, update provisioning.Update) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "Upsert", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Upsert(ctx, update)
 }

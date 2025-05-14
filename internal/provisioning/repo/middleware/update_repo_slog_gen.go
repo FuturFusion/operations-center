@@ -42,41 +42,6 @@ func NewUpdateRepoWithSlog(base provisioning.UpdateRepo, log *slog.Logger, opts 
 	return this
 }
 
-// Create implements provisioning.UpdateRepo.
-func (_d UpdateRepoWithSlog) Create(ctx context.Context, update provisioning.Update) (n int64, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.Any("update", update),
-		)
-	}
-	log.Debug("=> calling Create")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Int64("n", n),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Create returned an informative error")
-			} else {
-				log.Error("<= method Create returned an error")
-			}
-		} else {
-			log.Debug("<= method Create finished")
-		}
-	}()
-	return _d._base.Create(ctx, update)
-}
-
 // DeleteByUUID implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	log := _d._log.With()
@@ -212,4 +177,38 @@ func (_d UpdateRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (updat
 		}
 	}()
 	return _d._base.GetByUUID(ctx, id)
+}
+
+// Upsert implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithSlog) Upsert(ctx context.Context, update provisioning.Update) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("update", update),
+		)
+	}
+	log.Debug("=> calling Upsert")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method Upsert returned an informative error")
+			} else {
+				log.Error("<= method Upsert returned an error")
+			}
+		} else {
+			log.Debug("<= method Upsert finished")
+		}
+	}()
+	return _d._base.Upsert(ctx, update)
 }

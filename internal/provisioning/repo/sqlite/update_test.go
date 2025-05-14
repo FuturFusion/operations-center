@@ -27,7 +27,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		},
 		Version:     "202505110348",
 		PublishedAt: time.Date(2025, 5, 11, 4, 16, 36, 0, time.UTC),
-		Severity:    "none",
+		Severity:    api.UpdateSeverityNone,
 		Files: provisioning.UpdateFiles{
 			{
 				Filename: "debug.raw.gz",
@@ -50,7 +50,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		},
 		Version:     "202505110031",
 		PublishedAt: time.Date(2025, 5, 11, 0, 56, 27, 0, time.UTC),
-		Severity:    "none",
+		Severity:    api.UpdateSeverityNone,
 		Files: provisioning.UpdateFiles{
 			{
 				Filename: "debug.raw.gz",
@@ -87,9 +87,9 @@ func TestUpdateDatabaseActions(t *testing.T) {
 	update := sqlite.NewUpdate(tx)
 
 	// Add update
-	_, err = update.Create(ctx, updateA)
+	err = update.Upsert(ctx, updateA)
 	require.NoError(t, err)
-	_, err = update.Create(ctx, updateB)
+	err = update.Upsert(ctx, updateB)
 	require.NoError(t, err)
 
 	// Ensure we have two entries
@@ -106,6 +106,16 @@ func TestUpdateDatabaseActions(t *testing.T) {
 	dbUpdateA, err := update.GetByUUID(ctx, updateA.UUID)
 	require.NoError(t, err)
 	updateA.ID = dbUpdateA.ID
+	require.Equal(t, updateA, *dbUpdateA)
+
+	// Upsert existing entry
+	updateA.Severity = api.UpdateSeverityCritical
+	err = update.Upsert(ctx, updateA)
+	require.NoError(t, err)
+
+	// Should get back updatedA changed.
+	dbUpdateA, err = update.GetByUUID(ctx, updateA.UUID)
+	require.NoError(t, err)
 	require.Equal(t, updateA, *dbUpdateA)
 
 	// Delete a update.
