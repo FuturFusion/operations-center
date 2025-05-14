@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -12,12 +13,12 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterImages(filter inventory.ImageFilter) ([]api.Image, error) {
+func (c OperationsCenterClient) GetWithFilterImages(ctx context.Context, filter inventory.ImageFilter) ([]api.Image, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/images", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/images", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +32,8 @@ func (c OperationsCenterClient) GetWithFilterImages(filter inventory.ImageFilter
 	return images, nil
 }
 
-func (c OperationsCenterClient) GetImage(id string) (api.Image, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/images", id), nil, nil)
+func (c OperationsCenterClient) GetImage(ctx context.Context, id string) (api.Image, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/images", id), nil, nil)
 	if err != nil {
 		return api.Image{}, err
 	}

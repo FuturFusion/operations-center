@@ -110,7 +110,7 @@ func (c *cmdProfileList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	profiles, err := c.ocClient.GetWithFilterProfiles(filter)
+	profiles, err := c.ocClient.GetWithFilterProfiles(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func (c *cmdProfileShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	profile, err := c.ocClient.GetProfile(id)
+	profile, err := c.ocClient.GetProfile(cmd.Context(), id)
 	if err != nil {
 		return err
 	}

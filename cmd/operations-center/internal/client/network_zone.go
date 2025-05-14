@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -12,12 +13,12 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterNetworkZones(filter inventory.NetworkZoneFilter) ([]api.NetworkZone, error) {
+func (c OperationsCenterClient) GetWithFilterNetworkZones(ctx context.Context, filter inventory.NetworkZoneFilter) ([]api.NetworkZone, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/network_zones", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/network_zones", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +32,8 @@ func (c OperationsCenterClient) GetWithFilterNetworkZones(filter inventory.Netwo
 	return network_zones, nil
 }
 
-func (c OperationsCenterClient) GetNetworkZone(id string) (api.NetworkZone, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_zones", id), nil, nil)
+func (c OperationsCenterClient) GetNetworkZone(ctx context.Context, id string) (api.NetworkZone, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/network_zones", id), nil, nil)
 	if err != nil {
 		return api.NetworkZone{}, err
 	}

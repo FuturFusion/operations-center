@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -12,12 +13,12 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterStorageVolumes(filter inventory.StorageVolumeFilter) ([]api.StorageVolume, error) {
+func (c OperationsCenterClient) GetWithFilterStorageVolumes(ctx context.Context, filter inventory.StorageVolumeFilter) ([]api.StorageVolume, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/storage_volumes", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/storage_volumes", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +32,8 @@ func (c OperationsCenterClient) GetWithFilterStorageVolumes(filter inventory.Sto
 	return storage_volumes, nil
 }
 
-func (c OperationsCenterClient) GetStorageVolume(id string) (api.StorageVolume, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/storage_volumes", id), nil, nil)
+func (c OperationsCenterClient) GetStorageVolume(ctx context.Context, id string) (api.StorageVolume, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/storage_volumes", id), nil, nil)
 	if err != nil {
 		return api.StorageVolume{}, err
 	}

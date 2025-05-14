@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -12,12 +13,12 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterNetworks(filter inventory.NetworkFilter) ([]api.Network, error) {
+func (c OperationsCenterClient) GetWithFilterNetworks(ctx context.Context, filter inventory.NetworkFilter) ([]api.Network, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/networks", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/networks", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +32,8 @@ func (c OperationsCenterClient) GetWithFilterNetworks(filter inventory.NetworkFi
 	return networks, nil
 }
 
-func (c OperationsCenterClient) GetNetwork(id string) (api.Network, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/networks", id), nil, nil)
+func (c OperationsCenterClient) GetNetwork(ctx context.Context, id string) (api.Network, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/networks", id), nil, nil)
 	if err != nil {
 		return api.Network{}, err
 	}

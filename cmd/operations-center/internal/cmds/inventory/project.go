@@ -104,7 +104,7 @@ func (c *cmdProjectList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	projects, err := c.ocClient.GetWithFilterProjects(filter)
+	projects, err := c.ocClient.GetWithFilterProjects(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,7 @@ func (c *cmdProjectShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	project, err := c.ocClient.GetProject(id)
+	project, err := c.ocClient.GetProject(cmd.Context(), id)
 	if err != nil {
 		return err
 	}

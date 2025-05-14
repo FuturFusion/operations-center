@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -12,12 +13,12 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterStoragePools(filter inventory.StoragePoolFilter) ([]api.StoragePool, error) {
+func (c OperationsCenterClient) GetWithFilterStoragePools(ctx context.Context, filter inventory.StoragePoolFilter) ([]api.StoragePool, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/storage_pools", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/storage_pools", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +32,8 @@ func (c OperationsCenterClient) GetWithFilterStoragePools(filter inventory.Stora
 	return storage_pools, nil
 }
 
-func (c OperationsCenterClient) GetStoragePool(id string) (api.StoragePool, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/storage_pools", id), nil, nil)
+func (c OperationsCenterClient) GetStoragePool(ctx context.Context, id string) (api.StoragePool, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/storage_pools", id), nil, nil)
 	if err != nil {
 		return api.StoragePool{}, err
 	}

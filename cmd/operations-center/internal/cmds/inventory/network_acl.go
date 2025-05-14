@@ -110,7 +110,7 @@ func (c *cmdNetworkACLList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	networkACLs, err := c.ocClient.GetWithFilterNetworkACLs(filter)
+	networkACLs, err := c.ocClient.GetWithFilterNetworkACLs(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func (c *cmdNetworkACLShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	networkACL, err := c.ocClient.GetNetworkACL(id)
+	networkACL, err := c.ocClient.GetNetworkACL(cmd.Context(), id)
 	if err != nil {
 		return err
 	}

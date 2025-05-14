@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -12,12 +13,12 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterInstances(filter inventory.InstanceFilter) ([]api.Instance, error) {
+func (c OperationsCenterClient) GetWithFilterInstances(ctx context.Context, filter inventory.InstanceFilter) ([]api.Instance, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/instances", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/instances", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +32,8 @@ func (c OperationsCenterClient) GetWithFilterInstances(filter inventory.Instance
 	return instances, nil
 }
 
-func (c OperationsCenterClient) GetInstance(id string) (api.Instance, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/instances", id), nil, nil)
+func (c OperationsCenterClient) GetInstance(ctx context.Context, id string) (api.Instance, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/instances", id), nil, nil)
 	if err != nil {
 		return api.Instance{}, err
 	}

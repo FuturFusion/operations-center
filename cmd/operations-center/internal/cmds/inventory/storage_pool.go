@@ -104,7 +104,7 @@ func (c *cmdStoragePoolList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	storagePools, err := c.ocClient.GetWithFilterStoragePools(filter)
+	storagePools, err := c.ocClient.GetWithFilterStoragePools(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,7 @@ func (c *cmdStoragePoolShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	storagePool, err := c.ocClient.GetStoragePool(id)
+	storagePool, err := c.ocClient.GetStoragePool(cmd.Context(), id)
 	if err != nil {
 		return err
 	}

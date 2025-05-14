@@ -104,7 +104,7 @@ func (c *cmdNetworkIntegrationList) Run(cmd *cobra.Command, args []string) error
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	networkIntegrations, err := c.ocClient.GetWithFilterNetworkIntegrations(filter)
+	networkIntegrations, err := c.ocClient.GetWithFilterNetworkIntegrations(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,7 @@ func (c *cmdNetworkIntegrationShow) Run(cmd *cobra.Command, args []string) error
 
 	id := args[0]
 
-	networkIntegration, err := c.ocClient.GetNetworkIntegration(id)
+	networkIntegration, err := c.ocClient.GetNetworkIntegration(cmd.Context(), id)
 	if err != nil {
 		return err
 	}

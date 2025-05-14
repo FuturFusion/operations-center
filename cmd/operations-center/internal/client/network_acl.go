@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -12,12 +13,12 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterNetworkACLs(filter inventory.NetworkACLFilter) ([]api.NetworkACL, error) {
+func (c OperationsCenterClient) GetWithFilterNetworkACLs(ctx context.Context, filter inventory.NetworkACLFilter) ([]api.NetworkACL, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/network_acls", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/network_acls", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +32,8 @@ func (c OperationsCenterClient) GetWithFilterNetworkACLs(filter inventory.Networ
 	return network_acls, nil
 }
 
-func (c OperationsCenterClient) GetNetworkACL(id string) (api.NetworkACL, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/network_acls", id), nil, nil)
+func (c OperationsCenterClient) GetNetworkACL(ctx context.Context, id string) (api.NetworkACL, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/network_acls", id), nil, nil)
 	if err != nil {
 		return api.NetworkACL{}, err
 	}

@@ -116,7 +116,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	instances, err := c.ocClient.GetWithFilterInstances(filter)
+	instances, err := c.ocClient.GetWithFilterInstances(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -187,7 +187,7 @@ func (c *cmdInstanceShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	instance, err := c.ocClient.GetInstance(id)
+	instance, err := c.ocClient.GetInstance(cmd.Context(), id)
 	if err != nil {
 		return err
 	}

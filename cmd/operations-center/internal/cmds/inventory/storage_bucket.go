@@ -116,7 +116,7 @@ func (c *cmdStorageBucketList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	storageBuckets, err := c.ocClient.GetWithFilterStorageBuckets(filter)
+	storageBuckets, err := c.ocClient.GetWithFilterStorageBuckets(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -187,7 +187,7 @@ func (c *cmdStorageBucketShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	storageBucket, err := c.ocClient.GetStorageBucket(id)
+	storageBucket, err := c.ocClient.GetStorageBucket(cmd.Context(), id)
 	if err != nil {
 		return err
 	}

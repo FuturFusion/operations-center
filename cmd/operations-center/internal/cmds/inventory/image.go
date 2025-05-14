@@ -110,7 +110,7 @@ func (c *cmdImageList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	images, err := c.ocClient.GetWithFilterImages(filter)
+	images, err := c.ocClient.GetWithFilterImages(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func (c *cmdImageShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	image, err := c.ocClient.GetImage(id)
+	image, err := c.ocClient.GetImage(cmd.Context(), id)
 	if err != nil {
 		return err
 	}

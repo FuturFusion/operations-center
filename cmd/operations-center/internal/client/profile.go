@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -12,12 +13,12 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func (c OperationsCenterClient) GetWithFilterProfiles(filter inventory.ProfileFilter) ([]api.Profile, error) {
+func (c OperationsCenterClient) GetWithFilterProfiles(ctx context.Context, filter inventory.ProfileFilter) ([]api.Profile, error) {
 	query := url.Values{}
 	query.Add("recursion", "1")
 	query = filter.AppendToURLValues(query)
 
-	response, err := c.doRequest(http.MethodGet, "/inventory/profiles", query, nil)
+	response, err := c.doRequest(ctx, http.MethodGet, "/inventory/profiles", query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -31,8 +32,8 @@ func (c OperationsCenterClient) GetWithFilterProfiles(filter inventory.ProfileFi
 	return profiles, nil
 }
 
-func (c OperationsCenterClient) GetProfile(id string) (api.Profile, error) {
-	response, err := c.doRequest(http.MethodGet, path.Join("/inventory/profiles", id), nil, nil)
+func (c OperationsCenterClient) GetProfile(ctx context.Context, id string) (api.Profile, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/inventory/profiles", id), nil, nil)
 	if err != nil {
 		return api.Profile{}, err
 	}

@@ -104,7 +104,7 @@ func (c *cmdNetworkLoadBalancerList) Run(cmd *cobra.Command, args []string) erro
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	networkLoadBalancers, err := c.ocClient.GetWithFilterNetworkLoadBalancers(filter)
+	networkLoadBalancers, err := c.ocClient.GetWithFilterNetworkLoadBalancers(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,7 @@ func (c *cmdNetworkLoadBalancerShow) Run(cmd *cobra.Command, args []string) erro
 
 	id := args[0]
 
-	networkLoadBalancer, err := c.ocClient.GetNetworkLoadBalancer(id)
+	networkLoadBalancer, err := c.ocClient.GetNetworkLoadBalancer(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
