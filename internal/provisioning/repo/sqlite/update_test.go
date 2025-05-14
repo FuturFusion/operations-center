@@ -130,6 +130,6 @@ func TestUpdateDatabaseActions(t *testing.T) {
 	require.Len(t, updates, 1)
 
 	// Can't delete a update that doesn't exist.
-	err = update.DeleteByUUID(ctx, uuid.Must(uuid.Parse(`66307d51-c379-4fb3-be5d-5c4c24ba7b21`)))
+	err = update.DeleteByUUID(ctx, uuid.MustParse(`66307d51-c379-4fb3-be5d-5c4c24ba7b21`))
 	require.ErrorIs(t, err, domain.ErrNotFound)
 }

@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	uuidA = uuid.Must(uuid.Parse(`b32d0079-c48b-4957-b1cb-bef54125c861`))
-	uuidB = uuid.Must(uuid.Parse(`464d229b-3069-4a82-bc59-b215a7c6ed1b`))
+	uuidA = uuid.MustParse(`b32d0079-c48b-4957-b1cb-bef54125c861`)
+	uuidB = uuid.MustParse(`464d229b-3069-4a82-bc59-b215a7c6ed1b`)
 )
 
 func TestTokenService_Create(t *testing.T) {
@@ -167,7 +167,8 @@ func TestTokenService_GetAllNames(t *testing.T) {
 		{
 			name: "success",
 			repoGetAllIDs: []uuid.UUID{
-				uuid.Must(uuid.Parse("b32d0079-c48b-4957-b1cb-bef54125c861")), uuid.Must(uuid.Parse("464d229b-3069-4a82-bc59-b215a7c6ed1b")),
+				uuid.MustParse("b32d0079-c48b-4957-b1cb-bef54125c861"),
+				uuid.MustParse("464d229b-3069-4a82-bc59-b215a7c6ed1b"),
 			},
 
 			assertErr: require.NoError,
