@@ -18,14 +18,30 @@ import (
 type {{$decorator}} struct {
 	_log  *slog.Logger
 	_base {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}
+	_isInformativeErrFunc func(error) bool
+}
+
+type {{$decorator}}Option func(s *{{$decorator}})
+
+func {{$decorator}}WithInformativeErrFunc(isInformativeErrFunc func(error) bool) {{$decorator}}Option {
+	return func(_base *{{$decorator}}) {
+		_base._isInformativeErrFunc = isInformativeErrFunc
+	}
 }
 
 // New{{$decorator}} instruments an implementation of the {{ $.SrcPkgQualifier }}{{ $wrapper.Name }} with simple logging.
-func New{{$decorator}}(base {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}, log *slog.Logger) {{$decorator}} {
-	return {{$decorator}}{
+func New{{$decorator}}(base {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}, log *slog.Logger, opts ...{{$decorator}}Option) {{$decorator}} {
+	this := {{$decorator}}{
 		_base: base,
 		_log: log,
+		_isInformativeErrFunc: func(error) bool { return false },
 	}
+
+	for _, opt := range opts {
+		opt(&this)
+	}
+
+	return this
 }
 
 {{ range $method := $wrapper.Methods }}
@@ -102,7 +118,11 @@ func New{{$decorator}}(base {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}, log *slo
 
 			{{- if $method.ReturnsError }}
 				if err != nil {
-					log.Error("<= method {{$method.Name}} returned an error" )
+					if _d._isInformativeErrFunc(err) {
+						log.Debug("<= method {{$method.Name}} returned an informative error" )
+					} else {
+						log.Error("<= method {{$method.Name}} returned an error" )
+					}
 				} else {
 					log.Debug("<= method {{$method.Name}} finished")
 				}
