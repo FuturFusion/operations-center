@@ -16,14 +16,19 @@ import (
 
 const LevelTrace slog.Level = -8
 
+const MaximumValueLength = 100
+
 func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) error {
 	level := slog.LevelWarn
+	var replaceAttrFunc func(groups []string, attr slog.Attr) slog.Attr
+
 	if verbose {
 		level = slog.LevelInfo
 	}
 
 	if debug {
 		level = slog.LevelDebug
+		replaceAttrFunc = logValueMaxSize(MaximumValueLength)
 	}
 
 	if verbose && debug {
@@ -36,7 +41,8 @@ func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) err
 			Level:      level,
 			TimeFormat: time.RFC3339,
 			// Add source information, if debug level is enabled.
-			AddSource: debug,
+			AddSource:   debug,
+			ReplaceAttr: replaceAttrFunc,
 		},
 	)
 
@@ -53,13 +59,14 @@ func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) err
 			&slog.HandlerOptions{
 				Level: level,
 				// Add source information, if debug level is enabled.
-				AddSource: debug,
+				AddSource:   debug,
+				ReplaceAttr: replaceAttrFunc,
 			},
 		)
 	}
 
 	logger := slog.New(
-		NewContextHandler(slogHandler),
+		newContextHandler(slogHandler),
 	)
 
 	slog.SetDefault(logger)
@@ -67,16 +74,39 @@ func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) err
 	return nil
 }
 
+// logValueMaxSize is a slog.ReplaceAttr function, which limits the size
+// of log values to the given limit.
+func logValueMaxSize(limit int) func(groups []string, attr slog.Attr) slog.Attr {
+	return func(groups []string, attr slog.Attr) slog.Attr {
+		switch attr.Value.Kind() {
+		case slog.KindAny, slog.KindString:
+			val := attr.Value.String()
+			if len(val) > limit {
+				val = val[:limit]
+			}
+
+			attr.Value = slog.StringValue(val)
+		}
+
+		return attr
+	}
+}
+
+// contextHandler is a slog.Handler, which extracts slog attributes from
+// the provided context, which have been added to the context before using
+// ContextWithAttr.
 type contextHandler struct {
 	slog.Handler
 }
 
-func NewContextHandler(handler slog.Handler) *contextHandler {
+// newContextHandler creates a new slog context handler.
+func newContextHandler(handler slog.Handler) *contextHandler {
 	return &contextHandler{
 		Handler: handler,
 	}
 }
 
+// Handle overwrites the Handle method from the embedded slog.Handler.
 func (h contextHandler) Handle(ctx context.Context, r slog.Record) error {
 	attrs, ok := ctx.Value(contextHandlerKey{}).(*[]slog.Attr)
 	if ok {
@@ -91,15 +121,19 @@ func (h contextHandler) Handle(ctx context.Context, r slog.Record) error {
 
 type contextHandlerKey struct{}
 
-func ContextWithAttr(ctx context.Context, attr slog.Attr) context.Context {
-	attrs, ok := ctx.Value(contextHandlerKey{}).(*[]slog.Attr)
+// ContextWithAttr returns a copy of parent in which the attr is added to the list
+// of slog attributes attached to the context.
+//
+// Use context slog attributes only for request-scoped log attributes.
+func ContextWithAttr(parent context.Context, attr slog.Attr) context.Context {
+	attrs, ok := parent.Value(contextHandlerKey{}).(*[]slog.Attr)
 	if !ok {
 		attrs = new([]slog.Attr)
 	}
 
 	*attrs = append(*attrs, attr)
 
-	return context.WithValue(ctx, contextHandlerKey{}, attrs)
+	return context.WithValue(parent, contextHandlerKey{}, attrs)
 }
 
 // Err is a helper function to ensure errors are always logged with the key
