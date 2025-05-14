@@ -31,6 +31,12 @@ var _ provisioning.UpdateRepo = &UpdateRepoMock{}
 //			GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
 //				panic("mock out the GetAllUUIDs method")
 //			},
+//			GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) ([]uuid.UUID, error) {
+//				panic("mock out the GetAllUUIDsWithFilter method")
+//			},
+//			GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+//				panic("mock out the GetAllWithFilter method")
+//			},
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
 //				panic("mock out the GetByUUID method")
 //			},
@@ -52,6 +58,12 @@ type UpdateRepoMock struct {
 
 	// GetAllUUIDsFunc mocks the GetAllUUIDs method.
 	GetAllUUIDsFunc func(ctx context.Context) ([]uuid.UUID, error)
+
+	// GetAllUUIDsWithFilterFunc mocks the GetAllUUIDsWithFilter method.
+	GetAllUUIDsWithFilterFunc func(ctx context.Context, filter provisioning.UpdateFilter) ([]uuid.UUID, error)
+
+	// GetAllWithFilterFunc mocks the GetAllWithFilter method.
+	GetAllWithFilterFunc func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error)
 
 	// GetByUUIDFunc mocks the GetByUUID method.
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error)
@@ -78,6 +90,20 @@ type UpdateRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// GetAllUUIDsWithFilter holds details about calls to the GetAllUUIDsWithFilter method.
+		GetAllUUIDsWithFilter []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Filter is the filter argument value.
+			Filter provisioning.UpdateFilter
+		}
+		// GetAllWithFilter holds details about calls to the GetAllWithFilter method.
+		GetAllWithFilter []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Filter is the filter argument value.
+			Filter provisioning.UpdateFilter
+		}
 		// GetByUUID holds details about calls to the GetByUUID method.
 		GetByUUID []struct {
 			// Ctx is the ctx argument value.
@@ -93,11 +119,13 @@ type UpdateRepoMock struct {
 			Update provisioning.Update
 		}
 	}
-	lockDeleteByUUID sync.RWMutex
-	lockGetAll       sync.RWMutex
-	lockGetAllUUIDs  sync.RWMutex
-	lockGetByUUID    sync.RWMutex
-	lockUpsert       sync.RWMutex
+	lockDeleteByUUID          sync.RWMutex
+	lockGetAll                sync.RWMutex
+	lockGetAllUUIDs           sync.RWMutex
+	lockGetAllUUIDsWithFilter sync.RWMutex
+	lockGetAllWithFilter      sync.RWMutex
+	lockGetByUUID             sync.RWMutex
+	lockUpsert                sync.RWMutex
 }
 
 // DeleteByUUID calls DeleteByUUIDFunc.
@@ -197,6 +225,78 @@ func (mock *UpdateRepoMock) GetAllUUIDsCalls() []struct {
 	mock.lockGetAllUUIDs.RLock()
 	calls = mock.calls.GetAllUUIDs
 	mock.lockGetAllUUIDs.RUnlock()
+	return calls
+}
+
+// GetAllUUIDsWithFilter calls GetAllUUIDsWithFilterFunc.
+func (mock *UpdateRepoMock) GetAllUUIDsWithFilter(ctx context.Context, filter provisioning.UpdateFilter) ([]uuid.UUID, error) {
+	if mock.GetAllUUIDsWithFilterFunc == nil {
+		panic("UpdateRepoMock.GetAllUUIDsWithFilterFunc: method is nil but UpdateRepo.GetAllUUIDsWithFilter was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Filter provisioning.UpdateFilter
+	}{
+		Ctx:    ctx,
+		Filter: filter,
+	}
+	mock.lockGetAllUUIDsWithFilter.Lock()
+	mock.calls.GetAllUUIDsWithFilter = append(mock.calls.GetAllUUIDsWithFilter, callInfo)
+	mock.lockGetAllUUIDsWithFilter.Unlock()
+	return mock.GetAllUUIDsWithFilterFunc(ctx, filter)
+}
+
+// GetAllUUIDsWithFilterCalls gets all the calls that were made to GetAllUUIDsWithFilter.
+// Check the length with:
+//
+//	len(mockedUpdateRepo.GetAllUUIDsWithFilterCalls())
+func (mock *UpdateRepoMock) GetAllUUIDsWithFilterCalls() []struct {
+	Ctx    context.Context
+	Filter provisioning.UpdateFilter
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Filter provisioning.UpdateFilter
+	}
+	mock.lockGetAllUUIDsWithFilter.RLock()
+	calls = mock.calls.GetAllUUIDsWithFilter
+	mock.lockGetAllUUIDsWithFilter.RUnlock()
+	return calls
+}
+
+// GetAllWithFilter calls GetAllWithFilterFunc.
+func (mock *UpdateRepoMock) GetAllWithFilter(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+	if mock.GetAllWithFilterFunc == nil {
+		panic("UpdateRepoMock.GetAllWithFilterFunc: method is nil but UpdateRepo.GetAllWithFilter was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Filter provisioning.UpdateFilter
+	}{
+		Ctx:    ctx,
+		Filter: filter,
+	}
+	mock.lockGetAllWithFilter.Lock()
+	mock.calls.GetAllWithFilter = append(mock.calls.GetAllWithFilter, callInfo)
+	mock.lockGetAllWithFilter.Unlock()
+	return mock.GetAllWithFilterFunc(ctx, filter)
+}
+
+// GetAllWithFilterCalls gets all the calls that were made to GetAllWithFilter.
+// Check the length with:
+//
+//	len(mockedUpdateRepo.GetAllWithFilterCalls())
+func (mock *UpdateRepoMock) GetAllWithFilterCalls() []struct {
+	Ctx    context.Context
+	Filter provisioning.UpdateFilter
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Filter provisioning.UpdateFilter
+	}
+	mock.lockGetAllWithFilter.RLock()
+	calls = mock.calls.GetAllWithFilter
+	mock.lockGetAllWithFilter.RUnlock()
 	return calls
 }
 

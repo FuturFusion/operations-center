@@ -7,7 +7,38 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 )
+
+func TestUpdate_Filter(t *testing.T) {
+	tests := []struct {
+		name   string
+		filter provisioning.UpdateFilter
+
+		want string
+	}{
+		{
+			name:   "empty filter",
+			filter: provisioning.UpdateFilter{},
+
+			want: ``,
+		},
+		{
+			name: "complete filter",
+			filter: provisioning.UpdateFilter{
+				Channel: ptr.To("channel"),
+			},
+
+			want: `channel=channel`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, tc.filter.String())
+		})
+	}
+}
 
 func TestUpdateFiles_UnmarshalText(t *testing.T) {
 	tests := []struct {

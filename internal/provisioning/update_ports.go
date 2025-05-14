@@ -9,7 +9,9 @@ import (
 
 type UpdateService interface {
 	GetAll(ctx context.Context) (Updates, error)
+	GetAllWithFilter(ctx context.Context, filter UpdateFilter) (Updates, error)
 	GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error)
+	GetAllUUIDsWithFilter(ctx context.Context, filter UpdateFilter) ([]uuid.UUID, error)
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Update, error)
 
 	// Files
@@ -22,7 +24,9 @@ type UpdateService interface {
 type UpdateRepo interface {
 	Upsert(ctx context.Context, update Update) error
 	GetAll(ctx context.Context) (Updates, error)
+	GetAllWithFilter(ctx context.Context, filter UpdateFilter) (Updates, error)
 	GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error)
+	GetAllUUIDsWithFilter(ctx context.Context, filter UpdateFilter) ([]uuid.UUID, error)
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Update, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -51,6 +52,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		Version:     "202505110031",
 		PublishedAt: time.Date(2025, 5, 11, 0, 56, 27, 0, time.UTC),
 		Severity:    api.UpdateSeverityNone,
+		Channel:     "stable",
 		Files: provisioning.UpdateFiles{
 			{
 				Filename: "debug.raw.gz",
@@ -101,6 +103,20 @@ func TestUpdateDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, updateIDs, 2)
 	require.ElementsMatch(t, []uuid.UUID{uuid.MustParse("e399698d-db42-53f6-97d7-1ad04dac34ba"), uuid.MustParse("d3a52570-df97-56bc-a849-0d634c945b8c")}, updateIDs)
+
+	// Ensure we have one entry with filter
+	updates, err = update.GetAllWithFilter(ctx, provisioning.UpdateFilter{
+		Channel: ptr.To("stable"),
+	})
+	require.NoError(t, err)
+	require.Len(t, updates, 1)
+
+	updateIDs, err = update.GetAllUUIDsWithFilter(ctx, provisioning.UpdateFilter{
+		Channel: ptr.To("stable"),
+	})
+	require.NoError(t, err)
+	require.Len(t, updateIDs, 1)
+	require.ElementsMatch(t, []uuid.UUID{uuid.MustParse("d3a52570-df97-56bc-a849-0d634c945b8c")}, updateIDs)
 
 	// Should get back updateA unchanged.
 	dbUpdateA, err := update.GetByUUID(ctx, updateA.UUID)

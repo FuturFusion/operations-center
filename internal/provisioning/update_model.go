@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,6 +30,23 @@ type UpdateFile struct {
 	Filename string `json:"filename"`
 	URL      string `json:"url"`
 	Size     int    `json:"size"`
+}
+
+type UpdateFilter struct {
+	UUID    *uuid.UUID
+	Channel *string
+}
+
+func (f UpdateFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.Channel != nil {
+		query.Add("channel", *f.Channel)
+	}
+
+	return query
+}
+
+func (f UpdateFilter) String() string {
+	return f.AppendToURLValues(url.Values{}).Encode()
 }
 
 type UpdateFiles []UpdateFile

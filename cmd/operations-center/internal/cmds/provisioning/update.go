@@ -8,6 +8,8 @@ import (
 
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/render"
 	"github.com/FuturFusion/operations-center/internal/sort"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -59,6 +61,8 @@ func (c *CmdUpdate) Command() *cobra.Command {
 type cmdUpdateList struct {
 	ocClient *client.OperationsCenterClient
 
+	flagFilterChannel string
+
 	flagFormat string
 }
 
@@ -71,6 +75,8 @@ func (c *cmdUpdateList) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
+
+	cmd.Flags().StringVar(&c.flagFilterChannel, "channel", "", "channel name to filter for")
 
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
@@ -87,7 +93,13 @@ func (c *cmdUpdateList) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	updates, err := c.ocClient.GetUpdates()
+	var filter provisioning.UpdateFilter
+
+	if c.flagFilterChannel != "" {
+		filter.Channel = ptr.To(c.flagFilterChannel)
+	}
+
+	updates, err := c.ocClient.GetWithFilterUpdates(filter)
 	if err != nil {
 		return err
 	}

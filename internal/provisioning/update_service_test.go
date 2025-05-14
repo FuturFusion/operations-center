@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/testing/queue"
 )
@@ -61,6 +62,66 @@ func TestUpdateService_GetAll(t *testing.T) {
 	}
 }
 
+func TestUpdateService_GetAllWithFilter(t *testing.T) {
+	tests := []struct {
+		name                    string
+		filter                  provisioning.UpdateFilter
+		repoGetAllWithFilter    provisioning.Updates
+		repoGetAllWithFilterErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name: "success - no filter expression",
+			filter: provisioning.UpdateFilter{
+				Channel: ptr.To("one"),
+			},
+			repoGetAllWithFilter: provisioning.Updates{
+				provisioning.Update{
+					UUID: uuid.MustParse(`1b6b5509-a9a6-419f-855f-7a8618ce76ad`),
+				},
+				provisioning.Update{
+					UUID: uuid.MustParse(`689396f9-cf05-4776-a567-38014d37f861`),
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:                    "error - repo",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.UpdateRepoMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+			}
+
+			serverSvc := provisioning.NewUpdateService(repo, nil, 3)
+
+			// Run test
+			server, err := serverSvc.GetAllWithFilter(context.Background(), tc.filter)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, server, tc.count)
+		})
+	}
+}
+
 func TestUpdateService_GetAllUUIDs(t *testing.T) {
 	tests := []struct {
 		name               string
@@ -103,6 +164,62 @@ func TestUpdateService_GetAllUUIDs(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Equal(t, tc.repoGetAllUUIDs, updates)
+		})
+	}
+}
+
+func TestUpdateService_GetAllIDsWithFilter(t *testing.T) {
+	tests := []struct {
+		name                         string
+		filter                       provisioning.UpdateFilter
+		repoGetAllUUIDsWithFilter    []uuid.UUID
+		repoGetAllUUIDsWithFilterErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name: "success - no filter expression",
+			filter: provisioning.UpdateFilter{
+				Channel: ptr.To("one"),
+			},
+			repoGetAllUUIDsWithFilter: []uuid.UUID{
+				uuid.MustParse(`8926daa1-3a48-4739-9a82-e32ebd22d343`),
+				uuid.MustParse(`84156d67-0bcb-4b60-ac23-2c67f552fb8c`),
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:                         "error - repo",
+			repoGetAllUUIDsWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.UpdateRepoMock{
+				GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
+					return tc.repoGetAllUUIDsWithFilter, tc.repoGetAllUUIDsWithFilterErr
+				},
+				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) ([]uuid.UUID, error) {
+					return tc.repoGetAllUUIDsWithFilter, tc.repoGetAllUUIDsWithFilterErr
+				},
+			}
+
+			serverSvc := provisioning.NewUpdateService(repo, nil, 3)
+
+			// Run test
+			serverIDs, err := serverSvc.GetAllUUIDsWithFilter(context.Background(), tc.filter)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, serverIDs, tc.count)
 		})
 	}
 }
