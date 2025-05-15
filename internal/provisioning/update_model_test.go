@@ -8,6 +8,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestUpdate_Filter(t *testing.T) {
@@ -96,14 +97,15 @@ func TestUpdateFiles_Value(t *testing.T) {
 
 			updateFiles: provisioning.UpdateFiles{
 				{
-					Filename: "dummy.txt",
-					URL:      "http://localhost/dummy.txt",
-					Size:     5,
+					Filename:  "dummy.txt",
+					URL:       "http://localhost/dummy.txt",
+					Size:      5,
+					Component: api.UpdateFileComponentDebug,
 				},
 			},
 
 			assertErr: require.NoError,
-			wantValue: []byte(`[{"filename":"dummy.txt","url":"http://localhost/dummy.txt","size":5}]`),
+			wantValue: []byte(`[{"filename":"dummy.txt","url":"http://localhost/dummy.txt","size":5,"component":"debug","type":""}]`),
 		},
 	}
 
