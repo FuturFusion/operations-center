@@ -44,12 +44,7 @@ func (c OperationsCenterClient) GetToken(ctx context.Context, id string) (api.To
 }
 
 func (c OperationsCenterClient) CreateToken(ctx context.Context, token api.TokenPut) error {
-	content, err := json.Marshal(token)
-	if err != nil {
-		return err
-	}
-
-	response, err := c.doRequest(ctx, http.MethodPost, "/provisioning/tokens", nil, content)
+	response, err := c.doRequest(ctx, http.MethodPost, "/provisioning/tokens", nil, token)
 	if err != nil {
 		return err
 	}

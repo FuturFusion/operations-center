@@ -50,12 +50,7 @@ func (c OperationsCenterClient) GetCluster(ctx context.Context, name string) (ap
 }
 
 func (c OperationsCenterClient) CreateCluster(ctx context.Context, cluster api.ClusterPost) error {
-	content, err := json.Marshal(cluster)
-	if err != nil {
-		return err
-	}
-
-	response, err := c.doRequest(ctx, http.MethodPost, "/provisioning/clusters", nil, content)
+	response, err := c.doRequest(ctx, http.MethodPost, "/provisioning/clusters", nil, cluster)
 	if err != nil {
 		return err
 	}

@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -128,7 +129,7 @@ func New(serverPort string, opts ...Option) (OperationsCenterClient, error) {
 	return c, nil
 }
 
-func (c OperationsCenterClient) doRequest(ctx context.Context, method string, endpoint string, query url.Values, content []byte) (*api.Response, error) {
+func (c OperationsCenterClient) doRequest(ctx context.Context, method string, endpoint string, query url.Values, content any) (*api.Response, error) {
 	apiEndpoint, err := url.JoinPath(apiVersionPrefix, endpoint)
 	if err != nil {
 		return nil, err
@@ -139,12 +140,32 @@ func (c OperationsCenterClient) doRequest(ctx context.Context, method string, en
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, u.String(), bytes.NewBuffer(content))
+	contentType := "application/json"
+
+	var body io.ReadCloser
+	switch data := content.(type) {
+	case io.Reader:
+		contentType = "application/octet-stream"
+		body = io.NopCloser(data)
+	case []byte:
+		body = io.NopCloser(bytes.NewBuffer(data))
+	case nil:
+		body = http.NoBody
+	default:
+		contentJSON, err := json.Marshal(data)
+		if err != nil {
+			return nil, err
+		}
+
+		body = io.NopCloser(bytes.NewBuffer(contentJSON))
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), body)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", contentType)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
