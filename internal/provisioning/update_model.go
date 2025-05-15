@@ -27,9 +27,11 @@ type Update struct {
 type Updates []Update
 
 type UpdateFile struct {
-	Filename string `json:"filename"`
-	URL      string `json:"url"`
-	Size     int    `json:"size"`
+	Filename  string                  `json:"filename"`
+	URL       string                  `json:"url"`
+	Size      int                     `json:"size"`
+	Component api.UpdateFileComponent `json:"component"`
+	Type      api.UpdateFileType      `json:"type"`
 }
 
 type UpdateFilter struct {

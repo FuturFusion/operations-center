@@ -216,6 +216,128 @@ type Update struct {
 	Channel string `json:"channel" yaml:"channel"`
 }
 
+type UpdateFileComponent string
+
+const (
+	UpdateFileComponentOS    UpdateFileComponent = "os"
+	UpdateFileComponentIncus UpdateFileComponent = "incus"
+	UpdateFileComponentDebug UpdateFileComponent = "debug"
+)
+
+var updateFileComponents = map[UpdateFileComponent]struct{}{
+	UpdateFileComponentOS:    {},
+	UpdateFileComponentIncus: {},
+	UpdateFileComponentDebug: {},
+}
+
+func (u UpdateFileComponent) String() string {
+	return string(u)
+}
+
+// MarshalText implements the encoding.TextMarshaler interface.
+func (u UpdateFileComponent) MarshalText() ([]byte, error) {
+	return []byte(u), nil
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (u *UpdateFileComponent) UnmarshalText(text []byte) error {
+	_, ok := updateFileComponents[UpdateFileComponent(text)]
+	if !ok {
+		return fmt.Errorf("%q is not a valid update file component", string(text))
+	}
+
+	*u = UpdateFileComponent(text)
+
+	return nil
+}
+
+// Value implements the sql driver.Valuer interface.
+func (u UpdateFileComponent) Value() (driver.Value, error) {
+	return string(u), nil
+}
+
+// Scan implements the sql.Scanner interface.
+func (u *UpdateFileComponent) Scan(value any) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid update file component")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return u.UnmarshalText([]byte(v))
+	case []byte:
+		return u.UnmarshalText(v)
+	default:
+		return fmt.Errorf("type %T is not supported for update file component", value)
+	}
+}
+
+type UpdateFileType string
+
+const (
+	UpdateFileTypeUndefined                UpdateFileType = ""
+	UpdateFileTypeImageRaw                 UpdateFileType = "image-raw"
+	UpdateFileTypeImageISO                 UpdateFileType = "image-iso"
+	UpdateFileTypeImageManifest            UpdateFileType = "image-manifest"
+	UpdateFileTypeUpdateEFI                UpdateFileType = "update-efi"
+	UpdateFileTypeUpdateUsr                UpdateFileType = "update-usr"
+	UpdateFileTypeUpdateUsrVerity          UpdateFileType = "update-usr-verity"
+	UpdateFileTypeUpdateUsrVeritySignature UpdateFileType = "update-usr-verity-signature"
+)
+
+var updateFileType = map[UpdateFileType]struct{}{
+	UpdateFileTypeUndefined:                {},
+	UpdateFileTypeImageRaw:                 {},
+	UpdateFileTypeImageISO:                 {},
+	UpdateFileTypeImageManifest:            {},
+	UpdateFileTypeUpdateEFI:                {},
+	UpdateFileTypeUpdateUsr:                {},
+	UpdateFileTypeUpdateUsrVerity:          {},
+	UpdateFileTypeUpdateUsrVeritySignature: {},
+}
+
+func (u UpdateFileType) String() string {
+	return string(u)
+}
+
+// MarshalText implements the encoding.TextMarshaler interface.
+func (u UpdateFileType) MarshalText() ([]byte, error) {
+	return []byte(u), nil
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (u *UpdateFileType) UnmarshalText(text []byte) error {
+	_, ok := updateFileType[UpdateFileType(text)]
+	if !ok {
+		return fmt.Errorf("%q is not a valid update file type", string(text))
+	}
+
+	*u = UpdateFileType(text)
+
+	return nil
+}
+
+// Value implements the sql driver.Valuer interface.
+func (u UpdateFileType) Value() (driver.Value, error) {
+	return string(u), nil
+}
+
+// Scan implements the sql.Scanner interface.
+func (u *UpdateFileType) Scan(value any) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid update file type")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return u.UnmarshalText([]byte(v))
+	case []byte:
+		return u.UnmarshalText(v)
+	default:
+		return fmt.Errorf("type %T is not supported for update file type", value)
+	}
+}
+
 // UpdateFile defines an update file.
 //
 // swagger:model
@@ -231,4 +353,12 @@ type UpdateFile struct {
 	// Size of the File in bytes.
 	// Example: 54300000
 	Size int `json:"size" yaml:"size"`
+
+	// Component the file provides. One of: os, incus, debug
+	// Example: os
+	Component UpdateFileComponent `json:"component" yaml:"component"`
+
+	// Type of the file. One of: image-raw, image-iso, image-manifest, update-efi, update-usr, update-usr-verity, update-usr-verity-signature
+	// Example: image-raw
+	Type UpdateFileType `json:"type" yaml:"type"`
 }
