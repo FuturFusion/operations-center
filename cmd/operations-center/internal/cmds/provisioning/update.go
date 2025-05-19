@@ -1,7 +1,9 @@
 package provisioning
 
 import (
+	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
@@ -105,11 +107,11 @@ func (c *cmdUpdateList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"UUID", "Channel", "Version", "Published At", "Severity", "Components"}
+	header := []string{"UUID", "Origin", "Channel", "Version", "Published At", "Severity"}
 	data := [][]string{}
 
 	for _, update := range updates {
-		data = append(data, []string{update.UUID.String(), update.Channel, update.Version, update.PublishedAt.String(), update.Severity.String(), update.Components.String()})
+		data = append(data, []string{update.UUID.String(), update.Origin, update.Channel, update.Version, update.PublishedAt.String(), update.Severity.String()})
 	}
 
 	sort.ColumnsNaturally(data)
@@ -155,11 +157,12 @@ func (c *cmddUpdateShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("UUID: %s\n", update.UUID.String())
+	fmt.Printf("Origin: %s\n", update.Origin)
 	fmt.Printf("Channel: %s\n", update.Channel)
 	fmt.Printf("Version: %s\n", update.Version)
 	fmt.Printf("Published At: %s\n", update.PublishedAt.String())
 	fmt.Printf("Severity: %s\n", update.Severity)
-	fmt.Printf("Components: %s\n", update.Components)
+	fmt.Printf("Changelog:\n%s\n\n", indent("  ", update.Changelog))
 	fmt.Println("Files:")
 
 	for _, updateFile := range updateFiles {
@@ -167,6 +170,23 @@ func (c *cmddUpdateShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func indent(indent string, s string) string {
+	lines := strings.Split(s, "\n")
+
+	out := bytes.Buffer{}
+
+	for _, line := range lines {
+		if line == "" {
+			out.WriteString("\n")
+			continue
+		}
+
+		out.WriteString(indent + s + "\n")
+	}
+
+	return out.String()
 }
 
 type cmdUpdateFiles struct {

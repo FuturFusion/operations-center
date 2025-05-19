@@ -168,11 +168,13 @@ func fromGHRelease(ghRelease *github.RepositoryRelease) (provisioning.Update, er
 
 	return provisioning.Update{
 		UUID:        uuidFromGHRelease(ghRelease),
+		Origin:      "github.com/lxc/incus-os",
 		ExternalID:  externalIDFromGHRelease(ghRelease),
-		Components:  api.UpdateComponents{},
 		Version:     ptr.From(ghRelease.Name),
 		PublishedAt: ghRelease.PublishedAt.Time,
 		Severity:    api.UpdateSeverityNone,
+		Channel:     "daily",
+		Changelog:   ptr.From(ghRelease.Body),
 	}, nil
 }
 

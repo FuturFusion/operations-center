@@ -144,11 +144,12 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 		for _, update := range updates {
 			result = append(result, api.Update{
 				UUID:        update.UUID,
-				Components:  update.Components,
 				Version:     update.Version,
 				PublishedAt: update.PublishedAt,
 				Severity:    update.Severity,
+				Origin:      update.Origin,
 				Channel:     update.Channel,
+				Changelog:   update.Changelog,
 			})
 		}
 
@@ -219,11 +220,12 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 		true,
 		api.Update{
 			UUID:        update.UUID,
-			Components:  update.Components,
 			Version:     update.Version,
 			PublishedAt: update.PublishedAt,
 			Severity:    update.Severity,
+			Origin:      update.Origin,
 			Channel:     update.Channel,
+			Changelog:   update.Changelog,
 		},
 		update,
 	)

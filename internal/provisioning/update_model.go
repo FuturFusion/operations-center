@@ -15,12 +15,13 @@ import (
 type Update struct {
 	ID          string
 	UUID        uuid.UUID `db:"primary=yes"`
+	Origin      string
 	ExternalID  string
-	Components  api.UpdateComponents
 	Version     string
 	PublishedAt time.Time
 	Severity    api.UpdateSeverity
 	Channel     string
+	Changelog   string
 	Files       UpdateFiles
 }
 
