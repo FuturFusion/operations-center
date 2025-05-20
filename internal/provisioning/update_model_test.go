@@ -41,7 +41,7 @@ func TestUpdate_Filter(t *testing.T) {
 	}
 }
 
-func TestUpdateFiles_UnmarshalText(t *testing.T) {
+func TestUpdateFiles_UnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		name string
 
@@ -76,7 +76,7 @@ func TestUpdateFiles_UnmarshalText(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			updateFiles := provisioning.UpdateFiles{}
 
-			err := updateFiles.UnmarshalText(tc.input)
+			err := updateFiles.UnmarshalJSON(tc.input)
 
 			tc.assertErr(t, err)
 		})
@@ -105,7 +105,7 @@ func TestUpdateFiles_Value(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			wantValue: []byte(`[{"filename":"dummy.txt","url":"http://localhost/dummy.txt","size":5,"component":"debug","type":""}]`),
+			wantValue: []byte(`[{"filename":"dummy.txt","url":"http://localhost/dummy.txt","size":5,"sha256":"","component":"debug","type":""}]`),
 		},
 	}
 
