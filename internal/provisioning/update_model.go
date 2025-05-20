@@ -38,6 +38,7 @@ type UpdateFile struct {
 type UpdateFilter struct {
 	UUID    *uuid.UUID
 	Channel *string
+	Origin  *string
 }
 
 func (f UpdateFilter) AppendToURLValues(query url.Values) url.Values {
