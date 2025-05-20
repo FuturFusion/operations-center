@@ -3,6 +3,7 @@ package provisioning
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/dustin/go-humanize"
@@ -43,11 +44,18 @@ func (c *CmdUpdate) Command() *cobra.Command {
 	cmd.AddCommand(updateListCmd.Command())
 
 	// Show
-	updateShowCmd := cmddUpdateShow{
+	updateShowCmd := cmdUpdateShow{
 		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(updateShowCmd.Command())
+
+	// Add
+	updateAddCmd := cmdUpdateAdd{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateAddCmd.Command())
 
 	// Files
 	updateFilesCmd := cmdUpdateFiles{
@@ -120,11 +128,11 @@ func (c *cmdUpdateList) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Show update.
-type cmddUpdateShow struct {
+type cmdUpdateShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmddUpdateShow) Command() *cobra.Command {
+func (c *cmdUpdateShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid>"
 	cmd.Short = "Show information about a update"
@@ -137,7 +145,7 @@ func (c *cmddUpdateShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmddUpdateShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdUpdateShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -189,6 +197,46 @@ func indent(indent string, s string) string {
 	return out.String()
 }
 
+// Add update.
+type cmdUpdateAdd struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdUpdateAdd) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "add <filename>"
+	cmd.Short = "Add an update"
+	cmd.Long = `Description:
+  Add an update.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdUpdateAdd) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	filename := args[0]
+
+	f, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("Failed to open %q: %w", filename, err)
+	}
+
+	err = c.ocClient.CreateUpdate(cmd.Context(), f)
+	if err != nil {
+		return fmt.Errorf("Failed to create update from %q: %w", filename, err)
+	}
+
+	return nil
+}
+
 type cmdUpdateFiles struct {
 	ocClient *client.OperationsCenterClient
 }
@@ -215,7 +263,7 @@ func (c *cmdUpdateFiles) Command() *cobra.Command {
 	cmd.AddCommand(updateFileListCmd.Command())
 
 	// Show
-	updateFileShowCmd := cmddUpdateFileShow{
+	updateFileShowCmd := cmdUpdateFileShow{
 		ocClient: c.ocClient,
 	}
 
@@ -277,11 +325,11 @@ func (c *cmdUpdateFileList) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Show updateFile.
-type cmddUpdateFileShow struct {
+type cmdUpdateFileShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmddUpdateFileShow) Command() *cobra.Command {
+func (c *cmdUpdateFileShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid> <filename>"
 	cmd.Short = "Show information about a update file"
@@ -294,7 +342,7 @@ func (c *cmddUpdateFileShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmddUpdateFileShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdUpdateFileShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 2, 2)
 	if exit {

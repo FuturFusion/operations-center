@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -47,6 +48,21 @@ func (c OperationsCenterClient) GetUpdate(ctx context.Context, id string) (api.U
 	}
 
 	return update, nil
+}
+
+func (c OperationsCenterClient) CreateUpdate(ctx context.Context, updateStream io.ReadCloser) error {
+	response, err := c.doRequest(ctx, http.MethodPost, "/provisioning/updates", nil, updateStream)
+	if err != nil {
+		return err
+	}
+
+	update := []api.Update{}
+	err = json.Unmarshal(response.Metadata, &update)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c OperationsCenterClient) GetUpdateFiles(ctx context.Context, id string) ([]api.UpdateFile, error) {
