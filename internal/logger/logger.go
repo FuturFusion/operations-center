@@ -84,6 +84,10 @@ func logValueMaxSize(limit int) func(groups []string, attr slog.Attr) slog.Attr 
 
 		switch attr.Value.Kind() {
 		case slog.KindAny, slog.KindString:
+			if attr.Key == slog.MessageKey {
+				break
+			}
+
 			val := attr.Value.String()
 			if len(val) > limit {
 				val = val[:limit] + "... (truncated)"
