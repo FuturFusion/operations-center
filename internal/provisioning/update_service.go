@@ -1,6 +1,7 @@
 package provisioning
 
 import (
+	"archive/tar"
 	"context"
 	"errors"
 	"fmt"
@@ -49,6 +50,36 @@ func NewUpdateService(repo UpdateRepo, opts ...UpdateServiceOption) updateServic
 	}
 
 	return service
+}
+
+func (s updateService) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uuid.UUID, error) {
+	var src UpdateSourceWithAddPort
+
+	var found bool
+	var origin string
+	for o, s := range s.source {
+		src, found = s.(UpdateSourceWithAddPort)
+		if found {
+			origin = o
+			break
+		}
+	}
+
+	if !found {
+		return uuid.UUID{}, fmt.Errorf("Operation not supported, no update source allows manual update")
+	}
+
+	update, err := src.Add(ctx, tarReader)
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+
+	err = s.refreshOrigin(ctx, origin, src)
+	if err != nil {
+		return update.UUID, fmt.Errorf("Failed to refresh manual updates: %w", err)
+	}
+
+	return update.UUID, nil
 }
 
 func (s updateService) GetAll(ctx context.Context) (Updates, error) {

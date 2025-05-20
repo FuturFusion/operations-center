@@ -1,6 +1,7 @@
 package provisioning_test
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"io"
@@ -18,6 +19,100 @@ import (
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/testing/queue"
 )
+
+func TestUpdateService_CreateFromArchive(t *testing.T) {
+	tests := []struct {
+		name string
+
+		sourceAddUUID      uuid.UUID
+		sourceAddErr       error
+		sourceGetLatestErr error
+
+		assertErr require.ErrorAssertionFunc
+		wantID    uuid.UUID
+	}{
+		{
+			name: "success",
+
+			sourceAddUUID: uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
+
+			assertErr: require.NoError,
+			wantID:    uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
+		},
+		{
+			name: "error - source.GetLatest",
+
+			sourceAddErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - source.GetLatest",
+
+			sourceGetLatestErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.UpdateRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return nil, nil
+				},
+			}
+
+			source := &adapterMock.UpdateSourceWithAddPortMock{
+				AddFunc: func(ctx context.Context, tarReader *tar.Reader) (*provisioning.Update, error) {
+					return &provisioning.Update{
+						UUID: tc.sourceAddUUID,
+					}, tc.sourceAddErr
+				},
+				GetLatestFunc: func(ctx context.Context, limit int) (provisioning.Updates, error) {
+					return nil, tc.sourceGetLatestErr
+				},
+			}
+
+			updateSvc := provisioning.NewUpdateService(repo, provisioning.UpdateServiceWithSource("mock", source))
+
+			// Run test
+			id, err := updateSvc.CreateFromArchive(context.Background(), nil)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantID, id)
+		})
+	}
+}
+
+func TestUpdateService_CreateFromArchive_NoSourceWithAdd(t *testing.T) {
+	tests := []struct {
+		name string
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "error - no source with add",
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			updateSvc := provisioning.NewUpdateService(nil)
+
+			// Run test
+			id, err := updateSvc.CreateFromArchive(context.Background(), nil)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, uuid.UUID{}, id)
+		})
+	}
+}
 
 func TestUpdateService_GetAll(t *testing.T) {
 	tests := []struct {
