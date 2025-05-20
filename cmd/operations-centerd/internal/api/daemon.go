@@ -37,6 +37,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/filecache"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/github"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/local"
 	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
 	provisioningServiceMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/middleware"
 	provisioningRepoMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/repo/middleware"
@@ -211,14 +212,26 @@ func (d *Daemon) Start(ctx context.Context) error {
 					},
 				),
 			),
-			provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
-				filecache.New(
-					github.New(gh),
-					filepath.Join(d.env.VarDir(), "updates"),
+			provisioning.UpdateServiceWithSource(
+				"github.com/lxc/incus-os",
+				provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
+					filecache.New(
+						github.New(gh),
+						filepath.Join(d.env.VarDir(), "updates_cache"),
+					),
+					slog.Default(),
 				),
-				slog.Default(),
 			),
-			3,
+			provisioning.UpdateServiceWithSource(
+				"local",
+				provisioningAdapterMiddleware.NewUpdateSourceWithAddPortWithSlog(
+					local.New(
+						filepath.Join(d.env.VarDir(), "updates_local"),
+					),
+					slog.Default(),
+				),
+			),
+			provisioning.UpdateServiceWithLatestLimit(3),
 		),
 		slog.Default(),
 	)
@@ -240,8 +253,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 			return true
 		}
 
-		// ANY /1.0/provisioning/updates no authentication required for all routes.
-		if strings.HasPrefix(r.URL.Path, "/1.0/provisioning/updates") {
+		// GET /1.0/provisioning/updates no authentication required to get updates.
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/1.0/provisioning/updates") {
 			return true
 		}
 
@@ -269,7 +282,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	registerProvisioningServerHandler(provisioningServerRouter, authorizer, serverSvc)
 
 	updateRouter := provisioningRouter.SubGroup("/updates")
-	registerUpdateHandler(updateRouter, updateSvc)
+	registerUpdateHandler(updateRouter, authorizer, updateSvc)
 
 	inventoryRouter := api10router.SubGroup("/inventory")
 
@@ -359,7 +372,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 	}
 
-	updateSourceStop, _ := task.Start(ctx, refreshTask, task.Every(d.config.UpdatesSourcePollInterval))
+	updateSourceStop, _ := task.Start(ctx, refreshTask, task.Every(d.config.UpdatesSourcePollInterval, task.SkipFirst))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		// Default grace period for tasks to finish during shutdown, if no deadline
 		// is defined on the context.
