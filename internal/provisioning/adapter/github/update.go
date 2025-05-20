@@ -19,9 +19,10 @@ import (
 const (
 	ghOrganization = "lxc"
 	ghRepository   = "incus-os"
+	origin         = "github.com/lxc/incus-os"
 )
 
-var GHUpdateSourceSpaceUUID = uuid.MustParse(`00000000-0000-0000-0000-000000000000`)
+var UpdateSourceSpaceUUID = uuid.MustParse(`00000000-0000-0000-0000-000000000000`)
 
 type update struct {
 	gh *github.Client
@@ -168,7 +169,7 @@ func fromGHRelease(ghRelease *github.RepositoryRelease) (provisioning.Update, er
 
 	return provisioning.Update{
 		UUID:        uuidFromGHRelease(ghRelease),
-		Origin:      "github.com/lxc/incus-os",
+		Origin:      origin,
 		ExternalID:  externalIDFromGHRelease(ghRelease),
 		Version:     ptr.From(ghRelease.Name),
 		PublishedAt: ghRelease.PublishedAt.Time,
@@ -191,7 +192,7 @@ func uuidFromGHRelease(ghRelease *github.RepositoryRelease) uuid.UUID {
 		strconv.FormatInt(*ghRelease.ID, 10),
 	}, idSeparator)
 
-	return uuid.NewSHA1(GHUpdateSourceSpaceUUID, []byte(identifier))
+	return uuid.NewSHA1(UpdateSourceSpaceUUID, []byte(identifier))
 }
 
 func releaseIDFromID(id string) (int64, error) {
