@@ -4,6 +4,7 @@
 package middleware
 
 import (
+	"archive/tar"
 	"context"
 	"io"
 	"log/slog"
@@ -41,6 +42,41 @@ func NewUpdateServiceWithSlog(base provisioning.UpdateService, log *slog.Logger,
 	}
 
 	return this
+}
+
+// CreateFromArchive implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uUID uuid.UUID, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("tarReader", tarReader),
+		)
+	}
+	log.Debug("=> calling CreateFromArchive")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("uUID", uUID),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method CreateFromArchive returned an informative error")
+			} else {
+				log.Error("<= method CreateFromArchive returned an error")
+			}
+		} else {
+			log.Debug("<= method CreateFromArchive finished")
+		}
+	}()
+	return _d._base.CreateFromArchive(ctx, tarReader)
 }
 
 // GetAll implements provisioning.UpdateService.

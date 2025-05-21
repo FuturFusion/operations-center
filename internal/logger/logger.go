@@ -16,7 +16,7 @@ import (
 
 const LevelTrace slog.Level = -8
 
-const MaximumValueLength = 100
+const MaximumValueLength = 200
 
 func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) error {
 	level := slog.LevelWarn
@@ -78,11 +78,19 @@ func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) err
 // of log values to the given limit.
 func logValueMaxSize(limit int) func(groups []string, attr slog.Attr) slog.Attr {
 	return func(groups []string, attr slog.Attr) slog.Attr {
+		if attr.Key == slog.LevelKey || attr.Key == slog.SourceKey {
+			return attr
+		}
+
 		switch attr.Value.Kind() {
 		case slog.KindAny, slog.KindString:
+			if attr.Key == slog.MessageKey {
+				break
+			}
+
 			val := attr.Value.String()
 			if len(val) > limit {
-				val = val[:limit]
+				val = val[:limit] + "... (truncated)"
 			}
 
 			attr.Value = slog.StringValue(val)

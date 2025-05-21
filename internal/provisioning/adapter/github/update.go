@@ -19,9 +19,10 @@ import (
 const (
 	ghOrganization = "lxc"
 	ghRepository   = "incus-os"
+	origin         = "github.com/lxc/incus-os"
 )
 
-var GHUpdateSourceSpaceUUID = uuid.MustParse(`00000000-0000-0000-0000-000000000000`)
+var UpdateSourceSpaceUUID = uuid.MustParse(`00000000-0000-0000-0000-000000000000`)
 
 type update struct {
 	gh *github.Client
@@ -68,10 +69,42 @@ func (u update) GetUpdateAllFiles(ctx context.Context, update provisioning.Updat
 
 	files := make(provisioning.UpdateFiles, 0, len(ghRelease.Assets))
 	for _, asset := range ghRelease.Assets {
+		filename := ptr.From(asset.Name)
+
+		var fileComponent api.UpdateFileComponent
+		var fileType api.UpdateFileType
+
+		switch {
+		case filename == "debug.raw.gz":
+			fileComponent = api.UpdateFileComponentDebug
+		case filename == "incus.raw.gz":
+			fileComponent = api.UpdateFileComponentIncus
+		case strings.HasSuffix(filename, ".efi.gz"):
+			fileComponent = api.UpdateFileComponentOS
+			fileType = api.UpdateFileTypeUpdateEFI
+		case strings.HasSuffix(filename, ".img.gz"):
+			fileComponent = api.UpdateFileComponentOS
+			fileType = api.UpdateFileTypeImageRaw
+		case strings.HasSuffix(filename, ".iso.gz"):
+			fileComponent = api.UpdateFileComponentOS
+			fileType = api.UpdateFileTypeImageISO
+		case strings.Contains(filename, ".usr-x86-64-verity."):
+			fileComponent = api.UpdateFileComponentOS
+			fileType = api.UpdateFileTypeUpdateUsrVerity
+		case strings.Contains(filename, ".usr-x86-64-verity-sig."):
+			fileComponent = api.UpdateFileComponentOS
+			fileType = api.UpdateFileTypeUpdateUsrVeritySignature
+		case strings.Contains(filename, ".usr-x86-64."):
+			fileComponent = api.UpdateFileComponentOS
+			fileType = api.UpdateFileTypeUpdateUsr
+		}
+
 		files = append(files, provisioning.UpdateFile{
-			Filename: ptr.From(asset.Name),
-			URL:      ptr.From(asset.URL),
-			Size:     ptr.From(asset.Size),
+			Filename:  filename,
+			URL:       ptr.From(asset.URL),
+			Size:      ptr.From(asset.Size),
+			Component: fileComponent,
+			Type:      fileType,
 		})
 	}
 
@@ -136,11 +169,13 @@ func fromGHRelease(ghRelease *github.RepositoryRelease) (provisioning.Update, er
 
 	return provisioning.Update{
 		UUID:        uuidFromGHRelease(ghRelease),
+		Origin:      origin,
 		ExternalID:  externalIDFromGHRelease(ghRelease),
-		Components:  api.UpdateComponents{},
 		Version:     ptr.From(ghRelease.Name),
 		PublishedAt: ghRelease.PublishedAt.Time,
 		Severity:    api.UpdateSeverityNone,
+		Channel:     "daily",
+		Changelog:   ptr.From(ghRelease.Body),
 	}, nil
 }
 
@@ -157,7 +192,7 @@ func uuidFromGHRelease(ghRelease *github.RepositoryRelease) uuid.UUID {
 		strconv.FormatInt(*ghRelease.ID, 10),
 	}, idSeparator)
 
-	return uuid.NewSHA1(GHUpdateSourceSpaceUUID, []byte(identifier))
+	return uuid.NewSHA1(UpdateSourceSpaceUUID, []byte(identifier))
 }
 
 func releaseIDFromID(id string) (int64, error) {

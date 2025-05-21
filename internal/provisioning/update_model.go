@@ -13,28 +13,33 @@ import (
 )
 
 type Update struct {
-	ID          string
-	UUID        uuid.UUID `db:"primary=yes"`
-	ExternalID  string
-	Components  api.UpdateComponents
-	Version     string
-	PublishedAt time.Time
-	Severity    api.UpdateSeverity
-	Channel     string
-	Files       UpdateFiles
+	ID          string             `json:"-"`
+	UUID        uuid.UUID          `json:"-" db:"primary=yes"`
+	Origin      string             `json:"origin"`
+	ExternalID  string             `json:"-"`
+	Version     string             `json:"version"`
+	PublishedAt time.Time          `json:"published_at"`
+	Severity    api.UpdateSeverity `json:"severity"`
+	Channel     string             `json:"channel"`
+	Changelog   string             `json:"-"`
+	Files       UpdateFiles        `json:"files"`
 }
 
 type Updates []Update
 
 type UpdateFile struct {
-	Filename string `json:"filename"`
-	URL      string `json:"url"`
-	Size     int    `json:"size"`
+	Filename  string                  `json:"filename"`
+	URL       string                  `json:"url"`
+	Size      int                     `json:"size"`
+	Sha256    string                  `json:"sha256"`
+	Component api.UpdateFileComponent `json:"component"`
+	Type      api.UpdateFileType      `json:"type"`
 }
 
 type UpdateFilter struct {
 	UUID    *uuid.UUID
 	Channel *string
+	Origin  *string
 }
 
 func (f UpdateFilter) AppendToURLValues(query url.Values) url.Values {
@@ -50,6 +55,10 @@ func (f UpdateFilter) String() string {
 }
 
 type UpdateFiles []UpdateFile
+
+func (u *UpdateFiles) UnmarshalJSON(data []byte) error {
+	return u.UnmarshalText(data)
+}
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (u *UpdateFiles) UnmarshalText(text []byte) error {

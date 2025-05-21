@@ -1,12 +1,14 @@
 package api
 
 import (
+	"archive/tar"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -17,16 +19,19 @@ type updateHandler struct {
 	service provisioning.UpdateService
 }
 
-func registerUpdateHandler(router Router, service provisioning.UpdateService) {
+func registerUpdateHandler(router Router, authorizer authz.Authorizer, service provisioning.UpdateService) {
 	handler := &updateHandler{
 		service: service,
 	}
 
-	// no authentication required for all routes
+	// no authentication required for all GET routes
 	router.HandleFunc("GET /{$}", response.With(handler.updatesGet))
 	router.HandleFunc("GET /{uuid}", response.With(handler.updateGet))
 	router.HandleFunc("GET /{uuid}/files", response.With(handler.updateFilesGet))
 	router.HandleFunc("GET /{uuid}/files/{filename}", response.With(handler.updateFileGet))
+
+	// authentication and authorization required to upload updates.
+	router.HandleFunc("POST /{$}", response.With(handler.updatesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
 }
 
 // swagger:operation GET /1.0/provisioning/updates updates updates_get
@@ -144,11 +149,12 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 		for _, update := range updates {
 			result = append(result, api.Update{
 				UUID:        update.UUID,
-				Components:  update.Components,
 				Version:     update.Version,
 				PublishedAt: update.PublishedAt,
 				Severity:    update.Severity,
+				Origin:      update.Origin,
 				Channel:     update.Channel,
+				Changelog:   update.Changelog,
 			})
 		}
 
@@ -166,6 +172,39 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 	}
 
 	return response.SyncResponse(true, result)
+}
+
+// swagger:operation POST /1.0/provisioning/updates updates updates_post
+//
+//	Add a update
+//
+//	Creates a new update.
+//
+//	---
+//	consumes:
+//	  - application/octet-stream
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (u *updateHandler) updatesPost(r *http.Request) response.Response {
+	defer r.Body.Close()
+
+	tr := tar.NewReader(r.Body)
+
+	id, err := u.service.CreateFromArchive(r.Context(), tr)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/updates"+id.String())
 }
 
 // swagger:operation GET /1.0/provisioning/updates/{uuid} updates update_get
@@ -219,11 +258,12 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 		true,
 		api.Update{
 			UUID:        update.UUID,
-			Components:  update.Components,
 			Version:     update.Version,
 			PublishedAt: update.PublishedAt,
 			Severity:    update.Severity,
+			Origin:      update.Origin,
 			Channel:     update.Channel,
+			Changelog:   update.Changelog,
 		},
 		update,
 	)
@@ -282,9 +322,11 @@ func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
 	result := make([]api.UpdateFile, 0, len(updateFiles))
 	for _, updateFile := range updateFiles {
 		result = append(result, api.UpdateFile{
-			Filename: updateFile.Filename,
-			URL:      updateFile.URL,
-			Size:     updateFile.Size,
+			Filename:  updateFile.Filename,
+			URL:       updateFile.URL,
+			Size:      updateFile.Size,
+			Component: updateFile.Component,
+			Type:      updateFile.Type,
 		})
 	}
 

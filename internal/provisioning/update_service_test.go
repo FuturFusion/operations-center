@@ -1,6 +1,7 @@
 package provisioning_test
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"io"
@@ -18,6 +19,100 @@ import (
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/testing/queue"
 )
+
+func TestUpdateService_CreateFromArchive(t *testing.T) {
+	tests := []struct {
+		name string
+
+		sourceAddUUID      uuid.UUID
+		sourceAddErr       error
+		sourceGetLatestErr error
+
+		assertErr require.ErrorAssertionFunc
+		wantID    uuid.UUID
+	}{
+		{
+			name: "success",
+
+			sourceAddUUID: uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
+
+			assertErr: require.NoError,
+			wantID:    uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
+		},
+		{
+			name: "error - source.GetLatest",
+
+			sourceAddErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - source.GetLatest",
+
+			sourceGetLatestErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.UpdateRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return nil, nil
+				},
+			}
+
+			source := &adapterMock.UpdateSourceWithAddPortMock{
+				AddFunc: func(ctx context.Context, tarReader *tar.Reader) (*provisioning.Update, error) {
+					return &provisioning.Update{
+						UUID: tc.sourceAddUUID,
+					}, tc.sourceAddErr
+				},
+				GetLatestFunc: func(ctx context.Context, limit int) (provisioning.Updates, error) {
+					return nil, tc.sourceGetLatestErr
+				},
+			}
+
+			updateSvc := provisioning.NewUpdateService(repo, provisioning.UpdateServiceWithSource("mock", source))
+
+			// Run test
+			id, err := updateSvc.CreateFromArchive(context.Background(), nil)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantID, id)
+		})
+	}
+}
+
+func TestUpdateService_CreateFromArchive_NoSourceWithAdd(t *testing.T) {
+	tests := []struct {
+		name string
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "error - no source with add",
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			updateSvc := provisioning.NewUpdateService(nil)
+
+			// Run test
+			id, err := updateSvc.CreateFromArchive(context.Background(), nil)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, uuid.UUID{}, id)
+		})
+	}
+}
 
 func TestUpdateService_GetAll(t *testing.T) {
 	tests := []struct {
@@ -50,7 +145,7 @@ func TestUpdateService_GetAll(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil, 3)
+			updateSvc := provisioning.NewUpdateService(repo)
 
 			// Run test
 			updates, err := updateSvc.GetAll(context.Background())
@@ -110,7 +205,7 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewUpdateService(repo, nil, 3)
+			serverSvc := provisioning.NewUpdateService(repo)
 
 			// Run test
 			server, err := serverSvc.GetAllWithFilter(context.Background(), tc.filter)
@@ -156,7 +251,7 @@ func TestUpdateService_GetAllUUIDs(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil, 3)
+			updateSvc := provisioning.NewUpdateService(repo)
 
 			// Run test
 			updates, err := updateSvc.GetAllUUIDs(context.Background())
@@ -212,7 +307,7 @@ func TestUpdateService_GetAllIDsWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewUpdateService(repo, nil, 3)
+			serverSvc := provisioning.NewUpdateService(repo)
 
 			// Run test
 			serverIDs, err := serverSvc.GetAllUUIDsWithFilter(context.Background(), tc.filter)
@@ -258,7 +353,7 @@ func TestUpdateService_GetByUUID(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil, 3)
+			updateSvc := provisioning.NewUpdateService(repo)
 
 			// Run test
 			update, err := updateSvc.GetByUUID(context.Background(), tc.idArg)
@@ -313,7 +408,7 @@ func TestUpdateService_GetUpdateAllFiles(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil, 3)
+			updateSvc := provisioning.NewUpdateService(repo)
 
 			// Run test
 			updateFiles, err := updateSvc.GetUpdateAllFiles(context.Background(), tc.idArg)
@@ -340,9 +435,11 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 		wantSize  int
 	}{
 		{
-			name:                              "success",
-			idArg:                             uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
-			repoGetByUUIDUpdate:               &provisioning.Update{},
+			name:  "success",
+			idArg: uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
+			repoGetByUUIDUpdate: &provisioning.Update{
+				Origin: "mock",
+			},
 			sourceGetUpdateFileByFilename:     io.NopCloser(bytes.NewBuffer([]byte("foobar"))),
 			sourceGetUpdateFileByFilenameSize: 6,
 
@@ -359,9 +456,21 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 			wantBody:  []byte{},
 		},
 		{
-			name:                             "error - source",
-			idArg:                            uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
-			repoGetByUUIDUpdate:              &provisioning.Update{},
+			name:  "error - unsupported origin",
+			idArg: uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
+			repoGetByUUIDUpdate: &provisioning.Update{
+				Origin: "unsupported", // invalid
+			},
+
+			assertErr: require.Error,
+			wantBody:  []byte{},
+		},
+		{
+			name:  "error - source",
+			idArg: uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
+			repoGetByUUIDUpdate: &provisioning.Update{
+				Origin: "mock",
+			},
 			sourceGetUpdateFileByFilename:    io.NopCloser(bytes.NewBuffer([]byte{})),
 			sourceGetUpdateFileByFilenameErr: boom.Error,
 
@@ -385,7 +494,7 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, source, 3)
+			updateSvc := provisioning.NewUpdateService(repo, provisioning.UpdateServiceWithSource("mock", source))
 
 			// Run test
 			rc, size, err := updateSvc.GetUpdateFileByFilename(context.Background(), tc.idArg, "foo.bar")
@@ -418,10 +527,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 		}]
 		sourceForgetUpdate []queue.Item[struct{}]
 
-		repoUpsert        []queue.Item[struct{}]
-		repoGetAllUpdates provisioning.Updates
-		repoGetAllErr     error
-		repoDeleteByUUID  []queue.Item[struct{}]
+		repoUpsert                  []queue.Item[struct{}]
+		repoGetAllWithFilterUpdates provisioning.Updates
+		repoGetAllWithFilterErr     error
+		repoDeleteByUUID            []queue.Item[struct{}]
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -472,7 +581,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name: "success - no updates, cleanup state in DB",
 			ctx:  context.Background(),
-			repoGetAllUpdates: provisioning.Updates{
+			repoGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID:        uuid.MustParse(`223795ef-a126-4e91-8d19-9d550ff928d6`),
 					PublishedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -676,16 +785,16 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:          "error - repo.GetAll",
-			ctx:           context.Background(),
-			repoGetAllErr: boom.Error,
+			name:                    "error - repo.GetAll",
+			ctx:                     context.Background(),
+			repoGetAllWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - source.ForgetUpdate",
 			ctx:  context.Background(),
-			repoGetAllUpdates: provisioning.Updates{
+			repoGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID:        uuid.MustParse(`223795ef-a126-4e91-8d19-9d550ff928d6`),
 					PublishedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -706,7 +815,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name: "error - repo.DeleteByUUID",
 			ctx:  context.Background(),
-			repoGetAllUpdates: provisioning.Updates{
+			repoGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID:        uuid.MustParse(`223795ef-a126-4e91-8d19-9d550ff928d6`),
 					PublishedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -733,8 +842,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
-				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
-					return tc.repoGetAllUpdates, tc.repoGetAllErr
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return tc.repoGetAllWithFilterUpdates, tc.repoGetAllWithFilterErr
 				},
 				UpsertFunc: func(ctx context.Context, update provisioning.Update) error {
 					_, err := queue.Pop(t, &tc.repoUpsert)
@@ -763,7 +872,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, source, 1)
+			updateSvc := provisioning.NewUpdateService(repo, provisioning.UpdateServiceWithSource("mock", source), provisioning.UpdateServiceWithLatestLimit(1))
 
 			// Run test
 			err := updateSvc.Refresh(tc.ctx)

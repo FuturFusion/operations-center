@@ -8,6 +8,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestUpdate_Filter(t *testing.T) {
@@ -40,7 +41,7 @@ func TestUpdate_Filter(t *testing.T) {
 	}
 }
 
-func TestUpdateFiles_UnmarshalText(t *testing.T) {
+func TestUpdateFiles_UnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		name string
 
@@ -75,7 +76,7 @@ func TestUpdateFiles_UnmarshalText(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			updateFiles := provisioning.UpdateFiles{}
 
-			err := updateFiles.UnmarshalText(tc.input)
+			err := updateFiles.UnmarshalJSON(tc.input)
 
 			tc.assertErr(t, err)
 		})
@@ -96,14 +97,15 @@ func TestUpdateFiles_Value(t *testing.T) {
 
 			updateFiles: provisioning.UpdateFiles{
 				{
-					Filename: "dummy.txt",
-					URL:      "http://localhost/dummy.txt",
-					Size:     5,
+					Filename:  "dummy.txt",
+					URL:       "http://localhost/dummy.txt",
+					Size:      5,
+					Component: api.UpdateFileComponentDebug,
 				},
 			},
 
 			assertErr: require.NoError,
-			wantValue: []byte(`[{"filename":"dummy.txt","url":"http://localhost/dummy.txt","size":5}]`),
+			wantValue: []byte(`[{"filename":"dummy.txt","url":"http://localhost/dummy.txt","size":5,"sha256":"","component":"debug","type":""}]`),
 		},
 	}
 

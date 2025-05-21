@@ -1,6 +1,7 @@
 package provisioning
 
 import (
+	"archive/tar"
 	"context"
 	"io"
 
@@ -18,6 +19,7 @@ type UpdateService interface {
 	GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (UpdateFiles, error)
 	GetUpdateFileByFilename(ctx context.Context, id uuid.UUID, filename string) (io.ReadCloser, int, error)
 
+	CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uuid.UUID, error)
 	Refresh(ctx context.Context) error
 }
 
@@ -37,4 +39,9 @@ type UpdateSourcePort interface {
 	GetUpdateAllFiles(ctx context.Context, update Update) (UpdateFiles, error)
 	GetUpdateFileByFilename(ctx context.Context, update Update, filename string) (io.ReadCloser, int, error)
 	ForgetUpdate(ctx context.Context, update Update) error
+}
+
+type UpdateSourceWithAddPort interface {
+	UpdateSourcePort
+	Add(ctx context.Context, tarReader *tar.Reader) (*Update, error)
 }

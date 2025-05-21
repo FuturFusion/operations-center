@@ -1,7 +1,10 @@
 package provisioning
 
 import (
+	"bytes"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
@@ -41,11 +44,18 @@ func (c *CmdUpdate) Command() *cobra.Command {
 	cmd.AddCommand(updateListCmd.Command())
 
 	// Show
-	updateShowCmd := cmddUpdateShow{
+	updateShowCmd := cmdUpdateShow{
 		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(updateShowCmd.Command())
+
+	// Add
+	updateAddCmd := cmdUpdateAdd{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateAddCmd.Command())
 
 	// Files
 	updateFilesCmd := cmdUpdateFiles{
@@ -105,11 +115,11 @@ func (c *cmdUpdateList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"UUID", "Channel", "Version", "Published At", "Severity", "Components"}
+	header := []string{"UUID", "Origin", "Channel", "Version", "Published At", "Severity"}
 	data := [][]string{}
 
 	for _, update := range updates {
-		data = append(data, []string{update.UUID.String(), update.Channel, update.Version, update.PublishedAt.String(), update.Severity.String(), update.Components.String()})
+		data = append(data, []string{update.UUID.String(), update.Origin, update.Channel, update.Version, update.PublishedAt.String(), update.Severity.String()})
 	}
 
 	sort.ColumnsNaturally(data)
@@ -118,11 +128,11 @@ func (c *cmdUpdateList) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Show update.
-type cmddUpdateShow struct {
+type cmdUpdateShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmddUpdateShow) Command() *cobra.Command {
+func (c *cmdUpdateShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid>"
 	cmd.Short = "Show information about a update"
@@ -135,7 +145,7 @@ func (c *cmddUpdateShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmddUpdateShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdUpdateShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -155,15 +165,73 @@ func (c *cmddUpdateShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("UUID: %s\n", update.UUID.String())
+	fmt.Printf("Origin: %s\n", update.Origin)
 	fmt.Printf("Channel: %s\n", update.Channel)
 	fmt.Printf("Version: %s\n", update.Version)
 	fmt.Printf("Published At: %s\n", update.PublishedAt.String())
 	fmt.Printf("Severity: %s\n", update.Severity)
-	fmt.Printf("Components: %s\n", update.Components)
+	fmt.Printf("Changelog:\n%s\n\n", indent("  ", update.Changelog))
 	fmt.Println("Files:")
 
 	for _, updateFile := range updateFiles {
 		fmt.Printf("- %s (%s)\n", updateFile.Filename, humanize.Bytes(uint64(updateFile.Size)))
+	}
+
+	return nil
+}
+
+func indent(indent string, s string) string {
+	lines := strings.Split(s, "\n")
+
+	out := bytes.Buffer{}
+
+	for _, line := range lines {
+		if line == "" {
+			out.WriteString("\n")
+			continue
+		}
+
+		out.WriteString(indent + s + "\n")
+	}
+
+	return out.String()
+}
+
+// Add update.
+type cmdUpdateAdd struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdUpdateAdd) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "add <filename>"
+	cmd.Short = "Add an update"
+	cmd.Long = `Description:
+  Add an update.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdUpdateAdd) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	filename := args[0]
+
+	f, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("Failed to open %q: %w", filename, err)
+	}
+
+	err = c.ocClient.CreateUpdate(cmd.Context(), f)
+	if err != nil {
+		return fmt.Errorf("Failed to create update from %q: %w", filename, err)
 	}
 
 	return nil
@@ -195,7 +263,7 @@ func (c *cmdUpdateFiles) Command() *cobra.Command {
 	cmd.AddCommand(updateFileListCmd.Command())
 
 	// Show
-	updateFileShowCmd := cmddUpdateFileShow{
+	updateFileShowCmd := cmdUpdateFileShow{
 		ocClient: c.ocClient,
 	}
 
@@ -244,11 +312,11 @@ func (c *cmdUpdateFileList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Filename", "Size", "URL"}
+	header := []string{"Filename", "Size", "URL", "Component", "Type"}
 	data := [][]string{}
 
 	for _, updateFile := range updateFiles {
-		data = append(data, []string{updateFile.Filename, humanize.Bytes(uint64(updateFile.Size)), updateFile.URL})
+		data = append(data, []string{updateFile.Filename, humanize.Bytes(uint64(updateFile.Size)), updateFile.URL, updateFile.Component.String(), updateFile.Type.String()})
 	}
 
 	sort.ColumnsNaturally(data)
@@ -257,11 +325,11 @@ func (c *cmdUpdateFileList) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Show updateFile.
-type cmddUpdateFileShow struct {
+type cmdUpdateFileShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmddUpdateFileShow) Command() *cobra.Command {
+func (c *cmdUpdateFileShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid> <filename>"
 	cmd.Short = "Show information about a update file"
@@ -274,7 +342,7 @@ func (c *cmddUpdateFileShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmddUpdateFileShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdUpdateFileShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 2, 2)
 	if exit {
@@ -306,6 +374,8 @@ func (c *cmddUpdateFileShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Filename: %s\n", updateFile.Filename)
 	fmt.Printf("Size: %s\n", humanize.Bytes(uint64(updateFile.Size)))
 	fmt.Printf("URL: %s\n", updateFile.URL)
+	fmt.Printf("Component: %s\n", updateFile.Component)
+	fmt.Printf("Type: %s\n", updateFile.Type)
 
 	return nil
 }

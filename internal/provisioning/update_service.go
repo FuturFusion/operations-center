@@ -1,6 +1,7 @@
 package provisioning
 
 import (
+	"archive/tar"
 	"context"
 	"errors"
 	"fmt"
@@ -9,23 +10,76 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
+const defaultLatestLimit = 3
+
 type updateService struct {
 	repo        UpdateRepo
-	source      UpdateSourcePort
+	source      map[string]UpdateSourcePort
 	latestLimit int
 }
 
 var _ UpdateService = &updateService{}
 
-func NewUpdateService(repo UpdateRepo, source UpdateSourcePort, latestLimit int) updateService {
-	return updateService{
-		repo:        repo,
-		source:      source,
-		latestLimit: latestLimit,
+type UpdateServiceOption func(service *updateService)
+
+func UpdateServiceWithSource(origin string, source UpdateSourcePort) UpdateServiceOption {
+	return func(service *updateService) {
+		service.source[origin] = source
 	}
+}
+
+func UpdateServiceWithLatestLimit(limit int) UpdateServiceOption {
+	return func(service *updateService) {
+		service.latestLimit = limit
+	}
+}
+
+func NewUpdateService(repo UpdateRepo, opts ...UpdateServiceOption) updateService {
+	service := updateService{
+		repo:        repo,
+		source:      make(map[string]UpdateSourcePort),
+		latestLimit: defaultLatestLimit,
+	}
+
+	for _, opt := range opts {
+		opt(&service)
+	}
+
+	return service
+}
+
+func (s updateService) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uuid.UUID, error) {
+	var src UpdateSourceWithAddPort
+
+	var found bool
+	var origin string
+	for o, s := range s.source {
+		src, found = s.(UpdateSourceWithAddPort)
+		if found {
+			origin = o
+			break
+		}
+	}
+
+	if !found {
+		return uuid.UUID{}, fmt.Errorf("Operation not supported, no update source allows manual update")
+	}
+
+	update, err := src.Add(ctx, tarReader)
+	if err != nil {
+		return uuid.UUID{}, err
+	}
+
+	err = s.refreshOrigin(ctx, origin, src)
+	if err != nil {
+		return update.UUID, fmt.Errorf("Failed to refresh manual updates: %w", err)
+	}
+
+	return update.UUID, nil
 }
 
 func (s updateService) GetAll(ctx context.Context) (Updates, error) {
@@ -93,38 +147,54 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 		return nil, 0, err
 	}
 
-	return s.source.GetUpdateFileByFilename(ctx, *update, filename)
+	src, ok := s.source[update.Origin]
+	if !ok {
+		return nil, 0, fmt.Errorf("Unsupported origin %q", update.Origin)
+	}
+
+	return src.GetUpdateFileByFilename(ctx, *update, filename)
 }
 
 func (s updateService) Refresh(ctx context.Context) error {
-	updates, err := s.source.GetLatest(ctx, s.latestLimit)
+	for origin, source := range s.source {
+		err := s.refreshOrigin(ctx, origin, source)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s updateService) refreshOrigin(ctx context.Context, origin string, src UpdateSourcePort) error {
+	updates, err := src.GetLatest(ctx, s.latestLimit)
 	if err != nil {
-		return fmt.Errorf("Failed to fetch latest updates from source: %w", err)
+		return fmt.Errorf("Failed to fetch latest updates from source %q: %w", origin, err)
 	}
 
 	for _, update := range updates {
-		updateFiles, err := s.source.GetUpdateAllFiles(ctx, update)
+		updateFiles, err := src.GetUpdateAllFiles(ctx, update)
 		if err != nil {
-			return fmt.Errorf(`Failed to get files for update "%s:%s": %w`, update.Channel, update.Version, err)
+			return fmt.Errorf(`Failed to get files for update "%s:%s@%s": %w`, origin, update.Channel, update.Version, err)
 		}
 
 		update.Files = updateFiles
 
 		for _, updateFile := range updateFiles {
 			if ctx.Err() != nil {
-				return fmt.Errorf("stop refresh, context cancelled: %w", context.Cause(ctx))
+				return fmt.Errorf("Stop refresh, context cancelled: %w", context.Cause(ctx))
 			}
 
 			err := func() (err error) {
-				stream, _, err := s.source.GetUpdateFileByFilename(ctx, update, updateFile.Filename)
+				stream, _, err := src.GetUpdateFileByFilename(ctx, update, updateFile.Filename)
 				if err != nil {
-					return fmt.Errorf(`Failed to fetch file %q for update "%s:%s": %w`, updateFile.Filename, update.Channel, update.Version, err)
+					return fmt.Errorf(`Failed to fetch update file "%s:%s/%s@%s": %w`, origin, update.Channel, updateFile.Filename, update.Version, err)
 				}
 
 				defer func() {
 					closeErr := stream.Close()
 					if closeErr != nil {
-						err = errors.Join(err, fmt.Errorf(`Failed to close stream for file %q of update "%s:%s": %w`, updateFile.Filename, update.Channel, update.Version, closeErr))
+						err = errors.Join(err, fmt.Errorf(`Failed to close stream for update file "%s:%s/%s@%s": %w`, origin, update.Channel, updateFile.Filename, update.Version, closeErr))
 					}
 				}()
 
@@ -133,7 +203,7 @@ func (s updateService) Refresh(ctx context.Context) error {
 				// middleware to download the file if not yet present in the cache).
 				_, err = io.ReadAll(stream)
 				if err != nil {
-					return fmt.Errorf(`Failed to read stream for file %q of update "%s:%s": %w`, updateFile.Filename, update.Channel, update.Version, err)
+					return fmt.Errorf(`Failed to read stream for update file "%s:%s/%s@%s": %w`, origin, update.Channel, updateFile.Filename, update.Version, err)
 				}
 
 				return nil
@@ -145,14 +215,16 @@ func (s updateService) Refresh(ctx context.Context) error {
 
 		err = s.repo.Upsert(ctx, update)
 		if err != nil {
-			return fmt.Errorf("Failed to persist the update in the repository: %w", err)
+			return fmt.Errorf("Failed to persist the update in the repository for source %q: %w", origin, err)
 		}
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		allUpdates, err := s.repo.GetAll(ctx)
+		allUpdates, err := s.repo.GetAllWithFilter(ctx, UpdateFilter{
+			Origin: ptr.To(origin),
+		})
 		if err != nil {
-			return fmt.Errorf("Failed to get all updates from repository: %w", err)
+			return fmt.Errorf("Failed to get all updates from repository for source %q: %w", origin, err)
 		}
 
 		sort.Slice(allUpdates, func(i, j int) bool {
@@ -161,14 +233,14 @@ func (s updateService) Refresh(ctx context.Context) error {
 
 		if len(allUpdates) > s.latestLimit {
 			for _, update := range allUpdates[s.latestLimit:] {
-				err = s.source.ForgetUpdate(ctx, update)
+				err = src.ForgetUpdate(ctx, update)
 				if err != nil {
-					return fmt.Errorf("Failed to forget update %s: %w", update.UUID, err)
+					return fmt.Errorf("Failed to forget update %s from source %q: %w", update.UUID, origin, err)
 				}
 
 				err = s.repo.DeleteByUUID(ctx, update.UUID)
 				if err != nil {
-					return fmt.Errorf("Failed to remove update %s from repository: %w", update.UUID, err)
+					return fmt.Errorf("Failed to remove update %s from source %q from repository: %w", update.UUID, origin, err)
 				}
 			}
 		}

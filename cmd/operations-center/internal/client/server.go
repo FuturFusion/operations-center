@@ -50,12 +50,7 @@ func (c OperationsCenterClient) GetServer(ctx context.Context, name string) (api
 }
 
 func (c OperationsCenterClient) CreateServer(ctx context.Context, server api.Server) error {
-	content, err := json.Marshal(server)
-	if err != nil {
-		return err
-	}
-
-	response, err := c.doRequest(ctx, http.MethodPost, "/provisioning/servers", nil, content)
+	response, err := c.doRequest(ctx, http.MethodPost, "/provisioning/servers", nil, server)
 	if err != nil {
 		return err
 	}

@@ -15,22 +15,29 @@ import (
 )
 
 var updateObjects = RegisterStmt(`
-SELECT updates.id, updates.uuid, updates.external_id, updates.components, updates.version, updates.published_at, updates.severity, updates.channel, updates.files
+SELECT updates.id, updates.uuid, updates.origin, updates.external_id, updates.version, updates.published_at, updates.severity, updates.channel, updates.changelog, updates.files
   FROM updates
   ORDER BY updates.uuid
 `)
 
 var updateObjectsByUUID = RegisterStmt(`
-SELECT updates.id, updates.uuid, updates.external_id, updates.components, updates.version, updates.published_at, updates.severity, updates.channel, updates.files
+SELECT updates.id, updates.uuid, updates.origin, updates.external_id, updates.version, updates.published_at, updates.severity, updates.channel, updates.changelog, updates.files
   FROM updates
   WHERE ( updates.uuid = ? )
   ORDER BY updates.uuid
 `)
 
 var updateObjectsByChannel = RegisterStmt(`
-SELECT updates.id, updates.uuid, updates.external_id, updates.components, updates.version, updates.published_at, updates.severity, updates.channel, updates.files
+SELECT updates.id, updates.uuid, updates.origin, updates.external_id, updates.version, updates.published_at, updates.severity, updates.channel, updates.changelog, updates.files
   FROM updates
   WHERE ( updates.channel = ? )
+  ORDER BY updates.uuid
+`)
+
+var updateObjectsByOrigin = RegisterStmt(`
+SELECT updates.id, updates.uuid, updates.origin, updates.external_id, updates.version, updates.published_at, updates.severity, updates.channel, updates.changelog, updates.files
+  FROM updates
+  WHERE ( updates.origin = ? )
   ORDER BY updates.uuid
 `)
 
@@ -53,13 +60,13 @@ SELECT updates.id FROM updates
 `)
 
 var updateCreate = RegisterStmt(`
-INSERT INTO updates (uuid, external_id, components, version, published_at, severity, channel, files)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO updates (uuid, origin, external_id, version, published_at, severity, channel, changelog, files)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
 var updateUpdate = RegisterStmt(`
 UPDATE updates
-  SET uuid = ?, external_id = ?, components = ?, version = ?, published_at = ?, severity = ?, channel = ?, files = ?
+  SET uuid = ?, origin = ?, external_id = ?, version = ?, published_at = ?, severity = ?, channel = ?, changelog = ?, files = ?
  WHERE id = ?
 `)
 
@@ -147,7 +154,7 @@ func GetUpdate(ctx context.Context, db dbtx, uuid uuid.UUID) (_ *provisioning.Up
 // updateColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Update entity.
 func updateColumns() string {
-	return "updates.id, updates.uuid, updates.external_id, updates.components, updates.version, updates.published_at, updates.severity, updates.channel, updates.files"
+	return "updates.id, updates.uuid, updates.origin, updates.external_id, updates.version, updates.published_at, updates.severity, updates.channel, updates.changelog, updates.files"
 }
 
 // getUpdates can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -156,7 +163,7 @@ func getUpdates(ctx context.Context, stmt *sql.Stmt, args ...any) ([]provisionin
 
 	dest := func(scan func(dest ...any) error) error {
 		u := provisioning.Update{}
-		err := scan(&u.ID, &u.UUID, &u.ExternalID, &u.Components, &u.Version, &u.PublishedAt, &u.Severity, &u.Channel, &u.Files)
+		err := scan(&u.ID, &u.UUID, &u.Origin, &u.ExternalID, &u.Version, &u.PublishedAt, &u.Severity, &u.Channel, &u.Changelog, &u.Files)
 		if err != nil {
 			return err
 		}
@@ -180,7 +187,7 @@ func getUpdatesRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]pro
 
 	dest := func(scan func(dest ...any) error) error {
 		u := provisioning.Update{}
-		err := scan(&u.ID, &u.UUID, &u.ExternalID, &u.Components, &u.Version, &u.PublishedAt, &u.Severity, &u.Channel, &u.Files)
+		err := scan(&u.ID, &u.UUID, &u.Origin, &u.ExternalID, &u.Version, &u.PublishedAt, &u.Severity, &u.Channel, &u.Changelog, &u.Files)
 		if err != nil {
 			return err
 		}
@@ -223,7 +230,7 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...provisioning.UpdateFilt
 	}
 
 	for i, filter := range filters {
-		if filter.UUID != nil && filter.Channel == nil {
+		if filter.UUID != nil && filter.Channel == nil && filter.Origin == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, updateObjectsByUUID)
@@ -247,7 +254,31 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...provisioning.UpdateFilt
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Channel != nil && filter.UUID == nil {
+		} else if filter.Origin != nil && filter.UUID == nil && filter.Channel == nil {
+			args = append(args, []any{filter.Origin}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, updateObjectsByOrigin)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"updateObjectsByOrigin\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(updateObjectsByOrigin)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"updateObjects\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.Channel != nil && filter.UUID == nil && filter.Origin == nil {
 			args = append(args, []any{filter.Channel}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, updateObjectsByChannel)
@@ -271,7 +302,7 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...provisioning.UpdateFilt
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.UUID == nil && filter.Channel == nil {
+		} else if filter.UUID == nil && filter.Channel == nil && filter.Origin == nil {
 			return nil, fmt.Errorf("Cannot filter on empty UpdateFilter")
 		} else {
 			return nil, fmt.Errorf("No statement exists for the given Filter")
@@ -318,7 +349,7 @@ func GetUpdateNames(ctx context.Context, db dbtx, filters ...provisioning.Update
 	}
 
 	for i, filter := range filters {
-		if filter.Channel != nil && filter.UUID == nil {
+		if filter.Channel != nil && filter.UUID == nil && filter.Origin == nil {
 			args = append(args, []any{filter.Channel}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, updateNamesByChannel)
@@ -342,7 +373,7 @@ func GetUpdateNames(ctx context.Context, db dbtx, filters ...provisioning.Update
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.UUID == nil && filter.Channel == nil {
+		} else if filter.UUID == nil && filter.Channel == nil && filter.Origin == nil {
 			return nil, fmt.Errorf("Cannot filter on empty UpdateFilter")
 		} else {
 			return nil, fmt.Errorf("No statement exists for the given Filter")
@@ -388,17 +419,18 @@ func CreateUpdate(ctx context.Context, db dbtx, object provisioning.Update) (_ i
 		_err = mapErr(_err, "Update")
 	}()
 
-	args := make([]any, 8)
+	args := make([]any, 9)
 
 	// Populate the statement arguments.
 	args[0] = object.UUID
-	args[1] = object.ExternalID
-	args[2] = object.Components
+	args[1] = object.Origin
+	args[2] = object.ExternalID
 	args[3] = object.Version
 	args[4] = object.PublishedAt
 	args[5] = object.Severity
 	args[6] = object.Channel
-	args[7] = object.Files
+	args[7] = object.Changelog
+	args[8] = object.Files
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, updateCreate)
@@ -444,7 +476,7 @@ func UpdateUpdate(ctx context.Context, db tx, uuid uuid.UUID, object provisionin
 		return fmt.Errorf("Failed to get \"updateUpdate\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(object.UUID, object.ExternalID, object.Components, object.Version, object.PublishedAt, object.Severity, object.Channel, object.Files, id)
+	result, err := stmt.Exec(object.UUID, object.Origin, object.ExternalID, object.Version, object.PublishedAt, object.Severity, object.Channel, object.Changelog, object.Files, id)
 	if err != nil {
 		return fmt.Errorf("Update \"updates\" entry failed: %w", err)
 	}
