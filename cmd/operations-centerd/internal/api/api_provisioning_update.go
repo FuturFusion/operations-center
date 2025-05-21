@@ -27,6 +27,7 @@ func registerUpdateHandler(router Router, authorizer authz.Authorizer, service p
 	// no authentication required for all GET routes
 	router.HandleFunc("GET /{$}", response.With(handler.updatesGet))
 	router.HandleFunc("GET /{uuid}", response.With(handler.updateGet))
+	router.HandleFunc("GET /{uuid}/changelog", response.With(handler.updateChangelogGet))
 	router.HandleFunc("GET /{uuid}/files", response.With(handler.updateFilesGet))
 	router.HandleFunc("GET /{uuid}/files/{filename}", response.With(handler.updateFileGet))
 
@@ -78,8 +79,6 @@ func registerUpdateHandler(router Router, authorizer authz.Authorizer, service p
 //                    "/1.0/provisioning/updates/b32d0079-c48b-4957-b1cb-bef54125c861",
 //                    "/1.0/provisioning/updates/464d229b-3069-4a82-bc59-b215a7c6ed1b"
 //                  ]
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
@@ -122,8 +121,6 @@ func registerUpdateHandler(router Router, authorizer authz.Authorizer, service p
 //	          description: List of updates
 //	          items:
 //	            $ref: "#/definitions/Update"
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updatesGet(r *http.Request) response.Response {
@@ -237,8 +234,6 @@ func (u *updateHandler) updatesPost(r *http.Request) response.Response {
 //	          example: 200
 //	        metadata:
 //	          $ref: "#/definitions/Update"
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updateGet(r *http.Request) response.Response {
@@ -266,6 +261,46 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 			Changelog:   update.Changelog,
 		},
 		update,
+	)
+}
+
+// swagger:operation GET /1.0/provisioning/updates/{uuid}/changelog updates update_changelog_get
+//
+//	Get the update changelog
+//
+//	Gets the changelog for a specific update.
+//
+//	---
+//	produces:
+//	  - text/plain
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Update changelog
+//	    content:
+//	      text/plain:
+//	        schema:
+//	          type: string
+//	          example: This is the changelog.
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (u *updateHandler) updateChangelogGet(r *http.Request) response.Response {
+	UUIDString := r.PathValue("uuid")
+
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	update, err := u.service.GetByUUID(r.Context(), UUID)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponsePlain(
+		true,
+		false,
+		update.Changelog,
 	)
 }
 
@@ -302,8 +337,6 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 //	          description: List of update files
 //	          items:
 //	            $ref: "#/definitions/UpdateFile"
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
@@ -345,8 +378,6 @@ func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
 //	responses:
 //	  "200":
 //	    description: Raw file data
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updateFileGet(r *http.Request) response.Response {
