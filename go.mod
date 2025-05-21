@@ -185,7 +185,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.36.0
 	github.com/testcontainers/testcontainers-go/modules/openfga v0.36.0
-	github.com/vektra/mockery/v3 v3.2.4
+	github.com/vektra/mockery/v3 v3.2.5
 	github.com/zitadel/oidc/v3 v3.37.0
 	golang.org/x/oauth2 v0.29.0
 	golang.org/x/sync v0.14.0

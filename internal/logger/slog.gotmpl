@@ -3,6 +3,9 @@
 
 package {{ .PkgName }}
 
+{{- $_ := .Registry.AddImport "slog" "log/slog" }}
+{{- $_ := .Registry.AddImport "logger" "github.com/FuturFusion/operations-center/internal/logger" }}
+
 import (
 {{ range .Imports -}}
 	{{ .Alias }} "{{ .Path }}"
