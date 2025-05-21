@@ -27,6 +27,7 @@ func registerUpdateHandler(router Router, authorizer authz.Authorizer, service p
 	// no authentication required for all GET routes
 	router.HandleFunc("GET /{$}", response.With(handler.updatesGet))
 	router.HandleFunc("GET /{uuid}", response.With(handler.updateGet))
+	router.HandleFunc("GET /{uuid}/changelog", response.With(handler.updateChangelogGet))
 	router.HandleFunc("GET /{uuid}/files", response.With(handler.updateFilesGet))
 	router.HandleFunc("GET /{uuid}/files/{filename}", response.With(handler.updateFileGet))
 
@@ -260,6 +261,46 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 			Changelog:   update.Changelog,
 		},
 		update,
+	)
+}
+
+// swagger:operation GET /1.0/provisioning/updates/{uuid}/changelog updates update_changelog_get
+//
+//	Get the update changelog
+//
+//	Gets the changelog for a specific update.
+//
+//	---
+//	produces:
+//	  - text/plain
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Update changelog
+//	    content:
+//	      text/plain:
+//	        schema:
+//	          type: string
+//	          example: This is the changelog.
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (u *updateHandler) updateChangelogGet(r *http.Request) response.Response {
+	UUIDString := r.PathValue("uuid")
+
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	update, err := u.service.GetByUUID(r.Context(), UUID)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponsePlain(
+		true,
+		false,
+		update.Changelog,
 	)
 }
 
