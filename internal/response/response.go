@@ -51,6 +51,11 @@ func SyncResponseLocation(success bool, metadata any, location string) Response 
 	return &syncResponse{success: success, metadata: metadata, location: location}
 }
 
+// SyncResponsePlain return a new syncResponse with plaintext.
+func SyncResponsePlain(success bool, compress bool, metadata string) Response {
+	return &syncResponse{success: success, metadata: metadata, plaintext: true, compress: compress}
+}
+
 func (r *syncResponse) Render(w http.ResponseWriter) error {
 	// Set an appropriate ETag header
 	if r.etag != nil {
