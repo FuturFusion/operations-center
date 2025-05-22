@@ -221,6 +221,62 @@ func (u *UpdateFileType) Scan(value any) error {
 	}
 }
 
+type Architecture string
+
+const (
+	ArchitectureUndefined              Architecture = ""
+	Architecture64BitIntelX86          Architecture = "x86_64"
+	Architecture64BitARMV8LittleEndian Architecture = "aarch64"
+)
+
+var architecture = map[Architecture]struct{}{
+	ArchitectureUndefined:              {},
+	Architecture64BitIntelX86:          {},
+	Architecture64BitARMV8LittleEndian: {},
+}
+
+func (u Architecture) String() string {
+	return string(u)
+}
+
+// MarshalText implements the encoding.TextMarshaler interface.
+func (u Architecture) MarshalText() ([]byte, error) {
+	return []byte(u), nil
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (u *Architecture) UnmarshalText(text []byte) error {
+	_, ok := architecture[Architecture(text)]
+	if !ok {
+		return fmt.Errorf("%q is not a valid update file type", string(text))
+	}
+
+	*u = Architecture(text)
+
+	return nil
+}
+
+// Value implements the sql driver.Valuer interface.
+func (u Architecture) Value() (driver.Value, error) {
+	return string(u), nil
+}
+
+// Scan implements the sql.Scanner interface.
+func (u *Architecture) Scan(value any) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid update file type")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return u.UnmarshalText([]byte(v))
+	case []byte:
+		return u.UnmarshalText(v)
+	default:
+		return fmt.Errorf("type %T is not supported for update file type", value)
+	}
+}
+
 // UpdateFile defines an update file.
 //
 // swagger:model
@@ -244,4 +300,8 @@ type UpdateFile struct {
 	// Type of the file. One of: image-raw, image-iso, image-manifest, update-efi, update-usr, update-usr-verity, update-usr-verity-signature
 	// Example: image-raw
 	Type UpdateFileType `json:"type" yaml:"type"`
+
+	// Architecture of the file. E.g. x86_64, aarch64
+	// Example: x86_64
+	Architecture Architecture `json:"arch" yaml:"arch"`
 }
