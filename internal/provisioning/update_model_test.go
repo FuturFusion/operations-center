@@ -105,7 +105,7 @@ func TestUpdateFiles_Value(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
-			wantValue: []byte(`[{"filename":"dummy.txt","url":"http://localhost/dummy.txt","size":5,"sha256":"","component":"debug","type":""}]`),
+			wantValue: []byte(`[{"filename":"dummy.txt","url":"http://localhost/dummy.txt","size":5,"sha256":"","component":"debug","type":"","arch":""}]`),
 		},
 	}
 
