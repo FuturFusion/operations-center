@@ -236,7 +236,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 			),
 			provisioning.UpdateServiceWithSource(
 				"local",
-				provisioningAdapterMiddleware.NewUpdateSourceWithAddPortWithSlog(
+				provisioningAdapterMiddleware.NewUpdateSourceWithForgetAndAddPortWithSlog(
 					localSource,
 					slog.Default(),
 				),

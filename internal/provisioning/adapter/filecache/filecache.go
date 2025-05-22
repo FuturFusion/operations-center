@@ -18,7 +18,7 @@ type filecache struct {
 	cacheDir string
 }
 
-var _ provisioning.UpdateSourcePort = &filecache{}
+var _ provisioning.UpdateSourceWithForgetPort = &filecache{}
 
 func New(next provisioning.UpdateSourcePort, cacheDir string) (*filecache, error) {
 	err := os.MkdirAll(cacheDir, 0o700)
@@ -73,7 +73,12 @@ func (f filecache) ForgetUpdate(ctx context.Context, update provisioning.Update)
 		return err
 	}
 
-	return f.next.ForgetUpdate(ctx, update)
+	updateWithForget, ok := f.next.(provisioning.UpdateSourceWithForgetPort)
+	if !ok {
+		return nil
+	}
+
+	return updateWithForget.ForgetUpdate(ctx, update)
 }
 
 type cachingReader struct {

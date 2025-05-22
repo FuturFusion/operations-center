@@ -53,12 +53,12 @@ func NewUpdateService(repo UpdateRepo, opts ...UpdateServiceOption) updateServic
 }
 
 func (s updateService) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uuid.UUID, error) {
-	var src UpdateSourceWithAddPort
+	var src UpdateSourceWithForgetAndAddPort
 
 	var found bool
 	var origin string
 	for o, s := range s.source {
-		src, found = s.(UpdateSourceWithAddPort)
+		src, found = s.(UpdateSourceWithForgetAndAddPort)
 		if found {
 			origin = o
 			break
@@ -157,7 +157,12 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 
 func (s updateService) Refresh(ctx context.Context) error {
 	for origin, source := range s.source {
-		err := s.refreshOrigin(ctx, origin, source)
+		forgetSource, ok := source.(UpdateSourceWithForgetPort)
+		if !ok {
+			continue
+		}
+
+		err := s.refreshOrigin(ctx, origin, forgetSource)
 		if err != nil {
 			return err
 		}
@@ -166,7 +171,7 @@ func (s updateService) Refresh(ctx context.Context) error {
 	return nil
 }
 
-func (s updateService) refreshOrigin(ctx context.Context, origin string, src UpdateSourcePort) error {
+func (s updateService) refreshOrigin(ctx context.Context, origin string, src UpdateSourceWithForgetPort) error {
 	updates, err := src.GetLatest(ctx, s.latestLimit)
 	if err != nil {
 		return fmt.Errorf("Failed to fetch latest updates from source %q: %w", origin, err)

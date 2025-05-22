@@ -311,7 +311,7 @@ func TestFilecache_ForgetUpdate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			source := &mock.UpdateSourcePortMock{
+			source := &mock.UpdateSourceWithForgetPortMock{
 				ForgetUpdateFunc: func(ctx context.Context, update provisioning.Update) error {
 					return tc.sourceForgetUpdateErr
 				},
