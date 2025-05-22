@@ -13,24 +13,24 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-// UpdateSourceWithAddPortWithSlog implements provisioning.UpdateSourceWithAddPort that is instrumented with slog logger.
-type UpdateSourceWithAddPortWithSlog struct {
+// UpdateSourceWithForgetAndAddPortWithSlog implements provisioning.UpdateSourceWithForgetAndAddPort that is instrumented with slog logger.
+type UpdateSourceWithForgetAndAddPortWithSlog struct {
 	_log                  *slog.Logger
-	_base                 provisioning.UpdateSourceWithAddPort
+	_base                 provisioning.UpdateSourceWithForgetAndAddPort
 	_isInformativeErrFunc func(error) bool
 }
 
-type UpdateSourceWithAddPortWithSlogOption func(s *UpdateSourceWithAddPortWithSlog)
+type UpdateSourceWithForgetAndAddPortWithSlogOption func(s *UpdateSourceWithForgetAndAddPortWithSlog)
 
-func UpdateSourceWithAddPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) UpdateSourceWithAddPortWithSlogOption {
-	return func(_base *UpdateSourceWithAddPortWithSlog) {
+func UpdateSourceWithForgetAndAddPortWithSlogWithInformativeErrFunc(isInformativeErrFunc func(error) bool) UpdateSourceWithForgetAndAddPortWithSlogOption {
+	return func(_base *UpdateSourceWithForgetAndAddPortWithSlog) {
 		_base._isInformativeErrFunc = isInformativeErrFunc
 	}
 }
 
-// NewUpdateSourceWithAddPortWithSlog instruments an implementation of the provisioning.UpdateSourceWithAddPort with simple logging.
-func NewUpdateSourceWithAddPortWithSlog(base provisioning.UpdateSourceWithAddPort, log *slog.Logger, opts ...UpdateSourceWithAddPortWithSlogOption) UpdateSourceWithAddPortWithSlog {
-	this := UpdateSourceWithAddPortWithSlog{
+// NewUpdateSourceWithForgetAndAddPortWithSlog instruments an implementation of the provisioning.UpdateSourceWithForgetAndAddPort with simple logging.
+func NewUpdateSourceWithForgetAndAddPortWithSlog(base provisioning.UpdateSourceWithForgetAndAddPort, log *slog.Logger, opts ...UpdateSourceWithForgetAndAddPortWithSlogOption) UpdateSourceWithForgetAndAddPortWithSlog {
+	this := UpdateSourceWithForgetAndAddPortWithSlog{
 		_base:                 base,
 		_log:                  log,
 		_isInformativeErrFunc: func(error) bool { return false },
@@ -43,8 +43,8 @@ func NewUpdateSourceWithAddPortWithSlog(base provisioning.UpdateSourceWithAddPor
 	return this
 }
 
-// Add implements provisioning.UpdateSourceWithAddPort.
-func (_d UpdateSourceWithAddPortWithSlog) Add(ctx context.Context, tarReader *tar.Reader) (update *provisioning.Update, err error) {
+// Add implements provisioning.UpdateSourceWithForgetAndAddPort.
+func (_d UpdateSourceWithForgetAndAddPortWithSlog) Add(ctx context.Context, tarReader *tar.Reader) (update *provisioning.Update, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -78,8 +78,8 @@ func (_d UpdateSourceWithAddPortWithSlog) Add(ctx context.Context, tarReader *ta
 	return _d._base.Add(ctx, tarReader)
 }
 
-// ForgetUpdate implements provisioning.UpdateSourceWithAddPort.
-func (_d UpdateSourceWithAddPortWithSlog) ForgetUpdate(ctx context.Context, update provisioning.Update) (err error) {
+// ForgetUpdate implements provisioning.UpdateSourceWithForgetAndAddPort.
+func (_d UpdateSourceWithForgetAndAddPortWithSlog) ForgetUpdate(ctx context.Context, update provisioning.Update) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -112,8 +112,8 @@ func (_d UpdateSourceWithAddPortWithSlog) ForgetUpdate(ctx context.Context, upda
 	return _d._base.ForgetUpdate(ctx, update)
 }
 
-// GetLatest implements provisioning.UpdateSourceWithAddPort.
-func (_d UpdateSourceWithAddPortWithSlog) GetLatest(ctx context.Context, limit int) (updates provisioning.Updates, err error) {
+// GetLatest implements provisioning.UpdateSourceWithForgetAndAddPort.
+func (_d UpdateSourceWithForgetAndAddPortWithSlog) GetLatest(ctx context.Context, limit int) (updates provisioning.Updates, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -147,8 +147,8 @@ func (_d UpdateSourceWithAddPortWithSlog) GetLatest(ctx context.Context, limit i
 	return _d._base.GetLatest(ctx, limit)
 }
 
-// GetUpdateAllFiles implements provisioning.UpdateSourceWithAddPort.
-func (_d UpdateSourceWithAddPortWithSlog) GetUpdateAllFiles(ctx context.Context, update provisioning.Update) (updateFiles provisioning.UpdateFiles, err error) {
+// GetUpdateAllFiles implements provisioning.UpdateSourceWithForgetAndAddPort.
+func (_d UpdateSourceWithForgetAndAddPortWithSlog) GetUpdateAllFiles(ctx context.Context, update provisioning.Update) (updateFiles provisioning.UpdateFiles, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -182,8 +182,8 @@ func (_d UpdateSourceWithAddPortWithSlog) GetUpdateAllFiles(ctx context.Context,
 	return _d._base.GetUpdateAllFiles(ctx, update)
 }
 
-// GetUpdateFileByFilename implements provisioning.UpdateSourceWithAddPort.
-func (_d UpdateSourceWithAddPortWithSlog) GetUpdateFileByFilename(ctx context.Context, update provisioning.Update, filename string) (readCloser io.ReadCloser, n int, err error) {
+// GetUpdateFileByFilename implements provisioning.UpdateSourceWithForgetAndAddPort.
+func (_d UpdateSourceWithForgetAndAddPortWithSlog) GetUpdateFileByFilename(ctx context.Context, update provisioning.Update, filename string) (readCloser io.ReadCloser, n int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

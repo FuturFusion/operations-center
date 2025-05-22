@@ -22,9 +22,6 @@ var _ provisioning.UpdateSourcePort = &UpdateSourcePortMock{}
 //
 //		// make and configure a mocked provisioning.UpdateSourcePort
 //		mockedUpdateSourcePort := &UpdateSourcePortMock{
-//			ForgetUpdateFunc: func(ctx context.Context, update provisioning.Update) error {
-//				panic("mock out the ForgetUpdate method")
-//			},
 //			GetLatestFunc: func(ctx context.Context, limit int) (provisioning.Updates, error) {
 //				panic("mock out the GetLatest method")
 //			},
@@ -41,9 +38,6 @@ var _ provisioning.UpdateSourcePort = &UpdateSourcePortMock{}
 //
 //	}
 type UpdateSourcePortMock struct {
-	// ForgetUpdateFunc mocks the ForgetUpdate method.
-	ForgetUpdateFunc func(ctx context.Context, update provisioning.Update) error
-
 	// GetLatestFunc mocks the GetLatest method.
 	GetLatestFunc func(ctx context.Context, limit int) (provisioning.Updates, error)
 
@@ -55,13 +49,6 @@ type UpdateSourcePortMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// ForgetUpdate holds details about calls to the ForgetUpdate method.
-		ForgetUpdate []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Update is the update argument value.
-			Update provisioning.Update
-		}
 		// GetLatest holds details about calls to the GetLatest method.
 		GetLatest []struct {
 			// Ctx is the ctx argument value.
@@ -86,46 +73,9 @@ type UpdateSourcePortMock struct {
 			Filename string
 		}
 	}
-	lockForgetUpdate            sync.RWMutex
 	lockGetLatest               sync.RWMutex
 	lockGetUpdateAllFiles       sync.RWMutex
 	lockGetUpdateFileByFilename sync.RWMutex
-}
-
-// ForgetUpdate calls ForgetUpdateFunc.
-func (mock *UpdateSourcePortMock) ForgetUpdate(ctx context.Context, update provisioning.Update) error {
-	if mock.ForgetUpdateFunc == nil {
-		panic("UpdateSourcePortMock.ForgetUpdateFunc: method is nil but UpdateSourcePort.ForgetUpdate was just called")
-	}
-	callInfo := struct {
-		Ctx    context.Context
-		Update provisioning.Update
-	}{
-		Ctx:    ctx,
-		Update: update,
-	}
-	mock.lockForgetUpdate.Lock()
-	mock.calls.ForgetUpdate = append(mock.calls.ForgetUpdate, callInfo)
-	mock.lockForgetUpdate.Unlock()
-	return mock.ForgetUpdateFunc(ctx, update)
-}
-
-// ForgetUpdateCalls gets all the calls that were made to ForgetUpdate.
-// Check the length with:
-//
-//	len(mockedUpdateSourcePort.ForgetUpdateCalls())
-func (mock *UpdateSourcePortMock) ForgetUpdateCalls() []struct {
-	Ctx    context.Context
-	Update provisioning.Update
-} {
-	var calls []struct {
-		Ctx    context.Context
-		Update provisioning.Update
-	}
-	mock.lockForgetUpdate.RLock()
-	calls = mock.calls.ForgetUpdate
-	mock.lockForgetUpdate.RUnlock()
-	return calls
 }
 
 // GetLatest calls GetLatestFunc.
