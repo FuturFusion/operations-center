@@ -16,6 +16,9 @@ type Config struct {
 	ClientCertificateFilename string `yaml:"-"`
 	ClientKeyFilename         string `yaml:"-"`
 
+	// If update.source is the URL of the origin, the updates should be fetched from.
+	// If update.source starts with https://github.com/, the Github client is used
+	// to fetch the updates from https://github.com/lxc/incus-os.
 	UpdatesSource              string        `yaml:"update.source"`
 	UpdatesSourcePollInterval  time.Duration `yaml:"-"`
 	UpdatesSourcePollSkipFirst bool          `yaml:"update.sourceSkipFirstUpdate"`
