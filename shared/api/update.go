@@ -293,6 +293,10 @@ type UpdateFile struct {
 	// Example: 54300000
 	Size int `json:"size" yaml:"size"`
 
+	// Sha256 checksum of the file in hex encoding (64 ascii characters in the alphabet [0-9A-Fa-f])
+	// Example: 11465a836ce54a8f293ac9234aa51050094cfbb8906c1a10ab9487dd92088643
+	Sha256 string `json:"sha256"`
+
 	// Component the file provides. One of: os, incus, debug
 	// Example: os
 	Component UpdateFileComponent `json:"component" yaml:"component"`
