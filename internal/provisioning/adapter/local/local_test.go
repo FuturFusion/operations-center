@@ -144,8 +144,9 @@ func TestLocal_GetLatest(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
+			update, err := New(tmpDir)
+			require.NoError(t, err)
 			tc.setupTmpDir(t, tmpDir)
-			update := New(tmpDir)
 
 			// Run test
 			gotUpdates, err := update.GetLatest(context.Background(), 1)
@@ -218,7 +219,8 @@ func TestLocal_GetUpdateAllFiles(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			update := New(tmpDir)
+			update, err := New(tmpDir)
+			require.NoError(t, err)
 
 			// Run test
 			gotUpdateFiles, err := update.GetUpdateAllFiles(context.Background(), tc.update)
@@ -308,7 +310,8 @@ func TestLocal_GetFileByFilename(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			update := New(tmpDir)
+			update, err := New(tmpDir)
+			require.NoError(t, err)
 
 			// Run test
 			gotReader, _, err := update.GetUpdateFileByFilename(context.Background(), tc.update, tc.filename)
@@ -350,10 +353,11 @@ func TestLocal_ForgetUpdate(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			update := New(tmpDir)
+			update, err := New(tmpDir)
+			require.NoError(t, err)
 
 			// Run test
-			err := update.ForgetUpdate(context.Background(), tc.update)
+			err = update.ForgetUpdate(context.Background(), tc.update)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -600,7 +604,8 @@ func TestLocal_Add(t *testing.T) {
 
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			update := New(tmpDir)
+			update, err := New(tmpDir)
+			require.NoError(t, err)
 
 			// Run test
 			gotUpdate, err := update.Add(context.Background(), tr)

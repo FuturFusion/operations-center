@@ -31,10 +31,15 @@ type local struct {
 
 var _ provisioning.UpdateSourceWithAddPort = &local{}
 
-func New(storageDir string) *local {
+func New(storageDir string) (*local, error) {
+	err := os.MkdirAll(storageDir, 0o700)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create storage directory: %w", err)
+	}
+
 	return &local{
 		storageDir: storageDir,
-	}
+	}, nil
 }
 
 func (m local) GetLatest(ctx context.Context, limit int) (provisioning.Updates, error) {

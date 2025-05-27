@@ -201,6 +201,21 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.Default(),
 	)
 
+	githubSourceWithCache, err := filecache.New(
+		github.New(gh),
+		filepath.Join(d.env.VarDir(), "updates_cache"),
+	)
+	if err != nil {
+		return err
+	}
+
+	localSource, err := local.New(
+		filepath.Join(d.env.VarDir(), "updates_local"),
+	)
+	if err != nil {
+		return err
+	}
+
 	updateSvc := provisioningServiceMiddleware.NewUpdateServiceWithSlog(
 		provisioning.NewUpdateService(
 			provisioningRepoMiddleware.NewUpdateRepoWithSlog(
@@ -215,19 +230,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 			provisioning.UpdateServiceWithSource(
 				"github.com/lxc/incus-os",
 				provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
-					filecache.New(
-						github.New(gh),
-						filepath.Join(d.env.VarDir(), "updates_cache"),
-					),
+					githubSourceWithCache,
 					slog.Default(),
 				),
 			),
 			provisioning.UpdateServiceWithSource(
 				"local",
 				provisioningAdapterMiddleware.NewUpdateSourceWithAddPortWithSlog(
-					local.New(
-						filepath.Join(d.env.VarDir(), "updates_local"),
-					),
+					localSource,
 					slog.Default(),
 				),
 			),
@@ -372,7 +382,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 	}
 
-	updateSourceStop, _ := task.Start(ctx, refreshTask, task.Every(d.config.UpdatesSourcePollInterval, task.SkipFirst))
+	var updateSourceOptions []task.EveryOption
+	if d.config.UpdatesSourcePollSkipFirst {
+		updateSourceOptions = append(updateSourceOptions, task.SkipFirst)
+	}
+
+	updateSourceStop, _ := task.Start(ctx, refreshTask, task.Every(d.config.UpdatesSourcePollInterval, updateSourceOptions...))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		// Default grace period for tasks to finish during shutdown, if no deadline
 		// is defined on the context.
