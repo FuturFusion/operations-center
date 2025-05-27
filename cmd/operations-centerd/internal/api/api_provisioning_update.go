@@ -355,11 +355,12 @@ func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
 	result := make([]api.UpdateFile, 0, len(updateFiles))
 	for _, updateFile := range updateFiles {
 		result = append(result, api.UpdateFile{
-			Filename:  updateFile.Filename,
-			URL:       updateFile.URL,
-			Size:      updateFile.Size,
-			Component: updateFile.Component,
-			Type:      updateFile.Type,
+			Filename:     updateFile.Filename,
+			URL:          updateFile.URL,
+			Size:         updateFile.Size,
+			Component:    updateFile.Component,
+			Type:         updateFile.Type,
+			Architecture: updateFile.Architecture,
 		})
 	}
 

@@ -28,12 +28,13 @@ type Update struct {
 type Updates []Update
 
 type UpdateFile struct {
-	Filename  string                  `json:"filename"`
-	URL       string                  `json:"url"`
-	Size      int                     `json:"size"`
-	Sha256    string                  `json:"sha256"`
-	Component api.UpdateFileComponent `json:"component"`
-	Type      api.UpdateFileType      `json:"type"`
+	Filename     string                  `json:"filename"`
+	URL          string                  `json:"url"`
+	Size         int                     `json:"size"`
+	Sha256       string                  `json:"sha256"`
+	Component    api.UpdateFileComponent `json:"component"`
+	Type         api.UpdateFileType      `json:"type"`
+	Architecture api.Architecture        `json:"arch"`
 }
 
 type UpdateFilter struct {
