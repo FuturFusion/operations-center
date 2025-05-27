@@ -45,6 +45,7 @@ import (
 	provisioningRepoMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/repo/middleware"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	"github.com/FuturFusion/operations-center/internal/signature"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/internal/task"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -195,8 +196,20 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.Default(),
 	)
 
+	// FIXME: This is insecure by default, so we might want to change this.
+	// We could throw an error (and maybe let the user ignore by setting
+	// `update.skip_verify in the config) or at very least log a warning.
+	verifier := signature.NewNoopVerifier()
+	if d.config.UpdateSignatureVerificationPEM != "" {
+		verifier, err = signature.NewVerifier([]byte(d.config.UpdateSignatureVerificationPEM))
+		if err != nil {
+			return err
+		}
+	}
+
 	localSource, err := local.New(
 		filepath.Join(d.env.VarDir(), "updates_local"),
+		verifier,
 	)
 	if err != nil {
 		return err
