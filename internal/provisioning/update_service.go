@@ -147,6 +147,18 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 		return nil, 0, err
 	}
 
+	found := false
+	for _, file := range update.Files {
+		if filename == file.Filename {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return nil, 0, fmt.Errorf("Requested file %q is not part of update %q", filename, id.String())
+	}
+
 	src, ok := s.source[update.Origin]
 	if !ok {
 		return nil, 0, fmt.Errorf("Unsupported origin %q", update.Origin)
