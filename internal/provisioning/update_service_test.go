@@ -64,7 +64,7 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 				},
 			}
 
-			source := &adapterMock.UpdateSourceWithAddPortMock{
+			source := &adapterMock.UpdateSourceWithForgetAndAddPortMock{
 				AddFunc: func(ctx context.Context, tarReader *tar.Reader) (*provisioning.Update, error) {
 					return &provisioning.Update{
 						UUID: tc.sourceAddUUID,
@@ -855,7 +855,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			}
 
-			source := &adapterMock.UpdateSourcePortMock{
+			source := &adapterMock.UpdateSourceWithForgetPortMock{
 				GetLatestFunc: func(ctx context.Context, limit int) (provisioning.Updates, error) {
 					return tc.sourceGetLatestUpdates, tc.sourceGetLatestErr
 				},

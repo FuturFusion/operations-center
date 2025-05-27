@@ -54,8 +54,4 @@ func TestUpdate(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, body, size)
 	require.Equal(t, size, retSize)
-
-	// ForgetUpdate
-	err = updateRepo.ForgetUpdate(ctx, updates[0])
-	require.NoError(t, err)
 }

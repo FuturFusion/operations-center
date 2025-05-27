@@ -5,7 +5,6 @@
 package mock
 
 import (
-	"archive/tar"
 	"context"
 	"io"
 	"sync"
@@ -13,19 +12,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-// Ensure that UpdateSourceWithAddPortMock does implement provisioning.UpdateSourceWithAddPort.
+// Ensure that UpdateSourceWithForgetPortMock does implement provisioning.UpdateSourceWithForgetPort.
 // If this is not the case, regenerate this file with mockery.
-var _ provisioning.UpdateSourceWithAddPort = &UpdateSourceWithAddPortMock{}
+var _ provisioning.UpdateSourceWithForgetPort = &UpdateSourceWithForgetPortMock{}
 
-// UpdateSourceWithAddPortMock is a mock implementation of provisioning.UpdateSourceWithAddPort.
+// UpdateSourceWithForgetPortMock is a mock implementation of provisioning.UpdateSourceWithForgetPort.
 //
-//	func TestSomethingThatUsesUpdateSourceWithAddPort(t *testing.T) {
+//	func TestSomethingThatUsesUpdateSourceWithForgetPort(t *testing.T) {
 //
-//		// make and configure a mocked provisioning.UpdateSourceWithAddPort
-//		mockedUpdateSourceWithAddPort := &UpdateSourceWithAddPortMock{
-//			AddFunc: func(ctx context.Context, tarReader *tar.Reader) (*provisioning.Update, error) {
-//				panic("mock out the Add method")
-//			},
+//		// make and configure a mocked provisioning.UpdateSourceWithForgetPort
+//		mockedUpdateSourceWithForgetPort := &UpdateSourceWithForgetPortMock{
 //			ForgetUpdateFunc: func(ctx context.Context, update provisioning.Update) error {
 //				panic("mock out the ForgetUpdate method")
 //			},
@@ -40,14 +36,11 @@ var _ provisioning.UpdateSourceWithAddPort = &UpdateSourceWithAddPortMock{}
 //			},
 //		}
 //
-//		// use mockedUpdateSourceWithAddPort in code that requires provisioning.UpdateSourceWithAddPort
+//		// use mockedUpdateSourceWithForgetPort in code that requires provisioning.UpdateSourceWithForgetPort
 //		// and then make assertions.
 //
 //	}
-type UpdateSourceWithAddPortMock struct {
-	// AddFunc mocks the Add method.
-	AddFunc func(ctx context.Context, tarReader *tar.Reader) (*provisioning.Update, error)
-
+type UpdateSourceWithForgetPortMock struct {
 	// ForgetUpdateFunc mocks the ForgetUpdate method.
 	ForgetUpdateFunc func(ctx context.Context, update provisioning.Update) error
 
@@ -62,13 +55,6 @@ type UpdateSourceWithAddPortMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// Add holds details about calls to the Add method.
-		Add []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// TarReader is the tarReader argument value.
-			TarReader *tar.Reader
-		}
 		// ForgetUpdate holds details about calls to the ForgetUpdate method.
 		ForgetUpdate []struct {
 			// Ctx is the ctx argument value.
@@ -100,53 +86,16 @@ type UpdateSourceWithAddPortMock struct {
 			Filename string
 		}
 	}
-	lockAdd                     sync.RWMutex
 	lockForgetUpdate            sync.RWMutex
 	lockGetLatest               sync.RWMutex
 	lockGetUpdateAllFiles       sync.RWMutex
 	lockGetUpdateFileByFilename sync.RWMutex
 }
 
-// Add calls AddFunc.
-func (mock *UpdateSourceWithAddPortMock) Add(ctx context.Context, tarReader *tar.Reader) (*provisioning.Update, error) {
-	if mock.AddFunc == nil {
-		panic("UpdateSourceWithAddPortMock.AddFunc: method is nil but UpdateSourceWithAddPort.Add was just called")
-	}
-	callInfo := struct {
-		Ctx       context.Context
-		TarReader *tar.Reader
-	}{
-		Ctx:       ctx,
-		TarReader: tarReader,
-	}
-	mock.lockAdd.Lock()
-	mock.calls.Add = append(mock.calls.Add, callInfo)
-	mock.lockAdd.Unlock()
-	return mock.AddFunc(ctx, tarReader)
-}
-
-// AddCalls gets all the calls that were made to Add.
-// Check the length with:
-//
-//	len(mockedUpdateSourceWithAddPort.AddCalls())
-func (mock *UpdateSourceWithAddPortMock) AddCalls() []struct {
-	Ctx       context.Context
-	TarReader *tar.Reader
-} {
-	var calls []struct {
-		Ctx       context.Context
-		TarReader *tar.Reader
-	}
-	mock.lockAdd.RLock()
-	calls = mock.calls.Add
-	mock.lockAdd.RUnlock()
-	return calls
-}
-
 // ForgetUpdate calls ForgetUpdateFunc.
-func (mock *UpdateSourceWithAddPortMock) ForgetUpdate(ctx context.Context, update provisioning.Update) error {
+func (mock *UpdateSourceWithForgetPortMock) ForgetUpdate(ctx context.Context, update provisioning.Update) error {
 	if mock.ForgetUpdateFunc == nil {
-		panic("UpdateSourceWithAddPortMock.ForgetUpdateFunc: method is nil but UpdateSourceWithAddPort.ForgetUpdate was just called")
+		panic("UpdateSourceWithForgetPortMock.ForgetUpdateFunc: method is nil but UpdateSourceWithForgetPort.ForgetUpdate was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
@@ -164,8 +113,8 @@ func (mock *UpdateSourceWithAddPortMock) ForgetUpdate(ctx context.Context, updat
 // ForgetUpdateCalls gets all the calls that were made to ForgetUpdate.
 // Check the length with:
 //
-//	len(mockedUpdateSourceWithAddPort.ForgetUpdateCalls())
-func (mock *UpdateSourceWithAddPortMock) ForgetUpdateCalls() []struct {
+//	len(mockedUpdateSourceWithForgetPort.ForgetUpdateCalls())
+func (mock *UpdateSourceWithForgetPortMock) ForgetUpdateCalls() []struct {
 	Ctx    context.Context
 	Update provisioning.Update
 } {
@@ -180,9 +129,9 @@ func (mock *UpdateSourceWithAddPortMock) ForgetUpdateCalls() []struct {
 }
 
 // GetLatest calls GetLatestFunc.
-func (mock *UpdateSourceWithAddPortMock) GetLatest(ctx context.Context, limit int) (provisioning.Updates, error) {
+func (mock *UpdateSourceWithForgetPortMock) GetLatest(ctx context.Context, limit int) (provisioning.Updates, error) {
 	if mock.GetLatestFunc == nil {
-		panic("UpdateSourceWithAddPortMock.GetLatestFunc: method is nil but UpdateSourceWithAddPort.GetLatest was just called")
+		panic("UpdateSourceWithForgetPortMock.GetLatestFunc: method is nil but UpdateSourceWithForgetPort.GetLatest was just called")
 	}
 	callInfo := struct {
 		Ctx   context.Context
@@ -200,8 +149,8 @@ func (mock *UpdateSourceWithAddPortMock) GetLatest(ctx context.Context, limit in
 // GetLatestCalls gets all the calls that were made to GetLatest.
 // Check the length with:
 //
-//	len(mockedUpdateSourceWithAddPort.GetLatestCalls())
-func (mock *UpdateSourceWithAddPortMock) GetLatestCalls() []struct {
+//	len(mockedUpdateSourceWithForgetPort.GetLatestCalls())
+func (mock *UpdateSourceWithForgetPortMock) GetLatestCalls() []struct {
 	Ctx   context.Context
 	Limit int
 } {
@@ -216,9 +165,9 @@ func (mock *UpdateSourceWithAddPortMock) GetLatestCalls() []struct {
 }
 
 // GetUpdateAllFiles calls GetUpdateAllFilesFunc.
-func (mock *UpdateSourceWithAddPortMock) GetUpdateAllFiles(ctx context.Context, update provisioning.Update) (provisioning.UpdateFiles, error) {
+func (mock *UpdateSourceWithForgetPortMock) GetUpdateAllFiles(ctx context.Context, update provisioning.Update) (provisioning.UpdateFiles, error) {
 	if mock.GetUpdateAllFilesFunc == nil {
-		panic("UpdateSourceWithAddPortMock.GetUpdateAllFilesFunc: method is nil but UpdateSourceWithAddPort.GetUpdateAllFiles was just called")
+		panic("UpdateSourceWithForgetPortMock.GetUpdateAllFilesFunc: method is nil but UpdateSourceWithForgetPort.GetUpdateAllFiles was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
@@ -236,8 +185,8 @@ func (mock *UpdateSourceWithAddPortMock) GetUpdateAllFiles(ctx context.Context, 
 // GetUpdateAllFilesCalls gets all the calls that were made to GetUpdateAllFiles.
 // Check the length with:
 //
-//	len(mockedUpdateSourceWithAddPort.GetUpdateAllFilesCalls())
-func (mock *UpdateSourceWithAddPortMock) GetUpdateAllFilesCalls() []struct {
+//	len(mockedUpdateSourceWithForgetPort.GetUpdateAllFilesCalls())
+func (mock *UpdateSourceWithForgetPortMock) GetUpdateAllFilesCalls() []struct {
 	Ctx    context.Context
 	Update provisioning.Update
 } {
@@ -252,9 +201,9 @@ func (mock *UpdateSourceWithAddPortMock) GetUpdateAllFilesCalls() []struct {
 }
 
 // GetUpdateFileByFilename calls GetUpdateFileByFilenameFunc.
-func (mock *UpdateSourceWithAddPortMock) GetUpdateFileByFilename(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+func (mock *UpdateSourceWithForgetPortMock) GetUpdateFileByFilename(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
 	if mock.GetUpdateFileByFilenameFunc == nil {
-		panic("UpdateSourceWithAddPortMock.GetUpdateFileByFilenameFunc: method is nil but UpdateSourceWithAddPort.GetUpdateFileByFilename was just called")
+		panic("UpdateSourceWithForgetPortMock.GetUpdateFileByFilenameFunc: method is nil but UpdateSourceWithForgetPort.GetUpdateFileByFilename was just called")
 	}
 	callInfo := struct {
 		Ctx      context.Context
@@ -274,8 +223,8 @@ func (mock *UpdateSourceWithAddPortMock) GetUpdateFileByFilename(ctx context.Con
 // GetUpdateFileByFilenameCalls gets all the calls that were made to GetUpdateFileByFilename.
 // Check the length with:
 //
-//	len(mockedUpdateSourceWithAddPort.GetUpdateFileByFilenameCalls())
-func (mock *UpdateSourceWithAddPortMock) GetUpdateFileByFilenameCalls() []struct {
+//	len(mockedUpdateSourceWithForgetPort.GetUpdateFileByFilenameCalls())
+func (mock *UpdateSourceWithForgetPortMock) GetUpdateFileByFilenameCalls() []struct {
 	Ctx      context.Context
 	Update   provisioning.Update
 	Filename string

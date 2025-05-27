@@ -38,20 +38,6 @@ func NewUpdateSourcePortWithPrometheus(base provisioning.UpdateSourcePort, insta
 	}
 }
 
-// ForgetUpdate implements provisioning.UpdateSourcePort.
-func (_d UpdateSourcePortWithPrometheus) ForgetUpdate(ctx context.Context, update provisioning.Update) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		updateSourcePortDurationSummaryVec.WithLabelValues(_d.instanceName, "ForgetUpdate", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.ForgetUpdate(ctx, update)
-}
-
 // GetLatest implements provisioning.UpdateSourcePort.
 func (_d UpdateSourcePortWithPrometheus) GetLatest(ctx context.Context, limit int) (updates provisioning.Updates, err error) {
 	_since := time.Now()

@@ -139,10 +139,6 @@ func (u update) GetUpdateFileByFilename(ctx context.Context, update provisioning
 	return rc, size, nil
 }
 
-func (u update) ForgetUpdate(ctx context.Context, update provisioning.Update) error {
-	return nil
-}
-
 func (u update) getGHRelease(ctx context.Context, update provisioning.Update) (*github.RepositoryRelease, error) {
 	ghReleaseID, err := releaseIDFromID(update.ExternalID)
 	if err != nil {

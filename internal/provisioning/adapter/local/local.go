@@ -29,7 +29,7 @@ type local struct {
 	storageDir string
 }
 
-var _ provisioning.UpdateSourceWithAddPort = &local{}
+var _ provisioning.UpdateSourceWithForgetAndAddPort = &local{}
 
 func New(storageDir string) (*local, error) {
 	err := os.MkdirAll(storageDir, 0o700)
