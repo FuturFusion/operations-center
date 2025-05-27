@@ -54,7 +54,9 @@ func TestFilecache_GetLatest(t *testing.T) {
 				},
 			}
 
-			f := filecache.New(source, "")
+			tmpDir := t.TempDir()
+			f, err := filecache.New(source, tmpDir)
+			require.NoError(t, err)
 
 			updates, err := f.GetLatest(context.Background(), 3)
 
@@ -100,7 +102,9 @@ func TestFilecache_GetUpdateAllFiles(t *testing.T) {
 				},
 			}
 
-			f := filecache.New(source, "")
+			tmpDir := t.TempDir()
+			f, err := filecache.New(source, tmpDir)
+			require.NoError(t, err)
 
 			files, err := f.GetUpdateAllFiles(context.Background(), provisioning.Update{})
 
@@ -261,7 +265,8 @@ func TestFilecache_GetUpdateFileByFilename(t *testing.T) {
 
 			tc.setupCache(t, tmpDir)
 
-			f := filecache.New(source, tmpDir)
+			f, err := filecache.New(source, tmpDir)
+			require.NoError(t, err)
 
 			stream, size, err := f.GetUpdateFileByFilename(context.Background(), provisioning.Update{
 				UUID: id,
@@ -314,9 +319,10 @@ func TestFilecache_ForgetUpdate(t *testing.T) {
 
 			tmpDir := t.TempDir()
 
-			f := filecache.New(source, tmpDir)
+			f, err := filecache.New(source, tmpDir)
+			require.NoError(t, err)
 
-			err := f.ForgetUpdate(context.Background(), provisioning.Update{
+			err = f.ForgetUpdate(context.Background(), provisioning.Update{
 				UUID: id,
 			})
 

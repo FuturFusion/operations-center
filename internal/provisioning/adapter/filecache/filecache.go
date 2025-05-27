@@ -3,6 +3,7 @@ package filecache
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -19,11 +20,16 @@ type filecache struct {
 
 var _ provisioning.UpdateSourcePort = &filecache{}
 
-func New(next provisioning.UpdateSourcePort, cacheDir string) *filecache {
+func New(next provisioning.UpdateSourcePort, cacheDir string) (*filecache, error) {
+	err := os.MkdirAll(cacheDir, 0o700)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create cache directory: %w", err)
+	}
+
 	return &filecache{
 		next:     next,
 		cacheDir: cacheDir,
-	}
+	}, nil
 }
 
 func (f filecache) GetLatest(ctx context.Context, limit int) (provisioning.Updates, error) {

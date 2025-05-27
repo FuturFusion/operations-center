@@ -201,6 +201,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.Default(),
 	)
 
+	githubSourceWithCache, err := filecache.New(
+		github.New(gh),
+		filepath.Join(d.env.VarDir(), "updates_cache"),
+	)
+	if err != nil {
+		return err
+	}
+
 	localSource, err := local.New(
 		filepath.Join(d.env.VarDir(), "updates_local"),
 	)
@@ -222,10 +230,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 			provisioning.UpdateServiceWithSource(
 				"github.com/lxc/incus-os",
 				provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
-					filecache.New(
-						github.New(gh),
-						filepath.Join(d.env.VarDir(), "updates_cache"),
-					),
+					githubSourceWithCache,
 					slog.Default(),
 				),
 			),
