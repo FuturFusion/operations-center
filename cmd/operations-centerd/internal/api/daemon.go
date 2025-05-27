@@ -372,7 +372,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 	}
 
-	updateSourceStop, _ := task.Start(ctx, refreshTask, task.Every(d.config.UpdatesSourcePollInterval, task.SkipFirst))
+	var updateSourceOptions []task.EveryOption
+	if d.config.UpdatesSourcePollSkipFirst {
+		updateSourceOptions = append(updateSourceOptions, task.SkipFirst)
+	}
+
+	updateSourceStop, _ := task.Start(ctx, refreshTask, task.Every(d.config.UpdatesSourcePollInterval, updateSourceOptions...))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		// Default grace period for tasks to finish during shutdown, if no deadline
 		// is defined on the context.
