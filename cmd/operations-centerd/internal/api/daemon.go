@@ -244,7 +244,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 			}
 
 			updateServerWithCache, err := filecache.New(
-				updateserver.New(d.config.UpdatesSource),
+				updateserver.New(
+					d.config.UpdatesSource,
+					verifier,
+				),
 				filepath.Join(d.env.VarDir(), "updates_cache"),
 			)
 			if err != nil {
