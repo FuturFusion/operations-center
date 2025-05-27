@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
+	"github.com/FuturFusion/operations-center/internal/signature"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -124,7 +125,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 			)
 			defer svr.Close()
 
-			s := updateserver.New(svr.URL)
+			s := updateserver.New(svr.URL, nil)
 			updates, err := s.GetLatest(context.Background(), 1)
 			tc.assertErr(t, err)
 
@@ -213,9 +214,15 @@ func TestUpdateServer_GetUpdateAllFiles(t *testing.T) {
 
 			svr := httptest.NewServer(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if !strings.HasSuffix(r.URL.Path, "/1/update.json") {
+					if !strings.Contains(r.URL.Path, "/1/update.json") {
 						http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 						return
+					}
+
+					if strings.HasSuffix(r.URL.Path, ".sig") {
+						w.WriteHeader(tc.statusCode)
+						// The test currently uses NoopVerifier, therefore the content of the signature does not matter.
+						_, _ = w.Write([]byte(`signature`))
 					}
 
 					body, err := json.Marshal(tc.update)
@@ -231,7 +238,7 @@ func TestUpdateServer_GetUpdateAllFiles(t *testing.T) {
 			)
 			defer svr.Close()
 
-			s := updateserver.New(svr.URL)
+			s := updateserver.New(svr.URL, signature.NewNoopVerifier())
 			files, err := s.GetUpdateAllFiles(context.Background(), provisioning.Update{
 				ExternalID: "1",
 			})
@@ -294,7 +301,7 @@ func TestUpdateServer_GetUpdateFileByFilename(t *testing.T) {
 			)
 			defer svr.Close()
 
-			s := updateserver.New(svr.URL)
+			s := updateserver.New(svr.URL, nil)
 			stream, n, err := s.GetUpdateFileByFilename(context.Background(), provisioning.Update{
 				ExternalID: "1",
 			}, "one.txt")
