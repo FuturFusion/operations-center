@@ -21,7 +21,7 @@ type Config struct {
 	// to fetch the updates from https://github.com/lxc/incus-os.
 	UpdatesSource              string        `yaml:"update.source"`
 	UpdatesSourcePollInterval  time.Duration `yaml:"-"`
-	UpdatesSourcePollSkipFirst bool          `yaml:"update.sourceSkipFirstUpdate"`
+	UpdatesSourcePollSkipFirst bool          `yaml:"update.source_skip_first_update"`
 	GithubToken                string        `yaml:"github.token"`
 
 	// An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
