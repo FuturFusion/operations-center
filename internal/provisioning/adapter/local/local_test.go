@@ -19,6 +19,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/file"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/signature"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -144,7 +145,7 @@ func TestLocal_GetLatest(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
-			update, err := New(tmpDir)
+			update, err := New(tmpDir, nil)
 			require.NoError(t, err)
 			tc.setupTmpDir(t, tmpDir)
 
@@ -219,7 +220,7 @@ func TestLocal_GetUpdateAllFiles(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			update, err := New(tmpDir)
+			update, err := New(tmpDir, nil)
 			require.NoError(t, err)
 
 			// Run test
@@ -310,7 +311,7 @@ func TestLocal_GetFileByFilename(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			update, err := New(tmpDir)
+			update, err := New(tmpDir, nil)
 			require.NoError(t, err)
 
 			// Run test
@@ -353,7 +354,7 @@ func TestLocal_ForgetUpdate(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			update, err := New(tmpDir)
+			update, err := New(tmpDir, nil)
 			require.NoError(t, err)
 
 			// Run test
@@ -604,7 +605,8 @@ func TestLocal_Add(t *testing.T) {
 
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			update, err := New(tmpDir)
+			// TODO: Mock verifier to simulate different error cases
+			update, err := New(tmpDir, signature.NewNoopVerifier())
 			require.NoError(t, err)
 
 			// Run test
@@ -666,6 +668,7 @@ func generateUpdateTar(t *testing.T, tc testLocalAdd) *tar.Reader {
 	_, err = tw.Write(body)
 	require.NoError(t, err)
 
+	// FIXME: calculate signature and sign update.json file correctly
 	err = tw.WriteHeader(&tar.Header{
 		Name: "update.json.sig",
 		Size: 0,

@@ -358,6 +358,7 @@ func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
 			Filename:     updateFile.Filename,
 			URL:          updateFile.URL,
 			Size:         updateFile.Size,
+			Sha256:       updateFile.Sha256,
 			Component:    updateFile.Component,
 			Type:         updateFile.Type,
 			Architecture: updateFile.Architecture,

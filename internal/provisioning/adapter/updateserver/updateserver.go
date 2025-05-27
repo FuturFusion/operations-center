@@ -13,22 +13,25 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/signature"
 )
 
 var UpdateSourceSpaceUUID = uuid.MustParse(`00000000-0000-0000-0000-000000000002`)
 
 type updateServer struct {
-	baseURL string
-	client  *http.Client
+	baseURL  string
+	client   *http.Client
+	verifier signature.Verifier
 }
 
 var _ provisioning.UpdateSourcePort = &updateServer{}
 
-func New(baseURL string) *updateServer {
+func New(baseURL string, verifier signature.Verifier) *updateServer {
 	return &updateServer{
 		// Normalize URL, remove trailing slash.
-		baseURL: strings.TrimSuffix(baseURL, "/"),
-		client:  http.DefaultClient,
+		baseURL:  strings.TrimSuffix(baseURL, "/"),
+		client:   http.DefaultClient,
+		verifier: verifier,
 	}
 }
 
@@ -40,14 +43,14 @@ type UpdatesIndex struct {
 	Updated   string                         `json:"updated,omitempty"`
 }
 
-func (s updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Updates, error) {
-	indexURL := s.baseURL + "/updates.json"
+func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Updates, error) {
+	indexURL := u.baseURL + "/updates.json"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, indexURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := s.client.Do(req)
+	resp, err := u.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -105,33 +108,50 @@ func uuidFromUpdateServer(update provisioning.Update) uuid.UUID {
 	return uuid.NewSHA1(UpdateSourceSpaceUUID, []byte(identifier))
 }
 
-func (s updateServer) GetUpdateAllFiles(ctx context.Context, inUpdate provisioning.Update) (provisioning.UpdateFiles, error) {
-	updateURL := s.baseURL + "/" + path.Join(inUpdate.ExternalID, "update.json")
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, updateURL, http.NoBody)
+func (u updateServer) GetUpdateAllFiles(ctx context.Context, inUpdate provisioning.Update) (provisioning.UpdateFiles, error) {
+	getFile := func(filename string) ([]byte, error) {
+		updateURL := u.baseURL + "/" + path.Join(inUpdate.ExternalID, filename)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, updateURL, http.NoBody)
+		if err != nil {
+			return nil, err
+		}
+
+		resp, err := u.client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("Unexpected status code received: %d", resp.StatusCode)
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		return body, nil
+	}
+
+	content, err := getFile("update.json")
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := s.client.Do(req)
+	contentSig, err := getFile("update.json.sig")
 	if err != nil {
 		return nil, err
 	}
 
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Unexpected status code received: %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
+	err = u.verifier.Verify(content, contentSig)
 	if err != nil {
 		return nil, err
 	}
-
-	// FIXME: Also fetch update.json.sig and verify the integrity of update.json with the signature.
 
 	update := provisioning.Update{}
-	err = json.Unmarshal(body, &update)
+	err = json.Unmarshal(content, &update)
 	if err != nil {
 		return nil, err
 	}
@@ -139,16 +159,16 @@ func (s updateServer) GetUpdateAllFiles(ctx context.Context, inUpdate provisioni
 	return update.Files, nil
 }
 
-func (s updateServer) GetUpdateFileByFilename(ctx context.Context, inUpdate provisioning.Update, filename string) (io.ReadCloser, int, error) {
+func (u updateServer) GetUpdateFileByFilename(ctx context.Context, inUpdate provisioning.Update, filename string) (io.ReadCloser, int, error) {
 	// FIXME: Verify signature of updates.json and use the checksum from updates.json
 	// to verify the integrity of the downloaded file.
-	updateURL := s.baseURL + "/" + path.Join(inUpdate.ExternalID, filename)
+	updateURL := u.baseURL + "/" + path.Join(inUpdate.ExternalID, filename)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, updateURL, http.NoBody)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	resp, err := s.client.Do(req)
+	resp, err := u.client.Do(req)
 	if err != nil {
 		return nil, 0, err
 	}

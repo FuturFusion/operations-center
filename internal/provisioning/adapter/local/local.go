@@ -19,6 +19,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/signature"
 )
 
 var UpdateSourceSpaceUUID = uuid.MustParse(`00000000-0000-0000-0000-000000000001`)
@@ -27,11 +28,12 @@ const originSuffix = " (local)"
 
 type local struct {
 	storageDir string
+	verifier   signature.Verifier
 }
 
 var _ provisioning.UpdateSourceWithForgetAndAddPort = &local{}
 
-func New(storageDir string) (*local, error) {
+func New(storageDir string, verifier signature.Verifier) (*local, error) {
 	err := os.MkdirAll(storageDir, 0o700)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create storage directory: %w", err)
@@ -39,6 +41,7 @@ func New(storageDir string) (*local, error) {
 
 	return &local{
 		storageDir: storageDir,
+		verifier:   verifier,
 	}, nil
 }
 
@@ -164,12 +167,16 @@ func (m local) Add(ctx context.Context, tarReader *tar.Reader) (_ *provisioning.
 		return nil, err
 	}
 
-	// Verify archive content
-	err = verifyUpdateJSONSignature(tmpDir, extractedFiles)
+	// Verify update.json signature.
+	filename := filepath.Join(tmpDir, "update.json")
+	err = m.verifier.VerifyFile(filename)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to verify signature for %q: %w", filename, err)
 	}
 
+	delete(extractedFiles, "update.json.sig")
+
+	// Read Changelog.
 	updateManifest, err := readUpdateJSONAndChangelog(tmpDir, extractedFiles)
 	if err != nil {
 		return nil, err
@@ -251,15 +258,6 @@ func extractTar(tarReader *tar.Reader, destDir string) (extractedFiles map[strin
 	}
 
 	return extractedFiles, nil
-}
-
-func verifyUpdateJSONSignature(destDir string, extractedFiles map[string]struct{}) error { //nolint:unparam // implementation of this function is not yet done.
-	// FIXME: verify update.json signature
-	_ = destDir
-
-	delete(extractedFiles, "update.json.sig")
-
-	return nil
 }
 
 func readUpdateJSONAndChangelog(destDir string, extractedFiles map[string]struct{}) (*provisioning.Update, error) {

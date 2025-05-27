@@ -439,6 +439,11 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 			idArg: uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
 			repoGetByUUIDUpdate: &provisioning.Update{
 				Origin: "mock",
+				Files: provisioning.UpdateFiles{
+					provisioning.UpdateFile{
+						Filename: "foo.bar",
+					},
+				},
 			},
 			sourceGetUpdateFileByFilename:     io.NopCloser(bytes.NewBuffer([]byte("foobar"))),
 			sourceGetUpdateFileByFilenameSize: 6,
@@ -456,20 +461,44 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 			wantBody:  []byte{},
 		},
 		{
+			name:  "error - file not found",
+			idArg: uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
+			repoGetByUUIDUpdate: &provisioning.Update{
+				Files: provisioning.UpdateFiles{}, // foo.bar not included
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, `Requested file "foo.bar" is not part of update`)
+			},
+			wantBody: []byte{},
+		},
+		{
 			name:  "error - unsupported origin",
 			idArg: uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
 			repoGetByUUIDUpdate: &provisioning.Update{
 				Origin: "unsupported", // invalid
+				Files: provisioning.UpdateFiles{
+					provisioning.UpdateFile{
+						Filename: "foo.bar",
+					},
+				},
 			},
 
-			assertErr: require.Error,
-			wantBody:  []byte{},
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "Unsupported origin")
+			},
+			wantBody: []byte{},
 		},
 		{
 			name:  "error - source",
 			idArg: uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
 			repoGetByUUIDUpdate: &provisioning.Update{
 				Origin: "mock",
+				Files: provisioning.UpdateFiles{
+					provisioning.UpdateFile{
+						Filename: "foo.bar",
+					},
+				},
 			},
 			sourceGetUpdateFileByFilename:    io.NopCloser(bytes.NewBuffer([]byte{})),
 			sourceGetUpdateFileByFilenameErr: boom.Error,
@@ -872,7 +901,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, provisioning.UpdateServiceWithSource("mock", source), provisioning.UpdateServiceWithLatestLimit(1))
+			nonForgetSource := &adapterMock.UpdateSourcePortMock{}
+
+			updateSvc := provisioning.NewUpdateService(repo, provisioning.UpdateServiceWithSource("mock", source), provisioning.UpdateServiceWithSource("nonForgetSource", nonForgetSource), provisioning.UpdateServiceWithLatestLimit(1))
 
 			// Run test
 			err := updateSvc.Refresh(tc.ctx)

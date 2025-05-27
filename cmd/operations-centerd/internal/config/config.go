@@ -21,8 +21,12 @@ type Config struct {
 	// to fetch the updates from https://github.com/lxc/incus-os.
 	UpdatesSource              string        `yaml:"update.source"`
 	UpdatesSourcePollInterval  time.Duration `yaml:"-"`
-	UpdatesSourcePollSkipFirst bool          `yaml:"update.sourceSkipFirstUpdate"`
+	UpdatesSourcePollSkipFirst bool          `yaml:"update.source_skip_first_update"`
 	GithubToken                string        `yaml:"github.token"`
+	// Public key used to verify the signature of update.json files in PEM
+	// format. Supported PEM types are: PUBLIC KEY (PKIX format), RSA PUBLIC KEY (PKCS1 format)
+	// and CERTIFICATE (ASN.1 DER format).
+	UpdateSignatureVerificationPEM string `yaml:"update.signature_verification_pem"`
 
 	// An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
 	TrustedTLSClientCertFingerprints []string `yaml:"trusted_tls_client_cert_fingerprints"`
