@@ -201,6 +201,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.Default(),
 	)
 
+	localSource, err := local.New(
+		filepath.Join(d.env.VarDir(), "updates_local"),
+	)
+	if err != nil {
+		return err
+	}
+
 	updateSvc := provisioningServiceMiddleware.NewUpdateServiceWithSlog(
 		provisioning.NewUpdateService(
 			provisioningRepoMiddleware.NewUpdateRepoWithSlog(
@@ -225,9 +232,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 			provisioning.UpdateServiceWithSource(
 				"local",
 				provisioningAdapterMiddleware.NewUpdateSourceWithAddPortWithSlog(
-					local.New(
-						filepath.Join(d.env.VarDir(), "updates_local"),
-					),
+					localSource,
 					slog.Default(),
 				),
 			),
