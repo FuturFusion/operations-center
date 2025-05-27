@@ -223,7 +223,7 @@ func (s clusterService) DeleteByName(ctx context.Context, name string) error {
 		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	// FIXME: deleteting a server also requires to delete all the inventory (in a transaction).
+	// FIXME: deleteting a cluster also requires to delete all the inventory (in a transaction).
 
 	return s.repo.DeleteByName(ctx, name)
 }

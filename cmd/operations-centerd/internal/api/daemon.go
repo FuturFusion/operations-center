@@ -108,8 +108,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
-	// TODO: setup certificates
-
 	// UnixSocket authenticator is always available.
 	authers := []authn.Auther{
 		authnunixsocket.UnixSocket{},
@@ -134,7 +132,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// Create authenticator
 	authenticator := authn.New(authers)
 
-	// TODO: setup authorizer
 	authorizers := []authz.Authorizer{
 		unixsocket.New(),
 		authztlz.New(ctx, d.config.TrustedTLSClientCertFingerprints),
@@ -143,7 +140,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	if d.config.OpenfgaAPIURL != "" && d.config.OpenfgaAPIToken != "" && d.config.OpenfgaStoreID != "" {
 		openfgaAuthorizer, err := authzopenfga.New(ctx, d.config.OpenfgaAPIURL, d.config.OpenfgaAPIToken, d.config.OpenfgaStoreID)
 		if err != nil {
-			// TODO: cloud also be a warning
+			// TODO: could also be a warning
 			return err
 		}
 
