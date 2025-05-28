@@ -8,6 +8,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestServer_Validate(t *testing.T) {
@@ -27,6 +28,7 @@ func TestServer_Validate(t *testing.T) {
 one
 -----END CERTIFICATE-----
 `,
+				Status: api.ServerStatusReady,
 			},
 
 			assertErr: require.NoError,
@@ -41,6 +43,7 @@ one
 one
 -----END CERTIFICATE-----
 `,
+				Status: api.ServerStatusReady,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -58,6 +61,7 @@ one
 one
 -----END CERTIFICATE-----
 `,
+				Status: api.ServerStatusReady,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -75,6 +79,7 @@ one
 one
 -----END CERTIFICATE-----
 `,
+				Status: api.ServerStatusReady,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -89,6 +94,25 @@ one
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 				Certificate:   ``, // invalid
+				Status:        api.ServerStatusReady,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - status invalid",
+			server: provisioning.Server{
+				Name:          "one",
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatus("invalid"), // invalid
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {

@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestServerService_Create(t *testing.T) {
@@ -37,6 +38,7 @@ func TestServerService_Create(t *testing.T) {
 one
 -----END CERTIFICATE-----
 `,
+				Status: api.ServerStatusReady,
 			},
 
 			assertErr: require.NoError,
@@ -57,6 +59,7 @@ one
 one
 -----END CERTIFICATE-----
 `,
+				Status: api.ServerStatusReady,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -74,6 +77,7 @@ one
 one
 -----END CERTIFICATE-----
 `,
+				Status: api.ServerStatusReady,
 			},
 			repoCreateErr: boom.Error,
 
@@ -569,6 +573,7 @@ func TestServerService_Update(t *testing.T) {
 one
 -----END CERTIFICATE-----
 `,
+				Status: api.ServerStatusReady,
 			},
 
 			assertErr: require.NoError,
@@ -583,6 +588,7 @@ one
 one
 -----END CERTIFICATE-----
 `,
+				Status: api.ServerStatusReady,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -600,6 +606,7 @@ one
 one
 -----END CERTIFICATE-----
 `,
+				Status: api.ServerStatusReady,
 			},
 			repoUpdateErr: boom.Error,
 

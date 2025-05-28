@@ -33,6 +33,7 @@ server A
 `,
 		HardwareData: incusapi.Resources{},
 		VersionData:  json.RawMessage(nil),
+		Status:       api.ServerStatusReady,
 		LastUpdated:  fixedDate,
 	}
 
@@ -46,6 +47,7 @@ server B
 `,
 		HardwareData: incusapi.Resources{},
 		VersionData:  json.RawMessage(nil),
+		Status:       api.ServerStatusReady,
 		LastUpdated:  fixedDate,
 	}
 

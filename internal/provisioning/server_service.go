@@ -11,6 +11,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type serverService struct {
@@ -52,12 +53,13 @@ func (s serverService) Create(ctx context.Context, token uuid.UUID, newServer Se
 			return fmt.Errorf("Consume token for server creation: %w", err)
 		}
 
+		newServer.Status = api.ServerStatusPending
+		newServer.LastUpdated = s.now()
+
 		err = newServer.Validate()
 		if err != nil {
 			return fmt.Errorf("Validate server: %w", err)
 		}
-
-		newServer.LastUpdated = s.now()
 
 		newServer.ID, err = s.repo.Create(ctx, newServer)
 		if err != nil {
