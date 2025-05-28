@@ -52,6 +52,7 @@ server-one
 -----END CERTIFICATE-----
 `,
 		Type:        api.ServerTypeIncus,
+		Status:      api.ServerStatusReady,
 		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
@@ -63,6 +64,7 @@ server-one
 -----END CERTIFICATE-----
 `,
 		Type:        api.ServerTypeIncus,
+		Status:      api.ServerStatusReady,
 		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
