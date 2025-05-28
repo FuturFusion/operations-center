@@ -17,6 +17,7 @@ type Server struct {
 	Name          string  `db:"primary=yes"`
 	Type          api.ServerType
 	ConnectionURL string
+	Certificate   string
 	HardwareData  incusapi.Resources `db:"ignore"`
 	VersionData   json.RawMessage    `db:"ignore"` // FIXME: it is not yet clear, how the structure of the version information will actually look like.
 	LastUpdated   time.Time
@@ -29,6 +30,10 @@ func (s Server) Validate() error {
 
 	if s.ConnectionURL == "" {
 		return domain.NewValidationErrf("Invalid server, connection URL can not be empty")
+	}
+
+	if s.Certificate == "" {
+		return domain.NewValidationErrf("Invalid server, certificate can not be empty")
 	}
 
 	_, err := url.Parse(s.ConnectionURL)

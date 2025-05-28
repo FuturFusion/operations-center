@@ -14,14 +14,14 @@ import (
 )
 
 var serverObjects = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.last_updated
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.certificate, servers.last_updated
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   ORDER BY servers.name
 `)
 
 var serverObjectsByName = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.last_updated
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.certificate, servers.last_updated
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   WHERE ( servers.name = ? )
@@ -29,7 +29,7 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
 `)
 
 var serverObjectsByCluster = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.last_updated
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.certificate, servers.last_updated
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   WHERE ( cluster = ? )
@@ -56,13 +56,13 @@ SELECT servers.id FROM servers
 `)
 
 var serverCreate = RegisterStmt(`
-INSERT INTO servers (cluster_id, name, type, connection_url, last_updated)
-  VALUES ((SELECT clusters.id FROM clusters WHERE clusters.name = ?), ?, ?, ?, ?)
+INSERT INTO servers (cluster_id, name, type, connection_url, certificate, last_updated)
+  VALUES ((SELECT clusters.id FROM clusters WHERE clusters.name = ?), ?, ?, ?, ?, ?)
 `)
 
 var serverUpdate = RegisterStmt(`
 UPDATE servers
-  SET cluster_id = (SELECT clusters.id FROM clusters WHERE clusters.name = ?), name = ?, type = ?, connection_url = ?, last_updated = ?
+  SET cluster_id = (SELECT clusters.id FROM clusters WHERE clusters.name = ?), name = ?, type = ?, connection_url = ?, certificate = ?, last_updated = ?
  WHERE id = ?
 `)
 
@@ -154,7 +154,7 @@ func GetServer(ctx context.Context, db dbtx, name string) (_ *provisioning.Serve
 // serverColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Server entity.
 func serverColumns() string {
-	return "servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.last_updated"
+	return "servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.certificate, servers.last_updated"
 }
 
 // getServers can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -163,7 +163,7 @@ func getServers(ctx context.Context, stmt *sql.Stmt, args ...any) ([]provisionin
 
 	dest := func(scan func(dest ...any) error) error {
 		s := provisioning.Server{}
-		err := scan(&s.ID, &s.Cluster, &s.Name, &s.Type, &s.ConnectionURL, &s.LastUpdated)
+		err := scan(&s.ID, &s.Cluster, &s.Name, &s.Type, &s.ConnectionURL, &s.Certificate, &s.LastUpdated)
 		if err != nil {
 			return err
 		}
@@ -187,7 +187,7 @@ func getServersRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]pro
 
 	dest := func(scan func(dest ...any) error) error {
 		s := provisioning.Server{}
-		err := scan(&s.ID, &s.Cluster, &s.Name, &s.Type, &s.ConnectionURL, &s.LastUpdated)
+		err := scan(&s.ID, &s.Cluster, &s.Name, &s.Type, &s.ConnectionURL, &s.Certificate, &s.LastUpdated)
 		if err != nil {
 			return err
 		}
@@ -395,14 +395,15 @@ func CreateServer(ctx context.Context, db dbtx, object provisioning.Server) (_ i
 		_err = mapErr(_err, "Server")
 	}()
 
-	args := make([]any, 5)
+	args := make([]any, 6)
 
 	// Populate the statement arguments.
 	args[0] = object.Cluster
 	args[1] = object.Name
 	args[2] = object.Type
 	args[3] = object.ConnectionURL
-	args[4] = object.LastUpdated
+	args[4] = object.Certificate
+	args[5] = object.LastUpdated
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, serverCreate)
@@ -448,7 +449,7 @@ func UpdateServer(ctx context.Context, db tx, name string, object provisioning.S
 		return fmt.Errorf("Failed to get \"serverUpdate\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(object.Cluster, object.Name, object.Type, object.ConnectionURL, object.LastUpdated, id)
+	result, err := stmt.Exec(object.Cluster, object.Name, object.Type, object.ConnectionURL, object.Certificate, object.LastUpdated, id)
 	if err != nil {
 		return fmt.Errorf("Update \"servers\" entry failed: %w", err)
 	}
