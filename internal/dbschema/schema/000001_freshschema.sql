@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS servers (
   type TEXT NOT NULL,
   connection_url TEXT NOT NULL,
   certificate TEXT NOT NULL,
+  status TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (name),
   FOREIGN KEY(cluster_id) REFERENCES clusters(id)
