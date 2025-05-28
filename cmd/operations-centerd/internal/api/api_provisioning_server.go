@@ -171,6 +171,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 				ConnectionURL: server.ConnectionURL,
 				HardwareData:  server.HardwareData,
 				VersionData:   server.VersionData,
+				Status:        server.Status,
 				LastUpdated:   server.LastUpdated,
 			})
 		}
@@ -312,6 +313,7 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 			ConnectionURL: server.ConnectionURL,
 			HardwareData:  server.HardwareData,
 			VersionData:   server.VersionData,
+			Status:        server.Status,
 			LastUpdated:   server.LastUpdated,
 		},
 		server,
@@ -384,6 +386,7 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 		Certificate:   currentServer.Certificate,
 		HardwareData:  server.HardwareData,
 		VersionData:   server.VersionData,
+		Status:        server.Status,
 		LastUpdated:   server.LastUpdated,
 	})
 	if err != nil {

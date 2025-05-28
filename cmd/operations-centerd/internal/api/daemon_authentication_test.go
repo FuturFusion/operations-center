@@ -417,7 +417,8 @@ func TestAuthentication(t *testing.T) {
 			body: bytes.NewBufferString(`{
   "name": "serverA",
   "connection_url": "https://viewer:12346/",
-  "server_type": "incus"
+  "server_type": "incus",
+  "status": "ready"
 }`),
 
 			wantStatusCode: http.StatusForbidden,
@@ -442,7 +443,8 @@ func TestAuthentication(t *testing.T) {
 			body: bytes.NewBufferString(`{
   "name": "serverA",
   "connection_url": "https://operator:12346/",
-  "server_type": "incus"
+  "server_type": "incus",
+  "status": "ready"
 }`),
 
 			wantStatusCode: http.StatusCreated,
@@ -467,7 +469,8 @@ func TestAuthentication(t *testing.T) {
 			body: bytes.NewBufferString(`{
   "name": "serverA",
   "connection_url": "https://admin:12346/",
-  "server_type": "incus"
+  "server_type": "incus",
+  "status": "ready"
 }`),
 
 			wantStatusCode: http.StatusCreated,
