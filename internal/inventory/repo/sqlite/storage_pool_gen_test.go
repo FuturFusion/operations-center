@@ -47,15 +47,23 @@ func TestStoragePoolDatabaseActions(t *testing.T) {
 	testServerA := provisioning.Server{
 		Name:          "one",
 		ConnectionURL: "https://server-one/",
-		Type:          api.ServerTypeIncus,
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Certificate: `-----BEGIN CERTIFICATE-----
+server-one
+-----END CERTIFICATE-----
+`,
+		Type:        api.ServerTypeIncus,
+		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	testServerB := provisioning.Server{
 		Name:          "two",
 		ConnectionURL: "https://server-two/",
-		Type:          api.ServerTypeIncus,
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Certificate: `-----BEGIN CERTIFICATE-----
+server-one
+-----END CERTIFICATE-----
+`,
+		Type:        api.ServerTypeIncus,
+		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	storagePoolA := inventory.StoragePool{
