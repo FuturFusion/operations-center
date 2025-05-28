@@ -25,6 +25,10 @@ var serverTypes = map[ServerType]struct{}{
 	ServerTypeOperationsCenter: {},
 }
 
+func (s ServerType) String() string {
+	return string(s)
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (s ServerType) MarshalText() ([]byte, error) {
 	return []byte(s), nil
