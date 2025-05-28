@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -232,11 +233,23 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("Request decoding: %v", err))
 	}
 
+	// Ensure presence of client certificate.
+	if len(r.TLS.PeerCertificates) == 0 {
+		return response.BadRequest(fmt.Errorf("No client certificate provided"))
+	}
+
+	// Encode client certificate in pem format
+	certificate := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: r.TLS.PeerCertificates[0].Raw,
+	})
+
 	_, err = s.service.Create(r.Context(), token, provisioning.Server{
 		Cluster:       ptr.To(server.Cluster),
 		Name:          server.Name,
 		Type:          server.Type,
 		ConnectionURL: server.ConnectionURL,
+		Certificate:   string(certificate),
 		HardwareData:  server.HardwareData,
 		VersionData:   server.VersionData,
 		LastUpdated:   server.LastUpdated,
@@ -368,6 +381,7 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 		Name:          server.Name,
 		Type:          server.Type,
 		ConnectionURL: server.ConnectionURL,
+		Certificate:   currentServer.Certificate,
 		HardwareData:  server.HardwareData,
 		VersionData:   server.VersionData,
 		LastUpdated:   server.LastUpdated,
