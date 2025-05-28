@@ -45,6 +45,10 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	testServerA := provisioning.Server{
 		Name:            "one",
 		ConnectionURL:   "https://server-one/",
+		Certificate:     `-----BEGIN CERTIFICATE-----
+server-one
+-----END CERTIFICATE-----
+`,
 		Type:            api.ServerTypeIncus,
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
@@ -52,6 +56,10 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	testServerB := provisioning.Server{
 		Name:            "two",
 		ConnectionURL:   "https://server-two/",
+		Certificate:     `-----BEGIN CERTIFICATE-----
+server-one
+-----END CERTIFICATE-----
+`,
 		Type:            api.ServerTypeIncus,
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}

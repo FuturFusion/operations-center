@@ -33,6 +33,10 @@ func TestServerService_Create(t *testing.T) {
 				Name:          "one",
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
 			},
 
 			assertErr: require.NoError,
@@ -49,6 +53,10 @@ func TestServerService_Create(t *testing.T) {
 				Name:          "", // invalid
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -62,6 +70,10 @@ func TestServerService_Create(t *testing.T) {
 				Name:          "one",
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
 			},
 			repoCreateErr: boom.Error,
 
@@ -542,39 +554,35 @@ func TestServerService_Update(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		nameArg       string
 		server        provisioning.Server
 		repoUpdateErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name:    "success",
-			nameArg: "one",
+			name: "success",
 			server: provisioning.Server{
 				Name:          "one",
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
 			},
 
 			assertErr: require.NoError,
 		},
 		{
-			name:    "error - empty name",
-			nameArg: "", // invalid
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
-		},
-		{
-			name:    "error - validation",
-			nameArg: "one",
+			name: "error - validation",
 			server: provisioning.Server{
 				Name:          "", // invalid
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -583,12 +591,15 @@ func TestServerService_Update(t *testing.T) {
 			},
 		},
 		{
-			name:    "error - repo.UpdateByID",
-			nameArg: "one",
+			name: "error - repo.UpdateByID",
 			server: provisioning.Server{
 				Name:          "one",
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
 			},
 			repoUpdateErr: boom.Error,
 

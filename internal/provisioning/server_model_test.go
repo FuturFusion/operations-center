@@ -23,6 +23,10 @@ func TestServer_Validate(t *testing.T) {
 				Name:          "one",
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
 			},
 
 			assertErr: require.NoError,
@@ -33,6 +37,10 @@ func TestServer_Validate(t *testing.T) {
 				Name:          "", // invalid
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -46,6 +54,10 @@ func TestServer_Validate(t *testing.T) {
 				Name:          "one",
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "", // invalid
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -59,6 +71,24 @@ func TestServer_Validate(t *testing.T) {
 				Name:          "one",
 				Cluster:       ptr.To("one"),
 				ConnectionURL: ":|\\", // invalid
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - certificate empty",
+			server: provisioning.Server{
+				Name:          "one",
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate:   ``, // invalid
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {

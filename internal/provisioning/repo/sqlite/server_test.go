@@ -27,18 +27,26 @@ func TestServerDatabaseActions(t *testing.T) {
 		Name:          "one",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
-		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
-		LastUpdated:   fixedDate,
+		Certificate: `-----BEGIN CERTIFICATE-----
+server A
+-----END CERTIFICATE-----
+`,
+		HardwareData: incusapi.Resources{},
+		VersionData:  json.RawMessage(nil),
+		LastUpdated:  fixedDate,
 	}
 
 	serverB := provisioning.Server{
 		Name:          "two",
 		Type:          api.ServerTypeMigrationManager,
 		ConnectionURL: "https://two/",
-		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
-		LastUpdated:   fixedDate,
+		Certificate: `-----BEGIN CERTIFICATE-----
+server B
+-----END CERTIFICATE-----
+`,
+		HardwareData: incusapi.Resources{},
+		VersionData:  json.RawMessage(nil),
+		LastUpdated:  fixedDate,
 	}
 
 	ctx := context.Background()
