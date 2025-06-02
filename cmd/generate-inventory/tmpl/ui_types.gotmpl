@@ -1,0 +1,16 @@
+export interface {{ .Name | pascalcase }} {
+  uuid: string;
+  cluster: string;
+{{- if .ServerIDByLocation }}
+  server: string;
+{{- end }}
+{{- if .HasProject }}
+  project_name: string;
+{{- end }}
+{{- if .HasParent }}
+  parent_name: string;
+{{- end }}
+  name: string;
+  object: string;
+  last_updated: string;
+}
