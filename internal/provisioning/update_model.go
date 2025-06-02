@@ -34,7 +34,7 @@ type UpdateFile struct {
 	Sha256       string                  `json:"sha256"`
 	Component    api.UpdateFileComponent `json:"component"`
 	Type         api.UpdateFileType      `json:"type"`
-	Architecture api.Architecture        `json:"arch"`
+	Architecture api.Architecture        `json:"architecture"`
 }
 
 type UpdateFilter struct {

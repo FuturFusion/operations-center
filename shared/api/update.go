@@ -166,6 +166,7 @@ const (
 	UpdateFileTypeUpdateUsr                UpdateFileType = "update-usr"
 	UpdateFileTypeUpdateUsrVerity          UpdateFileType = "update-usr-verity"
 	UpdateFileTypeUpdateUsrVeritySignature UpdateFileType = "update-usr-verity-signature"
+	UpdateFileTypeApplication              UpdateFileType = "application"
 )
 
 var updateFileType = map[UpdateFileType]struct{}{
@@ -307,5 +308,5 @@ type UpdateFile struct {
 
 	// Architecture of the file. E.g. x86_64, aarch64
 	// Example: x86_64
-	Architecture Architecture `json:"arch" yaml:"arch"`
+	Architecture Architecture `json:"architecture" yaml:"architecture"`
 }
