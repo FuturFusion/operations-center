@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchNetworkForwards } from "api/networks";
+import { fetchNetworkForwards } from "api/network_forward";
 import DataTable from "components/DataTable";
 
 const NetworkForward = () => {

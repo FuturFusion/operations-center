@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchNetworkPeers } from "api/networks";
+import { fetchNetworkPeers } from "api/network_peer";
 import DataTable from "components/DataTable";
 
 const NetworkPeer = () => {

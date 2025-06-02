@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchStoragePools } from "api/storages";
+import { fetchStoragePools } from "api/storage_pool";
 import DataTable from "components/DataTable";
 
 const StoragePool = () => {

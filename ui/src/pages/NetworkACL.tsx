@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchNetworkACLs } from "api/networks";
+import { fetchNetworkACLs } from "api/network_acl";
 import DataTable from "components/DataTable";
 
 const NetworkACL = () => {

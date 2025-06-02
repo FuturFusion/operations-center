@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchStorageVolumes } from "api/storages";
+import { fetchStorageVolumes } from "api/storage_volume";
 import DataTable from "components/DataTable";
 
 const StorageVolume = () => {
