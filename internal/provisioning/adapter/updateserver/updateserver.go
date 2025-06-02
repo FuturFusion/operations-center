@@ -14,6 +14,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/signature"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 var UpdateSourceSpaceUUID = uuid.MustParse(`00000000-0000-0000-0000-000000000002`)
@@ -83,6 +84,14 @@ func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Up
 	for updateID, update := range updates.Updates {
 		update.ExternalID = updateID
 		update.UUID = uuidFromUpdateServer(update)
+
+		// Fallback to x84_64 for architecture if not defined.
+		for i := range update.Files {
+			if update.Files[i].Architecture == api.ArchitectureUndefined {
+				update.Files[i].Architecture = api.Architecture64BitIntelX86
+			}
+		}
+
 		updatesList = append(updatesList, update)
 	}
 
@@ -154,6 +163,13 @@ func (u updateServer) GetUpdateAllFiles(ctx context.Context, inUpdate provisioni
 	err = json.Unmarshal(content, &update)
 	if err != nil {
 		return nil, err
+	}
+
+	// Fallback to x84_64 for architecture if not defined.
+	for i := range update.Files {
+		if update.Files[i].Architecture == api.ArchitectureUndefined {
+			update.Files[i].Architecture = api.Architecture64BitIntelX86
+		}
 	}
 
 	return update.Files, nil

@@ -186,16 +186,19 @@ func TestUpdateServer_GetUpdateAllFiles(t *testing.T) {
 			assertErr: require.NoError,
 			wantFiles: provisioning.UpdateFiles{
 				provisioning.UpdateFile{
-					Filename:  "one",
-					Component: api.UpdateFileComponentDebug,
+					Filename:     "one",
+					Component:    api.UpdateFileComponentDebug,
+					Architecture: api.Architecture64BitIntelX86,
 				},
 				provisioning.UpdateFile{
-					Filename:  "two",
-					Component: api.UpdateFileComponentDebug,
+					Filename:     "two",
+					Component:    api.UpdateFileComponentDebug,
+					Architecture: api.Architecture64BitIntelX86,
 				},
 				provisioning.UpdateFile{
-					Filename:  "three",
-					Component: api.UpdateFileComponentDebug,
+					Filename:     "three",
+					Component:    api.UpdateFileComponentDebug,
+					Architecture: api.Architecture64BitIntelX86,
 				},
 			},
 		},

@@ -105,6 +105,9 @@ func (u update) GetUpdateAllFiles(ctx context.Context, update provisioning.Updat
 			Size:      ptr.From(asset.Size),
 			Component: fileComponent,
 			Type:      fileType,
+
+			// Fallback to x84_64 for architecture.
+			Architecture: api.Architecture64BitIntelX86,
 		})
 	}
 
