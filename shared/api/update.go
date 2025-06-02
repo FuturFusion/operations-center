@@ -307,5 +307,5 @@ type UpdateFile struct {
 
 	// Architecture of the file. E.g. x86_64, aarch64
 	// Example: x86_64
-	Architecture Architecture `json:"arch" yaml:"arch"`
+	Architecture Architecture `json:"architecture" yaml:"architecture"`
 }
