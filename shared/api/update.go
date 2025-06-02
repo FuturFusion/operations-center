@@ -166,6 +166,7 @@ const (
 	UpdateFileTypeUpdateUsr                UpdateFileType = "update-usr"
 	UpdateFileTypeUpdateUsrVerity          UpdateFileType = "update-usr-verity"
 	UpdateFileTypeUpdateUsrVeritySignature UpdateFileType = "update-usr-verity-signature"
+	UpdateFileTypeApplication              UpdateFileType = "application"
 )
 
 var updateFileType = map[UpdateFileType]struct{}{

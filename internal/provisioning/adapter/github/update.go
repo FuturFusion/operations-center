@@ -77,8 +77,10 @@ func (u update) GetUpdateAllFiles(ctx context.Context, update provisioning.Updat
 		switch {
 		case filename == "debug.raw.gz":
 			fileComponent = api.UpdateFileComponentDebug
+			fileType = api.UpdateFileTypeApplication
 		case filename == "incus.raw.gz":
 			fileComponent = api.UpdateFileComponentIncus
+			fileType = api.UpdateFileTypeApplication
 		case strings.HasSuffix(filename, ".efi.gz"):
 			fileComponent = api.UpdateFileComponentOS
 			fileType = api.UpdateFileTypeUpdateEFI
