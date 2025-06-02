@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router";
 import { Container } from "react-bootstrap";
 import Sidebar from "components/Sidebar";
-import { useAuth } from "context/auth";
+import { useAuth } from "context/authContext";
 import Home from "pages/Home";
 import Image from "pages/Image";
 import Instance from "pages/Instance";

@@ -1,20 +1,7 @@
-import { createContext, FC, ReactNode, useContext } from "react";
+import { FC, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchSettings } from "api/server";
-
-interface ContextProps {
-  isAuthenticated: boolean;
-  isAuthLoading: boolean;
-  authMethod: string | undefined;
-}
-
-const initialState: ContextProps = {
-  isAuthenticated: false,
-  isAuthLoading: true,
-  authMethod: "",
-};
-
-export const AuthContext = createContext<ContextProps>(initialState);
+import { AuthContext } from "context/authContext";
 
 export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const { data: settings = null, isLoading } = useQuery({
@@ -34,7 +21,3 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-
-export function useAuth() {
-  return useContext(AuthContext);
-}
