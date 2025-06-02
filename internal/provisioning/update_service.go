@@ -218,7 +218,7 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 				// We don't care about the actual file content at this stage. We just
 				// make sure, we are able to read the file (which causes the caching
 				// middleware to download the file if not yet present in the cache).
-				_, err = io.ReadAll(stream)
+				_, err = io.Copy(io.Discard, stream)
 				if err != nil {
 					return fmt.Errorf(`Failed to read stream for update file "%s:%s/%s@%s": %w`, origin, update.Channel, updateFile.Filename, update.Version, err)
 				}
