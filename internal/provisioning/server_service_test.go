@@ -10,8 +10,9 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
-	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
+	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -25,6 +26,7 @@ func TestServerService_Create(t *testing.T) {
 		server             provisioning.Server
 		repoCreateErr      error
 		tokenSvcConsumeErr error
+		clientPingErr      error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -83,15 +85,37 @@ one
 
 			assertErr: boom.ErrorIs,
 		},
+		{
+			name: "error - Ping",
+			server: provisioning.Server{
+				Name:          "one",
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+			clientPingErr: boom.Error,
+
+			assertErr: require.NoError, // Error of connection test is only logged, we can not assert it here.
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &mock.ServerRepoMock{
+			repo := &repoMock.ServerRepoMock{
 				CreateFunc: func(ctx context.Context, in provisioning.Server) (int64, error) {
 					require.Equal(t, fixedDate, in.LastUpdated)
 					return 1, tc.repoCreateErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				PingFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.clientPingErr
 				},
 			}
 
@@ -103,7 +127,10 @@ one
 
 			token := uuid.MustParse("686d2a12-20f9-11f0-82c6-7fff26bab0c4")
 
-			serverSvc := provisioning.NewServerService(repo, tokenSvc, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+			serverSvc := provisioning.NewServerService(repo, client, tokenSvc,
+				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
+				provisioning.ServerServiceWithInitialConnectionDelay(0), // Disable delay for initial connection test
+			)
 
 			// Run test
 			_, err := serverSvc.Create(context.Background(), token, tc.server)
@@ -153,13 +180,13 @@ func TestServerService_GetAll(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &mock.ServerRepoMock{
+			repo := &repoMock.ServerRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
 					return tc.repoGetAllServers, tc.repoGetAllErr
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil)
 
 			// Run test
 			servers, err := serverSvc.GetAll(context.Background())
@@ -271,7 +298,7 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &mock.ServerRepoMock{
+			repo := &repoMock.ServerRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
 					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
 				},
@@ -280,7 +307,7 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil)
 
 			// Run test
 			server, err := serverSvc.GetAllWithFilter(context.Background(), tc.filter)
@@ -322,13 +349,13 @@ func TestServerService_GetAllNames(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &mock.ServerRepoMock{
+			repo := &repoMock.ServerRepoMock{
 				GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
 					return tc.repoGetAllNames, tc.repoGetAllNamesErr
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil)
 
 			// Run test
 			serverNames, err := serverSvc.GetAllNames(context.Background())
@@ -424,7 +451,7 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &mock.ServerRepoMock{
+			repo := &repoMock.ServerRepoMock{
 				GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
 					return tc.repoGetAllNamesWithFilter, tc.repoGetAllNamesWithFilterErr
 				},
@@ -433,7 +460,7 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil)
 
 			// Run test
 			serverIDs, err := serverSvc.GetAllNamesWithFilter(context.Background(), tc.filter)
@@ -477,13 +504,13 @@ func TestServerService_GetByID(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &mock.ServerRepoMock{
+			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return tc.repoGetByNameServer, tc.repoGetByNameErr
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil)
 
 			// Run test
 			server, err := serverSvc.GetByName(context.Background(), tc.idArg)
@@ -535,13 +562,13 @@ func TestServerService_GetByName(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &mock.ServerRepoMock{
+			repo := &repoMock.ServerRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 					return tc.repoGetByNameServer, tc.repoGetByNameErr
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil)
 
 			// Run test
 			server, err := serverSvc.GetByName(context.Background(), tc.nameArg)
@@ -617,14 +644,14 @@ one
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &mock.ServerRepoMock{
+			repo := &repoMock.ServerRepoMock{
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
 					require.Equal(t, fixedDate, in.LastUpdated)
 					return tc.repoUpdateErr
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+			serverSvc := provisioning.NewServerService(repo, nil, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			err := serverSvc.Update(context.Background(), tc.server)
@@ -684,7 +711,7 @@ func TestServerService_Rename(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &mock.ServerRepoMock{
+			repo := &repoMock.ServerRepoMock{
 				RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 					require.Equal(t, tc.oldName, oldName)
 					require.Equal(t, tc.newName, newName)
@@ -692,7 +719,7 @@ func TestServerService_Rename(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+			serverSvc := provisioning.NewServerService(repo, nil, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			err := serverSvc.Rename(context.Background(), tc.oldName, tc.newName)
@@ -737,16 +764,114 @@ func TestServerService_DeleteByName(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			repo := &mock.ServerRepoMock{
+			repo := &repoMock.ServerRepoMock{
 				DeleteByNameFunc: func(ctx context.Context, name string) error {
 					return tc.repoDeleteByNameErr
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil)
 
 			// Run test
 			err := serverSvc.DeleteByName(context.Background(), tc.nameArg)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestServerService_PollPendingServers(t *testing.T) {
+	tests := []struct {
+		name                        string
+		repoGetAllWithFilterServers provisioning.Servers
+		repoGetAllWithFilterErr     error
+		clientPingErr               error
+		repoGetByNameServer         provisioning.Server
+		repoGetByNameErr            error
+		repoUpdateErr               error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:                        "success - no pending servers",
+			repoGetAllWithFilterServers: provisioning.Servers{},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:   "pending",
+					Status: api.ServerStatusPending,
+				},
+			},
+			repoGetByNameServer: provisioning.Server{
+				Name:   "pending",
+				Status: api.ServerStatusPending,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                    "error - GetAllWithFilter",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - Ping",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:   "pending",
+					Status: api.ServerStatusPending,
+				},
+			},
+			clientPingErr: boom.Error,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - GetByName",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:   "pending",
+					Status: api.ServerStatusPending,
+				},
+			},
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.repoGetAllWithFilterServers, tc.repoGetAllWithFilterErr
+				},
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					require.Equal(t, api.ServerStatusReady, server.Status)
+					return tc.repoUpdateErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				PingFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.clientPingErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil)
+
+			// Run test
+			err := serverSvc.PollPendingServers(context.Background())
 
 			// Assert
 			tc.assertErr(t, err)

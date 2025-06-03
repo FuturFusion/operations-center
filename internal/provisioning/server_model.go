@@ -56,6 +56,7 @@ type Servers []Server
 type ServerFilter struct {
 	Name       *string
 	Cluster    *string
+	Status     *api.ServerStatus
 	Expression *string `db:"ignore"`
 }
 

@@ -2,7 +2,9 @@ package provisioning
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -10,15 +12,19 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type serverService struct {
 	repo     ServerRepo
+	client   ServerClientPort
 	tokenSvc TokenService
 
-	now func() time.Time
+	now                    func() time.Time
+	initialConnectionDelay time.Duration
 }
 
 var _ ServerService = &serverService{}
@@ -31,12 +37,20 @@ func ServerServiceWithNow(nowFunc func() time.Time) ServerServiceOption {
 	}
 }
 
-func NewServerService(repo ServerRepo, tokenSvc TokenService, opts ...ServerServiceOption) serverService {
+func ServerServiceWithInitialConnectionDelay(delay time.Duration) ServerServiceOption {
+	return func(s *serverService) {
+		s.initialConnectionDelay = delay
+	}
+}
+
+func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenService, opts ...ServerServiceOption) serverService {
 	serverSvc := serverService{
 		repo:     repo,
+		client:   client,
 		tokenSvc: tokenSvc,
 
-		now: time.Now,
+		now:                    time.Now,
+		initialConnectionDelay: 1 * time.Second,
 	}
 
 	for _, opt := range opts {
@@ -71,6 +85,22 @@ func (s serverService) Create(ctx context.Context, token uuid.UUID, newServer Se
 	if err != nil {
 		return Server{}, err
 	}
+
+	// Perform initial connection test to server right after registration.
+	// Since we have the background task to update the server state, we do not
+	// care about graceful shutdown for this "one off" check.
+	go func() {
+		time.Sleep(s.initialConnectionDelay)
+
+		ctx := context.Background()
+		ctxWithTimeout, cancelFunc := context.WithTimeout(ctx, 1*time.Second)
+		defer cancelFunc()
+
+		err := s.client.Ping(ctxWithTimeout, newServer)
+		if err != nil {
+			slog.WarnContext(ctx, "Initial server connection test failed", logger.Err(err), slog.String("name", newServer.Name), slog.String("url", newServer.ConnectionURL))
+		}
+	}()
 
 	return newServer, nil
 }
@@ -219,4 +249,48 @@ func (s serverService) DeleteByName(ctx context.Context, name string) error {
 	// FIXME: deleteting a server also requires to delete all the inventory (in a transaction).
 
 	return s.repo.DeleteByName(ctx, name)
+}
+
+func (s serverService) PollPendingServers(ctx context.Context) error {
+	servers, err := s.repo.GetAllWithFilter(ctx, ServerFilter{
+		Status: ptr.To(api.ServerStatusPending),
+	})
+	if err != nil {
+		return err
+	}
+
+	var errs []error
+	for _, server := range servers {
+		// Since we re-try frequently, we only grant a short timeout for the
+		// connection attept.
+		ctx, cancelFunc := context.WithTimeout(ctx, 1*time.Second)
+		err = s.client.Ping(ctx, server)
+		cancelFunc()
+		if err != nil {
+			// Errors are expected if a system is not (yet) available. Therefore
+			// we ignore the errors.
+			slog.WarnContext(ctx, "Initial server connection test failed", logger.Err(err), slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
+			continue
+		}
+
+		// Perform the update of the server in a transaction in order to respect
+		// potential updates, that happened since we queried for the list of servers
+		// in pending state.
+		err = transaction.Do(ctx, func(ctx context.Context) error {
+			server, err := s.repo.GetByName(ctx, server.Name)
+			if err != nil {
+				return err
+			}
+
+			server.Status = api.ServerStatusReady
+
+			return s.repo.Update(ctx, *server)
+		})
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+	}
+
+	return errors.Join(errs...)
 }
