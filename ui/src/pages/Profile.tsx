@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchProfiles } from "api/profiles";
+import { fetchProfiles } from "api/profile";
 import DataTable from "components/DataTable";
 
 const Profile = () => {

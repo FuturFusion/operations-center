@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchImages } from "api/images";
+import { fetchImages } from "api/image";
 import DataTable from "components/DataTable";
 
 const Image = () => {

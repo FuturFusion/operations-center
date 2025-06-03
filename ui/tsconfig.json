@@ -2,11 +2,11 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "api/*": ["src/api/*"],
+      "api/*": ["src/api/*", "src/api/*_gen.tsx"],
       "components/*": ["src/components/*"],
       "context/*": ["src/context/*"],
       "pages/*": ["src/pages/*"],
-      "types/*": ["src/types/*"],
+      "types/*": ["src/types/*", "src/types/*_gen.d.ts"],
       "util/*": ["src/util/*"],
     },
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",

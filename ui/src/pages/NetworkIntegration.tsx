@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchNetworkIntegrations } from "api/networks";
+import { fetchNetworkIntegrations } from "api/network_integration";
 import DataTable from "components/DataTable";
 
 const NetworkIntegration = () => {

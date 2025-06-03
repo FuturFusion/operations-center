@@ -10,7 +10,7 @@ import {
   RiOrganizationChart,
   RiPassPendingLine,
 } from "react-icons/ri";
-import { useAuth } from "context/auth";
+import { useAuth } from "context/authContext";
 
 const Sidebar = () => {
   const { isAuthenticated } = useAuth();

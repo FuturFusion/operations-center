@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchStorageBuckets } from "api/storages";
+import { fetchStorageBuckets } from "api/storage_bucket";
 import DataTable from "components/DataTable";
 
 const StorageBucket = () => {

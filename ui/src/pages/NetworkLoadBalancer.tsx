@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchNetworkLoadBalancers } from "api/networks";
+import { fetchNetworkLoadBalancers } from "api/network_load_balancer";
 import DataTable from "components/DataTable";
 
 const NetworkLoadBalancer = () => {

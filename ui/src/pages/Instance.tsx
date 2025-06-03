@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchInstances } from "api/instances";
+import { fetchInstances } from "api/instance";
 import DataTable from "components/DataTable";
 
 const Instance = () => {

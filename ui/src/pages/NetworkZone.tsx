@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchNetworkZones } from "api/networks";
+import { fetchNetworkZones } from "api/network_zone";
 import DataTable from "components/DataTable";
 
 const NetworkZone = () => {

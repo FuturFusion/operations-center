@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchProjects } from "api/projects";
+import { fetchProjects } from "api/project";
 import DataTable from "components/DataTable";
 
 const Project = () => {
