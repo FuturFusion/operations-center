@@ -33,55 +33,55 @@ var targets = []struct {
 }{
 	{
 		TemplateName: "api.gotmpl",
-		TargetName:   "cmd/operations-centerd/internal/api/api_inventory_{{ .Name }}.go",
+		TargetName:   "cmd/operations-centerd/internal/api/api_inventory_{{ .Name }}_gen.go",
 	},
 	{
 		TemplateName: "client.gotmpl",
-		TargetName:   "cmd/operations-center/internal/client/{{ .Name }}.go",
+		TargetName:   "cmd/operations-center/internal/client/{{ .Name }}_gen.go",
 	},
 	{
 		TemplateName: "cmds.gotmpl",
-		TargetName:   "cmd/operations-center/internal/cmds/inventory/{{ .Name }}.go",
+		TargetName:   "cmd/operations-center/internal/cmds/inventory/{{ .Name }}_gen.go",
 	},
 	{
 		TemplateName: "model_test.gotmpl",
-		TargetName:   "internal/inventory/{{ .Name }}_model_test.go",
+		TargetName:   "internal/inventory/{{ .Name }}_model_gen_test.go",
 	},
 	{
 		TemplateName: "model.gotmpl",
-		TargetName:   "internal/inventory/{{ .Name }}_model.go",
+		TargetName:   "internal/inventory/{{ .Name }}_model_gen.go",
 	},
 	{
 		TemplateName: "ports.gotmpl",
-		TargetName:   "internal/inventory/{{ .Name }}_ports.go",
+		TargetName:   "internal/inventory/{{ .Name }}_ports_gen.go",
 	},
 	{
 		TemplateName: "server_incus.gotmpl",
-		TargetName:   "internal/inventory/server/incus/{{ .Name }}.go",
+		TargetName:   "internal/inventory/server/incus/{{ .Name }}_gen.go",
 	},
 	{
 		TemplateName: "repo_sqlite_test.gotmpl",
-		TargetName:   "internal/inventory/repo/sqlite/{{ .Name }}_test.go",
+		TargetName:   "internal/inventory/repo/sqlite/{{ .Name }}_gen_test.go",
 	},
 	{
 		TemplateName: "repo_sqlite.gotmpl",
-		TargetName:   "internal/inventory/repo/sqlite/{{ .Name }}.go",
+		TargetName:   "internal/inventory/repo/sqlite/{{ .Name }}_gen.go",
 	},
 	{
 		TemplateName: "service_internal_test.gotmpl",
-		TargetName:   "internal/inventory/{{ .Name }}_service_internal_test.go",
+		TargetName:   "internal/inventory/{{ .Name }}_service_internal_gen_test.go",
 	},
 	{
 		TemplateName: "service_test.gotmpl",
-		TargetName:   "internal/inventory/{{ .Name }}_service_test.go",
+		TargetName:   "internal/inventory/{{ .Name }}_service_gen_test.go",
 	},
 	{
 		TemplateName: "service.gotmpl",
-		TargetName:   "internal/inventory/{{ .Name }}_service.go",
+		TargetName:   "internal/inventory/{{ .Name }}_service_gen.go",
 	},
 	{
 		TemplateName: "shared_api.gotmpl",
-		TargetName:   "shared/api/inventory_{{ .Name }}.go",
+		TargetName:   "shared/api/inventory_{{ .Name }}_gen.go",
 	},
 }
 
@@ -91,23 +91,23 @@ var globalTargets = []struct {
 }{
 	{
 		TemplateName: "api_inventory.gotmpl",
-		TargetName:   "cmd/operations-centerd/internal/api/api_inventory.go",
+		TargetName:   "cmd/operations-centerd/internal/api/api_inventory_gen.go",
 	},
 	{
 		TemplateName: "cmds_inventory.gotmpl",
-		TargetName:   "cmd/operations-center/internal/cmds/inventory.go",
+		TargetName:   "cmd/operations-center/internal/cmds/inventory_gen.go",
 	},
 	{
 		TemplateName: "inventory_ports.gotmpl",
-		TargetName:   "internal/inventory/ports.go",
+		TargetName:   "internal/inventory/ports_gen.go",
 	},
 	{
 		TemplateName: "populate_db.gotmpl",
-		TargetName:   "cmd/populate-db/main.go",
+		TargetName:   "cmd/populate-db/main_gen.go",
 	},
 	{
 		TemplateName: "seed_config.gotmpl",
-		TargetName:   "internal/dbschema/seed/config.go",
+		TargetName:   "internal/dbschema/seed/config_gen.go",
 	},
 }
 
