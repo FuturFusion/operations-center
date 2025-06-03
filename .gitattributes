@@ -3,6 +3,8 @@
 
 # Collapse generated and vendored files on GitHub
 *_gen.*             linguist-generated merge=ours
+*_gen_test.*             linguist-generated merge=ours
+*.mapper.go         linguist-generated merge=ours
 go.sum              linguist-generated merge=ours
 go.mod              linguist-generated
 
