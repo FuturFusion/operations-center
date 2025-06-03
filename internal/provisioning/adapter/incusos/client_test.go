@@ -1,0 +1,113 @@
+package incusos_test
+
+import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	incustls "github.com/lxc/incus/v6/shared/tls"
+	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/incusos"
+)
+
+func TestClient_Ping(t *testing.T) {
+	certPEM, keyPEM, err := incustls.GenerateMemCert(true, false)
+	require.NoError(t, err)
+
+	caPool := x509.NewCertPool()
+	caPool.AppendCertsFromPEM(certPEM)
+
+	tests := []struct {
+		name       string
+		certPEM    []byte
+		keyPEM     []byte
+		statusCode int
+		setup      func(*httptest.Server)
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:       "success",
+			certPEM:    certPEM,
+			keyPEM:     keyPEM,
+			statusCode: http.StatusOK,
+			setup:      func(_ *httptest.Server) {},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:       "error - invalid key pair",
+			certPEM:    certPEM,
+			keyPEM:     certPEM, // invalid, should be key
+			statusCode: http.StatusOK,
+			setup:      func(_ *httptest.Server) {},
+
+			assertErr: require.Error,
+		},
+		{
+			name:       "error - connection failure",
+			certPEM:    certPEM,
+			keyPEM:     keyPEM,
+			statusCode: http.StatusInternalServerError,
+			setup: func(server *httptest.Server) {
+				server.Close()
+			},
+
+			assertErr: require.Error,
+		},
+		{
+			name:       "error - unexpected http status code",
+			certPEM:    certPEM,
+			keyPEM:     keyPEM,
+			statusCode: http.StatusInternalServerError,
+			setup:      func(_ *httptest.Server) {},
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tc.statusCode)
+			}))
+			server.TLS = &tls.Config{
+				NextProtos: []string{"h2", "http/1.1"},
+				ClientAuth: tls.RequireAndVerifyClientCert,
+				ClientCAs:  caPool,
+			}
+
+			server.StartTLS()
+			defer server.Close()
+
+			tc.setup(server)
+
+			client := incusos.New(tc.certPEM, tc.keyPEM)
+
+			ctx := context.Background()
+
+			serverCert := pem.EncodeToMemory(&pem.Block{
+				Type:  "CERTIFICATE",
+				Bytes: server.Certificate().Raw,
+			})
+
+			target := provisioning.Server{
+				ConnectionURL: server.URL,
+				Certificate:   string(serverCert),
+			}
+
+			// Run test
+			err = client.Ping(ctx, target)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
