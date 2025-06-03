@@ -178,6 +178,7 @@ var updateFileType = map[UpdateFileType]struct{}{
 	UpdateFileTypeUpdateUsr:                {},
 	UpdateFileTypeUpdateUsrVerity:          {},
 	UpdateFileTypeUpdateUsrVeritySignature: {},
+	UpdateFileTypeApplication:              {},
 }
 
 func (u UpdateFileType) String() string {
