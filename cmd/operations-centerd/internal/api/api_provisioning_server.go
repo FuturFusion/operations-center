@@ -18,12 +18,14 @@ import (
 )
 
 type serverHandler struct {
-	service provisioning.ServerService
+	service           provisioning.ServerService
+	clientCertificate string
 }
 
-func registerProvisioningServerHandler(router Router, authorizer authz.Authorizer, service provisioning.ServerService) {
+func registerProvisioningServerHandler(router Router, authorizer authz.Authorizer, service provisioning.ServerService, clientCertificate string) {
 	handler := &serverHandler{
-		service: service,
+		service:           service,
+		clientCertificate: clientCertificate,
 	}
 
 	// Creating new servers (POST requests for servers) is authenticated using
@@ -212,7 +214,28 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 //	      $ref: "#/definitions/Server"
 //	responses:
 //	  "200":
-//	    $ref: "#/responses/EmptySyncResponse"
+//	    description: Register server response
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: Resgister server response details
+//	          items:
+//	            $ref: "#/definitions/ServerRegistrationResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -259,7 +282,11 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 		return response.Forbidden(fmt.Errorf("Failed creating server: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/servers/"+server.Name)
+	result := api.ServerRegistrationResponse{
+		ClientCertificate: s.clientCertificate,
+	}
+
+	return response.SyncResponseLocation(true, result, "/"+api.APIVersion+"/provisioning/servers/"+server.Name)
 }
 
 // swagger:operation GET /1.0/provisioning/servers/{name} servers server_get

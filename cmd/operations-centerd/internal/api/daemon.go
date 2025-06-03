@@ -343,7 +343,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	registerProvisioningClusterHandler(provisioningClusterRouter, authorizer, clusterSvcWrapped)
 
 	provisioningServerRouter := provisioningRouter.SubGroup("/servers")
-	registerProvisioningServerHandler(provisioningServerRouter, authorizer, serverSvc)
+	registerProvisioningServerHandler(provisioningServerRouter, authorizer, serverSvc, d.clientCertificate)
 
 	updateRouter := provisioningRouter.SubGroup("/updates")
 	registerUpdateHandler(updateRouter, authorizer, updateSvc)

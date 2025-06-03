@@ -159,3 +159,10 @@ type Server struct {
 	// Example: 2024-11-12T16:15:00Z
 	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
 }
+
+// ServerRegistrationResponse defines the response to a successful server registration.
+type ServerRegistrationResponse struct {
+	// ClientCertificate is the certificate in PEM format used by Operations Center
+	// when connecting to servers or clusters.
+	ClientCertificate string `json:"certificate" yaml:"certificate"`
+}
