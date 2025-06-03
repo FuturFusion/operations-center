@@ -285,6 +285,39 @@ func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (ser
 	return _d._base.GetByName(ctx, name)
 }
 
+// PollPendingServers implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) PollPendingServers(ctx context.Context) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.Debug("=> calling PollPendingServers")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method PollPendingServers returned an informative error")
+			} else {
+				log.Error("<= method PollPendingServers returned an error")
+			}
+		} else {
+			log.Debug("<= method PollPendingServers finished")
+		}
+	}()
+	return _d._base.PollPendingServers(ctx)
+}
+
 // Rename implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	log := _d._log.With()
