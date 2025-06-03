@@ -73,7 +73,9 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		ClientCertificateFilename: "client.crt",
 		ClientKeyFilename:         "client.key",
 
-		UpdatesSourcePollInterval: time.Hour,
+		UpdatesSourcePollInterval: 1 * time.Hour,
+
+		PendingServerPollInterval: 1 * time.Minute,
 	}
 
 	err = cfg.LoadConfig(c.env.VarDir())

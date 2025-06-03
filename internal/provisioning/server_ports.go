@@ -16,6 +16,8 @@ type ServerService interface {
 	Update(ctx context.Context, server Server) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
+
+	PollPendingServers(ctx context.Context) error
 }
 
 type ServerRepo interface {
@@ -28,4 +30,8 @@ type ServerRepo interface {
 	Update(ctx context.Context, server Server) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
+}
+
+type ServerClientPort interface {
+	Ping(ctx context.Context, server Server) error
 }

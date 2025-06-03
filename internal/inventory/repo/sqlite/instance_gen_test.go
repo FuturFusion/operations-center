@@ -16,6 +16,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -47,15 +48,25 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	testServerA := provisioning.Server{
 		Name:          "one",
 		ConnectionURL: "https://server-one/",
-		Type:          api.ServerTypeIncus,
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Certificate: `-----BEGIN CERTIFICATE-----
+server-one
+-----END CERTIFICATE-----
+`,
+		Type:        api.ServerTypeIncus,
+		Status:      api.ServerStatusReady,
+		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	testServerB := provisioning.Server{
 		Name:          "two",
 		ConnectionURL: "https://server-two/",
-		Type:          api.ServerTypeIncus,
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Certificate: `-----BEGIN CERTIFICATE-----
+server-one
+-----END CERTIFICATE-----
+`,
+		Type:        api.ServerTypeIncus,
+		Status:      api.ServerStatusReady,
+		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	instanceA := inventory.Instance{
@@ -80,6 +91,12 @@ func TestInstanceDatabaseActions(t *testing.T) {
 
 	instanceB.DeriveUUID()
 
+	client := &adapterMock.ServerClientPortMock{
+		PingFunc: func(ctx context.Context, server provisioning.Server) error {
+			return nil
+		},
+	}
+
 	ctx := context.Background()
 
 	// Create a new temporary database.
@@ -100,7 +117,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	tokenSvc := provisioning.NewTokenService(provisioningSqlite.NewToken(tx))
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(tx), tokenSvc)
+	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(tx), client, tokenSvc)
 	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(tx), serverSvc, nil)
 
 	instance := inventorySqlite.NewInstance(tx)

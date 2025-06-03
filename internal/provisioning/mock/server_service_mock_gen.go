@@ -43,6 +43,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 //				panic("mock out the GetByName method")
 //			},
+//			PollPendingServersFunc: func(ctx context.Context) error {
+//				panic("mock out the PollPendingServers method")
+//			},
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
@@ -76,6 +79,9 @@ type ServerServiceMock struct {
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Server, error)
+
+	// PollPendingServersFunc mocks the PollPendingServers method.
+	PollPendingServersFunc func(ctx context.Context) error
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
@@ -132,6 +138,11 @@ type ServerServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// PollPendingServers holds details about calls to the PollPendingServers method.
+		PollPendingServers []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// Rename holds details about calls to the Rename method.
 		Rename []struct {
 			// Ctx is the ctx argument value.
@@ -156,6 +167,7 @@ type ServerServiceMock struct {
 	lockGetAllNamesWithFilter sync.RWMutex
 	lockGetAllWithFilter      sync.RWMutex
 	lockGetByName             sync.RWMutex
+	lockPollPendingServers    sync.RWMutex
 	lockRename                sync.RWMutex
 	lockUpdate                sync.RWMutex
 }
@@ -405,6 +417,38 @@ func (mock *ServerServiceMock) GetByNameCalls() []struct {
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
 	mock.lockGetByName.RUnlock()
+	return calls
+}
+
+// PollPendingServers calls PollPendingServersFunc.
+func (mock *ServerServiceMock) PollPendingServers(ctx context.Context) error {
+	if mock.PollPendingServersFunc == nil {
+		panic("ServerServiceMock.PollPendingServersFunc: method is nil but ServerService.PollPendingServers was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockPollPendingServers.Lock()
+	mock.calls.PollPendingServers = append(mock.calls.PollPendingServers, callInfo)
+	mock.lockPollPendingServers.Unlock()
+	return mock.PollPendingServersFunc(ctx)
+}
+
+// PollPendingServersCalls gets all the calls that were made to PollPendingServers.
+// Check the length with:
+//
+//	len(mockedServerService.PollPendingServersCalls())
+func (mock *ServerServiceMock) PollPendingServersCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockPollPendingServers.RLock()
+	calls = mock.calls.PollPendingServers
+	mock.lockPollPendingServers.RUnlock()
 	return calls
 }
 

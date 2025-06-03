@@ -15,6 +15,7 @@ import (
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
@@ -45,14 +46,24 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	testServerA := provisioning.Server{
 		Name:            "one",
 		ConnectionURL:   "https://server-one/",
+		Certificate:     `-----BEGIN CERTIFICATE-----
+server-one
+-----END CERTIFICATE-----
+`,
 		Type:            api.ServerTypeIncus,
+		Status:          api.ServerStatusReady,
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	testServerB := provisioning.Server{
 		Name:            "two",
 		ConnectionURL:   "https://server-two/",
+		Certificate:     `-----BEGIN CERTIFICATE-----
+server-one
+-----END CERTIFICATE-----
+`,
 		Type:            api.ServerTypeIncus,
+		Status:          api.ServerStatusReady,
 		LastUpdated:     time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
@@ -98,6 +109,12 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 
 	{{ .Name | camelcase }}B.DeriveUUID()
 
+	client := &adapterMock.ServerClientPortMock{
+		PingFunc: func(ctx context.Context, server provisioning.Server) error {
+			return nil
+		},
+	}
+
 	ctx := context.Background()
 
 	// Create a new temporary database.
@@ -118,7 +135,7 @@ func Test{{ .Name | pascalcase }}DatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	tokenSvc :=  provisioning.NewTokenService(provisioningSqlite.NewToken(tx))
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(tx), tokenSvc)
+	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(tx), client, tokenSvc)
 	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(tx), serverSvc, nil)
 
 	{{ .Name | camelcase }} := inventorySqlite.New{{ .Name | pascalcase }}(tx)

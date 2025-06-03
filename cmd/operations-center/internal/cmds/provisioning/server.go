@@ -109,11 +109,11 @@ func (c *cmdServerList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Cluster", "Name", "Connection URL", "Type", "Last Updated"}
+	header := []string{"Cluster", "Name", "Connection URL", "Type", "Status", "Last Updated"}
 	data := [][]string{}
 
 	for _, server := range servers {
-		data = append(data, []string{server.Cluster, server.Name, server.ConnectionURL, string(server.Type), server.LastUpdated.String()})
+		data = append(data, []string{server.Cluster, server.Name, server.ConnectionURL, string(server.Type), server.Status.String(), server.LastUpdated.String()})
 	}
 
 	sort.ColumnsNaturally(data)
@@ -194,6 +194,7 @@ func (c *cmddServerShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Name: %s\n", server.Name)
 	fmt.Printf("Connection URL: %s\n", server.ConnectionURL)
 	fmt.Printf("Type: %s\n", server.Type)
+	fmt.Printf("Status: %s\n", server.Status.String())
 	fmt.Printf("Last Updated: %s\n", server.LastUpdated.String())
 
 	return nil

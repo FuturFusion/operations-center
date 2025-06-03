@@ -27,18 +27,28 @@ func TestServerDatabaseActions(t *testing.T) {
 		Name:          "one",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
-		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
-		LastUpdated:   fixedDate,
+		Certificate: `-----BEGIN CERTIFICATE-----
+server A
+-----END CERTIFICATE-----
+`,
+		HardwareData: incusapi.Resources{},
+		VersionData:  json.RawMessage(nil),
+		Status:       api.ServerStatusReady,
+		LastUpdated:  fixedDate,
 	}
 
 	serverB := provisioning.Server{
 		Name:          "two",
 		Type:          api.ServerTypeMigrationManager,
 		ConnectionURL: "https://two/",
-		HardwareData:  incusapi.Resources{},
-		VersionData:   json.RawMessage(nil),
-		LastUpdated:   fixedDate,
+		Certificate: `-----BEGIN CERTIFICATE-----
+server B
+-----END CERTIFICATE-----
+`,
+		HardwareData: incusapi.Resources{},
+		VersionData:  json.RawMessage(nil),
+		Status:       api.ServerStatusReady,
+		LastUpdated:  fixedDate,
 	}
 
 	ctx := context.Background()
@@ -61,7 +71,9 @@ func TestServerDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	server := sqlite.NewServer(tx)
-	serverSvc := provisioning.NewServerService(server, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+	serverSvc := provisioning.NewServerService(server, nil, nil,
+		provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
+	)
 
 	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), serverSvc, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
 

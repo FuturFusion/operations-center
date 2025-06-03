@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -17,12 +18,14 @@ import (
 )
 
 type serverHandler struct {
-	service provisioning.ServerService
+	service           provisioning.ServerService
+	clientCertificate string
 }
 
-func registerProvisioningServerHandler(router Router, authorizer authz.Authorizer, service provisioning.ServerService) {
+func registerProvisioningServerHandler(router Router, authorizer authz.Authorizer, service provisioning.ServerService, clientCertificate string) {
 	handler := &serverHandler{
-		service: service,
+		service:           service,
+		clientCertificate: clientCertificate,
 	}
 
 	// Creating new servers (POST requests for servers) is authenticated using
@@ -170,6 +173,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 				ConnectionURL: server.ConnectionURL,
 				HardwareData:  server.HardwareData,
 				VersionData:   server.VersionData,
+				Status:        server.Status,
 				LastUpdated:   server.LastUpdated,
 			})
 		}
@@ -210,7 +214,28 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 //	      $ref: "#/definitions/Server"
 //	responses:
 //	  "200":
-//	    $ref: "#/responses/EmptySyncResponse"
+//	    description: Register server response
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: Resgister server response details
+//	          items:
+//	            $ref: "#/definitions/ServerRegistrationResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -232,11 +257,23 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("Request decoding: %v", err))
 	}
 
+	// Ensure presence of client certificate.
+	if len(r.TLS.PeerCertificates) == 0 {
+		return response.BadRequest(fmt.Errorf("No client certificate provided"))
+	}
+
+	// Encode client certificate in pem format
+	certificate := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: r.TLS.PeerCertificates[0].Raw,
+	})
+
 	_, err = s.service.Create(r.Context(), token, provisioning.Server{
 		Cluster:       ptr.To(server.Cluster),
 		Name:          server.Name,
 		Type:          server.Type,
 		ConnectionURL: server.ConnectionURL,
+		Certificate:   string(certificate),
 		HardwareData:  server.HardwareData,
 		VersionData:   server.VersionData,
 		LastUpdated:   server.LastUpdated,
@@ -245,7 +282,11 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 		return response.Forbidden(fmt.Errorf("Failed creating server: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/servers/"+server.Name)
+	result := api.ServerRegistrationResponse{
+		ClientCertificate: s.clientCertificate,
+	}
+
+	return response.SyncResponseLocation(true, result, "/"+api.APIVersion+"/provisioning/servers/"+server.Name)
 }
 
 // swagger:operation GET /1.0/provisioning/servers/{name} servers server_get
@@ -299,6 +340,7 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 			ConnectionURL: server.ConnectionURL,
 			HardwareData:  server.HardwareData,
 			VersionData:   server.VersionData,
+			Status:        server.Status,
 			LastUpdated:   server.LastUpdated,
 		},
 		server,
@@ -368,8 +410,10 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 		Name:          server.Name,
 		Type:          server.Type,
 		ConnectionURL: server.ConnectionURL,
+		Certificate:   currentServer.Certificate,
 		HardwareData:  server.HardwareData,
 		VersionData:   server.VersionData,
+		Status:        server.Status,
 		LastUpdated:   server.LastUpdated,
 	})
 	if err != nil {

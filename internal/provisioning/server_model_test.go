@@ -8,6 +8,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestServer_Validate(t *testing.T) {
@@ -23,6 +24,11 @@ func TestServer_Validate(t *testing.T) {
 				Name:          "one",
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
 			},
 
 			assertErr: require.NoError,
@@ -33,6 +39,11 @@ func TestServer_Validate(t *testing.T) {
 				Name:          "", // invalid
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -46,6 +57,11 @@ func TestServer_Validate(t *testing.T) {
 				Name:          "one",
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "", // invalid
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -59,6 +75,44 @@ func TestServer_Validate(t *testing.T) {
 				Name:          "one",
 				Cluster:       ptr.To("one"),
 				ConnectionURL: ":|\\", // invalid
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - certificate empty",
+			server: provisioning.Server{
+				Name:          "one",
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate:   ``, // invalid
+				Status:        api.ServerStatusReady,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - status invalid",
+			server: provisioning.Server{
+				Name:          "one",
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatus("invalid"), // invalid
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {

@@ -136,6 +136,20 @@ func (_d ServerServiceWithPrometheus) GetByName(ctx context.Context, name string
 	return _d.base.GetByName(ctx, name)
 }
 
+// PollPendingServers implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) PollPendingServers(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PollPendingServers", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.PollPendingServers(ctx)
+}
+
 // Rename implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	_since := time.Now()

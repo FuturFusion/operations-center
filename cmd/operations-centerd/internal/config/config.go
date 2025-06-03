@@ -28,6 +28,8 @@ type Config struct {
 	// and CERTIFICATE (ASN.1 DER format).
 	UpdateSignatureVerificationPEM string `yaml:"update.signature_verification_pem"`
 
+	PendingServerPollInterval time.Duration `yaml:"-"`
+
 	// An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
 	TrustedTLSClientCertFingerprints []string `yaml:"trusted_tls_client_cert_fingerprints"`
 

@@ -22,8 +22,9 @@ func New(clientCert string, clientKey string) inventory.ServerClient {
 
 func (s serverClient) getClient(ctx context.Context, connectionURL string) (incus.InstanceServer, error) {
 	return incus.ConnectIncusWithContext(ctx, connectionURL, &incus.ConnectionArgs{
-		TLSClientCert:      s.clientCert,
-		TLSClientKey:       s.clientKey,
+		TLSClientCert: s.clientCert,
+		TLSClientKey:  s.clientKey,
+		// FIXME: connection should be verified with the certificate received from the server/cluster.
 		InsecureSkipVerify: true,
 	})
 }

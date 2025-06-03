@@ -38,6 +38,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/filecache"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/github"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/incusos"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/local"
 	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
@@ -177,6 +178,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 			provisioningRepoMiddleware.NewServerRepoWithSlog(
 				provisioningSqlite.NewServer(dbWithTransaction),
 				slog.Default(),
+			),
+			incusos.New(
+				[]byte(d.clientCertificate),
+				[]byte(d.clientKey),
 			),
 			tokenSvc,
 		),
@@ -338,7 +343,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	registerProvisioningClusterHandler(provisioningClusterRouter, authorizer, clusterSvcWrapped)
 
 	provisioningServerRouter := provisioningRouter.SubGroup("/servers")
-	registerProvisioningServerHandler(provisioningServerRouter, authorizer, serverSvc)
+	registerProvisioningServerHandler(provisioningServerRouter, authorizer, serverSvc, d.clientCertificate)
 
 	updateRouter := provisioningRouter.SubGroup("/updates")
 	registerUpdateHandler(updateRouter, authorizer, updateSvc)
@@ -421,7 +426,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	})
 
-	refreshTask := func(ctx context.Context) {
+	// Start background task to refresh updates from the sources.
+	refreshUpdatesFromSourcesTask := func(ctx context.Context) {
 		slog.InfoContext(ctx, "Refresh updates triggered")
 		err := updateSvc.Refresh(ctx)
 		if err != nil {
@@ -436,23 +442,28 @@ func (d *Daemon) Start(ctx context.Context) error {
 		updateSourceOptions = append(updateSourceOptions, task.SkipFirst)
 	}
 
-	updateSourceStop, _ := task.Start(ctx, refreshTask, task.Every(d.config.UpdatesSourcePollInterval, updateSourceOptions...))
+	updateSourceTaskStop, _ := task.Start(ctx, refreshUpdatesFromSourcesTask, task.Every(d.config.UpdatesSourcePollInterval, updateSourceOptions...))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
-		// Default grace period for tasks to finish during shutdown, if no deadline
-		// is defined on the context.
-		d := 60 * time.Second
-
-		deadline, ok := ctx.Deadline()
-		if ok {
-			deadlineDuration := time.Until(deadline)
-			if deadlineDuration > 0 {
-				d = deadlineDuration
-			}
-		}
-
-		return updateSourceStop(d)
+		return updateSourceTaskStop(deadlineFrom(ctx, 60*time.Second))
 	})
 
+	// Start background task to poll servers in pending state to become available.
+	pollPendingServersTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "Polling for pending servers triggered")
+		err := serverSvc.PollPendingServers(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Polling for pending servers failed", logger.Err(err))
+		} else {
+			slog.InfoContext(ctx, "Polling for pending servers completed")
+		}
+	}
+
+	pollPendingServersTaskStop, _ := task.Start(ctx, pollPendingServersTask, task.Every(d.config.PendingServerPollInterval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return pollPendingServersTaskStop(deadlineFrom(ctx, 1*time.Second))
+	})
+
+	// Wait for immediate errors during startup.
 	select {
 	case <-errgroupCtx.Done():
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -485,4 +496,18 @@ type httpErrorLogger struct{}
 func (httpErrorLogger) Write(p []byte) (n int, err error) {
 	slog.ErrorContext(context.Background(), string(p)) //nolint:sloglint // error message coming from the http server is the message.
 	return len(p), nil
+}
+
+// deadlineFrom extracts the deadline from the provided context if present and not yet expired.
+// Otherwise the defaultDeadline is returned.
+func deadlineFrom(ctx context.Context, defaultDeadline time.Duration) time.Duration {
+	deadline, ok := ctx.Deadline()
+	if ok {
+		deadlineDuration := time.Until(deadline)
+		if deadlineDuration > 0 {
+			return deadlineDuration
+		}
+	}
+
+	return defaultDeadline
 }

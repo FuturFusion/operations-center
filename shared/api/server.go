@@ -25,6 +25,10 @@ var serverTypes = map[ServerType]struct{}{
 	ServerTypeOperationsCenter: {},
 }
 
+func (s ServerType) String() string {
+	return string(s)
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (s ServerType) MarshalText() ([]byte, error) {
 	return []byte(s), nil
@@ -63,6 +67,62 @@ func (s *ServerType) Scan(value any) error {
 	}
 }
 
+type ServerStatus string
+
+const (
+	ServerStatusUnknown ServerStatus = "unknown"
+	ServerStatusPending ServerStatus = "pending"
+	ServerStatusReady   ServerStatus = "ready"
+)
+
+var serverStatuses = map[ServerStatus]struct{}{
+	ServerStatusUnknown: {},
+	ServerStatusPending: {},
+	ServerStatusReady:   {},
+}
+
+func (s ServerStatus) String() string {
+	return string(s)
+}
+
+// MarshalText implements the encoding.TextMarshaler interface.
+func (s ServerStatus) MarshalText() ([]byte, error) {
+	return []byte(s), nil
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (s *ServerStatus) UnmarshalText(text []byte) error {
+	_, ok := serverStatuses[ServerStatus(text)]
+	if !ok {
+		return fmt.Errorf("%q is not a valid server type", string(text))
+	}
+
+	*s = ServerStatus(text)
+
+	return nil
+}
+
+// Value implements the sql driver.Valuer interface.
+func (s ServerStatus) Value() (driver.Value, error) {
+	return string(s), nil
+}
+
+// Scan implements the sql.Scanner interface.
+func (s *ServerStatus) Scan(value any) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid server status")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return s.UnmarshalText([]byte(v))
+	case []byte:
+		return s.UnmarshalText(v)
+	default:
+		return fmt.Errorf("type %T is not supported for server status", value)
+	}
+}
+
 // Server defines a server running Hypervisor OS.
 //
 // swagger:model
@@ -90,7 +150,19 @@ type Server struct {
 	// Example: ...
 	VersionData json.RawMessage `json:"version_data" yaml:"version_data"` // FIXME: it is not yet clear, how the structure of the version information will actually look like.
 
+	// Status contains the status the server is currently in from the point of view of Operations Center.
+	// Possible values for status are: pending, ready
+	// Example: pending
+	Status ServerStatus
+
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
 	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
+}
+
+// ServerRegistrationResponse defines the response to a successful server registration.
+type ServerRegistrationResponse struct {
+	// ClientCertificate is the certificate in PEM format used by Operations Center
+	// when connecting to servers or clusters.
+	ClientCertificate string `json:"certificate" yaml:"certificate"`
 }
