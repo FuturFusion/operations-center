@@ -33,19 +33,16 @@ type UpdateRepo interface {
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 }
 
+type UpdateFilesRepo interface {
+	Get(ctx context.Context, update Update, filename string) (io.ReadCloser, int, error)
+	Put(ctx context.Context, update Update, filename string, content io.ReadCloser) error
+	Delete(ctx context.Context, update Update) error
+	CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (*Update, error)
+}
+
 // A UpdateSourcePort is a source for updates (e.g. IncusOS or HypervisorOS).
 type UpdateSourcePort interface {
 	GetLatest(ctx context.Context, limit int) (Updates, error)
 	GetUpdateAllFiles(ctx context.Context, update Update) (UpdateFiles, error)
 	GetUpdateFileByFilename(ctx context.Context, update Update, filename string) (io.ReadCloser, int, error)
-}
-
-type UpdateSourceWithForgetPort interface {
-	UpdateSourcePort
-	ForgetUpdate(ctx context.Context, update Update) error
-}
-
-type UpdateSourceWithForgetAndAddPort interface {
-	UpdateSourceWithForgetPort
-	Add(ctx context.Context, tarReader *tar.Reader) (*Update, error)
 }
