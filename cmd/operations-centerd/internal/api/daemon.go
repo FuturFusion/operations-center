@@ -36,13 +36,12 @@ import (
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/filecache"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/github"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/incusos"
-	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/local"
 	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
 	provisioningServiceMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/middleware"
+	"github.com/FuturFusion/operations-center/internal/provisioning/repo/localfs"
 	provisioningRepoMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/repo/middleware"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
@@ -212,8 +211,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 	}
 
-	localSource, err := local.New(
-		filepath.Join(d.env.VarDir(), "updates_local"),
+	repoUpdateFiles, err := localfs.New(
+		filepath.Join(d.env.VarDir(), "updates"),
 		verifier,
 	)
 	if err != nil {
@@ -222,13 +221,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	updateServiceOptions := []provisioning.UpdateServiceOption{
 		provisioning.UpdateServiceWithLatestLimit(3),
-		provisioning.UpdateServiceWithSource(
-			"local",
-			provisioningAdapterMiddleware.NewUpdateSourceWithForgetAndAddPortWithSlog(
-				localSource,
-				slog.Default(),
-			),
-		),
 	}
 
 	if d.config.UpdatesSource != "" {
@@ -238,19 +230,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 				gh = gh.WithAuthToken(d.config.GithubToken)
 			}
 
-			githubSourceWithCache, err := filecache.New(
-				github.New(gh),
-				filepath.Join(d.env.VarDir(), "updates_cache"),
-			)
-			if err != nil {
-				return err
-			}
-
 			updateServiceOptions = append(updateServiceOptions,
 				provisioning.UpdateServiceWithSource(
 					"github.com/lxc/incus-os",
-					provisioningAdapterMiddleware.NewUpdateSourceWithForgetPortWithSlog(
-						githubSourceWithCache,
+					provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
+						github.New(gh),
 						slog.Default(),
 					),
 				),
@@ -261,22 +245,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 				return fmt.Errorf(`config "update.source" is not a valid URL: %w`, err)
 			}
 
-			updateServerWithCache, err := filecache.New(
-				updateserver.New(
-					d.config.UpdatesSource,
-					verifier,
-				),
-				filepath.Join(d.env.VarDir(), "updates_cache"),
-			)
-			if err != nil {
-				return err
-			}
-
 			updateServiceOptions = append(updateServiceOptions,
 				provisioning.UpdateServiceWithSource(
 					origin.Host,
-					provisioningAdapterMiddleware.NewUpdateSourceWithForgetPortWithSlog(
-						updateServerWithCache,
+					provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
+						updateserver.New(
+							d.config.UpdatesSource,
+							verifier,
+						),
 						slog.Default(),
 					),
 				),
@@ -294,6 +270,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 						return errors.Is(err, domain.ErrNotFound)
 					},
 				),
+			),
+			provisioningRepoMiddleware.NewUpdateFilesRepoWithSlog(
+				repoUpdateFiles,
+				slog.Default(),
 			),
 			updateServiceOptions...,
 		),
