@@ -269,14 +269,9 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 	})
 
 	_, err = s.service.Create(r.Context(), token, provisioning.Server{
-		Cluster:       ptr.To(server.Cluster),
 		Name:          server.Name,
-		Type:          server.Type,
 		ConnectionURL: server.ConnectionURL,
 		Certificate:   string(certificate),
-		HardwareData:  server.HardwareData,
-		VersionData:   server.VersionData,
-		LastUpdated:   server.LastUpdated,
 	})
 	if err != nil {
 		return response.Forbidden(fmt.Errorf("Failed creating server: %w", err))
