@@ -86,7 +86,7 @@ func registerUpdateHandler(router Router, authorizer authz.Authorizer, service p
 //
 //	Get the updates
 //
-//	Returns a list of updates (structs).
+//	Returns a list of updates (structs) sorted by version.
 //
 //	---
 //	produces:
