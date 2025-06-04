@@ -2,6 +2,7 @@ package provisioning_test
 
 import (
 	"database/sql/driver"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -37,6 +38,148 @@ func TestUpdate_Filter(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			require.Equal(t, tc.want, tc.filter.String())
+		})
+	}
+}
+
+func TestUpdatesSort(t *testing.T) {
+	tests := []struct {
+		name string
+		in   provisioning.Updates
+
+		want provisioning.Updates
+	}{
+		{
+			name: "pre-sorted",
+			in: provisioning.Updates{
+				provisioning.Update{
+					ID:      "3",
+					Version: "3",
+				},
+				provisioning.Update{
+					ID:      "2",
+					Version: "2",
+				},
+				provisioning.Update{
+					ID:      "1",
+					Version: "1",
+				},
+			},
+			want: provisioning.Updates{
+				provisioning.Update{
+					ID:      "3",
+					Version: "3",
+				},
+				provisioning.Update{
+					ID:      "2",
+					Version: "2",
+				},
+				provisioning.Update{
+					ID:      "1",
+					Version: "1",
+				},
+			},
+		},
+		{
+			name: "sort",
+			in: provisioning.Updates{
+				provisioning.Update{
+					ID:      "2",
+					Version: "2",
+				},
+				provisioning.Update{
+					ID:      "1",
+					Version: "1",
+				},
+				provisioning.Update{
+					ID:      "3",
+					Version: "3",
+				},
+			},
+			want: provisioning.Updates{
+				provisioning.Update{
+					ID:      "3",
+					Version: "3",
+				},
+				provisioning.Update{
+					ID:      "2",
+					Version: "2",
+				},
+				provisioning.Update{
+					ID:      "1",
+					Version: "1",
+				},
+			},
+		},
+		{
+			name: "sort dns serial",
+			in: provisioning.Updates{
+				provisioning.Update{
+					ID:      "2",
+					Version: "202503010000",
+				},
+				provisioning.Update{
+					ID:      "1",
+					Version: "202501010000",
+				},
+				provisioning.Update{
+					ID:      "3",
+					Version: "202506010000",
+				},
+			},
+			want: provisioning.Updates{
+				provisioning.Update{
+					ID:      "3",
+					Version: "202506010000",
+				},
+				provisioning.Update{
+					ID:      "2",
+					Version: "202503010000",
+				},
+				provisioning.Update{
+					ID:      "1",
+					Version: "202501010000",
+				},
+			},
+		},
+		{
+			name: "not numeric version",
+			in: provisioning.Updates{
+				provisioning.Update{
+					ID:      "2",
+					Version: "not numberic",
+				},
+				provisioning.Update{
+					ID:      "1",
+					Version: "1",
+				},
+				provisioning.Update{
+					ID:      "3",
+					Version: "3",
+				},
+			},
+			want: provisioning.Updates{
+				provisioning.Update{
+					ID:      "3",
+					Version: "3",
+				},
+				provisioning.Update{
+					ID:      "1",
+					Version: "1",
+				},
+				provisioning.Update{
+					ID:      "2",
+					Version: "not numberic",
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			sort.Sort(tc.in)
+
+			require.Equal(t, tc.want, tc.in)
 		})
 	}
 }
