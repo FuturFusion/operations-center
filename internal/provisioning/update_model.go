@@ -4,7 +4,10 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/url"
+	"sort"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,6 +29,31 @@ type Update struct {
 }
 
 type Updates []Update
+
+var _ sort.Interface = Updates{}
+
+func (u Updates) Len() int {
+	return len(u)
+}
+
+func (u Updates) Less(i, j int) bool {
+	iVersion, err := strconv.ParseInt(u[i].Version, 16, 64)
+	if err != nil {
+		iVersion = math.MinInt // invalid versions are moved to the end.
+	}
+
+	jVersion, err := strconv.ParseInt(u[j].Version, 16, 64)
+	if err != nil {
+		jVersion = math.MinInt // invalid versions are moved to the end.
+	}
+
+	// Higher numbers should be returned first and are therefore considered to be less.
+	return iVersion > jVersion
+}
+
+func (u Updates) Swap(i, j int) {
+	u[i], u[j] = u[j], u[i]
+}
 
 type UpdateFile struct {
 	Filename     string                  `json:"filename"`

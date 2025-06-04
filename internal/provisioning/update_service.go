@@ -83,7 +83,14 @@ func (s updateService) CreateFromArchive(ctx context.Context, tarReader *tar.Rea
 }
 
 func (s updateService) GetAll(ctx context.Context) (Updates, error) {
-	return s.repo.GetAll(ctx)
+	updates, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Sort(updates)
+
+	return updates, nil
 }
 
 func (s updateService) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
@@ -103,6 +110,8 @@ func (s updateService) GetAllWithFilter(ctx context.Context, filter UpdateFilter
 	if err != nil {
 		return nil, err
 	}
+
+	sort.Sort(updates)
 
 	return updates, nil
 }
