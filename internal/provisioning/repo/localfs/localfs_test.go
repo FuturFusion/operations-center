@@ -1,4 +1,4 @@
-package local
+package localfs
 
 import (
 	"archive/tar"
@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"testing/iotest"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,237 +21,50 @@ import (
 	"github.com/FuturFusion/operations-center/internal/file"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/signature"
+	"github.com/FuturFusion/operations-center/internal/testing/boom"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func TestLocal_GetLatest(t *testing.T) {
-	tests := []struct {
-		name        string
-		setupTmpDir func(t *testing.T, destDir string)
+// import (
+// 	"archive/tar"
+// 	"bytes"
+// 	"context"
+// 	"crypto/sha256"
+// 	"embed"
+// 	"encoding/hex"
+// 	"encoding/json"
+// 	"io"
+// 	"os"
+// 	"path/filepath"
+// 	"testing"
+// 	"time"
 
-		assertErr require.ErrorAssertionFunc
-		updates   provisioning.Updates
-	}{
-		{
-			name: "success - empty",
-			setupTmpDir: func(t *testing.T, destDir string) {
-				t.Helper()
-			},
+// 	"github.com/google/uuid"
+// 	"github.com/stretchr/testify/require"
 
-			assertErr: require.NoError,
-			updates:   provisioning.Updates{},
-		},
-		{
-			name: "success",
-			setupTmpDir: func(t *testing.T, destDir string) {
-				t.Helper()
-				writeUpdate(t, destDir, "0", provisioning.Update{
-					Origin:      "testdata",
-					Version:     "1",
-					PublishedAt: time.Date(2025, 5, 21, 9, 3, 24, 0, time.UTC),
-					Channel:     "daily",
-					Severity:    api.UpdateSeverityNone,
-				})
-			},
+// 	"github.com/FuturFusion/operations-center/internal/file"
+// 	"github.com/FuturFusion/operations-center/internal/provisioning"
+// 	"github.com/FuturFusion/operations-center/internal/signature"
+// 	"github.com/FuturFusion/operations-center/shared/api"
+// )
 
-			assertErr: require.NoError,
-			updates: provisioning.Updates{
-				provisioning.Update{
-					UUID:        uuid.MustParse(`8be8344e-64e0-57f5-a7f6-a866231eda68`),
-					Origin:      "testdata (local)",
-					Version:     "1",
-					PublishedAt: time.Date(2025, 5, 21, 9, 3, 24, 0, time.UTC),
-					Channel:     "daily",
-					Severity:    api.UpdateSeverityNone,
-					Changelog:   `changelog`,
-				},
-			},
-		},
-		{
-			name: "success - limit",
-			setupTmpDir: func(t *testing.T, destDir string) {
-				t.Helper()
-				writeUpdate(t, destDir, "0", provisioning.Update{
-					Origin:      "testdata",
-					Version:     "1",
-					PublishedAt: time.Date(2025, 5, 21, 9, 3, 24, 0, time.UTC),
-					Channel:     "daily",
-					Severity:    api.UpdateSeverityNone,
-				})
+// func writeUpdate(t *testing.T, destDir string, updateID string, update provisioning.Update) {
+// 	t.Helper()
 
-				writeUpdate(t, destDir, "1", provisioning.Update{
-					Origin:      "testdata",
-					Version:     "0",
-					PublishedAt: time.Date(2024, 0, 0, 0, 0, 0, 0, time.UTC), // older file, is not returned
-					Channel:     "daily",
-					Severity:    api.UpdateSeverityNone,
-				})
-			},
+// 	err := os.MkdirAll(filepath.Join(destDir, updateID), 0o700)
+// 	require.NoError(t, err)
 
-			assertErr: require.NoError,
-			updates: provisioning.Updates{
-				provisioning.Update{
-					UUID:        uuid.MustParse(`8be8344e-64e0-57f5-a7f6-a866231eda68`),
-					Origin:      "testdata (local)",
-					Version:     "1",
-					PublishedAt: time.Date(2025, 5, 21, 9, 3, 24, 0, time.UTC),
-					Channel:     "daily",
-					Severity:    api.UpdateSeverityNone,
-					Changelog:   `changelog`,
-				},
-			},
-		},
-		{
-			name: "success - invalid update directory is skipped",
-			setupTmpDir: func(t *testing.T, destDir string) {
-				t.Helper()
-				writeUpdate(t, destDir, "0", provisioning.Update{
-					Origin:      "testdata",
-					Version:     "1",
-					PublishedAt: time.Date(2025, 5, 21, 9, 3, 24, 0, time.UTC),
-					Channel:     "daily",
-					Severity:    api.UpdateSeverityNone,
-				})
+// 	body, err := json.Marshal(update)
+// 	require.NoError(t, err)
 
-				err := os.MkdirAll(filepath.Join(destDir, "invalid"), 0o700) // invalid update directory, does not have update.json
-				require.NoError(t, err)
-			},
+// 	err = os.WriteFile(filepath.Join(destDir, updateID, "update.json"), body, 0o600)
+// 	require.NoError(t, err)
 
-			assertErr: require.NoError,
-			updates: provisioning.Updates{
-				provisioning.Update{
-					UUID:        uuid.MustParse(`8be8344e-64e0-57f5-a7f6-a866231eda68`),
-					Origin:      "testdata (local)",
-					Version:     "1",
-					PublishedAt: time.Date(2025, 5, 21, 9, 3, 24, 0, time.UTC),
-					Channel:     "daily",
-					Severity:    api.UpdateSeverityNone,
-					Changelog:   `changelog`,
-				},
-			},
-		},
-		{
-			name: "error - storage directory does not exist",
-			setupTmpDir: func(t *testing.T, destDir string) {
-				t.Helper()
-				err := os.RemoveAll(destDir)
-				require.NoError(t, err)
-			},
+// 	err = os.WriteFile(filepath.Join(destDir, updateID, "changelog.txt"), []byte(`changelog`), 0o600)
+// 	require.NoError(t, err)
+// }
 
-			assertErr: require.Error,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			tmpDir := t.TempDir()
-			update, err := New(tmpDir, nil)
-			require.NoError(t, err)
-			tc.setupTmpDir(t, tmpDir)
-
-			// Run test
-			gotUpdates, err := update.GetLatest(context.Background(), 1)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.updates, gotUpdates)
-		})
-	}
-}
-
-func TestLocal_GetUpdateAllFiles(t *testing.T) {
-	tests := []struct {
-		name        string
-		setupTmpDir func(t *testing.T, destDir string)
-		update      provisioning.Update
-
-		assertErr   require.ErrorAssertionFunc
-		updateFiles provisioning.UpdateFiles
-	}{
-		{
-			name: "success",
-			setupTmpDir: func(t *testing.T, destDir string) {
-				t.Helper()
-				writeUpdate(t, destDir, uuid.UUID{}.String(), provisioning.Update{
-					Severity: api.UpdateSeverityNone,
-					Files: provisioning.UpdateFiles{
-						provisioning.UpdateFile{
-							Filename:  "dummy.txt",
-							Size:      0,
-							Sha256:    "0",
-							Component: api.UpdateFileComponentDebug,
-							Type:      api.UpdateFileTypeImageManifest,
-							URL:       "http://dummy.org/dummy.txt",
-						},
-					},
-				})
-			},
-			update: provisioning.Update{
-				UUID: uuid.UUID{},
-			},
-
-			assertErr: require.NoError,
-			updateFiles: provisioning.UpdateFiles{
-				provisioning.UpdateFile{
-					Filename:     "dummy.txt",
-					Size:         0,
-					Sha256:       "0",
-					Component:    api.UpdateFileComponentDebug,
-					Type:         api.UpdateFileTypeImageManifest,
-					URL:          "http://dummy.org/dummy.txt",
-					Architecture: api.Architecture64BitIntelX86,
-				},
-			},
-		},
-		{
-			name: "error - update does not exist",
-			setupTmpDir: func(t *testing.T, destDir string) {
-				t.Helper()
-			},
-			update: provisioning.Update{
-				UUID: uuid.UUID{},
-			},
-
-			assertErr: require.Error,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			tmpDir := t.TempDir()
-			tc.setupTmpDir(t, tmpDir)
-			update, err := New(tmpDir, nil)
-			require.NoError(t, err)
-
-			// Run test
-			gotUpdateFiles, err := update.GetUpdateAllFiles(context.Background(), tc.update)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.updateFiles, gotUpdateFiles)
-		})
-	}
-}
-
-func writeUpdate(t *testing.T, destDir string, updateID string, update provisioning.Update) {
-	t.Helper()
-
-	err := os.MkdirAll(filepath.Join(destDir, updateID), 0o700)
-	require.NoError(t, err)
-
-	body, err := json.Marshal(update)
-	require.NoError(t, err)
-
-	err = os.WriteFile(filepath.Join(destDir, updateID, "update.json"), body, 0o600)
-	require.NoError(t, err)
-
-	err = os.WriteFile(filepath.Join(destDir, updateID, "changelog.txt"), []byte(`changelog`), 0o600)
-	require.NoError(t, err)
-}
-
-func TestLocal_GetFileByFilename(t *testing.T) {
+func TestLocalfs_Get(t *testing.T) {
 	tests := []struct {
 		name        string
 		setupTmpDir func(t *testing.T, destDir string)
@@ -312,11 +126,11 @@ func TestLocal_GetFileByFilename(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			update, err := New(tmpDir, nil)
+			lfs, err := New(tmpDir, nil)
 			require.NoError(t, err)
 
 			// Run test
-			gotReader, _, err := update.GetUpdateFileByFilename(context.Background(), tc.update, tc.filename)
+			gotReader, _, err := lfs.Get(context.Background(), tc.update, tc.filename)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -325,7 +139,66 @@ func TestLocal_GetFileByFilename(t *testing.T) {
 	}
 }
 
-func TestLocal_ForgetUpdate(t *testing.T) {
+func TestLocalfs_Put(t *testing.T) {
+	tests := []struct {
+		name   string
+		update provisioning.Update
+		stream io.ReadCloser
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:   "success",
+			stream: io.NopCloser(bytes.NewBuffer([]byte("foobar"))),
+
+			assertErr: require.NoError,
+		},
+		{
+			name:   "error - stream error",
+			stream: io.NopCloser(iotest.ErrReader(boom.Error)),
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:   "error - stream close error",
+			stream: errCloser(bytes.NewBuffer([]byte("foobar")), boom.Error),
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			tmpDir := t.TempDir()
+			lfs, err := New(tmpDir, nil)
+			require.NoError(t, err)
+
+			// Run test
+			err = lfs.Put(context.Background(), tc.update, "file.name", tc.stream)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func errCloser(r io.Reader, err error) io.ReadCloser {
+	return nopCloser{
+		Reader: r,
+		err:    err,
+	}
+}
+
+type nopCloser struct {
+	io.Reader
+
+	err error
+}
+
+func (n nopCloser) Close() error { return n.err }
+
+func TestLocalfs_Delete(t *testing.T) {
 	tests := []struct {
 		name        string
 		setupTmpDir func(t *testing.T, destDir string)
@@ -355,11 +228,11 @@ func TestLocal_ForgetUpdate(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			update, err := New(tmpDir, nil)
+			lfs, err := New(tmpDir, nil)
 			require.NoError(t, err)
 
 			// Run test
-			err = update.ForgetUpdate(context.Background(), tc.update)
+			err = lfs.Delete(context.Background(), tc.update)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -367,7 +240,7 @@ func TestLocal_ForgetUpdate(t *testing.T) {
 	}
 }
 
-type testLocalAdd struct {
+type testLocalfsCreateFromArchive struct {
 	name            string
 	tarContentFiles string
 	updateManifest  provisioning.Update
@@ -382,8 +255,8 @@ var testdataFS embed.FS
 
 const changelog = `This is the changelog`
 
-func TestLocal_Add(t *testing.T) {
-	tests := []testLocalAdd{
+func TestLocalfs_CreateFromArchive(t *testing.T) {
+	tests := []testLocalfsCreateFromArchive{
 		{
 			name:            "success",
 			tarContentFiles: "testdata/success",
@@ -453,14 +326,11 @@ func TestLocal_Add(t *testing.T) {
 				require.NoError(t, err)
 			},
 
-			assertErr: require.NoError,
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "Update already existing")
+			},
 			assertUpdate: func(t *testing.T, tmpDir string, update *provisioning.Update) {
 				t.Helper()
-				wantUUID := uuidFromUpdate(provisioning.Update{
-					Origin: "testdata (local)",
-				}).String()
-
-				require.Equal(t, wantUUID, update.UUID.String())
 			},
 		},
 		{
@@ -607,11 +477,11 @@ func TestLocal_Add(t *testing.T) {
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
 			// TODO: Mock verifier to simulate different error cases
-			update, err := New(tmpDir, signature.NewNoopVerifier())
+			lfs, err := New(tmpDir, signature.NewNoopVerifier())
 			require.NoError(t, err)
 
 			// Run test
-			gotUpdate, err := update.Add(context.Background(), tr)
+			gotUpdate, err := lfs.CreateFromArchive(context.Background(), tr)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -627,7 +497,7 @@ func TestLocal_Add(t *testing.T) {
 	}
 }
 
-func generateUpdateTar(t *testing.T, tc testLocalAdd) *tar.Reader {
+func generateUpdateTar(t *testing.T, tc testLocalfsCreateFromArchive) *tar.Reader {
 	t.Helper()
 
 	inMemoryTar := &bytes.Buffer{}
