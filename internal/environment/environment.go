@@ -1,18 +1,24 @@
 package environment
 
 import (
+	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
+
+	"github.com/FuturFusion/operations-center/internal/file"
 )
 
 const (
-	logPathDefaultPrefix = "/var"
-	logPathSuffix        = "log"
-	runPathDefaultPrefix = "/run"
-	varPathDefaultPrefix = "/var/lib"
+	logPathDefaultPrefix  = "/var"
+	logPathSuffix         = "log"
+	runPathDefaultPrefix  = "/run"
+	varPathDefaultPrefix  = "/var/lib"
+	userHomeDefaultPrefix = "$HOME/.config"
 
 	applicationDirEnvSuffix    = "_DIR"
 	applicationSocketEnvSuffix = "_SOCKET"
+	applicationConfEnvSuffix   = "_CONF"
 )
 
 // Environment is a high-level facade for accessing operating-system level functionalities.
@@ -60,6 +66,33 @@ func (e Environment) GetUnixSocket() string {
 	}
 
 	return filepath.Join(e.RunDir(), "unix.socket")
+}
+
+func (e Environment) UserConfigDir() (string, error) {
+	applicationConfEnvVar := e.applicationEnvPrefix + applicationConfEnvSuffix
+	if os.Getenv(applicationConfEnvVar) != "" {
+		return os.ExpandEnv(os.Getenv(applicationConfEnvVar)), nil
+	}
+
+	configDir, err := os.UserConfigDir()
+	if nil == err {
+		return filepath.Join(configDir, e.applicationName), nil
+	}
+
+	if os.Getenv("HOME") != "" && file.PathExists(os.Getenv("HOME")) {
+		return filepath.Join(os.Getenv("HOME"), ".config", e.applicationName), nil
+	}
+
+	currentUser, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+
+	if file.PathExists(currentUser.HomeDir) {
+		return filepath.Join(currentUser.HomeDir, ".config", e.applicationName), nil
+	}
+
+	return "", fmt.Errorf("Failed to determine user config directory")
 }
 
 // pathWithEnvOverride returns the directory combined from prefixDir and suffixDir
