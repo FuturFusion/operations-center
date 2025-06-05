@@ -3,7 +3,11 @@ package provisioning
 import (
 	"archive/tar"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"sort"
 
@@ -188,17 +192,40 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 			}
 
 			err := func() (err error) {
-				stream, _, err := src.GetUpdateFileByFilename(ctx, update, updateFile.Filename)
+				var stream io.ReadCloser
+				stream, _, err = src.GetUpdateFileByFilename(ctx, update, updateFile.Filename)
 				if err != nil {
 					return fmt.Errorf(`Failed to fetch update file "%s:%s/%s@%s": %w`, origin, update.Channel, updateFile.Filename, update.Version, err)
 				}
 
-				err = s.filesRepo.Put(ctx, update, updateFile.Filename, stream)
+				teeStream := stream
+				var h hash.Hash
+
+				if updateFile.Sha256 != "" {
+					h = sha256.New()
+					teeStream = newTeeReadCloser(stream, h)
+				}
+
+				commit, cancel, err := s.filesRepo.Put(ctx, update, updateFile.Filename, teeStream)
 				if err != nil {
 					return fmt.Errorf(`Failed to read stream for update file "%s:%s/%s@%s": %w`, origin, update.Channel, updateFile.Filename, update.Version, err)
 				}
 
-				return nil
+				defer func() {
+					cancelErr := cancel()
+					if cancelErr != nil {
+						err = errors.Join(err, cancelErr)
+					}
+				}()
+
+				if updateFile.Sha256 != "" {
+					checksum := hex.EncodeToString(h.Sum(nil))
+					if updateFile.Sha256 != checksum {
+						return fmt.Errorf("Invalid update, file sha256 mismatch for file %q, manifest: %s, actual: %s", updateFile.Filename, updateFile.Sha256, checksum)
+					}
+				}
+
+				return commit()
 			}()
 			if err != nil {
 				return err

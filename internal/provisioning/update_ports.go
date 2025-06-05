@@ -33,9 +33,14 @@ type UpdateRepo interface {
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 }
 
+type (
+	CommitFunc func() error
+	CancelFunc func() error
+)
+
 type UpdateFilesRepo interface {
 	Get(ctx context.Context, update Update, filename string) (io.ReadCloser, int, error)
-	Put(ctx context.Context, update Update, filename string, content io.ReadCloser) error
+	Put(ctx context.Context, update Update, filename string, content io.ReadCloser) (CommitFunc, CancelFunc, error)
 	Delete(ctx context.Context, update Update) error
 	CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (*Update, error)
 }
