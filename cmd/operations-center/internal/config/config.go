@@ -50,6 +50,10 @@ func (c *Config) LoadConfig(path string) error {
 		return err
 	}
 
+	if c.AuthType == "" {
+		c.AuthType = AuthTypeUntrusted
+	}
+
 	_, ok := authTypes[c.AuthType]
 	if !ok {
 		return fmt.Errorf("Invalid value for config key auth_type: %v", c.AuthType)
