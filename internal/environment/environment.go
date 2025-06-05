@@ -10,11 +10,10 @@ import (
 )
 
 const (
-	logPathDefaultPrefix  = "/var"
-	logPathSuffix         = "log"
-	runPathDefaultPrefix  = "/run"
-	varPathDefaultPrefix  = "/var/lib"
-	userHomeDefaultPrefix = "$HOME/.config"
+	logPathDefaultPrefix = "/var"
+	logPathSuffix        = "log"
+	runPathDefaultPrefix = "/run"
+	varPathDefaultPrefix = "/var/lib"
 
 	applicationDirEnvSuffix    = "_DIR"
 	applicationSocketEnvSuffix = "_SOCKET"
