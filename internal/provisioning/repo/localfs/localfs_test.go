@@ -144,26 +144,66 @@ func TestLocalfs_Put(t *testing.T) {
 		name   string
 		update provisioning.Update
 		stream io.ReadCloser
+		commit bool
+		cancel bool
 
-		assertErr require.ErrorAssertionFunc
+		assertErr       require.ErrorAssertionFunc
+		assertCommitErr require.ErrorAssertionFunc
+		assertCancelErr require.ErrorAssertionFunc
 	}{
 		{
-			name:   "success",
+			name:   "success - commit",
 			stream: io.NopCloser(bytes.NewBuffer([]byte("foobar"))),
+			commit: true,
 
-			assertErr: require.NoError,
+			assertErr:       require.NoError,
+			assertCommitErr: require.NoError,
+			assertCancelErr: require.NoError,
+		},
+		{
+			name:   "success - commit + cancel",
+			stream: io.NopCloser(bytes.NewBuffer([]byte("foobar"))),
+			commit: true,
+			cancel: true,
+
+			assertErr:       require.NoError,
+			assertCommitErr: require.NoError,
+			assertCancelErr: require.NoError,
+		},
+		{
+			name:   "cancel",
+			stream: io.NopCloser(bytes.NewBuffer([]byte("foobar"))),
+			cancel: true,
+
+			assertErr:       require.NoError,
+			assertCommitErr: require.NoError,
+			assertCancelErr: require.NoError,
 		},
 		{
 			name:   "error - stream error",
 			stream: io.NopCloser(iotest.ErrReader(boom.Error)),
 
-			assertErr: boom.ErrorIs,
+			assertErr:       boom.ErrorIs,
+			assertCommitErr: require.NoError,
+			assertCancelErr: require.NoError,
 		},
 		{
-			name:   "error - stream close error",
+			name:   "error - stream close error in commit",
 			stream: errCloser(bytes.NewBuffer([]byte("foobar")), boom.Error),
+			commit: true,
 
-			assertErr: boom.ErrorIs,
+			assertErr:       require.NoError,
+			assertCommitErr: boom.ErrorIs,
+			assertCancelErr: require.NoError,
+		},
+		{
+			name:   "error - stream close error in cancel",
+			stream: errCloser(bytes.NewBuffer([]byte("foobar")), boom.Error),
+			cancel: true,
+
+			assertErr:       require.NoError,
+			assertCommitErr: require.NoError,
+			assertCancelErr: boom.ErrorIs,
 		},
 	}
 
@@ -175,10 +215,22 @@ func TestLocalfs_Put(t *testing.T) {
 			require.NoError(t, err)
 
 			// Run test
-			err = lfs.Put(context.Background(), tc.update, "file.name", tc.stream)
+			commit, cancel, err := lfs.Put(context.Background(), tc.update, "file.name", tc.stream)
+
+			var commitErr error
+			if tc.commit {
+				commitErr = commit()
+			}
+
+			var cancelErr error
+			if tc.cancel {
+				cancelErr = cancel()
+			}
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertCommitErr(t, commitErr)
+			tc.assertCancelErr(t, cancelErr)
 		})
 	}
 }
