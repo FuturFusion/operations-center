@@ -32,6 +32,7 @@ func main() {
 type env interface {
 	VarDir() string
 	GetUnixSocket() string
+	UserConfigDir() (string, error)
 }
 
 func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
@@ -116,7 +117,17 @@ func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
 	c.config.Debug = c.flagLogDebug
 	c.config.ForceLocal = c.flagForceLocal
 
-	err = c.config.LoadConfig(c.env.VarDir())
+	configDir, err := c.env.UserConfigDir()
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(configDir, 0o700)
+	if err != nil {
+		return err
+	}
+
+	err = c.config.LoadConfig(configDir)
 	if err != nil {
 		return err
 	}
