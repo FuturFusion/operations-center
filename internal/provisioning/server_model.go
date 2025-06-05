@@ -43,10 +43,10 @@ func (s Server) Validate() error {
 		return domain.NewValidationErrf("Invalid server, validation of type failed: %v", err)
 	}
 
-	switch s.Status {
-	case api.ServerStatusPending, api.ServerStatusReady:
-	default:
-		return domain.NewValidationErrf("Invalid server, status %q not supported", s.Status)
+	var serverStatus api.ServerStatus
+	err = serverStatus.UnmarshalText([]byte(s.Status))
+	if err != nil {
+		return domain.NewValidationErrf("Invalid server, validation of status failed: %v", err)
 	}
 
 	_, err = url.Parse(s.ConnectionURL)
