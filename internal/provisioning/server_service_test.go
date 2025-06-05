@@ -594,6 +594,7 @@ func TestServerService_Update(t *testing.T) {
 			name: "success",
 			server: provisioning.Server{
 				Name:          "one",
+				Type:          api.ServerTypeIncus,
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
@@ -609,6 +610,7 @@ one
 			name: "error - validation",
 			server: provisioning.Server{
 				Name:          "", // invalid
+				Type:          api.ServerTypeIncus,
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
@@ -627,6 +629,7 @@ one
 			name: "error - repo.UpdateByID",
 			server: provisioning.Server{
 				Name:          "one",
+				Type:          api.ServerTypeIncus,
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
