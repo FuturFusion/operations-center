@@ -134,7 +134,7 @@ func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
 
 	opts := []client.Option{}
 
-	if c.config.ForceLocal {
+	if c.config.ForceLocal || c.config.OperationsCenterServer == "" {
 		opts = append(opts, client.WithForceLocal(c.env.GetUnixSocket()))
 	}
 
