@@ -70,6 +70,10 @@ func (s serverService) Create(ctx context.Context, token uuid.UUID, newServer Se
 		newServer.Status = api.ServerStatusPending
 		newServer.LastUpdated = s.now()
 
+		if newServer.Type == "" {
+			newServer.Type = api.ServerTypeUnknown
+		}
+
 		err = newServer.Validate()
 		if err != nil {
 			return fmt.Errorf("Validate server: %w", err)
