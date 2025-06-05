@@ -22,6 +22,7 @@ func TestServer_Validate(t *testing.T) {
 			name: "valid",
 			server: provisioning.Server{
 				Name:          "one",
+				Type:          api.ServerTypeIncus,
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
@@ -37,6 +38,26 @@ one
 			name: "error - name empty",
 			server: provisioning.Server{
 				Name:          "", // invalid
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - invalid type",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          "", // invalid
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
@@ -55,6 +76,7 @@ one
 			name: "error - connection URL empty",
 			server: provisioning.Server{
 				Name:          "one",
+				Type:          api.ServerTypeIncus,
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "", // invalid
 				Certificate: `-----BEGIN CERTIFICATE-----
@@ -73,6 +95,7 @@ one
 			name: "error - connection URL invalid",
 			server: provisioning.Server{
 				Name:          "one",
+				Type:          api.ServerTypeIncus,
 				Cluster:       ptr.To("one"),
 				ConnectionURL: ":|\\", // invalid
 				Certificate: `-----BEGIN CERTIFICATE-----
@@ -91,6 +114,7 @@ one
 			name: "error - certificate empty",
 			server: provisioning.Server{
 				Name:          "one",
+				Type:          api.ServerTypeIncus,
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 				Certificate:   ``, // invalid
@@ -106,6 +130,7 @@ one
 			name: "error - status invalid",
 			server: provisioning.Server{
 				Name:          "one",
+				Type:          api.ServerTypeIncus,
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----

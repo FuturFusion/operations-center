@@ -37,13 +37,19 @@ func (s Server) Validate() error {
 		return domain.NewValidationErrf("Invalid server, certificate can not be empty")
 	}
 
+	var serverType api.ServerType
+	err := serverType.UnmarshalText([]byte(s.Type))
+	if err != nil {
+		return domain.NewValidationErrf("Invalid server, validation of type failed: %v", err)
+	}
+
 	switch s.Status {
 	case api.ServerStatusPending, api.ServerStatusReady:
 	default:
 		return domain.NewValidationErrf("Invalid server, status %q not supported", s.Status)
 	}
 
-	_, err := url.Parse(s.ConnectionURL)
+	_, err = url.Parse(s.ConnectionURL)
 	if err != nil {
 		return domain.NewValidationErrf("Invalid server, connection URL is not valid: %v", err)
 	}
