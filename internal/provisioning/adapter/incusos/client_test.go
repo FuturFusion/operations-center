@@ -17,16 +17,18 @@ import (
 )
 
 func TestClient_Ping(t *testing.T) {
-	certPEM, keyPEM, err := incustls.GenerateMemCert(true, false)
+	certPEMByte, keyPEMByte, err := incustls.GenerateMemCert(true, false)
 	require.NoError(t, err)
 
 	caPool := x509.NewCertPool()
-	caPool.AppendCertsFromPEM(certPEM)
+	caPool.AppendCertsFromPEM(certPEMByte)
+
+	certPEM, keyPEM := string(certPEMByte), string(keyPEMByte)
 
 	tests := []struct {
 		name       string
-		certPEM    []byte
-		keyPEM     []byte
+		certPEM    string
+		keyPEM     string
 		statusCode int
 		setup      func(*httptest.Server)
 
