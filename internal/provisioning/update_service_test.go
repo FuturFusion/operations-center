@@ -6,7 +6,6 @@ import (
 	"context"
 	"io"
 	"testing"
-	"testing/iotest"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,9 +23,9 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 	tests := []struct {
 		name string
 
-		sourceAddUUID      uuid.UUID
-		sourceAddErr       error
-		sourceGetLatestErr error
+		repoUpdateFilesCreateFromArchiveErr    error
+		repoUpdateFilesCreateFromArchiveUpdate *provisioning.Update
+		repoUpsertErr                          error
 
 		assertErr require.ErrorAssertionFunc
 		wantID    uuid.UUID
@@ -34,22 +33,27 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 		{
 			name: "success",
 
-			sourceAddUUID: uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
+			repoUpdateFilesCreateFromArchiveUpdate: &provisioning.Update{
+				UUID: uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
+			},
 
 			assertErr: require.NoError,
 			wantID:    uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
 		},
 		{
-			name: "error - source.GetLatest",
+			name: "error - CreateFromArchive",
 
-			sourceAddErr: boom.Error,
+			repoUpdateFilesCreateFromArchiveErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - source.GetLatest",
+			name: "error - Upsert",
 
-			sourceGetLatestErr: boom.Error,
+			repoUpdateFilesCreateFromArchiveUpdate: &provisioning.Update{
+				UUID: uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
+			},
+			repoUpsertErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -59,23 +63,18 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
-				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
-					return nil, nil
+				UpsertFunc: func(ctx context.Context, update provisioning.Update) error {
+					return tc.repoUpsertErr
 				},
 			}
 
-			source := &adapterMock.UpdateSourceWithForgetAndAddPortMock{
-				AddFunc: func(ctx context.Context, tarReader *tar.Reader) (*provisioning.Update, error) {
-					return &provisioning.Update{
-						UUID: tc.sourceAddUUID,
-					}, tc.sourceAddErr
-				},
-				GetLatestFunc: func(ctx context.Context, limit int) (provisioning.Updates, error) {
-					return nil, tc.sourceGetLatestErr
+			repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
+				CreateFromArchiveFunc: func(ctx context.Context, tarReader *tar.Reader) (*provisioning.Update, error) {
+					return tc.repoUpdateFilesCreateFromArchiveUpdate, tc.repoUpdateFilesCreateFromArchiveErr
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, provisioning.UpdateServiceWithSource("mock", source))
+			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles)
 
 			// Run test
 			id, err := updateSvc.CreateFromArchive(context.Background(), nil)
@@ -83,33 +82,6 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Equal(t, tc.wantID, id)
-		})
-	}
-}
-
-func TestUpdateService_CreateFromArchive_NoSourceWithAdd(t *testing.T) {
-	tests := []struct {
-		name string
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name: "error - no source with add",
-
-			assertErr: require.Error,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			updateSvc := provisioning.NewUpdateService(nil)
-
-			// Run test
-			id, err := updateSvc.CreateFromArchive(context.Background(), nil)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, uuid.UUID{}, id)
 		})
 	}
 }
@@ -145,7 +117,7 @@ func TestUpdateService_GetAll(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo)
+			updateSvc := provisioning.NewUpdateService(repo, nil)
 
 			// Run test
 			updates, err := updateSvc.GetAll(context.Background())
@@ -205,7 +177,7 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewUpdateService(repo)
+			serverSvc := provisioning.NewUpdateService(repo, nil)
 
 			// Run test
 			server, err := serverSvc.GetAllWithFilter(context.Background(), tc.filter)
@@ -251,7 +223,7 @@ func TestUpdateService_GetAllUUIDs(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo)
+			updateSvc := provisioning.NewUpdateService(repo, nil)
 
 			// Run test
 			updates, err := updateSvc.GetAllUUIDs(context.Background())
@@ -307,7 +279,7 @@ func TestUpdateService_GetAllIDsWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewUpdateService(repo)
+			serverSvc := provisioning.NewUpdateService(repo, nil)
 
 			// Run test
 			serverIDs, err := serverSvc.GetAllUUIDsWithFilter(context.Background(), tc.filter)
@@ -353,7 +325,7 @@ func TestUpdateService_GetByUUID(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo)
+			updateSvc := provisioning.NewUpdateService(repo, nil)
 
 			// Run test
 			update, err := updateSvc.GetByUUID(context.Background(), tc.idArg)
@@ -408,7 +380,7 @@ func TestUpdateService_GetUpdateAllFiles(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo)
+			updateSvc := provisioning.NewUpdateService(repo, nil)
 
 			// Run test
 			updateFiles, err := updateSvc.GetUpdateAllFiles(context.Background(), tc.idArg)
@@ -422,13 +394,13 @@ func TestUpdateService_GetUpdateAllFiles(t *testing.T) {
 
 func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 	tests := []struct {
-		name                              string
-		idArg                             uuid.UUID
-		repoGetByUUIDUpdate               *provisioning.Update
-		repoGetByUUIDErr                  error
-		sourceGetUpdateFileByFilename     io.ReadCloser
-		sourceGetUpdateFileByFilenameSize int
-		sourceGetUpdateFileByFilenameErr  error
+		name                         string
+		idArg                        uuid.UUID
+		repoGetByUUIDUpdate          *provisioning.Update
+		repoGetByUUIDErr             error
+		repoUpdateFilesGetReadCloser io.ReadCloser
+		repoUpdateFilesGetSize       int
+		repoUpdateFilesGetErr        error
 
 		assertErr require.ErrorAssertionFunc
 		wantBody  []byte
@@ -445,8 +417,8 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 					},
 				},
 			},
-			sourceGetUpdateFileByFilename:     io.NopCloser(bytes.NewBuffer([]byte("foobar"))),
-			sourceGetUpdateFileByFilenameSize: 6,
+			repoUpdateFilesGetReadCloser: io.NopCloser(bytes.NewBuffer([]byte("foobar"))),
+			repoUpdateFilesGetSize:       6,
 
 			assertErr: require.NoError,
 			wantBody:  []byte("foobar"),
@@ -473,23 +445,6 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 			wantBody: []byte{},
 		},
 		{
-			name:  "error - unsupported origin",
-			idArg: uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
-			repoGetByUUIDUpdate: &provisioning.Update{
-				Origin: "unsupported", // invalid
-				Files: provisioning.UpdateFiles{
-					provisioning.UpdateFile{
-						Filename: "foo.bar",
-					},
-				},
-			},
-
-			assertErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorContains(tt, err, "Unsupported origin")
-			},
-			wantBody: []byte{},
-		},
-		{
 			name:  "error - source",
 			idArg: uuid.MustParse(`13595731-843c-441e-9cf3-6c2869624cc8`),
 			repoGetByUUIDUpdate: &provisioning.Update{
@@ -500,8 +455,8 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 					},
 				},
 			},
-			sourceGetUpdateFileByFilename:    io.NopCloser(bytes.NewBuffer([]byte{})),
-			sourceGetUpdateFileByFilenameErr: boom.Error,
+			repoUpdateFilesGetReadCloser: io.NopCloser(bytes.NewBuffer([]byte{})),
+			repoUpdateFilesGetErr:        boom.Error,
 
 			assertErr: boom.ErrorIs,
 			wantBody:  []byte{},
@@ -517,13 +472,13 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 				},
 			}
 
-			source := &adapterMock.UpdateSourcePortMock{
-				GetUpdateFileByFilenameFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
-					return tc.sourceGetUpdateFileByFilename, tc.sourceGetUpdateFileByFilenameSize, tc.sourceGetUpdateFileByFilenameErr
+			repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
+				GetFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+					return tc.repoUpdateFilesGetReadCloser, tc.repoUpdateFilesGetSize, tc.repoUpdateFilesGetErr
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, provisioning.UpdateServiceWithSource("mock", source))
+			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles)
 
 			// Run test
 			rc, size, err := updateSvc.GetUpdateFileByFilename(context.Background(), tc.idArg, "foo.bar")
@@ -554,7 +509,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 			stream io.ReadCloser
 			size   int
 		}]
-		sourceForgetUpdate []queue.Item[struct{}]
+		repoUpdateFilesPut    []queue.Item[struct{}]
+		repoUpdateFilesDelete []queue.Item[struct{}]
 
 		repoUpsert                  []queue.Item[struct{}]
 		repoGetAllWithFilterUpdates provisioning.Updates
@@ -601,6 +557,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
+			repoUpdateFilesPut: []queue.Item[struct{}]{
+				{},
+			},
 			repoUpsert: []queue.Item[struct{}]{
 				{},
 			},
@@ -620,7 +579,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					PublishedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
 				},
 			},
-			sourceForgetUpdate: []queue.Item[struct{}]{
+			repoUpdateFilesDelete: []queue.Item[struct{}]{
 				{},
 			},
 			repoDeleteByUUID: []queue.Item[struct{}]{
@@ -730,45 +689,14 @@ func TestUpdateService_Refresh(t *testing.T) {
 						stream io.ReadCloser
 						size   int
 					}{
-						stream: io.NopCloser(iotest.ErrReader(boom.Error)),
+						stream: io.NopCloser(bytes.NewBufferString(`dummy`)),
 						size:   5,
 					},
 				},
 			},
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - file download close error",
-			ctx:  context.Background(),
-			sourceGetLatestUpdates: provisioning.Updates{
-				provisioning.Update{},
-			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+			repoUpdateFilesPut: []queue.Item[struct{}]{
 				{
-					Value: provisioning.UpdateFiles{
-						provisioning.UpdateFile{
-							Filename: "dummy.txt",
-							URL:      "http://localhost/dummy.txt",
-							Size:     5,
-						},
-					},
-				},
-			},
-			sourceGetUpdateFileByFilename: []queue.Item[struct {
-				stream io.ReadCloser
-				size   int
-			}]{
-				{
-					Value: struct {
-						stream io.ReadCloser
-						size   int
-					}{
-						stream: func() io.ReadCloser {
-							return errCloser(bytes.NewBufferString(``), boom.Error)
-						}(),
-						size: 5,
-					},
+					Err: boom.Error,
 				},
 			},
 
@@ -805,6 +733,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
+			repoUpdateFilesPut: []queue.Item[struct{}]{
+				{},
+			},
 			repoUpsert: []queue.Item[struct{}]{
 				{
 					Err: boom.Error,
@@ -833,7 +764,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					PublishedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
 				},
 			},
-			sourceForgetUpdate: []queue.Item[struct{}]{
+			repoUpdateFilesDelete: []queue.Item[struct{}]{
 				{
 					Err: boom.Error,
 				},
@@ -854,7 +785,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					PublishedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
 				},
 			},
-			sourceForgetUpdate: []queue.Item[struct{}]{
+			repoUpdateFilesDelete: []queue.Item[struct{}]{
 				{},
 			},
 			repoDeleteByUUID: []queue.Item[struct{}]{
@@ -884,7 +815,18 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			}
 
-			source := &adapterMock.UpdateSourceWithForgetPortMock{
+			repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
+				PutFunc: func(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) error {
+					_, err := queue.Pop(t, &tc.repoUpdateFilesPut)
+					return err
+				},
+				DeleteFunc: func(ctx context.Context, update provisioning.Update) error {
+					_, err := queue.Pop(t, &tc.repoUpdateFilesDelete)
+					return err
+				},
+			}
+
+			source := &adapterMock.UpdateSourcePortMock{
 				GetLatestFunc: func(ctx context.Context, limit int) (provisioning.Updates, error) {
 					return tc.sourceGetLatestUpdates, tc.sourceGetLatestErr
 				},
@@ -895,15 +837,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 					value, err := queue.Pop(t, &tc.sourceGetUpdateFileByFilename)
 					return value.stream, value.size, err
 				},
-				ForgetUpdateFunc: func(ctx context.Context, update provisioning.Update) error {
-					_, err := queue.Pop(t, &tc.sourceForgetUpdate)
-					return err
-				},
 			}
 
-			nonForgetSource := &adapterMock.UpdateSourcePortMock{}
-
-			updateSvc := provisioning.NewUpdateService(repo, provisioning.UpdateServiceWithSource("mock", source), provisioning.UpdateServiceWithSource("nonForgetSource", nonForgetSource), provisioning.UpdateServiceWithLatestLimit(1))
+			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, provisioning.UpdateServiceWithSource("mock", source), provisioning.UpdateServiceWithLatestLimit(1))
 
 			// Run test
 			err := updateSvc.Refresh(tc.ctx)
@@ -914,24 +850,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 			// Ensure queues are completely drained.
 			require.Empty(t, tc.sourceGetUpdateAllFiles)
 			require.Empty(t, tc.sourceGetUpdateFileByFilename)
-			require.Empty(t, tc.sourceForgetUpdate)
+			require.Empty(t, tc.repoUpdateFilesDelete)
 			require.Empty(t, tc.repoUpsert)
 			require.Empty(t, tc.repoDeleteByUUID)
 		})
 	}
 }
-
-func errCloser(r io.Reader, err error) io.ReadCloser {
-	return nopCloser{
-		Reader: r,
-		err:    err,
-	}
-}
-
-type nopCloser struct {
-	io.Reader
-
-	err error
-}
-
-func (n nopCloser) Close() error { return n.err }

@@ -1,4 +1,4 @@
-package local
+package localfs
 
 import (
 	"archive/tar"
@@ -12,7 +12,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -20,147 +19,84 @@ import (
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/signature"
-	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-var UpdateSourceSpaceUUID = uuid.MustParse(`00000000-0000-0000-0000-000000000001`)
-
-const originSuffix = " (local)"
-
-type local struct {
+type localfs struct {
 	storageDir string
 	verifier   signature.Verifier
 }
 
-var _ provisioning.UpdateSourceWithForgetAndAddPort = &local{}
+var _ provisioning.UpdateFilesRepo = localfs{}
 
-func New(storageDir string, verifier signature.Verifier) (*local, error) {
+func New(storageDir string, verifier signature.Verifier) (localfs, error) {
 	err := os.MkdirAll(storageDir, 0o700)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create storage directory: %w", err)
+		return localfs{}, fmt.Errorf("Failed to create directory for local update storage: %w", err)
 	}
 
-	return &local{
+	return localfs{
 		storageDir: storageDir,
 		verifier:   verifier,
 	}, nil
 }
 
-func (m local) GetLatest(ctx context.Context, limit int) (provisioning.Updates, error) {
-	entries, err := os.ReadDir(m.storageDir)
+func (l localfs) Get(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+	fullFilename := filepath.Join(l.storageDir, update.UUID.String(), filename)
+
+	fi, err := os.Stat(fullFilename)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to read updates from %q", m.storageDir)
+		return nil, 0, err
 	}
 
-	updates := make([]provisioning.Update, 0, len(entries))
-	for _, entry := range entries {
-		update, err := m.getUpdate(ctx, entry.Name())
-		if err != nil {
-			slog.WarnContext(ctx, "Skipping invalid update directory", logger.Err(err))
-			continue
+	f, err := os.Open(fullFilename)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return f, int(fi.Size()), nil
+}
+
+func (l localfs) Put(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (err error) {
+	defer func() {
+		closeErr := content.Close()
+		if closeErr != nil {
+			err = errors.Join(err, closeErr)
 		}
+	}()
 
-		update.Origin += originSuffix
-		update.UUID = uuidFromUpdate(update)
+	fullFilename := filepath.Join(l.storageDir, update.UUID.String(), filename)
 
-		// Fallback to x84_64 for architecture if not defined.
-		for i := range update.Files {
-			if update.Files[i].Architecture == api.ArchitectureUndefined {
-				update.Files[i].Architecture = api.Architecture64BitIntelX86
-			}
-		}
-
-		updates = append(updates, update)
+	err = os.MkdirAll(filepath.Dir(fullFilename), 0o700)
+	if err != nil {
+		return err
 	}
 
-	sort.Slice(updates, func(i, j int) bool {
-		return updates[i].PublishedAt.After(updates[j].PublishedAt)
-	})
+	file, err := os.OpenFile(fullFilename, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o600)
+	if err != nil {
+		return err
+	}
 
-	limit = min(len(updates), limit)
-
-	return provisioning.Updates(updates[:limit]), nil
+	_, err = io.Copy(file, content)
+	return err
 }
 
-func (m local) GetUpdateAllFiles(ctx context.Context, update provisioning.Update) (provisioning.UpdateFiles, error) {
-	u, err := m.getUpdate(ctx, update.UUID.String())
+func (l localfs) Delete(ctx context.Context, update provisioning.Update) error {
+	fullFilename := filepath.Join(l.storageDir, update.UUID.String())
 
-	return u.Files, err
-}
-
-func (m local) getUpdate(_ context.Context, id string) (provisioning.Update, error) {
-	updateFilename := filepath.Join(id, "update.json")
-	updateFilePath := filepath.Join(m.storageDir, updateFilename)
-
-	body, err := os.ReadFile(updateFilePath)
-	if err != nil {
-		return provisioning.Update{}, fmt.Errorf("Filed to read %q: %w", updateFilename, err)
-	}
-
-	update := provisioning.Update{}
-
-	err = json.Unmarshal(body, &update)
-	if err != nil {
-		return provisioning.Update{}, fmt.Errorf("Failed to unmarshal %q: %w", updateFilename, err)
-	}
-
-	changelogFilename := filepath.Join(id, "changelog.txt")
-	changelogFilePath := filepath.Join(m.storageDir, changelogFilename)
-
-	body, err = os.ReadFile(changelogFilePath)
-	if err != nil {
-		return provisioning.Update{}, fmt.Errorf("Filed to read %q: %w", changelogFilename, err)
-	}
-
-	update.Changelog = string(body)
-
-	// Fallback to x84_64 for architecture if not defined.
-	for i := range update.Files {
-		if update.Files[i].Architecture == api.ArchitectureUndefined {
-			update.Files[i].Architecture = api.Architecture64BitIntelX86
-		}
-	}
-
-	return update, nil
-}
-
-func (m local) GetUpdateFileByFilename(_ context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
-	filename = filepath.Join(update.UUID.String(), filename)
-	filePath := filepath.Join(m.storageDir, filename)
-
-	fstat, err := os.Stat(filePath)
-	if err != nil {
-		return nil, 0, fmt.Errorf("Failed to open %q: %w", filename, err)
-	}
-
-	f, err := os.Open(filePath)
-	if err != nil {
-		return nil, 0, fmt.Errorf("Failed to open %q: %w", filename, err)
-	}
-
-	return f, int(fstat.Size()), nil
-}
-
-func (m local) ForgetUpdate(_ context.Context, update provisioning.Update) error {
-	err := os.RemoveAll(filepath.Join(m.storageDir, update.UUID.String()))
-	if err != nil {
-		return fmt.Errorf("Failed to forget update %q: %w", update.UUID.String(), err)
-	}
-
-	return nil
+	return os.RemoveAll(fullFilename)
 }
 
 const tmpUpdateDirPrefix = "tmp-update-*"
 
-func (m local) Add(ctx context.Context, tarReader *tar.Reader) (_ *provisioning.Update, err error) {
+func (l localfs) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (_ *provisioning.Update, err error) {
 	// Ensure, storage directory is present
-	err = os.MkdirAll(m.storageDir, 0o700)
+	err = os.MkdirAll(l.storageDir, 0o700)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to add update: %w", err)
 	}
 
 	var tmpDir string
-	tmpDir, err = os.MkdirTemp(m.storageDir, tmpUpdateDirPrefix)
+	tmpDir, err = os.MkdirTemp(l.storageDir, tmpUpdateDirPrefix)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to add update: %w", err)
 	}
@@ -184,7 +120,7 @@ func (m local) Add(ctx context.Context, tarReader *tar.Reader) (_ *provisioning.
 
 	// Verify update.json signature.
 	filename := filepath.Join(tmpDir, "update.json")
-	err = m.verifier.VerifyFile(filename)
+	err = l.verifier.VerifyFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to verify signature for %q: %w", filename, err)
 	}
@@ -197,10 +133,10 @@ func (m local) Add(ctx context.Context, tarReader *tar.Reader) (_ *provisioning.
 		return nil, err
 	}
 
-	// Skip further processing, if update with the same UUID is already present.
-	_, err = os.Stat(filepath.Join(m.storageDir, updateManifest.UUID.String()))
+	// Return an error, if update with the same UUID is already present.
+	_, err = os.Stat(filepath.Join(l.storageDir, updateManifest.UUID.String()))
 	if err == nil {
-		return updateManifest, nil
+		return nil, fmt.Errorf("Update already existing")
 	}
 
 	// Verify files of the update.
@@ -210,13 +146,17 @@ func (m local) Add(ctx context.Context, tarReader *tar.Reader) (_ *provisioning.
 	}
 
 	// Update processed successfully, rename the temporary folder to the UUID of the update.
-	err = os.Rename(tmpDir, filepath.Join(m.storageDir, updateManifest.UUID.String()))
+	err = os.Rename(tmpDir, filepath.Join(l.storageDir, updateManifest.UUID.String()))
 	if err != nil {
 		return nil, fmt.Errorf("Filed to rename update files folder %q to %q: %w", tmpDir, updateManifest.UUID.String(), err)
 	}
 
 	return updateManifest, nil
 }
+
+var UpdateSourceSpaceUUID = uuid.MustParse(`00000000-0000-0000-0000-000000000001`)
+
+const originSuffix = " (local)"
 
 const idSeparator = ":"
 
