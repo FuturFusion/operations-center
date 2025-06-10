@@ -26,7 +26,7 @@ func TestServerService_Create(t *testing.T) {
 		server             provisioning.Server
 		repoCreateErr      error
 		tokenSvcConsumeErr error
-		clientPingErr      error
+		repoUpdateErr      error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -97,7 +97,7 @@ one
 `,
 				Status: api.ServerStatusReady,
 			},
-			clientPingErr: boom.Error,
+			repoUpdateErr: boom.Error,
 
 			assertErr: require.NoError, // Error of connection test is only logged, we can not assert it here.
 		},
@@ -111,11 +111,17 @@ one
 					require.Equal(t, fixedDate, in.LastUpdated)
 					return 1, tc.repoCreateErr
 				},
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &provisioning.Server{}, nil
+				},
+				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.repoUpdateErr
+				},
 			}
 
 			client := &adapterMock.ServerClientPortMock{
 				PingFunc: func(ctx context.Context, server provisioning.Server) error {
-					return tc.clientPingErr
+					return nil
 				},
 			}
 
