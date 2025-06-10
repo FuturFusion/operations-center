@@ -99,6 +99,8 @@ func (u update) GetUpdateAllFiles(ctx context.Context, update provisioning.Updat
 		case strings.Contains(filename, ".usr-x86-64."):
 			fileComponent = api.UpdateFileComponentOS
 			fileType = api.UpdateFileTypeUpdateUsr
+		default:
+			continue
 		}
 
 		files = append(files, provisioning.UpdateFile{
