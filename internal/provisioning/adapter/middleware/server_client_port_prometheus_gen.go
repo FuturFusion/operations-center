@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -35,6 +36,20 @@ func NewServerClientPortWithPrometheus(base provisioning.ServerClientPort, insta
 		base:         base,
 		instanceName: instanceName,
 	}
+}
+
+// GetResources implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) GetResources(ctx context.Context, server provisioning.Server) (hardwareData api.HardwareData, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetResources", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetResources(ctx, server)
 }
 
 // Ping implements provisioning.ServerClientPort.
