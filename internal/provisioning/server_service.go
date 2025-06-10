@@ -285,6 +285,11 @@ func (s serverService) pollPendingServer(ctx context.Context, server Server) err
 		return nil
 	}
 
+	hardwareData, err := s.client.GetResources(ctx, server)
+	if err != nil {
+		return fmt.Errorf("Failed to get resources from server %q: %w", server.Name, err)
+	}
+
 	// Perform the update of the server in a transaction in order to respect
 	// potential updates, that happened since we queried for the list of servers
 	// in pending state.
@@ -295,6 +300,7 @@ func (s serverService) pollPendingServer(ctx context.Context, server Server) err
 		}
 
 		server.Status = api.ServerStatusReady
+		server.HardwareData = hardwareData
 
 		return s.repo.Update(ctx, *server)
 	})

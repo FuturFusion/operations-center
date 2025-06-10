@@ -410,11 +410,12 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 		Name:          server.Name,
 		Type:          server.Type,
 		ConnectionURL: server.ConnectionURL,
-		Certificate:   currentServer.Certificate,
-		HardwareData:  server.HardwareData,
-		VersionData:   server.VersionData,
-		Status:        server.Status,
-		LastUpdated:   server.LastUpdated,
+		// TODO: Preservation of Certificate and Hardware Data should be part of service logic and not API handler
+		Certificate:  currentServer.Certificate,
+		HardwareData: currentServer.HardwareData,
+		VersionData:  server.VersionData,
+		Status:       server.Status,
+		LastUpdated:  server.LastUpdated,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating server %q: %w", name, err))

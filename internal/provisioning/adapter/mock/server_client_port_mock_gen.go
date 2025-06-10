@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // Ensure that ServerClientPortMock does implement provisioning.ServerClientPort.
@@ -21,6 +22,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //
 //		// make and configure a mocked provisioning.ServerClientPort
 //		mockedServerClientPort := &ServerClientPortMock{
+//			GetResourcesFunc: func(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
+//				panic("mock out the GetResources method")
+//			},
 //			PingFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the Ping method")
 //			},
@@ -31,11 +35,21 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //
 //	}
 type ServerClientPortMock struct {
+	// GetResourcesFunc mocks the GetResources method.
+	GetResourcesFunc func(ctx context.Context, server provisioning.Server) (api.HardwareData, error)
+
 	// PingFunc mocks the Ping method.
 	PingFunc func(ctx context.Context, server provisioning.Server) error
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetResources holds details about calls to the GetResources method.
+		GetResources []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// Ping holds details about calls to the Ping method.
 		Ping []struct {
 			// Ctx is the ctx argument value.
@@ -44,7 +58,44 @@ type ServerClientPortMock struct {
 			Server provisioning.Server
 		}
 	}
-	lockPing sync.RWMutex
+	lockGetResources sync.RWMutex
+	lockPing         sync.RWMutex
+}
+
+// GetResources calls GetResourcesFunc.
+func (mock *ServerClientPortMock) GetResources(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
+	if mock.GetResourcesFunc == nil {
+		panic("ServerClientPortMock.GetResourcesFunc: method is nil but ServerClientPort.GetResources was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockGetResources.Lock()
+	mock.calls.GetResources = append(mock.calls.GetResources, callInfo)
+	mock.lockGetResources.Unlock()
+	return mock.GetResourcesFunc(ctx, server)
+}
+
+// GetResourcesCalls gets all the calls that were made to GetResources.
+// Check the length with:
+//
+//	len(mockedServerClientPort.GetResourcesCalls())
+func (mock *ServerClientPortMock) GetResourcesCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockGetResources.RLock()
+	calls = mock.calls.GetResources
+	mock.lockGetResources.RUnlock()
+	return calls
 }
 
 // Ping calls PingFunc.

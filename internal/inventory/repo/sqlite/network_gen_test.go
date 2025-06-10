@@ -93,6 +93,9 @@ server-one
 		PingFunc: func(ctx context.Context, server provisioning.Server) error {
 			return nil
 		},
+		GetResourcesFunc: func(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
+			return api.HardwareData{}, nil
+		},
 	}
 
 	ctx := context.Background()

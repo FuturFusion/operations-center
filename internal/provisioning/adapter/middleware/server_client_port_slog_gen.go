@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // ServerClientPortWithSlog implements provisioning.ServerClientPort that is instrumented with slog logger.
@@ -39,6 +40,41 @@ func NewServerClientPortWithSlog(base provisioning.ServerClientPort, log *slog.L
 	}
 
 	return this
+}
+
+// GetResources implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) GetResources(ctx context.Context, server provisioning.Server) (hardwareData api.HardwareData, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.Debug("=> calling GetResources")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("hardwareData", hardwareData),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetResources returned an informative error")
+			} else {
+				log.Error("<= method GetResources returned an error")
+			}
+		} else {
+			log.Debug("<= method GetResources finished")
+		}
+	}()
+	return _d._base.GetResources(ctx, server)
 }
 
 // Ping implements provisioning.ServerClientPort.
