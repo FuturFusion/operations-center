@@ -123,6 +123,41 @@ func (s *ServerStatus) Scan(value any) error {
 	}
 }
 
+type HardwareData struct {
+	incusapi.Resources
+}
+
+// Value implements the sql driver.Valuer interface.
+func (h HardwareData) Value() (driver.Value, error) {
+	return json.Marshal(h)
+}
+
+// Scan implements the sql.Scanner interface.
+func (h *HardwareData) Scan(value any) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid hardware data")
+	}
+
+	switch v := value.(type) {
+	case string:
+		if len(v) == 0 {
+			*h = HardwareData{}
+			return nil
+		}
+
+		return json.Unmarshal([]byte(v), h)
+	case []byte:
+		if len(v) == 0 {
+			*h = HardwareData{}
+			return nil
+		}
+
+		return json.Unmarshal(v, h)
+	default:
+		return fmt.Errorf("type %T is not supported for hardware data", value)
+	}
+}
+
 // Server defines a server running Hypervisor OS.
 //
 // swagger:model
@@ -144,7 +179,7 @@ type Server struct {
 	ConnectionURL string `json:"connection_url" yaml:"connection_url"`
 
 	// HardwareData contains the hardware data of the server, in the same form as presented by Incus in the resource API.
-	HardwareData incusapi.Resources `json:"hardware_data" yaml:"hardware_data"` // FIXME: should this be json.RawMessage?
+	HardwareData HardwareData `json:"hardware_data" yaml:"hardware_data"`
 
 	// VersionData contains information about the servers version.
 	// Example: ...
