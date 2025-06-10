@@ -97,10 +97,7 @@ func (s serverService) Create(ctx context.Context, token uuid.UUID, newServer Se
 		time.Sleep(s.initialConnectionDelay)
 
 		ctx := context.Background()
-		ctxWithTimeout, cancelFunc := context.WithTimeout(ctx, 1*time.Second)
-		defer cancelFunc()
-
-		err := s.client.Ping(ctxWithTimeout, newServer)
+		err = s.pollPendingServer(ctx, newServer)
 		if err != nil {
 			slog.WarnContext(ctx, "Initial server connection test failed", logger.Err(err), slog.String("name", newServer.Name), slog.String("url", newServer.ConnectionURL))
 		}
@@ -265,31 +262,7 @@ func (s serverService) PollPendingServers(ctx context.Context) error {
 
 	var errs []error
 	for _, server := range servers {
-		// Since we re-try frequently, we only grant a short timeout for the
-		// connection attept.
-		ctx, cancelFunc := context.WithTimeout(ctx, 1*time.Second)
-		err = s.client.Ping(ctx, server)
-		cancelFunc()
-		if err != nil {
-			// Errors are expected if a system is not (yet) available. Therefore
-			// we ignore the errors.
-			slog.WarnContext(ctx, "Initial server connection test failed", logger.Err(err), slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
-			continue
-		}
-
-		// Perform the update of the server in a transaction in order to respect
-		// potential updates, that happened since we queried for the list of servers
-		// in pending state.
-		err = transaction.Do(ctx, func(ctx context.Context) error {
-			server, err := s.repo.GetByName(ctx, server.Name)
-			if err != nil {
-				return err
-			}
-
-			server.Status = api.ServerStatusReady
-
-			return s.repo.Update(ctx, *server)
-		})
+		err = s.pollPendingServer(ctx, server)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -297,4 +270,32 @@ func (s serverService) PollPendingServers(ctx context.Context) error {
 	}
 
 	return errors.Join(errs...)
+}
+
+func (s serverService) pollPendingServer(ctx context.Context, server Server) error {
+	// Since we re-try frequently, we only grant a short timeout for the
+	// connection attept.
+	ctxWithTimeout, cancelFunc := context.WithTimeout(ctx, 1*time.Second)
+	err := s.client.Ping(ctxWithTimeout, server)
+	cancelFunc()
+	if err != nil {
+		// Errors are expected if a system is not (yet) available. Therefore
+		// we ignore the errors.
+		slog.WarnContext(ctx, "Initial server connection test failed", logger.Err(err), slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
+		return nil
+	}
+
+	// Perform the update of the server in a transaction in order to respect
+	// potential updates, that happened since we queried for the list of servers
+	// in pending state.
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		server, err := s.repo.GetByName(ctx, server.Name)
+		if err != nil {
+			return err
+		}
+
+		server.Status = api.ServerStatusReady
+
+		return s.repo.Update(ctx, *server)
+	})
 }

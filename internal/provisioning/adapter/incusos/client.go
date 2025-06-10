@@ -2,22 +2,22 @@ package incusos
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"net/http"
+
+	incustls "github.com/lxc/incus/v6/shared/tls"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 type client struct {
-	clientCert []byte
-	clientKey  []byte
+	clientCert string
+	clientKey  string
 }
 
 var _ provisioning.ServerClientPort = &client{}
 
-func New(clientCert []byte, clientKey []byte) *client {
+func New(clientCert string, clientKey string) *client {
 	return &client{
 		clientCert: clientCert,
 		clientKey:  clientKey,
@@ -29,20 +29,13 @@ type serverClient struct {
 }
 
 func (c client) getClient(server provisioning.Server) (*serverClient, error) {
-	cert, err := tls.X509KeyPair(c.clientCert, c.clientKey)
+	tlsConfig, err := incustls.GetTLSConfigMem(c.clientCert, c.clientKey, "", server.Certificate, false)
 	if err != nil {
 		return nil, err
 	}
 
-	caPool := x509.NewCertPool()
-	caPool.AppendCertsFromPEM([]byte(server.Certificate))
-
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			MinVersion:   tls.VersionTLS13,
-			Certificates: []tls.Certificate{cert},
-			RootCAs:      caPool,
-		},
+		TLSClientConfig: tlsConfig,
 	}
 
 	return &serverClient{
