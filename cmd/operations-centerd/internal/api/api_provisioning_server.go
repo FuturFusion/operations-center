@@ -244,7 +244,12 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serversPost(r *http.Request) response.Response {
 	// Parse the token.
-	token, err := uuid.Parse(r.URL.Query().Get("token"))
+	tokenParam := r.URL.Query().Get("token")
+	if tokenParam == "" {
+		return response.BadRequest(fmt.Errorf("Missing token"))
+	}
+
+	token, err := uuid.Parse(tokenParam)
 	if err != nil {
 		return response.BadRequest(fmt.Errorf("Invalid token: %v", err))
 	}
