@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -31,7 +30,7 @@ func TestServerDatabaseActions(t *testing.T) {
 server A
 -----END CERTIFICATE-----
 `,
-		HardwareData: incusapi.Resources{},
+		HardwareData: api.HardwareData{},
 		VersionData:  json.RawMessage(nil),
 		Status:       api.ServerStatusReady,
 		LastUpdated:  fixedDate,
@@ -45,7 +44,7 @@ server A
 server B
 -----END CERTIFICATE-----
 `,
-		HardwareData: incusapi.Resources{},
+		HardwareData: api.HardwareData{},
 		VersionData:  json.RawMessage(nil),
 		Status:       api.ServerStatusReady,
 		LastUpdated:  fixedDate,
