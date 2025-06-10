@@ -179,8 +179,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 				slog.Default(),
 			),
 			incusos.New(
-				[]byte(d.clientCertificate),
-				[]byte(d.clientKey),
+				d.clientCertificate,
+				d.clientKey,
 			),
 			tokenSvc,
 		),
