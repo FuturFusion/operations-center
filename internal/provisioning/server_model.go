@@ -5,8 +5,6 @@ import (
 	"net/url"
 	"time"
 
-	incusapi "github.com/lxc/incus/v6/shared/api"
-
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -18,8 +16,8 @@ type Server struct {
 	Type          api.ServerType
 	ConnectionURL string
 	Certificate   string
-	HardwareData  incusapi.Resources `db:"ignore"`
-	VersionData   json.RawMessage    `db:"ignore"` // FIXME: it is not yet clear, how the structure of the version information will actually look like.
+	HardwareData  api.HardwareData
+	VersionData   json.RawMessage `db:"ignore"` // FIXME: it is not yet clear, how the structure of the version information will actually look like.
 	Status        api.ServerStatus
 	LastUpdated   time.Time
 }

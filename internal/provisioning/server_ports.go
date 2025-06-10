@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type ServerService interface {
@@ -34,4 +36,5 @@ type ServerRepo interface {
 
 type ServerClientPort interface {
 	Ping(ctx context.Context, server Server) error
+	GetResources(ctx context.Context, server Server) (api.HardwareData, error)
 }

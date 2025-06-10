@@ -123,6 +123,9 @@ one
 				PingFunc: func(ctx context.Context, server provisioning.Server) error {
 					return nil
 				},
+				GetResourcesFunc: func(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
+					return api.HardwareData{}, nil
+				},
 			}
 
 			tokenSvc := &svcMock.TokenServiceMock{
@@ -796,6 +799,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 		repoGetAllWithFilterServers provisioning.Servers
 		repoGetAllWithFilterErr     error
 		clientPingErr               error
+		clientGetResourcesErr       error
 		repoGetByNameServer         provisioning.Server
 		repoGetByNameErr            error
 		repoUpdateErr               error
@@ -830,7 +834,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - Ping",
+			name: "error - client Ping",
 			repoGetAllWithFilterServers: provisioning.Servers{
 				provisioning.Server{
 					Name:   "pending",
@@ -839,7 +843,19 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			},
 			clientPingErr: boom.Error,
 
-			assertErr: require.NoError,
+			assertErr: require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
+		},
+		{
+			name: "error - client GetResources",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:   "pending",
+					Status: api.ServerStatusPending,
+				},
+			},
+			clientGetResourcesErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - GetByName",
@@ -874,6 +890,9 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			client := &adapterMock.ServerClientPortMock{
 				PingFunc: func(ctx context.Context, server provisioning.Server) error {
 					return tc.clientPingErr
+				},
+				GetResourcesFunc: func(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
+					return api.HardwareData{}, tc.clientGetResourcesErr
 				},
 			}
 
