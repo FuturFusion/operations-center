@@ -160,7 +160,11 @@ func (h *HardwareData) Scan(value any) error {
 }
 
 type OSData struct {
+	// Network contains the network data of the server OS, in the same form as presented by Incus OS in the network API.
 	Network incusosapi.SystemNetwork `json:"network" yaml:"network"`
+
+	// Encryption contains the encryption data of the server OS, in the same form as presented by Incus OS in the encryption API.
+	Encryption incusosapi.SystemEncryption `json:"encryption" yaml:"encryption"`
 }
 
 // Value implements the sql driver.Valuer interface.

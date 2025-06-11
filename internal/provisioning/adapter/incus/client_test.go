@@ -16,6 +16,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
+	"github.com/FuturFusion/operations-center/internal/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -256,23 +257,34 @@ func TestClient_GetOSData(t *testing.T) {
 	certPEM, keyPEM := string(certPEMByte), string(keyPEMByte)
 
 	tests := []struct {
-		name       string
-		certPEM    string
-		keyPEM     string
-		statusCode int
-		response   []byte
-		setup      func(*httptest.Server)
+		name     string
+		certPEM  string
+		keyPEM   string
+		response []queue.Item[struct {
+			statusCode   int
+			responseBody []byte
+		}]
+		setup func(*httptest.Server)
 
 		assertErr     require.ErrorAssertionFunc
-		wantPath      string
+		wantPaths     []string
 		wantResources api.OSData
 	}{
 		{
-			name:       "success",
-			certPEM:    certPEM,
-			keyPEM:     keyPEM,
-			statusCode: http.StatusOK,
-			response: []byte(`{
+			name:    "success",
+			certPEM: certPEM,
+			keyPEM:  keyPEM,
+			response: []queue.Item[struct {
+				statusCode   int
+				responseBody []byte
+			}]{
+				{
+					Value: struct {
+						statusCode   int
+						responseBody []byte
+					}{
+						statusCode: http.StatusOK,
+						responseBody: []byte(`{
   "metadata": {
     "config": {
       "dns": {
@@ -282,10 +294,28 @@ func TestClient_GetOSData(t *testing.T) {
     }
   }
 }`),
+					},
+				},
+				{
+					Value: struct {
+						statusCode   int
+						responseBody []byte
+					}{
+						statusCode: http.StatusOK,
+						responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "recovery_keys": [ "very secret recovery key" ]
+    }
+  }
+}`),
+					},
+				},
+			},
 			setup: func(_ *httptest.Server) {},
 
 			assertErr: require.NoError,
-			wantPath:  "/os/1.0/system/network",
+			wantPaths: []string{"/os/1.0/system/network", "/os/1.0/system/encryption"},
 			wantResources: api.OSData{
 				Network: incusosapi.SystemNetwork{
 					Config: &incusosapi.SystemNetworkConfig{
@@ -293,6 +323,13 @@ func TestClient_GetOSData(t *testing.T) {
 							Hostname: "foobar",
 							Domain:   "local",
 						},
+					},
+				},
+				Encryption: incusosapi.SystemEncryption{
+					Config: struct {
+						RecoveryKeys []string `json:"recovery_keys" yaml:"recovery_keys"`
+					}{
+						RecoveryKeys: []string{"very secret recovery key"},
 					},
 				},
 			},
@@ -316,38 +353,146 @@ func TestClient_GetOSData(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
-			name:       "error - unexpected http status code",
-			certPEM:    certPEM,
-			keyPEM:     keyPEM,
-			statusCode: http.StatusInternalServerError,
-			setup:      func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-			wantPath:  "/os/1.0/system/network",
-		},
-		{
-			name:       "error - invalid JSON",
-			certPEM:    certPEM,
-			keyPEM:     keyPEM,
-			statusCode: http.StatusInternalServerError,
-			response: []byte(`{
-  "metadata": []
-}`), // array for metadata is invalid.
+			name:    "error - network data unexpected http status code",
+			certPEM: certPEM,
+			keyPEM:  keyPEM,
+			response: []queue.Item[struct {
+				statusCode   int
+				responseBody []byte
+			}]{
+				{
+					Value: struct {
+						statusCode   int
+						responseBody []byte
+					}{
+						statusCode: http.StatusOK,
+						responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "dns": {
+        "hostname": "foobar",
+        "domain": "local"
+      }
+    }
+  }
+}`),
+					},
+				},
+				{
+					Value: struct {
+						statusCode   int
+						responseBody []byte
+					}{
+						statusCode: http.StatusInternalServerError,
+					},
+				},
+			},
 			setup: func(_ *httptest.Server) {},
 
 			assertErr: require.Error,
-			wantPath:  "/os/1.0/system/network",
+			wantPaths: []string{"/os/1.0/system/network", "/os/1.0/system/encryption"},
+		},
+		{
+			name:    "error - network data invalid JSON",
+			certPEM: certPEM,
+			keyPEM:  keyPEM,
+			response: []queue.Item[struct {
+				statusCode   int
+				responseBody []byte
+			}]{
+				{
+					Value: struct {
+						statusCode   int
+						responseBody []byte
+					}{
+						statusCode: http.StatusOK,
+						responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "dns": {
+        "hostname": "foobar",
+        "domain": "local"
+      }
+    }
+  }
+}`),
+					},
+				},
+				{
+					Value: struct {
+						statusCode   int
+						responseBody []byte
+					}{
+						statusCode: http.StatusOK,
+						responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+					},
+				},
+			},
+			setup: func(_ *httptest.Server) {},
+
+			assertErr: require.Error,
+			wantPaths: []string{"/os/1.0/system/network", "/os/1.0/system/encryption"},
+		},
+		{
+			name:    "error - encryption data unexpected http status code",
+			certPEM: certPEM,
+			keyPEM:  keyPEM,
+			response: []queue.Item[struct {
+				statusCode   int
+				responseBody []byte
+			}]{
+				{
+					Value: struct {
+						statusCode   int
+						responseBody []byte
+					}{
+						statusCode: http.StatusInternalServerError,
+					},
+				},
+			},
+			setup: func(_ *httptest.Server) {},
+
+			assertErr: require.Error,
+			wantPaths: []string{"/os/1.0/system/network"},
+		},
+		{
+			name:    "error - encryption data invalid JSON",
+			certPEM: certPEM,
+			keyPEM:  keyPEM,
+			response: []queue.Item[struct {
+				statusCode   int
+				responseBody []byte
+			}]{
+				{
+					Value: struct {
+						statusCode   int
+						responseBody []byte
+					}{
+						statusCode: http.StatusOK,
+						responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+					},
+				},
+			},
+			setup: func(_ *httptest.Server) {},
+
+			assertErr: require.Error,
+			wantPaths: []string{"/os/1.0/system/network"},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			var gotPath string
+			var gotPaths []string
 			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				gotPath = r.URL.Path
-				w.WriteHeader(tc.statusCode)
-				_, _ = w.Write(tc.response)
+				gotPaths = append(gotPaths, r.URL.Path)
+				response, _ := queue.Pop(t, &tc.response)
+				w.WriteHeader(response.statusCode)
+				_, _ = w.Write(response.responseBody)
 			}))
 			server.TLS = &tls.Config{
 				NextProtos: []string{"h2", "http/1.1"},
@@ -379,7 +524,7 @@ func TestClient_GetOSData(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.wantPath, gotPath)
+			require.Equal(t, tc.wantPaths, gotPaths)
 			require.Equal(t, tc.wantResources, resources)
 		})
 	}
