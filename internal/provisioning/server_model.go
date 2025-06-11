@@ -32,12 +32,17 @@ func (s Server) Validate() error {
 		return domain.NewValidationErrf("Invalid server, connection URL can not be empty")
 	}
 
+	_, err := url.Parse(s.ConnectionURL)
+	if err != nil {
+		return domain.NewValidationErrf("Invalid server, connection URL is not valid: %v", err)
+	}
+
 	if s.Certificate == "" {
 		return domain.NewValidationErrf("Invalid server, certificate can not be empty")
 	}
 
 	var serverType api.ServerType
-	err := serverType.UnmarshalText([]byte(s.Type))
+	err = serverType.UnmarshalText([]byte(s.Type))
 	if err != nil {
 		return domain.NewValidationErrf("Invalid server, validation of type failed: %v", err)
 	}
@@ -46,11 +51,6 @@ func (s Server) Validate() error {
 	err = serverStatus.UnmarshalText([]byte(s.Status))
 	if err != nil {
 		return domain.NewValidationErrf("Invalid server, validation of status failed: %v", err)
-	}
-
-	_, err = url.Parse(s.ConnectionURL)
-	if err != nil {
-		return domain.NewValidationErrf("Invalid server, connection URL is not valid: %v", err)
 	}
 
 	return nil
