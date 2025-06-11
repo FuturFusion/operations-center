@@ -126,6 +126,9 @@ one
 				GetResourcesFunc: func(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
 					return api.HardwareData{}, nil
 				},
+				GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
+					return api.OSData{}, nil
+				},
 			}
 
 			tokenSvc := &svcMock.TokenServiceMock{
@@ -800,6 +803,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 		repoGetAllWithFilterErr     error
 		clientPingErr               error
 		clientGetResourcesErr       error
+		clientGetOSDataErr          error
 		repoGetByNameServer         provisioning.Server
 		repoGetByNameErr            error
 		repoUpdateErr               error
@@ -858,6 +862,18 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - client GetOSData",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:   "pending",
+					Status: api.ServerStatusPending,
+				},
+			},
+			clientGetOSDataErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - GetByName",
 			repoGetAllWithFilterServers: provisioning.Servers{
 				provisioning.Server{
@@ -893,6 +909,9 @@ func TestServerService_PollPendingServers(t *testing.T) {
 				},
 				GetResourcesFunc: func(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
 					return api.HardwareData{}, tc.clientGetResourcesErr
+				},
+				GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
+					return api.OSData{}, tc.clientGetOSDataErr
 				},
 			}
 
