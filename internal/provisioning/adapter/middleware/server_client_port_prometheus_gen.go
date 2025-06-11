@@ -38,6 +38,20 @@ func NewServerClientPortWithPrometheus(base provisioning.ServerClientPort, insta
 	}
 }
 
+// GetOSData implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) GetOSData(ctx context.Context, server provisioning.Server) (oSData api.OSData, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSData", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetOSData(ctx, server)
+}
+
 // GetResources implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithPrometheus) GetResources(ctx context.Context, server provisioning.Server) (hardwareData api.HardwareData, err error) {
 	_since := time.Now()

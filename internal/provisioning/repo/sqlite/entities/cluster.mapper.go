@@ -239,7 +239,7 @@ func GetClusters(ctx context.Context, db dbtx, filters ...provisioning.ClusterFi
 		} else if filter.Name == nil {
 			return nil, fmt.Errorf("Cannot filter on empty ClusterFilter")
 		} else {
-			return nil, fmt.Errorf("No statement exists for the given Filter")
+			return nil, errors.New("No statement exists for the given Filter")
 		}
 	}
 
@@ -286,7 +286,7 @@ func GetClusterNames(ctx context.Context, db dbtx, filters ...provisioning.Clust
 		if filter.Name == nil {
 			return nil, fmt.Errorf("Cannot filter on empty ClusterFilter")
 		} else {
-			return nil, fmt.Errorf("No statement exists for the given Filter")
+			return nil, errors.New("No statement exists for the given Filter")
 		}
 	}
 

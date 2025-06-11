@@ -42,6 +42,41 @@ func NewServerClientPortWithSlog(base provisioning.ServerClientPort, log *slog.L
 	return this
 }
 
+// GetOSData implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) GetOSData(ctx context.Context, server provisioning.Server) (oSData api.OSData, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.Debug("=> calling GetOSData")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("oSData", oSData),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetOSData returned an informative error")
+			} else {
+				log.Error("<= method GetOSData returned an error")
+			}
+		} else {
+			log.Debug("<= method GetOSData finished")
+		}
+	}()
+	return _d._base.GetOSData(ctx, server)
+}
+
 // GetResources implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetResources(ctx context.Context, server provisioning.Server) (hardwareData api.HardwareData, err error) {
 	log := _d._log.With()

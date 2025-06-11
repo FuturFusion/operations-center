@@ -236,7 +236,7 @@ func GetTokens(ctx context.Context, db dbtx, filters ...TokenFilter) (_ []provis
 		} else if filter.UUID == nil {
 			return nil, fmt.Errorf("Cannot filter on empty TokenFilter")
 		} else {
-			return nil, fmt.Errorf("No statement exists for the given Filter")
+			return nil, errors.New("No statement exists for the given Filter")
 		}
 	}
 
@@ -283,7 +283,7 @@ func GetTokenNames(ctx context.Context, db dbtx, filters ...TokenFilter) (_ []uu
 		if filter.UUID == nil {
 			return nil, fmt.Errorf("Cannot filter on empty TokenFilter")
 		} else {
-			return nil, fmt.Errorf("No statement exists for the given Filter")
+			return nil, errors.New("No statement exists for the given Filter")
 		}
 	}
 
