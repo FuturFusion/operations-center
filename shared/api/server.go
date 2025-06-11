@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
@@ -158,6 +159,41 @@ func (h *HardwareData) Scan(value any) error {
 	}
 }
 
+type OSData struct {
+	Network incusosapi.SystemNetwork `json:"network" yaml:"network"`
+}
+
+// Value implements the sql driver.Valuer interface.
+func (h OSData) Value() (driver.Value, error) {
+	return json.Marshal(h)
+}
+
+// Scan implements the sql.Scanner interface.
+func (h *OSData) Scan(value any) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid OS data")
+	}
+
+	switch v := value.(type) {
+	case string:
+		if len(v) == 0 {
+			*h = OSData{}
+			return nil
+		}
+
+		return json.Unmarshal([]byte(v), h)
+	case []byte:
+		if len(v) == 0 {
+			*h = OSData{}
+			return nil
+		}
+
+		return json.Unmarshal(v, h)
+	default:
+		return fmt.Errorf("type %T is not supported for OS data", value)
+	}
+}
+
 // Server defines a server running Hypervisor OS.
 //
 // swagger:model
@@ -180,6 +216,9 @@ type Server struct {
 
 	// HardwareData contains the hardware data of the server, in the same form as presented by Incus in the resource API.
 	HardwareData HardwareData `json:"hardware_data" yaml:"hardware_data"`
+
+	// OSData contains the configuration data of the operating system, e.g. incus-os.
+	OSData OSData `json:"os_data" yaml:"os_data"`
 
 	// VersionData contains information about the servers version.
 	// Example: ...
