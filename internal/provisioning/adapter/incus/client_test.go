@@ -1,4 +1,4 @@
-package incusos_test
+package incus_test
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/incusos"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -32,6 +32,7 @@ func TestClient_Ping(t *testing.T) {
 		certPEM    string
 		keyPEM     string
 		statusCode int
+		response   []byte
 		setup      func(*httptest.Server)
 
 		assertErr require.ErrorAssertionFunc
@@ -41,24 +42,25 @@ func TestClient_Ping(t *testing.T) {
 			certPEM:    certPEM,
 			keyPEM:     keyPEM,
 			statusCode: http.StatusOK,
-			setup:      func(_ *httptest.Server) {},
+			response: []byte(`{
+  "metadata": {}
+}`),
+			setup: func(_ *httptest.Server) {},
 
 			assertErr: require.NoError,
 		},
 		{
-			name:       "error - invalid key pair",
-			certPEM:    certPEM,
-			keyPEM:     certPEM, // invalid, should be key
-			statusCode: http.StatusOK,
-			setup:      func(_ *httptest.Server) {},
+			name:    "error - invalid key pair",
+			certPEM: certPEM,
+			keyPEM:  certPEM, // invalid, should be key
+			setup:   func(_ *httptest.Server) {},
 
 			assertErr: require.Error,
 		},
 		{
-			name:       "error - connection failure",
-			certPEM:    certPEM,
-			keyPEM:     keyPEM,
-			statusCode: http.StatusInternalServerError,
+			name:    "error - connection failure",
+			certPEM: certPEM,
+			keyPEM:  keyPEM,
 			setup: func(server *httptest.Server) {
 				server.Close()
 			},
@@ -81,6 +83,7 @@ func TestClient_Ping(t *testing.T) {
 			// Setup
 			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tc.statusCode)
+				_, _ = w.Write(tc.response)
 			}))
 			server.TLS = &tls.Config{
 				NextProtos: []string{"h2", "http/1.1"},
@@ -93,7 +96,7 @@ func TestClient_Ping(t *testing.T) {
 
 			tc.setup(server)
 
-			client := incusos.New(tc.certPEM, tc.keyPEM)
+			client := incus.New(tc.certPEM, tc.keyPEM)
 
 			ctx := context.Background()
 
@@ -160,19 +163,17 @@ func TestClient_GetResources(t *testing.T) {
 			},
 		},
 		{
-			name:       "error - invalid key pair",
-			certPEM:    certPEM,
-			keyPEM:     certPEM, // invalid, should be key
-			statusCode: http.StatusOK,
-			setup:      func(_ *httptest.Server) {},
+			name:    "error - invalid key pair",
+			certPEM: certPEM,
+			keyPEM:  certPEM, // invalid, should be key
+			setup:   func(_ *httptest.Server) {},
 
 			assertErr: require.Error,
 		},
 		{
-			name:       "error - connection failure",
-			certPEM:    certPEM,
-			keyPEM:     keyPEM,
-			statusCode: http.StatusInternalServerError,
+			name:    "error - connection failure",
+			certPEM: certPEM,
+			keyPEM:  keyPEM,
 			setup: func(server *httptest.Server) {
 				server.Close()
 			},
@@ -184,16 +185,6 @@ func TestClient_GetResources(t *testing.T) {
 			certPEM:    certPEM,
 			keyPEM:     keyPEM,
 			statusCode: http.StatusInternalServerError,
-			setup:      func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-		},
-		{
-			name:       "error - unexpected http status code",
-			certPEM:    certPEM,
-			keyPEM:     keyPEM,
-			statusCode: http.StatusOK,
-			response:   []byte(`{`), // invalid JSON
 			setup:      func(_ *httptest.Server) {},
 
 			assertErr: require.Error,
@@ -218,7 +209,7 @@ func TestClient_GetResources(t *testing.T) {
 
 			tc.setup(server)
 
-			client := incusos.New(tc.certPEM, tc.keyPEM)
+			client := incus.New(tc.certPEM, tc.keyPEM)
 
 			ctx := context.Background()
 

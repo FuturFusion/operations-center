@@ -32,12 +32,12 @@ import (
 	"github.com/FuturFusion/operations-center/internal/dbschema"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/file"
-	incusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
+	inventoryIncusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/github"
-	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/incusos"
+	provisioningIncusAdapter "github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
 	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
 	provisioningServiceMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/middleware"
@@ -154,7 +154,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	authorizer := authzchain.New(authorizers...)
 
 	serverClientProvider := serverMiddleware.NewServerClientWithSlog(
-		incusAdapter.New(
+		inventoryIncusAdapter.New(
 			d.clientCertificate,
 			d.clientKey,
 		),
@@ -178,7 +178,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 				provisioningSqlite.NewServer(dbWithTransaction),
 				slog.Default(),
 			),
-			incusos.New(
+			provisioningIncusAdapter.New(
 				d.clientCertificate,
 				d.clientKey,
 			),
