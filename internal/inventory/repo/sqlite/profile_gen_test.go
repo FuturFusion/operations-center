@@ -96,6 +96,9 @@ server-one
 		GetResourcesFunc: func(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
 			return api.HardwareData{}, nil
 		},
+		GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
+			return api.OSData{}, nil
+		},
 	}
 
 	ctx := context.Background()
