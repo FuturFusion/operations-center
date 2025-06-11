@@ -1,6 +1,7 @@
 package provisioning
 
 import (
+	"crypto/x509"
 	"encoding/json"
 	"net/url"
 	"time"
@@ -26,6 +27,10 @@ type Server struct {
 func (s Server) Validate() error {
 	if s.Name == "" {
 		return domain.NewValidationErrf("Invalid server, name can not be empty")
+	}
+
+	if s.Name == ":self" {
+		return domain.NewValidationErrf(`Invalid server, ":self" is reserved for internal use and not allowed as server name`)
 	}
 
 	if s.ConnectionURL == "" {
@@ -59,10 +64,11 @@ func (s Server) Validate() error {
 type Servers []Server
 
 type ServerFilter struct {
-	Name       *string
-	Cluster    *string
-	Status     *api.ServerStatus
-	Expression *string `db:"ignore"`
+	Name        *string
+	Cluster     *string
+	Status      *api.ServerStatus
+	Certificate *string
+	Expression  *string `db:"ignore"`
 }
 
 func (f ServerFilter) AppendToURLValues(query url.Values) url.Values {
@@ -79,4 +85,9 @@ func (f ServerFilter) AppendToURLValues(query url.Values) url.Values {
 
 func (f ServerFilter) String() string {
 	return f.AppendToURLValues(url.Values{}).Encode()
+}
+
+type ServerSelfUpdate struct {
+	ConnectionURL             string
+	AuthenticationCertificate *x509.Certificate
 }

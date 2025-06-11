@@ -11,6 +11,8 @@ var (
 	ErrConstraintViolation = errors.New("Constraint violation")
 
 	ErrOperationNotPermitted = errors.New("Operation not permitted")
+
+	ErrNotAuthorized = errors.New("Not authorized")
 )
 
 type ErrValidation string

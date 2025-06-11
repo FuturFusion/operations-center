@@ -54,6 +54,25 @@ one
 			},
 		},
 		{
+			name: "error - name :self",
+			server: provisioning.Server{
+				Name:          ":self", // reserved for internal use, not allowed
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
 			name: "error - invalid type",
 			server: provisioning.Server{
 				Name:          "one",

@@ -27,8 +27,12 @@ func SmartError(err error) Response {
 		return &errorResponse{http.StatusBadRequest, err.Error()}
 	}
 
-	if errors.Is(err, domain.ErrConstraintViolation) || errors.Is(err, domain.ErrNotFound) {
+	if errors.Is(err, domain.ErrConstraintViolation) || errors.Is(err, domain.ErrNotFound) || errors.Is(err, domain.ErrOperationNotPermitted) {
 		return &errorResponse{http.StatusBadRequest, err.Error()}
+	}
+
+	if errors.Is(err, domain.ErrNotAuthorized) {
+		return &errorResponse{http.StatusForbidden, err.Error()}
 	}
 
 	statusCode, found := api.StatusErrorMatch(err)

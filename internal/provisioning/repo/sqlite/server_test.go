@@ -103,6 +103,14 @@ server B
 	serverB.ID = dbServerB.ID
 	require.Equal(t, serverB, *dbServerB)
 
+	// GetByCertificate
+	dbServerA, err = server.GetByCertificate(ctx, serverA.Certificate)
+	require.NoError(t, err)
+	require.Equal(t, serverA, *dbServerA)
+
+	_, err = server.GetByCertificate(ctx, ``)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
 	// Test updating a server.
 	serverB.ConnectionURL = "https://two-new/"
 	err = server.Update(ctx, serverB)
