@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/cmds"
+	"github.com/FuturFusion/operations-center/internal/cli/cmds"
 	"github.com/FuturFusion/operations-center/internal/client"
 	config "github.com/FuturFusion/operations-center/internal/config/cli"
 	"github.com/FuturFusion/operations-center/internal/environment"

@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
+	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,16 +19,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdStoragePool struct {
+type CmdNetworkZone struct {
 	OCClient *client.OperationsCenterClient
 }
 
-func (c *CmdStoragePool) Command() *cobra.Command {
+func (c *CmdNetworkZone) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "storage-pool"
-	cmd.Short = "Interact with storage pools"
+	cmd.Use = "network-zone"
+	cmd.Short = "Interact with network zones"
 	cmd.Long = `Description:
-  Interact with storage pools
+  Interact with network zones
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -36,49 +36,51 @@ func (c *CmdStoragePool) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	storagePoolListCmd := cmdStoragePoolList{
+	networkZoneListCmd := cmdNetworkZoneList{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(storagePoolListCmd.Command())
+	cmd.AddCommand(networkZoneListCmd.Command())
 
 	// Show
-	storagePoolShowCmd := cmdStoragePoolShow{
+	networkZoneShowCmd := cmdNetworkZoneShow{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(storagePoolShowCmd.Command())
+	cmd.AddCommand(networkZoneShowCmd.Command())
 
 	return cmd
 }
 
-// List storage_pools.
-type cmdStoragePoolList struct {
+// List network_zones.
+type cmdNetworkZoneList struct {
 	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
+	flagFilterProject    string
 	flagFilterExpression string
 
 	flagColumns string
 	flagFormat  string
 }
 
-const storagePoolDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Name }},{{ .LastUpdated }}`
+const networkZoneDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
 
-func (c *cmdStoragePoolList) Command() *cobra.Command {
+func (c *cmdNetworkZoneList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
-	cmd.Short = "List available storage_pools"
+	cmd.Short = "List available network_zones"
 	cmd.Long = `Description:
-  List the available storage_pools
+  List the available network_zones
 `
 
 	cmd.RunE = c.Run
 
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
+	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
-	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", storagePoolDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
+	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkZoneDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		return validate.FormatFlag(cmd.Flag("format").Value.String())
@@ -87,24 +89,28 @@ func (c *cmdStoragePoolList) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdStoragePoolList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkZoneList) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
-	var filter inventory.StoragePoolFilter
+	var filter inventory.NetworkZoneFilter
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = ptr.To(c.flagFilterCluster)
+	}
+
+	if c.flagFilterProject != "" {
+		filter.Project = ptr.To(c.flagFilterProject)
 	}
 
 	if c.flagFilterExpression != "" {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	storagePools, err := c.ocClient.GetWithFilterStoragePools(cmd.Context(), filter)
+	networkZones, err := c.ocClient.GetWithFilterNetworkZones(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -128,11 +134,11 @@ func (c *cmdStoragePoolList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 	wr := &bytes.Buffer{}
 
-	for _, storagePool := range storagePools {
+	for _, networkZone := range networkZones {
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
-			err := tmpl.ExecuteTemplate(wr, field, storagePool)
+			err := tmpl.ExecuteTemplate(wr, field, networkZone)
 			if err != nil {
 				return err
 			}
@@ -145,20 +151,20 @@ func (c *cmdStoragePoolList) Run(cmd *cobra.Command, args []string) error {
 
 	sort.ColumnsNaturally(data)
 
-	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, storagePools)
+	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, networkZones)
 }
 
-// Show storage_pool.
-type cmdStoragePoolShow struct {
+// Show network_zone.
+type cmdNetworkZoneShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmdStoragePoolShow) Command() *cobra.Command {
+func (c *cmdNetworkZoneShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid>"
-	cmd.Short = "Show information about a storage_pool"
+	cmd.Short = "Show information about a network_zone"
 	cmd.Long = `Description:
-  Show information about a storage_pool.
+  Show information about a network_zone.
 `
 
 	cmd.RunE = c.Run
@@ -166,7 +172,7 @@ func (c *cmdStoragePoolShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdStoragePoolShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkZoneShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -175,20 +181,21 @@ func (c *cmdStoragePoolShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	storagePool, err := c.ocClient.GetStoragePool(cmd.Context(), id)
+	networkZone, err := c.ocClient.GetNetworkZone(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent(storagePool.Object, "", "  ")
+	objectJSON, err := json.MarshalIndent(networkZone.Object, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("UUID: %s\n", storagePool.UUID.String())
-	fmt.Printf("Cluster: %s\n", storagePool.Cluster)
-	fmt.Printf("Name: %s\n", storagePool.Name)
-	fmt.Printf("Last Updated: %s\n", storagePool.LastUpdated.String())
+	fmt.Printf("UUID: %s\n", networkZone.UUID.String())
+	fmt.Printf("Cluster: %s\n", networkZone.Cluster)
+	fmt.Printf("Project Name: %s\n", networkZone.ProjectName)
+	fmt.Printf("Name: %s\n", networkZone.Name)
+	fmt.Printf("Last Updated: %s\n", networkZone.LastUpdated.String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

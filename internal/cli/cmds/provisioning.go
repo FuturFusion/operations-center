@@ -3,7 +3,7 @@ package cmds
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/cmds/provisioning"
+	"github.com/FuturFusion/operations-center/internal/cli/cmds/provisioning"
 	"github.com/FuturFusion/operations-center/internal/client"
 )
 

@@ -5,7 +5,7 @@ package cmds
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/cmds/inventory"
+	"github.com/FuturFusion/operations-center/internal/cli/cmds/inventory"
 	"github.com/FuturFusion/operations-center/internal/client"
 )
 

@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
+	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,16 +19,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdProfile struct {
+type CmdNetworkLoadBalancer struct {
 	OCClient *client.OperationsCenterClient
 }
 
-func (c *CmdProfile) Command() *cobra.Command {
+func (c *CmdNetworkLoadBalancer) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "profile"
-	cmd.Short = "Interact with profiles"
+	cmd.Use = "network-load-balancer"
+	cmd.Short = "Interact with network load balancers"
 	cmd.Long = `Description:
-  Interact with profiles
+  Interact with network load balancers
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -36,51 +36,49 @@ func (c *CmdProfile) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	profileListCmd := cmdProfileList{
+	networkLoadBalancerListCmd := cmdNetworkLoadBalancerList{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(profileListCmd.Command())
+	cmd.AddCommand(networkLoadBalancerListCmd.Command())
 
 	// Show
-	profileShowCmd := cmdProfileShow{
+	networkLoadBalancerShowCmd := cmdNetworkLoadBalancerShow{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(profileShowCmd.Command())
+	cmd.AddCommand(networkLoadBalancerShowCmd.Command())
 
 	return cmd
 }
 
-// List profiles.
-type cmdProfileList struct {
+// List network_load_balancers.
+type cmdNetworkLoadBalancerList struct {
 	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
-	flagFilterProject    string
 	flagFilterExpression string
 
 	flagColumns string
 	flagFormat  string
 }
 
-const profileDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const networkLoadBalancerDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
 
-func (c *cmdProfileList) Command() *cobra.Command {
+func (c *cmdNetworkLoadBalancerList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
-	cmd.Short = "List available profiles"
+	cmd.Short = "List available network_load_balancers"
 	cmd.Long = `Description:
-  List the available profiles
+  List the available network_load_balancers
 `
 
 	cmd.RunE = c.Run
 
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
-	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
-	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", profileDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
+	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkLoadBalancerDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		return validate.FormatFlag(cmd.Flag("format").Value.String())
@@ -89,28 +87,24 @@ func (c *cmdProfileList) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdProfileList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkLoadBalancerList) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
-	var filter inventory.ProfileFilter
+	var filter inventory.NetworkLoadBalancerFilter
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = ptr.To(c.flagFilterCluster)
-	}
-
-	if c.flagFilterProject != "" {
-		filter.Project = ptr.To(c.flagFilterProject)
 	}
 
 	if c.flagFilterExpression != "" {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	profiles, err := c.ocClient.GetWithFilterProfiles(cmd.Context(), filter)
+	networkLoadBalancers, err := c.ocClient.GetWithFilterNetworkLoadBalancers(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -134,11 +128,11 @@ func (c *cmdProfileList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 	wr := &bytes.Buffer{}
 
-	for _, profile := range profiles {
+	for _, networkLoadBalancer := range networkLoadBalancers {
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
-			err := tmpl.ExecuteTemplate(wr, field, profile)
+			err := tmpl.ExecuteTemplate(wr, field, networkLoadBalancer)
 			if err != nil {
 				return err
 			}
@@ -151,20 +145,20 @@ func (c *cmdProfileList) Run(cmd *cobra.Command, args []string) error {
 
 	sort.ColumnsNaturally(data)
 
-	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, profiles)
+	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, networkLoadBalancers)
 }
 
-// Show profile.
-type cmdProfileShow struct {
+// Show network_load_balancer.
+type cmdNetworkLoadBalancerShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmdProfileShow) Command() *cobra.Command {
+func (c *cmdNetworkLoadBalancerShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid>"
-	cmd.Short = "Show information about a profile"
+	cmd.Short = "Show information about a network_load_balancer"
 	cmd.Long = `Description:
-  Show information about a profile.
+  Show information about a network_load_balancer.
 `
 
 	cmd.RunE = c.Run
@@ -172,7 +166,7 @@ func (c *cmdProfileShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdProfileShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkLoadBalancerShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -181,21 +175,21 @@ func (c *cmdProfileShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	profile, err := c.ocClient.GetProfile(cmd.Context(), id)
+	networkLoadBalancer, err := c.ocClient.GetNetworkLoadBalancer(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent(profile.Object, "", "  ")
+	objectJSON, err := json.MarshalIndent(networkLoadBalancer.Object, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("UUID: %s\n", profile.UUID.String())
-	fmt.Printf("Cluster: %s\n", profile.Cluster)
-	fmt.Printf("Project Name: %s\n", profile.ProjectName)
-	fmt.Printf("Name: %s\n", profile.Name)
-	fmt.Printf("Last Updated: %s\n", profile.LastUpdated.String())
+	fmt.Printf("UUID: %s\n", networkLoadBalancer.UUID.String())
+	fmt.Printf("Cluster: %s\n", networkLoadBalancer.Cluster)
+	fmt.Printf("Network Name: %s\n", networkLoadBalancer.NetworkName)
+	fmt.Printf("Name: %s\n", networkLoadBalancer.Name)
+	fmt.Printf("Last Updated: %s\n", networkLoadBalancer.LastUpdated.String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

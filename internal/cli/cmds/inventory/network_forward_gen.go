@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
+	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,16 +19,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdNetwork struct {
+type CmdNetworkForward struct {
 	OCClient *client.OperationsCenterClient
 }
 
-func (c *CmdNetwork) Command() *cobra.Command {
+func (c *CmdNetworkForward) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "network"
-	cmd.Short = "Interact with networks"
+	cmd.Use = "network-forward"
+	cmd.Short = "Interact with network forwards"
 	cmd.Long = `Description:
-  Interact with networks
+  Interact with network forwards
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -36,51 +36,49 @@ func (c *CmdNetwork) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	networkListCmd := cmdNetworkList{
+	networkForwardListCmd := cmdNetworkForwardList{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(networkListCmd.Command())
+	cmd.AddCommand(networkForwardListCmd.Command())
 
 	// Show
-	networkShowCmd := cmdNetworkShow{
+	networkForwardShowCmd := cmdNetworkForwardShow{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(networkShowCmd.Command())
+	cmd.AddCommand(networkForwardShowCmd.Command())
 
 	return cmd
 }
 
-// List networks.
-type cmdNetworkList struct {
+// List network_forwards.
+type cmdNetworkForwardList struct {
 	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
-	flagFilterProject    string
 	flagFilterExpression string
 
 	flagColumns string
 	flagFormat  string
 }
 
-const networkDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const networkForwardDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
 
-func (c *cmdNetworkList) Command() *cobra.Command {
+func (c *cmdNetworkForwardList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
-	cmd.Short = "List available networks"
+	cmd.Short = "List available network_forwards"
 	cmd.Long = `Description:
-  List the available networks
+  List the available network_forwards
 `
 
 	cmd.RunE = c.Run
 
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
-	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
-	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
+	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkForwardDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		return validate.FormatFlag(cmd.Flag("format").Value.String())
@@ -89,28 +87,24 @@ func (c *cmdNetworkList) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkForwardList) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
-	var filter inventory.NetworkFilter
+	var filter inventory.NetworkForwardFilter
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = ptr.To(c.flagFilterCluster)
-	}
-
-	if c.flagFilterProject != "" {
-		filter.Project = ptr.To(c.flagFilterProject)
 	}
 
 	if c.flagFilterExpression != "" {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	networks, err := c.ocClient.GetWithFilterNetworks(cmd.Context(), filter)
+	networkForwards, err := c.ocClient.GetWithFilterNetworkForwards(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -134,11 +128,11 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 	wr := &bytes.Buffer{}
 
-	for _, network := range networks {
+	for _, networkForward := range networkForwards {
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
-			err := tmpl.ExecuteTemplate(wr, field, network)
+			err := tmpl.ExecuteTemplate(wr, field, networkForward)
 			if err != nil {
 				return err
 			}
@@ -151,20 +145,20 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 
 	sort.ColumnsNaturally(data)
 
-	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, networks)
+	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, networkForwards)
 }
 
-// Show network.
-type cmdNetworkShow struct {
+// Show network_forward.
+type cmdNetworkForwardShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmdNetworkShow) Command() *cobra.Command {
+func (c *cmdNetworkForwardShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid>"
-	cmd.Short = "Show information about a network"
+	cmd.Short = "Show information about a network_forward"
 	cmd.Long = `Description:
-  Show information about a network.
+  Show information about a network_forward.
 `
 
 	cmd.RunE = c.Run
@@ -172,7 +166,7 @@ func (c *cmdNetworkShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdNetworkShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkForwardShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -181,21 +175,21 @@ func (c *cmdNetworkShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	network, err := c.ocClient.GetNetwork(cmd.Context(), id)
+	networkForward, err := c.ocClient.GetNetworkForward(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent(network.Object, "", "  ")
+	objectJSON, err := json.MarshalIndent(networkForward.Object, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("UUID: %s\n", network.UUID.String())
-	fmt.Printf("Cluster: %s\n", network.Cluster)
-	fmt.Printf("Project Name: %s\n", network.ProjectName)
-	fmt.Printf("Name: %s\n", network.Name)
-	fmt.Printf("Last Updated: %s\n", network.LastUpdated.String())
+	fmt.Printf("UUID: %s\n", networkForward.UUID.String())
+	fmt.Printf("Cluster: %s\n", networkForward.Cluster)
+	fmt.Printf("Network Name: %s\n", networkForward.NetworkName)
+	fmt.Printf("Name: %s\n", networkForward.Name)
+	fmt.Printf("Last Updated: %s\n", networkForward.LastUpdated.String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

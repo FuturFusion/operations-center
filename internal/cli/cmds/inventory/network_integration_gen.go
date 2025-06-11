@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
+	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,16 +19,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdNetworkPeer struct {
+type CmdNetworkIntegration struct {
 	OCClient *client.OperationsCenterClient
 }
 
-func (c *CmdNetworkPeer) Command() *cobra.Command {
+func (c *CmdNetworkIntegration) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "network-peer"
-	cmd.Short = "Interact with network peers"
+	cmd.Use = "network-integration"
+	cmd.Short = "Interact with network integrations"
 	cmd.Long = `Description:
-  Interact with network peers
+  Interact with network integrations
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -36,24 +36,24 @@ func (c *CmdNetworkPeer) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	networkPeerListCmd := cmdNetworkPeerList{
+	networkIntegrationListCmd := cmdNetworkIntegrationList{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(networkPeerListCmd.Command())
+	cmd.AddCommand(networkIntegrationListCmd.Command())
 
 	// Show
-	networkPeerShowCmd := cmdNetworkPeerShow{
+	networkIntegrationShowCmd := cmdNetworkIntegrationShow{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(networkPeerShowCmd.Command())
+	cmd.AddCommand(networkIntegrationShowCmd.Command())
 
 	return cmd
 }
 
-// List network_peers.
-type cmdNetworkPeerList struct {
+// List network_integrations.
+type cmdNetworkIntegrationList struct {
 	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
@@ -63,14 +63,14 @@ type cmdNetworkPeerList struct {
 	flagFormat  string
 }
 
-const networkPeerDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
+const networkIntegrationDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Name }},{{ .LastUpdated }}`
 
-func (c *cmdNetworkPeerList) Command() *cobra.Command {
+func (c *cmdNetworkIntegrationList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
-	cmd.Short = "List available network_peers"
+	cmd.Short = "List available network_integrations"
 	cmd.Long = `Description:
-  List the available network_peers
+  List the available network_integrations
 `
 
 	cmd.RunE = c.Run
@@ -78,7 +78,7 @@ func (c *cmdNetworkPeerList) Command() *cobra.Command {
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
-	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkPeerDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
+	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkIntegrationDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		return validate.FormatFlag(cmd.Flag("format").Value.String())
@@ -87,14 +87,14 @@ func (c *cmdNetworkPeerList) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdNetworkPeerList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkIntegrationList) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
-	var filter inventory.NetworkPeerFilter
+	var filter inventory.NetworkIntegrationFilter
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = ptr.To(c.flagFilterCluster)
@@ -104,7 +104,7 @@ func (c *cmdNetworkPeerList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	networkPeers, err := c.ocClient.GetWithFilterNetworkPeers(cmd.Context(), filter)
+	networkIntegrations, err := c.ocClient.GetWithFilterNetworkIntegrations(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -128,11 +128,11 @@ func (c *cmdNetworkPeerList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 	wr := &bytes.Buffer{}
 
-	for _, networkPeer := range networkPeers {
+	for _, networkIntegration := range networkIntegrations {
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
-			err := tmpl.ExecuteTemplate(wr, field, networkPeer)
+			err := tmpl.ExecuteTemplate(wr, field, networkIntegration)
 			if err != nil {
 				return err
 			}
@@ -145,20 +145,20 @@ func (c *cmdNetworkPeerList) Run(cmd *cobra.Command, args []string) error {
 
 	sort.ColumnsNaturally(data)
 
-	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, networkPeers)
+	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, networkIntegrations)
 }
 
-// Show network_peer.
-type cmdNetworkPeerShow struct {
+// Show network_integration.
+type cmdNetworkIntegrationShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmdNetworkPeerShow) Command() *cobra.Command {
+func (c *cmdNetworkIntegrationShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid>"
-	cmd.Short = "Show information about a network_peer"
+	cmd.Short = "Show information about a network_integration"
 	cmd.Long = `Description:
-  Show information about a network_peer.
+  Show information about a network_integration.
 `
 
 	cmd.RunE = c.Run
@@ -166,7 +166,7 @@ func (c *cmdNetworkPeerShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdNetworkPeerShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkIntegrationShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -175,21 +175,20 @@ func (c *cmdNetworkPeerShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	networkPeer, err := c.ocClient.GetNetworkPeer(cmd.Context(), id)
+	networkIntegration, err := c.ocClient.GetNetworkIntegration(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent(networkPeer.Object, "", "  ")
+	objectJSON, err := json.MarshalIndent(networkIntegration.Object, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("UUID: %s\n", networkPeer.UUID.String())
-	fmt.Printf("Cluster: %s\n", networkPeer.Cluster)
-	fmt.Printf("Network Name: %s\n", networkPeer.NetworkName)
-	fmt.Printf("Name: %s\n", networkPeer.Name)
-	fmt.Printf("Last Updated: %s\n", networkPeer.LastUpdated.String())
+	fmt.Printf("UUID: %s\n", networkIntegration.UUID.String())
+	fmt.Printf("Cluster: %s\n", networkIntegration.Cluster)
+	fmt.Printf("Name: %s\n", networkIntegration.Name)
+	fmt.Printf("Last Updated: %s\n", networkIntegration.LastUpdated.String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

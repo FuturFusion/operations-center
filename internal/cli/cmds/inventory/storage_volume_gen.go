@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
+	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,16 +19,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdNetworkLoadBalancer struct {
+type CmdStorageVolume struct {
 	OCClient *client.OperationsCenterClient
 }
 
-func (c *CmdNetworkLoadBalancer) Command() *cobra.Command {
+func (c *CmdStorageVolume) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "network-load-balancer"
-	cmd.Short = "Interact with network load balancers"
+	cmd.Use = "storage-volume"
+	cmd.Short = "Interact with storage volumes"
 	cmd.Long = `Description:
-  Interact with network load balancers
+  Interact with storage volumes
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -36,49 +36,53 @@ func (c *CmdNetworkLoadBalancer) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	networkLoadBalancerListCmd := cmdNetworkLoadBalancerList{
+	storageVolumeListCmd := cmdStorageVolumeList{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(networkLoadBalancerListCmd.Command())
+	cmd.AddCommand(storageVolumeListCmd.Command())
 
 	// Show
-	networkLoadBalancerShowCmd := cmdNetworkLoadBalancerShow{
+	storageVolumeShowCmd := cmdStorageVolumeShow{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(networkLoadBalancerShowCmd.Command())
+	cmd.AddCommand(storageVolumeShowCmd.Command())
 
 	return cmd
 }
 
-// List network_load_balancers.
-type cmdNetworkLoadBalancerList struct {
+// List storage_volumes.
+type cmdStorageVolumeList struct {
 	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
+	flagFilterServer     string
+	flagFilterProject    string
 	flagFilterExpression string
 
 	flagColumns string
 	flagFormat  string
 }
 
-const networkLoadBalancerDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
+const storageVolumeDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
 
-func (c *cmdNetworkLoadBalancerList) Command() *cobra.Command {
+func (c *cmdStorageVolumeList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
-	cmd.Short = "List available network_load_balancers"
+	cmd.Short = "List available storage_volumes"
 	cmd.Long = `Description:
-  List the available network_load_balancers
+  List the available storage_volumes
 `
 
 	cmd.RunE = c.Run
 
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
+	cmd.Flags().StringVar(&c.flagFilterServer, "server", "", "server name to filter for")
+	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
-	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkLoadBalancerDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
+	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", storageVolumeDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		return validate.FormatFlag(cmd.Flag("format").Value.String())
@@ -87,24 +91,32 @@ func (c *cmdNetworkLoadBalancerList) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdNetworkLoadBalancerList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdStorageVolumeList) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
-	var filter inventory.NetworkLoadBalancerFilter
+	var filter inventory.StorageVolumeFilter
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = ptr.To(c.flagFilterCluster)
+	}
+
+	if c.flagFilterServer != "" {
+		filter.Server = ptr.To(c.flagFilterServer)
+	}
+
+	if c.flagFilterProject != "" {
+		filter.Project = ptr.To(c.flagFilterProject)
 	}
 
 	if c.flagFilterExpression != "" {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	networkLoadBalancers, err := c.ocClient.GetWithFilterNetworkLoadBalancers(cmd.Context(), filter)
+	storageVolumes, err := c.ocClient.GetWithFilterStorageVolumes(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -128,11 +140,11 @@ func (c *cmdNetworkLoadBalancerList) Run(cmd *cobra.Command, args []string) erro
 	data := [][]string{}
 	wr := &bytes.Buffer{}
 
-	for _, networkLoadBalancer := range networkLoadBalancers {
+	for _, storageVolume := range storageVolumes {
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
-			err := tmpl.ExecuteTemplate(wr, field, networkLoadBalancer)
+			err := tmpl.ExecuteTemplate(wr, field, storageVolume)
 			if err != nil {
 				return err
 			}
@@ -145,20 +157,20 @@ func (c *cmdNetworkLoadBalancerList) Run(cmd *cobra.Command, args []string) erro
 
 	sort.ColumnsNaturally(data)
 
-	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, networkLoadBalancers)
+	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, storageVolumes)
 }
 
-// Show network_load_balancer.
-type cmdNetworkLoadBalancerShow struct {
+// Show storage_volume.
+type cmdStorageVolumeShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmdNetworkLoadBalancerShow) Command() *cobra.Command {
+func (c *cmdStorageVolumeShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid>"
-	cmd.Short = "Show information about a network_load_balancer"
+	cmd.Short = "Show information about a storage_volume"
 	cmd.Long = `Description:
-  Show information about a network_load_balancer.
+  Show information about a storage_volume.
 `
 
 	cmd.RunE = c.Run
@@ -166,7 +178,7 @@ func (c *cmdNetworkLoadBalancerShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdNetworkLoadBalancerShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdStorageVolumeShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -175,21 +187,23 @@ func (c *cmdNetworkLoadBalancerShow) Run(cmd *cobra.Command, args []string) erro
 
 	id := args[0]
 
-	networkLoadBalancer, err := c.ocClient.GetNetworkLoadBalancer(cmd.Context(), id)
+	storageVolume, err := c.ocClient.GetStorageVolume(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent(networkLoadBalancer.Object, "", "  ")
+	objectJSON, err := json.MarshalIndent(storageVolume.Object, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("UUID: %s\n", networkLoadBalancer.UUID.String())
-	fmt.Printf("Cluster: %s\n", networkLoadBalancer.Cluster)
-	fmt.Printf("Network Name: %s\n", networkLoadBalancer.NetworkName)
-	fmt.Printf("Name: %s\n", networkLoadBalancer.Name)
-	fmt.Printf("Last Updated: %s\n", networkLoadBalancer.LastUpdated.String())
+	fmt.Printf("UUID: %s\n", storageVolume.UUID.String())
+	fmt.Printf("Cluster: %s\n", storageVolume.Cluster)
+	fmt.Printf("Server: %s\n", storageVolume.Server)
+	fmt.Printf("Project Name: %s\n", storageVolume.ProjectName)
+	fmt.Printf("Storage Pool Name: %s\n", storageVolume.StoragePoolName)
+	fmt.Printf("Name: %s\n", storageVolume.Name)
+	fmt.Printf("Last Updated: %s\n", storageVolume.LastUpdated.String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

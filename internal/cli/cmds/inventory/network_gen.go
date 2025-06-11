@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
+	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,16 +19,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdStorageBucket struct {
+type CmdNetwork struct {
 	OCClient *client.OperationsCenterClient
 }
 
-func (c *CmdStorageBucket) Command() *cobra.Command {
+func (c *CmdNetwork) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "storage-bucket"
-	cmd.Short = "Interact with storage buckets"
+	cmd.Use = "network"
+	cmd.Short = "Interact with networks"
 	cmd.Long = `Description:
-  Interact with storage buckets
+  Interact with networks
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -36,28 +36,27 @@ func (c *CmdStorageBucket) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	storageBucketListCmd := cmdStorageBucketList{
+	networkListCmd := cmdNetworkList{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(storageBucketListCmd.Command())
+	cmd.AddCommand(networkListCmd.Command())
 
 	// Show
-	storageBucketShowCmd := cmdStorageBucketShow{
+	networkShowCmd := cmdNetworkShow{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(storageBucketShowCmd.Command())
+	cmd.AddCommand(networkShowCmd.Command())
 
 	return cmd
 }
 
-// List storage_buckets.
-type cmdStorageBucketList struct {
+// List networks.
+type cmdNetworkList struct {
 	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
-	flagFilterServer     string
 	flagFilterProject    string
 	flagFilterExpression string
 
@@ -65,24 +64,23 @@ type cmdStorageBucketList struct {
 	flagFormat  string
 }
 
-const storageBucketDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
+const networkDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
 
-func (c *cmdStorageBucketList) Command() *cobra.Command {
+func (c *cmdNetworkList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
-	cmd.Short = "List available storage_buckets"
+	cmd.Short = "List available networks"
 	cmd.Long = `Description:
-  List the available storage_buckets
+  List the available networks
 `
 
 	cmd.RunE = c.Run
 
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
-	cmd.Flags().StringVar(&c.flagFilterServer, "server", "", "server name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
-	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", storageBucketDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
+	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		return validate.FormatFlag(cmd.Flag("format").Value.String())
@@ -91,21 +89,17 @@ func (c *cmdStorageBucketList) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdStorageBucketList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
-	var filter inventory.StorageBucketFilter
+	var filter inventory.NetworkFilter
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = ptr.To(c.flagFilterCluster)
-	}
-
-	if c.flagFilterServer != "" {
-		filter.Server = ptr.To(c.flagFilterServer)
 	}
 
 	if c.flagFilterProject != "" {
@@ -116,7 +110,7 @@ func (c *cmdStorageBucketList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	storageBuckets, err := c.ocClient.GetWithFilterStorageBuckets(cmd.Context(), filter)
+	networks, err := c.ocClient.GetWithFilterNetworks(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -140,11 +134,11 @@ func (c *cmdStorageBucketList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 	wr := &bytes.Buffer{}
 
-	for _, storageBucket := range storageBuckets {
+	for _, network := range networks {
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
-			err := tmpl.ExecuteTemplate(wr, field, storageBucket)
+			err := tmpl.ExecuteTemplate(wr, field, network)
 			if err != nil {
 				return err
 			}
@@ -157,20 +151,20 @@ func (c *cmdStorageBucketList) Run(cmd *cobra.Command, args []string) error {
 
 	sort.ColumnsNaturally(data)
 
-	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, storageBuckets)
+	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, networks)
 }
 
-// Show storage_bucket.
-type cmdStorageBucketShow struct {
+// Show network.
+type cmdNetworkShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmdStorageBucketShow) Command() *cobra.Command {
+func (c *cmdNetworkShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid>"
-	cmd.Short = "Show information about a storage_bucket"
+	cmd.Short = "Show information about a network"
 	cmd.Long = `Description:
-  Show information about a storage_bucket.
+  Show information about a network.
 `
 
 	cmd.RunE = c.Run
@@ -178,7 +172,7 @@ func (c *cmdStorageBucketShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdStorageBucketShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -187,23 +181,21 @@ func (c *cmdStorageBucketShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	storageBucket, err := c.ocClient.GetStorageBucket(cmd.Context(), id)
+	network, err := c.ocClient.GetNetwork(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent(storageBucket.Object, "", "  ")
+	objectJSON, err := json.MarshalIndent(network.Object, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("UUID: %s\n", storageBucket.UUID.String())
-	fmt.Printf("Cluster: %s\n", storageBucket.Cluster)
-	fmt.Printf("Server: %s\n", storageBucket.Server)
-	fmt.Printf("Project Name: %s\n", storageBucket.ProjectName)
-	fmt.Printf("Storage Pool Name: %s\n", storageBucket.StoragePoolName)
-	fmt.Printf("Name: %s\n", storageBucket.Name)
-	fmt.Printf("Last Updated: %s\n", storageBucket.LastUpdated.String())
+	fmt.Printf("UUID: %s\n", network.UUID.String())
+	fmt.Printf("Cluster: %s\n", network.Cluster)
+	fmt.Printf("Project Name: %s\n", network.ProjectName)
+	fmt.Printf("Name: %s\n", network.Name)
+	fmt.Printf("Last Updated: %s\n", network.LastUpdated.String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

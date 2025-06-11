@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
+	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,16 +19,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdNetworkACL struct {
+type CmdNetworkPeer struct {
 	OCClient *client.OperationsCenterClient
 }
 
-func (c *CmdNetworkACL) Command() *cobra.Command {
+func (c *CmdNetworkPeer) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "network-acl"
-	cmd.Short = "Interact with network ACLs"
+	cmd.Use = "network-peer"
+	cmd.Short = "Interact with network peers"
 	cmd.Long = `Description:
-  Interact with network ACLs
+  Interact with network peers
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -36,51 +36,49 @@ func (c *CmdNetworkACL) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	networkACLListCmd := cmdNetworkACLList{
+	networkPeerListCmd := cmdNetworkPeerList{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(networkACLListCmd.Command())
+	cmd.AddCommand(networkPeerListCmd.Command())
 
 	// Show
-	networkACLShowCmd := cmdNetworkACLShow{
+	networkPeerShowCmd := cmdNetworkPeerShow{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(networkACLShowCmd.Command())
+	cmd.AddCommand(networkPeerShowCmd.Command())
 
 	return cmd
 }
 
-// List network_acls.
-type cmdNetworkACLList struct {
+// List network_peers.
+type cmdNetworkPeerList struct {
 	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
-	flagFilterProject    string
 	flagFilterExpression string
 
 	flagColumns string
 	flagFormat  string
 }
 
-const networkACLDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const networkPeerDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
 
-func (c *cmdNetworkACLList) Command() *cobra.Command {
+func (c *cmdNetworkPeerList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
-	cmd.Short = "List available network_acls"
+	cmd.Short = "List available network_peers"
 	cmd.Long = `Description:
-  List the available network_acls
+  List the available network_peers
 `
 
 	cmd.RunE = c.Run
 
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
-	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
-	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkACLDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
+	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkPeerDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		return validate.FormatFlag(cmd.Flag("format").Value.String())
@@ -89,28 +87,24 @@ func (c *cmdNetworkACLList) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdNetworkACLList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkPeerList) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
-	var filter inventory.NetworkACLFilter
+	var filter inventory.NetworkPeerFilter
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = ptr.To(c.flagFilterCluster)
-	}
-
-	if c.flagFilterProject != "" {
-		filter.Project = ptr.To(c.flagFilterProject)
 	}
 
 	if c.flagFilterExpression != "" {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	networkACLs, err := c.ocClient.GetWithFilterNetworkACLs(cmd.Context(), filter)
+	networkPeers, err := c.ocClient.GetWithFilterNetworkPeers(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -134,11 +128,11 @@ func (c *cmdNetworkACLList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 	wr := &bytes.Buffer{}
 
-	for _, networkACL := range networkACLs {
+	for _, networkPeer := range networkPeers {
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
-			err := tmpl.ExecuteTemplate(wr, field, networkACL)
+			err := tmpl.ExecuteTemplate(wr, field, networkPeer)
 			if err != nil {
 				return err
 			}
@@ -151,20 +145,20 @@ func (c *cmdNetworkACLList) Run(cmd *cobra.Command, args []string) error {
 
 	sort.ColumnsNaturally(data)
 
-	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, networkACLs)
+	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, networkPeers)
 }
 
-// Show network_acl.
-type cmdNetworkACLShow struct {
+// Show network_peer.
+type cmdNetworkPeerShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmdNetworkACLShow) Command() *cobra.Command {
+func (c *cmdNetworkPeerShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid>"
-	cmd.Short = "Show information about a network_acl"
+	cmd.Short = "Show information about a network_peer"
 	cmd.Long = `Description:
-  Show information about a network_acl.
+  Show information about a network_peer.
 `
 
 	cmd.RunE = c.Run
@@ -172,7 +166,7 @@ func (c *cmdNetworkACLShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdNetworkACLShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkPeerShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -181,21 +175,21 @@ func (c *cmdNetworkACLShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	networkACL, err := c.ocClient.GetNetworkACL(cmd.Context(), id)
+	networkPeer, err := c.ocClient.GetNetworkPeer(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent(networkACL.Object, "", "  ")
+	objectJSON, err := json.MarshalIndent(networkPeer.Object, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("UUID: %s\n", networkACL.UUID.String())
-	fmt.Printf("Cluster: %s\n", networkACL.Cluster)
-	fmt.Printf("Project Name: %s\n", networkACL.ProjectName)
-	fmt.Printf("Name: %s\n", networkACL.Name)
-	fmt.Printf("Last Updated: %s\n", networkACL.LastUpdated.String())
+	fmt.Printf("UUID: %s\n", networkPeer.UUID.String())
+	fmt.Printf("Cluster: %s\n", networkPeer.Cluster)
+	fmt.Printf("Network Name: %s\n", networkPeer.NetworkName)
+	fmt.Printf("Name: %s\n", networkPeer.Name)
+	fmt.Printf("Last Updated: %s\n", networkPeer.LastUpdated.String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

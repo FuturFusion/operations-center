@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
+	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,16 +19,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdNetworkZone struct {
+type CmdProfile struct {
 	OCClient *client.OperationsCenterClient
 }
 
-func (c *CmdNetworkZone) Command() *cobra.Command {
+func (c *CmdProfile) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "network-zone"
-	cmd.Short = "Interact with network zones"
+	cmd.Use = "profile"
+	cmd.Short = "Interact with profiles"
 	cmd.Long = `Description:
-  Interact with network zones
+  Interact with profiles
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -36,24 +36,24 @@ func (c *CmdNetworkZone) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	networkZoneListCmd := cmdNetworkZoneList{
+	profileListCmd := cmdProfileList{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(networkZoneListCmd.Command())
+	cmd.AddCommand(profileListCmd.Command())
 
 	// Show
-	networkZoneShowCmd := cmdNetworkZoneShow{
+	profileShowCmd := cmdProfileShow{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(networkZoneShowCmd.Command())
+	cmd.AddCommand(profileShowCmd.Command())
 
 	return cmd
 }
 
-// List network_zones.
-type cmdNetworkZoneList struct {
+// List profiles.
+type cmdProfileList struct {
 	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
@@ -64,14 +64,14 @@ type cmdNetworkZoneList struct {
 	flagFormat  string
 }
 
-const networkZoneDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const profileDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
 
-func (c *cmdNetworkZoneList) Command() *cobra.Command {
+func (c *cmdProfileList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
-	cmd.Short = "List available network_zones"
+	cmd.Short = "List available profiles"
 	cmd.Long = `Description:
-  List the available network_zones
+  List the available profiles
 `
 
 	cmd.RunE = c.Run
@@ -80,7 +80,7 @@ func (c *cmdNetworkZoneList) Command() *cobra.Command {
 	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
-	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkZoneDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
+	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", profileDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		return validate.FormatFlag(cmd.Flag("format").Value.String())
@@ -89,14 +89,14 @@ func (c *cmdNetworkZoneList) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdNetworkZoneList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdProfileList) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
-	var filter inventory.NetworkZoneFilter
+	var filter inventory.ProfileFilter
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = ptr.To(c.flagFilterCluster)
@@ -110,7 +110,7 @@ func (c *cmdNetworkZoneList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	networkZones, err := c.ocClient.GetWithFilterNetworkZones(cmd.Context(), filter)
+	profiles, err := c.ocClient.GetWithFilterProfiles(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -134,11 +134,11 @@ func (c *cmdNetworkZoneList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 	wr := &bytes.Buffer{}
 
-	for _, networkZone := range networkZones {
+	for _, profile := range profiles {
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
-			err := tmpl.ExecuteTemplate(wr, field, networkZone)
+			err := tmpl.ExecuteTemplate(wr, field, profile)
 			if err != nil {
 				return err
 			}
@@ -151,20 +151,20 @@ func (c *cmdNetworkZoneList) Run(cmd *cobra.Command, args []string) error {
 
 	sort.ColumnsNaturally(data)
 
-	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, networkZones)
+	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, profiles)
 }
 
-// Show network_zone.
-type cmdNetworkZoneShow struct {
+// Show profile.
+type cmdProfileShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmdNetworkZoneShow) Command() *cobra.Command {
+func (c *cmdProfileShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid>"
-	cmd.Short = "Show information about a network_zone"
+	cmd.Short = "Show information about a profile"
 	cmd.Long = `Description:
-  Show information about a network_zone.
+  Show information about a profile.
 `
 
 	cmd.RunE = c.Run
@@ -172,7 +172,7 @@ func (c *cmdNetworkZoneShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdNetworkZoneShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdProfileShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -181,21 +181,21 @@ func (c *cmdNetworkZoneShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	networkZone, err := c.ocClient.GetNetworkZone(cmd.Context(), id)
+	profile, err := c.ocClient.GetProfile(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent(networkZone.Object, "", "  ")
+	objectJSON, err := json.MarshalIndent(profile.Object, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("UUID: %s\n", networkZone.UUID.String())
-	fmt.Printf("Cluster: %s\n", networkZone.Cluster)
-	fmt.Printf("Project Name: %s\n", networkZone.ProjectName)
-	fmt.Printf("Name: %s\n", networkZone.Name)
-	fmt.Printf("Last Updated: %s\n", networkZone.LastUpdated.String())
+	fmt.Printf("UUID: %s\n", profile.UUID.String())
+	fmt.Printf("Cluster: %s\n", profile.Cluster)
+	fmt.Printf("Project Name: %s\n", profile.ProjectName)
+	fmt.Printf("Name: %s\n", profile.Name)
+	fmt.Printf("Last Updated: %s\n", profile.LastUpdated.String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

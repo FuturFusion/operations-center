@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
+	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,16 +19,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdInstance struct {
+type CmdNetworkACL struct {
 	OCClient *client.OperationsCenterClient
 }
 
-func (c *CmdInstance) Command() *cobra.Command {
+func (c *CmdNetworkACL) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "instance"
-	cmd.Short = "Interact with instances"
+	cmd.Use = "network-acl"
+	cmd.Short = "Interact with network ACLs"
 	cmd.Long = `Description:
-  Interact with instances
+  Interact with network ACLs
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -36,28 +36,27 @@ func (c *CmdInstance) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	instanceListCmd := cmdInstanceList{
+	networkACLListCmd := cmdNetworkACLList{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(instanceListCmd.Command())
+	cmd.AddCommand(networkACLListCmd.Command())
 
 	// Show
-	instanceShowCmd := cmdInstanceShow{
+	networkACLShowCmd := cmdNetworkACLShow{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(instanceShowCmd.Command())
+	cmd.AddCommand(networkACLShowCmd.Command())
 
 	return cmd
 }
 
-// List instances.
-type cmdInstanceList struct {
+// List network_acls.
+type cmdNetworkACLList struct {
 	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
-	flagFilterServer     string
 	flagFilterProject    string
 	flagFilterExpression string
 
@@ -65,24 +64,23 @@ type cmdInstanceList struct {
 	flagFormat  string
 }
 
-const instanceDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const networkACLDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
 
-func (c *cmdInstanceList) Command() *cobra.Command {
+func (c *cmdNetworkACLList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
-	cmd.Short = "List available instances"
+	cmd.Short = "List available network_acls"
 	cmd.Long = `Description:
-  List the available instances
+  List the available network_acls
 `
 
 	cmd.RunE = c.Run
 
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
-	cmd.Flags().StringVar(&c.flagFilterServer, "server", "", "server name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
-	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", instanceDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
+	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkACLDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		return validate.FormatFlag(cmd.Flag("format").Value.String())
@@ -91,21 +89,17 @@ func (c *cmdInstanceList) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkACLList) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
-	var filter inventory.InstanceFilter
+	var filter inventory.NetworkACLFilter
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = ptr.To(c.flagFilterCluster)
-	}
-
-	if c.flagFilterServer != "" {
-		filter.Server = ptr.To(c.flagFilterServer)
 	}
 
 	if c.flagFilterProject != "" {
@@ -116,7 +110,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	instances, err := c.ocClient.GetWithFilterInstances(cmd.Context(), filter)
+	networkACLs, err := c.ocClient.GetWithFilterNetworkACLs(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -140,11 +134,11 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 	wr := &bytes.Buffer{}
 
-	for _, instance := range instances {
+	for _, networkACL := range networkACLs {
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
-			err := tmpl.ExecuteTemplate(wr, field, instance)
+			err := tmpl.ExecuteTemplate(wr, field, networkACL)
 			if err != nil {
 				return err
 			}
@@ -157,20 +151,20 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 
 	sort.ColumnsNaturally(data)
 
-	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, instances)
+	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, networkACLs)
 }
 
-// Show instance.
-type cmdInstanceShow struct {
+// Show network_acl.
+type cmdNetworkACLShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmdInstanceShow) Command() *cobra.Command {
+func (c *cmdNetworkACLShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid>"
-	cmd.Short = "Show information about a instance"
+	cmd.Short = "Show information about a network_acl"
 	cmd.Long = `Description:
-  Show information about a instance.
+  Show information about a network_acl.
 `
 
 	cmd.RunE = c.Run
@@ -178,7 +172,7 @@ func (c *cmdInstanceShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdInstanceShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkACLShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -187,22 +181,21 @@ func (c *cmdInstanceShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	instance, err := c.ocClient.GetInstance(cmd.Context(), id)
+	networkACL, err := c.ocClient.GetNetworkACL(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent(instance.Object, "", "  ")
+	objectJSON, err := json.MarshalIndent(networkACL.Object, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("UUID: %s\n", instance.UUID.String())
-	fmt.Printf("Cluster: %s\n", instance.Cluster)
-	fmt.Printf("Server: %s\n", instance.Server)
-	fmt.Printf("Project Name: %s\n", instance.ProjectName)
-	fmt.Printf("Name: %s\n", instance.Name)
-	fmt.Printf("Last Updated: %s\n", instance.LastUpdated.String())
+	fmt.Printf("UUID: %s\n", networkACL.UUID.String())
+	fmt.Printf("Cluster: %s\n", networkACL.Cluster)
+	fmt.Printf("Project Name: %s\n", networkACL.ProjectName)
+	fmt.Printf("Name: %s\n", networkACL.Name)
+	fmt.Printf("Last Updated: %s\n", networkACL.LastUpdated.String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
+	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,16 +19,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdStorageVolume struct {
+type CmdProject struct {
 	OCClient *client.OperationsCenterClient
 }
 
-func (c *CmdStorageVolume) Command() *cobra.Command {
+func (c *CmdProject) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "storage-volume"
-	cmd.Short = "Interact with storage volumes"
+	cmd.Use = "project"
+	cmd.Short = "Interact with projects"
 	cmd.Long = `Description:
-  Interact with storage volumes
+  Interact with projects
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -36,53 +36,49 @@ func (c *CmdStorageVolume) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	storageVolumeListCmd := cmdStorageVolumeList{
+	projectListCmd := cmdProjectList{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(storageVolumeListCmd.Command())
+	cmd.AddCommand(projectListCmd.Command())
 
 	// Show
-	storageVolumeShowCmd := cmdStorageVolumeShow{
+	projectShowCmd := cmdProjectShow{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(storageVolumeShowCmd.Command())
+	cmd.AddCommand(projectShowCmd.Command())
 
 	return cmd
 }
 
-// List storage_volumes.
-type cmdStorageVolumeList struct {
+// List projects.
+type cmdProjectList struct {
 	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
-	flagFilterServer     string
-	flagFilterProject    string
 	flagFilterExpression string
 
 	flagColumns string
 	flagFormat  string
 }
 
-const storageVolumeDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
+const projectDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Name }},{{ .LastUpdated }}`
 
-func (c *cmdStorageVolumeList) Command() *cobra.Command {
+func (c *cmdProjectList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
-	cmd.Short = "List available storage_volumes"
+	cmd.Short = "List available projects"
 	cmd.Long = `Description:
-  List the available storage_volumes
+  List the available projects
 `
 
 	cmd.RunE = c.Run
 
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
-	cmd.Flags().StringVar(&c.flagFilterServer, "server", "", "server name to filter for")
-	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
-	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", storageVolumeDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
+	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", projectDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		return validate.FormatFlag(cmd.Flag("format").Value.String())
@@ -91,32 +87,24 @@ func (c *cmdStorageVolumeList) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdStorageVolumeList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdProjectList) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
-	var filter inventory.StorageVolumeFilter
+	var filter inventory.ProjectFilter
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = ptr.To(c.flagFilterCluster)
-	}
-
-	if c.flagFilterServer != "" {
-		filter.Server = ptr.To(c.flagFilterServer)
-	}
-
-	if c.flagFilterProject != "" {
-		filter.Project = ptr.To(c.flagFilterProject)
 	}
 
 	if c.flagFilterExpression != "" {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	storageVolumes, err := c.ocClient.GetWithFilterStorageVolumes(cmd.Context(), filter)
+	projects, err := c.ocClient.GetWithFilterProjects(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -140,11 +128,11 @@ func (c *cmdStorageVolumeList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 	wr := &bytes.Buffer{}
 
-	for _, storageVolume := range storageVolumes {
+	for _, project := range projects {
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
-			err := tmpl.ExecuteTemplate(wr, field, storageVolume)
+			err := tmpl.ExecuteTemplate(wr, field, project)
 			if err != nil {
 				return err
 			}
@@ -157,20 +145,20 @@ func (c *cmdStorageVolumeList) Run(cmd *cobra.Command, args []string) error {
 
 	sort.ColumnsNaturally(data)
 
-	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, storageVolumes)
+	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, projects)
 }
 
-// Show storage_volume.
-type cmdStorageVolumeShow struct {
+// Show project.
+type cmdProjectShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmdStorageVolumeShow) Command() *cobra.Command {
+func (c *cmdProjectShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid>"
-	cmd.Short = "Show information about a storage_volume"
+	cmd.Short = "Show information about a project"
 	cmd.Long = `Description:
-  Show information about a storage_volume.
+  Show information about a project.
 `
 
 	cmd.RunE = c.Run
@@ -178,7 +166,7 @@ func (c *cmdStorageVolumeShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdStorageVolumeShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdProjectShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -187,23 +175,20 @@ func (c *cmdStorageVolumeShow) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 
-	storageVolume, err := c.ocClient.GetStorageVolume(cmd.Context(), id)
+	project, err := c.ocClient.GetProject(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent(storageVolume.Object, "", "  ")
+	objectJSON, err := json.MarshalIndent(project.Object, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("UUID: %s\n", storageVolume.UUID.String())
-	fmt.Printf("Cluster: %s\n", storageVolume.Cluster)
-	fmt.Printf("Server: %s\n", storageVolume.Server)
-	fmt.Printf("Project Name: %s\n", storageVolume.ProjectName)
-	fmt.Printf("Storage Pool Name: %s\n", storageVolume.StoragePoolName)
-	fmt.Printf("Name: %s\n", storageVolume.Name)
-	fmt.Printf("Last Updated: %s\n", storageVolume.LastUpdated.String())
+	fmt.Printf("UUID: %s\n", project.UUID.String())
+	fmt.Printf("Cluster: %s\n", project.Cluster)
+	fmt.Printf("Name: %s\n", project.Name)
+	fmt.Printf("Last Updated: %s\n", project.LastUpdated.String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

@@ -53,7 +53,7 @@ var targets = []struct {
 	},
 	{
 		TemplateName:   "cmds.gotmpl",
-		TargetName:     "cmd/operations-center/internal/cmds/inventory/{{ .Name }}_gen.go",
+		TargetName:     "internal/cli/cmds/inventory/{{ .Name }}_gen.go",
 		TargetFileType: FileTypeGo,
 	},
 	{
@@ -128,7 +128,7 @@ var globalTargets = []struct {
 	},
 	{
 		TemplateName: "cmds_inventory.gotmpl",
-		TargetName:   "cmd/operations-center/internal/cmds/inventory_gen.go",
+		TargetName:   "internal/cli/cmds/inventory_gen.go",
 	},
 	{
 		TemplateName: "inventory_ports.gotmpl",

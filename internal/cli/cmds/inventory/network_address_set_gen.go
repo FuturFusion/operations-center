@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-center/internal/validate"
+	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,16 +19,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
 
-type CmdNetworkIntegration struct {
+type CmdNetworkAddressSet struct {
 	OCClient *client.OperationsCenterClient
 }
 
-func (c *CmdNetworkIntegration) Command() *cobra.Command {
+func (c *CmdNetworkAddressSet) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "network-integration"
-	cmd.Short = "Interact with network integrations"
+	cmd.Use = "network-address-set"
+	cmd.Short = "Interact with network address sets"
 	cmd.Long = `Description:
-  Interact with network integrations
+  Interact with network address sets
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -36,49 +36,51 @@ func (c *CmdNetworkIntegration) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// List
-	networkIntegrationListCmd := cmdNetworkIntegrationList{
+	networkAddressSetListCmd := cmdNetworkAddressSetList{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(networkIntegrationListCmd.Command())
+	cmd.AddCommand(networkAddressSetListCmd.Command())
 
 	// Show
-	networkIntegrationShowCmd := cmdNetworkIntegrationShow{
+	networkAddressSetShowCmd := cmdNetworkAddressSetShow{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(networkIntegrationShowCmd.Command())
+	cmd.AddCommand(networkAddressSetShowCmd.Command())
 
 	return cmd
 }
 
-// List network_integrations.
-type cmdNetworkIntegrationList struct {
+// List network_address_sets.
+type cmdNetworkAddressSetList struct {
 	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
+	flagFilterProject    string
 	flagFilterExpression string
 
 	flagColumns string
 	flagFormat  string
 }
 
-const networkIntegrationDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Name }},{{ .LastUpdated }}`
+const networkAddressSetDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
 
-func (c *cmdNetworkIntegrationList) Command() *cobra.Command {
+func (c *cmdNetworkAddressSetList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
-	cmd.Short = "List available network_integrations"
+	cmd.Short = "List available network_address_sets"
 	cmd.Long = `Description:
-  List the available network_integrations
+  List the available network_address_sets
 `
 
 	cmd.RunE = c.Run
 
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
+	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
-	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkIntegrationDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
+	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkAddressSetDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		return validate.FormatFlag(cmd.Flag("format").Value.String())
@@ -87,24 +89,28 @@ func (c *cmdNetworkIntegrationList) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdNetworkIntegrationList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkAddressSetList) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
-	var filter inventory.NetworkIntegrationFilter
+	var filter inventory.NetworkAddressSetFilter
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = ptr.To(c.flagFilterCluster)
+	}
+
+	if c.flagFilterProject != "" {
+		filter.Project = ptr.To(c.flagFilterProject)
 	}
 
 	if c.flagFilterExpression != "" {
 		filter.Expression = ptr.To(c.flagFilterExpression)
 	}
 
-	networkIntegrations, err := c.ocClient.GetWithFilterNetworkIntegrations(cmd.Context(), filter)
+	networkAddressSets, err := c.ocClient.GetWithFilterNetworkAddressSets(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
@@ -128,11 +134,11 @@ func (c *cmdNetworkIntegrationList) Run(cmd *cobra.Command, args []string) error
 	data := [][]string{}
 	wr := &bytes.Buffer{}
 
-	for _, networkIntegration := range networkIntegrations {
+	for _, networkAddressSet := range networkAddressSets {
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
-			err := tmpl.ExecuteTemplate(wr, field, networkIntegration)
+			err := tmpl.ExecuteTemplate(wr, field, networkAddressSet)
 			if err != nil {
 				return err
 			}
@@ -145,20 +151,20 @@ func (c *cmdNetworkIntegrationList) Run(cmd *cobra.Command, args []string) error
 
 	sort.ColumnsNaturally(data)
 
-	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, networkIntegrations)
+	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, networkAddressSets)
 }
 
-// Show network_integration.
-type cmdNetworkIntegrationShow struct {
+// Show network_address_set.
+type cmdNetworkAddressSetShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmdNetworkIntegrationShow) Command() *cobra.Command {
+func (c *cmdNetworkAddressSetShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid>"
-	cmd.Short = "Show information about a network_integration"
+	cmd.Short = "Show information about a network_address_set"
 	cmd.Long = `Description:
-  Show information about a network_integration.
+  Show information about a network_address_set.
 `
 
 	cmd.RunE = c.Run
@@ -166,7 +172,7 @@ func (c *cmdNetworkIntegrationShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdNetworkIntegrationShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkAddressSetShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -175,20 +181,21 @@ func (c *cmdNetworkIntegrationShow) Run(cmd *cobra.Command, args []string) error
 
 	id := args[0]
 
-	networkIntegration, err := c.ocClient.GetNetworkIntegration(cmd.Context(), id)
+	networkAddressSet, err := c.ocClient.GetNetworkAddressSet(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent(networkIntegration.Object, "", "  ")
+	objectJSON, err := json.MarshalIndent(networkAddressSet.Object, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("UUID: %s\n", networkIntegration.UUID.String())
-	fmt.Printf("Cluster: %s\n", networkIntegration.Cluster)
-	fmt.Printf("Name: %s\n", networkIntegration.Name)
-	fmt.Printf("Last Updated: %s\n", networkIntegration.LastUpdated.String())
+	fmt.Printf("UUID: %s\n", networkAddressSet.UUID.String())
+	fmt.Printf("Cluster: %s\n", networkAddressSet.Cluster)
+	fmt.Printf("Project Name: %s\n", networkAddressSet.ProjectName)
+	fmt.Printf("Name: %s\n", networkAddressSet.Name)
+	fmt.Printf("Last Updated: %s\n", networkAddressSet.LastUpdated.String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil
