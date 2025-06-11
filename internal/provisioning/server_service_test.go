@@ -486,56 +486,6 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 	}
 }
 
-func TestServerService_GetByID(t *testing.T) {
-	tests := []struct {
-		name                string
-		idArg               string
-		repoGetByNameServer *provisioning.Server
-		repoGetByNameErr    error
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name:  "success",
-			idArg: "one",
-			repoGetByNameServer: &provisioning.Server{
-				Name:          "one",
-				Cluster:       ptr.To("one"),
-				ConnectionURL: "http://one/",
-			},
-
-			assertErr: require.NoError,
-		},
-		{
-			name:             "error - repo",
-			idArg:            "one",
-			repoGetByNameErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			repo := &repoMock.ServerRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
-					return tc.repoGetByNameServer, tc.repoGetByNameErr
-				},
-			}
-
-			serverSvc := provisioning.NewServerService(repo, nil, nil)
-
-			// Run test
-			server, err := serverSvc.GetByName(context.Background(), tc.idArg)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByNameServer, server)
-		})
-	}
-}
-
 func TestServerService_GetByName(t *testing.T) {
 	tests := []struct {
 		name                string
