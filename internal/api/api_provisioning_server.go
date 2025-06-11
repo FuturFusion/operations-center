@@ -428,7 +428,7 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/servers/"+name)
+	return response.EmptySyncResponse
 }
 
 // swagger:operation DELETE /1.0/provisioning/servers/{name} servers server_delete

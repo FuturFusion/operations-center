@@ -447,7 +447,7 @@ func TestAuthentication(t *testing.T) {
   "status": "ready"
 }`),
 
-			wantStatusCode: http.StatusCreated,
+			wantStatusCode: http.StatusOK,
 		},
 		{
 			name: "oidc http PUT /1.0/provisioning/servers/serverA as admin",
@@ -473,8 +473,9 @@ func TestAuthentication(t *testing.T) {
   "status": "ready"
 }`),
 
-			wantStatusCode: http.StatusCreated,
+			wantStatusCode: http.StatusOK,
 		},
+
 		{
 			name: "oidc http DELETE /1.0/provisioning/servers/serverA as viewer",
 			client: func() *http.Client {
