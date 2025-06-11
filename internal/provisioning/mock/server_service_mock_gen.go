@@ -49,6 +49,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
+//			SelfUpdateFunc: func(ctx context.Context, serverUpdate provisioning.ServerSelfUpdate) error {
+//				panic("mock out the SelfUpdate method")
+//			},
 //			UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the Update method")
 //			},
@@ -85,6 +88,9 @@ type ServerServiceMock struct {
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
+
+	// SelfUpdateFunc mocks the SelfUpdate method.
+	SelfUpdateFunc func(ctx context.Context, serverUpdate provisioning.ServerSelfUpdate) error
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, server provisioning.Server) error
@@ -152,6 +158,13 @@ type ServerServiceMock struct {
 			// NewName is the newName argument value.
 			NewName string
 		}
+		// SelfUpdate holds details about calls to the SelfUpdate method.
+		SelfUpdate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ServerUpdate is the serverUpdate argument value.
+			ServerUpdate provisioning.ServerSelfUpdate
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -169,6 +182,7 @@ type ServerServiceMock struct {
 	lockGetByName             sync.RWMutex
 	lockPollPendingServers    sync.RWMutex
 	lockRename                sync.RWMutex
+	lockSelfUpdate            sync.RWMutex
 	lockUpdate                sync.RWMutex
 }
 
@@ -489,6 +503,42 @@ func (mock *ServerServiceMock) RenameCalls() []struct {
 	mock.lockRename.RLock()
 	calls = mock.calls.Rename
 	mock.lockRename.RUnlock()
+	return calls
+}
+
+// SelfUpdate calls SelfUpdateFunc.
+func (mock *ServerServiceMock) SelfUpdate(ctx context.Context, serverUpdate provisioning.ServerSelfUpdate) error {
+	if mock.SelfUpdateFunc == nil {
+		panic("ServerServiceMock.SelfUpdateFunc: method is nil but ServerService.SelfUpdate was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		ServerUpdate provisioning.ServerSelfUpdate
+	}{
+		Ctx:          ctx,
+		ServerUpdate: serverUpdate,
+	}
+	mock.lockSelfUpdate.Lock()
+	mock.calls.SelfUpdate = append(mock.calls.SelfUpdate, callInfo)
+	mock.lockSelfUpdate.Unlock()
+	return mock.SelfUpdateFunc(ctx, serverUpdate)
+}
+
+// SelfUpdateCalls gets all the calls that were made to SelfUpdate.
+// Check the length with:
+//
+//	len(mockedServerService.SelfUpdateCalls())
+func (mock *ServerServiceMock) SelfUpdateCalls() []struct {
+	Ctx          context.Context
+	ServerUpdate provisioning.ServerSelfUpdate
+} {
+	var calls []struct {
+		Ctx          context.Context
+		ServerUpdate provisioning.ServerSelfUpdate
+	}
+	mock.lockSelfUpdate.RLock()
+	calls = mock.calls.SelfUpdate
+	mock.lockSelfUpdate.RUnlock()
 	return calls
 }
 

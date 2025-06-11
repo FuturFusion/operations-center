@@ -353,6 +353,40 @@ func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newN
 	return _d._base.Rename(ctx, oldName, newName)
 }
 
+// SelfUpdate implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) SelfUpdate(ctx context.Context, serverUpdate provisioning.ServerSelfUpdate) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("serverUpdate", serverUpdate),
+		)
+	}
+	log.Debug("=> calling SelfUpdate")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method SelfUpdate returned an informative error")
+			} else {
+				log.Error("<= method SelfUpdate returned an error")
+			}
+		} else {
+			log.Debug("<= method SelfUpdate finished")
+		}
+	}()
+	return _d._base.SelfUpdate(ctx, serverUpdate)
+}
+
 // Update implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) Update(ctx context.Context, server provisioning.Server) (err error) {
 	log := _d._log.With()
