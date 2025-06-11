@@ -297,6 +297,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 			return true
 		}
 
+		// PUT /1.0/provisioning/servers/:self is authenticated using the servers
+		// certificate.
+		if r.Method == http.MethodPut && r.URL.Path == "/1.0/provisioning/servers/:self" {
+			return true
+		}
+
 		// GET /1.0/provisioning/updates no authentication required to get updates.
 		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/1.0/provisioning/updates") {
 			return true

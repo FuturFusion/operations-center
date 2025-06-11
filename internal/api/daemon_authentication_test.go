@@ -52,6 +52,13 @@ func TestAuthentication(t *testing.T) {
 
 	certFingerprint := incustls.CertFingerprint(cert.Leaf)
 
+	// Setup alternative client certificate
+	altCertPEM, altKeyPEM, err := incustls.GenerateMemCert(true, false)
+	require.NoError(t, err)
+
+	altCert, err := tls.X509KeyPair(altCertPEM, altKeyPEM)
+	require.NoError(t, err)
+
 	oidcProvider, accessTokens := setupMockOIDC(t)
 
 	openFGAEndpoint, openFGAStoreID := setupOpenFGA(ctx, t)
@@ -474,6 +481,69 @@ func TestAuthentication(t *testing.T) {
 }`),
 
 			wantStatusCode: http.StatusOK,
+		},
+
+		// PUT /1.0/provisioning/servers/:self is authenticated by the
+		// servers own certificate.
+		{
+			name: "certificate http PUT /1.0/provisioning/servers/:self",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							Certificates:       []tls.Certificate{cert},
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodPut,
+			resource: "https://localhost:17443/1.0/provisioning/servers/:self",
+			body: bytes.NewBufferString(`{
+  "connection_url": "https://self-update:12346/"
+}`),
+
+			wantStatusCode: http.StatusOK,
+		},
+		{
+			name: "http PUT /1.0/provisioning/servers/:self without certificate",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							Certificates:       []tls.Certificate{}, // No client certificate.
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodPut,
+			resource: "https://localhost:17443/1.0/provisioning/servers/:self",
+			body: bytes.NewBufferString(`{
+  "connection_url": "https://self-update:12346/"
+}`),
+
+			wantStatusCode: http.StatusForbidden,
+		},
+		{
+			name: "http PUT /1.0/provisioning/servers/:self with wrong certificate",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							Certificates:       []tls.Certificate{altCert}, // Wrong client certificate.
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodPut,
+			resource: "https://localhost:17443/1.0/provisioning/servers/:self",
+			body: bytes.NewBufferString(`{
+		  "connection_url": "https://self-update:12347/"
+		}`),
+
+			wantStatusCode: http.StatusForbidden,
 		},
 
 		{

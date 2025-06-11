@@ -32,6 +32,11 @@ func registerProvisioningServerHandler(router Router, authorizer authz.Authorize
 	// a token. Therefore no authorization is performed for these requests.
 	router.HandleFunc("POST /{$}", response.With(handler.serversPost))
 
+	// Self update of existing servers (PUT request of a server for their own record)
+	// is authenticated using the stored certificate of the server. Therefore no
+	// authorization is performed for these requests.
+	router.HandleFunc("PUT /:self", response.With(handler.serverPutSelf))
+
 	router.HandleFunc("GET /{$}", response.With(handler.serversGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}", response.With(handler.serverGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /{name}", response.With(handler.serverPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
@@ -426,6 +431,60 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 	err = trans.Commit()
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation PUT /1.0/provisioning/servers/:self servers server_put_self
+//
+//	Update of a server by it self
+//
+//	Update of a server definition by the server it self.
+//	Authentication is done by the servers certificate provided during the
+//	initial registration.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: server
+//	    description: Server definition
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/ServerSelfUpdate"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverPutSelf(r *http.Request) response.Response {
+	// Ensure presence of client certificate.
+	if len(r.TLS.PeerCertificates) == 0 {
+		return response.Forbidden(fmt.Errorf("No client certificate provided"))
+	}
+
+	var serverUpdate api.ServerSelfUpdate
+	err := json.NewDecoder(r.Body).Decode(&serverUpdate)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	err = s.service.SelfUpdate(r.Context(), provisioning.ServerSelfUpdate{
+		ConnectionURL:             serverUpdate.ConnectionURL,
+		AuthenticationCertificate: r.TLS.PeerCertificates[0],
+	})
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed self-updating from server %q: %w", r.RemoteAddr, err))
 	}
 
 	return response.EmptySyncResponse
