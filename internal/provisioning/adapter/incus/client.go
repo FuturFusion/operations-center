@@ -2,8 +2,11 @@ package incus
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incus "github.com/lxc/incus/v6/client"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -57,5 +60,27 @@ func (c client) GetResources(ctx context.Context, server provisioning.Server) (a
 
 	return api.HardwareData{
 		Resources: *resources,
+	}, nil
+}
+
+func (c client) GetOSData(ctx context.Context, server provisioning.Server) (api.OSData, error) {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return api.OSData{}, err
+	}
+
+	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0/system/network", http.NoBody, "")
+	if err != nil {
+		return api.OSData{}, fmt.Errorf("Get OS network data from %q failed: %w", server.ConnectionURL, err)
+	}
+
+	var network incusosapi.SystemNetwork
+	err = json.Unmarshal(resp.Metadata, &network)
+	if err != nil {
+		return api.OSData{}, fmt.Errorf("Unexpected response metadata while fetching OS network information from %q: %w", server.ConnectionURL, err)
+	}
+
+	return api.OSData{
+		Network: network,
 	}, nil
 }
