@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	oidcClient "github.com/FuturFusion/operations-center/cmd/operations-center/internal/client/oidc"
+	oidcClient "github.com/FuturFusion/operations-center/internal/client/oidc"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
