@@ -43,17 +43,17 @@ var targets = []struct {
 }{
 	{
 		TemplateName:   "api.gotmpl",
-		TargetName:     "cmd/operations-centerd/internal/api/api_inventory_{{ .Name }}_gen.go",
+		TargetName:     "internal/api/api_inventory_{{ .Name }}_gen.go",
 		TargetFileType: FileTypeGo,
 	},
 	{
 		TemplateName:   "client.gotmpl",
-		TargetName:     "cmd/operations-center/internal/client/{{ .Name }}_gen.go",
+		TargetName:     "internal/client/{{ .Name }}_gen.go",
 		TargetFileType: FileTypeGo,
 	},
 	{
 		TemplateName:   "cmds.gotmpl",
-		TargetName:     "cmd/operations-center/internal/cmds/inventory/{{ .Name }}_gen.go",
+		TargetName:     "internal/cli/cmds/inventory/{{ .Name }}_gen.go",
 		TargetFileType: FileTypeGo,
 	},
 	{
@@ -124,11 +124,11 @@ var globalTargets = []struct {
 }{
 	{
 		TemplateName: "api_inventory.gotmpl",
-		TargetName:   "cmd/operations-centerd/internal/api/api_inventory_gen.go",
+		TargetName:   "internal/api/api_inventory_gen.go",
 	},
 	{
 		TemplateName: "cmds_inventory.gotmpl",
-		TargetName:   "cmd/operations-center/internal/cmds/inventory_gen.go",
+		TargetName:   "internal/cli/cmds/inventory_gen.go",
 	},
 	{
 		TemplateName: "inventory_ports.gotmpl",
