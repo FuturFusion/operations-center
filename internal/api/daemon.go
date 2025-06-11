@@ -19,7 +19,6 @@ import (
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
 	"github.com/FuturFusion/operations-center/internal/authn"
 	authnoidc "github.com/FuturFusion/operations-center/internal/authn/oidc"
 	authntls "github.com/FuturFusion/operations-center/internal/authn/tls"
@@ -29,6 +28,7 @@ import (
 	authzopenfga "github.com/FuturFusion/operations-center/internal/authz/openfga"
 	authztlz "github.com/FuturFusion/operations-center/internal/authz/tls"
 	"github.com/FuturFusion/operations-center/internal/authz/unixsocket"
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/file"

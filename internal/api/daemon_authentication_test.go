@@ -21,8 +21,8 @@ import (
 	testcontainers "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/openfga"
 
-	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/api"
-	"github.com/FuturFusion/operations-center/cmd/operations-centerd/internal/config"
+	"github.com/FuturFusion/operations-center/internal/api"
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 )
 
 const oidcCode = `123`
