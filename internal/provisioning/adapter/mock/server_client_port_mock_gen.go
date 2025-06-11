@@ -22,6 +22,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //
 //		// make and configure a mocked provisioning.ServerClientPort
 //		mockedServerClientPort := &ServerClientPortMock{
+//			GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
+//				panic("mock out the GetOSData method")
+//			},
 //			GetResourcesFunc: func(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
 //				panic("mock out the GetResources method")
 //			},
@@ -35,6 +38,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //
 //	}
 type ServerClientPortMock struct {
+	// GetOSDataFunc mocks the GetOSData method.
+	GetOSDataFunc func(ctx context.Context, server provisioning.Server) (api.OSData, error)
+
 	// GetResourcesFunc mocks the GetResources method.
 	GetResourcesFunc func(ctx context.Context, server provisioning.Server) (api.HardwareData, error)
 
@@ -43,6 +49,13 @@ type ServerClientPortMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetOSData holds details about calls to the GetOSData method.
+		GetOSData []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// GetResources holds details about calls to the GetResources method.
 		GetResources []struct {
 			// Ctx is the ctx argument value.
@@ -58,8 +71,45 @@ type ServerClientPortMock struct {
 			Server provisioning.Server
 		}
 	}
+	lockGetOSData    sync.RWMutex
 	lockGetResources sync.RWMutex
 	lockPing         sync.RWMutex
+}
+
+// GetOSData calls GetOSDataFunc.
+func (mock *ServerClientPortMock) GetOSData(ctx context.Context, server provisioning.Server) (api.OSData, error) {
+	if mock.GetOSDataFunc == nil {
+		panic("ServerClientPortMock.GetOSDataFunc: method is nil but ServerClientPort.GetOSData was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockGetOSData.Lock()
+	mock.calls.GetOSData = append(mock.calls.GetOSData, callInfo)
+	mock.lockGetOSData.Unlock()
+	return mock.GetOSDataFunc(ctx, server)
+}
+
+// GetOSDataCalls gets all the calls that were made to GetOSData.
+// Check the length with:
+//
+//	len(mockedServerClientPort.GetOSDataCalls())
+func (mock *ServerClientPortMock) GetOSDataCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockGetOSData.RLock()
+	calls = mock.calls.GetOSData
+	mock.lockGetOSData.RUnlock()
+	return calls
 }
 
 // GetResources calls GetResourcesFunc.

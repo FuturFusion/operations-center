@@ -305,7 +305,7 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...provisioning.UpdateFilt
 		} else if filter.UUID == nil && filter.Channel == nil && filter.Origin == nil {
 			return nil, fmt.Errorf("Cannot filter on empty UpdateFilter")
 		} else {
-			return nil, fmt.Errorf("No statement exists for the given Filter")
+			return nil, errors.New("No statement exists for the given Filter")
 		}
 	}
 
@@ -376,7 +376,7 @@ func GetUpdateNames(ctx context.Context, db dbtx, filters ...provisioning.Update
 		} else if filter.UUID == nil && filter.Channel == nil && filter.Origin == nil {
 			return nil, fmt.Errorf("Cannot filter on empty UpdateFilter")
 		} else {
-			return nil, fmt.Errorf("No statement exists for the given Filter")
+			return nil, errors.New("No statement exists for the given Filter")
 		}
 	}
 
