@@ -13,6 +13,7 @@ bin/
 /cmd/operations-center/operations-center
 /cmd/operations-centerd/operations-centerd
 /cmd/operations-centerd/operations-centerd.log
+__debug_*
 
 # Test binary, built with `go test -c`
 *.test
