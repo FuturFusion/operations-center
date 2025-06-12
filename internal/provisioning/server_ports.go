@@ -16,6 +16,7 @@ type ServerService interface {
 	GetAllNamesWithFilter(ctx context.Context, filter ServerFilter) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Server, error)
 	Update(ctx context.Context, server Server) error
+	SelfUpdate(ctx context.Context, serverUpdate ServerSelfUpdate) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
 
@@ -29,6 +30,7 @@ type ServerRepo interface {
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetAllNamesWithFilter(ctx context.Context, filter ServerFilter) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Server, error)
+	GetByCertificate(ctx context.Context, certificatePEM string) (*Server, error)
 	Update(ctx context.Context, server Server) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error

@@ -9,6 +9,7 @@ import (
 
 	"github.com/brianvoe/gofakeit/v7"
 	incusapi "github.com/lxc/incus/v6/shared/api"
+	incustls "github.com/lxc/incus/v6/shared/tls"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
@@ -58,12 +59,22 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		servers := make([]string, 0, serverCount)
 		for serverIdx := 0; serverIdx < serverCount; serverIdx++ {
 			serverName := fmt.Sprintf("server-%08x-%08x", clusterIdx, serverIdx)
+
+			certPEM, _, err := incustls.GenerateMemCert(true, false)
+			if err != nil {
+				return err
+			}
+
 			servers = append(servers, serverName)
 			_, err = serverRepo.Create(ctx, provisioning.Server{
 				Cluster:       &clusterName,
 				Name:          serverName,
 				Type:          api.ServerType(faker.RandomString([]string{"unknown", "incus", "migration-manager", "operations-center"})),
 				ConnectionURL: fmt.Sprintf("https://%s.domain.tdl", serverName),
+				Certificate:   string(certPEM),
+				HardwareData:  api.HardwareData{},
+				OSData:        api.OSData{},
+				Status:        api.ServerStatusReady,
 				LastUpdated:   faker.Date(),
 			})
 			if err != nil {

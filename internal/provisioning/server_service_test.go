@@ -2,10 +2,12 @@ package provisioning_test
 
 import (
 	"context"
+	"crypto/tls"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -484,56 +486,6 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 	}
 }
 
-func TestServerService_GetByID(t *testing.T) {
-	tests := []struct {
-		name                string
-		idArg               string
-		repoGetByNameServer *provisioning.Server
-		repoGetByNameErr    error
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name:  "success",
-			idArg: "one",
-			repoGetByNameServer: &provisioning.Server{
-				Name:          "one",
-				Cluster:       ptr.To("one"),
-				ConnectionURL: "http://one/",
-			},
-
-			assertErr: require.NoError,
-		},
-		{
-			name:             "error - repo",
-			idArg:            "one",
-			repoGetByNameErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			repo := &repoMock.ServerRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
-					return tc.repoGetByNameServer, tc.repoGetByNameErr
-				},
-			}
-
-			serverSvc := provisioning.NewServerService(repo, nil, nil)
-
-			// Run test
-			server, err := serverSvc.GetByName(context.Background(), tc.idArg)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByNameServer, server)
-		})
-	}
-}
-
 func TestServerService_GetByName(t *testing.T) {
 	tests := []struct {
 		name                string
@@ -670,6 +622,125 @@ one
 
 			// Run test
 			err := serverSvc.Update(context.Background(), tc.server)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestServerService_SelfUpdate(t *testing.T) {
+	// Setup client certificate
+	certPEM, keyPEM, err := incustls.GenerateMemCert(true, false)
+	require.NoError(t, err)
+
+	cert, err := tls.X509KeyPair(certPEM, keyPEM)
+	require.NoError(t, err)
+
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	tests := []struct {
+		name                       string
+		serverSelfUpdate           provisioning.ServerSelfUpdate
+		repoGetByCertificateServer *provisioning.Server
+		repoGetByCertificateErr    error
+		repoUpdateErr              error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one-new/",
+				AuthenticationCertificate: cert.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(certPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusReady,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - repo.GetByCertificate not found",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one/",
+				AuthenticationCertificate: cert.Leaf,
+			},
+			repoGetByCertificateErr: domain.ErrNotFound,
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotAuthorized)
+			},
+		},
+		{
+			name: "error - repo.GetByCertificate",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one/",
+				AuthenticationCertificate: cert.Leaf,
+			},
+			repoGetByCertificateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - validation",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             ":|//", // invalid URL
+				AuthenticationCertificate: cert.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(certPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusReady,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - repo.UpdateByID",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				ConnectionURL:             "http://one/",
+				AuthenticationCertificate: cert.Leaf,
+			},
+			repoGetByCertificateServer: &provisioning.Server{
+				Name:          "one",
+				ConnectionURL: "http://one/",
+				Certificate:   string(certPEM),
+				Type:          api.ServerTypeIncus,
+				Status:        api.ServerStatusReady,
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByCertificateFunc: func(ctx context.Context, certificatePEM string) (*provisioning.Server, error) {
+					return tc.repoGetByCertificateServer, tc.repoGetByCertificateErr
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					require.Equal(t, fixedDate, in.LastUpdated)
+					return tc.repoUpdateErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, nil, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+
+			// Run test
+			err := serverSvc.SelfUpdate(context.Background(), tc.serverSelfUpdate)
 
 			// Assert
 			tc.assertErr(t, err)

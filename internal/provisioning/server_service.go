@@ -2,6 +2,7 @@ package provisioning
 
 import (
 	"context"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -228,6 +229,34 @@ func (s serverService) Update(ctx context.Context, newServer Server) error {
 	newServer.LastUpdated = s.now()
 
 	return s.repo.Update(ctx, newServer)
+}
+
+func (s serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUpdate) error {
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		authenticationCertificatePEM := pem.EncodeToMemory(&pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: serverUpdate.AuthenticationCertificate.Raw,
+		})
+
+		server, err := s.repo.GetByCertificate(ctx, string(authenticationCertificatePEM))
+		if err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				return domain.ErrNotAuthorized
+			}
+
+			return err
+		}
+
+		server.ConnectionURL = serverUpdate.ConnectionURL
+		server.LastUpdated = s.now()
+
+		err = server.Validate()
+		if err != nil {
+			return err
+		}
+
+		return s.repo.Update(ctx, *server)
+	})
 }
 
 func (s serverService) Rename(ctx context.Context, oldName string, newName string) error {

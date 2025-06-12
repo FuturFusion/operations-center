@@ -238,6 +238,15 @@ type Server struct {
 	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
 }
 
+// ServerSelfUpdate defines a self update request of a server.
+//
+// swagger:model
+type ServerSelfUpdate struct {
+	// URL, hostname or IP address of the server endpoint.
+	// Example: https://incus.local:6443
+	ConnectionURL string `json:"connection_url" yaml:"connection_url"`
+}
+
 // ServerRegistrationResponse defines the response to a successful server registration.
 type ServerRegistrationResponse struct {
 	// ClientCertificate is the certificate in PEM format used by Operations Center

@@ -39,6 +39,9 @@ var _ provisioning.ServerRepo = &ServerRepoMock{}
 //			GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
 //				panic("mock out the GetAllWithFilter method")
 //			},
+//			GetByCertificateFunc: func(ctx context.Context, certificatePEM string) (*provisioning.Server, error) {
+//				panic("mock out the GetByCertificate method")
+//			},
 //			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 //				panic("mock out the GetByName method")
 //			},
@@ -72,6 +75,9 @@ type ServerRepoMock struct {
 
 	// GetAllWithFilterFunc mocks the GetAllWithFilter method.
 	GetAllWithFilterFunc func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error)
+
+	// GetByCertificateFunc mocks the GetByCertificate method.
+	GetByCertificateFunc func(ctx context.Context, certificatePEM string) (*provisioning.Server, error)
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Server, error)
@@ -122,6 +128,13 @@ type ServerRepoMock struct {
 			// Filter is the filter argument value.
 			Filter provisioning.ServerFilter
 		}
+		// GetByCertificate holds details about calls to the GetByCertificate method.
+		GetByCertificate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// CertificatePEM is the certificatePEM argument value.
+			CertificatePEM string
+		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
 			// Ctx is the ctx argument value.
@@ -152,6 +165,7 @@ type ServerRepoMock struct {
 	lockGetAllNames           sync.RWMutex
 	lockGetAllNamesWithFilter sync.RWMutex
 	lockGetAllWithFilter      sync.RWMutex
+	lockGetByCertificate      sync.RWMutex
 	lockGetByName             sync.RWMutex
 	lockRename                sync.RWMutex
 	lockUpdate                sync.RWMutex
@@ -362,6 +376,42 @@ func (mock *ServerRepoMock) GetAllWithFilterCalls() []struct {
 	mock.lockGetAllWithFilter.RLock()
 	calls = mock.calls.GetAllWithFilter
 	mock.lockGetAllWithFilter.RUnlock()
+	return calls
+}
+
+// GetByCertificate calls GetByCertificateFunc.
+func (mock *ServerRepoMock) GetByCertificate(ctx context.Context, certificatePEM string) (*provisioning.Server, error) {
+	if mock.GetByCertificateFunc == nil {
+		panic("ServerRepoMock.GetByCertificateFunc: method is nil but ServerRepo.GetByCertificate was just called")
+	}
+	callInfo := struct {
+		Ctx            context.Context
+		CertificatePEM string
+	}{
+		Ctx:            ctx,
+		CertificatePEM: certificatePEM,
+	}
+	mock.lockGetByCertificate.Lock()
+	mock.calls.GetByCertificate = append(mock.calls.GetByCertificate, callInfo)
+	mock.lockGetByCertificate.Unlock()
+	return mock.GetByCertificateFunc(ctx, certificatePEM)
+}
+
+// GetByCertificateCalls gets all the calls that were made to GetByCertificate.
+// Check the length with:
+//
+//	len(mockedServerRepo.GetByCertificateCalls())
+func (mock *ServerRepoMock) GetByCertificateCalls() []struct {
+	Ctx            context.Context
+	CertificatePEM string
+} {
+	var calls []struct {
+		Ctx            context.Context
+		CertificatePEM string
+	}
+	mock.lockGetByCertificate.RLock()
+	calls = mock.calls.GetByCertificate
+	mock.lockGetByCertificate.RUnlock()
 	return calls
 }
 

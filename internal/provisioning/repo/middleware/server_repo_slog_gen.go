@@ -248,6 +248,41 @@ func (_d ServerRepoWithSlog) GetAllWithFilter(ctx context.Context, filter provis
 	return _d._base.GetAllWithFilter(ctx, filter)
 }
 
+// GetByCertificate implements provisioning.ServerRepo.
+func (_d ServerRepoWithSlog) GetByCertificate(ctx context.Context, certificatePEM string) (server *provisioning.Server, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("certificatePEM", certificatePEM),
+		)
+	}
+	log.Debug("=> calling GetByCertificate")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("server", server),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetByCertificate returned an informative error")
+			} else {
+				log.Error("<= method GetByCertificate returned an error")
+			}
+		} else {
+			log.Debug("<= method GetByCertificate finished")
+		}
+	}()
+	return _d._base.GetByCertificate(ctx, certificatePEM)
+}
+
 // GetByName implements provisioning.ServerRepo.
 func (_d ServerRepoWithSlog) GetByName(ctx context.Context, name string) (server *provisioning.Server, err error) {
 	log := _d._log.With()

@@ -121,6 +121,20 @@ func (_d ServerRepoWithPrometheus) GetAllWithFilter(ctx context.Context, filter 
 	return _d.base.GetAllWithFilter(ctx, filter)
 }
 
+// GetByCertificate implements provisioning.ServerRepo.
+func (_d ServerRepoWithPrometheus) GetByCertificate(ctx context.Context, certificatePEM string) (server *provisioning.Server, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByCertificate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetByCertificate(ctx, certificatePEM)
+}
+
 // GetByName implements provisioning.ServerRepo.
 func (_d ServerRepoWithPrometheus) GetByName(ctx context.Context, name string) (server *provisioning.Server, err error) {
 	_since := time.Now()

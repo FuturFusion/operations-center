@@ -1,6 +1,7 @@
 package provisioning
 
 import (
+	"crypto/x509"
 	"encoding/json"
 	"net/url"
 	"time"
@@ -28,8 +29,17 @@ func (s Server) Validate() error {
 		return domain.NewValidationErrf("Invalid server, name can not be empty")
 	}
 
+	if s.Name == ":self" {
+		return domain.NewValidationErrf(`Invalid server, ":self" is reserved for internal use and not allowed as server name`)
+	}
+
 	if s.ConnectionURL == "" {
 		return domain.NewValidationErrf("Invalid server, connection URL can not be empty")
+	}
+
+	_, err := url.Parse(s.ConnectionURL)
+	if err != nil {
+		return domain.NewValidationErrf("Invalid server, connection URL is not valid: %v", err)
 	}
 
 	if s.Certificate == "" {
@@ -37,7 +47,7 @@ func (s Server) Validate() error {
 	}
 
 	var serverType api.ServerType
-	err := serverType.UnmarshalText([]byte(s.Type))
+	err = serverType.UnmarshalText([]byte(s.Type))
 	if err != nil {
 		return domain.NewValidationErrf("Invalid server, validation of type failed: %v", err)
 	}
@@ -48,21 +58,17 @@ func (s Server) Validate() error {
 		return domain.NewValidationErrf("Invalid server, validation of status failed: %v", err)
 	}
 
-	_, err = url.Parse(s.ConnectionURL)
-	if err != nil {
-		return domain.NewValidationErrf("Invalid server, connection URL is not valid: %v", err)
-	}
-
 	return nil
 }
 
 type Servers []Server
 
 type ServerFilter struct {
-	Name       *string
-	Cluster    *string
-	Status     *api.ServerStatus
-	Expression *string `db:"ignore"`
+	Name        *string
+	Cluster     *string
+	Status      *api.ServerStatus
+	Certificate *string
+	Expression  *string `db:"ignore"`
 }
 
 func (f ServerFilter) AppendToURLValues(query url.Values) url.Values {
@@ -79,4 +85,9 @@ func (f ServerFilter) AppendToURLValues(query url.Values) url.Values {
 
 func (f ServerFilter) String() string {
 	return f.AppendToURLValues(url.Values{}).Encode()
+}
+
+type ServerSelfUpdate struct {
+	ConnectionURL             string
+	AuthenticationCertificate *x509.Certificate
 }

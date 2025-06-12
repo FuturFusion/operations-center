@@ -2,7 +2,9 @@ package sqlite
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
@@ -43,6 +45,25 @@ func (s server) GetAllNamesWithFilter(ctx context.Context, filter provisioning.S
 
 func (s server) GetByName(ctx context.Context, name string) (*provisioning.Server, error) {
 	return entities.GetServer(ctx, transaction.GetDBTX(ctx, s.db), name)
+}
+
+func (s server) GetByCertificate(ctx context.Context, certificatePEM string) (*provisioning.Server, error) {
+	servers, err := entities.GetServers(ctx, transaction.GetDBTX(ctx, s.db), provisioning.ServerFilter{
+		Certificate: &certificatePEM,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(servers) == 0 {
+		return nil, domain.ErrNotFound
+	}
+
+	if len(servers) != 1 {
+		return nil, fmt.Errorf("More than one server matches the certificate") // this should never happen, since we have a unique constraint on column servers.certificate in the database.
+	}
+
+	return &servers[0], nil
 }
 
 func (s server) Update(ctx context.Context, in provisioning.Server) error {
