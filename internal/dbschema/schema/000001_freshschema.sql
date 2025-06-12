@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS servers (
   os_data TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (name),
+  UNIQUE (certificate),
   FOREIGN KEY(cluster_id) REFERENCES clusters(id)
 );
 
