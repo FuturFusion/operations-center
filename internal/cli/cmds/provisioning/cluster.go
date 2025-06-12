@@ -85,7 +85,7 @@ func (c *cmdClusterAdd) Command() *cobra.Command {
 	cmd.Long = `Description:
   Add a new cluster
 
-  Adds a new custer to the operations center.
+  Adds a new cluster to the operations center.
 `
 
 	cmd.RunE = c.Run
@@ -196,7 +196,7 @@ func (c *cmdClusterRemove) Command() *cobra.Command {
 	cmd.Long = `Description:
   Remove a cluster
 
-  Removes a custer from the operations center.
+  Removes a cluster from the operations center.
 `
 
 	cmd.RunE = c.Run

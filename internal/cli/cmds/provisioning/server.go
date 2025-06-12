@@ -39,14 +39,14 @@ func (c *CmdServer) Command() *cobra.Command {
 	cmd.AddCommand(serverListCmd.Command())
 
 	// Remove
-	serverRemoveCmd := cmddServerRemove{
+	serverRemoveCmd := cmdServerRemove{
 		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(serverRemoveCmd.Command())
 
 	// Show
-	serverShowCmd := cmddServerShow{
+	serverShowCmd := cmdServerShow{
 		ocClient: c.OCClient,
 	}
 
@@ -122,18 +122,18 @@ func (c *cmdServerList) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Remove server.
-type cmddServerRemove struct {
+type cmdServerRemove struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmddServerRemove) Command() *cobra.Command {
+func (c *cmdServerRemove) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "remove <name>"
 	cmd.Short = "Remove a server"
 	cmd.Long = `Description:
   Remove a server
 
-  Removes a custer from the operations center.
+  Removes a server from the operations center.
 `
 
 	cmd.RunE = c.Run
@@ -141,7 +141,7 @@ func (c *cmddServerRemove) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmddServerRemove) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdServerRemove) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -159,11 +159,11 @@ func (c *cmddServerRemove) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Show server.
-type cmddServerShow struct {
+type cmdServerShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmddServerShow) Command() *cobra.Command {
+func (c *cmdServerShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <name>"
 	cmd.Short = "Show information about a server"
@@ -176,7 +176,7 @@ func (c *cmddServerShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmddServerShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdServerShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
