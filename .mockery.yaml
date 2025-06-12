@@ -1,9 +1,7 @@
 ---
 
 all: False
-# Workaround for https://github.com/vektra/mockery/issues/1041, remove when issue is resolved.
-# template: matryer
-template: file://./internal/mock/matryer_moq.gotmpl
+template: matryer
 require-template-schema-exists: false
 force-file-write: true
 include-interface-regex: "(.+Repo|.+Port|.*ServerClient|ClusterService|ServerService|TokenService|InventorySyncer)"
