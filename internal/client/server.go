@@ -72,3 +72,14 @@ func (c OperationsCenterClient) DeleteServer(ctx context.Context, name string) e
 
 	return nil
 }
+
+func (c OperationsCenterClient) RenameServer(ctx context.Context, name string, newName string) error {
+	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name), nil, api.Server{
+		Name: newName,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

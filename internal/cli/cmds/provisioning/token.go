@@ -47,14 +47,14 @@ func (c *CmdToken) Command() *cobra.Command {
 	cmd.AddCommand(tokenListCmd.Command())
 
 	// Remove
-	tokenRemoveCmd := cmddTokenRemove{
+	tokenRemoveCmd := cmdTokenRemove{
 		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(tokenRemoveCmd.Command())
 
 	// Show
-	tokenShowCmd := cmddTokenShow{
+	tokenShowCmd := cmdTokenShow{
 		ocClient: c.OCClient,
 	}
 
@@ -79,7 +79,7 @@ func (c *cmdTokenAdd) Command() *cobra.Command {
 	cmd.Long = `Description:
   Add a new token
 
-  Adds a new custer to the operations center.
+  Adds a new token to the operations center.
 `
 
 	cmd.RunE = c.Run
@@ -175,18 +175,18 @@ func (c *cmdTokenList) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Remove token.
-type cmddTokenRemove struct {
+type cmdTokenRemove struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmddTokenRemove) Command() *cobra.Command {
+func (c *cmdTokenRemove) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "remove <uuid>"
 	cmd.Short = "Remove a token"
 	cmd.Long = `Description:
   Remove a token
 
-  Removes a custer from the operations center.
+  Removes a token from the operations center.
 `
 
 	cmd.RunE = c.Run
@@ -194,7 +194,7 @@ func (c *cmddTokenRemove) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmddTokenRemove) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenRemove) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -212,11 +212,11 @@ func (c *cmddTokenRemove) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Show token.
-type cmddTokenShow struct {
+type cmdTokenShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmddTokenShow) Command() *cobra.Command {
+func (c *cmdTokenShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid>"
 	cmd.Short = "Show information about a token"
@@ -229,7 +229,7 @@ func (c *cmddTokenShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmddTokenShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {

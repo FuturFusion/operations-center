@@ -39,14 +39,21 @@ func (c *CmdServer) Command() *cobra.Command {
 	cmd.AddCommand(serverListCmd.Command())
 
 	// Remove
-	serverRemoveCmd := cmddServerRemove{
+	serverRemoveCmd := cmdServerRemove{
 		ocClient: c.OCClient,
 	}
 
 	cmd.AddCommand(serverRemoveCmd.Command())
 
+	// Rename
+	serverRenameCmd := cmdServerRename{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(serverRenameCmd.Command())
+
 	// Show
-	serverShowCmd := cmddServerShow{
+	serverShowCmd := cmdServerShow{
 		ocClient: c.OCClient,
 	}
 
@@ -122,18 +129,18 @@ func (c *cmdServerList) Run(cmd *cobra.Command, args []string) error {
 }
 
 // Remove server.
-type cmddServerRemove struct {
+type cmdServerRemove struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmddServerRemove) Command() *cobra.Command {
+func (c *cmdServerRemove) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "remove <name>"
 	cmd.Short = "Remove a server"
 	cmd.Long = `Description:
   Remove a server
 
-  Removes a custer from the operations center.
+  Removes a server from the operations center.
 `
 
 	cmd.RunE = c.Run
@@ -141,7 +148,7 @@ func (c *cmddServerRemove) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmddServerRemove) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdServerRemove) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -158,12 +165,54 @@ func (c *cmddServerRemove) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Show server.
-type cmddServerShow struct {
+// Rename server.
+type cmdServerRename struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmddServerShow) Command() *cobra.Command {
+func (c *cmdServerRename) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "rename <name> <new-name>"
+	cmd.Short = "Rename a server"
+	cmd.Long = `Description:
+  Rename a server
+
+  Renames a server to a new name.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdServerRename) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 2, 2)
+	if exit {
+		return err
+	}
+
+	name := args[0]
+	newName := args[1]
+
+	if name == newName {
+		return fmt.Errorf("Rename failed, name and new name are equal")
+	}
+
+	err = c.ocClient.RenameServer(cmd.Context(), name, newName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Show server.
+type cmdServerShow struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdServerShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <name>"
 	cmd.Short = "Show information about a server"
@@ -176,7 +225,7 @@ func (c *cmddServerShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmddServerShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdServerShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {

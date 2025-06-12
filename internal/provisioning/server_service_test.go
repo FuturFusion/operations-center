@@ -785,9 +785,19 @@ func TestServerService_Rename(t *testing.T) {
 			},
 		},
 		{
+			name:    "error - old and new name equal",
+			oldName: "one",
+			newName: "one", // equal
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
 			name:          "error - repo.GetByName",
 			oldName:       "one",
-			newName:       "one",
+			newName:       "one-new",
 			repoRenameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,

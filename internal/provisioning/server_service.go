@@ -268,6 +268,10 @@ func (s serverService) Rename(ctx context.Context, oldName string, newName strin
 		return domain.NewValidationErrf("New Server name cannot by empty")
 	}
 
+	if oldName == newName {
+		return domain.NewValidationErrf("Old and new Server name are equal")
+	}
+
 	return s.repo.Rename(ctx, oldName, newName)
 }
 

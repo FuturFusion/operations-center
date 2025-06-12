@@ -37,6 +37,11 @@ func (s ServerType) MarshalText() ([]byte, error) {
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (s *ServerType) UnmarshalText(text []byte) error {
+	if len(text) == 0 {
+		*s = ServerTypeUnknown
+		return nil
+	}
+
 	_, ok := serverTypes[ServerType(text)]
 	if !ok {
 		return fmt.Errorf("%q is not a valid server type", string(text))
@@ -93,9 +98,14 @@ func (s ServerStatus) MarshalText() ([]byte, error) {
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (s *ServerStatus) UnmarshalText(text []byte) error {
+	if len(text) == 0 {
+		*s = ServerStatusUnknown
+		return nil
+	}
+
 	_, ok := serverStatuses[ServerStatus(text)]
 	if !ok {
-		return fmt.Errorf("%q is not a valid server type", string(text))
+		return fmt.Errorf("%q is not a valid server status", string(text))
 	}
 
 	*s = ServerStatus(text)
