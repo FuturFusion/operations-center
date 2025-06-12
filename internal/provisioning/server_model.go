@@ -48,13 +48,13 @@ func (s Server) Validate() error {
 
 	var serverType api.ServerType
 	err = serverType.UnmarshalText([]byte(s.Type))
-	if err != nil {
+	if s.Type == "" || err != nil {
 		return domain.NewValidationErrf("Invalid server, validation of type failed: %v", err)
 	}
 
 	var serverStatus api.ServerStatus
 	err = serverStatus.UnmarshalText([]byte(s.Status))
-	if err != nil {
+	if s.Status == "" || err != nil {
 		return domain.NewValidationErrf("Invalid server, validation of status failed: %v", err)
 	}
 

@@ -73,10 +73,29 @@ one
 			},
 		},
 		{
+			name: "error - empty type",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          "", // empty
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
 			name: "error - invalid type",
 			server: provisioning.Server{
 				Name:          "one",
-				Type:          "", // invalid
+				Type:          api.ServerType("invalid"), // invalid
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
 				Certificate: `-----BEGIN CERTIFICATE-----
@@ -138,6 +157,25 @@ one
 				ConnectionURL: "http://one/",
 				Certificate:   ``, // invalid
 				Status:        api.ServerStatusReady,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - status empty",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: "", // empty
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
