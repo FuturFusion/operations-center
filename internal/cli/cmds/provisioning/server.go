@@ -59,6 +59,13 @@ func (c *CmdServer) Command() *cobra.Command {
 
 	cmd.AddCommand(serverShowCmd.Command())
 
+	// System
+	serverSystemCmd := cmdServerSystem{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(serverSystemCmd.Command())
+
 	return cmd
 }
 
