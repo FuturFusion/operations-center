@@ -178,9 +178,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 				provisioningSqlite.NewServer(dbWithTransaction),
 				slog.Default(),
 			),
-			provisioningIncusAdapter.New(
-				d.clientCertificate,
-				d.clientKey,
+			provisioningAdapterMiddleware.NewServerClientPortWithSlog(
+				provisioningIncusAdapter.New(
+					d.clientCertificate,
+					d.clientKey,
+				),
+				slog.Default(),
 			),
 			tokenSvc,
 		),
@@ -190,6 +193,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 	clusterSvc := provisioning.NewClusterService(
 		provisioningRepoMiddleware.NewClusterRepoWithSlog(
 			provisioningSqlite.NewCluster(dbWithTransaction),
+			slog.Default(),
+		),
+		provisioningAdapterMiddleware.NewClusterClientPortWithSlog(
+			provisioningIncusAdapter.New(
+				d.clientCertificate,
+				d.clientKey,
+			),
 			slog.Default(),
 		),
 		serverSvc,
