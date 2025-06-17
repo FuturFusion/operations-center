@@ -93,7 +93,7 @@ func TestNetworkPeerService_GetAllWithFilter(t *testing.T) {
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...interface{}) {
+			assertErr: func(tt require.TestingT, err error, i ...any) {
 				require.ErrorContains(tt, err, "does not evaluate to boolean result")
 			},
 			count: 0,
@@ -190,7 +190,7 @@ func TestNetworkPeerService_GetAllUUIDsWithFilter(t *testing.T) {
 				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...interface{}) {
+			assertErr: func(tt require.TestingT, err error, i ...any) {
 				require.ErrorContains(tt, err, "does not evaluate to boolean result")
 			},
 			count: 0,
