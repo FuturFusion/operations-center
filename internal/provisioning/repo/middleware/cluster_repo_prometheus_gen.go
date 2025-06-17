@@ -65,6 +65,20 @@ func (_d ClusterRepoWithPrometheus) DeleteByName(ctx context.Context, name strin
 	return _d.base.DeleteByName(ctx, name)
 }
 
+// ExistsByName implements provisioning.ClusterRepo.
+func (_d ClusterRepoWithPrometheus) ExistsByName(ctx context.Context, name string) (b bool, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "ExistsByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ExistsByName(ctx, name)
+}
+
 // GetAll implements provisioning.ClusterRepo.
 func (_d ClusterRepoWithPrometheus) GetAll(ctx context.Context) (clusters provisioning.Clusters, err error) {
 	_since := time.Now()
