@@ -11,6 +11,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/dbschema"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -50,6 +51,30 @@ server B
 		LastUpdated:  fixedDate,
 	}
 
+	client := &adapterMock.ClusterClientPortMock{
+		PingFunc: func(ctx context.Context, server provisioning.Server) error {
+			return nil
+		},
+		EnableOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) error {
+			return nil
+		},
+		SetClusterAddressFunc: func(ctx context.Context, server provisioning.Server) error {
+			return nil
+		},
+		GetClusterNodeNamesFunc: func(ctx context.Context, server provisioning.Server) ([]string, error) {
+			return []string{server.Name}, nil
+		},
+		GetClusterJoinTokenFunc: func(ctx context.Context, server provisioning.Server, memberName string) (string, error) {
+			return "token", nil
+		},
+		EnableClusterFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
+			return "certificate", nil
+		},
+		JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) error {
+			return nil
+		},
+	}
+
 	ctx := context.Background()
 
 	// Create a new temporary database.
@@ -74,7 +99,7 @@ server B
 		provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 	)
 
-	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), serverSvc, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
+	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), client, serverSvc, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
 
 	// Add server
 	_, err = server.Create(ctx, serverA)
@@ -148,9 +173,8 @@ server B
 
 	// Add server one to a cluster
 	_, err = clusterSvc.Create(ctx, provisioning.Cluster{
-		Name:          "one",
-		ConnectionURL: "https://one/",
-		ServerNames:   []string{"two-new"},
+		Name:        "one",
+		ServerNames: []string{"two-new"},
 	})
 	require.NoError(t, err)
 

@@ -2,7 +2,9 @@ package sqlite
 
 import (
 	"context"
+	"errors"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
@@ -35,6 +37,19 @@ func (c cluster) GetAllNames(ctx context.Context) ([]string, error) {
 
 func (c cluster) GetByName(ctx context.Context, name string) (*provisioning.Cluster, error) {
 	return entities.GetCluster(ctx, transaction.GetDBTX(ctx, c.db), name)
+}
+
+func (c cluster) ExistsByName(ctx context.Context, name string) (bool, error) {
+	_, err := entities.GetCluster(ctx, transaction.GetDBTX(ctx, c.db), name)
+	if errors.Is(err, domain.ErrNotFound) {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (c cluster) Update(ctx context.Context, in provisioning.Cluster) error {
