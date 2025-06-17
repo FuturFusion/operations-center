@@ -11,6 +11,7 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	"github.com/google/uuid"
+	"github.com/lxc/incus/v6/shared/revert"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/logger"
@@ -220,15 +221,64 @@ func (s serverService) GetByName(ctx context.Context, name string) (*Server, err
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s serverService) Update(ctx context.Context, newServer Server) error {
-	err := newServer.Validate()
+func (s serverService) Update(ctx context.Context, server Server) error {
+	err := server.Validate()
 	if err != nil {
 		return err
 	}
 
-	newServer.LastUpdated = s.now()
+	server.LastUpdated = s.now()
 
-	return s.repo.Update(ctx, newServer)
+	return s.repo.Update(ctx, server)
+}
+
+func (s serverService) UpdateSystemNetwork(ctx context.Context, name string, systemNetwork ServerSystemNetwork) (err error) {
+	server := &Server{}
+	updatedServer := &Server{}
+
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+
+		server, err = s.GetByName(ctx, name)
+		if err != nil {
+			return err
+		}
+
+		updatedServer, _ = ptr.Clone(server)
+
+		updatedServer.OSData.Network = systemNetwork
+		updatedServer.Status = api.ServerStatusPending
+		updatedServer.LastUpdated = s.now()
+
+		err = s.Update(ctx, *updatedServer)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	reverter.Add(func() {
+		revertErr := s.repo.Update(ctx, *server)
+		if revertErr != nil {
+			err = errors.Join(err, revertErr)
+		}
+	})
+
+	err = s.client.UpdateNetworkConfig(ctx, *updatedServer)
+	if err != nil {
+		return err
+	}
+
+	reverter.Success()
+
+	return nil
 }
 
 func (s serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUpdate) error {
@@ -248,6 +298,7 @@ func (s serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUp
 		}
 
 		server.ConnectionURL = serverUpdate.ConnectionURL
+		server.Status = api.ServerStatusReady
 		server.LastUpdated = s.now()
 
 		err = server.Validate()
