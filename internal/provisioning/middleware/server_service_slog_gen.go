@@ -420,3 +420,38 @@ func (_d ServerServiceWithSlog) Update(ctx context.Context, server provisioning.
 	}()
 	return _d._base.Update(ctx, server)
 }
+
+// UpdateSystemNetwork implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) UpdateSystemNetwork(ctx context.Context, name string, networkConfig provisioning.ServerSystemNetwork) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Any("networkConfig", networkConfig),
+		)
+	}
+	log.Debug("=> calling UpdateSystemNetwork")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method UpdateSystemNetwork returned an informative error")
+			} else {
+				log.Error("<= method UpdateSystemNetwork returned an error")
+			}
+		} else {
+			log.Debug("<= method UpdateSystemNetwork finished")
+		}
+	}()
+	return _d._base.UpdateSystemNetwork(ctx, name, networkConfig)
+}

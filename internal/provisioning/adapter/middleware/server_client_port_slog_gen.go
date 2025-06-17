@@ -145,3 +145,37 @@ func (_d ServerClientPortWithSlog) Ping(ctx context.Context, server provisioning
 	}()
 	return _d._base.Ping(ctx, server)
 }
+
+// UpdateNetworkConfig implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.Debug("=> calling UpdateNetworkConfig")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method UpdateNetworkConfig returned an informative error")
+			} else {
+				log.Error("<= method UpdateNetworkConfig returned an error")
+			}
+		} else {
+			log.Debug("<= method UpdateNetworkConfig finished")
+		}
+	}()
+	return _d._base.UpdateNetworkConfig(ctx, server)
+}
