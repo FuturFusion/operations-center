@@ -24,10 +24,6 @@ func (c Cluster) Validate() error {
 		return domain.NewValidationErrf("Invalid cluster, list of server names can not be empty")
 	}
 
-	if c.ConnectionURL == "" {
-		return domain.NewValidationErrf("Invalid cluster, connection URL can not be empty")
-	}
-
 	_, err := url.Parse(c.ConnectionURL)
 	if err != nil {
 		return domain.NewValidationErrf("Invalid cluster, connection URL is not valid: %v", err)

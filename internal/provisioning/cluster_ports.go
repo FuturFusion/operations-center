@@ -30,3 +30,12 @@ type ClusterRepo interface {
 type InventorySyncer interface {
 	SyncCluster(ctx context.Context, cluster string) error
 }
+
+type ClusterClientPort interface {
+	Ping(ctx context.Context, server Server) error
+	EnableOSServiceLVM(ctx context.Context, server Server) error
+	EnableCluster(ctx context.Context, server Server, clusterName string) (clusterCertificate string, _ error)
+	InsecureGetClusterCertificate(ctx context.Context, cluster Server) (clusterCertificate string, _ error)
+	GetClusterJoinToken(ctx context.Context, server Server, memberName string) (joinToken string, _ error)
+	JoinCluster(ctx context.Context, server Server, joinToken string, clusterCertificate string) error
+}
