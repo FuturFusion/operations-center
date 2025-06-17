@@ -34,15 +34,23 @@ func TestNetworkZoneDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
 		Name:          "one",
 		ConnectionURL: "https://cluster-one/",
-		ServerNames:   []string{"one"},
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Certificate: `-----BEGIN CERTIFICATE-----
+cluster A
+-----END CERTIFICATE-----
+`,
+		ServerNames: []string{"one"},
+		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	testClusterB := provisioning.Cluster{
 		Name:          "two",
 		ConnectionURL: "https://cluster-two/",
-		ServerNames:   []string{"two"},
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Certificate: `-----BEGIN CERTIFICATE-----
+cluster B
+-----END CERTIFICATE-----
+`,
+		ServerNames: []string{"two"},
+		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	testServerA := provisioning.Server{
@@ -89,7 +97,7 @@ server-two
 
 	networkZoneB.DeriveUUID()
 
-	client := &adapterMock.ServerClientPortMock{
+	serverClient := &adapterMock.ServerClientPortMock{
 		PingFunc: func(ctx context.Context, server provisioning.Server) error {
 			return nil
 		},
@@ -98,6 +106,30 @@ server-two
 		},
 		GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
 			return api.OSData{}, nil
+		},
+	}
+
+	clusterClient := &adapterMock.ClusterClientPortMock{
+		PingFunc: func(ctx context.Context, server provisioning.Server) error {
+			return nil
+		},
+		EnableOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) error {
+			return nil
+		},
+		SetClusterAddressFunc: func(ctx context.Context, server provisioning.Server) error {
+			return nil
+		},
+		GetClusterNodeNamesFunc: func(ctx context.Context, server provisioning.Server) ([]string, error) {
+			return []string{server.Name}, nil
+		},
+		GetClusterJoinTokenFunc: func(ctx context.Context, server provisioning.Server, memberName string) (string, error) {
+			return "token", nil
+		},
+		EnableClusterFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
+			return server.Certificate, nil
+		},
+		JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) error {
+			return nil
 		},
 	}
 
@@ -121,8 +153,8 @@ server-two
 	require.NoError(t, err)
 
 	tokenSvc := provisioning.NewTokenService(provisioningSqlite.NewToken(tx))
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(tx), client, tokenSvc)
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(tx), serverSvc, nil)
+	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(tx), serverClient, tokenSvc)
+	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(tx), clusterClient, serverSvc, nil)
 
 	networkZone := inventorySqlite.NewNetworkZone(tx)
 
