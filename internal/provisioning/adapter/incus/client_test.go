@@ -529,3 +529,117 @@ func TestClient_GetOSData(t *testing.T) {
 		})
 	}
 }
+
+func TestClient_UpdateNetworkConfig(t *testing.T) {
+	certPEMByte, keyPEMByte, err := incustls.GenerateMemCert(true, false)
+	require.NoError(t, err)
+
+	caPool := x509.NewCertPool()
+	caPool.AppendCertsFromPEM(certPEMByte)
+
+	certPEM, keyPEM := string(certPEMByte), string(keyPEMByte)
+
+	tests := []struct {
+		name       string
+		certPEM    string
+		keyPEM     string
+		statusCode int
+		response   []byte
+		setup      func(*httptest.Server)
+
+		assertErr require.ErrorAssertionFunc
+		wantPath  string
+	}{
+		{
+			name:       "success",
+			certPEM:    certPEM,
+			keyPEM:     keyPEM,
+			statusCode: http.StatusOK,
+			response:   []byte(`{}`),
+			setup:      func(_ *httptest.Server) {},
+
+			assertErr: require.NoError,
+			wantPath:  "/os/1.0/system/network",
+		},
+		{
+			name:    "error - invalid key pair",
+			certPEM: certPEM,
+			keyPEM:  certPEM, // invalid, should be key
+			setup:   func(_ *httptest.Server) {},
+
+			assertErr: require.Error,
+		},
+		{
+			name:    "error - connection failure",
+			certPEM: certPEM,
+			keyPEM:  keyPEM,
+			setup: func(server *httptest.Server) {
+				server.Close()
+			},
+
+			assertErr: require.Error,
+		},
+		{
+			name:       "error - unexpected http status code",
+			certPEM:    certPEM,
+			keyPEM:     keyPEM,
+			statusCode: http.StatusInternalServerError,
+			setup:      func(_ *httptest.Server) {},
+
+			assertErr: require.Error,
+			wantPath:  "/os/1.0/system/network",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			var gotPath string
+			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotPath = r.URL.Path
+				w.WriteHeader(tc.statusCode)
+				_, _ = w.Write(tc.response)
+			}))
+			server.TLS = &tls.Config{
+				NextProtos: []string{"h2", "http/1.1"},
+				ClientAuth: tls.RequireAndVerifyClientCert,
+				ClientCAs:  caPool,
+			}
+
+			server.StartTLS()
+			defer server.Close()
+
+			tc.setup(server)
+
+			client := incus.New(tc.certPEM, tc.keyPEM)
+
+			ctx := context.Background()
+
+			serverCert := pem.EncodeToMemory(&pem.Block{
+				Type:  "CERTIFICATE",
+				Bytes: server.Certificate().Raw,
+			})
+
+			target := provisioning.Server{
+				ConnectionURL: server.URL,
+				Certificate:   string(serverCert),
+				// OSData: api.OSData{
+				// 	Network: incusosapi.SystemNetwork{
+				// 		Config: &incusosapi.SystemNetworkConfig{
+				// 			NTP: &incusosapi.SystemNetworkNTP{
+				// 				Timeservers: []string{"0.pool.ntp.org"},
+				// 			},
+				// 		},
+				// 	},
+				// },
+			}
+
+			// Run test
+			err := client.UpdateNetworkConfig(ctx, target)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantPath, gotPath)
+		})
+	}
+}
