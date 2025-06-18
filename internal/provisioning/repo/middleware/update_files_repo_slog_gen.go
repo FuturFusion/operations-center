@@ -150,7 +150,7 @@ func (_d UpdateFilesRepoWithSlog) Get(ctx context.Context, update provisioning.U
 }
 
 // Put implements provisioning.UpdateFilesRepo.
-func (_d UpdateFilesRepoWithSlog) Put(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (err error) {
+func (_d UpdateFilesRepoWithSlog) Put(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (commitFunc provisioning.CommitFunc, cancelFunc provisioning.CancelFunc, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -165,6 +165,8 @@ func (_d UpdateFilesRepoWithSlog) Put(ctx context.Context, update provisioning.U
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
+				slog.Any("commitFunc", commitFunc),
+				slog.Any("cancelFunc", cancelFunc),
 				slog.Any("err", err),
 			)
 		} else {

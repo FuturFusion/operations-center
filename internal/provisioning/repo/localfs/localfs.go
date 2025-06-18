@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/operations-center/internal/file"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/signature"
@@ -56,28 +57,71 @@ func (l localfs) Get(ctx context.Context, update provisioning.Update, filename s
 	return f, int(fi.Size()), nil
 }
 
-func (l localfs) Put(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (err error) {
-	defer func() {
-		closeErr := content.Close()
-		if closeErr != nil {
-			err = errors.Join(err, closeErr)
-		}
-	}()
-
+func (l localfs) Put(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (provisioning.CommitFunc, provisioning.CancelFunc, error) {
 	fullFilename := filepath.Join(l.storageDir, update.UUID.String(), filename)
+	temporaryFullFilename := fullFilename + ".partial"
 
-	err = os.MkdirAll(filepath.Dir(fullFilename), 0o700)
+	err := os.MkdirAll(filepath.Dir(fullFilename), 0o700)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	file, err := os.OpenFile(fullFilename, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o600)
+	target, err := os.OpenFile(temporaryFullFilename, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o600)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	_, err = io.Copy(file, content)
-	return err
+	_, err = io.Copy(target, content)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	committed := false
+
+	commit := func() (err error) {
+		defer func() {
+			if file.PathExists(temporaryFullFilename) {
+				removeErr := os.Remove(temporaryFullFilename)
+				if removeErr != nil {
+					err = errors.Join(err, removeErr)
+				}
+			}
+		}()
+
+		err = content.Close()
+		if err != nil {
+			return err
+		}
+
+		err = os.Rename(temporaryFullFilename, fullFilename)
+		if err != nil {
+			return err
+		}
+
+		committed = true
+
+		return nil
+	}
+
+	cancel := func() error {
+		if committed {
+			return nil
+		}
+
+		err := content.Close()
+		if err != nil {
+			return err
+		}
+
+		err = os.Remove(temporaryFullFilename)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	return commit, cancel, err
 }
 
 func (l localfs) Delete(ctx context.Context, update provisioning.Update) error {
@@ -247,33 +291,33 @@ func readUpdateJSONAndChangelog(destDir string, extractedFiles map[string]struct
 func verifyUpdateFiles(ctx context.Context, destDir string, updateManifest *provisioning.Update, extractedFiles map[string]struct{}) error {
 	var err error
 
-	for _, file := range updateManifest.Files {
+	for _, updateFile := range updateManifest.Files {
 		err = func() error {
-			f, err := os.Open(filepath.Join(destDir, file.Filename))
+			f, err := os.Open(filepath.Join(destDir, updateFile.Filename))
 			if err != nil {
-				return fmt.Errorf("Invalid archive, failed to open file %q mentioned in manifest: %w", file.Filename, err)
+				return fmt.Errorf("Invalid archive, failed to open file %q mentioned in manifest: %w", updateFile.Filename, err)
 			}
 
 			defer func() {
 				err = f.Close()
 				if err != nil {
-					slog.WarnContext(ctx, "Failed to close file extracted from archive", slog.String("filename", file.Filename), logger.Err(err))
+					slog.WarnContext(ctx, "Failed to close file extracted from archive", slog.String("filename", updateFile.Filename), logger.Err(err))
 				}
 			}()
 
 			h := sha256.New()
 			n, err := io.Copy(h, f)
 			if err != nil {
-				return fmt.Errorf("Failed to verify sha256 hash for file %q: %w", file.Filename, err)
+				return fmt.Errorf("Failed to verify sha256 hash for file %q: %w", updateFile.Filename, err)
 			}
 
-			if int64(file.Size) != n {
-				return fmt.Errorf("Invalid archive, file size mismatch for file %q, manifest: %d, actual: %d", file.Filename, file.Size, n)
+			if int64(updateFile.Size) != n {
+				return fmt.Errorf("Invalid archive, file size mismatch for file %q, manifest: %d, actual: %d", updateFile.Filename, updateFile.Size, n)
 			}
 
 			checksum := hex.EncodeToString(h.Sum(nil))
-			if file.Sha256 != checksum {
-				return fmt.Errorf("Invalid archive, file sha256 mismatch for file %q, manifest: %s, actual: %s", file.Filename, file.Sha256, checksum)
+			if updateFile.Sha256 != checksum {
+				return fmt.Errorf("Invalid archive, file sha256 mismatch for file %q, manifest: %s, actual: %s", updateFile.Filename, updateFile.Sha256, checksum)
 			}
 
 			return nil
@@ -282,13 +326,13 @@ func verifyUpdateFiles(ctx context.Context, destDir string, updateManifest *prov
 			return err
 		}
 
-		delete(extractedFiles, file.Filename)
+		delete(extractedFiles, updateFile.Filename)
 	}
 
 	if len(extractedFiles) > 0 {
 		files := make([]string, 0, len(extractedFiles))
-		for file := range extractedFiles {
-			files = append(files, file)
+		for extractedFile := range extractedFiles {
+			files = append(files, extractedFile)
 		}
 
 		return fmt.Errorf("Invalid archive, files not mentioned in the manifest found: %s", strings.Join(files, ", "))

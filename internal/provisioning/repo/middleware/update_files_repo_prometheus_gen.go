@@ -82,7 +82,7 @@ func (_d UpdateFilesRepoWithPrometheus) Get(ctx context.Context, update provisio
 }
 
 // Put implements provisioning.UpdateFilesRepo.
-func (_d UpdateFilesRepoWithPrometheus) Put(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (err error) {
+func (_d UpdateFilesRepoWithPrometheus) Put(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (commitFunc provisioning.CommitFunc, cancelFunc provisioning.CancelFunc, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"

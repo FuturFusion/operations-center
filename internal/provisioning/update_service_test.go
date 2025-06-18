@@ -509,7 +509,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			stream io.ReadCloser
 			size   int
 		}]
-		repoUpdateFilesPut    []queue.Item[struct{}]
+		repoUpdateFilesPut []queue.Item[struct {
+			commitErr error
+			cancelErr error
+		}]
 		repoUpdateFilesDelete []queue.Item[struct{}]
 
 		repoUpsert                  []queue.Item[struct{}]
@@ -557,7 +560,56 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoUpdateFilesPut: []queue.Item[struct{}]{
+			repoUpdateFilesPut: []queue.Item[struct {
+				commitErr error
+				cancelErr error
+			}]{
+				{},
+			},
+			repoUpsert: []queue.Item[struct{}]{
+				{},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - one update, not present, with files and sha256 checksum",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				provisioning.Update{},
+			},
+			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+				{
+					Value: provisioning.UpdateFiles{
+						provisioning.UpdateFile{
+							Filename: "dummy.txt",
+							URL:      "http://localhost/dummy.txt",
+							Size:     5,
+
+							// Generate hash: echo -n "dummy" | sha256sum
+							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
+						},
+					},
+				},
+			},
+			sourceGetUpdateFileByFilename: []queue.Item[struct {
+				stream io.ReadCloser
+				size   int
+			}]{
+				{
+					Value: struct {
+						stream io.ReadCloser
+						size   int
+					}{
+						stream: io.NopCloser(bytes.NewBufferString(`dummy`)),
+						size:   5,
+					},
+				},
+			},
+			repoUpdateFilesPut: []queue.Item[struct {
+				commitErr error
+				cancelErr error
+			}]{
 				{},
 			},
 			repoUpsert: []queue.Item[struct{}]{
@@ -664,7 +716,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - file download error",
+			name: "error - files repo Put",
 			ctx:  context.Background(),
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
@@ -694,9 +746,150 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoUpdateFilesPut: []queue.Item[struct{}]{
+			repoUpdateFilesPut: []queue.Item[struct {
+				commitErr error
+				cancelErr error
+			}]{
 				{
 					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - checksum error",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				provisioning.Update{},
+			},
+			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+				{
+					Value: provisioning.UpdateFiles{
+						provisioning.UpdateFile{
+							Filename: "dummy.txt",
+							URL:      "http://localhost/dummy.txt",
+							Size:     5,
+
+							Sha256: "invalid", // invalid hash
+						},
+					},
+				},
+			},
+			sourceGetUpdateFileByFilename: []queue.Item[struct {
+				stream io.ReadCloser
+				size   int
+			}]{
+				{
+					Value: struct {
+						stream io.ReadCloser
+						size   int
+					}{
+						stream: io.NopCloser(bytes.NewBufferString(`dummy`)),
+						size:   5,
+					},
+				},
+			},
+			repoUpdateFilesPut: []queue.Item[struct {
+				commitErr error
+				cancelErr error
+			}]{
+				{},
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "Invalid update, file sha256 mismatch for file")
+			},
+		},
+		{
+			name: "error - commit",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				provisioning.Update{},
+			},
+			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+				{
+					Value: provisioning.UpdateFiles{
+						provisioning.UpdateFile{
+							Filename: "dummy.txt",
+							URL:      "http://localhost/dummy.txt",
+							Size:     5,
+						},
+					},
+				},
+			},
+			sourceGetUpdateFileByFilename: []queue.Item[struct {
+				stream io.ReadCloser
+				size   int
+			}]{
+				{
+					Value: struct {
+						stream io.ReadCloser
+						size   int
+					}{
+						stream: io.NopCloser(bytes.NewBufferString(`dummy`)),
+						size:   5,
+					},
+				},
+			},
+			repoUpdateFilesPut: []queue.Item[struct {
+				commitErr error
+				cancelErr error
+			}]{
+				{
+					Value: struct {
+						commitErr error
+						cancelErr error
+					}{
+						commitErr: boom.Error,
+					},
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - cancel",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				provisioning.Update{},
+			},
+			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+				{
+					Value: provisioning.UpdateFiles{
+						provisioning.UpdateFile{
+							Filename: "dummy.txt",
+							URL:      "http://localhost/dummy.txt",
+							Size:     5,
+						},
+					},
+				},
+			},
+			sourceGetUpdateFileByFilename: []queue.Item[struct {
+				stream io.ReadCloser
+				size   int
+			}]{
+				{
+					Value: struct {
+						stream io.ReadCloser
+						size   int
+					}{
+						stream: io.NopCloser(bytes.NewBufferString(`dummy`)),
+						size:   5,
+					},
+				},
+			},
+			repoUpdateFilesPut: []queue.Item[struct {
+				commitErr error
+				cancelErr error
+			}]{
+				{
+					Value: struct {
+						commitErr error
+						cancelErr error
+					}{
+						cancelErr: boom.Error,
+					},
 				},
 			},
 
@@ -733,7 +926,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoUpdateFilesPut: []queue.Item[struct{}]{
+			repoUpdateFilesPut: []queue.Item[struct {
+				commitErr error
+				cancelErr error
+			}]{
 				{},
 			},
 			repoUpsert: []queue.Item[struct{}]{
@@ -816,9 +1012,16 @@ func TestUpdateService_Refresh(t *testing.T) {
 			}
 
 			repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
-				PutFunc: func(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) error {
-					_, err := queue.Pop(t, &tc.repoUpdateFilesPut)
-					return err
+				PutFunc: func(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (provisioning.CommitFunc, provisioning.CancelFunc, error) {
+					_, err := io.ReadAll(content)
+					require.NoError(t, err)
+
+					value, err := queue.Pop(t, &tc.repoUpdateFilesPut)
+
+					commitFunc := func() error { return value.commitErr }
+					cancelFunc := func() error { return value.cancelErr }
+
+					return commitFunc, cancelFunc, err
 				},
 				DeleteFunc: func(ctx context.Context, update provisioning.Update) error {
 					_, err := queue.Pop(t, &tc.repoUpdateFilesDelete)

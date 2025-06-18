@@ -32,7 +32,7 @@ var _ provisioning.UpdateFilesRepo = &UpdateFilesRepoMock{}
 //			GetFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
 //				panic("mock out the Get method")
 //			},
-//			PutFunc: func(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) error {
+//			PutFunc: func(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (provisioning.CommitFunc, provisioning.CancelFunc, error) {
 //				panic("mock out the Put method")
 //			},
 //		}
@@ -52,7 +52,7 @@ type UpdateFilesRepoMock struct {
 	GetFunc func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error)
 
 	// PutFunc mocks the Put method.
-	PutFunc func(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) error
+	PutFunc func(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (provisioning.CommitFunc, provisioning.CancelFunc, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -210,7 +210,7 @@ func (mock *UpdateFilesRepoMock) GetCalls() []struct {
 }
 
 // Put calls PutFunc.
-func (mock *UpdateFilesRepoMock) Put(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) error {
+func (mock *UpdateFilesRepoMock) Put(ctx context.Context, update provisioning.Update, filename string, content io.ReadCloser) (provisioning.CommitFunc, provisioning.CancelFunc, error) {
 	if mock.PutFunc == nil {
 		panic("UpdateFilesRepoMock.PutFunc: method is nil but UpdateFilesRepo.Put was just called")
 	}
