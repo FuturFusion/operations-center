@@ -42,6 +42,8 @@ func registerProvisioningServerHandler(router Router, authorizer authz.Authorize
 	router.HandleFunc("PUT /{name}", response.With(handler.serverPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}", response.With(handler.serverDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{name}", response.With(handler.serverPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{name}/system/network", response.With(handler.serverSystemNetworkGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("PUT /{name}/system/network", response.With(handler.serverSystemNetworkPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/provisioning/servers servers servers_get
@@ -588,4 +590,100 @@ func (s *serverHandler) serverPost(r *http.Request) response.Response {
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/servers/"+server.Name)
+}
+
+// swagger:operation GET /1.0/provisioning/servers/{name}/system/network servers_system_network server_system_network_get
+//
+//	Get server network configuration
+//
+//	Gets the network configuration of a specific server.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Server network
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          $ref: "#/definitions/ServerSystemNetworkConfig"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverSystemNetworkGet(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	server, err := s.service.GetByName(r.Context(), name)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponseETag(
+		true,
+		server.OSData.Network,
+		server.OSData.Network,
+	)
+}
+
+// swagger:operation PUT /1.0/provisioning/servers/{name}/system/network servers_system_network server_system_network_put
+//
+//	Update server network configuration
+//
+//	Updates the network configuration of a specific server.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: server network configuration
+//	    description: Server network configuration
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/ServerSystemNetworkConfig"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverSystemNetworkPut(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	var systemNetwork api.ServerSystemNetwork
+
+	err := json.NewDecoder(r.Body).Decode(&systemNetwork)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	err = s.service.UpdateSystemNetwork(r.Context(), name, systemNetwork)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
 }

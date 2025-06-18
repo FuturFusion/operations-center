@@ -263,3 +263,6 @@ type ServerRegistrationResponse struct {
 	// when connecting to servers or clusters.
 	ClientCertificate string `json:"certificate" yaml:"certificate"`
 }
+
+// ServerSystemNetwork is a type alias to hold the system network configuration from Incus OS.
+type ServerSystemNetwork = incusosapi.SystemNetwork

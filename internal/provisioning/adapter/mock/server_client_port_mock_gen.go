@@ -31,6 +31,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			PingFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the Ping method")
 //			},
+//			UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
+//				panic("mock out the UpdateNetworkConfig method")
+//			},
 //		}
 //
 //		// use mockedServerClientPort in code that requires provisioning.ServerClientPort
@@ -46,6 +49,9 @@ type ServerClientPortMock struct {
 
 	// PingFunc mocks the Ping method.
 	PingFunc func(ctx context.Context, server provisioning.Server) error
+
+	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
+	UpdateNetworkConfigFunc func(ctx context.Context, server provisioning.Server) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -70,10 +76,18 @@ type ServerClientPortMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
+		// UpdateNetworkConfig holds details about calls to the UpdateNetworkConfig method.
+		UpdateNetworkConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 	}
-	lockGetOSData    sync.RWMutex
-	lockGetResources sync.RWMutex
-	lockPing         sync.RWMutex
+	lockGetOSData           sync.RWMutex
+	lockGetResources        sync.RWMutex
+	lockPing                sync.RWMutex
+	lockUpdateNetworkConfig sync.RWMutex
 }
 
 // GetOSData calls GetOSDataFunc.
@@ -181,5 +195,41 @@ func (mock *ServerClientPortMock) PingCalls() []struct {
 	mock.lockPing.RLock()
 	calls = mock.calls.Ping
 	mock.lockPing.RUnlock()
+	return calls
+}
+
+// UpdateNetworkConfig calls UpdateNetworkConfigFunc.
+func (mock *ServerClientPortMock) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) error {
+	if mock.UpdateNetworkConfigFunc == nil {
+		panic("ServerClientPortMock.UpdateNetworkConfigFunc: method is nil but ServerClientPort.UpdateNetworkConfig was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockUpdateNetworkConfig.Lock()
+	mock.calls.UpdateNetworkConfig = append(mock.calls.UpdateNetworkConfig, callInfo)
+	mock.lockUpdateNetworkConfig.Unlock()
+	return mock.UpdateNetworkConfigFunc(ctx, server)
+}
+
+// UpdateNetworkConfigCalls gets all the calls that were made to UpdateNetworkConfig.
+// Check the length with:
+//
+//	len(mockedServerClientPort.UpdateNetworkConfigCalls())
+func (mock *ServerClientPortMock) UpdateNetworkConfigCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockUpdateNetworkConfig.RLock()
+	calls = mock.calls.UpdateNetworkConfig
+	mock.lockUpdateNetworkConfig.RUnlock()
 	return calls
 }

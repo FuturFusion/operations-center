@@ -191,3 +191,17 @@ func (_d ServerServiceWithPrometheus) Update(ctx context.Context, server provisi
 	}()
 	return _d.base.Update(ctx, server)
 }
+
+// UpdateSystemNetwork implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) UpdateSystemNetwork(ctx context.Context, name string, networkConfig provisioning.ServerSystemNetwork) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSystemNetwork", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateSystemNetwork(ctx, name, networkConfig)
+}

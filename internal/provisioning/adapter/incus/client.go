@@ -96,3 +96,17 @@ func (c client) GetOSData(ctx context.Context, server provisioning.Server) (api.
 		Encryption: encryption,
 	}, nil
 }
+
+func (c client) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) error {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/system/network", server.OSData.Network, "")
+	if err != nil {
+		return fmt.Errorf("Put OS network data to %q failed: %w", server.ConnectionURL, err)
+	}
+
+	return nil
+}

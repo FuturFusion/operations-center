@@ -55,6 +55,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the Update method")
 //			},
+//			UpdateSystemNetworkFunc: func(ctx context.Context, name string, networkConfig provisioning.ServerSystemNetwork) error {
+//				panic("mock out the UpdateSystemNetwork method")
+//			},
 //		}
 //
 //		// use mockedServerService in code that requires provisioning.ServerService
@@ -94,6 +97,9 @@ type ServerServiceMock struct {
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, server provisioning.Server) error
+
+	// UpdateSystemNetworkFunc mocks the UpdateSystemNetwork method.
+	UpdateSystemNetworkFunc func(ctx context.Context, name string, networkConfig provisioning.ServerSystemNetwork) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -172,6 +178,15 @@ type ServerServiceMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
+		// UpdateSystemNetwork holds details about calls to the UpdateSystemNetwork method.
+		UpdateSystemNetwork []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// NetworkConfig is the networkConfig argument value.
+			NetworkConfig provisioning.ServerSystemNetwork
+		}
 	}
 	lockCreate                sync.RWMutex
 	lockDeleteByName          sync.RWMutex
@@ -184,6 +199,7 @@ type ServerServiceMock struct {
 	lockRename                sync.RWMutex
 	lockSelfUpdate            sync.RWMutex
 	lockUpdate                sync.RWMutex
+	lockUpdateSystemNetwork   sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -575,5 +591,45 @@ func (mock *ServerServiceMock) UpdateCalls() []struct {
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update
 	mock.lockUpdate.RUnlock()
+	return calls
+}
+
+// UpdateSystemNetwork calls UpdateSystemNetworkFunc.
+func (mock *ServerServiceMock) UpdateSystemNetwork(ctx context.Context, name string, networkConfig provisioning.ServerSystemNetwork) error {
+	if mock.UpdateSystemNetworkFunc == nil {
+		panic("ServerServiceMock.UpdateSystemNetworkFunc: method is nil but ServerService.UpdateSystemNetwork was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		Name          string
+		NetworkConfig provisioning.ServerSystemNetwork
+	}{
+		Ctx:           ctx,
+		Name:          name,
+		NetworkConfig: networkConfig,
+	}
+	mock.lockUpdateSystemNetwork.Lock()
+	mock.calls.UpdateSystemNetwork = append(mock.calls.UpdateSystemNetwork, callInfo)
+	mock.lockUpdateSystemNetwork.Unlock()
+	return mock.UpdateSystemNetworkFunc(ctx, name, networkConfig)
+}
+
+// UpdateSystemNetworkCalls gets all the calls that were made to UpdateSystemNetwork.
+// Check the length with:
+//
+//	len(mockedServerService.UpdateSystemNetworkCalls())
+func (mock *ServerServiceMock) UpdateSystemNetworkCalls() []struct {
+	Ctx           context.Context
+	Name          string
+	NetworkConfig provisioning.ServerSystemNetwork
+} {
+	var calls []struct {
+		Ctx           context.Context
+		Name          string
+		NetworkConfig provisioning.ServerSystemNetwork
+	}
+	mock.lockUpdateSystemNetwork.RLock()
+	calls = mock.calls.UpdateSystemNetwork
+	mock.lockUpdateSystemNetwork.RUnlock()
 	return calls
 }

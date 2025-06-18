@@ -91,3 +91,5 @@ type ServerSelfUpdate struct {
 	ConnectionURL             string
 	AuthenticationCertificate *x509.Certificate
 }
+
+type ServerSystemNetwork = api.ServerSystemNetwork

@@ -16,6 +16,7 @@ type ServerService interface {
 	GetAllNamesWithFilter(ctx context.Context, filter ServerFilter) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Server, error)
 	Update(ctx context.Context, server Server) error
+	UpdateSystemNetwork(ctx context.Context, name string, networkConfig ServerSystemNetwork) error
 	SelfUpdate(ctx context.Context, serverUpdate ServerSelfUpdate) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
@@ -40,4 +41,5 @@ type ServerClientPort interface {
 	Ping(ctx context.Context, server Server) error
 	GetResources(ctx context.Context, server Server) (api.HardwareData, error)
 	GetOSData(ctx context.Context, server Server) (api.OSData, error)
+	UpdateNetworkConfig(ctx context.Context, server Server) error
 }

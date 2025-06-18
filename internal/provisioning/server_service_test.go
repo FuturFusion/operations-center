@@ -3,6 +3,7 @@ package provisioning_test
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -625,6 +627,175 @@ one
 
 			// Assert
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestServerService_UpdateSystemNetwork(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	type repoUpdateFuncItem struct {
+		lastUpdated time.Time
+		status      api.ServerStatus
+	}
+
+	tests := []struct {
+		name                         string
+		repoGetByNameServer          provisioning.Server
+		repoGetByNameErr             error
+		repoUpdate                   []queue.Item[repoUpdateFuncItem]
+		clientUpdateNetworkConfigErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByNameServer: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+			repoUpdate: []queue.Item[repoUpdateFuncItem]{
+				{
+					Value: repoUpdateFuncItem{
+						lastUpdated: fixedDate,
+						status:      api.ServerStatusPending,
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.UpdateByID",
+			repoGetByNameServer: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+		one
+		-----END CERTIFICATE-----
+		`,
+				Status: api.ServerStatusReady,
+			},
+			repoUpdate: []queue.Item[repoUpdateFuncItem]{
+				{
+					Value: repoUpdateFuncItem{
+						lastUpdated: fixedDate,
+						status:      api.ServerStatusPending,
+					},
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.UpdateNetworkConfig",
+			repoGetByNameServer: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+			repoUpdate: []queue.Item[repoUpdateFuncItem]{
+				{
+					Value: repoUpdateFuncItem{
+						lastUpdated: fixedDate,
+						status:      api.ServerStatusPending,
+					},
+				},
+				{
+					Value: repoUpdateFuncItem{
+						status: api.ServerStatusReady,
+					},
+				},
+			},
+			clientUpdateNetworkConfigErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.UpdateNetworkConfig - reverter error",
+			repoGetByNameServer: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+			repoUpdate: []queue.Item[repoUpdateFuncItem]{
+				{
+					Value: repoUpdateFuncItem{
+						lastUpdated: fixedDate,
+						status:      api.ServerStatusPending,
+					},
+				},
+				{
+					Value: repoUpdateFuncItem{
+						status: api.ServerStatusReady,
+					},
+					Err: errors.New("reverter"),
+				},
+			},
+			clientUpdateNetworkConfigErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					value, err := queue.Pop(t, &tc.repoUpdate)
+
+					require.Equal(t, value.lastUpdated, in.LastUpdated)
+					require.Equal(t, value.status, in.Status)
+					return err
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.clientUpdateNetworkConfigErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+
+			// Run test
+			err := serverSvc.UpdateSystemNetwork(context.Background(), "name", provisioning.ServerSystemNetwork{})
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Empty(t, tc.repoUpdate)
 		})
 	}
 }

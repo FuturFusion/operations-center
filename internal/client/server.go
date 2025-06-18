@@ -50,13 +50,7 @@ func (c OperationsCenterClient) GetServer(ctx context.Context, name string) (api
 }
 
 func (c OperationsCenterClient) CreateServer(ctx context.Context, server api.Server) error {
-	response, err := c.doRequest(ctx, http.MethodPost, "/provisioning/servers", nil, server)
-	if err != nil {
-		return err
-	}
-
-	servers := []api.Server{}
-	err = json.Unmarshal(response.Metadata, &servers)
+	_, err := c.doRequest(ctx, http.MethodPost, "/provisioning/servers", nil, server)
 	if err != nil {
 		return err
 	}
@@ -77,6 +71,30 @@ func (c OperationsCenterClient) RenameServer(ctx context.Context, name string, n
 	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name), nil, api.Server{
 		Name: newName,
 	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c OperationsCenterClient) GetServerSystemNetwork(ctx context.Context, name string) (api.ServerSystemNetwork, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name, "system/network"), nil, nil)
+	if err != nil {
+		return api.ServerSystemNetwork{}, err
+	}
+
+	serverSystemNetwork := api.ServerSystemNetwork{}
+	err = json.Unmarshal(response.Metadata, &serverSystemNetwork)
+	if err != nil {
+		return api.ServerSystemNetwork{}, err
+	}
+
+	return serverSystemNetwork, nil
+}
+
+func (c OperationsCenterClient) UpdateServerSystemNetwork(ctx context.Context, name string, server api.ServerSystemNetwork) error {
+	_, err := c.doRequest(ctx, http.MethodPut, path.Join("/provisioning/servers", name, "system/network"), nil, server)
 	if err != nil {
 		return err
 	}
