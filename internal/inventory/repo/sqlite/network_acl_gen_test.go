@@ -89,7 +89,7 @@ server-two
 
 	networkACLB.DeriveUUID()
 
-	client := &adapterMock.ServerClientPortMock{
+	serverClient := &adapterMock.ServerClientPortMock{
 		PingFunc: func(ctx context.Context, server provisioning.Server) error {
 			return nil
 		},
@@ -98,6 +98,24 @@ server-two
 		},
 		GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
 			return api.OSData{}, nil
+		},
+	}
+
+	clusterClient := &adapterMock.ClusterClientPortMock{
+		PingFunc: func(ctx context.Context, server provisioning.Server) error {
+			return nil
+		},
+		EnableOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) error {
+			return nil
+		},
+		GetClusterJoinTokenFunc: func(ctx context.Context, server provisioning.Server, memberName string) (string, error) {
+			return "token", nil
+		},
+		EnableClusterFunc: func(ctx context.Context, server provisioning.Server, clusterName string) (string, error) {
+			return "certificate", nil
+		},
+		JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, clusterCertificate string) error {
+			return nil
 		},
 	}
 
@@ -121,8 +139,8 @@ server-two
 	require.NoError(t, err)
 
 	tokenSvc := provisioning.NewTokenService(provisioningSqlite.NewToken(tx))
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(tx), client, tokenSvc)
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(tx), serverSvc, nil)
+	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(tx), serverClient, tokenSvc)
+	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(tx), clusterClient, serverSvc, nil)
 
 	networkACL := inventorySqlite.NewNetworkACL(tx)
 

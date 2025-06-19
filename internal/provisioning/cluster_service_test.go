@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -19,22 +20,29 @@ func TestClusterService_Create(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
-		name                  string
-		cluster               provisioning.Cluster
-		serverSvcGetByName    *provisioning.Server
-		serverSvcGetByNameErr error
-		serverSvcUpdateErr    error
-		repoCreateErr         error
+		name                         string
+		cluster                      provisioning.Cluster
+		repoCreateErr                error
+		repoGetByNameErr             error
+		clientPingErr                error
+		clientEnableOSServiceLVMErr  error
+		clientGetClusterJoinToken    string
+		clientGetClusterJoinTokenErr error
+		clientEnableClusterErr       error
+		clientJoinClusterErr         error
+		serverSvcGetByName           *provisioning.Server
+		serverSvcGetByNameErr        error
+		serverSvcUpdateErr           error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
 			cluster: provisioning.Cluster{
-				Name:          "one",
-				ServerNames:   []string{"server1", "server2"},
-				ConnectionURL: "http://one/",
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
 			},
+			repoGetByNameErr: domain.ErrNotFound,
 			serverSvcGetByName: &provisioning.Server{
 				Name: "server1",
 			},
@@ -44,9 +52,8 @@ func TestClusterService_Create(t *testing.T) {
 		{
 			name: "error - validation",
 			cluster: provisioning.Cluster{
-				Name:          "", // invalid
-				ServerNames:   []string{"server1", "server2"},
-				ConnectionURL: "http://one/",
+				Name:        "", // invalid
+				ServerNames: []string{"server1", "server2"},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -55,12 +62,34 @@ func TestClusterService_Create(t *testing.T) {
 			},
 		},
 		{
+			name: "error - repo.GetByName cluster already exists",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			repoGetByNameErr: nil, // cluster with the same name already exists
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, `Cluster with name "one" already exists`)
+			},
+		},
+		{
+			name: "error - repo.GetByName",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - serverSvc.GetByName",
 			cluster: provisioning.Cluster{
-				Name:          "one",
-				ServerNames:   []string{"server1", "server2"},
-				ConnectionURL: "http://one/",
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
 			},
+			repoGetByNameErr:      domain.ErrNotFound,
 			serverSvcGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -68,10 +97,10 @@ func TestClusterService_Create(t *testing.T) {
 		{
 			name: "error - server already part of cluster",
 			cluster: provisioning.Cluster{
-				Name:          "one",
-				ServerNames:   []string{"server1", "server2"},
-				ConnectionURL: "http://one/",
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
 			},
+			repoGetByNameErr: domain.ErrNotFound,
 			serverSvcGetByName: &provisioning.Server{
 				Cluster: ptr.To("cluster-foo"),
 				Name:    "server1",
@@ -82,12 +111,26 @@ func TestClusterService_Create(t *testing.T) {
 			},
 		},
 		{
+			name: "error - client.Ping",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			repoGetByNameErr: domain.ErrNotFound,
+			serverSvcGetByName: &provisioning.Server{
+				Name: "server1",
+			},
+			clientPingErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - repo.Create",
 			cluster: provisioning.Cluster{
-				Name:          "one",
-				ServerNames:   []string{"server1", "server2"},
-				ConnectionURL: "http://one/",
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
 			},
+			repoGetByNameErr: domain.ErrNotFound,
 			serverSvcGetByName: &provisioning.Server{
 				Name: "one",
 			},
@@ -98,14 +141,70 @@ func TestClusterService_Create(t *testing.T) {
 		{
 			name: "error - serverSvc.Update",
 			cluster: provisioning.Cluster{
-				Name:          "one",
-				ServerNames:   []string{"server1", "server2"},
-				ConnectionURL: "http://one/",
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
 			},
+			repoGetByNameErr: domain.ErrNotFound,
 			serverSvcGetByName: &provisioning.Server{
 				Name: "one",
 			},
 			serverSvcUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.EnableOSServiceLVM",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			repoGetByNameErr: domain.ErrNotFound,
+			serverSvcGetByName: &provisioning.Server{
+				Name: "one",
+			},
+			clientEnableOSServiceLVMErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.EnableCluster",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			repoGetByNameErr: domain.ErrNotFound,
+			serverSvcGetByName: &provisioning.Server{
+				Name: "one",
+			},
+			clientEnableClusterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.GetClusterJoinToken",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			repoGetByNameErr: domain.ErrNotFound,
+			serverSvcGetByName: &provisioning.Server{
+				Name: "one",
+			},
+			clientGetClusterJoinTokenErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.JoinCluster",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			repoGetByNameErr: domain.ErrNotFound,
+			serverSvcGetByName: &provisioning.Server{
+				Name: "one",
+			},
+			clientJoinClusterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -115,9 +214,30 @@ func TestClusterService_Create(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return nil, tc.repoGetByNameErr
+				},
 				CreateFunc: func(ctx context.Context, in provisioning.Cluster) (int64, error) {
 					require.Equal(t, fixedDate, in.LastUpdated)
 					return 0, tc.repoCreateErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				PingFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.clientPingErr
+				},
+				EnableOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.clientEnableOSServiceLVMErr
+				},
+				GetClusterJoinTokenFunc: func(ctx context.Context, server provisioning.Server, memberName string) (string, error) {
+					return tc.clientGetClusterJoinToken, tc.clientGetClusterJoinTokenErr
+				},
+				EnableClusterFunc: func(ctx context.Context, server provisioning.Server, clusterName string) (string, error) {
+					return "certificate", tc.clientEnableClusterErr
+				},
+				JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, clusterCertificate string) error {
+					return tc.clientJoinClusterErr
 				},
 			}
 
@@ -130,7 +250,7 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, serverSvc, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
+			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			_, err := clusterSvc.Create(context.Background(), tc.cluster)
@@ -186,7 +306,7 @@ func TestClusterService_GetAll(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
 
 			// Run test
 			clusters, err := clusterSvc.GetAll(context.Background())
@@ -302,7 +422,7 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetAllWithFilter(context.Background(), tc.filter)
@@ -350,7 +470,7 @@ func TestClusterService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
 
 			// Run test
 			clusterNames, err := clusterSvc.GetAllNames(context.Background())
@@ -450,7 +570,7 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
 
 			// Run test
 			clusterIDs, err := clusterSvc.GetAllNamesWithFilter(context.Background(), tc.filter)
@@ -500,7 +620,7 @@ func TestClusterService_GetByID(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetByName(context.Background(), tc.idArg)
@@ -558,7 +678,7 @@ func TestClusterService_GetByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetByName(context.Background(), tc.nameArg)
@@ -638,7 +758,7 @@ func TestClusterService_Update(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			err := clusterSvc.Update(context.Background(), tc.cluster)
@@ -707,7 +827,7 @@ func TestClusterService_Rename(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			err := clusterSvc.Rename(context.Background(), tc.oldName, tc.newName)
@@ -758,7 +878,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
 
 			// Run test
 			err := clusterSvc.DeleteByName(context.Background(), tc.nameArg)
@@ -825,7 +945,7 @@ func TestClusterService_ResyncInventoryByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
 			clusterSvc.SetInventorySyncers([]provisioning.InventorySyncer{inventorySyncer})
 
 			// Run test

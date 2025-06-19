@@ -74,8 +74,7 @@ func (c *CmdCluster) Command() *cobra.Command {
 type cmdClusterAdd struct {
 	ocClient *client.OperationsCenterClient
 
-	connectionURL string
-	serverNames   []string
+	serverNames []string
 }
 
 func (c *cmdClusterAdd) Command() *cobra.Command {
@@ -89,10 +88,6 @@ func (c *cmdClusterAdd) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
-
-	const flagConnectionURL = "connection-url"
-	cmd.Flags().StringVarP(&c.connectionURL, flagConnectionURL, "c", "", "Connection URL for the cluster")
-	_ = cmd.MarkFlagRequired(flagConnectionURL)
 
 	const flagServerNames = "server-names"
 	cmd.Flags().StringSliceVarP(&c.serverNames, flagServerNames, "s", nil, "Server names of the cluster members")
@@ -112,8 +107,7 @@ func (c *cmdClusterAdd) Run(cmd *cobra.Command, args []string) error {
 
 	err = c.ocClient.CreateCluster(cmd.Context(), api.ClusterPost{
 		Cluster: api.Cluster{
-			Name:          name,
-			ConnectionURL: c.connectionURL,
+			Name: name,
 		},
 		ServerNames: c.serverNames,
 	})

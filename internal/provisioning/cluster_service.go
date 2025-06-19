@@ -2,6 +2,7 @@ package provisioning
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 
 type clusterService struct {
 	repo             ClusterRepo
+	client           ClusterClientPort
 	serverSvc        ServerService
 	inventorySyncers []InventorySyncer
 
@@ -30,9 +32,10 @@ func ClusterServiceWithNow(nowFunc func() time.Time) ClusterServiceOption {
 	}
 }
 
-func NewClusterService(repo ClusterRepo, serverSvc ServerService, inventorySyncers []InventorySyncer, opts ...ClusterServiceOption) *clusterService {
+func NewClusterService(repo ClusterRepo, client ClusterClientPort, serverSvc ServerService, inventorySyncers []InventorySyncer, opts ...ClusterServiceOption) *clusterService {
 	clusterSvc := &clusterService{
 		repo:             repo,
+		client:           client,
 		serverSvc:        serverSvc,
 		inventorySyncers: inventorySyncers,
 
@@ -57,6 +60,17 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
+		// Ensure there is no name conflict for the new cluster.
+		_, err := s.GetByName(ctx, newCluster.Name)
+		if !errors.Is(err, domain.ErrNotFound) {
+			if err == nil {
+				return fmt.Errorf("Cluster with name %q already exists", newCluster.Name)
+			}
+
+			return fmt.Errorf("Error while verifying cluster name: %w", err)
+		}
+
+		// Validate all listed servers are already known and online.
 		var servers []Server
 		for _, serverName := range newCluster.ServerNames {
 			server, err := s.serverSvc.GetByName(ctx, serverName)
@@ -68,9 +82,20 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 				return fmt.Errorf("Server %q is already part of cluster %q", serverName, *server.Cluster)
 			}
 
+			ctxWithTimeout, cancelFunc := context.WithTimeout(ctx, 1*time.Second)
+			err = s.client.Ping(ctxWithTimeout, *server)
+			cancelFunc()
+			if err != nil {
+				return fmt.Errorf("Connection test for server %q failed: %w", serverName, err)
+			}
+
 			servers = append(servers, *server)
 		}
 
+		// Update Cluster record in the repo.
+		// TODO: is using the connection URL from the first server the correct thing to do?
+		bootstrapServer := servers[0]
+		newCluster.ConnectionURL = bootstrapServer.ConnectionURL
 		newCluster.LastUpdated = s.now()
 
 		newCluster.ID, err = s.repo.Create(ctx, newCluster)
@@ -78,11 +103,65 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 			return err
 		}
 
+		// Update Server records in the repo.
 		for _, server := range servers {
 			server.Cluster = &newCluster.Name
 			err = s.serverSvc.Update(ctx, server)
 			if err != nil {
 				return err
+			}
+		}
+
+		// Push pre-clustering configuration to the servers.
+		for _, server := range servers {
+			err = s.client.EnableOSServiceLVM(ctx, server)
+			if err != nil {
+				return fmt.Errorf("Failed to enable OS service LVM on %q: %w", server.Name, err)
+			}
+		}
+
+		// Bootstrap cluster on bootstrap server (first server of the provided server list).
+		clusterCertificate, err := s.client.EnableCluster(ctx, bootstrapServer, newCluster.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to enable clustering on bootstrap server %q: %w", bootstrapServer.Name, err)
+		}
+
+		if clusterCertificate == "" {
+			// FIXME: Make connection to cluster endpoint in order to obtain the cluster certificate with SkipVerify, since we are talking to an old incus instance, which does not yet return the cluster certificate during cluster enable.
+			clusterCertificate, err = s.client.InsecureGetClusterCertificate(ctx, Server{
+				ConnectionURL: bootstrapServer.ConnectionURL,
+			})
+			if err != nil {
+				return fmt.Errorf("Failed to get cluster certificate from cluster %q (%s) with insecure (skipVerify) TLS connection: %w", newCluster.Name, bootstrapServer.ConnectionURL, err)
+			}
+		}
+
+		// TODO: Update the cluster DB entry with the clusterCertificate and the cluster connection_url (which is the connection_url of the bootstrap server)
+
+		// TODO: From now on, use the cluster certificate to connect to the cluster instead of the bootstrap server.
+		// Fake "server", which represents the cluster to get the join tokens.
+		cluster := Server{
+			Name:          newCluster.Name,
+			ConnectionURL: bootstrapServer.ConnectionURL,
+			Certificate:   clusterCertificate,
+		}
+
+		// Get join tokens on the bootstrap server.
+		joinTokens := make([]string, 0, len(servers[1:]))
+		for _, server := range servers[1:] {
+			joinToken, err := s.client.GetClusterJoinToken(ctx, cluster, server.Name)
+			if err != nil {
+				return fmt.Errorf("Failed to get cluster join token from cluster %q (%s) for server %q: %w", cluster.Name, cluster.ConnectionURL, server.Name, err)
+			}
+
+			joinTokens = append(joinTokens, joinToken)
+		}
+
+		// Send the join tokens to the remaining servers to join the cluster.
+		for i, server := range servers[1:] {
+			err := s.client.JoinCluster(ctx, server, joinTokens[i], clusterCertificate)
+			if err != nil {
+				return fmt.Errorf("Failed to join cluster on %q: %w", server.Name, err)
 			}
 		}
 
