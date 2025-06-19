@@ -29,17 +29,20 @@ var freshSchema string
 var updates = map[int]update{
 	1: updateFromV0,
 	2: updateFromV1,
+	3: updateFromV2,
 }
 
-func updateFromV0(ctx context.Context, tx *sql.Tx) error {
-	// v0..v1 the dawn of operations center
-	stmt := ``
+func updateFromV2(ctx context.Context, tx *sql.Tx) error {
+	// v2..v3 add column certificate for clusters
+	stmt := `
+ALTER TABLE clusters ADD COLUMN certificate TEXT NOT NULL DEFAULT '';
+`
 	_, err := tx.Exec(stmt)
 	return MapDBError(err)
 }
 
 func updateFromV1(ctx context.Context, tx *sql.Tx) error {
-	// v1..v2 add tokens table
+	// v1..v2 add initial operations center schema
 	stmt := `
 CREATE TABLE IF NOT EXISTS tokens (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -354,6 +357,13 @@ CREATE VIEW resources AS
 ;
 
 `
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
+}
+
+func updateFromV0(ctx context.Context, tx *sql.Tx) error {
+	// v0..v1 the dawn of operations center
+	stmt := ``
 	_, err := tx.Exec(stmt)
 	return MapDBError(err)
 }

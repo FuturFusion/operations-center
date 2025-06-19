@@ -15,10 +15,11 @@ CREATE TABLE IF NOT EXISTS tokens (
 );
 
 CREATE TABLE IF NOT EXISTS clusters (
-  id INTEGER PRIMARY KEY NOT NULL,
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   name TEXT NOT NULL,
   connection_url TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
+  certificate TEXT NOT NULL,
   UNIQUE (name)
 );
 
@@ -35,7 +36,7 @@ CREATE TABLE IF NOT EXISTS servers (
   last_updated DATETIME NOT NULL,
   UNIQUE (name),
   UNIQUE (certificate),
-  FOREIGN KEY(cluster_id) REFERENCES clusters(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
 CREATE TABLE IF NOT EXISTS updates (
