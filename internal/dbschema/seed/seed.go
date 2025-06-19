@@ -46,9 +46,17 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 	// Populate starting from Clusters
 	for clusterIdx := range config.ClustersCount {
 		clusterName := fmt.Sprintf("cluster-%08x", clusterIdx)
+
+		var clusterCertPEM []byte
+		clusterCertPEM, _, err = incustls.GenerateMemCert(true, false)
+		if err != nil {
+			return err
+		}
+
 		_, err = clusterRepo.Create(ctx, provisioning.Cluster{
 			Name:          clusterName,
 			ConnectionURL: fmt.Sprintf("https://%s.domain.tdl", clusterName),
+			Certificate:   string(clusterCertPEM),
 			LastUpdated:   faker.Date(),
 		})
 		if err != nil {
@@ -60,7 +68,8 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		for serverIdx := 0; serverIdx < serverCount; serverIdx++ {
 			serverName := fmt.Sprintf("server-%08x-%08x", clusterIdx, serverIdx)
 
-			certPEM, _, err := incustls.GenerateMemCert(true, false)
+			var certPEM []byte
+			certPEM, _, err = incustls.GenerateMemCert(true, false)
 			if err != nil {
 				return err
 			}
