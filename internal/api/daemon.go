@@ -481,8 +481,10 @@ func (d *Daemon) Stop(ctx context.Context) error {
 		errs = append(errs, err)
 	}
 
-	errgroupWaitErr := d.errgroup.Wait()
-	errs = append(errs, errgroupWaitErr)
+	if d.errgroup != nil {
+		errgroupWaitErr := d.errgroup.Wait()
+		errs = append(errs, errgroupWaitErr)
+	}
 
 	return errors.Join(errs...)
 }
