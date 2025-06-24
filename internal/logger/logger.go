@@ -16,7 +16,7 @@ import (
 
 const LevelTrace slog.Level = -8
 
-const MaximumValueLength = 200
+const MaximumValueLength = 2000
 
 func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) error {
 	level := slog.LevelWarn
