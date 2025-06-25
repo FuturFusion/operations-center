@@ -1,6 +1,7 @@
 package provisioning
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -8,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus/v6/shared/revert"
 	"github.com/lxc/incus/v6/shared/termios"
 	"github.com/spf13/cobra"
@@ -71,22 +73,22 @@ func (c *cmdServerSystemNetworkEdit) helpTemplate() string {
 ### Any line starting with a '# will be ignored.
 ###
 ### A sample configuration looks like:
-### config:
-###   dns:
-###     hostname: host
-###     domain: local
-###     search_domains:
-###       - local
-###     nameservers:
-###       - 1.1.1.1
-###   ntp:
-###     timeservers:
-###       - 0.pool.ntp.org
-###   interfaces:
-###     - name: eth0
-###       MTU: 1500
-###       Addresses:
-###         - 192.168.1.2`
+###
+### dns:
+###   hostname: host
+###   domain: local
+###   search_domains:
+###     - local
+###   nameservers:
+###     - 1.1.1.1
+### ntp:
+###   timeservers:
+###     - 0.pool.ntp.org
+### interfaces:
+###   - name: eth0
+###     MTU: 1500
+###     Addresses:
+###       - 192.168.1.2`
 }
 
 func (c *cmdServerSystemNetworkEdit) Run(cmd *cobra.Command, args []string) error {
@@ -124,22 +126,27 @@ func (c *cmdServerSystemNetworkEdit) Run(cmd *cobra.Command, args []string) erro
 		return err
 	}
 
-	data, err := yaml.Marshal(networkConfig)
+	b := &bytes.Buffer{}
+	encoder := yaml.NewEncoder(b)
+	encoder.SetIndent(2)
+	err = encoder.Encode(networkConfig.Config)
 	if err != nil {
 		return err
 	}
 
 	// Spawn the editor
-	content, err := textEditor("", []byte(c.helpTemplate()+"\n\n"+string(data)))
+	content, err := textEditor("", append([]byte(c.helpTemplate()+"\n\n"), b.Bytes()...))
 	if err != nil {
 		return err
 	}
 
 	for {
-		newdata := api.ServerSystemNetwork{}
+		newdata := incusosapi.SystemNetworkConfig{}
 		err = yaml.Unmarshal(content, &newdata)
 		if err == nil {
-			err = c.ocClient.UpdateServerSystemNetwork(cmd.Context(), name, newdata)
+			err = c.ocClient.UpdateServerSystemNetwork(cmd.Context(), name, api.ServerSystemNetwork{
+				Config: &newdata,
+			})
 		}
 
 		// Respawn the editor
