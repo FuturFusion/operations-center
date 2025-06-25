@@ -178,9 +178,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 				provisioningSqlite.NewServer(dbWithTransaction),
 				slog.Default(),
 			),
-			provisioningIncusAdapter.New(
-				d.clientCertificate,
-				d.clientKey,
+			provisioningAdapterMiddleware.NewServerClientPortWithSlog(
+				provisioningIncusAdapter.New(
+					d.clientCertificate,
+					d.clientKey,
+				),
+				slog.Default(),
 			),
 			tokenSvc,
 		),
@@ -190,6 +193,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 	clusterSvc := provisioning.NewClusterService(
 		provisioningRepoMiddleware.NewClusterRepoWithSlog(
 			provisioningSqlite.NewCluster(dbWithTransaction),
+			slog.Default(),
+		),
+		provisioningAdapterMiddleware.NewClusterClientPortWithSlog(
+			provisioningIncusAdapter.New(
+				d.clientCertificate,
+				d.clientKey,
+			),
 			slog.Default(),
 		),
 		serverSvc,
@@ -471,8 +481,10 @@ func (d *Daemon) Stop(ctx context.Context) error {
 		errs = append(errs, err)
 	}
 
-	errgroupWaitErr := d.errgroup.Wait()
-	errs = append(errs, errgroupWaitErr)
+	if d.errgroup != nil {
+		errgroupWaitErr := d.errgroup.Wait()
+		errs = append(errs, errgroupWaitErr)
+	}
 
 	return errors.Join(errs...)
 }

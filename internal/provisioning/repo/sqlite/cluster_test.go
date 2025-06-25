@@ -14,21 +14,32 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/internal/transaction"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestClusterDatabaseActions(t *testing.T) {
 	clusterA := provisioning.Cluster{
 		Name:          "one",
 		ConnectionURL: "https://cluster-one/",
-		ServerNames:   []string{"server1", "server2"},
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Certificate: `-----BEGIN CERTIFICATE-----
+cluster A
+-----END CERTIFICATE-----
+`,
+		Status:      api.ClusterStatusReady,
+		ServerNames: []string{"server1", "server2"},
+		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	clusterB := provisioning.Cluster{
 		Name:          "two",
 		ConnectionURL: "https://cluster-one/",
-		ServerNames:   []string{"server10", "server11"},
-		LastUpdated:   time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
+		Certificate: `-----BEGIN CERTIFICATE-----
+cluster B
+-----END CERTIFICATE-----
+`,
+		Status:      api.ClusterStatusReady,
+		ServerNames: []string{"server10", "server11"},
+		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	ctx := context.Background()

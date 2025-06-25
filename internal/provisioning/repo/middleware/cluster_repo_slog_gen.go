@@ -110,6 +110,41 @@ func (_d ClusterRepoWithSlog) DeleteByName(ctx context.Context, name string) (er
 	return _d._base.DeleteByName(ctx, name)
 }
 
+// ExistsByName implements provisioning.ClusterRepo.
+func (_d ClusterRepoWithSlog) ExistsByName(ctx context.Context, name string) (b bool, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.Debug("=> calling ExistsByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Bool("b", b),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method ExistsByName returned an informative error")
+			} else {
+				log.Error("<= method ExistsByName returned an error")
+			}
+		} else {
+			log.Debug("<= method ExistsByName finished")
+		}
+	}()
+	return _d._base.ExistsByName(ctx, name)
+}
+
 // GetAll implements provisioning.ClusterRepo.
 func (_d ClusterRepoWithSlog) GetAll(ctx context.Context) (clusters provisioning.Clusters, err error) {
 	log := _d._log.With()

@@ -29,19 +29,111 @@ var freshSchema string
 var updates = map[int]update{
 	1: updateFromV0,
 	2: updateFromV1,
+	3: updateFromV2,
 }
 
-func updateFromV0(ctx context.Context, tx *sql.Tx) error {
-	// v0..v1 the dawn of operations center
-	stmt := ``
+func updateFromV2(ctx context.Context, tx *sql.Tx) error {
+	// v2..v3 add columns certificate and status for clusters
+	stmt := `
+PRAGMA defer_foreign_keys = On;
+
+DROP VIEW resources;
+
+CREATE TABLE clusters_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  connection_url TEXT NOT NULL,
+  certificate TEXT NOT NULL,
+  status TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (name),
+  UNIQUE (certificate)
+);
+
+-- Use id as text for the certificate, since we do not have a valid certificate anyway
+-- and id is unique, so the DB migration will not be blocked by a failing constraint.
+INSERT INTO clusters_new SELECT id, name, connection_url, cast(id as text), 'ready', last_updated FROM clusters;
+
+DROP TABLE clusters;
+
+ALTER TABLE clusters_new RENAME TO clusters;
+
+CREATE VIEW resources AS
+    SELECT 'image' AS kind, images.id, clusters.name AS cluster_name, NULL AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
+    FROM images
+    INNER JOIN clusters ON images.cluster_id = clusters.id
+  UNION
+    SELECT 'instance' AS kind, instances.id, clusters.name AS cluster_name, servers.name AS server_name, instances.project_name, NULL AS parent_name, instances.name, instances.object, instances.last_updated
+    FROM instances
+    INNER JOIN clusters ON instances.cluster_id = clusters.id
+    LEFT JOIN servers ON instances.server_id = servers.id
+  UNION
+    SELECT 'network' AS kind, networks.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, NULL AS parent_name, networks.name, networks.object, networks.last_updated
+    FROM networks
+    INNER JOIN clusters ON networks.cluster_id = clusters.id
+  UNION
+    SELECT 'network_acl' AS kind, network_acls.id, clusters.name AS cluster_name, NULL AS server_name, network_acls.project_name, NULL AS parent_name, network_acls.name, network_acls.object, network_acls.last_updated
+    FROM network_acls
+    INNER JOIN clusters ON network_acls.cluster_id = clusters.id
+  UNION
+    SELECT 'network_forward' AS kind, network_forwards.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_forwards.network_name AS parent_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
+    FROM network_forwards
+    INNER JOIN clusters ON network_forwards.cluster_id = clusters.id
+    LEFT JOIN networks ON network_forwards.network_name = networks.name
+  UNION
+    SELECT 'network_integration' AS kind, network_integrations.id, clusters.name AS cluster_name, NULL AS server_name, NULL AS project_name, NULL AS parent_name, network_integrations.name, network_integrations.object, network_integrations.last_updated
+    FROM network_integrations
+    INNER JOIN clusters ON network_integrations.cluster_id = clusters.id
+  UNION
+    SELECT 'network_load_balancer' AS kind, network_load_balancers.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_load_balancers.network_name AS parent_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
+    FROM network_load_balancers
+    INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
+    LEFT JOIN networks ON network_load_balancers.network_name = networks.name
+  UNION
+    SELECT 'network_peer' AS kind, network_peers.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_peers.network_name AS parent_name, network_peers.name, network_peers.object, network_peers.last_updated
+    FROM network_peers
+    INNER JOIN clusters ON network_peers.cluster_id = clusters.id
+    LEFT JOIN networks ON network_peers.network_name = networks.name
+  UNION
+    SELECT 'network_zone' AS kind, network_zones.id, clusters.name AS cluster_name, NULL AS server_name, network_zones.project_name, NULL AS parent_name, network_zones.name, network_zones.object, network_zones.last_updated
+    FROM network_zones
+    INNER JOIN clusters ON network_zones.cluster_id = clusters.id
+  UNION
+    SELECT 'profile' AS kind, profiles.id, clusters.name AS cluster_name, NULL AS server_name, profiles.project_name, NULL AS parent_name, profiles.name, profiles.object, profiles.last_updated
+    FROM profiles
+    INNER JOIN clusters ON profiles.cluster_id = clusters.id
+  UNION
+    SELECT 'project' AS kind, projects.id, clusters.name AS cluster_name, NULL AS server_name, projects.name AS project_name, NULL AS parent_name, projects.name, projects.object, projects.last_updated
+    FROM projects
+    INNER JOIN clusters ON projects.cluster_id = clusters.id
+  UNION
+    SELECT 'storage_bucket' AS kind, storage_buckets.id, clusters.name AS cluster_name, servers.name AS server_name, storage_buckets.project_name, storage_buckets.storage_pool_name AS parent_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
+    FROM storage_buckets
+    INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
+    LEFT JOIN servers ON storage_buckets.server_id = servers.id
+  UNION
+    SELECT 'storage_pool' AS kind, storage_pools.id, clusters.name AS cluster_name, NULL AS server_name, NULL AS project_name, NULL AS parent_name, storage_pools.name, storage_pools.object, storage_pools.last_updated
+    FROM storage_pools
+    INNER JOIN clusters ON storage_pools.cluster_id = clusters.id
+  UNION
+    SELECT 'storage_volume' AS kind, storage_volumes.id, clusters.name AS cluster_name, servers.name AS server_name, storage_volumes.project_name, storage_volumes.storage_pool_name AS parent_name, storage_volumes.type || "/" || storage_volumes.name AS name, storage_volumes.object, storage_volumes.last_updated
+    FROM storage_volumes
+    INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
+    LEFT JOIN servers ON storage_volumes.server_id = servers.id
+;
+
+ALTER TABLE servers ADD COLUMN cluster_certificate TEXT NOT NULL DEFAULT '';
+
+PRAGMA defer_foreign_keys = Off;
+`
 	_, err := tx.Exec(stmt)
 	return MapDBError(err)
 }
 
 func updateFromV1(ctx context.Context, tx *sql.Tx) error {
-	// v1..v2 add tokens table
+	// v1..v2 add initial operations center schema
 	stmt := `
-CREATE TABLE IF NOT EXISTS tokens (
+CREATE TABLE tokens (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   uses_remaining INTEGER NOT NULL,
@@ -50,7 +142,7 @@ CREATE TABLE IF NOT EXISTS tokens (
   UNIQUE(uuid)
 );
 
-CREATE TABLE IF NOT EXISTS clusters (
+CREATE TABLE clusters (
   id INTEGER PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
   connection_url TEXT NOT NULL,
@@ -58,7 +150,7 @@ CREATE TABLE IF NOT EXISTS clusters (
   UNIQUE (name)
 );
 
-CREATE TABLE IF NOT EXISTS servers (
+CREATE TABLE servers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER,
   name TEXT NOT NULL,
@@ -71,10 +163,10 @@ CREATE TABLE IF NOT EXISTS servers (
   last_updated DATETIME NOT NULL,
   UNIQUE (name),
   UNIQUE (certificate),
-  FOREIGN KEY(cluster_id) REFERENCES clusters(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS updates (
+CREATE TABLE updates (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   origin TEXT NOT NULL,
@@ -88,7 +180,7 @@ CREATE TABLE IF NOT EXISTS updates (
   UNIQUE(uuid)
 );
 
-CREATE TABLE IF NOT EXISTS images (
+CREATE TABLE images (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -101,7 +193,7 @@ CREATE TABLE IF NOT EXISTS images (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS instances (
+CREATE TABLE instances (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -116,7 +208,7 @@ CREATE TABLE IF NOT EXISTS instances (
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 
-CREATE TABLE IF NOT EXISTS networks (
+CREATE TABLE networks (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -129,7 +221,7 @@ CREATE TABLE IF NOT EXISTS networks (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS network_acls (
+CREATE TABLE network_acls (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -142,7 +234,7 @@ CREATE TABLE IF NOT EXISTS network_acls (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS network_address_sets (
+CREATE TABLE network_address_sets (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -155,7 +247,7 @@ CREATE TABLE IF NOT EXISTS network_address_sets (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS network_forwards (
+CREATE TABLE network_forwards (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -168,7 +260,7 @@ CREATE TABLE IF NOT EXISTS network_forwards (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS network_integrations (
+CREATE TABLE network_integrations (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -180,7 +272,7 @@ CREATE TABLE IF NOT EXISTS network_integrations (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS network_load_balancers (
+CREATE TABLE network_load_balancers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -193,7 +285,7 @@ CREATE TABLE IF NOT EXISTS network_load_balancers (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS network_peers (
+CREATE TABLE network_peers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -206,7 +298,7 @@ CREATE TABLE IF NOT EXISTS network_peers (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS network_zones (
+CREATE TABLE network_zones (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -219,7 +311,7 @@ CREATE TABLE IF NOT EXISTS network_zones (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS profiles (
+CREATE TABLE profiles (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -232,7 +324,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS projects (
+CREATE TABLE projects (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -244,7 +336,7 @@ CREATE TABLE IF NOT EXISTS projects (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS storage_buckets (
+CREATE TABLE storage_buckets (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -260,7 +352,7 @@ CREATE TABLE IF NOT EXISTS storage_buckets (
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 
-CREATE TABLE IF NOT EXISTS storage_pools (
+CREATE TABLE storage_pools (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -272,7 +364,7 @@ CREATE TABLE IF NOT EXISTS storage_pools (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS storage_volumes (
+CREATE TABLE storage_volumes (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -354,6 +446,13 @@ CREATE VIEW resources AS
 ;
 
 `
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
+}
+
+func updateFromV0(ctx context.Context, tx *sql.Tx) error {
+	// v0..v1 the dawn of operations center
+	stmt := ``
 	_, err := tx.Exec(stmt)
 	return MapDBError(err)
 }

@@ -14,13 +14,13 @@ import (
 )
 
 var clusterObjects = RegisterStmt(`
-SELECT clusters.id, clusters.name, clusters.connection_url, clusters.last_updated
+SELECT clusters.id, clusters.name, clusters.connection_url, clusters.certificate, clusters.status, clusters.last_updated
   FROM clusters
   ORDER BY clusters.name
 `)
 
 var clusterObjectsByName = RegisterStmt(`
-SELECT clusters.id, clusters.name, clusters.connection_url, clusters.last_updated
+SELECT clusters.id, clusters.name, clusters.connection_url, clusters.certificate, clusters.status, clusters.last_updated
   FROM clusters
   WHERE ( clusters.name = ? )
   ORDER BY clusters.name
@@ -38,13 +38,13 @@ SELECT clusters.id FROM clusters
 `)
 
 var clusterCreate = RegisterStmt(`
-INSERT INTO clusters (name, connection_url, last_updated)
-  VALUES (?, ?, ?)
+INSERT INTO clusters (name, connection_url, certificate, status, last_updated)
+  VALUES (?, ?, ?, ?, ?)
 `)
 
 var clusterUpdate = RegisterStmt(`
 UPDATE clusters
-  SET name = ?, connection_url = ?, last_updated = ?
+  SET name = ?, connection_url = ?, certificate = ?, status = ?, last_updated = ?
  WHERE id = ?
 `)
 
@@ -136,7 +136,7 @@ func GetCluster(ctx context.Context, db dbtx, name string) (_ *provisioning.Clus
 // clusterColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Cluster entity.
 func clusterColumns() string {
-	return "clusters.id, clusters.name, clusters.connection_url, clusters.last_updated"
+	return "clusters.id, clusters.name, clusters.connection_url, clusters.certificate, clusters.status, clusters.last_updated"
 }
 
 // getClusters can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -145,7 +145,7 @@ func getClusters(ctx context.Context, stmt *sql.Stmt, args ...any) ([]provisioni
 
 	dest := func(scan func(dest ...any) error) error {
 		c := provisioning.Cluster{}
-		err := scan(&c.ID, &c.Name, &c.ConnectionURL, &c.LastUpdated)
+		err := scan(&c.ID, &c.Name, &c.ConnectionURL, &c.Certificate, &c.Status, &c.LastUpdated)
 		if err != nil {
 			return err
 		}
@@ -169,7 +169,7 @@ func getClustersRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]pr
 
 	dest := func(scan func(dest ...any) error) error {
 		c := provisioning.Cluster{}
-		err := scan(&c.ID, &c.Name, &c.ConnectionURL, &c.LastUpdated)
+		err := scan(&c.ID, &c.Name, &c.ConnectionURL, &c.Certificate, &c.Status, &c.LastUpdated)
 		if err != nil {
 			return err
 		}
@@ -329,12 +329,14 @@ func CreateCluster(ctx context.Context, db dbtx, object provisioning.Cluster) (_
 		_err = mapErr(_err, "Cluster")
 	}()
 
-	args := make([]any, 3)
+	args := make([]any, 5)
 
 	// Populate the statement arguments.
 	args[0] = object.Name
 	args[1] = object.ConnectionURL
-	args[2] = object.LastUpdated
+	args[2] = object.Certificate
+	args[3] = object.Status
+	args[4] = object.LastUpdated
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, clusterCreate)
@@ -380,7 +382,7 @@ func UpdateCluster(ctx context.Context, db tx, name string, object provisioning.
 		return fmt.Errorf("Failed to get \"clusterUpdate\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(object.Name, object.ConnectionURL, object.LastUpdated, id)
+	result, err := stmt.Exec(object.Name, object.ConnectionURL, object.Certificate, object.Status, object.LastUpdated, id)
 	if err != nil {
 		return fmt.Errorf("Update \"clusters\" entry failed: %w", err)
 	}

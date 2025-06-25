@@ -11,17 +11,18 @@ import (
 )
 
 type Server struct {
-	ID            int64
-	Cluster       *string `db:"leftjoin=clusters.name"`
-	Name          string  `db:"primary=yes"`
-	Type          api.ServerType
-	ConnectionURL string
-	Certificate   string
-	HardwareData  api.HardwareData
-	OSData        api.OSData
-	VersionData   json.RawMessage `db:"ignore"` // FIXME: it is not yet clear, how the structure of the version information will actually look like.
-	Status        api.ServerStatus
-	LastUpdated   time.Time
+	ID                 int64
+	Cluster            *string `db:"leftjoin=clusters.name"`
+	Name               string  `db:"primary=yes"`
+	Type               api.ServerType
+	ConnectionURL      string
+	Certificate        string
+	ClusterCertificate string
+	HardwareData       api.HardwareData
+	OSData             api.OSData
+	VersionData        json.RawMessage `db:"ignore"` // FIXME: it is not yet clear, how the structure of the version information will actually look like.
+	Status             api.ServerStatus
+	LastUpdated        time.Time
 }
 
 func (s Server) Validate() error {

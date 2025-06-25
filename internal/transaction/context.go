@@ -100,9 +100,23 @@ func ForceTx(ctx context.Context, db DBTX, f func(context.Context, TX) error) (e
 // GetDBTX returns the underlying TX if one exists in the context, otherwise returning the supplied DB.
 func GetDBTX(ctx context.Context, db DBTX) DBTX {
 	tc, ok := ctx.Value(tcKey{}).(*transactionContainer)
-	if ok && tc.tx != nil {
+	if ok {
 		// Transaction has started, return the underlying TX.
-		return tc.tx
+		if tc.tx != nil {
+			return tc.tx
+		}
+
+		internalDBTX, ok := db.(dbtx)
+		if !ok {
+			return db
+		}
+
+		tx, err := internalDBTX.getDBTX(ctx)
+		if err != nil {
+			return db
+		}
+
+		return tx
 	}
 
 	// No transaction has started yet, return the DB.

@@ -1051,11 +1051,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 			tc.assertErr(t, err)
 
 			// Ensure queues are completely drained.
-			require.Empty(t, tc.sourceGetUpdateAllFiles)
-			require.Empty(t, tc.sourceGetUpdateFileByFilename)
-			require.Empty(t, tc.repoUpdateFilesDelete)
 			require.Empty(t, tc.repoUpsert)
 			require.Empty(t, tc.repoDeleteByUUID)
+			require.Empty(t, tc.repoUpdateFilesPut)
+			require.Empty(t, tc.repoUpdateFilesDelete)
+			require.Empty(t, tc.sourceGetUpdateAllFiles)
+			require.Empty(t, tc.sourceGetUpdateFileByFilename)
 		})
 	}
 }

@@ -22,6 +22,7 @@ type ClusterRepo interface {
 	GetAll(ctx context.Context) (Clusters, error)
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Cluster, error)
+	ExistsByName(ctx context.Context, name string) (bool, error)
 	Update(ctx context.Context, cluster Cluster) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
@@ -29,4 +30,14 @@ type ClusterRepo interface {
 
 type InventorySyncer interface {
 	SyncCluster(ctx context.Context, cluster string) error
+}
+
+type ClusterClientPort interface {
+	Ping(ctx context.Context, server Server) error
+	EnableOSServiceLVM(ctx context.Context, server Server) error
+	SetServerConfig(ctx context.Context, server Server, config map[string]string) error
+	EnableCluster(ctx context.Context, server Server) (clusterCertificate string, _ error)
+	GetClusterNodeNames(ctx context.Context, server Server) (nodeNames []string, _ error)
+	GetClusterJoinToken(ctx context.Context, server Server, memberName string) (joinToken string, _ error)
+	JoinCluster(ctx context.Context, server Server, joinToken string, cluster Server) error
 }

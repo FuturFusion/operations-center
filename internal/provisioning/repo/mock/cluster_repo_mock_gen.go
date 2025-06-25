@@ -27,6 +27,9 @@ var _ provisioning.ClusterRepo = &ClusterRepoMock{}
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the DeleteByName method")
 //			},
+//			ExistsByNameFunc: func(ctx context.Context, name string) (bool, error) {
+//				panic("mock out the ExistsByName method")
+//			},
 //			GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
 //				panic("mock out the GetAll method")
 //			},
@@ -55,6 +58,9 @@ type ClusterRepoMock struct {
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
 
+	// ExistsByNameFunc mocks the ExistsByName method.
+	ExistsByNameFunc func(ctx context.Context, name string) (bool, error)
+
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Clusters, error)
 
@@ -81,6 +87,13 @@ type ClusterRepoMock struct {
 		}
 		// DeleteByName holds details about calls to the DeleteByName method.
 		DeleteByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
+		// ExistsByName holds details about calls to the ExistsByName method.
+		ExistsByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Name is the name argument value.
@@ -122,6 +135,7 @@ type ClusterRepoMock struct {
 	}
 	lockCreate       sync.RWMutex
 	lockDeleteByName sync.RWMutex
+	lockExistsByName sync.RWMutex
 	lockGetAll       sync.RWMutex
 	lockGetAllNames  sync.RWMutex
 	lockGetByName    sync.RWMutex
@@ -198,6 +212,42 @@ func (mock *ClusterRepoMock) DeleteByNameCalls() []struct {
 	mock.lockDeleteByName.RLock()
 	calls = mock.calls.DeleteByName
 	mock.lockDeleteByName.RUnlock()
+	return calls
+}
+
+// ExistsByName calls ExistsByNameFunc.
+func (mock *ClusterRepoMock) ExistsByName(ctx context.Context, name string) (bool, error) {
+	if mock.ExistsByNameFunc == nil {
+		panic("ClusterRepoMock.ExistsByNameFunc: method is nil but ClusterRepo.ExistsByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockExistsByName.Lock()
+	mock.calls.ExistsByName = append(mock.calls.ExistsByName, callInfo)
+	mock.lockExistsByName.Unlock()
+	return mock.ExistsByNameFunc(ctx, name)
+}
+
+// ExistsByNameCalls gets all the calls that were made to ExistsByName.
+// Check the length with:
+//
+//	len(mockedClusterRepo.ExistsByNameCalls())
+func (mock *ClusterRepoMock) ExistsByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockExistsByName.RLock()
+	calls = mock.calls.ExistsByName
+	mock.lockExistsByName.RUnlock()
 	return calls
 }
 

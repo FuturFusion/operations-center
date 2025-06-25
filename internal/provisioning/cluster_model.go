@@ -5,12 +5,15 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type Cluster struct {
 	ID            int64
 	Name          string `db:"primary=yes"`
 	ConnectionURL string
+	Certificate   string
+	Status        api.ClusterStatus
 	ServerNames   []string `db:"ignore"`
 	LastUpdated   time.Time
 }
@@ -22,10 +25,6 @@ func (c Cluster) Validate() error {
 
 	if len(c.ServerNames) == 0 {
 		return domain.NewValidationErrf("Invalid cluster, list of server names can not be empty")
-	}
-
-	if c.ConnectionURL == "" {
-		return domain.NewValidationErrf("Invalid cluster, connection URL can not be empty")
 	}
 
 	_, err := url.Parse(c.ConnectionURL)

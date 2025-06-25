@@ -74,8 +74,7 @@ func (c *CmdCluster) Command() *cobra.Command {
 type cmdClusterAdd struct {
 	ocClient *client.OperationsCenterClient
 
-	connectionURL string
-	serverNames   []string
+	serverNames []string
 }
 
 func (c *cmdClusterAdd) Command() *cobra.Command {
@@ -89,10 +88,6 @@ func (c *cmdClusterAdd) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
-
-	const flagConnectionURL = "connection-url"
-	cmd.Flags().StringVarP(&c.connectionURL, flagConnectionURL, "c", "", "Connection URL for the cluster")
-	_ = cmd.MarkFlagRequired(flagConnectionURL)
 
 	const flagServerNames = "server-names"
 	cmd.Flags().StringSliceVarP(&c.serverNames, flagServerNames, "s", nil, "Server names of the cluster members")
@@ -112,8 +107,7 @@ func (c *cmdClusterAdd) Run(cmd *cobra.Command, args []string) error {
 
 	err = c.ocClient.CreateCluster(cmd.Context(), api.ClusterPost{
 		Cluster: api.Cluster{
-			Name:          name,
-			ConnectionURL: c.connectionURL,
+			Name: name,
 		},
 		ServerNames: c.serverNames,
 	})
@@ -172,11 +166,11 @@ func (c *cmdClusterList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Connection URL", "Last Updated"}
+	header := []string{"Name", "Connection URL", "Status", "Last Updated"}
 	data := [][]string{}
 
 	for _, cluster := range clusters {
-		data = append(data, []string{cluster.Name, cluster.ConnectionURL, cluster.LastUpdated.String()})
+		data = append(data, []string{cluster.Name, cluster.ConnectionURL, cluster.Status.String(), cluster.LastUpdated.String()})
 	}
 
 	sort.ColumnsNaturally(data)
@@ -255,6 +249,7 @@ func (c *cmdClusterShow) Run(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Name: %s\n", cluster.Name)
 	fmt.Printf("Connection URL: %s\n", cluster.ConnectionURL)
+	fmt.Printf("Status: %s\n", cluster.Status.String())
 	fmt.Printf("Last Updated: %s\n", cluster.LastUpdated.String())
 
 	return nil

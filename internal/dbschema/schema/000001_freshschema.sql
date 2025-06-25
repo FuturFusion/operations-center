@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS schema (
   UNIQUE (version)
 );
 
-CREATE TABLE IF NOT EXISTS tokens (
+CREATE TABLE tokens (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   uses_remaining INTEGER NOT NULL,
@@ -14,15 +14,18 @@ CREATE TABLE IF NOT EXISTS tokens (
   UNIQUE(uuid)
 );
 
-CREATE TABLE IF NOT EXISTS clusters (
-  id INTEGER PRIMARY KEY NOT NULL,
+CREATE TABLE clusters (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   name TEXT NOT NULL,
   connection_url TEXT NOT NULL,
+  certificate TEXT NOT NULL,
+  status TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  UNIQUE (name)
+  UNIQUE (name),
+  UNIQUE (certificate)
 );
 
-CREATE TABLE IF NOT EXISTS servers (
+CREATE TABLE servers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER,
   name TEXT NOT NULL,
@@ -33,12 +36,13 @@ CREATE TABLE IF NOT EXISTS servers (
   hardware_data TEXT NOT NULL,
   os_data TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
+  cluster_certificate TEXT NOT NULL DEFAULT '',
   UNIQUE (name),
   UNIQUE (certificate),
-  FOREIGN KEY(cluster_id) REFERENCES clusters(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS updates (
+CREATE TABLE updates (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   origin TEXT NOT NULL,
@@ -52,7 +56,7 @@ CREATE TABLE IF NOT EXISTS updates (
   UNIQUE(uuid)
 );
 
-CREATE TABLE IF NOT EXISTS images (
+CREATE TABLE images (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -65,7 +69,7 @@ CREATE TABLE IF NOT EXISTS images (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS instances (
+CREATE TABLE instances (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -80,7 +84,7 @@ CREATE TABLE IF NOT EXISTS instances (
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 
-CREATE TABLE IF NOT EXISTS networks (
+CREATE TABLE networks (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -93,7 +97,7 @@ CREATE TABLE IF NOT EXISTS networks (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS network_acls (
+CREATE TABLE network_acls (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -106,7 +110,7 @@ CREATE TABLE IF NOT EXISTS network_acls (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS network_address_sets (
+CREATE TABLE network_address_sets (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -119,7 +123,7 @@ CREATE TABLE IF NOT EXISTS network_address_sets (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS network_forwards (
+CREATE TABLE network_forwards (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -132,7 +136,7 @@ CREATE TABLE IF NOT EXISTS network_forwards (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS network_integrations (
+CREATE TABLE network_integrations (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -144,7 +148,7 @@ CREATE TABLE IF NOT EXISTS network_integrations (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS network_load_balancers (
+CREATE TABLE network_load_balancers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -157,7 +161,7 @@ CREATE TABLE IF NOT EXISTS network_load_balancers (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS network_peers (
+CREATE TABLE network_peers (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -170,7 +174,7 @@ CREATE TABLE IF NOT EXISTS network_peers (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS network_zones (
+CREATE TABLE network_zones (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -183,7 +187,7 @@ CREATE TABLE IF NOT EXISTS network_zones (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS profiles (
+CREATE TABLE profiles (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -196,7 +200,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS projects (
+CREATE TABLE projects (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -208,7 +212,7 @@ CREATE TABLE IF NOT EXISTS projects (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS storage_buckets (
+CREATE TABLE storage_buckets (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -224,7 +228,7 @@ CREATE TABLE IF NOT EXISTS storage_buckets (
   FOREIGN KEY (server_id) REFERENCES servers(id)
 );
 
-CREATE TABLE IF NOT EXISTS storage_pools (
+CREATE TABLE storage_pools (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -236,7 +240,7 @@ CREATE TABLE IF NOT EXISTS storage_pools (
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
 );
 
-CREATE TABLE IF NOT EXISTS storage_volumes (
+CREATE TABLE storage_volumes (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
@@ -317,4 +321,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (2, strftime("%s"))
+INSERT INTO schema (version, updated_at) VALUES (3, strftime("%s"))
