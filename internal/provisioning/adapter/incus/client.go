@@ -30,10 +30,15 @@ func New(clientCert string, clientKey string) client {
 }
 
 func (c client) getClient(ctx context.Context, server provisioning.Server) (incus.InstanceServer, error) {
+	serverCertificate := server.Certificate
+	if server.Cluster != nil {
+		serverCertificate = server.ClusterCertificate
+	}
+
 	args := &incus.ConnectionArgs{
 		TLSClientCert: c.clientCert,
 		TLSClientKey:  c.clientKey,
-		TLSServerCert: server.Certificate,
+		TLSServerCert: serverCertificate,
 		SkipGetServer: true,
 	}
 
