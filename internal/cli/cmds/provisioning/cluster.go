@@ -166,11 +166,11 @@ func (c *cmdClusterList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Connection URL", "Last Updated"}
+	header := []string{"Name", "Connection URL", "Status", "Last Updated"}
 	data := [][]string{}
 
 	for _, cluster := range clusters {
-		data = append(data, []string{cluster.Name, cluster.ConnectionURL, cluster.LastUpdated.String()})
+		data = append(data, []string{cluster.Name, cluster.ConnectionURL, cluster.Status.String(), cluster.LastUpdated.String()})
 	}
 
 	sort.ColumnsNaturally(data)
@@ -249,6 +249,7 @@ func (c *cmdClusterShow) Run(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Name: %s\n", cluster.Name)
 	fmt.Printf("Connection URL: %s\n", cluster.ConnectionURL)
+	fmt.Printf("Status: %s\n", cluster.Status.String())
 	fmt.Printf("Last Updated: %s\n", cluster.LastUpdated.String())
 
 	return nil
