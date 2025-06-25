@@ -148,6 +148,7 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 			result = append(result, api.Cluster{
 				Name:          cluster.Name,
 				ConnectionURL: cluster.ConnectionURL,
+				Status:        cluster.Status,
 				LastUpdated:   cluster.LastUpdated,
 			})
 		}
