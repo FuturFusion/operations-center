@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -136,8 +137,8 @@ func (_d ServerServiceWithPrometheus) GetByName(ctx context.Context, name string
 	return _d.base.GetByName(ctx, name)
 }
 
-// PollPendingServers implements provisioning.ServerService.
-func (_d ServerServiceWithPrometheus) PollPendingServers(ctx context.Context) (err error) {
+// PollServers implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -145,9 +146,9 @@ func (_d ServerServiceWithPrometheus) PollPendingServers(ctx context.Context) (e
 			result = "error"
 		}
 
-		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PollPendingServers", result).Observe(time.Since(_since).Seconds())
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PollServers", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.PollPendingServers(ctx)
+	return _d.base.PollServers(ctx, serverStatus, updateServerConfiguration)
 }
 
 // Rename implements provisioning.ServerService.
