@@ -122,6 +122,8 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
+ALTER TABLE servers ADD COLUMN cluster_certificate TEXT NOT NULL DEFAULT '';
+
 PRAGMA defer_foreign_keys = Off;
 `
 	_, err := tx.Exec(stmt)

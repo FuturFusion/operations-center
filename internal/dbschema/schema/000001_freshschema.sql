@@ -36,6 +36,7 @@ CREATE TABLE servers (
   hardware_data TEXT NOT NULL,
   os_data TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
+  cluster_certificate TEXT NOT NULL DEFAULT '',
   UNIQUE (name),
   UNIQUE (certificate),
   FOREIGN KEY (cluster_id) REFERENCES clusters(id)
