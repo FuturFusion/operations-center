@@ -69,8 +69,11 @@ func (s serverService) Create(ctx context.Context, token uuid.UUID, newServer Se
 			return fmt.Errorf("Consume token for server creation: %w", err)
 		}
 
+		now := s.now()
+
 		newServer.Status = api.ServerStatusPending
-		newServer.LastUpdated = s.now()
+		newServer.LastUpdated = now
+		newServer.LastSeen = now
 
 		if newServer.Type == "" {
 			newServer.Type = api.ServerTypeUnknown
@@ -247,11 +250,15 @@ func (s serverService) UpdateSystemNetwork(ctx context.Context, name string, sys
 			return err
 		}
 
+		now := s.now()
+
 		updatedServer, _ = ptr.Clone(server)
 
 		updatedServer.OSData.Network = systemNetwork
 		updatedServer.Status = api.ServerStatusPending
-		updatedServer.LastUpdated = s.now()
+
+		updatedServer.LastUpdated = now
+		updatedServer.LastSeen = now
 
 		err = s.Update(ctx, *updatedServer)
 		if err != nil {
@@ -297,9 +304,12 @@ func (s serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUp
 			return err
 		}
 
+		now := s.now()
+
 		server.ConnectionURL = serverUpdate.ConnectionURL
 		server.Status = api.ServerStatusReady
-		server.LastUpdated = s.now()
+		server.LastUpdated = now
+		server.LastSeen = now
 
 		err = server.Validate()
 		if err != nil {
@@ -388,9 +398,14 @@ func (s serverService) pollPendingServer(ctx context.Context, server Server) err
 			return err
 		}
 
+		now := s.now()
+
+		server.LastSeen = now
+
 		server.Status = api.ServerStatusReady
 		server.HardwareData = hardwareData
 		server.OSData = osData
+		server.LastUpdated = now
 
 		return s.repo.Update(ctx, *server)
 	})
