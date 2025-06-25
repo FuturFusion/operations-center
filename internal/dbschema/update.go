@@ -33,7 +33,7 @@ var updates = map[int]update{
 }
 
 func updateFromV2(ctx context.Context, tx *sql.Tx) error {
-	// v2..v3 add column certificate for clusters
+	// v2..v3 add columns certificate and status for clusters
 	stmt := `
 PRAGMA defer_foreign_keys = On;
 
@@ -44,6 +44,7 @@ CREATE TABLE clusters_new (
   name TEXT NOT NULL,
   connection_url TEXT NOT NULL,
   certificate TEXT NOT NULL,
+  status TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (name),
   UNIQUE (certificate)
@@ -51,7 +52,7 @@ CREATE TABLE clusters_new (
 
 -- Use id as text for the certificate, since we do not have a valid certificate anyway
 -- and id is unique, so the DB migration will not be blocked by a failing constraint.
-INSERT INTO clusters_new SELECT id, name, connection_url, cast(id as text), last_updated FROM clusters;
+INSERT INTO clusters_new SELECT id, name, connection_url, cast(id as text), 'ready', last_updated FROM clusters;
 
 DROP TABLE clusters;
 
