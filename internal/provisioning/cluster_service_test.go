@@ -21,25 +21,23 @@ func TestClusterService_Create(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	tests := []struct {
-		name                                   string
-		cluster                                provisioning.Cluster
-		repoExistsByName                       bool
-		repoExistsByNameErr                    error
-		repoCreateErr                          error
-		repoUpdateErr                          error
-		clientPingErr                          error
-		clientEnableOSServiceLVMErr            error
-		clientSetClusterAddressErr             error
-		clientEnableClusterCertificate         string
-		clientEnableClusterErr                 error
-		clientInsecureGetClusterCertificate    string
-		clientInsecureGetClusterCertificateErr error
-		clientGetClusterNodeNamesErr           error
-		clientGetClusterJoinToken              string
-		clientGetClusterJoinTokenErr           error
-		clientJoinClusterErr                   error
-		serverSvcGetByName                     []queue.Item[*provisioning.Server]
-		serverSvcUpdateErr                     error
+		name                           string
+		cluster                        provisioning.Cluster
+		repoExistsByName               bool
+		repoExistsByNameErr            error
+		repoCreateErr                  error
+		repoUpdateErr                  error
+		clientPingErr                  error
+		clientEnableOSServiceLVMErr    error
+		clientSetClusterAddressErr     error
+		clientEnableClusterCertificate string
+		clientEnableClusterErr         error
+		clientGetClusterNodeNamesErr   error
+		clientGetClusterJoinToken      string
+		clientGetClusterJoinTokenErr   error
+		clientJoinClusterErr           error
+		serverSvcGetByName             []queue.Item[*provisioning.Server]
+		serverSvcUpdateErr             error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -72,39 +70,6 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			},
 			clientEnableClusterCertificate: "certificate",
-
-			assertErr: require.NoError,
-		},
-		{
-			name: "success - no cluster certificate from EnableCluster",
-			cluster: provisioning.Cluster{
-				Name:        "one",
-				ServerNames: []string{"server1", "server2"},
-			},
-			serverSvcGetByName: []queue.Item[*provisioning.Server]{
-				{
-					Value: &provisioning.Server{
-						Name: "server1",
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name: "server2",
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name: "server1",
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name: "server2",
-					},
-				},
-			},
-			clientEnableClusterCertificate:      "",
-			clientInsecureGetClusterCertificate: "certificate",
 
 			assertErr: require.NoError,
 		},
@@ -283,29 +248,6 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			},
 			clientEnableClusterErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - client.InsecureGetClusterCertificate",
-			cluster: provisioning.Cluster{
-				Name:        "one",
-				ServerNames: []string{"server1", "server2"},
-			},
-			serverSvcGetByName: []queue.Item[*provisioning.Server]{
-				{
-					Value: &provisioning.Server{
-						Name: "server1",
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name: "server2",
-					},
-				},
-			},
-			clientEnableClusterCertificate:         "",
-			clientInsecureGetClusterCertificateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -527,9 +469,6 @@ func TestClusterService_Create(t *testing.T) {
 				},
 				EnableClusterFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
 					return tc.clientEnableClusterCertificate, tc.clientEnableClusterErr
-				},
-				InsecureGetClusterCertificateFunc: func(ctx context.Context, cluster provisioning.Server) (string, error) {
-					return tc.clientInsecureGetClusterCertificate, tc.clientInsecureGetClusterCertificateErr
 				},
 				GetClusterNodeNamesFunc: func(ctx context.Context, server provisioning.Server) ([]string, error) {
 					// TODO: add test case

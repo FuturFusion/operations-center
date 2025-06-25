@@ -37,7 +37,6 @@ type ClusterClientPort interface {
 	EnableOSServiceLVM(ctx context.Context, server Server) error
 	SetClusterAddress(ctx context.Context, server Server) error
 	EnableCluster(ctx context.Context, server Server) (clusterCertificate string, _ error)
-	InsecureGetClusterCertificate(ctx context.Context, cluster Server) (clusterCertificate string, _ error)
 	GetClusterNodeNames(ctx context.Context, server Server) (nodeNames []string, _ error)
 	GetClusterJoinToken(ctx context.Context, server Server, memberName string) (joinToken string, _ error)
 	JoinCluster(ctx context.Context, server Server, joinToken string, cluster Server) error

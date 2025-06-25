@@ -158,17 +158,6 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		return newCluster, fmt.Errorf("Failed to enable clustering on bootstrap server %q: %w", bootstrapServer.Name, err)
 	}
 
-	if clusterCertificate == "" {
-		// Make connection to cluster endpoint in order to obtain the cluster certificate with SkipVerify,
-		// since we are talking to an old incus instance, which does not yet return the cluster certificate during cluster enable.
-		clusterCertificate, err = s.client.InsecureGetClusterCertificate(ctx, Server{
-			ConnectionURL: bootstrapServer.ConnectionURL,
-		})
-		if err != nil {
-			return newCluster, fmt.Errorf("Failed to get cluster certificate from cluster %q (%s) with insecure (skipVerify) TLS connection: %w", newCluster.Name, bootstrapServer.ConnectionURL, err)
-		}
-	}
-
 	// From now on, use the cluster certificate to connect to the cluster instead
 	// of the certificate of the bootstrap server.
 	// Fake "server", which represents the cluster to get the join tokens.
