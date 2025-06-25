@@ -30,10 +30,20 @@ var updates = map[int]update{
 	1: updateFromV0,
 	2: updateFromV1,
 	3: updateFromV2,
+	4: updateFromV3,
+}
+
+func updateFromV3(ctx context.Context, tx *sql.Tx) error {
+	// v3..v4 add column last_seen for servers
+	stmt := `
+ALTER TABLE servers ADD COLUMN last_seen DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00';
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV2(ctx context.Context, tx *sql.Tx) error {
-	// v2..v3 add columns certificate and status for clusters
+	// v2..v3 add columns certificate and status for clusters; add column cluster_certificate for servers
 	stmt := `
 PRAGMA defer_foreign_keys = On;
 
