@@ -809,6 +809,7 @@ func TestClient_SetClusterAddress(t *testing.T) {
 			tc.assertErr(t, err)
 			require.Equal(t, tc.wantPath, gotPath)
 			tc.assertResponse(t, gotRequest, server.URL)
+			require.Empty(t, tc.response)
 		})
 	}
 }
