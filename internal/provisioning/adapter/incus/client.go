@@ -3,9 +3,7 @@ package incus
 import (
 	"context"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/url"
 
@@ -31,24 +29,12 @@ func New(clientCert string, clientKey string) client {
 	}
 }
 
-type getClientOpt func(*incus.ConnectionArgs)
-
-func getClientWithInsecureSkipVerify() getClientOpt {
-	return func(args *incus.ConnectionArgs) {
-		args.InsecureSkipVerify = true
-	}
-}
-
-func (c client) getClient(ctx context.Context, server provisioning.Server, opts ...getClientOpt) (incus.InstanceServer, error) {
+func (c client) getClient(ctx context.Context, server provisioning.Server) (incus.InstanceServer, error) {
 	args := &incus.ConnectionArgs{
 		TLSClientCert: c.clientCert,
 		TLSClientKey:  c.clientKey,
 		TLSServerCert: server.Certificate,
 		SkipGetServer: true,
-	}
-
-	for _, opt := range opts {
-		opt(args)
 	}
 
 	return incus.ConnectIncusWithContext(ctx, server.ConnectionURL, args)
@@ -214,38 +200,6 @@ func (c client) EnableCluster(ctx context.Context, server provisioning.Server) (
 	}
 
 	return clusterCertificate, nil
-}
-
-func (c client) InsecureGetClusterCertificate(ctx context.Context, cluster provisioning.Server) (clusterCertificate string, _ error) {
-	slog.WarnContext(ctx, "Cluster certificate is fetched insecurely", slog.String("cluster", cluster.Name), slog.String("connection_url", cluster.ConnectionURL))
-
-	client, err := c.getClient(ctx, cluster, getClientWithInsecureSkipVerify())
-	if err != nil {
-		return "", err
-	}
-
-	// Ignore error, connection URL has been parsed by incus client already.
-	clusterURL, _ := url.Parse(cluster.ConnectionURL + "/1.0")
-
-	resp, err := client.DoHTTP(&http.Request{
-		Method: http.MethodGet,
-		URL:    clusterURL,
-		Body:   http.NoBody,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	certificate := pem.EncodeToMemory(&pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: resp.TLS.PeerCertificates[0].Raw,
-	})
-
-	return string(certificate), nil
 }
 
 func (c client) GetClusterNodeNames(ctx context.Context, server provisioning.Server) ([]string, error) {

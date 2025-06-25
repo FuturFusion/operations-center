@@ -33,9 +33,6 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			GetClusterNodeNamesFunc: func(ctx context.Context, server provisioning.Server) ([]string, error) {
 //				panic("mock out the GetClusterNodeNames method")
 //			},
-//			InsecureGetClusterCertificateFunc: func(ctx context.Context, cluster provisioning.Server) (string, error) {
-//				panic("mock out the InsecureGetClusterCertificate method")
-//			},
 //			JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) error {
 //				panic("mock out the JoinCluster method")
 //			},
@@ -63,9 +60,6 @@ type ClusterClientPortMock struct {
 
 	// GetClusterNodeNamesFunc mocks the GetClusterNodeNames method.
 	GetClusterNodeNamesFunc func(ctx context.Context, server provisioning.Server) ([]string, error)
-
-	// InsecureGetClusterCertificateFunc mocks the InsecureGetClusterCertificate method.
-	InsecureGetClusterCertificateFunc func(ctx context.Context, cluster provisioning.Server) (string, error)
 
 	// JoinClusterFunc mocks the JoinCluster method.
 	JoinClusterFunc func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) error
@@ -108,13 +102,6 @@ type ClusterClientPortMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
-		// InsecureGetClusterCertificate holds details about calls to the InsecureGetClusterCertificate method.
-		InsecureGetClusterCertificate []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Server
-		}
 		// JoinCluster holds details about calls to the JoinCluster method.
 		JoinCluster []struct {
 			// Ctx is the ctx argument value.
@@ -141,14 +128,13 @@ type ClusterClientPortMock struct {
 			Server provisioning.Server
 		}
 	}
-	lockEnableCluster                 sync.RWMutex
-	lockEnableOSServiceLVM            sync.RWMutex
-	lockGetClusterJoinToken           sync.RWMutex
-	lockGetClusterNodeNames           sync.RWMutex
-	lockInsecureGetClusterCertificate sync.RWMutex
-	lockJoinCluster                   sync.RWMutex
-	lockPing                          sync.RWMutex
-	lockSetClusterAddress             sync.RWMutex
+	lockEnableCluster       sync.RWMutex
+	lockEnableOSServiceLVM  sync.RWMutex
+	lockGetClusterJoinToken sync.RWMutex
+	lockGetClusterNodeNames sync.RWMutex
+	lockJoinCluster         sync.RWMutex
+	lockPing                sync.RWMutex
+	lockSetClusterAddress   sync.RWMutex
 }
 
 // EnableCluster calls EnableClusterFunc.
@@ -296,42 +282,6 @@ func (mock *ClusterClientPortMock) GetClusterNodeNamesCalls() []struct {
 	mock.lockGetClusterNodeNames.RLock()
 	calls = mock.calls.GetClusterNodeNames
 	mock.lockGetClusterNodeNames.RUnlock()
-	return calls
-}
-
-// InsecureGetClusterCertificate calls InsecureGetClusterCertificateFunc.
-func (mock *ClusterClientPortMock) InsecureGetClusterCertificate(ctx context.Context, cluster provisioning.Server) (string, error) {
-	if mock.InsecureGetClusterCertificateFunc == nil {
-		panic("ClusterClientPortMock.InsecureGetClusterCertificateFunc: method is nil but ClusterClientPort.InsecureGetClusterCertificate was just called")
-	}
-	callInfo := struct {
-		Ctx     context.Context
-		Cluster provisioning.Server
-	}{
-		Ctx:     ctx,
-		Cluster: cluster,
-	}
-	mock.lockInsecureGetClusterCertificate.Lock()
-	mock.calls.InsecureGetClusterCertificate = append(mock.calls.InsecureGetClusterCertificate, callInfo)
-	mock.lockInsecureGetClusterCertificate.Unlock()
-	return mock.InsecureGetClusterCertificateFunc(ctx, cluster)
-}
-
-// InsecureGetClusterCertificateCalls gets all the calls that were made to InsecureGetClusterCertificate.
-// Check the length with:
-//
-//	len(mockedClusterClientPort.InsecureGetClusterCertificateCalls())
-func (mock *ClusterClientPortMock) InsecureGetClusterCertificateCalls() []struct {
-	Ctx     context.Context
-	Cluster provisioning.Server
-} {
-	var calls []struct {
-		Ctx     context.Context
-		Cluster provisioning.Server
-	}
-	mock.lockInsecureGetClusterCertificate.RLock()
-	calls = mock.calls.InsecureGetClusterCertificate
-	mock.lockInsecureGetClusterCertificate.RUnlock()
 	return calls
 }
 

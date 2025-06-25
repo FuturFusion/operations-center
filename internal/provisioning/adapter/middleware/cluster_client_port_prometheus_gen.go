@@ -93,20 +93,6 @@ func (_d ClusterClientPortWithPrometheus) GetClusterNodeNames(ctx context.Contex
 	return _d.base.GetClusterNodeNames(ctx, server)
 }
 
-// InsecureGetClusterCertificate implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) InsecureGetClusterCertificate(ctx context.Context, cluster provisioning.Server) (clusterCertificate string, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "InsecureGetClusterCertificate", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.InsecureGetClusterCertificate(ctx, cluster)
-}
-
 // JoinCluster implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithPrometheus) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) (err error) {
 	_since := time.Now()

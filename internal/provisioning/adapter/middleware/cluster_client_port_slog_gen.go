@@ -181,41 +181,6 @@ func (_d ClusterClientPortWithSlog) GetClusterNodeNames(ctx context.Context, ser
 	return _d._base.GetClusterNodeNames(ctx, server)
 }
 
-// InsecureGetClusterCertificate implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) InsecureGetClusterCertificate(ctx context.Context, cluster provisioning.Server) (clusterCertificate string, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
-		)
-	}
-	log.Debug("=> calling InsecureGetClusterCertificate")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.String("clusterCertificate", clusterCertificate),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method InsecureGetClusterCertificate returned an informative error")
-			} else {
-				log.Error("<= method InsecureGetClusterCertificate returned an error")
-			}
-		} else {
-			log.Debug("<= method InsecureGetClusterCertificate finished")
-		}
-	}()
-	return _d._base.InsecureGetClusterCertificate(ctx, cluster)
-}
-
 // JoinCluster implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) (err error) {
 	log := _d._log.With()
