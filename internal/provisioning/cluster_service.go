@@ -3,6 +3,7 @@ package provisioning
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -146,9 +147,15 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 			return newCluster, fmt.Errorf("Failed to enable OS service LVM on %q: %w", server.Name, err)
 		}
 
-		err = s.client.SetClusterAddress(ctx, server)
+		// Ignore error, connection URL has been parsed by incus client already.
+		serverAddressURL, _ := url.Parse(server.ConnectionURL)
+
+		err = s.client.SetServerConfig(ctx, server, map[string]string{
+			"core.https_address":    serverAddressURL.Host, // TODO: Remove once https://github.com/lxc/incus/pull/2218 is available in incus-os.
+			"cluster.https_address": serverAddressURL.Host,
+		})
 		if err != nil {
-			return newCluster, fmt.Errorf("Failed to set cluster address on %q: %w", server.Name, err)
+			return newCluster, fmt.Errorf("Failed to set cluster.https_address on %q: %w", server.Name, err)
 		}
 	}
 
@@ -203,6 +210,23 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		}
 	}
 
+	// Update server records for further use.
+	for i := range servers {
+		servers[i].Cluster = &newCluster.Name
+		servers[i].ClusterCertificate = clusterCertificate
+	}
+
+	// TODO: Remove once https://github.com/lxc/incus/pull/2218 is available in incus-os.
+	// Reset core.https_address to :8443
+	for _, server := range servers {
+		err = s.client.SetServerConfig(ctx, server, map[string]string{
+			"core.https_address": ":8443",
+		})
+		if err != nil {
+			return newCluster, fmt.Errorf("Failed to reset core.https_address on %q: %w", server.Name, err)
+		}
+	}
+
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		// Validate again all listed servers are not yet part of cluster.
 		for _, server := range servers {
@@ -228,8 +252,6 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 
 		// Update Server records in the repo.
 		for _, server := range servers {
-			server.Cluster = &newCluster.Name
-			server.ClusterCertificate = clusterCertificate
 			err = s.serverSvc.Update(ctx, server)
 			if err != nil {
 				return err
