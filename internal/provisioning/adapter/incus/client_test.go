@@ -640,7 +640,7 @@ func TestClient_EnableOSServiceLVM(t *testing.T) {
 	}
 }
 
-func TestClient_SetClusterAddress(t *testing.T) {
+func TestClient_SetServerConfig(t *testing.T) {
 	certPEMByte, keyPEMByte, err := incustls.GenerateMemCert(true, false)
 	require.NoError(t, err)
 
@@ -693,7 +693,6 @@ func TestClient_SetClusterAddress(t *testing.T) {
 			wantPath:  "/1.0",
 			assertResponse: func(tt require.TestingT, responseBody string, serverAddress string) {
 				serverAddressURL, _ := url.Parse(serverAddress)
-				require.Contains(tt, responseBody, `"core.https_address":"`+serverAddressURL.Host+`"`)
 				require.Contains(tt, responseBody, `"cluster.https_address":"`+serverAddressURL.Host+`"`)
 			},
 		},
@@ -803,7 +802,12 @@ func TestClient_SetClusterAddress(t *testing.T) {
 			}
 
 			// Run test
-			err = client.SetClusterAddress(ctx, target)
+			serverAddressURL, err := url.Parse(server.URL)
+			require.NoError(t, err)
+
+			err = client.SetServerConfig(ctx, target, map[string]string{
+				"cluster.https_address": serverAddressURL.Host,
+			})
 
 			// Assert
 			tc.assertErr(t, err)

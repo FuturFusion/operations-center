@@ -58,7 +58,7 @@ server B
 		EnableOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) error {
 			return nil
 		},
-		SetClusterAddressFunc: func(ctx context.Context, server provisioning.Server) error {
+		SetServerConfigFunc: func(ctx context.Context, server provisioning.Server, config map[string]string) error {
 			return nil
 		},
 		GetClusterNodeNamesFunc: func(ctx context.Context, server provisioning.Server) ([]string, error) {

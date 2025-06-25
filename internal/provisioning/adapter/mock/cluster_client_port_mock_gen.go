@@ -39,8 +39,8 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			PingFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the Ping method")
 //			},
-//			SetClusterAddressFunc: func(ctx context.Context, server provisioning.Server) error {
-//				panic("mock out the SetClusterAddress method")
+//			SetServerConfigFunc: func(ctx context.Context, server provisioning.Server, config map[string]string) error {
+//				panic("mock out the SetServerConfig method")
 //			},
 //		}
 //
@@ -67,8 +67,8 @@ type ClusterClientPortMock struct {
 	// PingFunc mocks the Ping method.
 	PingFunc func(ctx context.Context, server provisioning.Server) error
 
-	// SetClusterAddressFunc mocks the SetClusterAddress method.
-	SetClusterAddressFunc func(ctx context.Context, server provisioning.Server) error
+	// SetServerConfigFunc mocks the SetServerConfig method.
+	SetServerConfigFunc func(ctx context.Context, server provisioning.Server, config map[string]string) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -120,12 +120,14 @@ type ClusterClientPortMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
-		// SetClusterAddress holds details about calls to the SetClusterAddress method.
-		SetClusterAddress []struct {
+		// SetServerConfig holds details about calls to the SetServerConfig method.
+		SetServerConfig []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Server is the server argument value.
 			Server provisioning.Server
+			// Config is the config argument value.
+			Config map[string]string
 		}
 	}
 	lockEnableCluster       sync.RWMutex
@@ -134,7 +136,7 @@ type ClusterClientPortMock struct {
 	lockGetClusterNodeNames sync.RWMutex
 	lockJoinCluster         sync.RWMutex
 	lockPing                sync.RWMutex
-	lockSetClusterAddress   sync.RWMutex
+	lockSetServerConfig     sync.RWMutex
 }
 
 // EnableCluster calls EnableClusterFunc.
@@ -365,38 +367,42 @@ func (mock *ClusterClientPortMock) PingCalls() []struct {
 	return calls
 }
 
-// SetClusterAddress calls SetClusterAddressFunc.
-func (mock *ClusterClientPortMock) SetClusterAddress(ctx context.Context, server provisioning.Server) error {
-	if mock.SetClusterAddressFunc == nil {
-		panic("ClusterClientPortMock.SetClusterAddressFunc: method is nil but ClusterClientPort.SetClusterAddress was just called")
+// SetServerConfig calls SetServerConfigFunc.
+func (mock *ClusterClientPortMock) SetServerConfig(ctx context.Context, server provisioning.Server, config map[string]string) error {
+	if mock.SetServerConfigFunc == nil {
+		panic("ClusterClientPortMock.SetServerConfigFunc: method is nil but ClusterClientPort.SetServerConfig was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
 		Server provisioning.Server
+		Config map[string]string
 	}{
 		Ctx:    ctx,
 		Server: server,
+		Config: config,
 	}
-	mock.lockSetClusterAddress.Lock()
-	mock.calls.SetClusterAddress = append(mock.calls.SetClusterAddress, callInfo)
-	mock.lockSetClusterAddress.Unlock()
-	return mock.SetClusterAddressFunc(ctx, server)
+	mock.lockSetServerConfig.Lock()
+	mock.calls.SetServerConfig = append(mock.calls.SetServerConfig, callInfo)
+	mock.lockSetServerConfig.Unlock()
+	return mock.SetServerConfigFunc(ctx, server, config)
 }
 
-// SetClusterAddressCalls gets all the calls that were made to SetClusterAddress.
+// SetServerConfigCalls gets all the calls that were made to SetServerConfig.
 // Check the length with:
 //
-//	len(mockedClusterClientPort.SetClusterAddressCalls())
-func (mock *ClusterClientPortMock) SetClusterAddressCalls() []struct {
+//	len(mockedClusterClientPort.SetServerConfigCalls())
+func (mock *ClusterClientPortMock) SetServerConfigCalls() []struct {
 	Ctx    context.Context
 	Server provisioning.Server
+	Config map[string]string
 } {
 	var calls []struct {
 		Ctx    context.Context
 		Server provisioning.Server
+		Config map[string]string
 	}
-	mock.lockSetClusterAddress.RLock()
-	calls = mock.calls.SetClusterAddress
-	mock.lockSetClusterAddress.RUnlock()
+	mock.lockSetServerConfig.RLock()
+	calls = mock.calls.SetServerConfig
+	mock.lockSetServerConfig.RUnlock()
 	return calls
 }

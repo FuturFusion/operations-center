@@ -251,16 +251,17 @@ func (_d ClusterClientPortWithSlog) Ping(ctx context.Context, server provisionin
 	return _d._base.Ping(ctx, server)
 }
 
-// SetClusterAddress implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) SetClusterAddress(ctx context.Context, server provisioning.Server) (err error) {
+// SetServerConfig implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) SetServerConfig(ctx context.Context, server provisioning.Server, config map[string]string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
+			slog.Any("config", config),
 		)
 	}
-	log.Debug("=> calling SetClusterAddress")
+	log.Debug("=> calling SetServerConfig")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -274,13 +275,13 @@ func (_d ClusterClientPortWithSlog) SetClusterAddress(ctx context.Context, serve
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method SetClusterAddress returned an informative error")
+				log.Debug("<= method SetServerConfig returned an informative error")
 			} else {
-				log.Error("<= method SetClusterAddress returned an error")
+				log.Error("<= method SetServerConfig returned an error")
 			}
 		} else {
-			log.Debug("<= method SetClusterAddress finished")
+			log.Debug("<= method SetServerConfig finished")
 		}
 	}()
-	return _d._base.SetClusterAddress(ctx, server)
+	return _d._base.SetServerConfig(ctx, server, config)
 }

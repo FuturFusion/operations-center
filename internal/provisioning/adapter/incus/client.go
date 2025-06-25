@@ -142,14 +142,11 @@ func (c client) EnableOSServiceLVM(ctx context.Context, server provisioning.Serv
 	return nil
 }
 
-func (c client) SetClusterAddress(ctx context.Context, server provisioning.Server) error {
+func (c client) SetServerConfig(ctx context.Context, server provisioning.Server, config map[string]string) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
 		return err
 	}
-
-	// Ignore error, connection URL has been parsed by incus client already.
-	serverAddressURL, _ := url.Parse(server.ConnectionURL)
 
 	svr, etag, err := client.GetServer()
 	if err != nil {
@@ -160,8 +157,9 @@ func (c client) SetClusterAddress(ctx context.Context, server provisioning.Serve
 		svr.Config = map[string]string{}
 	}
 
-	svr.Config["core.https_address"] = serverAddressURL.Host
-	svr.Config["cluster.https_address"] = serverAddressURL.Host
+	for key, value := range config {
+		svr.Config[key] = value
+	}
 
 	err = client.UpdateServer(svr.Writable(), etag)
 	if err != nil {

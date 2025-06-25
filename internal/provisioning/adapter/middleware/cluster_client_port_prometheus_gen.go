@@ -121,8 +121,8 @@ func (_d ClusterClientPortWithPrometheus) Ping(ctx context.Context, server provi
 	return _d.base.Ping(ctx, server)
 }
 
-// SetClusterAddress implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) SetClusterAddress(ctx context.Context, server provisioning.Server) (err error) {
+// SetServerConfig implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) SetServerConfig(ctx context.Context, server provisioning.Server, config map[string]string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -130,7 +130,7 @@ func (_d ClusterClientPortWithPrometheus) SetClusterAddress(ctx context.Context,
 			result = "error"
 		}
 
-		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SetClusterAddress", result).Observe(time.Since(_since).Seconds())
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SetServerConfig", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.SetClusterAddress(ctx, server)
+	return _d.base.SetServerConfig(ctx, server, config)
 }
