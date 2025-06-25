@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type Cluster struct {
@@ -12,6 +13,7 @@ type Cluster struct {
 	Name          string `db:"primary=yes"`
 	ConnectionURL string
 	Certificate   string
+	Status        api.ClusterStatus
 	ServerNames   []string `db:"ignore"`
 	LastUpdated   time.Time
 }

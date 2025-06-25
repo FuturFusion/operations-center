@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/testing/queue"
 )
 
 func TestClusterService_Create(t *testing.T) {
@@ -22,9 +23,10 @@ func TestClusterService_Create(t *testing.T) {
 	tests := []struct {
 		name                                   string
 		cluster                                provisioning.Cluster
-		repoCreateErr                          error
 		repoExistsByName                       bool
 		repoExistsByNameErr                    error
+		repoCreateErr                          error
+		repoUpdateErr                          error
 		clientPingErr                          error
 		clientEnableOSServiceLVMErr            error
 		clientSetClusterAddressErr             error
@@ -36,8 +38,7 @@ func TestClusterService_Create(t *testing.T) {
 		clientGetClusterJoinToken              string
 		clientGetClusterJoinTokenErr           error
 		clientJoinClusterErr                   error
-		serverSvcGetByName                     *provisioning.Server
-		serverSvcGetByNameErr                  error
+		serverSvcGetByName                     []queue.Item[*provisioning.Server]
 		serverSvcUpdateErr                     error
 
 		assertErr require.ErrorAssertionFunc
@@ -48,8 +49,27 @@ func TestClusterService_Create(t *testing.T) {
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
 			},
-			serverSvcGetByName: &provisioning.Server{
-				Name: "server1",
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
 			},
 			clientEnableClusterCertificate: "certificate",
 
@@ -61,8 +81,27 @@ func TestClusterService_Create(t *testing.T) {
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
 			},
-			serverSvcGetByName: &provisioning.Server{
-				Name: "server1",
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
 			},
 			clientEnableClusterCertificate:      "",
 			clientInsecureGetClusterCertificate: "certificate",
@@ -109,7 +148,11 @@ func TestClusterService_Create(t *testing.T) {
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
 			},
-			serverSvcGetByNameErr: boom.Error,
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
 		},
@@ -119,9 +162,13 @@ func TestClusterService_Create(t *testing.T) {
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
 			},
-			serverSvcGetByName: &provisioning.Server{
-				Cluster: ptr.To("cluster-foo"),
-				Name:    "server1",
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Cluster: ptr.To("cluster-foo"), // already part of cluster.
+						Name:    "server1",
+					},
+				},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -129,13 +176,45 @@ func TestClusterService_Create(t *testing.T) {
 			},
 		},
 		{
+			name: "error - repo.Create",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+			},
+			clientEnableClusterCertificate: "certificate",
+			repoCreateErr:                  boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - client.Ping",
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
 			},
-			serverSvcGetByName: &provisioning.Server{
-				Name: "server1",
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
 			},
 			clientPingErr: boom.Error,
 
@@ -147,8 +226,17 @@ func TestClusterService_Create(t *testing.T) {
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
 			},
-			serverSvcGetByName: &provisioning.Server{
-				Name: "one",
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
 			},
 			clientEnableOSServiceLVMErr: boom.Error,
 
@@ -160,8 +248,17 @@ func TestClusterService_Create(t *testing.T) {
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
 			},
-			serverSvcGetByName: &provisioning.Server{
-				Name: "one",
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
 			},
 			clientSetClusterAddressErr: boom.Error,
 
@@ -173,8 +270,17 @@ func TestClusterService_Create(t *testing.T) {
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
 			},
-			serverSvcGetByName: &provisioning.Server{
-				Name: "one",
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
 			},
 			clientEnableClusterErr: boom.Error,
 
@@ -186,25 +292,20 @@ func TestClusterService_Create(t *testing.T) {
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
 			},
-			serverSvcGetByName: &provisioning.Server{
-				Name: "server1",
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
 			},
 			clientEnableClusterCertificate:         "",
 			clientInsecureGetClusterCertificateErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - repo.Create",
-			cluster: provisioning.Cluster{
-				Name:        "one",
-				ServerNames: []string{"server1", "server2"},
-			},
-			serverSvcGetByName: &provisioning.Server{
-				Name: "one",
-			},
-			clientEnableClusterCertificate: "certificate",
-			repoCreateErr:                  boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -214,8 +315,17 @@ func TestClusterService_Create(t *testing.T) {
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
 			},
-			serverSvcGetByName: &provisioning.Server{
-				Name: "one",
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
 			},
 			clientEnableClusterCertificate: "certificate",
 			clientGetClusterNodeNamesErr:   boom.Error,
@@ -228,25 +338,20 @@ func TestClusterService_Create(t *testing.T) {
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
 			},
-			serverSvcGetByName: &provisioning.Server{
-				Name: "one",
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
 			},
 			clientEnableClusterCertificate: "certificate",
 			clientGetClusterJoinTokenErr:   boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - serverSvc.Update",
-			cluster: provisioning.Cluster{
-				Name:        "one",
-				ServerNames: []string{"server1", "server2"},
-			},
-			serverSvcGetByName: &provisioning.Server{
-				Name: "one",
-			},
-			clientEnableClusterCertificate: "certificate",
-			serverSvcUpdateErr:             boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -256,11 +361,139 @@ func TestClusterService_Create(t *testing.T) {
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
 			},
-			serverSvcGetByName: &provisioning.Server{
-				Name: "one",
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
 			},
 			clientEnableClusterCertificate: "certificate",
 			clientJoinClusterErr:           boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - serverSvc.GetByName - 2nd transaction",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - server already part of cluster - 2nd transaction",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Cluster: ptr.To("cluster-foo"), // added to a cluster since the first check.
+						Name:    "server1",
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Server "server1" was not part of a cluster, but is now part of "cluster-foo"`)
+			},
+		},
+		{
+			name: "error - repo.Update",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+			},
+			clientEnableClusterCertificate: "certificate",
+			repoUpdateErr:                  boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - serverSvc.Update",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+			},
+			clientEnableClusterCertificate: "certificate",
+			serverSvcUpdateErr:             boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -276,6 +509,9 @@ func TestClusterService_Create(t *testing.T) {
 				CreateFunc: func(ctx context.Context, in provisioning.Cluster) (int64, error) {
 					require.Equal(t, fixedDate, in.LastUpdated)
 					return 0, tc.repoCreateErr
+				},
+				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
+					return tc.repoUpdateErr
 				},
 			}
 
@@ -309,7 +545,8 @@ func TestClusterService_Create(t *testing.T) {
 
 			serverSvc := &serviceMock.ServerServiceMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
-					return tc.serverSvcGetByName, tc.serverSvcGetByNameErr
+					server, err := queue.Pop(t, &tc.serverSvcGetByName)
+					return server, err
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
 					return tc.serverSvcUpdateErr
@@ -326,6 +563,7 @@ func TestClusterService_Create(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+			require.Empty(t, tc.serverSvcGetByName)
 		})
 	}
 }
