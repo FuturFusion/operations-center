@@ -229,6 +229,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		// Update Server records in the repo.
 		for _, server := range servers {
 			server.Cluster = &newCluster.Name
+			server.ClusterCertificate = clusterCertificate
 			err = s.serverSvc.Update(ctx, server)
 			if err != nil {
 				return err
