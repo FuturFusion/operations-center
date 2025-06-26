@@ -213,7 +213,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	// Update server records for further use.
 	for i := range servers {
 		servers[i].Cluster = &newCluster.Name
-		servers[i].ClusterCertificate = clusterCertificate
+		servers[i].ClusterCertificate = &clusterCertificate
 	}
 
 	// TODO: Remove once https://github.com/lxc/incus/pull/2218 is available in incus-os.
