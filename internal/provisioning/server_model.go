@@ -17,7 +17,7 @@ type Server struct {
 	Type               api.ServerType
 	ConnectionURL      string
 	Certificate        string
-	ClusterCertificate string
+	ClusterCertificate *string `db:"omit=create,update&leftjoin=clusters.certificate"`
 	HardwareData       api.HardwareData
 	OSData             api.OSData
 	VersionData        json.RawMessage `db:"ignore"` // FIXME: it is not yet clear, how the structure of the version information will actually look like.

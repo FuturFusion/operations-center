@@ -36,7 +36,6 @@ CREATE TABLE servers (
   hardware_data TEXT NOT NULL,
   os_data TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
-  cluster_certificate TEXT NOT NULL DEFAULT '',
   last_seen DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00',
   UNIQUE (name),
   UNIQUE (certificate),
@@ -322,4 +321,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (4, strftime("%s"))
+INSERT INTO schema (version, updated_at) VALUES (5, strftime("%s"))
