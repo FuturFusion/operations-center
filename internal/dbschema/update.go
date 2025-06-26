@@ -31,6 +31,16 @@ var updates = map[int]update{
 	2: updateFromV1,
 	3: updateFromV2,
 	4: updateFromV3,
+	5: updateFromV4,
+}
+
+func updateFromV4(ctx context.Context, tx *sql.Tx) error {
+	// v4..v5 remove column cluster_certificate from servers
+	stmt := `
+ALTER TABLE servers DROP COLUMN cluster_certificate;
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV3(ctx context.Context, tx *sql.Tx) error {
