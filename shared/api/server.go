@@ -246,6 +246,12 @@ type Server struct {
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
 	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
+
+	// LastSeen is the time, when this server has been seen for the last time
+	// by any sort of connection between the server and operations center
+	// in RFC3339 format.
+	// Example: 2024-11-12T16:15:00Z
+	LastSeen time.Time `json:"last_seen" yaml:"last_seen"`
 }
 
 // ServerSelfUpdate defines a self update request of a server.

@@ -21,7 +21,7 @@ type ServerService interface {
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
 
-	PollPendingServers(ctx context.Context) error
+	PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error
 }
 
 type ServerRepo interface {

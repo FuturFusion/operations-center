@@ -50,6 +50,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/task"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/internal/version"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type environment interface {
@@ -446,7 +447,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// Start background task to poll servers in pending state to become available.
 	pollPendingServersTask := func(ctx context.Context) {
 		slog.InfoContext(ctx, "Polling for pending servers triggered")
-		err := serverSvc.PollPendingServers(ctx)
+		err := serverSvc.PollServers(ctx, api.ServerStatusPending, true)
 		if err != nil {
 			slog.ErrorContext(ctx, "Polling for pending servers failed", logger.Err(err))
 		} else {
@@ -457,6 +458,26 @@ func (d *Daemon) Start(ctx context.Context) error {
 	pollPendingServersTaskStop, _ := task.Start(ctx, pollPendingServersTask, task.Every(d.config.PendingServerPollInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return pollPendingServersTaskStop(deadlineFrom(ctx, 1*time.Second))
+	})
+
+	// Start background task to test connectivity and update configuration with servers in ready state.
+	const connectivityInterval = 5 * time.Minute
+	pollReadyServersTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "Connectivity test for ready servers triggered")
+
+		// Within the first connectivityInterval of the hour, we also update the configuration.
+		updateConfiguration := time.Since(time.Now().Truncate(time.Hour)) <= connectivityInterval
+		err := serverSvc.PollServers(ctx, api.ServerStatusReady, updateConfiguration)
+		if err != nil {
+			slog.ErrorContext(ctx, "Connectivity test for some servers failed", logger.Err(err))
+		} else {
+			slog.InfoContext(ctx, "Connectivity test for ready servers completed")
+		}
+	}
+
+	pollReadyServersTaskStop, _ := task.Start(ctx, pollReadyServersTask, task.Every(connectivityInterval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return pollReadyServersTaskStop(deadlineFrom(ctx, 1*time.Second))
 	})
 
 	// Wait for immediate errors during startup.

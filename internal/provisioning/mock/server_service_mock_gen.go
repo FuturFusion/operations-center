@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
 )
 
@@ -43,8 +44,8 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			PollPendingServersFunc: func(ctx context.Context) error {
-//				panic("mock out the PollPendingServers method")
+//			PollServersFunc: func(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error {
+//				panic("mock out the PollServers method")
 //			},
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
@@ -86,8 +87,8 @@ type ServerServiceMock struct {
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Server, error)
 
-	// PollPendingServersFunc mocks the PollPendingServers method.
-	PollPendingServersFunc func(ctx context.Context) error
+	// PollServersFunc mocks the PollServers method.
+	PollServersFunc func(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
@@ -150,10 +151,14 @@ type ServerServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
-		// PollPendingServers holds details about calls to the PollPendingServers method.
-		PollPendingServers []struct {
+		// PollServers holds details about calls to the PollServers method.
+		PollServers []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// ServerStatus is the serverStatus argument value.
+			ServerStatus api.ServerStatus
+			// UpdateServerConfiguration is the updateServerConfiguration argument value.
+			UpdateServerConfiguration bool
 		}
 		// Rename holds details about calls to the Rename method.
 		Rename []struct {
@@ -195,7 +200,7 @@ type ServerServiceMock struct {
 	lockGetAllNamesWithFilter sync.RWMutex
 	lockGetAllWithFilter      sync.RWMutex
 	lockGetByName             sync.RWMutex
-	lockPollPendingServers    sync.RWMutex
+	lockPollServers           sync.RWMutex
 	lockRename                sync.RWMutex
 	lockSelfUpdate            sync.RWMutex
 	lockUpdate                sync.RWMutex
@@ -450,35 +455,43 @@ func (mock *ServerServiceMock) GetByNameCalls() []struct {
 	return calls
 }
 
-// PollPendingServers calls PollPendingServersFunc.
-func (mock *ServerServiceMock) PollPendingServers(ctx context.Context) error {
-	if mock.PollPendingServersFunc == nil {
-		panic("ServerServiceMock.PollPendingServersFunc: method is nil but ServerService.PollPendingServers was just called")
+// PollServers calls PollServersFunc.
+func (mock *ServerServiceMock) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error {
+	if mock.PollServersFunc == nil {
+		panic("ServerServiceMock.PollServersFunc: method is nil but ServerService.PollServers was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
+		Ctx                       context.Context
+		ServerStatus              api.ServerStatus
+		UpdateServerConfiguration bool
 	}{
-		Ctx: ctx,
+		Ctx:                       ctx,
+		ServerStatus:              serverStatus,
+		UpdateServerConfiguration: updateServerConfiguration,
 	}
-	mock.lockPollPendingServers.Lock()
-	mock.calls.PollPendingServers = append(mock.calls.PollPendingServers, callInfo)
-	mock.lockPollPendingServers.Unlock()
-	return mock.PollPendingServersFunc(ctx)
+	mock.lockPollServers.Lock()
+	mock.calls.PollServers = append(mock.calls.PollServers, callInfo)
+	mock.lockPollServers.Unlock()
+	return mock.PollServersFunc(ctx, serverStatus, updateServerConfiguration)
 }
 
-// PollPendingServersCalls gets all the calls that were made to PollPendingServers.
+// PollServersCalls gets all the calls that were made to PollServers.
 // Check the length with:
 //
-//	len(mockedServerService.PollPendingServersCalls())
-func (mock *ServerServiceMock) PollPendingServersCalls() []struct {
-	Ctx context.Context
+//	len(mockedServerService.PollServersCalls())
+func (mock *ServerServiceMock) PollServersCalls() []struct {
+	Ctx                       context.Context
+	ServerStatus              api.ServerStatus
+	UpdateServerConfiguration bool
 } {
 	var calls []struct {
-		Ctx context.Context
+		Ctx                       context.Context
+		ServerStatus              api.ServerStatus
+		UpdateServerConfiguration bool
 	}
-	mock.lockPollPendingServers.RLock()
-	calls = mock.calls.PollPendingServers
-	mock.lockPollPendingServers.RUnlock()
+	mock.lockPollServers.RLock()
+	calls = mock.calls.PollServers
+	mock.lockPollServers.RUnlock()
 	return calls
 }
 

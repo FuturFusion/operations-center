@@ -1170,7 +1170,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			serverSvc := provisioning.NewServerService(repo, client, nil)
 
 			// Run test
-			err := serverSvc.PollPendingServers(context.Background())
+			err := serverSvc.PollServers(context.Background(), api.ServerStatusPending, true)
 
 			// Assert
 			tc.assertErr(t, err)

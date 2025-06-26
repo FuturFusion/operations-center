@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
 )
 
@@ -285,15 +286,17 @@ func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (ser
 	return _d._base.GetByName(ctx, name)
 }
 
-// PollPendingServers implements provisioning.ServerService.
-func (_d ServerServiceWithSlog) PollPendingServers(ctx context.Context) (err error) {
+// PollServers implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
+			slog.Any("serverStatus", serverStatus),
+			slog.Bool("updateServerConfiguration", updateServerConfiguration),
 		)
 	}
-	log.Debug("=> calling PollPendingServers")
+	log.Debug("=> calling PollServers")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -307,15 +310,15 @@ func (_d ServerServiceWithSlog) PollPendingServers(ctx context.Context) (err err
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method PollPendingServers returned an informative error")
+				log.Debug("<= method PollServers returned an informative error")
 			} else {
-				log.Error("<= method PollPendingServers returned an error")
+				log.Error("<= method PollServers returned an error")
 			}
 		} else {
-			log.Debug("<= method PollPendingServers finished")
+			log.Debug("<= method PollServers finished")
 		}
 	}()
-	return _d._base.PollPendingServers(ctx)
+	return _d._base.PollServers(ctx, serverStatus, updateServerConfiguration)
 }
 
 // Rename implements provisioning.ServerService.

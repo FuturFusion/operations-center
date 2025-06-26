@@ -69,8 +69,11 @@ func (s serverService) Create(ctx context.Context, token uuid.UUID, newServer Se
 			return fmt.Errorf("Consume token for server creation: %w", err)
 		}
 
+		now := s.now()
+
 		newServer.Status = api.ServerStatusPending
-		newServer.LastUpdated = s.now()
+		newServer.LastUpdated = now
+		newServer.LastSeen = now
 
 		if newServer.Type == "" {
 			newServer.Type = api.ServerTypeUnknown
@@ -99,7 +102,7 @@ func (s serverService) Create(ctx context.Context, token uuid.UUID, newServer Se
 		time.Sleep(s.initialConnectionDelay)
 
 		ctx := context.Background()
-		err = s.pollPendingServer(ctx, newServer)
+		err = s.pollServer(ctx, newServer, true)
 		if err != nil {
 			slog.WarnContext(ctx, "Initial server connection test failed", logger.Err(err), slog.String("name", newServer.Name), slog.String("url", newServer.ConnectionURL))
 		}
@@ -247,11 +250,15 @@ func (s serverService) UpdateSystemNetwork(ctx context.Context, name string, sys
 			return err
 		}
 
+		now := s.now()
+
 		updatedServer, _ = ptr.Clone(server)
 
 		updatedServer.OSData.Network = systemNetwork
 		updatedServer.Status = api.ServerStatusPending
-		updatedServer.LastUpdated = s.now()
+
+		updatedServer.LastUpdated = now
+		updatedServer.LastSeen = now
 
 		err = s.Update(ctx, *updatedServer)
 		if err != nil {
@@ -297,9 +304,12 @@ func (s serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUp
 			return err
 		}
 
+		now := s.now()
+
 		server.ConnectionURL = serverUpdate.ConnectionURL
 		server.Status = api.ServerStatusReady
-		server.LastUpdated = s.now()
+		server.LastUpdated = now
+		server.LastSeen = now
 
 		err = server.Validate()
 		if err != nil {
@@ -336,9 +346,14 @@ func (s serverService) DeleteByName(ctx context.Context, name string) error {
 	return s.repo.DeleteByName(ctx, name)
 }
 
-func (s serverService) PollPendingServers(ctx context.Context) error {
+// PollServers tests server connectivity for servers registered in operations center.
+// This is used in the following ways:
+//   - Periodic connectivity test for all servers in the inventory.
+//   - Periodic connectivity test for all pending servers in the inventory.
+//   - Periodic update of server configuration data (network, encryption, resources)
+func (s serverService) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error {
 	servers, err := s.repo.GetAllWithFilter(ctx, ServerFilter{
-		Status: ptr.To(api.ServerStatusPending),
+		Status: ptr.To(serverStatus),
 	})
 	if err != nil {
 		return err
@@ -346,7 +361,7 @@ func (s serverService) PollPendingServers(ctx context.Context) error {
 
 	var errs []error
 	for _, server := range servers {
-		err = s.pollPendingServer(ctx, server)
+		err = s.pollServer(ctx, server, updateServerConfiguration)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -356,7 +371,7 @@ func (s serverService) PollPendingServers(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-func (s serverService) pollPendingServer(ctx context.Context, server Server) error {
+func (s serverService) pollServer(ctx context.Context, server Server, updateServerConfiguration bool) error {
 	// Since we re-try frequently, we only grant a short timeout for the
 	// connection attept.
 	ctxWithTimeout, cancelFunc := context.WithTimeout(ctx, 1*time.Second)
@@ -365,18 +380,22 @@ func (s serverService) pollPendingServer(ctx context.Context, server Server) err
 	if err != nil {
 		// Errors are expected if a system is not (yet) available. Therefore
 		// we ignore the errors.
-		slog.WarnContext(ctx, "Initial server connection test failed", logger.Err(err), slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
+		slog.WarnContext(ctx, "Server connection test failed", logger.Err(err), slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 		return nil
 	}
 
-	hardwareData, err := s.client.GetResources(ctx, server)
-	if err != nil {
-		return fmt.Errorf("Failed to get resources from server %q: %w", server.Name, err)
-	}
+	var hardwareData api.HardwareData
+	var osData api.OSData
+	if updateServerConfiguration {
+		hardwareData, err = s.client.GetResources(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get resources from server %q: %w", server.Name, err)
+		}
 
-	osData, err := s.client.GetOSData(ctx, server)
-	if err != nil {
-		return fmt.Errorf("Failed to get os data from server %q: %w", server.Name, err)
+		osData, err = s.client.GetOSData(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get os data from server %q: %w", server.Name, err)
+		}
 	}
 
 	// Perform the update of the server in a transaction in order to respect
@@ -388,9 +407,16 @@ func (s serverService) pollPendingServer(ctx context.Context, server Server) err
 			return err
 		}
 
-		server.Status = api.ServerStatusReady
-		server.HardwareData = hardwareData
-		server.OSData = osData
+		now := s.now()
+
+		server.LastSeen = now
+
+		if updateServerConfiguration {
+			server.Status = api.ServerStatusReady
+			server.HardwareData = hardwareData
+			server.OSData = osData
+			server.LastUpdated = now
+		}
 
 		return s.repo.Update(ctx, *server)
 	})

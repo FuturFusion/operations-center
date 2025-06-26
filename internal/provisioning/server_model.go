@@ -23,6 +23,7 @@ type Server struct {
 	VersionData        json.RawMessage `db:"ignore"` // FIXME: it is not yet clear, how the structure of the version information will actually look like.
 	Status             api.ServerStatus
 	LastUpdated        time.Time
+	LastSeen           time.Time
 }
 
 func (s Server) Validate() error {
