@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/mattn/go-sqlite3"
@@ -49,7 +50,7 @@ UPDATE clusters
 `)
 
 var clusterRename = RegisterStmt(`
-UPDATE clusters SET name = ? WHERE name = ?
+UPDATE clusters SET name = ?, last_updated = ? WHERE name = ?
 `)
 
 var clusterDeleteByName = RegisterStmt(`
@@ -336,7 +337,7 @@ func CreateCluster(ctx context.Context, db dbtx, object provisioning.Cluster) (_
 	args[1] = object.ConnectionURL
 	args[2] = object.Certificate
 	args[3] = object.Status
-	args[4] = object.LastUpdated
+	args[4] = time.Now().UTC().Format(time.RFC3339)
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, clusterCreate)
@@ -382,7 +383,7 @@ func UpdateCluster(ctx context.Context, db tx, name string, object provisioning.
 		return fmt.Errorf("Failed to get \"clusterUpdate\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(object.Name, object.ConnectionURL, object.Certificate, object.Status, object.LastUpdated, id)
+	result, err := stmt.Exec(object.Name, object.ConnectionURL, object.Certificate, object.Status, time.Now().UTC().Format(time.RFC3339), id)
 	if err != nil {
 		return fmt.Errorf("Update \"clusters\" entry failed: %w", err)
 	}
@@ -411,7 +412,7 @@ func RenameCluster(ctx context.Context, db dbtx, name string, to string) (_err e
 		return fmt.Errorf("Failed to get \"clusterRename\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(to, name)
+	result, err := stmt.Exec(to, time.Now().UTC().Format(time.RFC3339), name)
 	if err != nil {
 		return fmt.Errorf("Rename Cluster failed: %w", err)
 	}

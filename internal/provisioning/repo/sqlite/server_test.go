@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -21,8 +20,6 @@ import (
 )
 
 func TestServerDatabaseActions(t *testing.T) {
-	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC).Truncate(0) // Truncate to remove the monotonic clock.
-
 	serverA := provisioning.Server{
 		Name:          "one",
 		Type:          api.ServerTypeIncus,
@@ -34,7 +31,6 @@ server A
 		HardwareData: api.HardwareData{},
 		VersionData:  json.RawMessage(nil),
 		Status:       api.ServerStatusReady,
-		LastUpdated:  fixedDate,
 	}
 
 	serverB := provisioning.Server{
@@ -48,7 +44,6 @@ server B
 		HardwareData: api.HardwareData{},
 		VersionData:  json.RawMessage(nil),
 		Status:       api.ServerStatusReady,
-		LastUpdated:  fixedDate,
 	}
 
 	client := &adapterMock.ClusterClientPortMock{
@@ -95,11 +90,9 @@ server B
 	require.NoError(t, err)
 
 	server := sqlite.NewServer(tx)
-	serverSvc := provisioning.NewServerService(server, nil, nil,
-		provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
-	)
+	serverSvc := provisioning.NewServerService(server, nil, nil)
 
-	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), client, serverSvc, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
+	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), client, serverSvc, nil)
 
 	// Add server
 	_, err = server.Create(ctx, serverA)
@@ -121,11 +114,13 @@ server B
 	dbServerA, err := server.GetByName(ctx, serverA.Name)
 	require.NoError(t, err)
 	serverA.ID = dbServerA.ID
+	serverA.LastUpdated = dbServerA.LastUpdated
 	require.Equal(t, serverA, *dbServerA)
 
 	dbServerB, err := server.GetByName(ctx, serverB.Name)
 	require.NoError(t, err)
 	serverB.ID = dbServerB.ID
+	serverB.LastUpdated = dbServerB.LastUpdated
 	require.Equal(t, serverB, *dbServerB)
 
 	// GetByCertificate
@@ -146,6 +141,7 @@ server B
 	dbServerB, err = server.GetByName(ctx, serverB.Name)
 	require.NoError(t, err)
 	serverB.ID = dbServerB.ID
+	serverB.LastUpdated = dbServerB.LastUpdated
 	require.Equal(t, serverB, *dbServerB)
 
 	// Delete a server.

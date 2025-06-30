@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/mattn/go-sqlite3"
@@ -83,7 +84,7 @@ UPDATE servers
 `)
 
 var serverRename = RegisterStmt(`
-UPDATE servers SET name = ? WHERE name = ?
+UPDATE servers SET name = ?, last_updated = ? WHERE name = ?
 `)
 
 var serverDeleteByName = RegisterStmt(`
@@ -470,7 +471,7 @@ func CreateServer(ctx context.Context, db dbtx, object provisioning.Server) (_ i
 	args[5] = object.HardwareData
 	args[6] = object.OSData
 	args[7] = object.Status
-	args[8] = object.LastUpdated
+	args[8] = time.Now().UTC().Format(time.RFC3339)
 	args[9] = object.LastSeen
 
 	// Prepared statement to use.
@@ -517,7 +518,7 @@ func UpdateServer(ctx context.Context, db tx, name string, object provisioning.S
 		return fmt.Errorf("Failed to get \"serverUpdate\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(object.Cluster, object.Name, object.Type, object.ConnectionURL, object.Certificate, object.HardwareData, object.OSData, object.Status, object.LastUpdated, object.LastSeen, id)
+	result, err := stmt.Exec(object.Cluster, object.Name, object.Type, object.ConnectionURL, object.Certificate, object.HardwareData, object.OSData, object.Status, time.Now().UTC().Format(time.RFC3339), object.LastSeen, id)
 	if err != nil {
 		return fmt.Errorf("Update \"servers\" entry failed: %w", err)
 	}
@@ -546,7 +547,7 @@ func RenameServer(ctx context.Context, db dbtx, name string, to string) (_err er
 		return fmt.Errorf("Failed to get \"serverRename\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(to, name)
+	result, err := stmt.Exec(to, time.Now().UTC().Format(time.RFC3339), name)
 	if err != nil {
 		return fmt.Errorf("Rename Server failed: %w", err)
 	}
