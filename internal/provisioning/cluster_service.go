@@ -29,12 +29,6 @@ var _ ClusterService = &clusterService{}
 
 type ClusterServiceOption func(s *clusterService)
 
-func ClusterServiceWithNow(nowFunc func() time.Time) ClusterServiceOption {
-	return func(s *clusterService) {
-		s.now = nowFunc
-	}
-}
-
 func ClusterServiceCreateClusterRetryTimeout(timeout time.Duration) ClusterServiceOption {
 	return func(s *clusterService) {
 		s.createClusterRetryTimeout = timeout
@@ -117,7 +111,6 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		// Create Cluster record in pending state in the repo.
 		newCluster.Status = api.ClusterStatusPending
 		newCluster.ConnectionURL = bootstrapServer.ConnectionURL
-		newCluster.LastUpdated = s.now()
 
 		newCluster.ID, err = s.repo.Create(ctx, newCluster)
 		if err != nil {
@@ -243,7 +236,6 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		// Update cluster entry in the repo, set state to ready and certificate.
 		newCluster.Status = api.ClusterStatusReady
 		newCluster.Certificate = clusterCertificate
-		newCluster.LastUpdated = s.now()
 
 		err = s.repo.Update(ctx, newCluster)
 		if err != nil {
@@ -372,8 +364,6 @@ func (s clusterService) Update(ctx context.Context, newCluster Cluster) error {
 	if err != nil {
 		return err
 	}
-
-	newCluster.LastUpdated = s.now()
 
 	return s.repo.Update(ctx, newCluster)
 }
