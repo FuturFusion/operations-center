@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -35,6 +36,20 @@ func NewClusterClientPortWithPrometheus(base provisioning.ClusterClientPort, ins
 		base:         base,
 		instanceName: instanceName,
 	}
+}
+
+// CreateProject implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) CreateProject(ctx context.Context, server provisioning.Server, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "CreateProject", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.CreateProject(ctx, server, name)
 }
 
 // EnableCluster implements provisioning.ClusterClientPort.
@@ -91,6 +106,48 @@ func (_d ClusterClientPortWithPrometheus) GetClusterNodeNames(ctx context.Contex
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetClusterNodeNames", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetClusterNodeNames(ctx, server)
+}
+
+// GetOSData implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) GetOSData(ctx context.Context, server provisioning.Server) (oSData api.OSData, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSData", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetOSData(ctx, server)
+}
+
+// InitializeDefaultNetworking implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server, primaryNic string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "InitializeDefaultNetworking", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.InitializeDefaultNetworking(ctx, servers, primaryNic)
+}
+
+// InitializeDefaultStorage implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) InitializeDefaultStorage(ctx context.Context, servers []provisioning.Server) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "InitializeDefaultStorage", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.InitializeDefaultStorage(ctx, servers)
 }
 
 // JoinCluster implements provisioning.ClusterClientPort.

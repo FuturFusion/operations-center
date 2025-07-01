@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // ClusterClientPortWithSlog implements provisioning.ClusterClientPort that is instrumented with slog logger.
@@ -39,6 +40,41 @@ func NewClusterClientPortWithSlog(base provisioning.ClusterClientPort, log *slog
 	}
 
 	return this
+}
+
+// CreateProject implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) CreateProject(ctx context.Context, server provisioning.Server, name string) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.String("name", name),
+		)
+	}
+	log.Debug("=> calling CreateProject")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method CreateProject returned an informative error")
+			} else {
+				log.Error("<= method CreateProject returned an error")
+			}
+		} else {
+			log.Debug("<= method CreateProject finished")
+		}
+	}()
+	return _d._base.CreateProject(ctx, server, name)
 }
 
 // EnableCluster implements provisioning.ClusterClientPort.
@@ -179,6 +215,110 @@ func (_d ClusterClientPortWithSlog) GetClusterNodeNames(ctx context.Context, ser
 		}
 	}()
 	return _d._base.GetClusterNodeNames(ctx, server)
+}
+
+// GetOSData implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, server provisioning.Server) (oSData api.OSData, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.Debug("=> calling GetOSData")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("oSData", oSData),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetOSData returned an informative error")
+			} else {
+				log.Error("<= method GetOSData returned an error")
+			}
+		} else {
+			log.Debug("<= method GetOSData finished")
+		}
+	}()
+	return _d._base.GetOSData(ctx, server)
+}
+
+// InitializeDefaultNetworking implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server, primaryNic string) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("servers", servers),
+			slog.String("primaryNic", primaryNic),
+		)
+	}
+	log.Debug("=> calling InitializeDefaultNetworking")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method InitializeDefaultNetworking returned an informative error")
+			} else {
+				log.Error("<= method InitializeDefaultNetworking returned an error")
+			}
+		} else {
+			log.Debug("<= method InitializeDefaultNetworking finished")
+		}
+	}()
+	return _d._base.InitializeDefaultNetworking(ctx, servers, primaryNic)
+}
+
+// InitializeDefaultStorage implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) InitializeDefaultStorage(ctx context.Context, servers []provisioning.Server) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("servers", servers),
+		)
+	}
+	log.Debug("=> calling InitializeDefaultStorage")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method InitializeDefaultStorage returned an informative error")
+			} else {
+				log.Error("<= method InitializeDefaultStorage returned an error")
+			}
+		} else {
+			log.Debug("<= method InitializeDefaultStorage finished")
+		}
+	}()
+	return _d._base.InitializeDefaultStorage(ctx, servers)
 }
 
 // JoinCluster implements provisioning.ClusterClientPort.
