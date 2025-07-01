@@ -5,10 +5,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
@@ -18,275 +18,151 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func TestClient_Ping(t *testing.T) {
-	certPEMByte, keyPEMByte, err := incustls.GenerateMemCert(true, false)
-	require.NoError(t, err)
-
-	caPool := x509.NewCertPool()
-	caPool.AppendCertsFromPEM(certPEMByte)
-
-	certPEM, keyPEM := string(certPEMByte), string(keyPEMByte)
-
-	tests := []struct {
-		name       string
-		certPEM    string
-		keyPEM     string
-		statusCode int
-		response   []byte
-		setup      func(*httptest.Server)
-
-		assertErr require.ErrorAssertionFunc
-		wantPath  string
-	}{
-		{
-			name:       "success",
-			certPEM:    certPEM,
-			keyPEM:     keyPEM,
-			statusCode: http.StatusOK,
-			response: []byte(`{
-  "metadata": {}
-}`),
-			setup: func(_ *httptest.Server) {},
-
-			assertErr: require.NoError,
-			wantPath:  "/1.0",
-		},
-		{
-			name:    "error - invalid key pair",
-			certPEM: certPEM,
-			keyPEM:  certPEM, // invalid, should be key
-			setup:   func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-		},
-		{
-			name:    "error - connection failure",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			setup: func(server *httptest.Server) {
-				server.Close()
-			},
-
-			assertErr: require.Error,
-		},
-		{
-			name:       "error - unexpected http status code",
-			certPEM:    certPEM,
-			keyPEM:     keyPEM,
-			statusCode: http.StatusInternalServerError,
-			setup:      func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-			wantPath:  "/1.0",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			var gotPath string
-			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				gotPath = r.URL.Path
-				w.WriteHeader(tc.statusCode)
-				_, _ = w.Write(tc.response)
-			}))
-			server.TLS = &tls.Config{
-				NextProtos: []string{"h2", "http/1.1"},
-				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  caPool,
-			}
-
-			server.StartTLS()
-			defer server.Close()
-
-			tc.setup(server)
-
-			client := incus.New(tc.certPEM, tc.keyPEM)
-
-			ctx := context.Background()
-
-			serverCert := pem.EncodeToMemory(&pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: server.Certificate().Raw,
-			})
-
-			target := provisioning.Server{
-				ConnectionURL: server.URL,
-				Certificate:   string(serverCert),
-			}
-
-			// Run test
-			err = client.Ping(ctx, target)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.wantPath, gotPath)
-		})
-	}
+type clientPort interface {
+	provisioning.ServerClientPort
+	provisioning.ClusterClientPort
 }
 
-func TestClient_GetResources(t *testing.T) {
-	certPEMByte, keyPEMByte, err := incustls.GenerateMemCert(true, false)
-	require.NoError(t, err)
+type methodTestSet struct {
+	name       string
+	clientCall func(ctx context.Context, client clientPort, target provisioning.Server) (any, error)
 
-	caPool := x509.NewCertPool()
-	caPool.AppendCertsFromPEM(certPEMByte)
+	testCases []methodTestCase
+}
 
-	certPEM, keyPEM := string(certPEMByte), string(keyPEMByte)
+type methodTestCase struct {
+	name     string
+	response []queue.Item[response]
 
-	tests := []struct {
-		name       string
-		certPEM    string
-		keyPEM     string
-		statusCode int
-		response   []byte
-		setup      func(*httptest.Server)
+	assertErr    require.ErrorAssertionFunc
+	wantPaths    []string
+	assertBodies func(t *testing.T, gotBodies []string)
+	assertResult func(t *testing.T, res any)
+}
 
-		assertErr     require.ErrorAssertionFunc
-		wantPath      string
-		wantResources api.HardwareData
-	}{
+type response struct {
+	statusCode   int
+	responseBody []byte
+}
+
+func noResult(t *testing.T, res any) {
+	t.Helper()
+}
+
+func TestClient(t *testing.T) {
+	caPool, certPEM, keyPEM := setupCerts(t)
+
+	methods := []methodTestSet{
 		{
-			name:       "success",
-			certPEM:    certPEM,
-			keyPEM:     keyPEM,
-			statusCode: http.StatusOK,
-			response: []byte(`{
+			name: "Ping",
+			clientCall: func(ctx context.Context, c clientPort, target provisioning.Server) (any, error) {
+				return nil, c.Ping(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0"},
+				},
+			},
+		},
+		{
+			name: "GetResources",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetResources(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {
     "cpu": {
       "architecture": "x86_64"
     }
   }
 }`),
-			setup: func(_ *httptest.Server) {},
-
-			assertErr: require.NoError,
-			wantPath:  "/1.0/resources",
-			wantResources: api.HardwareData{
-				Resources: incusapi.Resources{
-					CPU: incusapi.ResourcesCPU{
-						Architecture: "x86_64",
+							},
+						},
 					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+						want := api.HardwareData{
+							Resources: incusapi.Resources{
+								CPU: incusapi.ResourcesCPU{
+									Architecture: "x86_64",
+								},
+							},
+						}
+
+						require.Equal(t, want, res)
+					},
+					wantPaths: []string{"GET /1.0/resources"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/resources"},
 				},
 			},
 		},
 		{
-			name:    "error - invalid key pair",
-			certPEM: certPEM,
-			keyPEM:  certPEM, // invalid, should be key
-			setup:   func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-		},
-		{
-			name:    "error - connection failure",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			setup: func(server *httptest.Server) {
-				server.Close()
+			name: "GetOSData",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetOSData(ctx, target)
 			},
-
-			assertErr: require.Error,
-		},
-		{
-			name:       "error - unexpected http status code",
-			certPEM:    certPEM,
-			keyPEM:     keyPEM,
-			statusCode: http.StatusInternalServerError,
-			setup:      func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-			wantPath:  "/1.0/resources",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			var gotPath string
-			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				gotPath = r.URL.Path
-				w.WriteHeader(tc.statusCode)
-				_, _ = w.Write(tc.response)
-			}))
-			server.TLS = &tls.Config{
-				NextProtos: []string{"h2", "http/1.1"},
-				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  caPool,
-			}
-
-			server.StartTLS()
-			defer server.Close()
-
-			tc.setup(server)
-
-			client := incus.New(tc.certPEM, tc.keyPEM)
-
-			ctx := context.Background()
-
-			serverCert := pem.EncodeToMemory(&pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: server.Certificate().Raw,
-			})
-
-			target := provisioning.Server{
-				ConnectionURL: server.URL,
-				Certificate:   string(serverCert),
-			}
-
-			// Run test
-			resources, err := client.GetResources(ctx, target)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.wantPath, gotPath)
-			require.Equal(t, tc.wantResources, resources)
-		})
-	}
-}
-
-func TestClient_GetOSData(t *testing.T) {
-	certPEMByte, keyPEMByte, err := incustls.GenerateMemCert(true, false)
-	require.NoError(t, err)
-
-	caPool := x509.NewCertPool()
-	caPool.AppendCertsFromPEM(certPEMByte)
-
-	certPEM, keyPEM := string(certPEMByte), string(keyPEMByte)
-
-	tests := []struct {
-		name     string
-		certPEM  string
-		keyPEM   string
-		response []queue.Item[struct {
-			statusCode   int
-			responseBody []byte
-		}]
-		setup func(*httptest.Server)
-
-		assertErr     require.ErrorAssertionFunc
-		wantPaths     []string
-		wantResources api.OSData
-	}{
-		{
-			name:    "success",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			response: []queue.Item[struct {
-				statusCode   int
-				responseBody []byte
-			}]{
+			testCases: []methodTestCase{
 				{
-					Value: struct {
-						statusCode   int
-						responseBody []byte
-					}{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/network
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {
     "config": {
       "dns": {
@@ -296,79 +172,56 @@ func TestClient_GetOSData(t *testing.T) {
     }
   }
 }`),
-					},
-				},
-				{
-					Value: struct {
-						statusCode   int
-						responseBody []byte
-					}{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+							},
+						},
+						// GET /os/1.0/system/encryption
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {
     "config": {
       "recovery_keys": [ "very secret recovery key" ]
     }
   }
 }`),
-					},
-				},
-			},
-			setup: func(_ *httptest.Server) {},
-
-			assertErr: require.NoError,
-			wantPaths: []string{"/os/1.0/system/network", "/os/1.0/system/encryption"},
-			wantResources: api.OSData{
-				Network: incusosapi.SystemNetwork{
-					Config: &incusosapi.SystemNetworkConfig{
-						DNS: &incusosapi.SystemNetworkDNS{
-							Hostname: "foobar",
-							Domain:   "local",
+							},
 						},
 					},
-				},
-				Encryption: incusosapi.SystemEncryption{
-					Config: struct {
-						RecoveryKeys []string `json:"recovery_keys" yaml:"recovery_keys"`
-					}{
-						RecoveryKeys: []string{"very secret recovery key"},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /os/1.0/system/network", "GET /os/1.0/system/encryption"},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+						wantResources := api.OSData{
+							Network: incusosapi.SystemNetwork{
+								Config: &incusosapi.SystemNetworkConfig{
+									DNS: &incusosapi.SystemNetworkDNS{
+										Hostname: "foobar",
+										Domain:   "local",
+									},
+								},
+							},
+							Encryption: incusosapi.SystemEncryption{
+								Config: struct {
+									RecoveryKeys []string `json:"recovery_keys" yaml:"recovery_keys"`
+								}{
+									RecoveryKeys: []string{"very secret recovery key"},
+								},
+							},
+						}
+
+						require.Equal(t, wantResources, res)
 					},
 				},
-			},
-		},
-		{
-			name:    "error - invalid key pair",
-			certPEM: certPEM,
-			keyPEM:  certPEM, // invalid, should be key
-			setup:   func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-		},
-		{
-			name:    "error - connection failure",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			setup: func(server *httptest.Server) {
-				server.Close()
-			},
-
-			assertErr: require.Error,
-		},
-		{
-			name:    "error - network data unexpected http status code",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			response: []queue.Item[struct {
-				statusCode   int
-				responseBody []byte
-			}]{
 				{
-					Value: struct {
-						statusCode   int
-						responseBody []byte
-					}{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+					name: "error - network data unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/network
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {
     "config": {
       "dns": {
@@ -378,37 +231,28 @@ func TestClient_GetOSData(t *testing.T) {
     }
   }
 }`),
+							},
+						},
+						// GET /os/1.0/system/encryption
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
 					},
-				},
-				{
-					Value: struct {
-						statusCode   int
-						responseBody []byte
-					}{
-						statusCode: http.StatusInternalServerError,
-					},
-				},
-			},
-			setup: func(_ *httptest.Server) {},
 
-			assertErr: require.Error,
-			wantPaths: []string{"/os/1.0/system/network", "/os/1.0/system/encryption"},
-		},
-		{
-			name:    "error - network data invalid JSON",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			response: []queue.Item[struct {
-				statusCode   int
-				responseBody []byte
-			}]{
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/network", "GET /os/1.0/system/encryption"},
+					assertResult: noResult,
+				},
 				{
-					Value: struct {
-						statusCode   int
-						responseBody []byte
-					}{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+					name: "error - network data invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/network
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {
     "config": {
       "dns": {
@@ -418,792 +262,411 @@ func TestClient_GetOSData(t *testing.T) {
     }
   }
 }`),
-					},
-				},
-				{
-					Value: struct {
-						statusCode   int
-						responseBody []byte
-					}{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+							},
+						},
+						// GET /os/1.0/system/encryption
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": []
 }`), // array for metadata is invalid.
+							},
+						},
 					},
-				},
-			},
-			setup: func(_ *httptest.Server) {},
 
-			assertErr: require.Error,
-			wantPaths: []string{"/os/1.0/system/network", "/os/1.0/system/encryption"},
-		},
-		{
-			name:    "error - encryption data unexpected http status code",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			response: []queue.Item[struct {
-				statusCode   int
-				responseBody []byte
-			}]{
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/network", "GET /os/1.0/system/encryption"},
+					assertResult: noResult,
+				},
 				{
-					Value: struct {
-						statusCode   int
-						responseBody []byte
-					}{
-						statusCode: http.StatusInternalServerError,
+					name: "error - encryption data unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/network
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
 					},
-				},
-			},
-			setup: func(_ *httptest.Server) {},
 
-			assertErr: require.Error,
-			wantPaths: []string{"/os/1.0/system/network"},
-		},
-		{
-			name:    "error - encryption data invalid JSON",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			response: []queue.Item[struct {
-				statusCode   int
-				responseBody []byte
-			}]{
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/network"},
+					assertResult: noResult,
+				},
 				{
-					Value: struct {
-						statusCode   int
-						responseBody []byte
-					}{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+					name: "error - encryption data invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/network
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": []
 }`), // array for metadata is invalid.
+							},
+						},
 					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/network"},
+					assertResult: noResult,
 				},
 			},
-			setup: func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-			wantPaths: []string{"/os/1.0/system/network"},
 		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			var gotPaths []string
-			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				gotPaths = append(gotPaths, r.URL.Path)
-				response, _ := queue.Pop(t, &tc.response)
-				w.WriteHeader(response.statusCode)
-				_, _ = w.Write(response.responseBody)
-			}))
-			server.TLS = &tls.Config{
-				NextProtos: []string{"h2", "http/1.1"},
-				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  caPool,
-			}
-
-			server.StartTLS()
-			defer server.Close()
-
-			tc.setup(server)
-
-			client := incus.New(tc.certPEM, tc.keyPEM)
-
-			ctx := context.Background()
-
-			serverCert := pem.EncodeToMemory(&pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: server.Certificate().Raw,
-			})
-
-			target := provisioning.Server{
-				ConnectionURL: server.URL,
-				Certificate:   string(serverCert),
-			}
-
-			// Run test
-			resources, err := client.GetOSData(ctx, target)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.wantPaths, gotPaths)
-			require.Equal(t, tc.wantResources, resources)
-			require.Empty(t, tc.response)
-		})
-	}
-}
-
-func TestClient_EnableOSServiceLVM(t *testing.T) {
-	certPEMByte, keyPEMByte, err := incustls.GenerateMemCert(true, false)
-	require.NoError(t, err)
-
-	caPool := x509.NewCertPool()
-	caPool.AppendCertsFromPEM(certPEMByte)
-
-	certPEM, keyPEM := string(certPEMByte), string(keyPEMByte)
-
-	tests := []struct {
-		name       string
-		certPEM    string
-		keyPEM     string
-		statusCode int
-		response   []byte
-		setup      func(*httptest.Server)
-
-		assertErr require.ErrorAssertionFunc
-		wantPath  string
-	}{
 		{
-			name:       "success",
-			certPEM:    certPEM,
-			keyPEM:     keyPEM,
-			statusCode: http.StatusOK,
-			response: []byte(`{
+			name: "EnableOSServiceLVM",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.EnableOSServiceLVM(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {}
 }`),
-			setup: func(_ *httptest.Server) {},
+							},
+						},
+					},
 
-			assertErr: require.NoError,
-			wantPath:  "/os/1.0/services/lvm",
-		},
-		{
-			name:    "error - invalid key pair",
-			certPEM: certPEM,
-			keyPEM:  certPEM, // invalid, should be key
-			setup:   func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-		},
-		{
-			name:    "error - connection failure",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			setup: func(server *httptest.Server) {
-				server.Close()
-			},
-
-			assertErr: require.Error,
-		},
-		{
-			name:       "error - unexpected http status code",
-			certPEM:    certPEM,
-			keyPEM:     keyPEM,
-			statusCode: http.StatusInternalServerError,
-			setup:      func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-			wantPath:  "/os/1.0/services/lvm",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			var gotPath string
-			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				gotPath = r.URL.Path
-				w.WriteHeader(tc.statusCode)
-				_, _ = w.Write(tc.response)
-			}))
-			server.TLS = &tls.Config{
-				NextProtos: []string{"h2", "http/1.1"},
-				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  caPool,
-			}
-
-			server.StartTLS()
-			defer server.Close()
-
-			tc.setup(server)
-
-			client := incus.New(tc.certPEM, tc.keyPEM)
-
-			ctx := context.Background()
-
-			serverCert := pem.EncodeToMemory(&pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: server.Certificate().Raw,
-			})
-
-			target := provisioning.Server{
-				ConnectionURL: server.URL,
-				Certificate:   string(serverCert),
-			}
-
-			// Run test
-			err = client.EnableOSServiceLVM(ctx, target)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.wantPath, gotPath)
-		})
-	}
-}
-
-func TestClient_SetServerConfig(t *testing.T) {
-	certPEMByte, keyPEMByte, err := incustls.GenerateMemCert(true, false)
-	require.NoError(t, err)
-
-	caPool := x509.NewCertPool()
-	caPool.AppendCertsFromPEM(certPEMByte)
-
-	certPEM, keyPEM := string(certPEMByte), string(keyPEMByte)
-
-	type response struct {
-		statusCode   int
-		responseBody []byte
-	}
-
-	tests := []struct {
-		name     string
-		certPEM  string
-		keyPEM   string
-		response []queue.Item[response]
-		setup    func(*httptest.Server)
-
-		assertErr      require.ErrorAssertionFunc
-		wantPath       string
-		assertResponse func(tt require.TestingT, responseBody string, serverAddress string)
-	}{
-		{
-			name:    "success",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			response: []queue.Item[response]{
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /os/1.0/services/lvm"},
+				},
 				{
-					Value: response{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /os/1.0/services/lvm"},
+				},
+			},
+		},
+		{
+			name: "SetServerConfig",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.SetServerConfig(ctx, target, map[string]string{
+					"key": "value",
+				})
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {}
 }`),
-					},
-				},
-				{
-					Value: response{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+							},
+						},
+						// PUT /1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {}
 }`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0", "PUT /1.0"},
+					assertBodies: func(t *testing.T, gotBodies []string) {
+						t.Helper()
+						require.Contains(t, gotBodies[1], `"key":"value"`)
 					},
 				},
-			},
-			setup: func(_ *httptest.Server) {},
-
-			assertErr: require.NoError,
-			wantPath:  "/1.0",
-			assertResponse: func(tt require.TestingT, responseBody string, serverAddress string) {
-				serverAddressURL, _ := url.Parse(serverAddress)
-				require.Contains(tt, responseBody, `"cluster.https_address":"`+serverAddressURL.Host+`"`)
-			},
-		},
-		{
-			name:    "error - invalid key pair",
-			certPEM: certPEM,
-			keyPEM:  certPEM, // invalid, should be key
-			setup:   func(_ *httptest.Server) {},
-
-			assertErr:      require.Error,
-			assertResponse: func(tt require.TestingT, responseBody string, serverAddress string) {},
-		},
-		{
-			name:    "error - connection failure",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			setup: func(server *httptest.Server) {
-				server.Close()
-			},
-
-			assertErr:      require.Error,
-			assertResponse: func(tt require.TestingT, responseBody string, serverAddress string) {},
-		},
-		{
-			name:    "error - GetServer - unexpected http status code",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			response: []queue.Item[response]{
 				{
-					Value: response{
-						statusCode: http.StatusInternalServerError,
+					name: "error - GetServer - unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /1.0
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
 					},
-				},
-			},
-			setup: func(_ *httptest.Server) {},
 
-			assertErr:      require.Error,
-			wantPath:       "/1.0",
-			assertResponse: func(tt require.TestingT, responseBody string, serverAddress string) {},
-		},
-		{
-			name:    "error - UpdateServer - unexpected http status code",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			response: []queue.Item[response]{
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0"},
+				},
 				{
-					Value: response{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+					name: "error - UpdateServer - unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {}
 }`),
+							},
+						},
+						// PUT /1.0
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
 					},
-				},
-				{
-					Value: response{
-						statusCode: http.StatusInternalServerError,
-					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0", "PUT /1.0"},
 				},
 			},
-			setup: func(_ *httptest.Server) {},
-
-			assertErr:      require.Error,
-			wantPath:       "/1.0",
-			assertResponse: func(tt require.TestingT, responseBody string, serverAddress string) {},
 		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			var gotPath string
-			var gotRequest string
-			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				gotPath = r.URL.Path
-
-				// We only care about the second request to UpdateServer
-				body, _ := io.ReadAll(r.Body)
-				gotRequest = string(body)
-
-				response, _ := queue.Pop(t, &tc.response)
-				w.WriteHeader(response.statusCode)
-				_, _ = w.Write(response.responseBody)
-			}))
-			server.TLS = &tls.Config{
-				NextProtos: []string{"h2", "http/1.1"},
-				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  caPool,
-			}
-
-			server.StartTLS()
-			defer server.Close()
-
-			tc.setup(server)
-
-			client := incus.New(tc.certPEM, tc.keyPEM)
-
-			ctx := context.Background()
-
-			serverCert := pem.EncodeToMemory(&pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: server.Certificate().Raw,
-			})
-
-			target := provisioning.Server{
-				ConnectionURL: server.URL,
-				Certificate:   string(serverCert),
-			}
-
-			// Run test
-			serverAddressURL, err := url.Parse(server.URL)
-			require.NoError(t, err)
-
-			err = client.SetServerConfig(ctx, target, map[string]string{
-				"cluster.https_address": serverAddressURL.Host,
-			})
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.wantPath, gotPath)
-			tc.assertResponse(t, gotRequest, server.URL)
-			require.Empty(t, tc.response)
-		})
-	}
-}
-
-func TestClient_EnableCluster(t *testing.T) {
-	certPEMByte, keyPEMByte, err := incustls.GenerateMemCert(true, false)
-	require.NoError(t, err)
-
-	caPool := x509.NewCertPool()
-	caPool.AppendCertsFromPEM(certPEMByte)
-
-	certPEM, keyPEM := string(certPEMByte), string(keyPEMByte)
-
-	type response struct {
-		statusCode   int
-		responseBody []byte
-	}
-
-	tests := []struct {
-		name            string
-		certPEM         string
-		keyPEM          string
-		response        []queue.Item[response]
-		setup           func(*httptest.Server)
-		assertErr       require.ErrorAssertionFunc
-		wantCertificate string
-		wantPaths       []string
-	}{
 		{
-			name:    "success",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			response: []queue.Item[response]{
-				// /1.0/events
+			name: "EnableCluster",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.EnableCluster(ctx, target)
+			},
+			testCases: []methodTestCase{
 				{
-					Value: response{
-						statusCode:   http.StatusForbidden,
-						responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
-					},
-				},
-				// /1.0/cluster
-				{
-					Value: response{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// PUT /1.0/cluster
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {}
 }`),
-					},
-				},
-				// /1.0/operations//wait
-				{
-					Value: response{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+							},
+						},
+						// GET /1.0/operations//wait?timeout=-1
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {
     "metadata":{
       "certificate": "certificate"
     }
   }
 }`),
+							},
+						},
 					},
-				},
-			},
-			setup: func(_ *httptest.Server) {},
 
-			assertErr:       require.NoError,
-			wantCertificate: "certificate",
-			wantPaths:       []string{"/1.0/events", "/1.0/cluster", "/1.0/operations//wait"},
-		},
-		{
-			name:    "success - no certificate returned",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			response: []queue.Item[response]{
-				// /1.0/events
-				{
-					Value: response{
-						statusCode:   http.StatusForbidden,
-						responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+						require.Equal(t, "certificate", res)
 					},
+					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations//wait?timeout=-1"},
 				},
-				// /1.0/cluster
 				{
-					Value: response{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+					name: "success - no certificate returned",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// PUT /1.0/cluster
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {}
 }`),
-					},
-				},
-				// /1.0/operations//wait
-				{
-					Value: response{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+							},
+						},
+						// GET /1.0/operations//wait?timeout=-1
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {
     "metadata":{
     }
   }
 }`), // no certificate returned
+							},
+						},
 					},
-				},
-			},
-			setup: func(_ *httptest.Server) {},
 
-			assertErr:       require.NoError,
-			wantCertificate: "",
-			wantPaths:       []string{"/1.0/events", "/1.0/cluster", "/1.0/operations//wait"},
-		},
-		{
-			name:    "success - no certificate returned",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			response: []queue.Item[response]{
-				// /1.0/events
-				{
-					Value: response{
-						statusCode:   http.StatusForbidden,
-						responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
-					},
+					assertErr:    require.NoError,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations//wait?timeout=-1"},
 				},
-				// /1.0/cluster
 				{
-					Value: response{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+					name: "success - invalid type for certificate",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// PUT /1.0/cluster
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {}
 }`),
-					},
-				},
-				// /1.0/operations//wait
-				{
-					Value: response{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+							},
+						},
+						// GET /1.0/operations//wait?timeout=-1
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {
     "metadata":{
       "certificate": {}
     }
   }
 }`), // invalid type for certificate
+							},
+						},
 					},
+
+					assertErr:    require.NoError,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations//wait?timeout=-1"},
+				},
+				{
+					name: "error - UpdateCluster - unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// PUT /1.0/cluster
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/events", "PUT /1.0/cluster"},
+				},
+				{
+					name: "error - fail op.WaitContext",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// PUT /1.0/cluster
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata":{}}`),
+							},
+						},
+						// GET /1.0/operations//wait?timeout=-1
+						{
+							Value: response{
+								statusCode:   http.StatusInternalServerError, // fail op.WaitContext
+								responseBody: []byte(`{}`),
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations//wait?timeout=-1"},
 				},
 			},
-			setup: func(_ *httptest.Server) {},
-
-			assertErr:       require.NoError,
-			wantCertificate: "",
-			wantPaths:       []string{"/1.0/events", "/1.0/cluster", "/1.0/operations//wait"},
 		},
 		{
-			name:    "error - invalid key pair",
-			certPEM: certPEM,
-			keyPEM:  certPEM, // invalid, should be key
-			setup:   func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-		},
-		{
-			name:    "error - connection failure",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			setup: func(server *httptest.Server) {
-				server.Close()
+			name: "GetClusterNodeNames",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetClusterNodeNames(ctx, target)
 			},
-
-			assertErr: require.Error,
-		},
-		{
-			name:    "error - fail op.WaitContext",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			response: []queue.Item[response]{
-				// /1.0/events
+			testCases: []methodTestCase{
 				{
-					Value: response{
-						statusCode:   http.StatusForbidden,
-						responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
-					},
-				},
-				// /1.0/cluster
-				{
-					Value: response{
-						statusCode:   http.StatusOK,
-						responseBody: []byte(`{"metadata":{}}`),
-					},
-				},
-				// /1.0/operations//wait
-				{
-					Value: response{
-						statusCode:   http.StatusInternalServerError, // fail op.WaitContext
-						responseBody: []byte(`{}`),
-					},
-				},
-			},
-			setup: func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-			wantPaths: []string{"/1.0/events", "/1.0/cluster", "/1.0/operations//wait"},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			var gotPaths []string
-			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				gotPaths = append(gotPaths, r.URL.Path)
-				response, _ := queue.Pop(t, &tc.response)
-				w.WriteHeader(response.statusCode)
-				_, _ = w.Write(response.responseBody)
-			}))
-			server.TLS = &tls.Config{
-				NextProtos: []string{"h2", "http/1.1"},
-				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  caPool,
-			}
-
-			server.StartTLS()
-			defer server.Close()
-
-			tc.setup(server)
-
-			client := incus.New(tc.certPEM, tc.keyPEM)
-
-			ctx := context.Background()
-
-			serverCert := pem.EncodeToMemory(&pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: server.Certificate().Raw,
-			})
-
-			target := provisioning.Server{
-				ConnectionURL: server.URL,
-				Certificate:   string(serverCert),
-			}
-
-			// Run test
-			certificate, err := client.EnableCluster(ctx, target)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.wantCertificate, certificate)
-			require.Equal(t, tc.wantPaths, gotPaths)
-			require.Empty(t, tc.response)
-		})
-	}
-}
-
-func TestClient_GetClusterNodeNames(t *testing.T) {
-	certPEMByte, keyPEMByte, err := incustls.GenerateMemCert(true, false)
-	require.NoError(t, err)
-
-	caPool := x509.NewCertPool()
-	caPool.AppendCertsFromPEM(certPEMByte)
-
-	certPEM, keyPEM := string(certPEMByte), string(keyPEMByte)
-
-	tests := []struct {
-		name       string
-		certPEM    string
-		keyPEM     string
-		statusCode int
-		response   []byte
-		setup      func(*httptest.Server)
-
-		assertErr      require.ErrorAssertionFunc
-		wantPath       string
-		nodeNamesCount int
-	}{
-		{
-			name:       "success",
-			certPEM:    certPEM,
-			keyPEM:     keyPEM,
-			statusCode: http.StatusOK,
-			response: []byte(`{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": [ "https://127.0.0.1/cluster/members/one" ]
 }`),
-			setup: func(_ *httptest.Server) {},
-
-			assertErr:      require.NoError,
-			wantPath:       "/1.0/cluster/members",
-			nodeNamesCount: 1,
-		},
-		{
-			name:    "error - invalid key pair",
-			certPEM: certPEM,
-			keyPEM:  certPEM, // invalid, should be key
-			setup:   func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-		},
-		{
-			name:    "error - connection failure",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			setup: func(server *httptest.Server) {
-				server.Close()
-			},
-
-			assertErr: require.Error,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			var gotPath string
-			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				gotPath = r.URL.Path
-				w.WriteHeader(tc.statusCode)
-				_, _ = w.Write(tc.response)
-			}))
-			server.TLS = &tls.Config{
-				NextProtos: []string{"h2", "http/1.1"},
-				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  caPool,
-			}
-
-			server.StartTLS()
-			defer server.Close()
-
-			tc.setup(server)
-
-			client := incus.New(tc.certPEM, tc.keyPEM)
-
-			ctx := context.Background()
-
-			serverCert := pem.EncodeToMemory(&pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: server.Certificate().Raw,
-			})
-
-			target := provisioning.Server{
-				ConnectionURL: server.URL,
-				Certificate:   string(serverCert),
-			}
-
-			// Run test
-			nodeNames, err := client.GetClusterNodeNames(ctx, target)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.wantPath, gotPath)
-			require.Len(t, nodeNames, tc.nodeNamesCount)
-		})
-	}
-}
-
-func TestClient_GetClusterJoinToken(t *testing.T) {
-	certPEMByte, keyPEMByte, err := incustls.GenerateMemCert(true, false)
-	require.NoError(t, err)
-
-	caPool := x509.NewCertPool()
-	caPool.AppendCertsFromPEM(certPEMByte)
-
-	certPEM, keyPEM := string(certPEMByte), string(keyPEMByte)
-
-	type response struct {
-		statusCode   int
-		responseBody []byte
-	}
-
-	tests := []struct {
-		name      string
-		certPEM   string
-		keyPEM    string
-		response  []queue.Item[response]
-		setup     func(*httptest.Server)
-		assertErr require.ErrorAssertionFunc
-		wantPaths []string
-		wantToken string
-	}{
-		{
-			name:    "success",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			response: []queue.Item[response]{
-				// /1.0/events
-				{
-					Value: response{
-						statusCode:   http.StatusForbidden,
-						responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
 					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+						require.Len(t, res, 1)
+					},
+					wantPaths: []string{"GET /1.0/cluster/members"},
 				},
-				// /1.0/cluster/members
 				{
-					Value: response{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/cluster/members"},
+				},
+			},
+		},
+		{
+			name: "GetClusterJoinToken",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetClusterJoinToken(ctx, target, "server1")
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {
     "metadata": {
       "serverName": "server1",
@@ -1214,381 +677,303 @@ func TestClient_GetClusterJoinToken(t *testing.T) {
     }
   }
 }`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members"},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+						// base64 encoded token from response body metadata.metadata.
+						wantToken := "eyJzZXJ2ZXJfbmFtZSI6InNlcnZlcjEiLCJmaW5nZXJwcmludCI6ImZpbmdlcnByaW50IiwiYWRkcmVzc2VzIjpbIjEuMC4wLjEiLCIxLjAuMC4yIl0sInNlY3JldCI6InNlY3JldCIsImV4cGlyZXNfYXQiOiIyMDI1LTA2LTE3VDE1OjM5OjE5WiJ9"
+						require.Equal(t, wantToken, res)
 					},
 				},
-			},
-			setup: func(_ *httptest.Server) {},
-
-			assertErr: require.NoError,
-			wantPaths: []string{"/1.0/events", "/1.0/cluster/members"},
-			// base64 encoded token from response body metadata.metadata.
-			wantToken: "eyJzZXJ2ZXJfbmFtZSI6InNlcnZlcjEiLCJmaW5nZXJwcmludCI6ImZpbmdlcnByaW50IiwiYWRkcmVzc2VzIjpbIjEuMC4wLjEiLCIxLjAuMC4yIl0sInNlY3JldCI6InNlY3JldCIsImV4cGlyZXNfYXQiOiIyMDI1LTA2LTE3VDE1OjM5OjE5WiJ9",
-		},
-		{
-			name:    "error - invalid key pair",
-			certPEM: certPEM,
-			keyPEM:  certPEM, // invalid, should be key
-			setup:   func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-		},
-		{
-			name:    "error - connection failure",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			setup: func(server *httptest.Server) {
-				server.Close()
-			},
-
-			assertErr: require.Error,
-		},
-		{
-			name:    "error - invalid cluster join token",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			response: []queue.Item[response]{
-				// /1.0/events
 				{
-					Value: response{
-						statusCode:   http.StatusForbidden,
-						responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+					name: "error - CreateClusterMember - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
 					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /1.0/events", "POST /1.0/cluster/members"},
+					assertResult: noResult,
 				},
-				// /1.0/cluster/members
 				{
-					Value: response{
-						statusCode: http.StatusOK,
-						responseBody: []byte(`{
+					name: "error - invalid cluster join token",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
   "metadata": {
     "metadata": {
     }
   }
 }`), // Join token content
+							},
+						},
 					},
+
+					assertErr: func(tt require.TestingT, err error, i ...any) {
+						require.ErrorContains(tt, err, "Failed converting token operation to join token")
+					},
+					wantPaths:    []string{"GET /1.0/events", "POST /1.0/cluster/members"},
+					assertResult: noResult,
 				},
 			},
-			setup: func(_ *httptest.Server) {},
-
-			assertErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorContains(tt, err, "Failed converting token operation to join token")
+		},
+		{
+			name: "JoinCluster",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.JoinCluster(ctx, target, "token", provisioning.Server{})
 			},
-			wantPaths: []string{"/1.0/events", "/1.0/cluster/members"},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// PUT /1.0/cluster
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata":{}}`),
+							},
+						},
+						// GET /1.0/operations//wait?timeout=-1
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata":{}}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations//wait?timeout=-1"},
+				},
+				{
+					name: "error - UpdateCluster - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// PUT /1.0/cluster
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster"},
+				},
+				{
+					name: "error - fail op.WaitContext",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// PUT /1.0/cluster
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"metadata":{}}`),
+							},
+						},
+						// GET /1.0/operations//wait?timeout=-1
+						{
+							Value: response{
+								statusCode:   http.StatusInternalServerError, // fail op.WaitContext
+								responseBody: []byte(`{}`),
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations//wait?timeout=-1"},
+				},
+			},
+		},
+		{
+			name: "UpdateNetworkConfig",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.UpdateNetworkConfig(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"PUT /os/1.0/system/network"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"PUT /os/1.0/system/network"},
+				},
+			},
 		},
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			var gotPaths []string
-			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				gotPaths = append(gotPaths, r.URL.Path)
-				response, _ := queue.Pop(t, &tc.response)
-				w.WriteHeader(response.statusCode)
-				_, _ = w.Write(response.responseBody)
-			}))
-			server.TLS = &tls.Config{
-				NextProtos: []string{"h2", "http/1.1"},
-				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  caPool,
-			}
-
-			server.StartTLS()
-			defer server.Close()
-
-			tc.setup(server)
-
-			client := incus.New(tc.certPEM, tc.keyPEM)
-
+	for _, method := range methods {
+		t.Run(method.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			serverCert := pem.EncodeToMemory(&pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: server.Certificate().Raw,
-			})
+			// getClient error - invalid key pair
+			getClientErr(t, method, caPool, certPEM)
 
-			target := provisioning.Server{
-				ConnectionURL: server.URL,
-				Certificate:   string(serverCert),
+			// run regular test cases
+			for _, tc := range method.testCases {
+				t.Run(tc.name, func(t *testing.T) {
+					// Setup
+					var gotPaths []string
+					var gotBodies []string
+					server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						gotPaths = append(gotPaths, fmt.Sprintf("%s %s", r.Method, r.URL.String()))
+
+						body, _ := io.ReadAll(r.Body)
+						gotBodies = append(gotBodies, string(body))
+
+						response, _ := queue.Pop(t, &tc.response)
+						w.WriteHeader(response.statusCode)
+						_, _ = w.Write(response.responseBody)
+					}))
+					server.TLS = &tls.Config{
+						NextProtos: []string{"h2", "http/1.1"},
+						ClientAuth: tls.RequireAndVerifyClientCert,
+						ClientCAs:  caPool,
+					}
+
+					server.StartTLS()
+					defer server.Close()
+
+					client := incus.New(certPEM, keyPEM)
+
+					serverCert := pem.EncodeToMemory(&pem.Block{
+						Type:  "CERTIFICATE",
+						Bytes: server.Certificate().Raw,
+					})
+
+					target := provisioning.Server{
+						Name:               "server01",
+						ConnectionURL:      server.URL,
+						Certificate:        string(serverCert),
+						ClusterCertificate: ptr.To(string(serverCert)),
+					}
+
+					// Run test
+					retValue, err := method.clientCall(ctx, client, target)
+
+					// Assert
+					tc.assertErr(t, err)
+
+					require.Equal(t, tc.wantPaths, gotPaths)
+
+					if tc.assertResult != nil || retValue != nil {
+						tc.assertResult(t, retValue)
+					}
+
+					if tc.assertBodies != nil {
+						tc.assertBodies(t, gotBodies)
+					}
+
+					require.Empty(t, tc.response)
+				})
 			}
-
-			// Run test
-			token, err := client.GetClusterJoinToken(ctx, target, "server1")
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.wantPaths, gotPaths)
-			require.Equal(t, tc.wantToken, token)
-			require.Empty(t, tc.response)
 		})
 	}
 }
 
-func TestClient_JoinCluster(t *testing.T) {
-	certPEMByte, keyPEMByte, err := incustls.GenerateMemCert(true, false)
-	require.NoError(t, err)
+func getClientErr(t *testing.T, method methodTestSet, caPool *x509.CertPool, certPEM string) {
+	t.Helper()
 
-	caPool := x509.NewCertPool()
-	caPool.AppendCertsFromPEM(certPEMByte)
-
-	certPEM, keyPEM := string(certPEMByte), string(keyPEMByte)
-
-	type response struct {
-		statusCode   int
-		responseBody []byte
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	server.TLS = &tls.Config{
+		NextProtos: []string{"h2", "http/1.1"},
+		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientCAs:  caPool,
 	}
 
-	tests := []struct {
-		name      string
-		certPEM   string
-		keyPEM    string
-		response  []queue.Item[response]
-		setup     func(*httptest.Server)
-		assertErr require.ErrorAssertionFunc
-		wantPaths []string
-	}{
-		{
-			name:    "success",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			response: []queue.Item[response]{
-				// /1.0/events
-				{
-					Value: response{
-						statusCode:   http.StatusForbidden,
-						responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
-					},
-				},
-				// /1.0/cluster
-				{
-					Value: response{
-						statusCode:   http.StatusOK,
-						responseBody: []byte(`{"metadata":{}}`),
-					},
-				},
-				// /1.0/operations//wait
-				{
-					Value: response{
-						statusCode:   http.StatusOK,
-						responseBody: []byte(`{"metadata":{}}`),
-					},
-				},
-			},
-			setup: func(_ *httptest.Server) {},
+	server.StartTLS()
+	defer server.Close()
 
-			assertErr: require.NoError,
-			wantPaths: []string{"/1.0/events", "/1.0/cluster", "/1.0/operations//wait"},
-		},
-		{
-			name:    "error - invalid key pair",
-			certPEM: certPEM,
-			keyPEM:  certPEM, // invalid, should be key
-			setup:   func(_ *httptest.Server) {},
+	client := incus.New(certPEM, certPEM) // invalid key
 
-			assertErr: require.Error,
-		},
+	serverCert := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: server.Certificate().Raw,
+	})
 
-		{
-			name:    "error - connection failure",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			setup: func(server *httptest.Server) {
-				server.Close()
-			},
-
-			assertErr: require.Error,
-		},
-		{
-			name:    "error - fail op.WaitContext",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			response: []queue.Item[response]{
-				// /1.0/events
-				{
-					Value: response{
-						statusCode:   http.StatusForbidden,
-						responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
-					},
-				},
-				// /1.0/cluster
-				{
-					Value: response{
-						statusCode:   http.StatusOK,
-						responseBody: []byte(`{"metadata":{}}`),
-					},
-				},
-				// /1.0/operations//wait
-				{
-					Value: response{
-						statusCode:   http.StatusInternalServerError, // fail op.WaitContext
-						responseBody: []byte(`{}`),
-					},
-				},
-			},
-			setup: func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-			wantPaths: []string{"/1.0/events", "/1.0/cluster", "/1.0/operations//wait"},
-		},
+	target := provisioning.Server{
+		ConnectionURL: server.URL,
+		Certificate:   string(serverCert),
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			var gotPaths []string
-			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				gotPaths = append(gotPaths, r.URL.Path)
-				response, _ := queue.Pop(t, &tc.response)
-				w.WriteHeader(response.statusCode)
-				_, _ = w.Write(response.responseBody)
-			}))
-			server.TLS = &tls.Config{
-				NextProtos: []string{"h2", "http/1.1"},
-				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  caPool,
-			}
-
-			server.StartTLS()
-			defer server.Close()
-
-			tc.setup(server)
-
-			client := incus.New(tc.certPEM, tc.keyPEM)
-
-			ctx := context.Background()
-
-			serverCert := pem.EncodeToMemory(&pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: server.Certificate().Raw,
-			})
-
-			target := provisioning.Server{
-				ConnectionURL: server.URL,
-				Certificate:   string(serverCert),
-			}
-
-			cluster := provisioning.Server{}
-
-			// Run test
-			err := client.JoinCluster(ctx, target, "token", cluster)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.wantPaths, gotPaths)
-			require.Empty(t, tc.response)
-		})
-	}
+	_, err := method.clientCall(context.Background(), client, target)
+	require.Error(t, err)
 }
 
-func TestClient_UpdateNetworkConfig(t *testing.T) {
+func setupCerts(t *testing.T) (caPool *x509.CertPool, certPEM string, keyPEM string) {
+	t.Helper()
+
 	certPEMByte, keyPEMByte, err := incustls.GenerateMemCert(true, false)
 	require.NoError(t, err)
 
-	caPool := x509.NewCertPool()
+	caPool = x509.NewCertPool()
 	caPool.AppendCertsFromPEM(certPEMByte)
 
-	certPEM, keyPEM := string(certPEMByte), string(keyPEMByte)
-
-	tests := []struct {
-		name       string
-		certPEM    string
-		keyPEM     string
-		statusCode int
-		response   []byte
-		setup      func(*httptest.Server)
-
-		assertErr require.ErrorAssertionFunc
-		wantPath  string
-	}{
-		{
-			name:       "success",
-			certPEM:    certPEM,
-			keyPEM:     keyPEM,
-			statusCode: http.StatusOK,
-			response:   []byte(`{}`),
-			setup:      func(_ *httptest.Server) {},
-
-			assertErr: require.NoError,
-			wantPath:  "/os/1.0/system/network",
-		},
-		{
-			name:    "error - invalid key pair",
-			certPEM: certPEM,
-			keyPEM:  certPEM, // invalid, should be key
-			setup:   func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-		},
-		{
-			name:    "error - connection failure",
-			certPEM: certPEM,
-			keyPEM:  keyPEM,
-			setup: func(server *httptest.Server) {
-				server.Close()
-			},
-
-			assertErr: require.Error,
-		},
-		{
-			name:       "error - unexpected http status code",
-			certPEM:    certPEM,
-			keyPEM:     keyPEM,
-			statusCode: http.StatusInternalServerError,
-			setup:      func(_ *httptest.Server) {},
-
-			assertErr: require.Error,
-			wantPath:  "/os/1.0/system/network",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			var gotPath string
-			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				gotPath = r.URL.Path
-				w.WriteHeader(tc.statusCode)
-				_, _ = w.Write(tc.response)
-			}))
-			server.TLS = &tls.Config{
-				NextProtos: []string{"h2", "http/1.1"},
-				ClientAuth: tls.RequireAndVerifyClientCert,
-				ClientCAs:  caPool,
-			}
-
-			server.StartTLS()
-			defer server.Close()
-
-			tc.setup(server)
-
-			client := incus.New(tc.certPEM, tc.keyPEM)
-
-			ctx := context.Background()
-
-			serverCert := pem.EncodeToMemory(&pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: server.Certificate().Raw,
-			})
-
-			target := provisioning.Server{
-				ConnectionURL: server.URL,
-				Certificate:   string(serverCert),
-				// OSData: api.OSData{
-				// 	Network: incusosapi.SystemNetwork{
-				// 		Config: &incusosapi.SystemNetworkConfig{
-				// 			NTP: &incusosapi.SystemNetworkNTP{
-				// 				Timeservers: []string{"0.pool.ntp.org"},
-				// 			},
-				// 		},
-				// 	},
-				// },
-			}
-
-			// Run test
-			err := client.UpdateNetworkConfig(ctx, target)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.wantPath, gotPath)
-		})
-	}
+	return caPool, string(certPEMByte), string(keyPEMByte)
 }
