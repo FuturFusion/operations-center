@@ -20,7 +20,10 @@ type client struct {
 	clientKey  string
 }
 
-var _ provisioning.ServerClientPort = client{}
+var (
+	_ provisioning.ServerClientPort  = client{}
+	_ provisioning.ClusterClientPort = client{}
+)
 
 func New(clientCert string, clientKey string) client {
 	return client{
@@ -270,6 +273,282 @@ func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joi
 	err = op.WaitContext(ctx)
 	if err != nil {
 		return fmt.Errorf("Failed to wait for update operation during cluster join on %q: %w", server.ConnectionURL, err)
+	}
+
+	return nil
+}
+
+func (c client) CreateProject(ctx context.Context, server provisioning.Server, name string) error {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	err = client.CreateProject(incusapi.ProjectsPost{
+		Name: name,
+		ProjectPut: incusapi.ProjectPut{
+			Description: "Internal project to isolate fully managed resources.",
+			Config:      map[string]string{},
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// InitializeDefaultStorage performs the post-clustering initialization for the storage:
+//   - Create local storage pool on each server and finalize it for the cluster.
+//   - Create two volumes on that pool on each server named images and backups.
+//   - Set storage.images_volume and storage.backups_volume on each server to point to the volumes.
+//   - Update the default profile in the default project to use the local storage pool.
+//   - Update the default profile in the internal project to use the local storage pool.
+func (c client) InitializeDefaultStorage(ctx context.Context, servers []provisioning.Server) error {
+	// Use the first server of the cluster for communication.
+	client, err := c.getClient(ctx, servers[0])
+	if err != nil {
+		return err
+	}
+
+	profileDefault, profileDefaultEtag, err := client.GetProfile("default")
+	if err != nil {
+		return err
+	}
+
+	if profileDefault.Devices == nil {
+		profileDefault.Devices = map[string]map[string]string{}
+	}
+
+	internalProfileDefault, internalProfileDefaultEtag, err := client.UseProject("internal").GetProfile("default")
+	if err != nil {
+		return err
+	}
+
+	if internalProfileDefault.Devices == nil {
+		internalProfileDefault.Devices = map[string]map[string]string{}
+	}
+
+	// Check for storage pools.
+	storagePools, err := client.GetStoragePoolNames()
+	if err != nil {
+		return err
+	}
+
+	if len(storagePools) != 0 {
+		// TODO: should we return an error in this case?
+		return nil
+	}
+
+	// Create local storage pool.
+	for _, server := range servers {
+		// Create local storage pool on each server.
+		err = client.UseTarget(server.Name).CreateStoragePool(incusapi.StoragePoolsPost{
+			Name:   "local",
+			Driver: "zfs",
+			StoragePoolPut: incusapi.StoragePoolPut{
+				Config: map[string]string{
+					"source": "local/incus",
+				},
+				Description: "Local storage pool (on system drive)",
+			},
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	// Finalize storage pool creation on the cluster.
+	err = client.CreateStoragePool(incusapi.StoragePoolsPost{
+		Name:   "local",
+		Driver: "zfs",
+	})
+	if err != nil {
+		return err
+	}
+
+	// Create storage volumes and update server config for backups and images.
+	for _, server := range servers {
+		// Create the default volumes.
+		for _, volName := range []string{"backups", "images"} {
+			// Create default volumes (backups and images), on every server.
+			err = client.UseTarget(server.Name).CreateStoragePoolVolume("local", incusapi.StorageVolumesPost{
+				Name:        volName,
+				Type:        "custom",
+				ContentType: "filesystem",
+				StorageVolumePut: incusapi.StorageVolumePut{
+					Description: "Volume holding system " + volName,
+				},
+			})
+			if err != nil {
+				return err
+			}
+
+			// Set server config on each server.
+			err = c.SetServerConfig(ctx, server, map[string]string{
+				fmt.Sprintf("storage.%s_volume", volName): "local/" + volName,
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Add local storage pool to the default profile.
+	profileDefault.Devices["root"] = map[string]string{
+		"type": "disk",
+		"path": "/",
+		"pool": "local",
+	}
+
+	err = client.UpdateProfile("default", profileDefault.Writable(), profileDefaultEtag)
+	if err != nil {
+		return err
+	}
+
+	// Add local storage pool to the default profile of the internal project.
+	internalProfileDefault.Devices["root"] = map[string]string{
+		"type": "disk",
+		"path": "/",
+		"pool": "local",
+	}
+
+	err = client.UseProject("internal").UpdateProfile("default", internalProfileDefault.Writable(), internalProfileDefaultEtag)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// InitializeDefaultNetworking performs the post-clustering initialization for the networking:
+//   - Create local network bridge "incusbr0" on each server.
+//   - Create an "internal" network bridge on each server.
+//   - Update the default profile in the default project to use incusbr0 for networking.
+//   - Update the default profile in the internal project to use internal-mesh for networking.
+func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server, primaryNic string) error {
+	// Use the first server of the cluster for communication.
+	client, err := c.getClient(ctx, servers[0])
+	if err != nil {
+		return err
+	}
+
+	profileDefault, profileDefaultEtag, err := client.GetProfile("default")
+	if err != nil {
+		return err
+	}
+
+	if profileDefault.Devices == nil {
+		profileDefault.Devices = map[string]map[string]string{}
+	}
+
+	internalProfileDefault, internalProfileDefaultEtag, err := client.UseProject("internal").GetProfile("default")
+	if err != nil {
+		return err
+	}
+
+	if internalProfileDefault.Devices == nil {
+		internalProfileDefault.Devices = map[string]map[string]string{}
+	}
+
+	// Check for networks.
+	allNetworks, err := client.GetNetworks()
+	if err != nil {
+		return err
+	}
+
+	networks := []incusapi.Network{}
+	for _, network := range allNetworks {
+		if !network.Managed {
+			continue
+		}
+
+		networks = append(networks, network)
+	}
+
+	if len(networks) != 0 {
+		// TODO: should we return an error in this case?
+		return nil
+	}
+
+	// Create local network bridges "incusbr0" and "internal" on each server.
+	for _, server := range servers {
+		// Create the bridge networks.
+		for _, bridge := range []struct {
+			name        string
+			description string
+		}{
+			{
+				name:        "incusbr0",
+				description: "Local network bridge (NAT)",
+			},
+			{
+				name:        "internal",
+				description: "Internal mesh network bridge",
+			},
+		} {
+			err = client.UseTarget(server.Name).CreateNetwork(incusapi.NetworksPost{
+				Name: bridge.name,
+				Type: "bridge",
+				NetworkPut: incusapi.NetworkPut{
+					Description: bridge.description,
+				},
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Finalize network bridges on the cluster.
+	for _, name := range []string{"incusbr0", "internal"} {
+		err = client.CreateNetwork(incusapi.NetworksPost{
+			Name: name,
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	// Set network config for internal mesh.
+	internalNetwork, internalNetworkETag, err := client.GetNetwork("internal")
+	if err != nil {
+		return err
+	}
+
+	internalNetwork.Config["ipv4.address"] = "none"
+	internalNetwork.Config["ipv6.address"] = "fdff:ffff:dc01::1/64"
+	internalNetwork.Config["tunnel.mesh.id"] = "1000"
+	internalNetwork.Config["tunnel.mesh.interface"] = primaryNic
+	internalNetwork.Config["tunnel.mesh.protocol"] = "vxlan"
+
+	err = client.UpdateNetwork("internal", internalNetwork.Writable(), internalNetworkETag)
+	if err != nil {
+		return err
+	}
+
+	// Add incusbr0 to the default profile.
+	profileDefault.Devices["eth0"] = map[string]string{
+		"type":    "nic",
+		"network": "incusbr0",
+		"name":    "eth0",
+	}
+
+	err = client.UpdateProfile("default", profileDefault.Writable(), profileDefaultEtag)
+	if err != nil {
+		return err
+	}
+
+	// Add internal mesh to the default profile of internal project.
+	internalProfileDefault.Devices["eth0"] = map[string]string{
+		"type":    "nic",
+		"network": "internal",
+		"name":    "eth0",
+	}
+
+	err = client.UseProject("internal").UpdateProfile("default", internalProfileDefault.Writable(), internalProfileDefaultEtag)
+	if err != nil {
+		return err
 	}
 
 	return nil
