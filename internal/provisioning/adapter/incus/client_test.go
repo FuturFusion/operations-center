@@ -866,6 +866,1433 @@ func TestClient(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "CreateProject",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.CreateProject(ctx, target, "project")
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"POST /1.0/projects"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"POST /1.0/projects"},
+				},
+			},
+		},
+		{
+			name: "InitializeDefaultStorage",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.InitializeDefaultStorage(ctx, []provisioning.Server{target})
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/storage-pools
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/storage-pools?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/storage-pools
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/local/volumes/custom?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// PUT /1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/local/volumes/custom?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// PUT /1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// PUT /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// PUT /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/storage-pools", "POST /1.0/storage-pools?target=server01", "POST /1.0/storage-pools", "POST /1.0/storage-pools/local/volumes/custom?target=server01", "GET /1.0", "PUT /1.0", "POST /1.0/storage-pools/local/volumes/custom?target=server01", "GET /1.0", "PUT /1.0", "PUT /1.0/profiles/default", "PUT /1.0/profiles/default?project=internal"},
+				},
+				{
+					name: "success - GetStoragePoolNames - already exists",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/storage-pools
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": [
+    "/1.0/storage-pools/local"
+  ]
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/storage-pools"},
+				},
+				{
+					name: "error - GetProfile default project - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default"},
+				},
+				{
+					name: "error - GetProfile internal project - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal"},
+				},
+				{
+					name: "error - GetStoragePoolNames - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/storage-pools
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/storage-pools"},
+				},
+				{
+					name: "error - CreateStoragePool per target - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/storage-pools
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/storage-pools?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/storage-pools", "POST /1.0/storage-pools?target=server01"},
+				},
+				{
+					name: "error - CreateStoragePool finalize cluster - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/storage-pools
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/storage-pools?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/storage-pools
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/storage-pools", "POST /1.0/storage-pools?target=server01", "POST /1.0/storage-pools"},
+				},
+				{
+					name: "error - CreateStoragePoolVolume - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/storage-pools
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/storage-pools?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/storage-pools
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/local/volumes/custom?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/storage-pools", "POST /1.0/storage-pools?target=server01", "POST /1.0/storage-pools", "POST /1.0/storage-pools/local/volumes/custom?target=server01"},
+				},
+				{
+					name: "error - SetServerConfig - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/storage-pools
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/storage-pools?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/storage-pools
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/local/volumes/custom?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/storage-pools", "POST /1.0/storage-pools?target=server01", "POST /1.0/storage-pools", "POST /1.0/storage-pools/local/volumes/custom?target=server01", "GET /1.0"},
+				},
+				{
+					name: "error - UpdateProfile default project - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/storage-pools
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/storage-pools?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/storage-pools
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/local/volumes/custom?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// PUT /1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/local/volumes/custom?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// PUT /1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// PUT /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/storage-pools", "POST /1.0/storage-pools?target=server01", "POST /1.0/storage-pools", "POST /1.0/storage-pools/local/volumes/custom?target=server01", "GET /1.0", "PUT /1.0", "POST /1.0/storage-pools/local/volumes/custom?target=server01", "GET /1.0", "PUT /1.0", "PUT /1.0/profiles/default"},
+				},
+				{
+					name: "error - UpdateProfile internal project - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/storage-pools
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/storage-pools?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/storage-pools
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/local/volumes/custom?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// PUT /1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/local/volumes/custom?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// PUT /1.0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// PUT /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// PUT /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/storage-pools", "POST /1.0/storage-pools?target=server01", "POST /1.0/storage-pools", "POST /1.0/storage-pools/local/volumes/custom?target=server01", "GET /1.0", "PUT /1.0", "POST /1.0/storage-pools/local/volumes/custom?target=server01", "GET /1.0", "PUT /1.0", "PUT /1.0/profiles/default", "PUT /1.0/profiles/default?project=internal"},
+				},
+			},
+		},
+		{
+			name: "InitializeDefaultNetworking",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.InitializeDefaultNetworking(ctx, []provisioning.Server{target}, "eth0")
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks?recursion=1
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks/internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {}
+  }
+}`),
+							},
+						},
+						// PUT /1.0/networks/internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// PUT /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// PUT /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/internal", "PUT /1.0/networks/internal", "PUT /1.0/profiles/default", "PUT /1.0/profiles/default?project=internal"},
+				},
+				{
+					name: "success - GetNetworks - networks already exist",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks?recursion=1
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": [
+    {
+      "name": "incusbr0",
+      "managed": true
+    },
+    {
+      "name": "br0",
+      "managed": false
+    }
+  ]
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1"},
+				},
+				{
+					name: "error - GetProfile default project - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default"},
+				},
+				{
+					name: "error - GetProfile internal project - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal"},
+				},
+				{
+					name: "error - GetNetworks - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks?recursion=1
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1"},
+				},
+				{
+					name: "error - CreateNetwork per server - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks?recursion=1
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01"},
+				},
+				{
+					name: "error - CreateNetwork finalize on cluster - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks?recursion=1
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks"},
+				},
+				{
+					name: "error - GetNetwork - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks?recursion=1
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks/internal
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/internal"},
+				},
+				{
+					name: "error - UpdateNetwork - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks?recursion=1
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks/internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {}
+  }
+}`),
+							},
+						},
+						// PUT /1.0/networks/internal
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/internal", "PUT /1.0/networks/internal"},
+				},
+				{
+					name: "error - UpdateProfile default project - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks?recursion=1
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks/internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {}
+  }
+}`),
+							},
+						},
+						// PUT /1.0/networks/internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// PUT /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/internal", "PUT /1.0/networks/internal", "PUT /1.0/profiles/default"},
+				},
+				{
+					name: "error - UpdateProfile internal project - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks?recursion=1
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks/internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {}
+  }
+}`),
+							},
+						},
+						// PUT /1.0/networks/internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// PUT /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// PUT /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/internal", "PUT /1.0/networks/internal", "PUT /1.0/profiles/default", "PUT /1.0/profiles/default?project=internal"},
+				},
+			},
+		},
 	}
 
 	for _, method := range methods {
