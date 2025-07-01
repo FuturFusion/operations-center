@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -14,27 +15,33 @@ import (
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/testing/queue"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestClusterService_Create(t *testing.T) {
 	tests := []struct {
-		name                           string
-		cluster                        provisioning.Cluster
-		repoExistsByName               bool
-		repoExistsByNameErr            error
-		repoCreateErr                  error
-		repoUpdateErr                  error
-		clientPingErr                  error
-		clientEnableOSServiceLVMErr    error
-		clientSetServerConfig          []queue.Item[struct{}]
-		clientEnableClusterCertificate string
-		clientEnableClusterErr         error
-		clientGetClusterNodeNamesErr   error
-		clientGetClusterJoinToken      string
-		clientGetClusterJoinTokenErr   error
-		clientJoinClusterErr           error
-		serverSvcGetByName             []queue.Item[*provisioning.Server]
-		serverSvcUpdateErr             error
+		name                                 string
+		cluster                              provisioning.Cluster
+		repoExistsByName                     bool
+		repoExistsByNameErr                  error
+		repoCreateErr                        error
+		repoUpdateErr                        error
+		clientPingErr                        error
+		clientEnableOSServiceLVMErr          error
+		clientSetServerConfig                []queue.Item[struct{}]
+		clientEnableClusterCertificate       string
+		clientEnableClusterErr               error
+		clientGetClusterNodeNamesErr         error
+		clientGetClusterJoinToken            string
+		clientGetClusterJoinTokenErr         error
+		clientJoinClusterErr                 error
+		clientCreateProjectErr               error
+		clientInitializeDefaultStorageErr    error
+		clientGetOSData                      api.OSData
+		clientGetOSDataErr                   error
+		clientInitializeDefaultNetworkingErr error
+		serverSvcGetByName                   []queue.Item[*provisioning.Server]
+		serverSvcUpdateErr                   error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -74,6 +81,18 @@ func TestClusterService_Create(t *testing.T) {
 				{}, // Server 2
 			},
 			clientEnableClusterCertificate: "certificate",
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					Config: &incusosapi.SystemNetworkConfig{
+						Interfaces: []incusosapi.SystemNetworkInterface{
+							{
+								Name:  "eth0",
+								Roles: []string{"primary"},
+							},
+						},
+					},
+				},
+			},
 
 			assertErr: require.NoError,
 		},
@@ -523,6 +542,178 @@ func TestClusterService_Create(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 		},
+		{
+			name: "error - client.CreateProject",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			clientCreateProjectErr:         boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.InitializeDefaultStorage",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate:    "certificate",
+			clientInitializeDefaultStorageErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.GetOSData",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			clientGetOSDataErr:             boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.InitializeDefaultNetworking",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			clientGetOSData: api.OSData{
+				Network: incusosapi.SystemNetwork{
+					Config: &incusosapi.SystemNetworkConfig{
+						Interfaces: []incusosapi.SystemNetworkInterface{
+							{
+								Name:  "eth0",
+								Roles: []string{"primary"},
+							},
+						},
+					},
+				},
+			},
+			clientInitializeDefaultNetworkingErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
 	}
 
 	for _, tc := range tests {
@@ -562,6 +753,18 @@ func TestClusterService_Create(t *testing.T) {
 				},
 				JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) error {
 					return tc.clientJoinClusterErr
+				},
+				CreateProjectFunc: func(ctx context.Context, server provisioning.Server, name string) error {
+					return tc.clientCreateProjectErr
+				},
+				InitializeDefaultStorageFunc: func(ctx context.Context, servers []provisioning.Server) error {
+					return tc.clientInitializeDefaultStorageErr
+				},
+				GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
+					return tc.clientGetOSData, tc.clientGetOSDataErr
+				},
+				InitializeDefaultNetworkingFunc: func(ctx context.Context, servers []provisioning.Server, primaryNic string) error {
+					return tc.clientInitializeDefaultNetworkingErr
 				},
 			}
 

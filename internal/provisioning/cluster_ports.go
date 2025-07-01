@@ -2,6 +2,8 @@ package provisioning
 
 import (
 	"context"
+
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type ClusterService interface {
@@ -40,4 +42,8 @@ type ClusterClientPort interface {
 	GetClusterNodeNames(ctx context.Context, server Server) (nodeNames []string, _ error)
 	GetClusterJoinToken(ctx context.Context, server Server, memberName string) (joinToken string, _ error)
 	JoinCluster(ctx context.Context, server Server, joinToken string, cluster Server) error
+	CreateProject(ctx context.Context, server Server, name string) error
+	InitializeDefaultStorage(ctx context.Context, servers []Server) error
+	GetOSData(ctx context.Context, server Server) (api.OSData, error)
+	InitializeDefaultNetworking(ctx context.Context, servers []Server, primaryNic string) error
 }
