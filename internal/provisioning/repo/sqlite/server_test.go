@@ -68,6 +68,18 @@ server B
 		JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) error {
 			return nil
 		},
+		CreateProjectFunc: func(ctx context.Context, server provisioning.Server, name string) error {
+			return nil
+		},
+		InitializeDefaultStorageFunc: func(ctx context.Context, servers []provisioning.Server) error {
+			return nil
+		},
+		GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
+			return api.OSData{}, nil
+		},
+		InitializeDefaultNetworkingFunc: func(ctx context.Context, servers []provisioning.Server, primaryNic string) error {
+			return nil
+		},
 	}
 
 	ctx := context.Background()
