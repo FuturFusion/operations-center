@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"slices"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -71,6 +72,20 @@ func (s *clusterService) SetInventorySyncers(inventorySyncers []InventorySyncer)
 // 2nd DB transaction:
 //   - Update cluster entry with certificate and mark the cluster as ready.
 //   - Update server entries by linking them with the cluster.
+//
+// Perform post-clustering initialization:
+//   - Create internal project
+//   - Initialize default storage:
+//     Create local storage pool on each server and finalize it for the cluster.
+//     Create two volumes on that pool on each server named images and backups.
+//     Set storage.images_volume and storage.backups_volume on each server to point to the volumes.
+//     Update the default profile in the default project to use the local storage pool.
+//     Update the default profile in the internal project to use the local storage pool.
+//   - Initialize default networking:
+//     Create local network bridge "incusbr0" on each server.
+//     Create an "internal" network bridge on each server.
+//     Update the default profile in the default project to use incusbr0 for networking.
+//     Update the default profile in the internal project to use internal-mesh for networking.
 func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster, error) {
 	err := newCluster.Validate()
 	if err != nil {
@@ -80,6 +95,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	var bootstrapServer Server
 	var servers []Server
 
+	// 1st DB transaction.
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		// Ensure there is no name conflict for the new cluster.
 		exists, err := s.repo.ExistsByName(ctx, newCluster.Name)
@@ -122,6 +138,8 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	if err != nil {
 		return newCluster, err
 	}
+
+	// Perform pre-clustering and clustering API calls.
 
 	// Check, that all the listed servers are online.
 	for _, server := range servers {
@@ -220,6 +238,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		}
 	}
 
+	// 2nd DB transaction.
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		// Validate again all listed servers are not yet part of cluster.
 		for _, server := range servers {
@@ -256,7 +275,47 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		return newCluster, err
 	}
 
+	// Perform post-clustering initialization.
+
+	// Create an internal project.
+	err = s.client.CreateProject(ctx, cluster, "internal")
+	if err != nil {
+		return newCluster, err
+	}
+
+	// Initialize default storage.
+	err = s.client.InitializeDefaultStorage(ctx, servers)
+	if err != nil {
+		return newCluster, err
+	}
+
+	// Initialize default networking.
+	osData, err := s.client.GetOSData(ctx, cluster)
+	if err != nil {
+		return newCluster, err
+	}
+
+	err = s.client.InitializeDefaultNetworking(ctx, servers, detectClusteringInterface(osData.Network))
+	if err != nil {
+		return newCluster, err
+	}
+
 	return newCluster, nil
+}
+
+// detectClusteringInterface returns the first interface that has the role
+// "clustering" and at least one IP address assigned.
+func detectClusteringInterface(network api.ServerSystemNetwork) string {
+	for name, iface := range network.State.Interfaces {
+		// TODO: use constant from incus-osd/api instead of string "clustering".
+		if slices.Contains(iface.Roles, "clustering") && len(iface.Addresses) > 0 {
+			return name
+		}
+	}
+
+	// TODO: Once incus-osd ensures the correct setting of the interface roles,
+	// the can be set to empty string.
+	return "enp5s0"
 }
 
 func (s clusterService) GetAll(ctx context.Context) (Clusters, error) {

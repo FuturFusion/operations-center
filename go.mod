@@ -186,7 +186,7 @@ require (
 	github.com/google/go-github/v69 v69.2.0
 	github.com/google/uuid v1.6.0
 	github.com/lmittmann/tint v1.1.2
-	github.com/lxc/incus-os/incus-osd v0.0.0-20250611133712-db80dab8479d
+	github.com/lxc/incus-os/incus-osd v0.0.0-20250702053319-20c9548c452f
 	github.com/lxc/incus/v6 v6.14.1-0.20250701200831-a082b0228592
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/oauth2-proxy/mockoidc v0.0.0-20240214162133-caebfff84d25

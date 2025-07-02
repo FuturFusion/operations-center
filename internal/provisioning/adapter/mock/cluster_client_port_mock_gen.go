@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // Ensure that ClusterClientPortMock does implement provisioning.ClusterClientPort.
@@ -21,6 +22,9 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //
 //		// make and configure a mocked provisioning.ClusterClientPort
 //		mockedClusterClientPort := &ClusterClientPortMock{
+//			CreateProjectFunc: func(ctx context.Context, server provisioning.Server, name string) error {
+//				panic("mock out the CreateProject method")
+//			},
 //			EnableClusterFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
 //				panic("mock out the EnableCluster method")
 //			},
@@ -32,6 +36,15 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			},
 //			GetClusterNodeNamesFunc: func(ctx context.Context, server provisioning.Server) ([]string, error) {
 //				panic("mock out the GetClusterNodeNames method")
+//			},
+//			GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
+//				panic("mock out the GetOSData method")
+//			},
+//			InitializeDefaultNetworkingFunc: func(ctx context.Context, servers []provisioning.Server, primaryNic string) error {
+//				panic("mock out the InitializeDefaultNetworking method")
+//			},
+//			InitializeDefaultStorageFunc: func(ctx context.Context, servers []provisioning.Server) error {
+//				panic("mock out the InitializeDefaultStorage method")
 //			},
 //			JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) error {
 //				panic("mock out the JoinCluster method")
@@ -49,6 +62,9 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //
 //	}
 type ClusterClientPortMock struct {
+	// CreateProjectFunc mocks the CreateProject method.
+	CreateProjectFunc func(ctx context.Context, server provisioning.Server, name string) error
+
 	// EnableClusterFunc mocks the EnableCluster method.
 	EnableClusterFunc func(ctx context.Context, server provisioning.Server) (string, error)
 
@@ -61,6 +77,15 @@ type ClusterClientPortMock struct {
 	// GetClusterNodeNamesFunc mocks the GetClusterNodeNames method.
 	GetClusterNodeNamesFunc func(ctx context.Context, server provisioning.Server) ([]string, error)
 
+	// GetOSDataFunc mocks the GetOSData method.
+	GetOSDataFunc func(ctx context.Context, server provisioning.Server) (api.OSData, error)
+
+	// InitializeDefaultNetworkingFunc mocks the InitializeDefaultNetworking method.
+	InitializeDefaultNetworkingFunc func(ctx context.Context, servers []provisioning.Server, primaryNic string) error
+
+	// InitializeDefaultStorageFunc mocks the InitializeDefaultStorage method.
+	InitializeDefaultStorageFunc func(ctx context.Context, servers []provisioning.Server) error
+
 	// JoinClusterFunc mocks the JoinCluster method.
 	JoinClusterFunc func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) error
 
@@ -72,6 +97,15 @@ type ClusterClientPortMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// CreateProject holds details about calls to the CreateProject method.
+		CreateProject []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// Name is the name argument value.
+			Name string
+		}
 		// EnableCluster holds details about calls to the EnableCluster method.
 		EnableCluster []struct {
 			// Ctx is the ctx argument value.
@@ -102,6 +136,29 @@ type ClusterClientPortMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
+		// GetOSData holds details about calls to the GetOSData method.
+		GetOSData []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
+		// InitializeDefaultNetworking holds details about calls to the InitializeDefaultNetworking method.
+		InitializeDefaultNetworking []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Servers is the servers argument value.
+			Servers []provisioning.Server
+			// PrimaryNic is the primaryNic argument value.
+			PrimaryNic string
+		}
+		// InitializeDefaultStorage holds details about calls to the InitializeDefaultStorage method.
+		InitializeDefaultStorage []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Servers is the servers argument value.
+			Servers []provisioning.Server
+		}
 		// JoinCluster holds details about calls to the JoinCluster method.
 		JoinCluster []struct {
 			// Ctx is the ctx argument value.
@@ -130,13 +187,57 @@ type ClusterClientPortMock struct {
 			Config map[string]string
 		}
 	}
-	lockEnableCluster       sync.RWMutex
-	lockEnableOSServiceLVM  sync.RWMutex
-	lockGetClusterJoinToken sync.RWMutex
-	lockGetClusterNodeNames sync.RWMutex
-	lockJoinCluster         sync.RWMutex
-	lockPing                sync.RWMutex
-	lockSetServerConfig     sync.RWMutex
+	lockCreateProject               sync.RWMutex
+	lockEnableCluster               sync.RWMutex
+	lockEnableOSServiceLVM          sync.RWMutex
+	lockGetClusterJoinToken         sync.RWMutex
+	lockGetClusterNodeNames         sync.RWMutex
+	lockGetOSData                   sync.RWMutex
+	lockInitializeDefaultNetworking sync.RWMutex
+	lockInitializeDefaultStorage    sync.RWMutex
+	lockJoinCluster                 sync.RWMutex
+	lockPing                        sync.RWMutex
+	lockSetServerConfig             sync.RWMutex
+}
+
+// CreateProject calls CreateProjectFunc.
+func (mock *ClusterClientPortMock) CreateProject(ctx context.Context, server provisioning.Server, name string) error {
+	if mock.CreateProjectFunc == nil {
+		panic("ClusterClientPortMock.CreateProjectFunc: method is nil but ClusterClientPort.CreateProject was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Name   string
+	}{
+		Ctx:    ctx,
+		Server: server,
+		Name:   name,
+	}
+	mock.lockCreateProject.Lock()
+	mock.calls.CreateProject = append(mock.calls.CreateProject, callInfo)
+	mock.lockCreateProject.Unlock()
+	return mock.CreateProjectFunc(ctx, server, name)
+}
+
+// CreateProjectCalls gets all the calls that were made to CreateProject.
+// Check the length with:
+//
+//	len(mockedClusterClientPort.CreateProjectCalls())
+func (mock *ClusterClientPortMock) CreateProjectCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+	Name   string
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+		Name   string
+	}
+	mock.lockCreateProject.RLock()
+	calls = mock.calls.CreateProject
+	mock.lockCreateProject.RUnlock()
+	return calls
 }
 
 // EnableCluster calls EnableClusterFunc.
@@ -284,6 +385,118 @@ func (mock *ClusterClientPortMock) GetClusterNodeNamesCalls() []struct {
 	mock.lockGetClusterNodeNames.RLock()
 	calls = mock.calls.GetClusterNodeNames
 	mock.lockGetClusterNodeNames.RUnlock()
+	return calls
+}
+
+// GetOSData calls GetOSDataFunc.
+func (mock *ClusterClientPortMock) GetOSData(ctx context.Context, server provisioning.Server) (api.OSData, error) {
+	if mock.GetOSDataFunc == nil {
+		panic("ClusterClientPortMock.GetOSDataFunc: method is nil but ClusterClientPort.GetOSData was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockGetOSData.Lock()
+	mock.calls.GetOSData = append(mock.calls.GetOSData, callInfo)
+	mock.lockGetOSData.Unlock()
+	return mock.GetOSDataFunc(ctx, server)
+}
+
+// GetOSDataCalls gets all the calls that were made to GetOSData.
+// Check the length with:
+//
+//	len(mockedClusterClientPort.GetOSDataCalls())
+func (mock *ClusterClientPortMock) GetOSDataCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockGetOSData.RLock()
+	calls = mock.calls.GetOSData
+	mock.lockGetOSData.RUnlock()
+	return calls
+}
+
+// InitializeDefaultNetworking calls InitializeDefaultNetworkingFunc.
+func (mock *ClusterClientPortMock) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server, primaryNic string) error {
+	if mock.InitializeDefaultNetworkingFunc == nil {
+		panic("ClusterClientPortMock.InitializeDefaultNetworkingFunc: method is nil but ClusterClientPort.InitializeDefaultNetworking was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		Servers    []provisioning.Server
+		PrimaryNic string
+	}{
+		Ctx:        ctx,
+		Servers:    servers,
+		PrimaryNic: primaryNic,
+	}
+	mock.lockInitializeDefaultNetworking.Lock()
+	mock.calls.InitializeDefaultNetworking = append(mock.calls.InitializeDefaultNetworking, callInfo)
+	mock.lockInitializeDefaultNetworking.Unlock()
+	return mock.InitializeDefaultNetworkingFunc(ctx, servers, primaryNic)
+}
+
+// InitializeDefaultNetworkingCalls gets all the calls that were made to InitializeDefaultNetworking.
+// Check the length with:
+//
+//	len(mockedClusterClientPort.InitializeDefaultNetworkingCalls())
+func (mock *ClusterClientPortMock) InitializeDefaultNetworkingCalls() []struct {
+	Ctx        context.Context
+	Servers    []provisioning.Server
+	PrimaryNic string
+} {
+	var calls []struct {
+		Ctx        context.Context
+		Servers    []provisioning.Server
+		PrimaryNic string
+	}
+	mock.lockInitializeDefaultNetworking.RLock()
+	calls = mock.calls.InitializeDefaultNetworking
+	mock.lockInitializeDefaultNetworking.RUnlock()
+	return calls
+}
+
+// InitializeDefaultStorage calls InitializeDefaultStorageFunc.
+func (mock *ClusterClientPortMock) InitializeDefaultStorage(ctx context.Context, servers []provisioning.Server) error {
+	if mock.InitializeDefaultStorageFunc == nil {
+		panic("ClusterClientPortMock.InitializeDefaultStorageFunc: method is nil but ClusterClientPort.InitializeDefaultStorage was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Servers []provisioning.Server
+	}{
+		Ctx:     ctx,
+		Servers: servers,
+	}
+	mock.lockInitializeDefaultStorage.Lock()
+	mock.calls.InitializeDefaultStorage = append(mock.calls.InitializeDefaultStorage, callInfo)
+	mock.lockInitializeDefaultStorage.Unlock()
+	return mock.InitializeDefaultStorageFunc(ctx, servers)
+}
+
+// InitializeDefaultStorageCalls gets all the calls that were made to InitializeDefaultStorage.
+// Check the length with:
+//
+//	len(mockedClusterClientPort.InitializeDefaultStorageCalls())
+func (mock *ClusterClientPortMock) InitializeDefaultStorageCalls() []struct {
+	Ctx     context.Context
+	Servers []provisioning.Server
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Servers []provisioning.Server
+	}
+	mock.lockInitializeDefaultStorage.RLock()
+	calls = mock.calls.InitializeDefaultStorage
+	mock.lockInitializeDefaultStorage.RUnlock()
 	return calls
 }
 
