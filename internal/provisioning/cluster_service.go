@@ -295,7 +295,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		return newCluster, err
 	}
 
-	err = s.client.InitializeDefaultNetworking(ctx, servers, detectPrimaryNic(osData.Network))
+	err = s.client.InitializeDefaultNetworking(ctx, servers, detectClusteringInterface(osData.Network))
 	if err != nil {
 		return newCluster, err
 	}
@@ -303,40 +303,18 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	return newCluster, nil
 }
 
-// detectPrimaryNic uses the following logic:
-//   - if any of the interface has the role "primary", use it.
-//   - otherwise, use the first interface, which has an IP address.
-//   - if none of the interfaces has an IP, use the first interface.
-//   - if no interfaces are present, default to enp5s0
-//
-// TODO: refine this logic.
-func detectPrimaryNic(network api.ServerSystemNetwork) string {
-	if network.Config == nil {
-		return "enp5s0"
-	}
-
-	for _, iface := range network.Config.Interfaces {
-		// TODO: is this correct role to filter for?
-		if slices.Contains(iface.Roles, "primary") {
-			return iface.Name
+// detectClusteringInterface returns the first interface that has the role
+// "clustering" and at least one IP address assigned.
+func detectClusteringInterface(network api.ServerSystemNetwork) string {
+	for name, iface := range network.State.Interfaces {
+		// TODO: use constant from incus-osd/api instead of string "clustering".
+		if slices.Contains(iface.Roles, "clustering") && len(iface.Addresses) > 0 {
+			return name
 		}
 	}
 
-	for _, iface := range network.Config.Interfaces {
-		state, ok := network.State.Interfaces[iface.Name]
-		if !ok {
-			continue
-		}
-
-		if len(state.Addresses) > 0 {
-			return iface.Name
-		}
-	}
-
-	if len(network.Config.Interfaces) > 0 {
-		return network.Config.Interfaces[0].Name
-	}
-
+	// TODO: Once incus-osd ensures the correct setting of the interface roles,
+	// the can be set to empty string.
 	return "enp5s0"
 }
 
