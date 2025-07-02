@@ -643,3 +643,24 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 
 	return nil
 }
+
+func Provisioning(ctx context.Context, db *sql.DB, clusters []provisioning.Cluster, servers []provisioning.Server) error {
+	clusterRepo := provisioningSqlite.NewCluster(db)
+	serverRepo := provisioningSqlite.NewServer(db)
+
+	for _, cluster := range clusters {
+		_, err := clusterRepo.Create(ctx, cluster)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, server := range servers {
+		_, err := serverRepo.Create(ctx, server)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
