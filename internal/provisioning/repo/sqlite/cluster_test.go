@@ -3,7 +3,6 @@ package sqlite_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -27,7 +26,6 @@ cluster A
 `,
 		Status:      api.ClusterStatusReady,
 		ServerNames: []string{"server1", "server2"},
-		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	clusterB := provisioning.Cluster{
@@ -39,7 +37,6 @@ cluster B
 `,
 		Status:      api.ClusterStatusReady,
 		ServerNames: []string{"server10", "server11"},
-		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
 	ctx := context.Background()
@@ -87,11 +84,13 @@ cluster B
 	dbClusterA, err := cluster.GetByName(ctx, clusterA.Name)
 	require.NoError(t, err)
 	clusterA.ID = dbClusterA.ID
+	clusterA.LastUpdated = dbClusterA.LastUpdated
 	require.Equal(t, clusterA, *dbClusterA)
 
 	dbClusterB, err := cluster.GetByName(ctx, clusterB.Name)
 	require.NoError(t, err)
 	clusterB.ID = dbClusterB.ID
+	clusterB.LastUpdated = dbClusterB.LastUpdated
 	require.Equal(t, clusterB, *dbClusterB)
 
 	// Test updating a cluster.
@@ -104,6 +103,7 @@ cluster B
 	dbClusterB, err = cluster.GetByName(ctx, clusterB.Name)
 	require.NoError(t, err)
 	clusterB.ID = dbClusterB.ID
+	clusterB.LastUpdated = dbClusterB.LastUpdated
 	require.Equal(t, clusterB, *dbClusterB)
 
 	// Delete a cluster.

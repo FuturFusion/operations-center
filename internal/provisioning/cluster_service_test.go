@@ -3,7 +3,6 @@ package provisioning_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -18,8 +17,6 @@ import (
 )
 
 func TestClusterService_Create(t *testing.T) {
-	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
-
 	tests := []struct {
 		name                           string
 		cluster                        provisioning.Cluster
@@ -536,7 +533,6 @@ func TestClusterService_Create(t *testing.T) {
 					return tc.repoExistsByName, tc.repoExistsByNameErr
 				},
 				CreateFunc: func(ctx context.Context, in provisioning.Cluster) (int64, error) {
-					require.Equal(t, fixedDate, in.LastUpdated)
 					return 0, tc.repoCreateErr
 				},
 				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
@@ -580,7 +576,6 @@ func TestClusterService_Create(t *testing.T) {
 			}
 
 			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, nil,
-				provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }),
 				provisioning.ClusterServiceCreateClusterRetryTimeout(0),
 			)
 
@@ -1025,8 +1020,6 @@ func TestClusterService_GetByName(t *testing.T) {
 }
 
 func TestClusterService_Update(t *testing.T) {
-	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
-
 	tests := []struct {
 		name                 string
 		cluster              provisioning.Cluster
@@ -1087,12 +1080,11 @@ func TestClusterService_Update(t *testing.T) {
 			// Setup
 			repo := &mock.ClusterRepoMock{
 				UpdateFunc: func(ctx context.Context, in provisioning.Cluster) error {
-					require.Equal(t, fixedDate, in.LastUpdated)
 					return tc.repoUpdateErr
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
 
 			// Run test
 			err := clusterSvc.Update(context.Background(), tc.cluster)
@@ -1104,8 +1096,6 @@ func TestClusterService_Update(t *testing.T) {
 }
 
 func TestClusterService_Rename(t *testing.T) {
-	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
-
 	tests := []struct {
 		name          string
 		oldName       string
@@ -1161,7 +1151,7 @@ func TestClusterService_Rename(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, provisioning.ClusterServiceWithNow(func() time.Time { return fixedDate }))
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
 
 			// Run test
 			err := clusterSvc.Rename(context.Background(), tc.oldName, tc.newName)

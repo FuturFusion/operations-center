@@ -14,8 +14,8 @@ type Cluster struct {
 	ConnectionURL string
 	Certificate   string
 	Status        api.ClusterStatus
-	ServerNames   []string `db:"ignore"`
-	LastUpdated   time.Time
+	ServerNames   []string  `db:"ignore"`
+	LastUpdated   time.Time `db:"update_timestamp"`
 }
 
 func (c Cluster) Validate() error {

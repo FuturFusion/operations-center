@@ -112,7 +112,7 @@ one
 			// Setup
 			repo := &repoMock.ServerRepoMock{
 				CreateFunc: func(ctx context.Context, in provisioning.Server) (int64, error) {
-					require.Equal(t, fixedDate, in.LastUpdated)
+					require.Equal(t, fixedDate, in.LastSeen)
 					return 1, tc.repoCreateErr
 				},
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
@@ -615,7 +615,6 @@ one
 			// Setup
 			repo := &repoMock.ServerRepoMock{
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
-					require.Equal(t, fixedDate, in.LastUpdated)
 					return tc.repoUpdateErr
 				},
 			}
@@ -635,8 +634,8 @@ func TestServerService_UpdateSystemNetwork(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
 	type repoUpdateFuncItem struct {
-		lastUpdated time.Time
-		status      api.ServerStatus
+		lastSeen time.Time
+		status   api.ServerStatus
 	}
 
 	tests := []struct {
@@ -664,8 +663,8 @@ one
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
 					Value: repoUpdateFuncItem{
-						lastUpdated: fixedDate,
-						status:      api.ServerStatusPending,
+						lastSeen: fixedDate,
+						status:   api.ServerStatusPending,
 					},
 				},
 			},
@@ -694,8 +693,8 @@ one
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
 					Value: repoUpdateFuncItem{
-						lastUpdated: fixedDate,
-						status:      api.ServerStatusPending,
+						lastSeen: fixedDate,
+						status:   api.ServerStatusPending,
 					},
 					Err: boom.Error,
 				},
@@ -719,8 +718,8 @@ one
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
 					Value: repoUpdateFuncItem{
-						lastUpdated: fixedDate,
-						status:      api.ServerStatusPending,
+						lastSeen: fixedDate,
+						status:   api.ServerStatusPending,
 					},
 				},
 				{
@@ -749,8 +748,8 @@ one
 			repoUpdate: []queue.Item[repoUpdateFuncItem]{
 				{
 					Value: repoUpdateFuncItem{
-						lastUpdated: fixedDate,
-						status:      api.ServerStatusPending,
+						lastSeen: fixedDate,
+						status:   api.ServerStatusPending,
 					},
 				},
 				{
@@ -776,7 +775,7 @@ one
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
 					value, err := queue.Pop(t, &tc.repoUpdate)
 
-					require.Equal(t, value.lastUpdated, in.LastUpdated)
+					require.Equal(t, value.lastSeen, in.LastSeen)
 					require.Equal(t, value.status, in.Status)
 					return err
 				},
@@ -903,7 +902,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 					return tc.repoGetByCertificateServer, tc.repoGetByCertificateErr
 				},
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
-					require.Equal(t, fixedDate, in.LastUpdated)
+					require.Equal(t, fixedDate, in.LastSeen)
 					return tc.repoUpdateErr
 				},
 			}
@@ -1049,6 +1048,8 @@ func TestServerService_DeleteByName(t *testing.T) {
 }
 
 func TestServerService_PollPendingServers(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
 	tests := []struct {
 		name                        string
 		repoGetAllWithFilterServers provisioning.Servers
@@ -1151,6 +1152,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 				},
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
 					require.Equal(t, api.ServerStatusReady, server.Status)
+					require.Equal(t, fixedDate, server.LastSeen)
 					return tc.repoUpdateErr
 				},
 			}
@@ -1167,7 +1169,9 @@ func TestServerService_PollPendingServers(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil)
+			serverSvc := provisioning.NewServerService(repo, client, nil,
+				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
+			)
 
 			// Run test
 			err := serverSvc.PollServers(context.Background(), api.ServerStatusPending, true)
