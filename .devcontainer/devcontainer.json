@@ -14,6 +14,7 @@
         "shardulm94.trailing-spaces",
         "Gruntfuggly.todo-tree",
         "casualjim.gotemplate",
+        "eamodio.gitlens",
       ],
       "settings": {
         "files.insertFinalNewline": true,
