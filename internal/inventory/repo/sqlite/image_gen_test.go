@@ -12,12 +12,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
+	"github.com/FuturFusion/operations-center/internal/dbschema/seed"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
-	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
@@ -26,11 +25,6 @@ import (
 )
 
 func TestImageDatabaseActions(t *testing.T) {
-	testToken := provisioning.Token{
-		UsesRemaining: 10,
-		ExpireAt:      time.Now().Add(1 * time.Minute),
-	}
-
 	testClusterA := provisioning.Cluster{
 		Name:          "one",
 		ConnectionURL: "https://cluster-one/",
@@ -53,8 +47,11 @@ cluster B
 		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
 
+	testClusters := []provisioning.Cluster{testClusterA, testClusterB}
+
 	testServerA := provisioning.Server{
 		Name:          "one",
+		Cluster:       ptr.To("one"),
 		ConnectionURL: "https://server-one/",
 		Certificate: `-----BEGIN CERTIFICATE-----
 server-one
@@ -67,6 +64,7 @@ server-one
 
 	testServerB := provisioning.Server{
 		Name:          "two",
+		Cluster:       ptr.To("two"),
 		ConnectionURL: "https://server-two/",
 		Certificate: `-----BEGIN CERTIFICATE-----
 server-two
@@ -76,6 +74,8 @@ server-two
 		Status:      api.ServerStatusReady,
 		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
+
+	testServers := []provisioning.Server{testServerA, testServerB}
 
 	imageA := inventory.Image{
 		Cluster:     "one",
@@ -97,42 +97,6 @@ server-two
 
 	imageB.DeriveUUID()
 
-	serverClient := &adapterMock.ServerClientPortMock{
-		PingFunc: func(ctx context.Context, server provisioning.Server) error {
-			return nil
-		},
-		GetResourcesFunc: func(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
-			return api.HardwareData{}, nil
-		},
-		GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
-			return api.OSData{}, nil
-		},
-	}
-
-	clusterClient := &adapterMock.ClusterClientPortMock{
-		PingFunc: func(ctx context.Context, server provisioning.Server) error {
-			return nil
-		},
-		EnableOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) error {
-			return nil
-		},
-		SetServerConfigFunc: func(ctx context.Context, server provisioning.Server, config map[string]string) error {
-			return nil
-		},
-		GetClusterNodeNamesFunc: func(ctx context.Context, server provisioning.Server) ([]string, error) {
-			return []string{server.Name}, nil
-		},
-		GetClusterJoinTokenFunc: func(ctx context.Context, server provisioning.Server, memberName string) (string, error) {
-			return "token", nil
-		},
-		EnableClusterFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
-			return server.Certificate, nil
-		},
-		JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) error {
-			return nil
-		},
-	}
-
 	ctx := context.Background()
 
 	// Create a new temporary database.
@@ -152,30 +116,14 @@ server-two
 	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
 
-	tokenSvc := provisioning.NewTokenService(provisioningSqlite.NewToken(tx))
-	serverSvc := provisioning.NewServerService(provisioningSqlite.NewServer(tx), serverClient, tokenSvc)
-	clusterSvc := provisioning.NewClusterService(provisioningSqlite.NewCluster(tx), clusterClient, serverSvc, nil)
-
 	image := inventorySqlite.NewImage(tx)
 
 	// Cannot add an image with an invalid server.
 	_, err = image.Create(ctx, imageA)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
-	// Add token.
-	testToken, err = tokenSvc.Create(ctx, testToken)
-	require.NoError(t, err)
-
-	// Add dummy servers.
-	_, err = serverSvc.Create(ctx, testToken.UUID, testServerA)
-	require.NoError(t, err)
-	_, err = serverSvc.Create(ctx, testToken.UUID, testServerB)
-	require.NoError(t, err)
-
-	// Add dummy clusters.
-	_, err = clusterSvc.Create(ctx, testClusterA)
-	require.NoError(t, err)
-	_, err = clusterSvc.Create(ctx, testClusterB)
+	// Seed provisioning
+	err = seed.Provisioning(ctx, db, testClusters, testServers)
 	require.NoError(t, err)
 
 	// Add images
