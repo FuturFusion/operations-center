@@ -117,11 +117,12 @@ func (u update) GetUpdateAllFiles(ctx context.Context, update provisioning.Updat
 	return files, nil
 }
 
-// GetUpdateFileByFilename downloads a file of an update.
+// GetUpdateFileByFilenameUnverified downloads a file of an update.
 //
-// GetUpdateFileByFilename returns an io.ReadCloser that reads the contents of the specified release asset.
+// GetUpdateFileByFilenameUnverified returns an io.ReadCloser that reads the contents of the specified release asset.
 // It is the caller's responsibility to close the ReadCloser.
-func (u update) GetUpdateFileByFilename(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+// It is the caller's responsibility to verify the received data, e.g. using a hash.
+func (u update) GetUpdateFileByFilenameUnverified(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
 	ghRelease, err := u.getGHRelease(ctx, update)
 	if err != nil {
 		return nil, 0, err

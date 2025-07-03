@@ -1052,7 +1052,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				GetUpdateAllFilesFunc: func(ctx context.Context, update provisioning.Update) (provisioning.UpdateFiles, error) {
 					return queue.Pop(t, &tc.sourceGetUpdateAllFiles)
 				},
-				GetUpdateFileByFilenameFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+				GetUpdateFileByFilenameUnverifiedFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
 					value, err := queue.Pop(t, &tc.sourceGetUpdateFileByFilename)
 					return value.stream, value.size, err
 				},

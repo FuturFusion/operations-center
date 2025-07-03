@@ -112,8 +112,8 @@ func (_d UpdateSourcePortWithSlog) GetUpdateAllFiles(ctx context.Context, update
 	return _d._base.GetUpdateAllFiles(ctx, update)
 }
 
-// GetUpdateFileByFilename implements provisioning.UpdateSourcePort.
-func (_d UpdateSourcePortWithSlog) GetUpdateFileByFilename(ctx context.Context, update provisioning.Update, filename string) (readCloser io.ReadCloser, n int, err error) {
+// GetUpdateFileByFilenameUnverified implements provisioning.UpdateSourcePort.
+func (_d UpdateSourcePortWithSlog) GetUpdateFileByFilenameUnverified(ctx context.Context, update provisioning.Update, filename string) (readCloser io.ReadCloser, n int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -122,7 +122,7 @@ func (_d UpdateSourcePortWithSlog) GetUpdateFileByFilename(ctx context.Context, 
 			slog.String("filename", filename),
 		)
 	}
-	log.Debug("=> calling GetUpdateFileByFilename")
+	log.Debug("=> calling GetUpdateFileByFilenameUnverified")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -138,13 +138,13 @@ func (_d UpdateSourcePortWithSlog) GetUpdateFileByFilename(ctx context.Context, 
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetUpdateFileByFilename returned an informative error")
+				log.Debug("<= method GetUpdateFileByFilenameUnverified returned an informative error")
 			} else {
-				log.Error("<= method GetUpdateFileByFilename returned an error")
+				log.Error("<= method GetUpdateFileByFilenameUnverified returned an error")
 			}
 		} else {
-			log.Debug("<= method GetUpdateFileByFilename finished")
+			log.Debug("<= method GetUpdateFileByFilenameUnverified finished")
 		}
 	}()
-	return _d._base.GetUpdateFileByFilename(ctx, update, filename)
+	return _d._base.GetUpdateFileByFilenameUnverified(ctx, update, filename)
 }

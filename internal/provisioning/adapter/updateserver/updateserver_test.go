@@ -283,7 +283,7 @@ func TestUpdateServer_GetUpdateFileByFilename(t *testing.T) {
 			defer svr.Close()
 
 			s := updateserver.New(svr.URL, nil)
-			stream, n, err := s.GetUpdateFileByFilename(context.Background(), provisioning.Update{
+			stream, n, err := s.GetUpdateFileByFilenameUnverified(context.Background(), provisioning.Update{
 				ExternalID: "1",
 			}, "one.txt")
 			tc.assertErr(t, err)

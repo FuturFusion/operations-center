@@ -169,9 +169,12 @@ func (u updateServer) GetUpdateAllFiles(ctx context.Context, inUpdate provisioni
 	return update.Files, nil
 }
 
-func (u updateServer) GetUpdateFileByFilename(ctx context.Context, inUpdate provisioning.Update, filename string) (io.ReadCloser, int, error) {
-	// FIXME: Verify signature of index.sjson and use the checksum from index.sjson
-	// to verify the integrity of the downloaded file.
+// GetUpdateFileByFilenameUnverified downloads a file of an update.
+//
+// GetUpdateFileByFilenameUnverified returns an io.ReadCloser that reads the contents of the specified release asset.
+// It is the caller's responsibility to close the ReadCloser.
+// It is the caller's responsibility to verify the received data, e.g. using a hash.
+func (u updateServer) GetUpdateFileByFilenameUnverified(ctx context.Context, inUpdate provisioning.Update, filename string) (io.ReadCloser, int, error) {
 	updateURL := u.baseURL + "/" + path.Join(inUpdate.ExternalID, filename)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, updateURL, http.NoBody)
 	if err != nil {

@@ -199,7 +199,7 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 
 			err := func() (err error) {
 				var stream io.ReadCloser
-				stream, _, err = src.GetUpdateFileByFilename(ctx, update, updateFile.Filename)
+				stream, _, err = src.GetUpdateFileByFilenameUnverified(ctx, update, updateFile.Filename)
 				if err != nil {
 					return fmt.Errorf(`Failed to fetch update file "%s:%s/%s@%s": %w`, origin, update.Channel, updateFile.Filename, update.Version, err)
 				}
