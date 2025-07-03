@@ -123,7 +123,7 @@ func (_d ClusterClientPortWithPrometheus) GetOSData(ctx context.Context, server 
 }
 
 // InitializeDefaultNetworking implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server, primaryNic string) (err error) {
+func (_d ClusterClientPortWithPrometheus) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -133,7 +133,7 @@ func (_d ClusterClientPortWithPrometheus) InitializeDefaultNetworking(ctx contex
 
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "InitializeDefaultNetworking", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.InitializeDefaultNetworking(ctx, servers, primaryNic)
+	return _d.base.InitializeDefaultNetworking(ctx, servers)
 }
 
 // InitializeDefaultStorage implements provisioning.ClusterClientPort.
