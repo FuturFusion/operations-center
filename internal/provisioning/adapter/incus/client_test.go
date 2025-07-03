@@ -1598,7 +1598,7 @@ func TestClient(t *testing.T) {
 		{
 			name: "InitializeDefaultNetworking",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
-				return nil, client.InitializeDefaultNetworking(ctx, []provisioning.Server{target}, "eth0")
+				return nil, client.InitializeDefaultNetworking(ctx, []provisioning.Server{target})
 			},
 			testCases: []methodTestCase{
 				{
@@ -1687,6 +1687,26 @@ func TestClient(t *testing.T) {
 }`),
 							},
 						},
+						// GET /1.0/networks/meshbr0?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {}
+  }
+}`),
+							},
+						},
+						// PUT /1.0/networks/meshbr0?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
 						// PUT /1.0/profiles/default
 						{
 							Value: response{
@@ -1708,7 +1728,7 @@ func TestClient(t *testing.T) {
 					},
 
 					assertErr: require.NoError,
-					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/meshbr0", "PUT /1.0/networks/meshbr0", "PUT /1.0/profiles/default", "PUT /1.0/profiles/default?project=internal"},
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/meshbr0", "PUT /1.0/networks/meshbr0", "GET /1.0/networks/meshbr0?target=server01", "PUT /1.0/networks/meshbr0?target=server01", "PUT /1.0/profiles/default", "PUT /1.0/profiles/default?project=internal"},
 				},
 				{
 					name: "success - GetNetworks - networks already exist",
@@ -1923,6 +1943,7 @@ func TestClient(t *testing.T) {
 					assertErr: require.Error,
 					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks"},
 				},
+
 				{
 					name: "error - GetNetwork - unexpected status code",
 					response: []queue.Item[response]{
@@ -2001,7 +2022,7 @@ func TestClient(t *testing.T) {
 					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/meshbr0"},
 				},
 				{
-					name: "error - UpdateNetwork - unexpected status code",
+					name: "error - GetNetwork - unexpected status code",
 					response: []queue.Item[response]{
 						// GET /1.0/profiles/default
 						{
@@ -2089,6 +2110,211 @@ func TestClient(t *testing.T) {
 					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/meshbr0", "PUT /1.0/networks/meshbr0"},
 				},
 				{
+					name: "error - GetNetwork - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks?recursion=1
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks/meshbr0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {}
+  }
+}`),
+							},
+						},
+						// PUT /1.0/networks/meshbr0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks/meshbr0?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/meshbr0", "PUT /1.0/networks/meshbr0", "GET /1.0/networks/meshbr0?target=server01"},
+				},
+				{
+					name: "error - UpdateNetwork - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/profiles/default
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/profiles/default?project=internal
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks?recursion=1
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// POST /1.0/networks
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks/meshbr0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {}
+  }
+}`),
+							},
+						},
+						// PUT /1.0/networks/meshbr0
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+						// GET /1.0/networks/meshbr0?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {}
+  }
+}`),
+							},
+						},
+						// PUT /1.0/networks/meshbr0?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/meshbr0", "PUT /1.0/networks/meshbr0", "GET /1.0/networks/meshbr0?target=server01", "PUT /1.0/networks/meshbr0?target=server01"},
+				},
+				{
 					name: "error - UpdateProfile default project - unexpected status code",
 					response: []queue.Item[response]{
 						// GET /1.0/profiles/default
@@ -2174,6 +2400,26 @@ func TestClient(t *testing.T) {
 }`),
 							},
 						},
+						// GET /1.0/networks/meshbr0?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {}
+  }
+}`),
+							},
+						},
+						// PUT /1.0/networks/meshbr0?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
 						// PUT /1.0/profiles/default
 						{
 							Value: response{
@@ -2183,7 +2429,7 @@ func TestClient(t *testing.T) {
 					},
 
 					assertErr: require.Error,
-					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/meshbr0", "PUT /1.0/networks/meshbr0", "PUT /1.0/profiles/default"},
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/meshbr0", "PUT /1.0/networks/meshbr0", "GET /1.0/networks/meshbr0?target=server01", "PUT /1.0/networks/meshbr0?target=server01", "PUT /1.0/profiles/default"},
 				},
 				{
 					name: "error - UpdateProfile internal project - unexpected status code",
@@ -2271,6 +2517,26 @@ func TestClient(t *testing.T) {
 }`),
 							},
 						},
+						// GET /1.0/networks/meshbr0?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {}
+  }
+}`),
+							},
+						},
+						// PUT /1.0/networks/meshbr0?target=server01
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
 						// PUT /1.0/profiles/default
 						{
 							Value: response{
@@ -2289,7 +2555,7 @@ func TestClient(t *testing.T) {
 					},
 
 					assertErr: require.Error,
-					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/meshbr0", "PUT /1.0/networks/meshbr0", "PUT /1.0/profiles/default", "PUT /1.0/profiles/default?project=internal"},
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/meshbr0", "PUT /1.0/networks/meshbr0", "GET /1.0/networks/meshbr0?target=server01", "PUT /1.0/networks/meshbr0?target=server01", "PUT /1.0/profiles/default", "PUT /1.0/profiles/default?project=internal"},
 				},
 			},
 		},
@@ -2339,7 +2605,34 @@ func TestClient(t *testing.T) {
 						ConnectionURL:      server.URL,
 						Certificate:        string(serverCert),
 						ClusterCertificate: ptr.To(string(serverCert)),
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"enp5s0": {
+											Addresses: []string{"192.168.1.2"},
+											Roles:     []string{"clustering"},
+											LACP: &incusosapi.SystemNetworkLACPState{
+												LocalMAC: "45:e3:51:39:0c:51",
+											},
+										},
+									},
+								},
+							},
+						},
 					}
+
+					// "state": {
+					//   "interfaces": {
+					//     "eth0": {
+					//       "addresses": ["192.168.1.2"],
+					//       "roles": ["clustering"],
+					//       "lacp": {
+					//         "local_mac": "45:e3:51:39:0c:51"
+					//       }
+					//     }
+					//   }
+					// }
 
 					// Run test
 					retValue, err := method.clientCall(ctx, client, target)

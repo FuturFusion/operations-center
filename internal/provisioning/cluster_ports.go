@@ -46,5 +46,5 @@ type ClusterClientPort interface {
 	CreateProject(ctx context.Context, server Server, name string) error
 	InitializeDefaultStorage(ctx context.Context, servers []Server) error
 	GetOSData(ctx context.Context, server Server) (api.OSData, error)
-	InitializeDefaultNetworking(ctx context.Context, servers []Server, primaryNic string) error
+	InitializeDefaultNetworking(ctx context.Context, servers []Server) error
 }
