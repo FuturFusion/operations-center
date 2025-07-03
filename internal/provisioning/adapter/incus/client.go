@@ -362,6 +362,9 @@ func (c client) InitializeDefaultStorage(ctx context.Context, servers []provisio
 	err = client.CreateStoragePool(incusapi.StoragePoolsPost{
 		Name:   "local",
 		Driver: "zfs",
+		StoragePoolPut: incusapi.StoragePoolPut{
+			Description: "Local storage pool (on system drive)",
+		},
 	})
 	if err != nil {
 		return err
