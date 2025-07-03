@@ -1667,7 +1667,7 @@ func TestClient(t *testing.T) {
 }`),
 							},
 						},
-						// GET /1.0/networks/internal
+						// GET /1.0/networks/meshbr0
 						{
 							Value: response{
 								statusCode: http.StatusOK,
@@ -1678,7 +1678,7 @@ func TestClient(t *testing.T) {
 }`),
 							},
 						},
-						// PUT /1.0/networks/internal
+						// PUT /1.0/networks/meshbr0
 						{
 							Value: response{
 								statusCode: http.StatusOK,
@@ -1708,7 +1708,7 @@ func TestClient(t *testing.T) {
 					},
 
 					assertErr: require.NoError,
-					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/internal", "PUT /1.0/networks/internal", "PUT /1.0/profiles/default", "PUT /1.0/profiles/default?project=internal"},
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/meshbr0", "PUT /1.0/networks/meshbr0", "PUT /1.0/profiles/default", "PUT /1.0/profiles/default?project=internal"},
 				},
 				{
 					name: "success - GetNetworks - networks already exist",
@@ -1989,7 +1989,7 @@ func TestClient(t *testing.T) {
 }`),
 							},
 						},
-						// GET /1.0/networks/internal
+						// GET /1.0/networks/meshbr0
 						{
 							Value: response{
 								statusCode: http.StatusInternalServerError,
@@ -1998,7 +1998,7 @@ func TestClient(t *testing.T) {
 					},
 
 					assertErr: require.Error,
-					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/internal"},
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/meshbr0"},
 				},
 				{
 					name: "error - UpdateNetwork - unexpected status code",
@@ -2066,7 +2066,7 @@ func TestClient(t *testing.T) {
 }`),
 							},
 						},
-						// GET /1.0/networks/internal
+						// GET /1.0/networks/meshbr0
 						{
 							Value: response{
 								statusCode: http.StatusOK,
@@ -2077,7 +2077,7 @@ func TestClient(t *testing.T) {
 }`),
 							},
 						},
-						// PUT /1.0/networks/internal
+						// PUT /1.0/networks/meshbr0
 						{
 							Value: response{
 								statusCode: http.StatusInternalServerError,
@@ -2086,7 +2086,7 @@ func TestClient(t *testing.T) {
 					},
 
 					assertErr: require.Error,
-					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/internal", "PUT /1.0/networks/internal"},
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/meshbr0", "PUT /1.0/networks/meshbr0"},
 				},
 				{
 					name: "error - UpdateProfile default project - unexpected status code",
@@ -2154,7 +2154,7 @@ func TestClient(t *testing.T) {
 }`),
 							},
 						},
-						// GET /1.0/networks/internal
+						// GET /1.0/networks/meshbr0
 						{
 							Value: response{
 								statusCode: http.StatusOK,
@@ -2165,7 +2165,7 @@ func TestClient(t *testing.T) {
 }`),
 							},
 						},
-						// PUT /1.0/networks/internal
+						// PUT /1.0/networks/meshbr0
 						{
 							Value: response{
 								statusCode: http.StatusOK,
@@ -2183,7 +2183,7 @@ func TestClient(t *testing.T) {
 					},
 
 					assertErr: require.Error,
-					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/internal", "PUT /1.0/networks/internal", "PUT /1.0/profiles/default"},
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/meshbr0", "PUT /1.0/networks/meshbr0", "PUT /1.0/profiles/default"},
 				},
 				{
 					name: "error - UpdateProfile internal project - unexpected status code",
@@ -2251,7 +2251,7 @@ func TestClient(t *testing.T) {
 }`),
 							},
 						},
-						// GET /1.0/networks/internal
+						// GET /1.0/networks/meshbr0
 						{
 							Value: response{
 								statusCode: http.StatusOK,
@@ -2262,7 +2262,7 @@ func TestClient(t *testing.T) {
 }`),
 							},
 						},
-						// PUT /1.0/networks/internal
+						// PUT /1.0/networks/meshbr0
 						{
 							Value: response{
 								statusCode: http.StatusOK,
@@ -2289,7 +2289,7 @@ func TestClient(t *testing.T) {
 					},
 
 					assertErr: require.Error,
-					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/internal", "PUT /1.0/networks/internal", "PUT /1.0/profiles/default", "PUT /1.0/profiles/default?project=internal"},
+					wantPaths: []string{"GET /1.0/profiles/default", "GET /1.0/profiles/default?project=internal", "GET /1.0/networks?recursion=1", "POST /1.0/networks?target=server01", "POST /1.0/networks?target=server01", "POST /1.0/networks", "POST /1.0/networks", "GET /1.0/networks/meshbr0", "PUT /1.0/networks/meshbr0", "PUT /1.0/profiles/default", "PUT /1.0/profiles/default?project=internal"},
 				},
 			},
 		},

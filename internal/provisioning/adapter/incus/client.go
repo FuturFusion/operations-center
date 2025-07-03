@@ -426,9 +426,9 @@ func (c client) InitializeDefaultStorage(ctx context.Context, servers []provisio
 
 // InitializeDefaultNetworking performs the post-clustering initialization for the networking:
 //   - Create local network bridge "incusbr0" on each server.
-//   - Create an "internal" network bridge on each server.
+//   - Create an "meshbr0" network bridge on each server.
 //   - Update the default profile in the default project to use incusbr0 for networking.
-//   - Update the default profile in the internal project to use internal-mesh for networking.
+//   - Update the default profile in the internal project to use meshbr0 for networking.
 func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server, primaryNic string) error {
 	// Use the first server of the cluster for communication.
 	client, err := c.getClient(ctx, servers[0])
@@ -474,7 +474,7 @@ func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provi
 		return nil
 	}
 
-	// Create local network bridges "incusbr0" and "internal" on each server.
+	// Create local network bridges "incusbr0" and "meshbr0" on each server.
 	for _, server := range servers {
 		// Create the bridge networks.
 		for _, bridge := range []struct {
@@ -486,7 +486,7 @@ func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provi
 				description: "Local network bridge (NAT)",
 			},
 			{
-				name:        "internal",
+				name:        "meshbr0",
 				description: "Internal mesh network bridge",
 			},
 		} {
@@ -504,7 +504,7 @@ func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provi
 	}
 
 	// Finalize network bridges on the cluster.
-	for _, name := range []string{"incusbr0", "internal"} {
+	for _, name := range []string{"incusbr0", "meshbr0"} {
 		err = client.CreateNetwork(incusapi.NetworksPost{
 			Name: name,
 		})
@@ -513,19 +513,19 @@ func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provi
 		}
 	}
 
-	// Set network config for internal mesh.
-	internalNetwork, internalNetworkETag, err := client.GetNetwork("internal")
+	// Set network config for meshbr0.
+	meshbr0, meshbr0ETag, err := client.GetNetwork("meshbr0")
 	if err != nil {
 		return err
 	}
 
-	internalNetwork.Config["ipv4.address"] = "none"
-	internalNetwork.Config["ipv6.address"] = "fdff:ffff:dc01::1/64"
-	internalNetwork.Config["tunnel.mesh.id"] = "1000"
-	internalNetwork.Config["tunnel.mesh.interface"] = primaryNic
-	internalNetwork.Config["tunnel.mesh.protocol"] = "vxlan"
+	meshbr0.Config["ipv4.address"] = "none"
+	meshbr0.Config["ipv6.address"] = "fdff:ffff:dc01::1/64"
+	meshbr0.Config["tunnel.mesh.id"] = "1000"
+	meshbr0.Config["tunnel.mesh.interface"] = primaryNic
+	meshbr0.Config["tunnel.mesh.protocol"] = "vxlan"
 
-	err = client.UpdateNetwork("internal", internalNetwork.Writable(), internalNetworkETag)
+	err = client.UpdateNetwork("meshbr0", meshbr0.Writable(), meshbr0ETag)
 	if err != nil {
 		return err
 	}
@@ -542,10 +542,10 @@ func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provi
 		return err
 	}
 
-	// Add internal mesh to the default profile of internal project.
+	// Add meshbr0 to the default profile of internal project.
 	internalProfileDefault.Devices["eth0"] = map[string]string{
 		"type":    "nic",
-		"network": "internal",
+		"network": "meshbr0",
 		"name":    "eth0",
 	}
 
