@@ -253,13 +253,12 @@ func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, server provis
 }
 
 // InitializeDefaultNetworking implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server, primaryNic string) (err error) {
+func (_d ClusterClientPortWithSlog) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("servers", servers),
-			slog.String("primaryNic", primaryNic),
 		)
 	}
 	log.Debug("=> calling InitializeDefaultNetworking")
@@ -284,7 +283,7 @@ func (_d ClusterClientPortWithSlog) InitializeDefaultNetworking(ctx context.Cont
 			log.Debug("<= method InitializeDefaultNetworking finished")
 		}
 	}()
-	return _d._base.InitializeDefaultNetworking(ctx, servers, primaryNic)
+	return _d._base.InitializeDefaultNetworking(ctx, servers)
 }
 
 // InitializeDefaultStorage implements provisioning.ClusterClientPort.
