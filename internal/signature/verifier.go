@@ -1,119 +1,74 @@
 package signature
 
 import (
-	"crypto"
-	"crypto/ecdsa"
-	"crypto/rsa"
-	"crypto/sha256"
-	"crypto/x509"
-	"encoding/hex"
-	"encoding/pem"
+	"bytes"
 	"fmt"
 	"os"
-	"strings"
+	"os/exec"
 )
 
 type Verifier interface {
-	Verify(content []byte, signature []byte) error
-	VerifyFile(filename string) error
+	Verify(sjson []byte) (content []byte, _ error)
+	VerifyFile(filename string) (content []byte, _ error)
 }
 
 type verifier struct {
-	verifySignature func(digest []byte, sig []byte) bool
+	rootCAPEM []byte
 }
 
-func NewVerifier(pemBody []byte) (Verifier, error) {
-	pemBlock, _ := pem.Decode(pemBody)
-	if pemBlock == nil {
-		return verifier{}, fmt.Errorf("No valid PEM block found")
-	}
-
-	var key any
-
-	switch pemBlock.Type {
-	case "CERTIFICATE":
-		cert, err := x509.ParseCertificate(pemBlock.Bytes)
-		if err != nil {
-			return verifier{}, fmt.Errorf("Failed to process update.signature_verification_pem: %w", err)
-		}
-
-		key = cert.PublicKey
-
-	case "PUBLIC KEY":
-		publicKey, err := x509.ParsePKIXPublicKey(pemBlock.Bytes)
-		if err != nil {
-			return verifier{}, fmt.Errorf("Failed to parse public key: %s", err)
-		}
-
-		key = publicKey
-
-	case "RSA PUBLIC KEY":
-		publicKey, err := x509.ParsePKCS1PublicKey(pemBlock.Bytes)
-		if err != nil {
-			return verifier{}, fmt.Errorf("Failed to parse public key: %s", err)
-		}
-
-		key = publicKey
-
-	default:
-		return verifier{}, fmt.Errorf("Type %q for pem block not supported", pemBlock.Type)
-	}
-
-	var verifySignature func(digest []byte, sig []byte) bool
-	switch publicKey := key.(type) {
-	case *ecdsa.PublicKey:
-		verifySignature = func(hash []byte, sig []byte) bool {
-			return ecdsa.VerifyASN1(publicKey, hash, sig)
-		}
-
-	case *rsa.PublicKey:
-		verifySignature = func(hash []byte, sig []byte) bool {
-			err := rsa.VerifyPSS(publicKey, crypto.SHA256, hash, sig, nil)
-
-			return err == nil
-		}
-
-	default:
-		return verifier{}, fmt.Errorf("Unsupported public key %T", key)
+func NewVerifier(rootCAPEM []byte) Verifier {
+	if len(rootCAPEM) == 0 {
+		rootCAPEM = []byte(defaultRootCA)
 	}
 
 	return verifier{
-		verifySignature: verifySignature,
-	}, nil
+		rootCAPEM: rootCAPEM,
+	}
 }
 
-func (v verifier) Verify(content []byte, signature []byte) error {
-	if v.verifySignature == nil {
-		return fmt.Errorf("Verifier is not properly initialized")
-	}
-
-	hash := sha256.Sum256(content)
-
-	signatureDecoded, err := hex.DecodeString(strings.TrimSpace(string(signature)))
+func (v verifier) Verify(sjson []byte) ([]byte, error) {
+	rootCAFile, err := os.CreateTemp("", "operations-center-updates-rootca-*.crt")
 	if err != nil {
-		return fmt.Errorf("Failed to decode signature: %w", err)
+		return nil, fmt.Errorf("Failed to create temporary file for root CA PEM: %w", err)
 	}
 
-	ok := v.verifySignature(hash[:], signatureDecoded)
-	if !ok {
-		return fmt.Errorf(`Invalid signature for "update.json"`)
+	defer func() {
+		_ = rootCAFile.Close()
+		_ = os.Remove(rootCAFile.Name())
+	}()
+
+	_, err = rootCAFile.Write(v.rootCAPEM)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to write root CA PEM to temporary file: %w", err)
 	}
 
-	return nil
+	err = rootCAFile.Close()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to close root CA PEM temporary file: %w", err)
+	}
+
+	stdoutBuf := bytes.Buffer{}
+	stderrBuf := bytes.Buffer{}
+
+	cmd := exec.Command("openssl", "smime", "-text", "-verify", "-CAfile", rootCAFile.Name())
+	cmd.Stdin = bytes.NewBuffer(sjson)
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+	err = cmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf(`Failed to verify signature using "openssl" error output: %q, error: %w`, stderrBuf.String(), err)
+	}
+
+	return stdoutBuf.Bytes(), nil
 }
 
-func (v verifier) VerifyFile(filename string) error {
+func (v verifier) VerifyFile(filename string) ([]byte, error) {
 	content, err := os.ReadFile(filename)
 	if err != nil {
-		return fmt.Errorf("Unable to read %q: %w", filename, err)
+		return nil, fmt.Errorf("Unable to read %q: %w", filename, err)
 	}
 
-	signature, err := os.ReadFile(filename + ".sig")
-	if err != nil {
-		return fmt.Errorf(`Unable to read "%s.sig": %w`, filename, err)
-	}
-
-	return v.Verify(content, signature)
+	return v.Verify(content)
 }
 
 type noopVerifier struct{}
@@ -122,10 +77,25 @@ func NewNoopVerifier() Verifier {
 	return noopVerifier{}
 }
 
-func (noopVerifier) Verify(_, _ []byte) error {
-	return nil
+func (noopVerifier) Verify(sjson []byte) ([]byte, error) {
+	stdoutBuf := bytes.Buffer{}
+
+	cmd := exec.Command("openssl", "smime", "-text", "-verify", "-noverify")
+	cmd.Stdin = bytes.NewBuffer(sjson)
+	cmd.Stdout = &stdoutBuf
+	err := cmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf(`Failed to process smime in noop verifier: %w`, err)
+	}
+
+	return stdoutBuf.Bytes(), nil
 }
 
-func (noopVerifier) VerifyFile(_ string) error {
-	return nil
+func (n noopVerifier) VerifyFile(filename string) ([]byte, error) {
+	content, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to read %q: %w", filename, err)
+	}
+
+	return n.Verify(content)
 }
