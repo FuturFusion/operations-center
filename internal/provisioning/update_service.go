@@ -179,6 +179,12 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 	}
 
 	for _, update := range updates {
+		_, err := s.repo.GetByUUID(ctx, update.UUID)
+		if err == nil {
+			// Update is already in the DB.
+			continue
+		}
+
 		updateFiles, err := src.GetUpdateAllFiles(ctx, update)
 		if err != nil {
 			return fmt.Errorf(`Failed to get files for update "%s:%s@%s": %w`, origin, update.Channel, update.Version, err)
