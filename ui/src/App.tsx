@@ -18,6 +18,8 @@ import StoragePool from "pages/StoragePool";
 import StorageVolume from "pages/StorageVolume";
 import Profile from "pages/Profile";
 import Project from "pages/Project";
+import Server from "pages/Server";
+import ServerDetail from "pages/ServerDetail";
 import Token from "pages/Token";
 import TokenCreate from "pages/TokenCreate";
 import TokenDetail from "pages/TokenDetail";
@@ -87,6 +89,15 @@ function App() {
             />
             <Route path="/ui/inventory/profiles" element={<Profile />} />
             <Route path="/ui/inventory/projects" element={<Project />} />
+            <Route path="/ui/provisioning/servers" element={<Server />} />
+            <Route
+              path="/ui/provisioning/servers/:name"
+              element={<ServerDetail />}
+            />
+            <Route
+              path="/ui/provisioning/servers/:name/:activeTab"
+              element={<ServerDetail />}
+            />
             <Route path="/ui/provisioning/tokens" element={<Token />} />
             <Route
               path="/ui/provisioning/tokens/create"
