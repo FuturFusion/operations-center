@@ -16,17 +16,15 @@ type Config struct {
 	ClientCertificateFilename string `yaml:"-"`
 	ClientKeyFilename         string `yaml:"-"`
 
-	// If update.source is the URL of the origin, the updates should be fetched from.
+	// update.source is the URL of the origin, the updates should be fetched from.
 	// If update.source starts with https://github.com/, the Github client is used
 	// to fetch the updates from https://github.com/lxc/incus-os.
 	UpdatesSource              string        `yaml:"update.source"`
 	UpdatesSourcePollInterval  time.Duration `yaml:"-"`
 	UpdatesSourcePollSkipFirst bool          `yaml:"update.source_skip_first_update"`
 	GithubToken                string        `yaml:"github.token"`
-	// Public key used to verify the signature of update.json files in PEM
-	// format. Supported PEM types are: PUBLIC KEY (PKIX format), RSA PUBLIC KEY (PKCS1 format)
-	// and CERTIFICATE (ASN.1 DER format).
-	UpdateSignatureVerificationPEM string `yaml:"update.signature_verification_pem"`
+	// Root CA certificate used to verify the signature of index.sjson.
+	UpdateSignatureVerificationRootCA string `yaml:"update.signature_verification_root_ca"`
 
 	PendingServerPollInterval time.Duration `yaml:"-"`
 
