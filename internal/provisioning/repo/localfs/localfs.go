@@ -162,17 +162,15 @@ func (l localfs) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (
 		return nil, err
 	}
 
-	// Verify update.json signature.
-	filename := filepath.Join(tmpDir, "update.json")
-	err = l.verifier.VerifyFile(filename)
+	// Verify update.sjson signature.
+	filename := filepath.Join(tmpDir, "update.sjson")
+	verifiedUpdateJSONBody, err := l.verifier.VerifyFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to verify signature for %q: %w", filename, err)
 	}
 
-	delete(extractedFiles, "update.json.sig")
-
 	// Read Changelog.
-	updateManifest, err := readUpdateJSONAndChangelog(tmpDir, extractedFiles)
+	updateManifest, err := readUpdateJSONAndChangelog(verifiedUpdateJSONBody, tmpDir, extractedFiles)
 	if err != nil {
 		return nil, err
 	}
@@ -259,25 +257,21 @@ func extractTar(tarReader *tar.Reader, destDir string) (extractedFiles map[strin
 	return extractedFiles, nil
 }
 
-func readUpdateJSONAndChangelog(destDir string, extractedFiles map[string]struct{}) (*provisioning.Update, error) {
-	body, err := os.ReadFile(filepath.Join(destDir, "update.json"))
-	if err != nil {
-		return nil, fmt.Errorf(`Invalid archive, unable to read "update.json": %w`, err)
-	}
-
+func readUpdateJSONAndChangelog(updateJSONBody []byte, destDir string, extractedFiles map[string]struct{}) (*provisioning.Update, error) {
 	updateManifest := &provisioning.Update{}
 
-	err = json.Unmarshal(body, updateManifest)
+	err := json.Unmarshal(updateJSONBody, updateManifest)
 	if err != nil {
-		return nil, fmt.Errorf(`Invalid archive, failed to read "update.json": %w`, err)
+		return nil, fmt.Errorf(`Invalid archive, failed to read "update.sjson": %w`, err)
 	}
 
 	updateManifest.Origin += originSuffix
 	updateManifest.UUID = uuidFromUpdate(*updateManifest)
 
+	delete(extractedFiles, "update.sjson")
 	delete(extractedFiles, "update.json")
 
-	body, err = os.ReadFile(filepath.Join(destDir, "changelog.txt"))
+	body, err := os.ReadFile(filepath.Join(destDir, "changelog.txt"))
 	if err != nil {
 		return nil, fmt.Errorf(`Invalid archive, unable to read "changelog.txt": %w`, err)
 	}
