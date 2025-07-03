@@ -150,6 +150,7 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 				PublishedAt: update.PublishedAt,
 				Severity:    update.Severity,
 				Origin:      update.Origin,
+				URL:         update.URL,
 				Channel:     update.Channel,
 				Changelog:   update.Changelog,
 			})
@@ -257,6 +258,7 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 			PublishedAt: update.PublishedAt,
 			Severity:    update.Severity,
 			Origin:      update.Origin,
+			URL:         update.URL,
 			Channel:     update.Channel,
 			Changelog:   update.Changelog,
 		},
@@ -356,7 +358,6 @@ func (u *updateHandler) updateFilesGet(r *http.Request) response.Response {
 	for _, updateFile := range updateFiles {
 		result = append(result, api.UpdateFile{
 			Filename:     updateFile.Filename,
-			URL:          updateFile.URL,
 			Size:         updateFile.Size,
 			Sha256:       updateFile.Sha256,
 			Component:    updateFile.Component,
