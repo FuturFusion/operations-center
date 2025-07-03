@@ -16,6 +16,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
 	"github.com/FuturFusion/operations-center/internal/signature"
+	"github.com/FuturFusion/operations-center/internal/signature/signaturetest"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -32,9 +33,9 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 			name:       "success - one update",
 			statusCode: http.StatusOK,
 			updates: updateserver.UpdatesIndex{
-				Format: "updates:1.0",
-				Updates: map[string]provisioning.Update{
-					"1": {
+				Format: "1.0",
+				Updates: []provisioning.Update{
+					{
 						Version:     "1",
 						Severity:    api.UpdateSeverityNone,
 						PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
@@ -57,14 +58,14 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 			name:       "success - two updates",
 			statusCode: http.StatusOK,
 			updates: updateserver.UpdatesIndex{
-				Format: "updates:1.0",
-				Updates: map[string]provisioning.Update{
-					"1": {
+				Format: "1.0",
+				Updates: []provisioning.Update{
+					{
 						Version:     "1",
 						Severity:    api.UpdateSeverityNone,
 						PublishedAt: time.Date(2024, 5, 22, 15, 21, 0, 0, time.UTC), // older update, will be filtered out
 					},
-					"2": {
+					{
 						Version:     "2",
 						Severity:    api.UpdateSeverityNone,
 						PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
@@ -103,39 +104,30 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			errChan := make(chan error, 1)
+			caCert, cert, key := signaturetest.GenerateCertChain(t)
+
+			body, err := json.Marshal(tc.updates)
+			require.NoError(t, err)
+
+			signedBody := signaturetest.SignContent(t, cert, key, body)
 
 			svr := httptest.NewServer(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if !strings.HasSuffix(r.URL.Path, "/updates.json") {
+					if !strings.HasSuffix(r.URL.Path, "/index.sjson") {
 						http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 						return
 					}
 
-					body, err := json.Marshal(tc.updates)
-					if err != nil {
-						errChan <- err
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-						return
-					}
-
 					w.WriteHeader(tc.statusCode)
-					_, _ = w.Write(body)
+					_, _ = w.Write(signedBody)
 				}),
 			)
 			defer svr.Close()
 
-			s := updateserver.New(svr.URL, nil)
+			s := updateserver.New(svr.URL, signature.NewVerifier(caCert))
 			updates, err := s.GetLatest(context.Background(), 1)
 			tc.assertErr(t, err)
 
-			var serverErr error
-			select {
-			case serverErr = <-errChan:
-			default:
-			}
-
-			require.NoError(t, serverErr)
 			require.Len(t, updates, len(tc.wantUpdates))
 			require.Equal(t, tc.wantUpdates, updates)
 		})
@@ -213,47 +205,33 @@ func TestUpdateServer_GetUpdateAllFiles(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			errChan := make(chan error, 1)
+			caCert, cert, key := signaturetest.GenerateCertChain(t)
+
+			body, err := json.Marshal(tc.update)
+			require.NoError(t, err)
+
+			signedBody := signaturetest.SignContent(t, cert, key, body)
 
 			svr := httptest.NewServer(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if !strings.Contains(r.URL.Path, "/1/update.json") {
+					if !strings.Contains(r.URL.Path, "/1/update.sjson") {
 						http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 						return
 					}
 
-					if strings.HasSuffix(r.URL.Path, ".sig") {
-						w.WriteHeader(tc.statusCode)
-						// The test currently uses NoopVerifier, therefore the content of the signature does not matter.
-						_, _ = w.Write([]byte(`signature`))
-					}
-
-					body, err := json.Marshal(tc.update)
-					if err != nil {
-						errChan <- err
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-						return
-					}
-
 					w.WriteHeader(tc.statusCode)
-					_, _ = w.Write(body)
+					_, _ = w.Write(signedBody)
 				}),
 			)
 			defer svr.Close()
 
-			s := updateserver.New(svr.URL, signature.NewNoopVerifier())
+			s := updateserver.New(svr.URL, signature.NewVerifier(caCert))
 			files, err := s.GetUpdateAllFiles(context.Background(), provisioning.Update{
 				ExternalID: "1",
+				URL:        "1/",
 			})
 			tc.assertErr(t, err)
 
-			var serverErr error
-			select {
-			case serverErr = <-errChan:
-			default:
-			}
-
-			require.NoError(t, serverErr)
 			require.Len(t, files, len(tc.wantFiles))
 			require.Equal(t, tc.wantFiles, files)
 		})
