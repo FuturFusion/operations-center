@@ -32,13 +32,11 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		Files: provisioning.UpdateFiles{
 			{
 				Filename:  "debug.raw.gz",
-				URL:       "https://api.github.com/repos/lxc/incus-os/releases/assets/253608213",
 				Size:      17884312,
 				Component: api.UpdateFileComponentDebug,
 			},
 			{
 				Filename:  "incus.raw.gz",
-				URL:       "https://api.github.com/repos/lxc/incus-os/releases/assets/253608198",
 				Size:      219898968,
 				Component: api.UpdateFileComponentIncus,
 			},
@@ -57,13 +55,11 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		Files: provisioning.UpdateFiles{
 			{
 				Filename:  "debug.raw.gz",
-				URL:       "https://api.github.com/repos/lxc/incus-os/releases/assets/253570621",
 				Size:      17884331,
 				Component: api.UpdateFileComponentDebug,
 			},
 			{
 				Filename:  "incus.raw.gz",
-				URL:       "https://api.github.com/repos/lxc/incus-os/releases/assets/253570598",
 				Size:      219903825,
 				Component: api.UpdateFileComponentIncus,
 			},

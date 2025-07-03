@@ -66,8 +66,8 @@ func (_d UpdateSourcePortWithPrometheus) GetUpdateAllFiles(ctx context.Context, 
 	return _d.base.GetUpdateAllFiles(ctx, update)
 }
 
-// GetUpdateFileByFilename implements provisioning.UpdateSourcePort.
-func (_d UpdateSourcePortWithPrometheus) GetUpdateFileByFilename(ctx context.Context, update provisioning.Update, filename string) (readCloser io.ReadCloser, n int, err error) {
+// GetUpdateFileByFilenameUnverified implements provisioning.UpdateSourcePort.
+func (_d UpdateSourcePortWithPrometheus) GetUpdateFileByFilenameUnverified(ctx context.Context, update provisioning.Update, filename string) (readCloser io.ReadCloser, n int, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -75,7 +75,7 @@ func (_d UpdateSourcePortWithPrometheus) GetUpdateFileByFilename(ctx context.Con
 			result = "error"
 		}
 
-		updateSourcePortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdateFileByFilename", result).Observe(time.Since(_since).Seconds())
+		updateSourcePortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdateFileByFilenameUnverified", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetUpdateFileByFilename(ctx, update, filename)
+	return _d.base.GetUpdateFileByFilenameUnverified(ctx, update, filename)
 }

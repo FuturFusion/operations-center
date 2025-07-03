@@ -21,48 +21,10 @@ import (
 	"github.com/FuturFusion/operations-center/internal/file"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/signature"
+	"github.com/FuturFusion/operations-center/internal/signature/signaturetest"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
-
-// import (
-// 	"archive/tar"
-// 	"bytes"
-// 	"context"
-// 	"crypto/sha256"
-// 	"embed"
-// 	"encoding/hex"
-// 	"encoding/json"
-// 	"io"
-// 	"os"
-// 	"path/filepath"
-// 	"testing"
-// 	"time"
-
-// 	"github.com/google/uuid"
-// 	"github.com/stretchr/testify/require"
-
-// 	"github.com/FuturFusion/operations-center/internal/file"
-// 	"github.com/FuturFusion/operations-center/internal/provisioning"
-// 	"github.com/FuturFusion/operations-center/internal/signature"
-// 	"github.com/FuturFusion/operations-center/shared/api"
-// )
-
-// func writeUpdate(t *testing.T, destDir string, updateID string, update provisioning.Update) {
-// 	t.Helper()
-
-// 	err := os.MkdirAll(filepath.Join(destDir, updateID), 0o700)
-// 	require.NoError(t, err)
-
-// 	body, err := json.Marshal(update)
-// 	require.NoError(t, err)
-
-// 	err = os.WriteFile(filepath.Join(destDir, updateID, "update.json"), body, 0o600)
-// 	require.NoError(t, err)
-
-// 	err = os.WriteFile(filepath.Join(destDir, updateID, "changelog.txt"), []byte(`changelog`), 0o600)
-// 	require.NoError(t, err)
-// }
 
 func TestLocalfs_Get(t *testing.T) {
 	tests := []struct {
@@ -354,8 +316,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 				require.Equal(t, api.UpdateFileComponentDebug, update.Files[0].Component)
 				require.Equal(t, api.UpdateFileTypeImageManifest, update.Files[0].Type)
 
-				require.True(t, file.PathExists(filepath.Join(tmpDir, wantUUID, "update.json")))
-				require.True(t, file.PathExists(filepath.Join(tmpDir, wantUUID, "update.json.sig")))
+				require.True(t, file.PathExists(filepath.Join(tmpDir, wantUUID, "update.sjson")))
 				require.True(t, file.PathExists(filepath.Join(tmpDir, wantUUID, "changelog.txt")))
 				require.True(t, file.PathExists(filepath.Join(tmpDir, wantUUID, "file1.txt")))
 				require.True(t, file.PathExists(filepath.Join(tmpDir, wantUUID, "file2.txt")))
@@ -524,12 +485,13 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			tr := generateUpdateTar(t, tc)
+			caCert, cert, key := signaturetest.GenerateCertChain(t)
+			tr := generateUpdateTar(t, tc, cert, key)
 
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
 			// TODO: Mock verifier to simulate different error cases
-			lfs, err := New(tmpDir, signature.NewNoopVerifier())
+			lfs, err := New(tmpDir, signature.NewVerifier(caCert))
 			require.NoError(t, err)
 
 			// Run test
@@ -549,7 +511,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 	}
 }
 
-func generateUpdateTar(t *testing.T, tc testLocalfsCreateFromArchive) *tar.Reader {
+func generateUpdateTar(t *testing.T, tc testLocalfsCreateFromArchive, cert []byte, key []byte) *tar.Reader {
 	t.Helper()
 
 	inMemoryTar := &bytes.Buffer{}
@@ -582,20 +544,15 @@ func generateUpdateTar(t *testing.T, tc testLocalfsCreateFromArchive) *tar.Reade
 	body, err := json.Marshal(tc.updateManifest)
 	require.NoError(t, err)
 
+	signedBody := signaturetest.SignContent(t, cert, key, body)
+
 	err = tw.WriteHeader(&tar.Header{
-		Name: "update.json",
-		Size: int64(len(body)),
+		Name: "update.sjson",
+		Size: int64(len(signedBody)),
 	})
 	require.NoError(t, err)
 
-	_, err = tw.Write(body)
-	require.NoError(t, err)
-
-	// FIXME: calculate signature and sign update.json file correctly
-	err = tw.WriteHeader(&tar.Header{
-		Name: "update.json.sig",
-		Size: 0,
-	})
+	_, err = tw.Write(signedBody)
 	require.NoError(t, err)
 
 	err = tw.WriteHeader(&tar.Header{

@@ -32,6 +32,16 @@ var updates = map[int]update{
 	3: updateFromV2,
 	4: updateFromV3,
 	5: updateFromV4,
+	6: updateFromV5,
+}
+
+func updateFromV5(ctx context.Context, tx *sql.Tx) error {
+	// v5..v6 add column url to updates
+	stmt := `
+ALTER TABLE updates ADD COLUMN "url" NOT NULL DEFAULT '';
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV4(ctx context.Context, tx *sql.Tx) error {

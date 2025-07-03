@@ -1,0 +1,48 @@
+MIME-Version: 1.0
+Content-Type: multipart/signed; protocol="application/x-pkcs7-signature"; micalg="sha-256"; boundary="----40095E126332F26173F7549DAB877068"
+
+This is an S/MIME signed message
+
+------40095E126332F26173F7549DAB877068
+Content-Type: text/plain
+
+{"format":"1.0","updates":[{"format":"1.0","channel":"daily","files":[{"architecture":"x86_64","component":"debug","filename":"debug.raw.gz","sha256":"afedb9a436cfdb0a88b99cf633b886f63b93d7b4952f97ea281a1415feecf80e","size":3443369,"type":"application"},{"architecture":"x86_64","component":"incus","filename":"incus.raw.gz","sha256":"93f19a6022f19649df29b09bada4b6d07762449e91455afd4dbdfe01946dbe4f","size":234952160,"type":"application"},{"architecture":"x86_64","component":"os","filename":"IncusOS_202507010114.efi.gz","sha256":"9d99d816cb5429d9ec1adbb541429d6fb9f645d50af041d6ef9db246663e2338","size":59653615,"type":"update-efi"},{"architecture":"x86_64","component":"os","filename":"IncusOS_202507010114.img.gz","sha256":"3c8179c401e47cd794ad7b14cf95a33bcbc8997f3019c51522aa382eb44beae5","size":495634583,"type":"image-raw"},{"architecture":"x86_64","component":"os","filename":"IncusOS_202507010114.iso.gz","sha256":"aa5211e2b74ce1e86ec85b2f1226e80c59af5114fcddd3f6181a3a4854534ba2","size":496655034,"type":"image-iso"},{"architecture":"x86_64","component":"os","filename":"IncusOS_202507010114.usr-x86-64-verity-sig.92f27638e0f141d2aadc80efe7d25c0f.raw.gz","sha256":"7dd7f10036591c5498a7ff0d36cf823c487e6ca64fad2e2ea4c01750ef537548","size":1506,"type":"update-usr-verity-signature"},{"architecture":"x86_64","component":"os","filename":"IncusOS_202507010114.usr-x86-64-verity.a5449dfc9b8e05756b839554d84d474e.raw.gz","sha256":"397f997c37a31a8db7664f87f39f3f97ea8aefbea1be790d70db6229dca71b84","size":4367092,"type":"update-usr-verity"},{"architecture":"x86_64","component":"os","filename":"IncusOS_202507010114.usr-x86-64.bd83eee85ac39b2dc24afe5df4074953.raw.gz","sha256":"f1a8bb70087b1f71893699c7fec0c4e09cbd07ee58ad85a6cf5b10096f85c0eb","size":413460904,"type":"update-usr"}],"origin":"linuxcontainers.org","published_at":"2025-07-03T01:28:07.80859166-04:00","severity":"none","version":"202507010114","url":"/202507010114"}]}
+
+------40095E126332F26173F7549DAB877068
+Content-Type: application/x-pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="smime.p7s"
+
+MIIFgQYJKoZIhvcNAQcCoIIFcjCCBW4CAQExDzANBglghkgBZQMEAgEFADALBgkq
+hkiG9w0BBwGgggOeMIIBxzCCAW2gAwIBAgIUa6wVMRaQAnWORbRLV54u5MFzRn4w
+CgYIKoZIzj0EAwMwODEbMBkGA1UEAwwSSW5jdXMgT1MgLSBSb290IEUxMRkwFwYD
+VQQKDBBMaW51eCBDb250YWluZXJzMB4XDTI1MDYyNjA4MTA1NFoXDTQ1MDYyMTA4
+MTA1NFowOjEdMBsGA1UEAwwUSW5jdXMgT1MgLSBVcGRhdGUgRTExGTAXBgNVBAoM
+EExpbnV4IENvbnRhaW5lcnMwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQHUOb9
+7qOlC+7M7RbxywRih+ITYQeESKgNo3fmVtlIf5UlpEcwQ3pGIbpHjD8c2KIGSP1R
+cLQtaunDE9RLai7Wo1MwUTAdBgNVHQ4EFgQUaxisMHDLnuWB7V3dydl/71jZk6sw
+HwYDVR0jBBgwFoAURFHuzftRhYh+N1q7C5+0tNRQtxowDwYDVR0TAQH/BAUwAwEB
+/zAKBggqhkjOPQQDAwNIADBFAiA050ZuveH+wAVARkKL++UWyzOsDUgUkZRA7pGj
+xpRIgAIhAMfnMsk++suI299PwvBw8VA10Vw8weAABDnNz6Pz1yNMMIIBzzCCAXSg
+AwIBAgIUV7OPp/tDpnW8hhKcMX6GkIhm0+IwCgYIKoZIzj0EAwMwOjEdMBsGA1UE
+AwwUSW5jdXMgT1MgLSBVcGRhdGUgRTExGTAXBgNVBAoMEExpbnV4IENvbnRhaW5l
+cnMwHhcNMjUwNjI2MDgxMDU0WhcNMjcwNjI2MDgxMDU0WjA/MSIwIAYDVQQDDBlJ
+bmN1cyBPUyAtIFVwZGF0ZSAyMDI1IEUxMRkwFwYDVQQKDBBMaW51eCBDb250YWlu
+ZXJzMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE97aAkQkVafaMpOAoS6pViioj
+1cgszgpJJ6fqT5DS82KlGNaG3/CVh05pQcN0hGJzaGMTSW9Z5/dg2Zg7Rd1rA6NT
+MFEwHQYDVR0OBBYEFBB/9QUIkdXlDsO6Lh+l9Zn/rdssMB8GA1UdIwQYMBaAFGsY
+rDBwy57lge1d3cnZf+9Y2ZOrMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwMD
+SQAwRgIhAL1AloiZlrRGTT3tqHOymyeNEa4LHkqlqJ1RK5Vu1PywAiEAp7Dfkq5p
+SFgJqcNaDG59m7NYJ78GYH8h0bYZEnYp1AMxggGnMIIBowIBATBSMDoxHTAbBgNV
+BAMMFEluY3VzIE9TIC0gVXBkYXRlIEUxMRkwFwYDVQQKDBBMaW51eCBDb250YWlu
+ZXJzAhRXs4+n+0OmdbyGEpwxfoaQiGbT4jANBglghkgBZQMEAgEFAKCB5DAYBgkq
+hkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3DQEJBTEPFw0yNTA3MDMwNTI5
+MDRaMC8GCSqGSIb3DQEJBDEiBCBrdV7ZMKYzVGCu0UuhMTbixshwh2We6oYAKRHQ
+DHD3CzB5BgkqhkiG9w0BCQ8xbDBqMAsGCWCGSAFlAwQBKjALBglghkgBZQMEARYw
+CwYJYIZIAWUDBAECMAoGCCqGSIb3DQMHMA4GCCqGSIb3DQMCAgIAgDANBggqhkiG
+9w0DAgIBQDAHBgUrDgMCBzANBggqhkiG9w0DAgIBKDAKBggqhkjOPQQDAgRIMEYC
+IQCcoTEwxP5BLMFaBmpJOymyCRdIEqIl/ZE4PidqpHAvJwIhAO/+3aopgFles82L
+fdfIvtHoCQi5mFjz9wlNrlMChu9k
+
+------40095E126332F26173F7549DAB877068--
+

@@ -53,6 +53,7 @@ CREATE TABLE updates (
   channel TEXT NOT NULL,
   changelog TEXT NOT NULL,
   files TEXT NOT NULL,
+  "url" NOT NULL DEFAULT '',
   UNIQUE(uuid)
 );
 
@@ -321,4 +322,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (5, strftime("%s"))
+INSERT INTO schema (version, updated_at) VALUES (6, strftime("%s"))

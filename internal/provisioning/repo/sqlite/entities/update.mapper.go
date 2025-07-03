@@ -15,27 +15,27 @@ import (
 )
 
 var updateObjects = RegisterStmt(`
-SELECT updates.id, updates.uuid, updates.origin, updates.external_id, updates.version, updates.published_at, updates.severity, updates.channel, updates.changelog, updates.files
+SELECT updates.id, updates.uuid, updates.origin, updates.external_id, updates.version, updates.published_at, updates.severity, updates.channel, updates.changelog, updates.files, updates.url
   FROM updates
   ORDER BY updates.uuid
 `)
 
 var updateObjectsByUUID = RegisterStmt(`
-SELECT updates.id, updates.uuid, updates.origin, updates.external_id, updates.version, updates.published_at, updates.severity, updates.channel, updates.changelog, updates.files
+SELECT updates.id, updates.uuid, updates.origin, updates.external_id, updates.version, updates.published_at, updates.severity, updates.channel, updates.changelog, updates.files, updates.url
   FROM updates
   WHERE ( updates.uuid = ? )
   ORDER BY updates.uuid
 `)
 
 var updateObjectsByChannel = RegisterStmt(`
-SELECT updates.id, updates.uuid, updates.origin, updates.external_id, updates.version, updates.published_at, updates.severity, updates.channel, updates.changelog, updates.files
+SELECT updates.id, updates.uuid, updates.origin, updates.external_id, updates.version, updates.published_at, updates.severity, updates.channel, updates.changelog, updates.files, updates.url
   FROM updates
   WHERE ( updates.channel = ? )
   ORDER BY updates.uuid
 `)
 
 var updateObjectsByOrigin = RegisterStmt(`
-SELECT updates.id, updates.uuid, updates.origin, updates.external_id, updates.version, updates.published_at, updates.severity, updates.channel, updates.changelog, updates.files
+SELECT updates.id, updates.uuid, updates.origin, updates.external_id, updates.version, updates.published_at, updates.severity, updates.channel, updates.changelog, updates.files, updates.url
   FROM updates
   WHERE ( updates.origin = ? )
   ORDER BY updates.uuid
@@ -60,13 +60,13 @@ SELECT updates.id FROM updates
 `)
 
 var updateCreate = RegisterStmt(`
-INSERT INTO updates (uuid, origin, external_id, version, published_at, severity, channel, changelog, files)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO updates (uuid, origin, external_id, version, published_at, severity, channel, changelog, files, url)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
 var updateUpdate = RegisterStmt(`
 UPDATE updates
-  SET uuid = ?, origin = ?, external_id = ?, version = ?, published_at = ?, severity = ?, channel = ?, changelog = ?, files = ?
+  SET uuid = ?, origin = ?, external_id = ?, version = ?, published_at = ?, severity = ?, channel = ?, changelog = ?, files = ?, url = ?
  WHERE id = ?
 `)
 
@@ -154,7 +154,7 @@ func GetUpdate(ctx context.Context, db dbtx, uuid uuid.UUID) (_ *provisioning.Up
 // updateColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Update entity.
 func updateColumns() string {
-	return "updates.id, updates.uuid, updates.origin, updates.external_id, updates.version, updates.published_at, updates.severity, updates.channel, updates.changelog, updates.files"
+	return "updates.id, updates.uuid, updates.origin, updates.external_id, updates.version, updates.published_at, updates.severity, updates.channel, updates.changelog, updates.files, updates.url"
 }
 
 // getUpdates can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -163,7 +163,7 @@ func getUpdates(ctx context.Context, stmt *sql.Stmt, args ...any) ([]provisionin
 
 	dest := func(scan func(dest ...any) error) error {
 		u := provisioning.Update{}
-		err := scan(&u.ID, &u.UUID, &u.Origin, &u.ExternalID, &u.Version, &u.PublishedAt, &u.Severity, &u.Channel, &u.Changelog, &u.Files)
+		err := scan(&u.ID, &u.UUID, &u.Origin, &u.ExternalID, &u.Version, &u.PublishedAt, &u.Severity, &u.Channel, &u.Changelog, &u.Files, &u.URL)
 		if err != nil {
 			return err
 		}
@@ -187,7 +187,7 @@ func getUpdatesRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]pro
 
 	dest := func(scan func(dest ...any) error) error {
 		u := provisioning.Update{}
-		err := scan(&u.ID, &u.UUID, &u.Origin, &u.ExternalID, &u.Version, &u.PublishedAt, &u.Severity, &u.Channel, &u.Changelog, &u.Files)
+		err := scan(&u.ID, &u.UUID, &u.Origin, &u.ExternalID, &u.Version, &u.PublishedAt, &u.Severity, &u.Channel, &u.Changelog, &u.Files, &u.URL)
 		if err != nil {
 			return err
 		}
@@ -419,7 +419,7 @@ func CreateUpdate(ctx context.Context, db dbtx, object provisioning.Update) (_ i
 		_err = mapErr(_err, "Update")
 	}()
 
-	args := make([]any, 9)
+	args := make([]any, 10)
 
 	// Populate the statement arguments.
 	args[0] = object.UUID
@@ -431,6 +431,7 @@ func CreateUpdate(ctx context.Context, db dbtx, object provisioning.Update) (_ i
 	args[6] = object.Channel
 	args[7] = object.Changelog
 	args[8] = object.Files
+	args[9] = object.URL
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, updateCreate)
@@ -476,7 +477,7 @@ func UpdateUpdate(ctx context.Context, db tx, uuid uuid.UUID, object provisionin
 		return fmt.Errorf("Failed to get \"updateUpdate\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(object.UUID, object.Origin, object.ExternalID, object.Version, object.PublishedAt, object.Severity, object.Channel, object.Changelog, object.Files, id)
+	result, err := stmt.Exec(object.UUID, object.Origin, object.ExternalID, object.Version, object.PublishedAt, object.Severity, object.Channel, object.Changelog, object.Files, object.URL, id)
 	if err != nil {
 		return fmt.Errorf("Update \"updates\" entry failed: %w", err)
 	}

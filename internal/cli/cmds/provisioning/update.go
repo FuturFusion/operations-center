@@ -312,11 +312,11 @@ func (c *cmdUpdateFileList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Filename", "Size", "Sha256", "URL", "Component", "Type", "Architecture"}
+	header := []string{"Filename", "Size", "Sha256", "Component", "Type", "Architecture"}
 	data := [][]string{}
 
 	for _, updateFile := range updateFiles {
-		data = append(data, []string{updateFile.Filename, humanize.Bytes(uint64(updateFile.Size)), updateFile.Sha256, updateFile.URL, updateFile.Component.String(), updateFile.Type.String(), updateFile.Architecture.String()})
+		data = append(data, []string{updateFile.Filename, humanize.Bytes(uint64(updateFile.Size)), updateFile.Sha256, updateFile.Component.String(), updateFile.Type.String(), updateFile.Architecture.String()})
 	}
 
 	sort.ColumnsNaturally(data)
@@ -374,7 +374,6 @@ func (c *cmdUpdateFileShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Filename: %s\n", updateFile.Filename)
 	fmt.Printf("Size: %s\n", humanize.Bytes(uint64(updateFile.Size)))
 	fmt.Printf("Sha256: %s\n", updateFile.Sha256)
-	fmt.Printf("URL: %s\n", updateFile.URL)
 	fmt.Printf("Component: %s\n", updateFile.Component)
 	fmt.Printf("Type: %s\n", updateFile.Type)
 	fmt.Printf("Architecture: %s\n", updateFile.Architecture.String())

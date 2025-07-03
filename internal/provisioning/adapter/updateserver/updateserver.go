@@ -37,23 +37,20 @@ func New(baseURL string, verifier signature.Verifier) *updateServer {
 }
 
 type UpdatesIndex struct {
-	ContentID string                         `json:"content_id"`
-	DataType  string                         `json:"datatype"`
-	Format    string                         `json:"format"`
-	Updates   map[string]provisioning.Update `json:"updates"`
-	Updated   string                         `json:"updated,omitempty"`
+	Format  string                `json:"format"`
+	Updates []provisioning.Update `json:"updates"`
 }
 
 func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Updates, error) {
-	indexURL := u.baseURL + "/updates.json"
+	indexURL := u.baseURL + "/index.sjson"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, indexURL, http.NoBody)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetLatest: %w", err)
 	}
 
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to query latest updates: %w", err)
 	}
 
 	defer resp.Body.Close()
@@ -62,27 +59,29 @@ func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Up
 		return nil, fmt.Errorf("Unexpected status code received: %d", resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	contentSig, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetLatest: %w", err)
+	}
+
+	contentVerified, err := u.verifier.Verify(contentSig)
+	if err != nil {
+		return nil, fmt.Errorf(`Failed to verify signature of "index.sjson": %w`, err)
 	}
 
 	updates := UpdatesIndex{}
-	err = json.Unmarshal(body, &updates)
+	err = json.Unmarshal(contentVerified, &updates)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetLatest: %w", err)
 	}
 
-	if updates.Format != "updates:1.0" {
-		return nil, fmt.Errorf(`Unsupported stream update format %q, supported formats are: "updates:1.0"`, updates.Format)
+	if updates.Format != "1.0" {
+		return nil, fmt.Errorf(`Unsupported update format %q, supported formats are: "1.0"`, updates.Format)
 	}
-
-	// TODO: Should the origin property from the updates.json be verified against baseURL?
-	// Should we allow for mirror servers, which would have a different baseURL but serving the content from the origin origin?
 
 	updatesList := make([]provisioning.Update, 0, len(updates.Updates))
-	for updateID, update := range updates.Updates {
-		update.ExternalID = updateID
+	for _, update := range updates.Updates {
+		update.ExternalID = update.Version
 		update.UUID = uuidFromUpdateServer(update)
 
 		// Fallback to x84_64 for architecture if not defined.
@@ -119,15 +118,15 @@ func uuidFromUpdateServer(update provisioning.Update) uuid.UUID {
 
 func (u updateServer) GetUpdateAllFiles(ctx context.Context, inUpdate provisioning.Update) (provisioning.UpdateFiles, error) {
 	getFile := func(filename string) ([]byte, error) {
-		updateURL := u.baseURL + "/" + path.Join(inUpdate.ExternalID, filename)
+		updateURL := u.baseURL + "/" + path.Join(inUpdate.URL, filename)
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, updateURL, http.NoBody)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("GetUpdateAllFiles: %w", err)
 		}
 
 		resp, err := u.client.Do(req)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Failed to query %q of update %q: %w", filename, inUpdate.Version, err)
 		}
 
 		defer resp.Body.Close()
@@ -138,31 +137,26 @@ func (u updateServer) GetUpdateAllFiles(ctx context.Context, inUpdate provisioni
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("GetUpdateAllFiles: %w", err)
 		}
 
 		return body, nil
 	}
 
-	content, err := getFile("update.json")
+	contentSig, err := getFile("update.sjson")
 	if err != nil {
 		return nil, err
 	}
 
-	contentSig, err := getFile("update.json.sig")
+	content, err := u.verifier.Verify(contentSig)
 	if err != nil {
-		return nil, err
-	}
-
-	err = u.verifier.Verify(content, contentSig)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf(`Failed to verify signature of "update.sjson": %w`, err)
 	}
 
 	update := provisioning.Update{}
 	err = json.Unmarshal(content, &update)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetUpdateAllFiles: %w", err)
 	}
 
 	// Fallback to x84_64 for architecture if not defined.
@@ -175,18 +169,21 @@ func (u updateServer) GetUpdateAllFiles(ctx context.Context, inUpdate provisioni
 	return update.Files, nil
 }
 
-func (u updateServer) GetUpdateFileByFilename(ctx context.Context, inUpdate provisioning.Update, filename string) (io.ReadCloser, int, error) {
-	// FIXME: Verify signature of updates.json and use the checksum from updates.json
-	// to verify the integrity of the downloaded file.
+// GetUpdateFileByFilenameUnverified downloads a file of an update.
+//
+// GetUpdateFileByFilenameUnverified returns an io.ReadCloser that reads the contents of the specified release asset.
+// It is the caller's responsibility to close the ReadCloser.
+// It is the caller's responsibility to verify the received data, e.g. using a hash.
+func (u updateServer) GetUpdateFileByFilenameUnverified(ctx context.Context, inUpdate provisioning.Update, filename string) (io.ReadCloser, int, error) {
 	updateURL := u.baseURL + "/" + path.Join(inUpdate.ExternalID, filename)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, updateURL, http.NoBody)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("GetUpdateFileByFilename: %w", err)
 	}
 
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("Failed to get %q of update %q: %w", filename, inUpdate.Version, err)
 	}
 
 	if resp.StatusCode != http.StatusOK {

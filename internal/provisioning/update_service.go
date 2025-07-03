@@ -179,6 +179,12 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 	}
 
 	for _, update := range updates {
+		_, err := s.repo.GetByUUID(ctx, update.UUID)
+		if err == nil {
+			// Update is already in the DB.
+			continue
+		}
+
 		updateFiles, err := src.GetUpdateAllFiles(ctx, update)
 		if err != nil {
 			return fmt.Errorf(`Failed to get files for update "%s:%s@%s": %w`, origin, update.Channel, update.Version, err)
@@ -193,7 +199,7 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 
 			err := func() (err error) {
 				var stream io.ReadCloser
-				stream, _, err = src.GetUpdateFileByFilename(ctx, update, updateFile.Filename)
+				stream, _, err = src.GetUpdateFileByFilenameUnverified(ctx, update, updateFile.Filename)
 				if err != nil {
 					return fmt.Errorf(`Failed to fetch update file "%s:%s/%s@%s": %w`, origin, update.Channel, updateFile.Filename, update.Version, err)
 				}

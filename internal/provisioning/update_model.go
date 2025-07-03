@@ -18,6 +18,7 @@ import (
 type Update struct {
 	ID          string             `json:"-"`
 	UUID        uuid.UUID          `json:"-" db:"primary=yes"`
+	Format      string             `json:"format" db:"ignore"`
 	Origin      string             `json:"origin"`
 	ExternalID  string             `json:"-"`
 	Version     string             `json:"version"`
@@ -26,6 +27,7 @@ type Update struct {
 	Channel     string             `json:"channel"`
 	Changelog   string             `json:"-"`
 	Files       UpdateFiles        `json:"files"`
+	URL         string             `json:"url"`
 }
 
 type Updates []Update
@@ -57,7 +59,6 @@ func (u Updates) Swap(i, j int) {
 
 type UpdateFile struct {
 	Filename     string                  `json:"filename"`
-	URL          string                  `json:"url"`
 	Size         int                     `json:"size"`
 	Sha256       string                  `json:"sha256"`
 	Component    api.UpdateFileComponent `json:"component"`
