@@ -3,9 +3,13 @@ package incus
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/rand/v2"
+	"net"
 	"net/http"
 	"net/url"
+	"slices"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incus "github.com/lxc/incus/v6/client"
@@ -429,7 +433,7 @@ func (c client) InitializeDefaultStorage(ctx context.Context, servers []provisio
 //   - Create an "meshbr0" network bridge on each server.
 //   - Update the default profile in the default project to use incusbr0 for networking.
 //   - Update the default profile in the internal project to use meshbr0 for networking.
-func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server, primaryNic string) error {
+func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server) error {
 	// Use the first server of the cluster for communication.
 	client, err := c.getClient(ctx, servers[0])
 	if err != nil {
@@ -513,21 +517,39 @@ func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provi
 		}
 	}
 
-	// Set network config for meshbr0.
-	meshbr0, meshbr0ETag, err := client.GetNetwork("meshbr0")
+	// Set network config for meshbr0 on each server.
+	clusterIPv6Prefix, err := randomSubnetV6()
 	if err != nil {
 		return err
 	}
 
-	meshbr0.Config["ipv4.address"] = "none"
-	meshbr0.Config["ipv6.address"] = "fdff:ffff:dc01::1/64"
-	meshbr0.Config["tunnel.mesh.id"] = "1000"
-	meshbr0.Config["tunnel.mesh.interface"] = primaryNic
-	meshbr0.Config["tunnel.mesh.protocol"] = "vxlan"
+	for _, server := range servers {
+		meshbr0, meshbr0ETag, err := client.UseTarget(server.Name).GetNetwork("meshbr0")
+		if err != nil {
+			return err
+		}
 
-	err = client.UpdateNetwork("meshbr0", meshbr0.Writable(), meshbr0ETag)
-	if err != nil {
-		return err
+		primaryNic := detectClusteringInterface(server.OSData.Network)
+		primaryNicState, ok := server.OSData.Network.State.Interfaces[primaryNic]
+		if !ok {
+			return fmt.Errorf("Failed to get network state for primary nic")
+		}
+
+		ipv6Address, err := ipv6AddressFromMacWithPrefix(clusterIPv6Prefix, primaryNicState.LACP.LocalMAC)
+		if err != nil {
+			return err
+		}
+
+		meshbr0.Config["ipv4.address"] = "none"
+		meshbr0.Config["ipv6.address"] = ipv6Address.String()
+		meshbr0.Config["tunnel.mesh.id"] = "1000"
+		meshbr0.Config["tunnel.mesh.interface"] = primaryNic
+		meshbr0.Config["tunnel.mesh.protocol"] = "vxlan"
+
+		err = client.UseTarget(server.Name).UpdateNetwork("meshbr0", meshbr0.Writable(), meshbr0ETag)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Add incusbr0 to the default profile.
@@ -555,4 +577,51 @@ func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provi
 	}
 
 	return nil
+}
+
+func randomSubnetV6() (net.IP, error) {
+	for range 100 {
+		cidr := fmt.Sprintf("fd42:%x:%x:%x::1/64", rand.IntN(65535), rand.IntN(65535), rand.IntN(65535))
+		addr, _, err := net.ParseCIDR(cidr)
+		if err != nil {
+			continue
+		}
+
+		return addr, nil
+	}
+
+	return nil, errors.New("Failed to automatically find an IPv6 subnet")
+}
+
+// ipv6AddressFromMacWithPrefix takes an IPv6 prefix and a MAC address and
+// derives an IPv6 address following the "Modified EUI-64 Format Interface
+// Identifiers" definition from https://datatracker.ietf.org/doc/html/rfc4291#page-20
+// for the conversion of the MAC address to EUI-64.
+func ipv6AddressFromMacWithPrefix(ipv6Prefix net.IP, macStr string) (net.IP, error) {
+	mac, err := net.ParseMAC(macStr)
+	if err != nil {
+		return nil, err
+	}
+
+	// Flip 2nd bit which distinguishes universal (0) and locally (1).
+	mac[0] ^= (1 << (2 - 1))
+
+	copy(ipv6Prefix[8:], []byte{mac[0], mac[1], mac[2], 0xff, 0xfe, mac[3], mac[4], mac[5]}) // Insert ff:fe in the middle.
+
+	return ipv6Prefix, nil
+}
+
+// detectClusteringInterface returns the first interface that has the role
+// "clustering" and at least one IP address assigned.
+func detectClusteringInterface(network api.ServerSystemNetwork) string {
+	for name, iface := range network.State.Interfaces {
+		// TODO: use constant from incus-osd/api instead of string "clustering".
+		if slices.Contains(iface.Roles, "clustering") && len(iface.Addresses) > 0 {
+			return name
+		}
+	}
+
+	// TODO: Once incus-osd ensures the correct setting of the interface roles,
+	// the can be set to empty string.
+	return "enp5s0"
 }
