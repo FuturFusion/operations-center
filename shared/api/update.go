@@ -91,6 +91,10 @@ type Update struct {
 	// Example: linuxcontainers.org
 	Origin string `json:"origin" yaml:"origin"`
 
+	// // URL of the File.
+	// // Example: releases/download/202501311418/
+	URL string `json:"url" yaml:"url"`
+
 	// Channel of the Update.
 	// Example: stable
 	Channel string `json:"channel" yaml:"channel"`
@@ -286,10 +290,6 @@ type UpdateFile struct {
 	// Filename of the File.
 	// Example: IncusOS_202501311418.efi.gz
 	Filename string `json:"filename" yaml:"filename"`
-
-	// URL of the File.
-	// Example: https://github.com/lxc/incus-os/releases/download/202501311418/IncusOS_202501311418.efi.gz
-	URL string `json:"url" yaml:"url"`
 
 	// Size of the File in bytes.
 	// Example: 54300000
