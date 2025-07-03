@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router";
 import { Container } from "react-bootstrap";
 import Sidebar from "components/Sidebar";
+import Notification from "components/Notification";
 import { useAuth } from "context/authContext";
 import Home from "pages/Home";
 import Image from "pages/Image";
@@ -17,6 +18,9 @@ import StoragePool from "pages/StoragePool";
 import StorageVolume from "pages/StorageVolume";
 import Profile from "pages/Profile";
 import Project from "pages/Project";
+import Token from "pages/Token";
+import TokenCreate from "pages/TokenCreate";
+import TokenDetail from "pages/TokenDetail";
 
 function App() {
   const { isAuthenticated, isAuthLoading } = useAuth();
@@ -83,7 +87,21 @@ function App() {
             />
             <Route path="/ui/inventory/profiles" element={<Profile />} />
             <Route path="/ui/inventory/projects" element={<Project />} />
+            <Route path="/ui/provisioning/tokens" element={<Token />} />
+            <Route
+              path="/ui/provisioning/tokens/create"
+              element={<TokenCreate />}
+            />
+            <Route
+              path="/ui/provisioning/tokens/:uuid"
+              element={<TokenDetail />}
+            />
+            <Route
+              path="/ui/provisioning/tokens/:uuid/:activeTab"
+              element={<TokenDetail />}
+            />
           </Routes>
+          <Notification />
         </Container>
       </div>
     </>

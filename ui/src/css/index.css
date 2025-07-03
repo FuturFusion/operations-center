@@ -5,8 +5,36 @@ body {
   font-family: 'Inter', sans-serif !important;
 }
 
+.detail-table-header {
+  color: #00000090;
+  padding: 8px 0px;
+}
+
+.detail-table-cell {
+  padding: 8px 0px;
+}
+
+.form-container {
+  width: 50%;
+  padding: 20px;
+}
+
 .scroll-container {
   overflow-y: auto;
   min-height: calc(100vh - 100px);
   max-height: calc(100vh - 100px);
+}
+
+.fixed-footer {
+  z-index: 10;
+}
+
+.toast-container {
+  bottom: 50px !important;
+  right: 0px !important;
+}
+
+.word-wrap {
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
