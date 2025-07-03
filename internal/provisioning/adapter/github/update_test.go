@@ -34,7 +34,6 @@ func TestUpdate(t *testing.T) {
 	require.NoError(t, err)
 	require.Greater(t, len(updateFiles), 2)
 	require.NotEmpty(t, updateFiles[0].Filename)
-	require.NotEmpty(t, updateFiles[0].URL)
 
 	// Find smallest asset to download
 	filename := updateFiles[0].Filename

@@ -105,7 +105,6 @@ func (u update) GetUpdateAllFiles(ctx context.Context, update provisioning.Updat
 
 		files = append(files, provisioning.UpdateFile{
 			Filename:  filename,
-			URL:       ptr.From(asset.URL),
 			Size:      ptr.From(asset.Size),
 			Component: fileComponent,
 			Type:      fileType,
