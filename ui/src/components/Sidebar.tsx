@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Nav, Navbar, Collapse, Container } from "react-bootstrap";
 import { Link } from "react-router";
+import { GoServer } from "react-icons/go";
 import {
   MdLogin,
   MdLogout,
@@ -206,6 +207,11 @@ const Sidebar = () => {
                   <Collapse in={openSubmenu[0] === "provisioning"}>
                     <div>
                       <Nav className="flex-column ms-2">
+                        <li>
+                          <Nav.Link as={Link} to="/ui/provisioning/servers">
+                            <GoServer /> Servers
+                          </Nav.Link>
+                        </li>
                         <li>
                           <Nav.Link as={Link} to="/ui/provisioning/tokens">
                             <MdOutlineToken /> Tokens
