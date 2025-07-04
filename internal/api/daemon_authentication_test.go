@@ -425,7 +425,7 @@ func TestAuthentication(t *testing.T) {
   "name": "serverA",
   "connection_url": "https://viewer:12346/",
   "server_type": "incus",
-  "status": "ready"
+  "server_status": "ready"
 }`),
 
 			wantStatusCode: http.StatusForbidden,
@@ -451,7 +451,7 @@ func TestAuthentication(t *testing.T) {
   "name": "serverA",
   "connection_url": "https://operator:12346/",
   "server_type": "incus",
-  "status": "ready"
+  "server_status": "ready"
 }`),
 
 			wantStatusCode: http.StatusOK,
@@ -477,7 +477,7 @@ func TestAuthentication(t *testing.T) {
   "name": "serverA",
   "connection_url": "https://admin:12346/",
   "server_type": "incus",
-  "status": "ready"
+  "server_status": "ready"
 }`),
 
 			wantStatusCode: http.StatusOK,
