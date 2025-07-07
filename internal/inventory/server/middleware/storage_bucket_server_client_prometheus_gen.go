@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -39,7 +40,7 @@ func NewStorageBucketServerClientWithPrometheus(base inventory.StorageBucketServ
 }
 
 // GetStorageBucketByName implements inventory.StorageBucketServerClient.
-func (_d StorageBucketServerClientWithPrometheus) GetStorageBucketByName(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (storageBucket api.StorageBucket, err error) {
+func (_d StorageBucketServerClientWithPrometheus) GetStorageBucketByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageBucketName string) (storageBucket api.StorageBucket, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,11 +50,11 @@ func (_d StorageBucketServerClientWithPrometheus) GetStorageBucketByName(ctx con
 
 		storageBucketServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetStorageBucketByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetStorageBucketByName(ctx, connectionURL, storagePoolName, storageBucketName)
+	return _d.base.GetStorageBucketByName(ctx, cluster, storagePoolName, storageBucketName)
 }
 
 // GetStorageBuckets implements inventory.StorageBucketServerClient.
-func (_d StorageBucketServerClientWithPrometheus) GetStorageBuckets(ctx context.Context, connectionURL string, storagePoolName string) (storageBuckets []api.StorageBucket, err error) {
+func (_d StorageBucketServerClientWithPrometheus) GetStorageBuckets(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) (storageBuckets []api.StorageBucket, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,5 +64,5 @@ func (_d StorageBucketServerClientWithPrometheus) GetStorageBuckets(ctx context.
 
 		storageBucketServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetStorageBuckets", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetStorageBuckets(ctx, connectionURL, storagePoolName)
+	return _d.base.GetStorageBuckets(ctx, cluster, storagePoolName)
 }

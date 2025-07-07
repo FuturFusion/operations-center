@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -43,12 +44,12 @@ func NewImageServerClientWithSlog(base inventory.ImageServerClient, log *slog.Lo
 }
 
 // GetImageByName implements inventory.ImageServerClient.
-func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, connectionURL string, imageName string) (image api.Image, err error) {
+func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, cluster provisioning.Cluster, imageName string) (image api.Image, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("imageName", imageName),
 		)
 	}
@@ -75,16 +76,16 @@ func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, connecti
 			log.Debug("<= method GetImageByName finished")
 		}
 	}()
-	return _d._base.GetImageByName(ctx, connectionURL, imageName)
+	return _d._base.GetImageByName(ctx, cluster, imageName)
 }
 
 // GetImages implements inventory.ImageServerClient.
-func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, connectionURL string) (images []api.Image, err error) {
+func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, cluster provisioning.Cluster) (images []api.Image, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetImages")
@@ -110,5 +111,5 @@ func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, connectionURL
 			log.Debug("<= method GetImages finished")
 		}
 	}()
-	return _d._base.GetImages(ctx, connectionURL)
+	return _d._base.GetImages(ctx, cluster)
 }

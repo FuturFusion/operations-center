@@ -6,8 +6,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 type NetworkACLService interface {
@@ -29,6 +30,6 @@ type NetworkACLRepo interface {
 }
 
 type NetworkACLServerClient interface {
-	GetNetworkACLs(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error)
-	GetNetworkACLByName(ctx context.Context, connectionURL string, networkACLName string) (incusapi.NetworkACL, error)
+	GetNetworkACLs(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkACL, error)
+	GetNetworkACLByName(ctx context.Context, cluster provisioning.Cluster, networkACLName string) (incusapi.NetworkACL, error)
 }

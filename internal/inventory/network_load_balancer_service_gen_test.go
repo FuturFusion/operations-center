@@ -443,7 +443,7 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 			}
 
 			networkLoadBalancerClient := &serverMock.NetworkLoadBalancerServerClientMock{
-				GetNetworkLoadBalancerByNameFunc: func(ctx context.Context, connectionURL string, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
+				GetNetworkLoadBalancerByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
 					require.Equal(t, tc.repoGetByUUIDNetworkLoadBalancer.Name, networkLoadBalancerName)
 					require.Equal(t, "network", networkName)
 					return tc.networkLoadBalancerClientGetNetworkLoadBalancerByName, tc.networkLoadBalancerClientGetNetworkLoadBalancerByNameErr
@@ -658,13 +658,13 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			}
 
 			networkClient := &serverMock.NetworkServerClientMock{
-				GetNetworksFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Network, error) {
+				GetNetworksFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Network, error) {
 					return tc.networkClientGetNetworks, tc.networkClientGetNetworksErr
 				},
 			}
 
 			networkLoadBalancerClient := &serverMock.NetworkLoadBalancerServerClientMock{
-				GetNetworkLoadBalancersFunc: func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkLoadBalancer, error) {
+				GetNetworkLoadBalancersFunc: func(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]incusapi.NetworkLoadBalancer, error) {
 					return tc.networkLoadBalancerClientGetNetworkLoadBalancers, tc.networkLoadBalancerClientGetNetworkLoadBalancersErr
 				},
 			}

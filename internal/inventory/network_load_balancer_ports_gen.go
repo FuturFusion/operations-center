@@ -6,8 +6,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 type NetworkLoadBalancerService interface {
@@ -29,6 +30,6 @@ type NetworkLoadBalancerRepo interface {
 }
 
 type NetworkLoadBalancerServerClient interface {
-	GetNetworkLoadBalancers(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkLoadBalancer, error)
-	GetNetworkLoadBalancerByName(ctx context.Context, connectionURL string, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error)
+	GetNetworkLoadBalancers(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]incusapi.NetworkLoadBalancer, error)
+	GetNetworkLoadBalancerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error)
 }

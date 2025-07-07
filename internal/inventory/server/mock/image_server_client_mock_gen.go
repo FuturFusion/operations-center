@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -22,10 +23,10 @@ var _ inventory.ImageServerClient = &ImageServerClientMock{}
 //
 //		// make and configure a mocked inventory.ImageServerClient
 //		mockedImageServerClient := &ImageServerClientMock{
-//			GetImageByNameFunc: func(ctx context.Context, connectionURL string, imageName string) (api.Image, error) {
+//			GetImageByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, imageName string) (api.Image, error) {
 //				panic("mock out the GetImageByName method")
 //			},
-//			GetImagesFunc: func(ctx context.Context, connectionURL string) ([]api.Image, error) {
+//			GetImagesFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]api.Image, error) {
 //				panic("mock out the GetImages method")
 //			},
 //		}
@@ -36,10 +37,10 @@ var _ inventory.ImageServerClient = &ImageServerClientMock{}
 //	}
 type ImageServerClientMock struct {
 	// GetImageByNameFunc mocks the GetImageByName method.
-	GetImageByNameFunc func(ctx context.Context, connectionURL string, imageName string) (api.Image, error)
+	GetImageByNameFunc func(ctx context.Context, cluster provisioning.Cluster, imageName string) (api.Image, error)
 
 	// GetImagesFunc mocks the GetImages method.
-	GetImagesFunc func(ctx context.Context, connectionURL string) ([]api.Image, error)
+	GetImagesFunc func(ctx context.Context, cluster provisioning.Cluster) ([]api.Image, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -47,8 +48,8 @@ type ImageServerClientMock struct {
 		GetImageByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ConnectionURL is the connectionURL argument value.
-			ConnectionURL string
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
 			// ImageName is the imageName argument value.
 			ImageName string
 		}
@@ -56,8 +57,8 @@ type ImageServerClientMock struct {
 		GetImages []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ConnectionURL is the connectionURL argument value.
-			ConnectionURL string
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
 		}
 	}
 	lockGetImageByName sync.RWMutex
@@ -65,23 +66,23 @@ type ImageServerClientMock struct {
 }
 
 // GetImageByName calls GetImageByNameFunc.
-func (mock *ImageServerClientMock) GetImageByName(ctx context.Context, connectionURL string, imageName string) (api.Image, error) {
+func (mock *ImageServerClientMock) GetImageByName(ctx context.Context, cluster provisioning.Cluster, imageName string) (api.Image, error) {
 	if mock.GetImageByNameFunc == nil {
 		panic("ImageServerClientMock.GetImageByNameFunc: method is nil but ImageServerClient.GetImageByName was just called")
 	}
 	callInfo := struct {
-		Ctx           context.Context
-		ConnectionURL string
-		ImageName     string
+		Ctx       context.Context
+		Cluster   provisioning.Cluster
+		ImageName string
 	}{
-		Ctx:           ctx,
-		ConnectionURL: connectionURL,
-		ImageName:     imageName,
+		Ctx:       ctx,
+		Cluster:   cluster,
+		ImageName: imageName,
 	}
 	mock.lockGetImageByName.Lock()
 	mock.calls.GetImageByName = append(mock.calls.GetImageByName, callInfo)
 	mock.lockGetImageByName.Unlock()
-	return mock.GetImageByNameFunc(ctx, connectionURL, imageName)
+	return mock.GetImageByNameFunc(ctx, cluster, imageName)
 }
 
 // GetImageByNameCalls gets all the calls that were made to GetImageByName.
@@ -89,14 +90,14 @@ func (mock *ImageServerClientMock) GetImageByName(ctx context.Context, connectio
 //
 //	len(mockedImageServerClient.GetImageByNameCalls())
 func (mock *ImageServerClientMock) GetImageByNameCalls() []struct {
-	Ctx           context.Context
-	ConnectionURL string
-	ImageName     string
+	Ctx       context.Context
+	Cluster   provisioning.Cluster
+	ImageName string
 } {
 	var calls []struct {
-		Ctx           context.Context
-		ConnectionURL string
-		ImageName     string
+		Ctx       context.Context
+		Cluster   provisioning.Cluster
+		ImageName string
 	}
 	mock.lockGetImageByName.RLock()
 	calls = mock.calls.GetImageByName
@@ -105,21 +106,21 @@ func (mock *ImageServerClientMock) GetImageByNameCalls() []struct {
 }
 
 // GetImages calls GetImagesFunc.
-func (mock *ImageServerClientMock) GetImages(ctx context.Context, connectionURL string) ([]api.Image, error) {
+func (mock *ImageServerClientMock) GetImages(ctx context.Context, cluster provisioning.Cluster) ([]api.Image, error) {
 	if mock.GetImagesFunc == nil {
 		panic("ImageServerClientMock.GetImagesFunc: method is nil but ImageServerClient.GetImages was just called")
 	}
 	callInfo := struct {
-		Ctx           context.Context
-		ConnectionURL string
+		Ctx     context.Context
+		Cluster provisioning.Cluster
 	}{
-		Ctx:           ctx,
-		ConnectionURL: connectionURL,
+		Ctx:     ctx,
+		Cluster: cluster,
 	}
 	mock.lockGetImages.Lock()
 	mock.calls.GetImages = append(mock.calls.GetImages, callInfo)
 	mock.lockGetImages.Unlock()
-	return mock.GetImagesFunc(ctx, connectionURL)
+	return mock.GetImagesFunc(ctx, cluster)
 }
 
 // GetImagesCalls gets all the calls that were made to GetImages.
@@ -127,12 +128,12 @@ func (mock *ImageServerClientMock) GetImages(ctx context.Context, connectionURL 
 //
 //	len(mockedImageServerClient.GetImagesCalls())
 func (mock *ImageServerClientMock) GetImagesCalls() []struct {
-	Ctx           context.Context
-	ConnectionURL string
+	Ctx     context.Context
+	Cluster provisioning.Cluster
 } {
 	var calls []struct {
-		Ctx           context.Context
-		ConnectionURL string
+		Ctx     context.Context
+		Cluster provisioning.Cluster
 	}
 	mock.lockGetImages.RLock()
 	calls = mock.calls.GetImages

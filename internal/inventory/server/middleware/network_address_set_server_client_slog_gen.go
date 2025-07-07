@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -43,12 +44,12 @@ func NewNetworkAddressSetServerClientWithSlog(base inventory.NetworkAddressSetSe
 }
 
 // GetNetworkAddressSetByName implements inventory.NetworkAddressSetServerClient.
-func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, connectionURL string, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
+func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, cluster provisioning.Cluster, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkAddressSetName", networkAddressSetName),
 		)
 	}
@@ -75,16 +76,16 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSetByName(ctx c
 			log.Debug("<= method GetNetworkAddressSetByName finished")
 		}
 	}()
-	return _d._base.GetNetworkAddressSetByName(ctx, connectionURL, networkAddressSetName)
+	return _d._base.GetNetworkAddressSetByName(ctx, cluster, networkAddressSetName)
 }
 
 // GetNetworkAddressSets implements inventory.NetworkAddressSetServerClient.
-func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSets(ctx context.Context, connectionURL string) (networkAddressSets []api.NetworkAddressSet, err error) {
+func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSets(ctx context.Context, cluster provisioning.Cluster) (networkAddressSets []api.NetworkAddressSet, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetNetworkAddressSets")
@@ -110,16 +111,16 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSets(ctx contex
 			log.Debug("<= method GetNetworkAddressSets finished")
 		}
 	}()
-	return _d._base.GetNetworkAddressSets(ctx, connectionURL)
+	return _d._base.GetNetworkAddressSets(ctx, cluster)
 }
 
 // HasExtension implements inventory.NetworkAddressSetServerClient.
-func (_d NetworkAddressSetServerClientWithSlog) HasExtension(ctx context.Context, connectionURL string, extension string) (exists bool) {
+func (_d NetworkAddressSetServerClientWithSlog) HasExtension(ctx context.Context, cluster provisioning.Cluster, extension string) (exists bool) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("extension", extension),
 		)
 	}
@@ -134,5 +135,5 @@ func (_d NetworkAddressSetServerClientWithSlog) HasExtension(ctx context.Context
 		}
 		log.Debug("<= method HasExtension finished")
 	}()
-	return _d._base.HasExtension(ctx, connectionURL, extension)
+	return _d._base.HasExtension(ctx, cluster, extension)
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -43,12 +44,12 @@ func NewNetworkZoneServerClientWithSlog(base inventory.NetworkZoneServerClient, 
 }
 
 // GetNetworkZoneByName implements inventory.NetworkZoneServerClient.
-func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, connectionURL string, networkZoneName string) (networkZone api.NetworkZone, err error) {
+func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, cluster provisioning.Cluster, networkZoneName string) (networkZone api.NetworkZone, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkZoneName", networkZoneName),
 		)
 	}
@@ -75,16 +76,16 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Conte
 			log.Debug("<= method GetNetworkZoneByName finished")
 		}
 	}()
-	return _d._base.GetNetworkZoneByName(ctx, connectionURL, networkZoneName)
+	return _d._base.GetNetworkZoneByName(ctx, cluster, networkZoneName)
 }
 
 // GetNetworkZones implements inventory.NetworkZoneServerClient.
-func (_d NetworkZoneServerClientWithSlog) GetNetworkZones(ctx context.Context, connectionURL string) (networkZones []api.NetworkZone, err error) {
+func (_d NetworkZoneServerClientWithSlog) GetNetworkZones(ctx context.Context, cluster provisioning.Cluster) (networkZones []api.NetworkZone, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetNetworkZones")
@@ -110,5 +111,5 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZones(ctx context.Context, c
 			log.Debug("<= method GetNetworkZones finished")
 		}
 	}()
-	return _d._base.GetNetworkZones(ctx, connectionURL)
+	return _d._base.GetNetworkZones(ctx, cluster)
 }

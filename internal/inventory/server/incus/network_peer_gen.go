@@ -9,10 +9,11 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkPeers(ctx context.Context, connectionURL string, networkPeerName string) ([]incusapi.NetworkPeer, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetNetworkPeers(ctx context.Context, cluster provisioning.Cluster, networkPeerName string) ([]incusapi.NetworkPeer, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -25,8 +26,8 @@ func (s serverClient) GetNetworkPeers(ctx context.Context, connectionURL string,
 	return serverNetworkPeers, nil
 }
 
-func (s serverClient) GetNetworkPeerByName(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetNetworkPeerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return incusapi.NetworkPeer{}, err
 	}

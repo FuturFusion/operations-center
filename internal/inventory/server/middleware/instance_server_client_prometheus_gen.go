@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -39,7 +40,7 @@ func NewInstanceServerClientWithPrometheus(base inventory.InstanceServerClient, 
 }
 
 // GetInstanceByName implements inventory.InstanceServerClient.
-func (_d InstanceServerClientWithPrometheus) GetInstanceByName(ctx context.Context, connectionURL string, instanceName string) (instanceFull api.InstanceFull, err error) {
+func (_d InstanceServerClientWithPrometheus) GetInstanceByName(ctx context.Context, cluster provisioning.Cluster, instanceName string) (instanceFull api.InstanceFull, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,11 +50,11 @@ func (_d InstanceServerClientWithPrometheus) GetInstanceByName(ctx context.Conte
 
 		instanceServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetInstanceByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetInstanceByName(ctx, connectionURL, instanceName)
+	return _d.base.GetInstanceByName(ctx, cluster, instanceName)
 }
 
 // GetInstances implements inventory.InstanceServerClient.
-func (_d InstanceServerClientWithPrometheus) GetInstances(ctx context.Context, connectionURL string) (instanceFulls []api.InstanceFull, err error) {
+func (_d InstanceServerClientWithPrometheus) GetInstances(ctx context.Context, cluster provisioning.Cluster) (instanceFulls []api.InstanceFull, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,5 +64,5 @@ func (_d InstanceServerClientWithPrometheus) GetInstances(ctx context.Context, c
 
 		instanceServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetInstances", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetInstances(ctx, connectionURL)
+	return _d.base.GetInstances(ctx, cluster)
 }

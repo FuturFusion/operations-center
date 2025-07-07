@@ -9,10 +9,11 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkLoadBalancers(ctx context.Context, connectionURL string, networkLoadBalancerName string) ([]incusapi.NetworkLoadBalancer, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetNetworkLoadBalancers(ctx context.Context, cluster provisioning.Cluster, networkLoadBalancerName string) ([]incusapi.NetworkLoadBalancer, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -25,8 +26,8 @@ func (s serverClient) GetNetworkLoadBalancers(ctx context.Context, connectionURL
 	return serverNetworkLoadBalancers, nil
 }
 
-func (s serverClient) GetNetworkLoadBalancerByName(ctx context.Context, connectionURL string, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetNetworkLoadBalancerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return incusapi.NetworkLoadBalancer{}, err
 	}

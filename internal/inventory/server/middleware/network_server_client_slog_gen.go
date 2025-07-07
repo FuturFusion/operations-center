@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -43,12 +44,12 @@ func NewNetworkServerClientWithSlog(base inventory.NetworkServerClient, log *slo
 }
 
 // GetNetworkByName implements inventory.NetworkServerClient.
-func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, connectionURL string, networkName string) (network api.Network, err error) {
+func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, cluster provisioning.Cluster, networkName string) (network api.Network, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkName", networkName),
 		)
 	}
@@ -75,16 +76,16 @@ func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, conn
 			log.Debug("<= method GetNetworkByName finished")
 		}
 	}()
-	return _d._base.GetNetworkByName(ctx, connectionURL, networkName)
+	return _d._base.GetNetworkByName(ctx, cluster, networkName)
 }
 
 // GetNetworks implements inventory.NetworkServerClient.
-func (_d NetworkServerClientWithSlog) GetNetworks(ctx context.Context, connectionURL string) (networks []api.Network, err error) {
+func (_d NetworkServerClientWithSlog) GetNetworks(ctx context.Context, cluster provisioning.Cluster) (networks []api.Network, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetNetworks")
@@ -110,5 +111,5 @@ func (_d NetworkServerClientWithSlog) GetNetworks(ctx context.Context, connectio
 			log.Debug("<= method GetNetworks finished")
 		}
 	}()
-	return _d._base.GetNetworks(ctx, connectionURL)
+	return _d._base.GetNetworks(ctx, cluster)
 }

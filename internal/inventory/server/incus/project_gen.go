@@ -9,10 +9,11 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetProjects(ctx context.Context, connectionURL string) ([]incusapi.Project, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetProjects(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Project, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -25,8 +26,8 @@ func (s serverClient) GetProjects(ctx context.Context, connectionURL string) ([]
 	return serverProjects, nil
 }
 
-func (s serverClient) GetProjectByName(ctx context.Context, connectionURL string, projectName string) (incusapi.Project, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetProjectByName(ctx context.Context, cluster provisioning.Cluster, projectName string) (incusapi.Project, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return incusapi.Project{}, err
 	}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -39,7 +40,7 @@ func NewNetworkPeerServerClientWithPrometheus(base inventory.NetworkPeerServerCl
 }
 
 // GetNetworkPeerByName implements inventory.NetworkPeerServerClient.
-func (_d NetworkPeerServerClientWithPrometheus) GetNetworkPeerByName(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
+func (_d NetworkPeerServerClientWithPrometheus) GetNetworkPeerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,11 +50,11 @@ func (_d NetworkPeerServerClientWithPrometheus) GetNetworkPeerByName(ctx context
 
 		networkPeerServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkPeerByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkPeerByName(ctx, connectionURL, networkName, networkPeerName)
+	return _d.base.GetNetworkPeerByName(ctx, cluster, networkName, networkPeerName)
 }
 
 // GetNetworkPeers implements inventory.NetworkPeerServerClient.
-func (_d NetworkPeerServerClientWithPrometheus) GetNetworkPeers(ctx context.Context, connectionURL string, networkName string) (networkPeers []api.NetworkPeer, err error) {
+func (_d NetworkPeerServerClientWithPrometheus) GetNetworkPeers(ctx context.Context, cluster provisioning.Cluster, networkName string) (networkPeers []api.NetworkPeer, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,5 +64,5 @@ func (_d NetworkPeerServerClientWithPrometheus) GetNetworkPeers(ctx context.Cont
 
 		networkPeerServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkPeers", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkPeers(ctx, connectionURL, networkName)
+	return _d.base.GetNetworkPeers(ctx, cluster, networkName)
 }

@@ -6,8 +6,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 type StorageVolumeService interface {
@@ -29,6 +30,6 @@ type StorageVolumeRepo interface {
 }
 
 type StorageVolumeServerClient interface {
-	GetStorageVolumes(ctx context.Context, connectionURL string, storagePoolName string) ([]incusapi.StorageVolume, error)
-	GetStorageVolumeByName(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error)
+	GetStorageVolumes(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) ([]incusapi.StorageVolume, error)
+	GetStorageVolumeByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error)
 }

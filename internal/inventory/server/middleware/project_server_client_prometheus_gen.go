@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -39,7 +40,7 @@ func NewProjectServerClientWithPrometheus(base inventory.ProjectServerClient, in
 }
 
 // GetProjectByName implements inventory.ProjectServerClient.
-func (_d ProjectServerClientWithPrometheus) GetProjectByName(ctx context.Context, connectionURL string, projectName string) (project api.Project, err error) {
+func (_d ProjectServerClientWithPrometheus) GetProjectByName(ctx context.Context, cluster provisioning.Cluster, projectName string) (project api.Project, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,11 +50,11 @@ func (_d ProjectServerClientWithPrometheus) GetProjectByName(ctx context.Context
 
 		projectServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetProjectByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetProjectByName(ctx, connectionURL, projectName)
+	return _d.base.GetProjectByName(ctx, cluster, projectName)
 }
 
 // GetProjects implements inventory.ProjectServerClient.
-func (_d ProjectServerClientWithPrometheus) GetProjects(ctx context.Context, connectionURL string) (projects []api.Project, err error) {
+func (_d ProjectServerClientWithPrometheus) GetProjects(ctx context.Context, cluster provisioning.Cluster) (projects []api.Project, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,5 +64,5 @@ func (_d ProjectServerClientWithPrometheus) GetProjects(ctx context.Context, con
 
 		projectServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetProjects", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetProjects(ctx, connectionURL)
+	return _d.base.GetProjects(ctx, cluster)
 }

@@ -9,10 +9,11 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkACLs(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetNetworkACLs(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkACL, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -25,8 +26,8 @@ func (s serverClient) GetNetworkACLs(ctx context.Context, connectionURL string) 
 	return serverNetworkACLs, nil
 }
 
-func (s serverClient) GetNetworkACLByName(ctx context.Context, connectionURL string, networkACLName string) (incusapi.NetworkACL, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetNetworkACLByName(ctx context.Context, cluster provisioning.Cluster, networkACLName string) (incusapi.NetworkACL, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return incusapi.NetworkACL{}, err
 	}

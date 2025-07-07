@@ -450,7 +450,7 @@ func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 			}
 
 			storageBucketClient := &serverMock.StorageBucketServerClientMock{
-				GetStorageBucketByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
+				GetStorageBucketByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
 					require.Equal(t, tc.repoGetByUUIDStorageBucket.Name, storageBucketName)
 					require.Equal(t, "storage_pool", storagePoolName)
 					return tc.storageBucketClientGetStorageBucketByName, tc.storageBucketClientGetStorageBucketByNameErr
@@ -679,13 +679,13 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 			}
 
 			storagePoolClient := &serverMock.StoragePoolServerClientMock{
-				GetStoragePoolsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.StoragePool, error) {
+				GetStoragePoolsFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.StoragePool, error) {
 					return tc.storagePoolClientGetStoragePools, tc.storagePoolClientGetStoragePoolsErr
 				},
 			}
 
 			storageBucketClient := &serverMock.StorageBucketServerClientMock{
-				GetStorageBucketsFunc: func(ctx context.Context, connectionURL string, storagePoolName string) ([]incusapi.StorageBucket, error) {
+				GetStorageBucketsFunc: func(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) ([]incusapi.StorageBucket, error) {
 					return tc.storageBucketClientGetStorageBuckets, tc.storageBucketClientGetStorageBucketsErr
 				},
 			}

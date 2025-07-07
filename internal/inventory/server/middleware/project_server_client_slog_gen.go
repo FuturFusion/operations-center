@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -43,12 +44,12 @@ func NewProjectServerClientWithSlog(base inventory.ProjectServerClient, log *slo
 }
 
 // GetProjectByName implements inventory.ProjectServerClient.
-func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, connectionURL string, projectName string) (project api.Project, err error) {
+func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, cluster provisioning.Cluster, projectName string) (project api.Project, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("projectName", projectName),
 		)
 	}
@@ -75,16 +76,16 @@ func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, conn
 			log.Debug("<= method GetProjectByName finished")
 		}
 	}()
-	return _d._base.GetProjectByName(ctx, connectionURL, projectName)
+	return _d._base.GetProjectByName(ctx, cluster, projectName)
 }
 
 // GetProjects implements inventory.ProjectServerClient.
-func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, connectionURL string) (projects []api.Project, err error) {
+func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, cluster provisioning.Cluster) (projects []api.Project, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetProjects")
@@ -110,5 +111,5 @@ func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, connectio
 			log.Debug("<= method GetProjects finished")
 		}
 	}()
-	return _d._base.GetProjects(ctx, connectionURL)
+	return _d._base.GetProjects(ctx, cluster)
 }

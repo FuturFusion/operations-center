@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -22,10 +23,10 @@ var _ inventory.NetworkForwardServerClient = &NetworkForwardServerClientMock{}
 //
 //		// make and configure a mocked inventory.NetworkForwardServerClient
 //		mockedNetworkForwardServerClient := &NetworkForwardServerClientMock{
-//			GetNetworkForwardByNameFunc: func(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (api.NetworkForward, error) {
+//			GetNetworkForwardByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkName string, networkForwardName string) (api.NetworkForward, error) {
 //				panic("mock out the GetNetworkForwardByName method")
 //			},
-//			GetNetworkForwardsFunc: func(ctx context.Context, connectionURL string, networkName string) ([]api.NetworkForward, error) {
+//			GetNetworkForwardsFunc: func(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]api.NetworkForward, error) {
 //				panic("mock out the GetNetworkForwards method")
 //			},
 //		}
@@ -36,10 +37,10 @@ var _ inventory.NetworkForwardServerClient = &NetworkForwardServerClientMock{}
 //	}
 type NetworkForwardServerClientMock struct {
 	// GetNetworkForwardByNameFunc mocks the GetNetworkForwardByName method.
-	GetNetworkForwardByNameFunc func(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (api.NetworkForward, error)
+	GetNetworkForwardByNameFunc func(ctx context.Context, cluster provisioning.Cluster, networkName string, networkForwardName string) (api.NetworkForward, error)
 
 	// GetNetworkForwardsFunc mocks the GetNetworkForwards method.
-	GetNetworkForwardsFunc func(ctx context.Context, connectionURL string, networkName string) ([]api.NetworkForward, error)
+	GetNetworkForwardsFunc func(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]api.NetworkForward, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -47,8 +48,8 @@ type NetworkForwardServerClientMock struct {
 		GetNetworkForwardByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ConnectionURL is the connectionURL argument value.
-			ConnectionURL string
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
 			// NetworkName is the networkName argument value.
 			NetworkName string
 			// NetworkForwardName is the networkForwardName argument value.
@@ -58,8 +59,8 @@ type NetworkForwardServerClientMock struct {
 		GetNetworkForwards []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ConnectionURL is the connectionURL argument value.
-			ConnectionURL string
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
 			// NetworkName is the networkName argument value.
 			NetworkName string
 		}
@@ -69,25 +70,25 @@ type NetworkForwardServerClientMock struct {
 }
 
 // GetNetworkForwardByName calls GetNetworkForwardByNameFunc.
-func (mock *NetworkForwardServerClientMock) GetNetworkForwardByName(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (api.NetworkForward, error) {
+func (mock *NetworkForwardServerClientMock) GetNetworkForwardByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkForwardName string) (api.NetworkForward, error) {
 	if mock.GetNetworkForwardByNameFunc == nil {
 		panic("NetworkForwardServerClientMock.GetNetworkForwardByNameFunc: method is nil but NetworkForwardServerClient.GetNetworkForwardByName was just called")
 	}
 	callInfo := struct {
 		Ctx                context.Context
-		ConnectionURL      string
+		Cluster            provisioning.Cluster
 		NetworkName        string
 		NetworkForwardName string
 	}{
 		Ctx:                ctx,
-		ConnectionURL:      connectionURL,
+		Cluster:            cluster,
 		NetworkName:        networkName,
 		NetworkForwardName: networkForwardName,
 	}
 	mock.lockGetNetworkForwardByName.Lock()
 	mock.calls.GetNetworkForwardByName = append(mock.calls.GetNetworkForwardByName, callInfo)
 	mock.lockGetNetworkForwardByName.Unlock()
-	return mock.GetNetworkForwardByNameFunc(ctx, connectionURL, networkName, networkForwardName)
+	return mock.GetNetworkForwardByNameFunc(ctx, cluster, networkName, networkForwardName)
 }
 
 // GetNetworkForwardByNameCalls gets all the calls that were made to GetNetworkForwardByName.
@@ -96,13 +97,13 @@ func (mock *NetworkForwardServerClientMock) GetNetworkForwardByName(ctx context.
 //	len(mockedNetworkForwardServerClient.GetNetworkForwardByNameCalls())
 func (mock *NetworkForwardServerClientMock) GetNetworkForwardByNameCalls() []struct {
 	Ctx                context.Context
-	ConnectionURL      string
+	Cluster            provisioning.Cluster
 	NetworkName        string
 	NetworkForwardName string
 } {
 	var calls []struct {
 		Ctx                context.Context
-		ConnectionURL      string
+		Cluster            provisioning.Cluster
 		NetworkName        string
 		NetworkForwardName string
 	}
@@ -113,23 +114,23 @@ func (mock *NetworkForwardServerClientMock) GetNetworkForwardByNameCalls() []str
 }
 
 // GetNetworkForwards calls GetNetworkForwardsFunc.
-func (mock *NetworkForwardServerClientMock) GetNetworkForwards(ctx context.Context, connectionURL string, networkName string) ([]api.NetworkForward, error) {
+func (mock *NetworkForwardServerClientMock) GetNetworkForwards(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]api.NetworkForward, error) {
 	if mock.GetNetworkForwardsFunc == nil {
 		panic("NetworkForwardServerClientMock.GetNetworkForwardsFunc: method is nil but NetworkForwardServerClient.GetNetworkForwards was just called")
 	}
 	callInfo := struct {
-		Ctx           context.Context
-		ConnectionURL string
-		NetworkName   string
+		Ctx         context.Context
+		Cluster     provisioning.Cluster
+		NetworkName string
 	}{
-		Ctx:           ctx,
-		ConnectionURL: connectionURL,
-		NetworkName:   networkName,
+		Ctx:         ctx,
+		Cluster:     cluster,
+		NetworkName: networkName,
 	}
 	mock.lockGetNetworkForwards.Lock()
 	mock.calls.GetNetworkForwards = append(mock.calls.GetNetworkForwards, callInfo)
 	mock.lockGetNetworkForwards.Unlock()
-	return mock.GetNetworkForwardsFunc(ctx, connectionURL, networkName)
+	return mock.GetNetworkForwardsFunc(ctx, cluster, networkName)
 }
 
 // GetNetworkForwardsCalls gets all the calls that were made to GetNetworkForwards.
@@ -137,14 +138,14 @@ func (mock *NetworkForwardServerClientMock) GetNetworkForwards(ctx context.Conte
 //
 //	len(mockedNetworkForwardServerClient.GetNetworkForwardsCalls())
 func (mock *NetworkForwardServerClientMock) GetNetworkForwardsCalls() []struct {
-	Ctx           context.Context
-	ConnectionURL string
-	NetworkName   string
+	Ctx         context.Context
+	Cluster     provisioning.Cluster
+	NetworkName string
 } {
 	var calls []struct {
-		Ctx           context.Context
-		ConnectionURL string
-		NetworkName   string
+		Ctx         context.Context
+		Cluster     provisioning.Cluster
+		NetworkName string
 	}
 	mock.lockGetNetworkForwards.RLock()
 	calls = mock.calls.GetNetworkForwards

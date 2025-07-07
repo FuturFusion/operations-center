@@ -156,7 +156,7 @@ func (s imageService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		retrievedImage, err := s.imageClient.GetImageByName(ctx, cluster.ConnectionURL, image.Name)
+		retrievedImage, err := s.imageClient.GetImageByName(ctx, *cluster, image.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, image.UUID)
 			if err != nil {
@@ -200,7 +200,7 @@ func (s imageService) SyncCluster(ctx context.Context, name string) error {
 		return err
 	}
 
-	retrievedImages, err := s.imageClient.GetImages(ctx, cluster.ConnectionURL)
+	retrievedImages, err := s.imageClient.GetImages(ctx, *cluster)
 	if err != nil {
 		return err
 	}

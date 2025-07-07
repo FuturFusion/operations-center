@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -39,7 +40,7 @@ func NewNetworkIntegrationServerClientWithPrometheus(base inventory.NetworkInteg
 }
 
 // GetNetworkIntegrationByName implements inventory.NetworkIntegrationServerClient.
-func (_d NetworkIntegrationServerClientWithPrometheus) GetNetworkIntegrationByName(ctx context.Context, connectionURL string, networkIntegrationName string) (networkIntegration api.NetworkIntegration, err error) {
+func (_d NetworkIntegrationServerClientWithPrometheus) GetNetworkIntegrationByName(ctx context.Context, cluster provisioning.Cluster, networkIntegrationName string) (networkIntegration api.NetworkIntegration, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,11 +50,11 @@ func (_d NetworkIntegrationServerClientWithPrometheus) GetNetworkIntegrationByNa
 
 		networkIntegrationServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkIntegrationByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkIntegrationByName(ctx, connectionURL, networkIntegrationName)
+	return _d.base.GetNetworkIntegrationByName(ctx, cluster, networkIntegrationName)
 }
 
 // GetNetworkIntegrations implements inventory.NetworkIntegrationServerClient.
-func (_d NetworkIntegrationServerClientWithPrometheus) GetNetworkIntegrations(ctx context.Context, connectionURL string) (networkIntegrations []api.NetworkIntegration, err error) {
+func (_d NetworkIntegrationServerClientWithPrometheus) GetNetworkIntegrations(ctx context.Context, cluster provisioning.Cluster) (networkIntegrations []api.NetworkIntegration, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,5 +64,5 @@ func (_d NetworkIntegrationServerClientWithPrometheus) GetNetworkIntegrations(ct
 
 		networkIntegrationServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkIntegrations", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkIntegrations(ctx, connectionURL)
+	return _d.base.GetNetworkIntegrations(ctx, cluster)
 }

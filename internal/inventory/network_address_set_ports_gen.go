@@ -6,8 +6,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 type NetworkAddressSetService interface {
@@ -29,7 +30,7 @@ type NetworkAddressSetRepo interface {
 }
 
 type NetworkAddressSetServerClient interface {
-	HasExtension(ctx context.Context, connectionURL string, extension string) (exists bool)
-	GetNetworkAddressSets(ctx context.Context, connectionURL string) ([]incusapi.NetworkAddressSet, error)
-	GetNetworkAddressSetByName(ctx context.Context, connectionURL string, networkAddressSetName string) (incusapi.NetworkAddressSet, error)
+	HasExtension(ctx context.Context, cluster provisioning.Cluster, extension string) (exists bool)
+	GetNetworkAddressSets(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkAddressSet, error)
+	GetNetworkAddressSetByName(ctx context.Context, cluster provisioning.Cluster, networkAddressSetName string) (incusapi.NetworkAddressSet, error)
 }

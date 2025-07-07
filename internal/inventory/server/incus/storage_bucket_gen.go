@@ -9,10 +9,11 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetStorageBuckets(ctx context.Context, connectionURL string, storageBucketName string) ([]incusapi.StorageBucket, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetStorageBuckets(ctx context.Context, cluster provisioning.Cluster, storageBucketName string) ([]incusapi.StorageBucket, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -25,8 +26,8 @@ func (s serverClient) GetStorageBuckets(ctx context.Context, connectionURL strin
 	return serverStorageBuckets, nil
 }
 
-func (s serverClient) GetStorageBucketByName(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetStorageBucketByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return incusapi.StorageBucket{}, err
 	}

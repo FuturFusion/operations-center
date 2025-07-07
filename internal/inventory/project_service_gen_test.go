@@ -435,7 +435,7 @@ func TestProjectService_ResyncByUUID(t *testing.T) {
 			}
 
 			projectClient := &serverMock.ProjectServerClientMock{
-				GetProjectByNameFunc: func(ctx context.Context, connectionURL string, projectName string) (incusapi.Project, error) {
+				GetProjectByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, projectName string) (incusapi.Project, error) {
 					require.Equal(t, tc.repoGetByUUIDProject.Name, projectName)
 					return tc.projectClientGetProjectByName, tc.projectClientGetProjectByNameErr
 				},
@@ -582,7 +582,7 @@ func TestProjectService_SyncAll(t *testing.T) {
 			}
 
 			projectClient := &serverMock.ProjectServerClientMock{
-				GetProjectsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Project, error) {
+				GetProjectsFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Project, error) {
 					return tc.projectClientGetProjects, tc.projectClientGetProjectsErr
 				},
 			}

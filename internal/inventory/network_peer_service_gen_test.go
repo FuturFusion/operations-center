@@ -443,7 +443,7 @@ func TestNetworkPeerService_ResyncByUUID(t *testing.T) {
 			}
 
 			networkPeerClient := &serverMock.NetworkPeerServerClientMock{
-				GetNetworkPeerByNameFunc: func(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
+				GetNetworkPeerByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
 					require.Equal(t, tc.repoGetByUUIDNetworkPeer.Name, networkPeerName)
 					require.Equal(t, "network", networkName)
 					return tc.networkPeerClientGetNetworkPeerByName, tc.networkPeerClientGetNetworkPeerByNameErr
@@ -658,13 +658,13 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 			}
 
 			networkClient := &serverMock.NetworkServerClientMock{
-				GetNetworksFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Network, error) {
+				GetNetworksFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Network, error) {
 					return tc.networkClientGetNetworks, tc.networkClientGetNetworksErr
 				},
 			}
 
 			networkPeerClient := &serverMock.NetworkPeerServerClientMock{
-				GetNetworkPeersFunc: func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkPeer, error) {
+				GetNetworkPeersFunc: func(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]incusapi.NetworkPeer, error) {
 					return tc.networkPeerClientGetNetworkPeers, tc.networkPeerClientGetNetworkPeersErr
 				},
 			}

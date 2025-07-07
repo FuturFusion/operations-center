@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -43,12 +44,12 @@ func NewStorageVolumeServerClientWithSlog(base inventory.StorageVolumeServerClie
 }
 
 // GetStorageVolumeByName implements inventory.StorageVolumeServerClient.
-func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
+func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("storagePoolName", storagePoolName),
 			slog.String("storageVolumeName", storageVolumeName),
 			slog.String("storageVolumeType", storageVolumeType),
@@ -77,16 +78,16 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.C
 			log.Debug("<= method GetStorageVolumeByName finished")
 		}
 	}()
-	return _d._base.GetStorageVolumeByName(ctx, connectionURL, storagePoolName, storageVolumeName, storageVolumeType)
+	return _d._base.GetStorageVolumeByName(ctx, cluster, storagePoolName, storageVolumeName, storageVolumeType)
 }
 
 // GetStorageVolumes implements inventory.StorageVolumeServerClient.
-func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Context, connectionURL string, storagePoolName string) (storageVolumes []api.StorageVolume, err error) {
+func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) (storageVolumes []api.StorageVolume, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("storagePoolName", storagePoolName),
 		)
 	}
@@ -113,5 +114,5 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Contex
 			log.Debug("<= method GetStorageVolumes finished")
 		}
 	}()
-	return _d._base.GetStorageVolumes(ctx, connectionURL, storagePoolName)
+	return _d._base.GetStorageVolumes(ctx, cluster, storagePoolName)
 }

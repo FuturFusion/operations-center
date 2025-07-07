@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -43,12 +44,12 @@ func NewNetworkForwardServerClientWithSlog(base inventory.NetworkForwardServerCl
 }
 
 // GetNetworkForwardByName implements inventory.NetworkForwardServerClient.
-func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
+func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkName", networkName),
 			slog.String("networkForwardName", networkForwardName),
 		)
@@ -76,16 +77,16 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context
 			log.Debug("<= method GetNetworkForwardByName finished")
 		}
 	}()
-	return _d._base.GetNetworkForwardByName(ctx, connectionURL, networkName, networkForwardName)
+	return _d._base.GetNetworkForwardByName(ctx, cluster, networkName, networkForwardName)
 }
 
 // GetNetworkForwards implements inventory.NetworkForwardServerClient.
-func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Context, connectionURL string, networkName string) (networkForwards []api.NetworkForward, err error) {
+func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Context, cluster provisioning.Cluster, networkName string) (networkForwards []api.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkName", networkName),
 		)
 	}
@@ -112,5 +113,5 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Cont
 			log.Debug("<= method GetNetworkForwards finished")
 		}
 	}()
-	return _d._base.GetNetworkForwards(ctx, connectionURL, networkName)
+	return _d._base.GetNetworkForwards(ctx, cluster, networkName)
 }

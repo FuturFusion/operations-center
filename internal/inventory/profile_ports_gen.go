@@ -6,8 +6,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 type ProfileService interface {
@@ -29,6 +30,6 @@ type ProfileRepo interface {
 }
 
 type ProfileServerClient interface {
-	GetProfiles(ctx context.Context, connectionURL string) ([]incusapi.Profile, error)
-	GetProfileByName(ctx context.Context, connectionURL string, profileName string) (incusapi.Profile, error)
+	GetProfiles(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Profile, error)
+	GetProfileByName(ctx context.Context, cluster provisioning.Cluster, profileName string) (incusapi.Profile, error)
 }

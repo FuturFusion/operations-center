@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -43,12 +44,12 @@ func NewNetworkLoadBalancerServerClientWithSlog(base inventory.NetworkLoadBalanc
 }
 
 // GetNetworkLoadBalancerByName implements inventory.NetworkLoadBalancerServerClient.
-func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context, connectionURL string, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
+func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkName", networkName),
 			slog.String("networkLoadBalancerName", networkLoadBalancerName),
 		)
@@ -76,16 +77,16 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(c
 			log.Debug("<= method GetNetworkLoadBalancerByName finished")
 		}
 	}()
-	return _d._base.GetNetworkLoadBalancerByName(ctx, connectionURL, networkName, networkLoadBalancerName)
+	return _d._base.GetNetworkLoadBalancerByName(ctx, cluster, networkName, networkLoadBalancerName)
 }
 
 // GetNetworkLoadBalancers implements inventory.NetworkLoadBalancerServerClient.
-func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, connectionURL string, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
+func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, cluster provisioning.Cluster, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkName", networkName),
 		)
 	}
@@ -112,5 +113,5 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx co
 			log.Debug("<= method GetNetworkLoadBalancers finished")
 		}
 	}()
-	return _d._base.GetNetworkLoadBalancers(ctx, connectionURL, networkName)
+	return _d._base.GetNetworkLoadBalancers(ctx, cluster, networkName)
 }

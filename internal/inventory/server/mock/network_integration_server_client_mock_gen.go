@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -22,10 +23,10 @@ var _ inventory.NetworkIntegrationServerClient = &NetworkIntegrationServerClient
 //
 //		// make and configure a mocked inventory.NetworkIntegrationServerClient
 //		mockedNetworkIntegrationServerClient := &NetworkIntegrationServerClientMock{
-//			GetNetworkIntegrationByNameFunc: func(ctx context.Context, connectionURL string, networkIntegrationName string) (api.NetworkIntegration, error) {
+//			GetNetworkIntegrationByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkIntegrationName string) (api.NetworkIntegration, error) {
 //				panic("mock out the GetNetworkIntegrationByName method")
 //			},
-//			GetNetworkIntegrationsFunc: func(ctx context.Context, connectionURL string) ([]api.NetworkIntegration, error) {
+//			GetNetworkIntegrationsFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]api.NetworkIntegration, error) {
 //				panic("mock out the GetNetworkIntegrations method")
 //			},
 //		}
@@ -36,10 +37,10 @@ var _ inventory.NetworkIntegrationServerClient = &NetworkIntegrationServerClient
 //	}
 type NetworkIntegrationServerClientMock struct {
 	// GetNetworkIntegrationByNameFunc mocks the GetNetworkIntegrationByName method.
-	GetNetworkIntegrationByNameFunc func(ctx context.Context, connectionURL string, networkIntegrationName string) (api.NetworkIntegration, error)
+	GetNetworkIntegrationByNameFunc func(ctx context.Context, cluster provisioning.Cluster, networkIntegrationName string) (api.NetworkIntegration, error)
 
 	// GetNetworkIntegrationsFunc mocks the GetNetworkIntegrations method.
-	GetNetworkIntegrationsFunc func(ctx context.Context, connectionURL string) ([]api.NetworkIntegration, error)
+	GetNetworkIntegrationsFunc func(ctx context.Context, cluster provisioning.Cluster) ([]api.NetworkIntegration, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -47,8 +48,8 @@ type NetworkIntegrationServerClientMock struct {
 		GetNetworkIntegrationByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ConnectionURL is the connectionURL argument value.
-			ConnectionURL string
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
 			// NetworkIntegrationName is the networkIntegrationName argument value.
 			NetworkIntegrationName string
 		}
@@ -56,8 +57,8 @@ type NetworkIntegrationServerClientMock struct {
 		GetNetworkIntegrations []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ConnectionURL is the connectionURL argument value.
-			ConnectionURL string
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
 		}
 	}
 	lockGetNetworkIntegrationByName sync.RWMutex
@@ -65,23 +66,23 @@ type NetworkIntegrationServerClientMock struct {
 }
 
 // GetNetworkIntegrationByName calls GetNetworkIntegrationByNameFunc.
-func (mock *NetworkIntegrationServerClientMock) GetNetworkIntegrationByName(ctx context.Context, connectionURL string, networkIntegrationName string) (api.NetworkIntegration, error) {
+func (mock *NetworkIntegrationServerClientMock) GetNetworkIntegrationByName(ctx context.Context, cluster provisioning.Cluster, networkIntegrationName string) (api.NetworkIntegration, error) {
 	if mock.GetNetworkIntegrationByNameFunc == nil {
 		panic("NetworkIntegrationServerClientMock.GetNetworkIntegrationByNameFunc: method is nil but NetworkIntegrationServerClient.GetNetworkIntegrationByName was just called")
 	}
 	callInfo := struct {
 		Ctx                    context.Context
-		ConnectionURL          string
+		Cluster                provisioning.Cluster
 		NetworkIntegrationName string
 	}{
 		Ctx:                    ctx,
-		ConnectionURL:          connectionURL,
+		Cluster:                cluster,
 		NetworkIntegrationName: networkIntegrationName,
 	}
 	mock.lockGetNetworkIntegrationByName.Lock()
 	mock.calls.GetNetworkIntegrationByName = append(mock.calls.GetNetworkIntegrationByName, callInfo)
 	mock.lockGetNetworkIntegrationByName.Unlock()
-	return mock.GetNetworkIntegrationByNameFunc(ctx, connectionURL, networkIntegrationName)
+	return mock.GetNetworkIntegrationByNameFunc(ctx, cluster, networkIntegrationName)
 }
 
 // GetNetworkIntegrationByNameCalls gets all the calls that were made to GetNetworkIntegrationByName.
@@ -90,12 +91,12 @@ func (mock *NetworkIntegrationServerClientMock) GetNetworkIntegrationByName(ctx 
 //	len(mockedNetworkIntegrationServerClient.GetNetworkIntegrationByNameCalls())
 func (mock *NetworkIntegrationServerClientMock) GetNetworkIntegrationByNameCalls() []struct {
 	Ctx                    context.Context
-	ConnectionURL          string
+	Cluster                provisioning.Cluster
 	NetworkIntegrationName string
 } {
 	var calls []struct {
 		Ctx                    context.Context
-		ConnectionURL          string
+		Cluster                provisioning.Cluster
 		NetworkIntegrationName string
 	}
 	mock.lockGetNetworkIntegrationByName.RLock()
@@ -105,21 +106,21 @@ func (mock *NetworkIntegrationServerClientMock) GetNetworkIntegrationByNameCalls
 }
 
 // GetNetworkIntegrations calls GetNetworkIntegrationsFunc.
-func (mock *NetworkIntegrationServerClientMock) GetNetworkIntegrations(ctx context.Context, connectionURL string) ([]api.NetworkIntegration, error) {
+func (mock *NetworkIntegrationServerClientMock) GetNetworkIntegrations(ctx context.Context, cluster provisioning.Cluster) ([]api.NetworkIntegration, error) {
 	if mock.GetNetworkIntegrationsFunc == nil {
 		panic("NetworkIntegrationServerClientMock.GetNetworkIntegrationsFunc: method is nil but NetworkIntegrationServerClient.GetNetworkIntegrations was just called")
 	}
 	callInfo := struct {
-		Ctx           context.Context
-		ConnectionURL string
+		Ctx     context.Context
+		Cluster provisioning.Cluster
 	}{
-		Ctx:           ctx,
-		ConnectionURL: connectionURL,
+		Ctx:     ctx,
+		Cluster: cluster,
 	}
 	mock.lockGetNetworkIntegrations.Lock()
 	mock.calls.GetNetworkIntegrations = append(mock.calls.GetNetworkIntegrations, callInfo)
 	mock.lockGetNetworkIntegrations.Unlock()
-	return mock.GetNetworkIntegrationsFunc(ctx, connectionURL)
+	return mock.GetNetworkIntegrationsFunc(ctx, cluster)
 }
 
 // GetNetworkIntegrationsCalls gets all the calls that were made to GetNetworkIntegrations.
@@ -127,12 +128,12 @@ func (mock *NetworkIntegrationServerClientMock) GetNetworkIntegrations(ctx conte
 //
 //	len(mockedNetworkIntegrationServerClient.GetNetworkIntegrationsCalls())
 func (mock *NetworkIntegrationServerClientMock) GetNetworkIntegrationsCalls() []struct {
-	Ctx           context.Context
-	ConnectionURL string
+	Ctx     context.Context
+	Cluster provisioning.Cluster
 } {
 	var calls []struct {
-		Ctx           context.Context
-		ConnectionURL string
+		Ctx     context.Context
+		Cluster provisioning.Cluster
 	}
 	mock.lockGetNetworkIntegrations.RLock()
 	calls = mock.calls.GetNetworkIntegrations

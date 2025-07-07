@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -43,12 +44,12 @@ func NewProfileServerClientWithSlog(base inventory.ProfileServerClient, log *slo
 }
 
 // GetProfileByName implements inventory.ProfileServerClient.
-func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, connectionURL string, profileName string) (profile api.Profile, err error) {
+func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, cluster provisioning.Cluster, profileName string) (profile api.Profile, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("profileName", profileName),
 		)
 	}
@@ -75,16 +76,16 @@ func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, conn
 			log.Debug("<= method GetProfileByName finished")
 		}
 	}()
-	return _d._base.GetProfileByName(ctx, connectionURL, profileName)
+	return _d._base.GetProfileByName(ctx, cluster, profileName)
 }
 
 // GetProfiles implements inventory.ProfileServerClient.
-func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, connectionURL string) (profiles []api.Profile, err error) {
+func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, cluster provisioning.Cluster) (profiles []api.Profile, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetProfiles")
@@ -110,5 +111,5 @@ func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, connectio
 			log.Debug("<= method GetProfiles finished")
 		}
 	}()
-	return _d._base.GetProfiles(ctx, connectionURL)
+	return _d._base.GetProfiles(ctx, cluster)
 }

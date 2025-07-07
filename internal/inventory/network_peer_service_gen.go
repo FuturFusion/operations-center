@@ -170,7 +170,7 @@ func (s networkPeerService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 			return err
 		}
 
-		retrievedNetworkPeer, err := s.networkPeerClient.GetNetworkPeerByName(ctx, cluster.ConnectionURL, networkPeer.NetworkName, networkPeer.Name)
+		retrievedNetworkPeer, err := s.networkPeerClient.GetNetworkPeerByName(ctx, *cluster, networkPeer.NetworkName, networkPeer.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkPeer.UUID)
 			if err != nil {
@@ -213,7 +213,7 @@ func (s networkPeerService) SyncCluster(ctx context.Context, name string) error 
 		return err
 	}
 
-	retrievedNetworks, err := s.networkClient.GetNetworks(ctx, cluster.ConnectionURL)
+	retrievedNetworks, err := s.networkClient.GetNetworks(ctx, *cluster)
 	if err != nil {
 		return err
 	}
@@ -223,7 +223,7 @@ func (s networkPeerService) SyncCluster(ctx context.Context, name string) error 
 			continue
 		}
 
-		retrievedNetworkPeers, err := s.networkPeerClient.GetNetworkPeers(ctx, cluster.ConnectionURL, network.Name)
+		retrievedNetworkPeers, err := s.networkPeerClient.GetNetworkPeers(ctx, *cluster, network.Name)
 		if err != nil {
 			return err
 		}

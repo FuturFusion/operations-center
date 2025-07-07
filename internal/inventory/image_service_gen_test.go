@@ -439,7 +439,7 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 			}
 
 			imageClient := &serverMock.ImageServerClientMock{
-				GetImageByNameFunc: func(ctx context.Context, connectionURL string, imageName string) (incusapi.Image, error) {
+				GetImageByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, imageName string) (incusapi.Image, error) {
 					require.Equal(t, tc.repoGetByUUIDImage.Name, imageName)
 					return tc.imageClientGetImageByName, tc.imageClientGetImageByNameErr
 				},
@@ -592,7 +592,7 @@ func TestImageService_SyncAll(t *testing.T) {
 			}
 
 			imageClient := &serverMock.ImageServerClientMock{
-				GetImagesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Image, error) {
+				GetImagesFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Image, error) {
 					return tc.imageClientGetImages, tc.imageClientGetImagesErr
 				},
 			}

@@ -6,8 +6,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 type ImageService interface {
@@ -29,6 +30,6 @@ type ImageRepo interface {
 }
 
 type ImageServerClient interface {
-	GetImages(ctx context.Context, connectionURL string) ([]incusapi.Image, error)
-	GetImageByName(ctx context.Context, connectionURL string, imageName string) (incusapi.Image, error)
+	GetImages(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Image, error)
+	GetImageByName(ctx context.Context, cluster provisioning.Cluster, imageName string) (incusapi.Image, error)
 }

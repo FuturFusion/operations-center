@@ -9,10 +9,11 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkZones(ctx context.Context, connectionURL string) ([]incusapi.NetworkZone, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetNetworkZones(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkZone, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -25,8 +26,8 @@ func (s serverClient) GetNetworkZones(ctx context.Context, connectionURL string)
 	return serverNetworkZones, nil
 }
 
-func (s serverClient) GetNetworkZoneByName(ctx context.Context, connectionURL string, networkZoneName string) (incusapi.NetworkZone, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetNetworkZoneByName(ctx context.Context, cluster provisioning.Cluster, networkZoneName string) (incusapi.NetworkZone, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return incusapi.NetworkZone{}, err
 	}

@@ -443,7 +443,7 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 			}
 
 			networkForwardClient := &serverMock.NetworkForwardServerClientMock{
-				GetNetworkForwardByNameFunc: func(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
+				GetNetworkForwardByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
 					require.Equal(t, tc.repoGetByUUIDNetworkForward.Name, networkForwardName)
 					require.Equal(t, "network", networkName)
 					return tc.networkForwardClientGetNetworkForwardByName, tc.networkForwardClientGetNetworkForwardByNameErr
@@ -658,13 +658,13 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 			}
 
 			networkClient := &serverMock.NetworkServerClientMock{
-				GetNetworksFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Network, error) {
+				GetNetworksFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Network, error) {
 					return tc.networkClientGetNetworks, tc.networkClientGetNetworksErr
 				},
 			}
 
 			networkForwardClient := &serverMock.NetworkForwardServerClientMock{
-				GetNetworkForwardsFunc: func(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkForward, error) {
+				GetNetworkForwardsFunc: func(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]incusapi.NetworkForward, error) {
 					return tc.networkForwardClientGetNetworkForwards, tc.networkForwardClientGetNetworkForwardsErr
 				},
 			}

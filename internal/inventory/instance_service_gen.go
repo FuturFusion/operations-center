@@ -156,7 +156,7 @@ func (s instanceService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		retrievedInstance, err := s.instanceClient.GetInstanceByName(ctx, cluster.ConnectionURL, instance.Name)
+		retrievedInstance, err := s.instanceClient.GetInstanceByName(ctx, *cluster, instance.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, instance.UUID)
 			if err != nil {
@@ -201,7 +201,7 @@ func (s instanceService) SyncCluster(ctx context.Context, name string) error {
 		return err
 	}
 
-	retrievedInstances, err := s.instanceClient.GetInstances(ctx, cluster.ConnectionURL)
+	retrievedInstances, err := s.instanceClient.GetInstances(ctx, *cluster)
 	if err != nil {
 		return err
 	}

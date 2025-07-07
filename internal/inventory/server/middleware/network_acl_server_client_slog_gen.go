@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -43,12 +44,12 @@ func NewNetworkACLServerClientWithSlog(base inventory.NetworkACLServerClient, lo
 }
 
 // GetNetworkACLByName implements inventory.NetworkACLServerClient.
-func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context, connectionURL string, networkACLName string) (networkACL api.NetworkACL, err error) {
+func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context, cluster provisioning.Cluster, networkACLName string) (networkACL api.NetworkACL, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkACLName", networkACLName),
 		)
 	}
@@ -75,16 +76,16 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context
 			log.Debug("<= method GetNetworkACLByName finished")
 		}
 	}()
-	return _d._base.GetNetworkACLByName(ctx, connectionURL, networkACLName)
+	return _d._base.GetNetworkACLByName(ctx, cluster, networkACLName)
 }
 
 // GetNetworkACLs implements inventory.NetworkACLServerClient.
-func (_d NetworkACLServerClientWithSlog) GetNetworkACLs(ctx context.Context, connectionURL string) (networkACLs []api.NetworkACL, err error) {
+func (_d NetworkACLServerClientWithSlog) GetNetworkACLs(ctx context.Context, cluster provisioning.Cluster) (networkACLs []api.NetworkACL, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetNetworkACLs")
@@ -110,5 +111,5 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLs(ctx context.Context, con
 			log.Debug("<= method GetNetworkACLs finished")
 		}
 	}()
-	return _d._base.GetNetworkACLs(ctx, connectionURL)
+	return _d._base.GetNetworkACLs(ctx, cluster)
 }

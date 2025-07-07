@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -22,10 +23,10 @@ var _ inventory.NetworkServerClient = &NetworkServerClientMock{}
 //
 //		// make and configure a mocked inventory.NetworkServerClient
 //		mockedNetworkServerClient := &NetworkServerClientMock{
-//			GetNetworkByNameFunc: func(ctx context.Context, connectionURL string, networkName string) (api.Network, error) {
+//			GetNetworkByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkName string) (api.Network, error) {
 //				panic("mock out the GetNetworkByName method")
 //			},
-//			GetNetworksFunc: func(ctx context.Context, connectionURL string) ([]api.Network, error) {
+//			GetNetworksFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]api.Network, error) {
 //				panic("mock out the GetNetworks method")
 //			},
 //		}
@@ -36,10 +37,10 @@ var _ inventory.NetworkServerClient = &NetworkServerClientMock{}
 //	}
 type NetworkServerClientMock struct {
 	// GetNetworkByNameFunc mocks the GetNetworkByName method.
-	GetNetworkByNameFunc func(ctx context.Context, connectionURL string, networkName string) (api.Network, error)
+	GetNetworkByNameFunc func(ctx context.Context, cluster provisioning.Cluster, networkName string) (api.Network, error)
 
 	// GetNetworksFunc mocks the GetNetworks method.
-	GetNetworksFunc func(ctx context.Context, connectionURL string) ([]api.Network, error)
+	GetNetworksFunc func(ctx context.Context, cluster provisioning.Cluster) ([]api.Network, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -47,8 +48,8 @@ type NetworkServerClientMock struct {
 		GetNetworkByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ConnectionURL is the connectionURL argument value.
-			ConnectionURL string
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
 			// NetworkName is the networkName argument value.
 			NetworkName string
 		}
@@ -56,8 +57,8 @@ type NetworkServerClientMock struct {
 		GetNetworks []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ConnectionURL is the connectionURL argument value.
-			ConnectionURL string
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
 		}
 	}
 	lockGetNetworkByName sync.RWMutex
@@ -65,23 +66,23 @@ type NetworkServerClientMock struct {
 }
 
 // GetNetworkByName calls GetNetworkByNameFunc.
-func (mock *NetworkServerClientMock) GetNetworkByName(ctx context.Context, connectionURL string, networkName string) (api.Network, error) {
+func (mock *NetworkServerClientMock) GetNetworkByName(ctx context.Context, cluster provisioning.Cluster, networkName string) (api.Network, error) {
 	if mock.GetNetworkByNameFunc == nil {
 		panic("NetworkServerClientMock.GetNetworkByNameFunc: method is nil but NetworkServerClient.GetNetworkByName was just called")
 	}
 	callInfo := struct {
-		Ctx           context.Context
-		ConnectionURL string
-		NetworkName   string
+		Ctx         context.Context
+		Cluster     provisioning.Cluster
+		NetworkName string
 	}{
-		Ctx:           ctx,
-		ConnectionURL: connectionURL,
-		NetworkName:   networkName,
+		Ctx:         ctx,
+		Cluster:     cluster,
+		NetworkName: networkName,
 	}
 	mock.lockGetNetworkByName.Lock()
 	mock.calls.GetNetworkByName = append(mock.calls.GetNetworkByName, callInfo)
 	mock.lockGetNetworkByName.Unlock()
-	return mock.GetNetworkByNameFunc(ctx, connectionURL, networkName)
+	return mock.GetNetworkByNameFunc(ctx, cluster, networkName)
 }
 
 // GetNetworkByNameCalls gets all the calls that were made to GetNetworkByName.
@@ -89,14 +90,14 @@ func (mock *NetworkServerClientMock) GetNetworkByName(ctx context.Context, conne
 //
 //	len(mockedNetworkServerClient.GetNetworkByNameCalls())
 func (mock *NetworkServerClientMock) GetNetworkByNameCalls() []struct {
-	Ctx           context.Context
-	ConnectionURL string
-	NetworkName   string
+	Ctx         context.Context
+	Cluster     provisioning.Cluster
+	NetworkName string
 } {
 	var calls []struct {
-		Ctx           context.Context
-		ConnectionURL string
-		NetworkName   string
+		Ctx         context.Context
+		Cluster     provisioning.Cluster
+		NetworkName string
 	}
 	mock.lockGetNetworkByName.RLock()
 	calls = mock.calls.GetNetworkByName
@@ -105,21 +106,21 @@ func (mock *NetworkServerClientMock) GetNetworkByNameCalls() []struct {
 }
 
 // GetNetworks calls GetNetworksFunc.
-func (mock *NetworkServerClientMock) GetNetworks(ctx context.Context, connectionURL string) ([]api.Network, error) {
+func (mock *NetworkServerClientMock) GetNetworks(ctx context.Context, cluster provisioning.Cluster) ([]api.Network, error) {
 	if mock.GetNetworksFunc == nil {
 		panic("NetworkServerClientMock.GetNetworksFunc: method is nil but NetworkServerClient.GetNetworks was just called")
 	}
 	callInfo := struct {
-		Ctx           context.Context
-		ConnectionURL string
+		Ctx     context.Context
+		Cluster provisioning.Cluster
 	}{
-		Ctx:           ctx,
-		ConnectionURL: connectionURL,
+		Ctx:     ctx,
+		Cluster: cluster,
 	}
 	mock.lockGetNetworks.Lock()
 	mock.calls.GetNetworks = append(mock.calls.GetNetworks, callInfo)
 	mock.lockGetNetworks.Unlock()
-	return mock.GetNetworksFunc(ctx, connectionURL)
+	return mock.GetNetworksFunc(ctx, cluster)
 }
 
 // GetNetworksCalls gets all the calls that were made to GetNetworks.
@@ -127,12 +128,12 @@ func (mock *NetworkServerClientMock) GetNetworks(ctx context.Context, connection
 //
 //	len(mockedNetworkServerClient.GetNetworksCalls())
 func (mock *NetworkServerClientMock) GetNetworksCalls() []struct {
-	Ctx           context.Context
-	ConnectionURL string
+	Ctx     context.Context
+	Cluster provisioning.Cluster
 } {
 	var calls []struct {
-		Ctx           context.Context
-		ConnectionURL string
+		Ctx     context.Context
+		Cluster provisioning.Cluster
 	}
 	mock.lockGetNetworks.RLock()
 	calls = mock.calls.GetNetworks

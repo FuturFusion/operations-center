@@ -6,8 +6,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 type NetworkZoneService interface {
@@ -29,6 +30,6 @@ type NetworkZoneRepo interface {
 }
 
 type NetworkZoneServerClient interface {
-	GetNetworkZones(ctx context.Context, connectionURL string) ([]incusapi.NetworkZone, error)
-	GetNetworkZoneByName(ctx context.Context, connectionURL string, networkZoneName string) (incusapi.NetworkZone, error)
+	GetNetworkZones(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkZone, error)
+	GetNetworkZoneByName(ctx context.Context, cluster provisioning.Cluster, networkZoneName string) (incusapi.NetworkZone, error)
 }

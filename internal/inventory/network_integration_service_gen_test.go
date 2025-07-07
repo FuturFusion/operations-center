@@ -435,7 +435,7 @@ func TestNetworkIntegrationService_ResyncByUUID(t *testing.T) {
 			}
 
 			networkIntegrationClient := &serverMock.NetworkIntegrationServerClientMock{
-				GetNetworkIntegrationByNameFunc: func(ctx context.Context, connectionURL string, networkIntegrationName string) (incusapi.NetworkIntegration, error) {
+				GetNetworkIntegrationByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkIntegrationName string) (incusapi.NetworkIntegration, error) {
 					require.Equal(t, tc.repoGetByUUIDNetworkIntegration.Name, networkIntegrationName)
 					return tc.networkIntegrationClientGetNetworkIntegrationByName, tc.networkIntegrationClientGetNetworkIntegrationByNameErr
 				},
@@ -582,7 +582,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 			}
 
 			networkIntegrationClient := &serverMock.NetworkIntegrationServerClientMock{
-				GetNetworkIntegrationsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error) {
+				GetNetworkIntegrationsFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkIntegration, error) {
 					return tc.networkIntegrationClientGetNetworkIntegrations, tc.networkIntegrationClientGetNetworkIntegrationsErr
 				},
 			}
