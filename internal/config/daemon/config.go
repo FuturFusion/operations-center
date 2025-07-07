@@ -19,12 +19,9 @@ type Config struct {
 	ClientKeyFilename         string `yaml:"-"`
 
 	// update.source is the URL of the origin, the updates should be fetched from.
-	// If update.source starts with https://github.com/, the Github client is used
-	// to fetch the updates from https://github.com/lxc/incus-os.
 	UpdatesSource              string        `yaml:"update.source"`
 	UpdatesSourcePollInterval  time.Duration `yaml:"-"`
 	UpdatesSourcePollSkipFirst bool          `yaml:"update.source_skip_first_update"`
-	GithubToken                string        `yaml:"github.token"`
 	// Root CA certificate used to verify the signature of index.sjson.
 	UpdateSignatureVerificationRootCA string `yaml:"update.signature_verification_root_ca"`
 
