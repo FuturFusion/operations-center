@@ -149,6 +149,20 @@ func (_d ClusterServiceWithPrometheus) Rename(ctx context.Context, oldName strin
 	return _d.base.Rename(ctx, oldName, newName)
 }
 
+// ResyncInventory implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) ResyncInventory(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncInventory", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ResyncInventory(ctx)
+}
+
 // ResyncInventoryByName implements provisioning.ClusterService.
 func (_d ClusterServiceWithPrometheus) ResyncInventoryByName(ctx context.Context, name string) (err error) {
 	_since := time.Now()
