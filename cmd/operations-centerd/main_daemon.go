@@ -75,6 +75,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 
 		UpdatesSourcePollInterval: 1 * time.Hour,
 
+		ConnectivityCheckInterval: 5 * time.Minute,
 		PendingServerPollInterval: 1 * time.Minute,
 	}
 
