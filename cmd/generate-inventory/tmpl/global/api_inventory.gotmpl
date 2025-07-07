@@ -1,9 +1,11 @@
 package api
 
 import (
+	"errors"
 	"log/slog"
 
 	"github.com/FuturFusion/operations-center/internal/authz"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	inventoryServiceMiddleware "github.com/FuturFusion/operations-center/internal/inventory/middleware"
 	inventoryRepoMiddleware "github.com/FuturFusion/operations-center/internal/inventory/repo/middleware"
@@ -19,6 +21,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewInventoryAggregateRepoWithSlog(
 				inventorySqlite.NewInventoryAggregate(db),
 				slog.Default(),
+				inventoryRepoMiddleware.InventoryAggregateRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 		),
 		slog.Default(),
@@ -30,6 +37,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.New{{ .Name | pascalcase }}RepoWithSlog(
 				inventorySqlite.New{{ .Name | pascalcase }}(db),
 				slog.Default(),
+				inventoryRepoMiddleware.{{ .Name | pascalcase }}RepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			clusterSvc,
 			serverClient,

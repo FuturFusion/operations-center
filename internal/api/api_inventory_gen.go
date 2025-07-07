@@ -3,9 +3,11 @@
 package api
 
 import (
+	"errors"
 	"log/slog"
 
 	"github.com/FuturFusion/operations-center/internal/authz"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	inventoryServiceMiddleware "github.com/FuturFusion/operations-center/internal/inventory/middleware"
 	inventoryRepoMiddleware "github.com/FuturFusion/operations-center/internal/inventory/repo/middleware"
@@ -21,6 +23,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewInventoryAggregateRepoWithSlog(
 				inventorySqlite.NewInventoryAggregate(db),
 				slog.Default(),
+				inventoryRepoMiddleware.InventoryAggregateRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 		),
 		slog.Default(),
@@ -31,6 +38,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewImageRepoWithSlog(
 				inventorySqlite.NewImage(db),
 				slog.Default(),
+				inventoryRepoMiddleware.ImageRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -43,6 +55,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewInstanceRepoWithSlog(
 				inventorySqlite.NewInstance(db),
 				slog.Default(),
+				inventoryRepoMiddleware.InstanceRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -55,6 +72,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewNetworkRepoWithSlog(
 				inventorySqlite.NewNetwork(db),
 				slog.Default(),
+				inventoryRepoMiddleware.NetworkRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -68,6 +90,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewNetworkACLRepoWithSlog(
 				inventorySqlite.NewNetworkACL(db),
 				slog.Default(),
+				inventoryRepoMiddleware.NetworkACLRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -80,6 +107,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewNetworkAddressSetRepoWithSlog(
 				inventorySqlite.NewNetworkAddressSet(db),
 				slog.Default(),
+				inventoryRepoMiddleware.NetworkAddressSetRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -92,6 +124,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewNetworkForwardRepoWithSlog(
 				inventorySqlite.NewNetworkForward(db),
 				slog.Default(),
+				inventoryRepoMiddleware.NetworkForwardRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -106,6 +143,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewNetworkIntegrationRepoWithSlog(
 				inventorySqlite.NewNetworkIntegration(db),
 				slog.Default(),
+				inventoryRepoMiddleware.NetworkIntegrationRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -118,6 +160,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewNetworkLoadBalancerRepoWithSlog(
 				inventorySqlite.NewNetworkLoadBalancer(db),
 				slog.Default(),
+				inventoryRepoMiddleware.NetworkLoadBalancerRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -132,6 +179,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewNetworkPeerRepoWithSlog(
 				inventorySqlite.NewNetworkPeer(db),
 				slog.Default(),
+				inventoryRepoMiddleware.NetworkPeerRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -146,6 +198,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewNetworkZoneRepoWithSlog(
 				inventorySqlite.NewNetworkZone(db),
 				slog.Default(),
+				inventoryRepoMiddleware.NetworkZoneRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -158,6 +215,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewProfileRepoWithSlog(
 				inventorySqlite.NewProfile(db),
 				slog.Default(),
+				inventoryRepoMiddleware.ProfileRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -170,6 +232,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewProjectRepoWithSlog(
 				inventorySqlite.NewProject(db),
 				slog.Default(),
+				inventoryRepoMiddleware.ProjectRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -182,6 +249,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewStorageBucketRepoWithSlog(
 				inventorySqlite.NewStorageBucket(db),
 				slog.Default(),
+				inventoryRepoMiddleware.StorageBucketRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -196,6 +268,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewStoragePoolRepoWithSlog(
 				inventorySqlite.NewStoragePool(db),
 				slog.Default(),
+				inventoryRepoMiddleware.StoragePoolRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			clusterSvc,
 			serverClient,
@@ -208,6 +285,11 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			inventoryRepoMiddleware.NewStorageVolumeRepoWithSlog(
 				inventorySqlite.NewStorageVolume(db),
 				slog.Default(),
+				inventoryRepoMiddleware.StorageVolumeRepoWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						return errors.Is(err, domain.ErrNotFound)
+					},
+				),
 			),
 			clusterSvc,
 			serverClient,
