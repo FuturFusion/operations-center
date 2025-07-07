@@ -514,7 +514,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByUUID(t *testing.T) {
 			}
 
 			{{ .Name | camelcase }}Client := &serverMock.{{ .Name | pascalcase }}ServerClientMock{
-				Get{{ .Name | pascalcase }}ByNameFunc: func(ctx context.Context, connectionURL string, {{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }} {{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error) {
+				Get{{ .Name | pascalcase }}ByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, {{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }} {{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error) {
 					require.Equal(t, tc.repoGetByUUID{{ .Name | pascalcase }}.Name, {{ .Name | camelcase }}Name)
 {{- if .HasParent }}
 					require.Equal(t, "{{ .ParentName }}", {{ .ParentName | camelcase }}Name)
@@ -914,7 +914,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- if .HasParent }}
 
 			{{ .ParentName | camelcase }}Client := &serverMock.{{ .ParentName | pascalcase }}ServerClientMock{
-				Get{{ .ParentPluralName | pascalcase }}Func: func(ctx context.Context, connectionURL string) ([]incusapi.{{ .ParentObjectType | pascalcase }}, error) {
+				Get{{ .ParentPluralName | pascalcase }}Func: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.{{ .ParentObjectType | pascalcase }}, error) {
 					return tc.{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}, tc.{{ .ParentName | camelcase }}ClientGet{{ .ParentPluralName | pascalcase }}Err
 				},
 			}
@@ -922,11 +922,11 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 
 			{{ .Name | camelcase }}Client := &serverMock.{{ .Name | pascalcase }}ServerClientMock{
 {{- with .RequiresExtension }}
-				HasExtensionFunc: func(ctx context.Context, connectionURL, extension string) bool {
+				HasExtensionFunc: func(ctx context.Context, cluster provisioning.Cluster, extension string) bool {
 					return tc.{{ $.Name | camelcase }}ClientHasExtension
 				},
 {{- end }}
-				Get{{ .PluralName | pascalcase }}Func: func(ctx context.Context, connectionURL string {{- if .HasParent }}, {{ .ParentName | camelcase }}Name string {{ end }}) ([]incusapi.{{ .ObjectType | pascalcase }}, error) {
+				Get{{ .PluralName | pascalcase }}Func: func(ctx context.Context, cluster provisioning.Cluster {{- if .HasParent }}, {{ .ParentName | camelcase }}Name string {{ end }}) ([]incusapi.{{ .ObjectType | pascalcase }}, error) {
 					return tc.{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}, tc.{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}Err
 				},
 			}

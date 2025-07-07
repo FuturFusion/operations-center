@@ -6,6 +6,7 @@ import (
 	incus "github.com/lxc/incus/v6/client"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 type serverClient struct {
@@ -20,17 +21,16 @@ func New(clientCert string, clientKey string) inventory.ServerClient {
 	}
 }
 
-func (s serverClient) getClient(ctx context.Context, connectionURL string) (incus.InstanceServer, error) {
-	return incus.ConnectIncusWithContext(ctx, connectionURL, &incus.ConnectionArgs{
+func (s serverClient) getClient(ctx context.Context, cluster provisioning.Cluster) (incus.InstanceServer, error) {
+	return incus.ConnectIncusWithContext(ctx, cluster.ConnectionURL, &incus.ConnectionArgs{
 		TLSClientCert: s.clientCert,
 		TLSClientKey:  s.clientKey,
-		// FIXME: connection should be verified with the certificate received from the server/cluster.
-		InsecureSkipVerify: true,
+		TLSServerCert: cluster.Certificate,
 	})
 }
 
-func (s serverClient) HasExtension(ctx context.Context, connectionURL string, extension string) (exists bool) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) HasExtension(ctx context.Context, cluster provisioning.Cluster, extension string) (exists bool) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return false
 	}
