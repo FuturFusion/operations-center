@@ -174,7 +174,7 @@ func TestClient(t *testing.T) {
 }`),
 							},
 						},
-						// GET /os/1.0/system/encryption
+						// GET /os/1.0/system/security
 						{
 							Value: response{
 								statusCode: http.StatusOK,
@@ -190,7 +190,7 @@ func TestClient(t *testing.T) {
 					},
 
 					assertErr: require.NoError,
-					wantPaths: []string{"GET /os/1.0/system/network", "GET /os/1.0/system/encryption"},
+					wantPaths: []string{"GET /os/1.0/system/network", "GET /os/1.0/system/security"},
 					assertResult: func(t *testing.T, res any) {
 						t.Helper()
 						wantResources := api.OSData{
@@ -233,7 +233,7 @@ func TestClient(t *testing.T) {
 }`),
 							},
 						},
-						// GET /os/1.0/system/encryption
+						// GET /os/1.0/system/security
 						{
 							Value: response{
 								statusCode: http.StatusInternalServerError,
@@ -242,7 +242,7 @@ func TestClient(t *testing.T) {
 					},
 
 					assertErr:    require.Error,
-					wantPaths:    []string{"GET /os/1.0/system/network", "GET /os/1.0/system/encryption"},
+					wantPaths:    []string{"GET /os/1.0/system/network", "GET /os/1.0/system/security"},
 					assertResult: noResult,
 				},
 				{
@@ -264,7 +264,7 @@ func TestClient(t *testing.T) {
 }`),
 							},
 						},
-						// GET /os/1.0/system/encryption
+						// GET /os/1.0/system/security
 						{
 							Value: response{
 								statusCode: http.StatusOK,
@@ -276,7 +276,7 @@ func TestClient(t *testing.T) {
 					},
 
 					assertErr:    require.Error,
-					wantPaths:    []string{"GET /os/1.0/system/network", "GET /os/1.0/system/encryption"},
+					wantPaths:    []string{"GET /os/1.0/system/network", "GET /os/1.0/system/security"},
 					assertResult: noResult,
 				},
 				{
