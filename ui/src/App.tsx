@@ -23,6 +23,8 @@ import ServerDetail from "pages/ServerDetail";
 import Token from "pages/Token";
 import TokenCreate from "pages/TokenCreate";
 import TokenDetail from "pages/TokenDetail";
+import Update from "pages/Update";
+import UpdateDetail from "pages/UpdateDetail";
 
 function App() {
   const { isAuthenticated, isAuthLoading } = useAuth();
@@ -110,6 +112,15 @@ function App() {
             <Route
               path="/ui/provisioning/tokens/:uuid/:activeTab"
               element={<TokenDetail />}
+            />
+            <Route path="/ui/provisioning/updates" element={<Update />} />
+            <Route
+              path="/ui/provisioning/updates/:uuid"
+              element={<UpdateDetail />}
+            />
+            <Route
+              path="/ui/provisioning/updates/:uuid/:activeTab"
+              element={<UpdateDetail />}
             />
           </Routes>
           <Notification />

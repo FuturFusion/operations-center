@@ -8,6 +8,7 @@ import {
   MdOutlineInventory2,
   MdOutlineToken,
   MdSettings,
+  MdOutlineSystemUpdateAlt,
 } from "react-icons/md";
 import {
   RiArticleLine,
@@ -215,6 +216,11 @@ const Sidebar = () => {
                         <li>
                           <Nav.Link as={Link} to="/ui/provisioning/tokens">
                             <MdOutlineToken /> Tokens
+                          </Nav.Link>
+                        </li>
+                        <li>
+                          <Nav.Link as={Link} to="/ui/provisioning/updates">
+                            <MdOutlineSystemUpdateAlt /> Updates
                           </Nav.Link>
                         </li>
                       </Nav>
