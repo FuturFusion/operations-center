@@ -3,12 +3,18 @@
 
 package {{ .PkgName }}
 
+{{- $_ := .Registry.AddImport "time" "time" }}
+{{- $_ := .Registry.AddImport "prometheus" "github.com/prometheus/client_golang/prometheus" }}
+{{- $_ := .Registry.AddImport "promauto" "github.com/prometheus/client_golang/prometheus/promauto" }}
+
+{{$srcPkgQualifier := $.SrcPkgQualifier}}
+{{- if not (index .TemplateData "skip-ensure") }}
+	{{- $_ := $.Registry.AddImport $.Registry.SrcPkgName $.Registry.SrcPkg.PkgPath }}
+{{- end }}
+
 import (
-	"time"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 {{ range .Imports -}}
-	{{ .Alias }} "{{ .Path }}"
+	{{ .ImportStatement }}
 {{ end -}}
 )
 

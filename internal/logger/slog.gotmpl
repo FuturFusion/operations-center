@@ -6,12 +6,16 @@ package {{ .PkgName }}
 {{- $_ := .Registry.AddImport "slog" "log/slog" }}
 {{- $_ := .Registry.AddImport "logger" "github.com/FuturFusion/operations-center/internal/logger" }}
 
+{{$srcPkgQualifier := $.SrcPkgQualifier}}
+{{- if not (index .TemplateData "skip-ensure") }}
+	{{- $_ := $.Registry.AddImport $.Registry.SrcPkgName $.Registry.SrcPkg.PkgPath }}
+{{- end }}
+
 import (
 {{ range .Imports -}}
-	{{ .Alias }} "{{ .Path }}"
+	{{ .ImportStatement }}
 {{ end -}}
 )
-
 
 {{ range $i, $wrapper := .Interfaces }}
 
