@@ -49,5 +49,5 @@ type UpdateFilesRepo interface {
 type UpdateSourcePort interface {
 	GetLatest(ctx context.Context, limit int) (Updates, error)
 	GetUpdateAllFiles(ctx context.Context, update Update) (UpdateFiles, error)
-	GetUpdateFileByFilename(ctx context.Context, update Update, filename string) (io.ReadCloser, int, error)
+	GetUpdateFileByFilenameUnverified(ctx context.Context, update Update, filename string) (io.ReadCloser, int, error)
 }

@@ -211,16 +211,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.Default(),
 	)
 
-	// FIXME: This is insecure by default, so we might want to change this.
-	// We could throw an error (and maybe let the user ignore by setting
-	// `update.skip_verify in the config) or at very least log a warning.
-	verifier := signature.NewNoopVerifier()
-	if d.config.UpdateSignatureVerificationPEM != "" {
-		verifier, err = signature.NewVerifier([]byte(d.config.UpdateSignatureVerificationPEM))
-		if err != nil {
-			return err
-		}
-	}
+	verifier := signature.NewVerifier([]byte(d.config.UpdateSignatureVerificationRootCA))
 
 	repoUpdateFiles, err := localfs.New(
 		filepath.Join(d.env.VarDir(), "updates"),

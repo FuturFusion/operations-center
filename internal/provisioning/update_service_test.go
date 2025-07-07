@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
@@ -353,7 +354,6 @@ func TestUpdateService_GetUpdateAllFiles(t *testing.T) {
 				Files: provisioning.UpdateFiles{
 					provisioning.UpdateFile{
 						Filename: "dummy.txt",
-						URL:      "https://localhost/dummy.txt",
 						Size:     1,
 					},
 				},
@@ -515,6 +515,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		}]
 		repoUpdateFilesDelete []queue.Item[struct{}]
 
+		repoGetByUUIDErr            error
 		repoUpsert                  []queue.Item[struct{}]
 		repoGetAllWithFilterUpdates provisioning.Updates
 		repoGetAllWithFilterErr     error
@@ -524,8 +525,19 @@ func TestUpdateService_Refresh(t *testing.T) {
 	}{
 		// Success cases
 		{
-			name: "success - no updates, no state in the DB",
+			name:             "success - no updates, no state in the DB",
+			ctx:              context.Background(),
+			repoGetByUUIDErr: domain.ErrNotFound,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - one update, present",
 			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				provisioning.Update{},
+			},
+			repoGetByUUIDErr: nil,
 
 			assertErr: require.NoError,
 		},
@@ -535,12 +547,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
 			},
+			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
 						provisioning.UpdateFile{
 							Filename: "dummy.txt",
-							URL:      "http://localhost/dummy.txt",
 							Size:     5,
 						},
 					},
@@ -578,12 +590,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
 			},
+			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
 						provisioning.UpdateFile{
 							Filename: "dummy.txt",
-							URL:      "http://localhost/dummy.txt",
 							Size:     5,
 
 							// Generate hash: echo -n "dummy" | sha256sum
@@ -655,6 +667,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
 			},
+			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Err: boom.Error,
@@ -673,12 +686,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
 			},
+			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
 						provisioning.UpdateFile{
 							Filename: "dummy.txt",
-							URL:      "http://localhost/dummy.txt",
 							Size:     5,
 						},
 					},
@@ -693,12 +706,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
 			},
+			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
 						provisioning.UpdateFile{
 							Filename: "dummy.txt",
-							URL:      "http://localhost/dummy.txt",
 							Size:     5,
 						},
 					},
@@ -721,12 +734,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
 			},
+			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
 						provisioning.UpdateFile{
 							Filename: "dummy.txt",
-							URL:      "http://localhost/dummy.txt",
 							Size:     5,
 						},
 					},
@@ -763,12 +776,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
 			},
+			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
 						provisioning.UpdateFile{
 							Filename: "dummy.txt",
-							URL:      "http://localhost/dummy.txt",
 							Size:     5,
 
 							Sha256: "invalid", // invalid hash
@@ -807,12 +820,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
 			},
+			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
 						provisioning.UpdateFile{
 							Filename: "dummy.txt",
-							URL:      "http://localhost/dummy.txt",
 							Size:     5,
 						},
 					},
@@ -854,12 +867,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
 			},
+			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
 						provisioning.UpdateFile{
 							Filename: "dummy.txt",
-							URL:      "http://localhost/dummy.txt",
 							Size:     5,
 						},
 					},
@@ -901,12 +914,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 			sourceGetLatestUpdates: provisioning.Updates{
 				provisioning.Update{},
 			},
+			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
 						provisioning.UpdateFile{
 							Filename: "dummy.txt",
-							URL:      "http://localhost/dummy.txt",
 							Size:     5,
 						},
 					},
@@ -998,6 +1011,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
+					return nil, tc.repoGetByUUIDErr
+				},
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
 					return tc.repoGetAllWithFilterUpdates, tc.repoGetAllWithFilterErr
 				},
@@ -1036,7 +1052,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				GetUpdateAllFilesFunc: func(ctx context.Context, update provisioning.Update) (provisioning.UpdateFiles, error) {
 					return queue.Pop(t, &tc.sourceGetUpdateAllFiles)
 				},
-				GetUpdateFileByFilenameFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+				GetUpdateFileByFilenameUnverifiedFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
 					value, err := queue.Pop(t, &tc.sourceGetUpdateFileByFilename)
 					return value.stream, value.size, err
 				},

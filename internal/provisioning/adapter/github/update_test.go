@@ -34,7 +34,6 @@ func TestUpdate(t *testing.T) {
 	require.NoError(t, err)
 	require.Greater(t, len(updateFiles), 2)
 	require.NotEmpty(t, updateFiles[0].Filename)
-	require.NotEmpty(t, updateFiles[0].URL)
 
 	// Find smallest asset to download
 	filename := updateFiles[0].Filename
@@ -47,7 +46,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	// GetUpdateFileByFilename
-	rc, retSize, err := updateRepo.GetUpdateFileByFilename(ctx, updates[0], filename)
+	rc, retSize, err := updateRepo.GetUpdateFileByFilenameUnverified(ctx, updates[0], filename)
 	require.NoError(t, err)
 	defer rc.Close()
 	body, err := io.ReadAll(rc)

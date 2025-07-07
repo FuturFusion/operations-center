@@ -241,14 +241,13 @@ func TestUpdateFiles_Value(t *testing.T) {
 			updateFiles: provisioning.UpdateFiles{
 				{
 					Filename:  "dummy.txt",
-					URL:       "http://localhost/dummy.txt",
 					Size:      5,
 					Component: api.UpdateFileComponentDebug,
 				},
 			},
 
 			assertErr: require.NoError,
-			wantValue: []byte(`[{"filename":"dummy.txt","url":"http://localhost/dummy.txt","size":5,"sha256":"","component":"debug","type":"","architecture":""}]`),
+			wantValue: []byte(`[{"filename":"dummy.txt","size":5,"sha256":"","component":"debug","type":"","architecture":""}]`),
 		},
 	}
 

@@ -28,8 +28,8 @@ var _ provisioning.UpdateSourcePort = &UpdateSourcePortMock{}
 //			GetUpdateAllFilesFunc: func(ctx context.Context, update provisioning.Update) (provisioning.UpdateFiles, error) {
 //				panic("mock out the GetUpdateAllFiles method")
 //			},
-//			GetUpdateFileByFilenameFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
-//				panic("mock out the GetUpdateFileByFilename method")
+//			GetUpdateFileByFilenameUnverifiedFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+//				panic("mock out the GetUpdateFileByFilenameUnverified method")
 //			},
 //		}
 //
@@ -44,8 +44,8 @@ type UpdateSourcePortMock struct {
 	// GetUpdateAllFilesFunc mocks the GetUpdateAllFiles method.
 	GetUpdateAllFilesFunc func(ctx context.Context, update provisioning.Update) (provisioning.UpdateFiles, error)
 
-	// GetUpdateFileByFilenameFunc mocks the GetUpdateFileByFilename method.
-	GetUpdateFileByFilenameFunc func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error)
+	// GetUpdateFileByFilenameUnverifiedFunc mocks the GetUpdateFileByFilenameUnverified method.
+	GetUpdateFileByFilenameUnverifiedFunc func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -63,8 +63,8 @@ type UpdateSourcePortMock struct {
 			// Update is the update argument value.
 			Update provisioning.Update
 		}
-		// GetUpdateFileByFilename holds details about calls to the GetUpdateFileByFilename method.
-		GetUpdateFileByFilename []struct {
+		// GetUpdateFileByFilenameUnverified holds details about calls to the GetUpdateFileByFilenameUnverified method.
+		GetUpdateFileByFilenameUnverified []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Update is the update argument value.
@@ -73,9 +73,9 @@ type UpdateSourcePortMock struct {
 			Filename string
 		}
 	}
-	lockGetLatest               sync.RWMutex
-	lockGetUpdateAllFiles       sync.RWMutex
-	lockGetUpdateFileByFilename sync.RWMutex
+	lockGetLatest                         sync.RWMutex
+	lockGetUpdateAllFiles                 sync.RWMutex
+	lockGetUpdateFileByFilenameUnverified sync.RWMutex
 }
 
 // GetLatest calls GetLatestFunc.
@@ -150,10 +150,10 @@ func (mock *UpdateSourcePortMock) GetUpdateAllFilesCalls() []struct {
 	return calls
 }
 
-// GetUpdateFileByFilename calls GetUpdateFileByFilenameFunc.
-func (mock *UpdateSourcePortMock) GetUpdateFileByFilename(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
-	if mock.GetUpdateFileByFilenameFunc == nil {
-		panic("UpdateSourcePortMock.GetUpdateFileByFilenameFunc: method is nil but UpdateSourcePort.GetUpdateFileByFilename was just called")
+// GetUpdateFileByFilenameUnverified calls GetUpdateFileByFilenameUnverifiedFunc.
+func (mock *UpdateSourcePortMock) GetUpdateFileByFilenameUnverified(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+	if mock.GetUpdateFileByFilenameUnverifiedFunc == nil {
+		panic("UpdateSourcePortMock.GetUpdateFileByFilenameUnverifiedFunc: method is nil but UpdateSourcePort.GetUpdateFileByFilenameUnverified was just called")
 	}
 	callInfo := struct {
 		Ctx      context.Context
@@ -164,17 +164,17 @@ func (mock *UpdateSourcePortMock) GetUpdateFileByFilename(ctx context.Context, u
 		Update:   update,
 		Filename: filename,
 	}
-	mock.lockGetUpdateFileByFilename.Lock()
-	mock.calls.GetUpdateFileByFilename = append(mock.calls.GetUpdateFileByFilename, callInfo)
-	mock.lockGetUpdateFileByFilename.Unlock()
-	return mock.GetUpdateFileByFilenameFunc(ctx, update, filename)
+	mock.lockGetUpdateFileByFilenameUnverified.Lock()
+	mock.calls.GetUpdateFileByFilenameUnverified = append(mock.calls.GetUpdateFileByFilenameUnverified, callInfo)
+	mock.lockGetUpdateFileByFilenameUnverified.Unlock()
+	return mock.GetUpdateFileByFilenameUnverifiedFunc(ctx, update, filename)
 }
 
-// GetUpdateFileByFilenameCalls gets all the calls that were made to GetUpdateFileByFilename.
+// GetUpdateFileByFilenameUnverifiedCalls gets all the calls that were made to GetUpdateFileByFilenameUnverified.
 // Check the length with:
 //
-//	len(mockedUpdateSourcePort.GetUpdateFileByFilenameCalls())
-func (mock *UpdateSourcePortMock) GetUpdateFileByFilenameCalls() []struct {
+//	len(mockedUpdateSourcePort.GetUpdateFileByFilenameUnverifiedCalls())
+func (mock *UpdateSourcePortMock) GetUpdateFileByFilenameUnverifiedCalls() []struct {
 	Ctx      context.Context
 	Update   provisioning.Update
 	Filename string
@@ -184,8 +184,8 @@ func (mock *UpdateSourcePortMock) GetUpdateFileByFilenameCalls() []struct {
 		Update   provisioning.Update
 		Filename string
 	}
-	mock.lockGetUpdateFileByFilename.RLock()
-	calls = mock.calls.GetUpdateFileByFilename
-	mock.lockGetUpdateFileByFilename.RUnlock()
+	mock.lockGetUpdateFileByFilenameUnverified.RLock()
+	calls = mock.calls.GetUpdateFileByFilenameUnverified
+	mock.lockGetUpdateFileByFilenameUnverified.RUnlock()
 	return calls
 }
