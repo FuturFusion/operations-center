@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -39,7 +40,7 @@ func NewNetworkZoneServerClientWithPrometheus(base inventory.NetworkZoneServerCl
 }
 
 // GetNetworkZoneByName implements inventory.NetworkZoneServerClient.
-func (_d NetworkZoneServerClientWithPrometheus) GetNetworkZoneByName(ctx context.Context, connectionURL string, networkZoneName string) (networkZone api.NetworkZone, err error) {
+func (_d NetworkZoneServerClientWithPrometheus) GetNetworkZoneByName(ctx context.Context, cluster provisioning.Cluster, networkZoneName string) (networkZone api.NetworkZone, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,11 +50,11 @@ func (_d NetworkZoneServerClientWithPrometheus) GetNetworkZoneByName(ctx context
 
 		networkZoneServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkZoneByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkZoneByName(ctx, connectionURL, networkZoneName)
+	return _d.base.GetNetworkZoneByName(ctx, cluster, networkZoneName)
 }
 
 // GetNetworkZones implements inventory.NetworkZoneServerClient.
-func (_d NetworkZoneServerClientWithPrometheus) GetNetworkZones(ctx context.Context, connectionURL string) (networkZones []api.NetworkZone, err error) {
+func (_d NetworkZoneServerClientWithPrometheus) GetNetworkZones(ctx context.Context, cluster provisioning.Cluster) (networkZones []api.NetworkZone, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,5 +64,5 @@ func (_d NetworkZoneServerClientWithPrometheus) GetNetworkZones(ctx context.Cont
 
 		networkZoneServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkZones", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkZones(ctx, connectionURL)
+	return _d.base.GetNetworkZones(ctx, cluster)
 }

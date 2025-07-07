@@ -156,7 +156,7 @@ func (s networkZoneService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 			return err
 		}
 
-		retrievedNetworkZone, err := s.networkZoneClient.GetNetworkZoneByName(ctx, cluster.ConnectionURL, networkZone.Name)
+		retrievedNetworkZone, err := s.networkZoneClient.GetNetworkZoneByName(ctx, *cluster, networkZone.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkZone.UUID)
 			if err != nil {
@@ -200,7 +200,7 @@ func (s networkZoneService) SyncCluster(ctx context.Context, name string) error 
 		return err
 	}
 
-	retrievedNetworkZones, err := s.networkZoneClient.GetNetworkZones(ctx, cluster.ConnectionURL)
+	retrievedNetworkZones, err := s.networkZoneClient.GetNetworkZones(ctx, *cluster)
 	if err != nil {
 		return err
 	}

@@ -9,10 +9,11 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetProfiles(ctx context.Context, connectionURL string) ([]incusapi.Profile, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetProfiles(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Profile, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -25,8 +26,8 @@ func (s serverClient) GetProfiles(ctx context.Context, connectionURL string) ([]
 	return serverProfiles, nil
 }
 
-func (s serverClient) GetProfileByName(ctx context.Context, connectionURL string, profileName string) (incusapi.Profile, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetProfileByName(ctx context.Context, cluster provisioning.Cluster, profileName string) (incusapi.Profile, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return incusapi.Profile{}, err
 	}

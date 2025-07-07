@@ -156,7 +156,7 @@ func (s networkAddressSetService) ResyncByUUID(ctx context.Context, id uuid.UUID
 			return err
 		}
 
-		retrievedNetworkAddressSet, err := s.networkAddressSetClient.GetNetworkAddressSetByName(ctx, cluster.ConnectionURL, networkAddressSet.Name)
+		retrievedNetworkAddressSet, err := s.networkAddressSetClient.GetNetworkAddressSetByName(ctx, *cluster, networkAddressSet.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkAddressSet.UUID)
 			if err != nil {
@@ -200,11 +200,11 @@ func (s networkAddressSetService) SyncCluster(ctx context.Context, name string) 
 		return err
 	}
 
-	if !s.networkAddressSetClient.HasExtension(ctx, cluster.ConnectionURL, "network_address_set") {
+	if !s.networkAddressSetClient.HasExtension(ctx, *cluster, "network_address_set") {
 		return nil
 	}
 
-	retrievedNetworkAddressSets, err := s.networkAddressSetClient.GetNetworkAddressSets(ctx, cluster.ConnectionURL)
+	retrievedNetworkAddressSets, err := s.networkAddressSetClient.GetNetworkAddressSets(ctx, *cluster)
 	if err != nil {
 		return err
 	}

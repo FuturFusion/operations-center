@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -22,10 +23,10 @@ var _ inventory.StoragePoolServerClient = &StoragePoolServerClientMock{}
 //
 //		// make and configure a mocked inventory.StoragePoolServerClient
 //		mockedStoragePoolServerClient := &StoragePoolServerClientMock{
-//			GetStoragePoolByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string) (api.StoragePool, error) {
+//			GetStoragePoolByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) (api.StoragePool, error) {
 //				panic("mock out the GetStoragePoolByName method")
 //			},
-//			GetStoragePoolsFunc: func(ctx context.Context, connectionURL string) ([]api.StoragePool, error) {
+//			GetStoragePoolsFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]api.StoragePool, error) {
 //				panic("mock out the GetStoragePools method")
 //			},
 //		}
@@ -36,10 +37,10 @@ var _ inventory.StoragePoolServerClient = &StoragePoolServerClientMock{}
 //	}
 type StoragePoolServerClientMock struct {
 	// GetStoragePoolByNameFunc mocks the GetStoragePoolByName method.
-	GetStoragePoolByNameFunc func(ctx context.Context, connectionURL string, storagePoolName string) (api.StoragePool, error)
+	GetStoragePoolByNameFunc func(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) (api.StoragePool, error)
 
 	// GetStoragePoolsFunc mocks the GetStoragePools method.
-	GetStoragePoolsFunc func(ctx context.Context, connectionURL string) ([]api.StoragePool, error)
+	GetStoragePoolsFunc func(ctx context.Context, cluster provisioning.Cluster) ([]api.StoragePool, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -47,8 +48,8 @@ type StoragePoolServerClientMock struct {
 		GetStoragePoolByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ConnectionURL is the connectionURL argument value.
-			ConnectionURL string
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
 			// StoragePoolName is the storagePoolName argument value.
 			StoragePoolName string
 		}
@@ -56,8 +57,8 @@ type StoragePoolServerClientMock struct {
 		GetStoragePools []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ConnectionURL is the connectionURL argument value.
-			ConnectionURL string
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
 		}
 	}
 	lockGetStoragePoolByName sync.RWMutex
@@ -65,23 +66,23 @@ type StoragePoolServerClientMock struct {
 }
 
 // GetStoragePoolByName calls GetStoragePoolByNameFunc.
-func (mock *StoragePoolServerClientMock) GetStoragePoolByName(ctx context.Context, connectionURL string, storagePoolName string) (api.StoragePool, error) {
+func (mock *StoragePoolServerClientMock) GetStoragePoolByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) (api.StoragePool, error) {
 	if mock.GetStoragePoolByNameFunc == nil {
 		panic("StoragePoolServerClientMock.GetStoragePoolByNameFunc: method is nil but StoragePoolServerClient.GetStoragePoolByName was just called")
 	}
 	callInfo := struct {
 		Ctx             context.Context
-		ConnectionURL   string
+		Cluster         provisioning.Cluster
 		StoragePoolName string
 	}{
 		Ctx:             ctx,
-		ConnectionURL:   connectionURL,
+		Cluster:         cluster,
 		StoragePoolName: storagePoolName,
 	}
 	mock.lockGetStoragePoolByName.Lock()
 	mock.calls.GetStoragePoolByName = append(mock.calls.GetStoragePoolByName, callInfo)
 	mock.lockGetStoragePoolByName.Unlock()
-	return mock.GetStoragePoolByNameFunc(ctx, connectionURL, storagePoolName)
+	return mock.GetStoragePoolByNameFunc(ctx, cluster, storagePoolName)
 }
 
 // GetStoragePoolByNameCalls gets all the calls that were made to GetStoragePoolByName.
@@ -90,12 +91,12 @@ func (mock *StoragePoolServerClientMock) GetStoragePoolByName(ctx context.Contex
 //	len(mockedStoragePoolServerClient.GetStoragePoolByNameCalls())
 func (mock *StoragePoolServerClientMock) GetStoragePoolByNameCalls() []struct {
 	Ctx             context.Context
-	ConnectionURL   string
+	Cluster         provisioning.Cluster
 	StoragePoolName string
 } {
 	var calls []struct {
 		Ctx             context.Context
-		ConnectionURL   string
+		Cluster         provisioning.Cluster
 		StoragePoolName string
 	}
 	mock.lockGetStoragePoolByName.RLock()
@@ -105,21 +106,21 @@ func (mock *StoragePoolServerClientMock) GetStoragePoolByNameCalls() []struct {
 }
 
 // GetStoragePools calls GetStoragePoolsFunc.
-func (mock *StoragePoolServerClientMock) GetStoragePools(ctx context.Context, connectionURL string) ([]api.StoragePool, error) {
+func (mock *StoragePoolServerClientMock) GetStoragePools(ctx context.Context, cluster provisioning.Cluster) ([]api.StoragePool, error) {
 	if mock.GetStoragePoolsFunc == nil {
 		panic("StoragePoolServerClientMock.GetStoragePoolsFunc: method is nil but StoragePoolServerClient.GetStoragePools was just called")
 	}
 	callInfo := struct {
-		Ctx           context.Context
-		ConnectionURL string
+		Ctx     context.Context
+		Cluster provisioning.Cluster
 	}{
-		Ctx:           ctx,
-		ConnectionURL: connectionURL,
+		Ctx:     ctx,
+		Cluster: cluster,
 	}
 	mock.lockGetStoragePools.Lock()
 	mock.calls.GetStoragePools = append(mock.calls.GetStoragePools, callInfo)
 	mock.lockGetStoragePools.Unlock()
-	return mock.GetStoragePoolsFunc(ctx, connectionURL)
+	return mock.GetStoragePoolsFunc(ctx, cluster)
 }
 
 // GetStoragePoolsCalls gets all the calls that were made to GetStoragePools.
@@ -127,12 +128,12 @@ func (mock *StoragePoolServerClientMock) GetStoragePools(ctx context.Context, co
 //
 //	len(mockedStoragePoolServerClient.GetStoragePoolsCalls())
 func (mock *StoragePoolServerClientMock) GetStoragePoolsCalls() []struct {
-	Ctx           context.Context
-	ConnectionURL string
+	Ctx     context.Context
+	Cluster provisioning.Cluster
 } {
 	var calls []struct {
-		Ctx           context.Context
-		ConnectionURL string
+		Ctx     context.Context
+		Cluster provisioning.Cluster
 	}
 	mock.lockGetStoragePools.RLock()
 	calls = mock.calls.GetStoragePools

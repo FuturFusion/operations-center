@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -39,7 +40,7 @@ func NewNetworkServerClientWithPrometheus(base inventory.NetworkServerClient, in
 }
 
 // GetNetworkByName implements inventory.NetworkServerClient.
-func (_d NetworkServerClientWithPrometheus) GetNetworkByName(ctx context.Context, connectionURL string, networkName string) (network api.Network, err error) {
+func (_d NetworkServerClientWithPrometheus) GetNetworkByName(ctx context.Context, cluster provisioning.Cluster, networkName string) (network api.Network, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,11 +50,11 @@ func (_d NetworkServerClientWithPrometheus) GetNetworkByName(ctx context.Context
 
 		networkServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkByName(ctx, connectionURL, networkName)
+	return _d.base.GetNetworkByName(ctx, cluster, networkName)
 }
 
 // GetNetworks implements inventory.NetworkServerClient.
-func (_d NetworkServerClientWithPrometheus) GetNetworks(ctx context.Context, connectionURL string) (networks []api.Network, err error) {
+func (_d NetworkServerClientWithPrometheus) GetNetworks(ctx context.Context, cluster provisioning.Cluster) (networks []api.Network, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,5 +64,5 @@ func (_d NetworkServerClientWithPrometheus) GetNetworks(ctx context.Context, con
 
 		networkServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworks", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworks(ctx, connectionURL)
+	return _d.base.GetNetworks(ctx, cluster)
 }

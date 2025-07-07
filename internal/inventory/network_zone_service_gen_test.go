@@ -439,7 +439,7 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 			}
 
 			networkZoneClient := &serverMock.NetworkZoneServerClientMock{
-				GetNetworkZoneByNameFunc: func(ctx context.Context, connectionURL string, networkZoneName string) (incusapi.NetworkZone, error) {
+				GetNetworkZoneByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkZoneName string) (incusapi.NetworkZone, error) {
 					require.Equal(t, tc.repoGetByUUIDNetworkZone.Name, networkZoneName)
 					return tc.networkZoneClientGetNetworkZoneByName, tc.networkZoneClientGetNetworkZoneByNameErr
 				},
@@ -592,7 +592,7 @@ func TestNetworkZoneService_SyncAll(t *testing.T) {
 			}
 
 			networkZoneClient := &serverMock.NetworkZoneServerClientMock{
-				GetNetworkZonesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkZone, error) {
+				GetNetworkZonesFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkZone, error) {
 					return tc.networkZoneClientGetNetworkZones, tc.networkZoneClientGetNetworkZonesErr
 				},
 			}

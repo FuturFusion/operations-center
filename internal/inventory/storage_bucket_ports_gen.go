@@ -6,8 +6,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 type StorageBucketService interface {
@@ -29,6 +30,6 @@ type StorageBucketRepo interface {
 }
 
 type StorageBucketServerClient interface {
-	GetStorageBuckets(ctx context.Context, connectionURL string, storagePoolName string) ([]incusapi.StorageBucket, error)
-	GetStorageBucketByName(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error)
+	GetStorageBuckets(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) ([]incusapi.StorageBucket, error)
+	GetStorageBucketByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error)
 }

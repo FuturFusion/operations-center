@@ -6,8 +6,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 type InstanceService interface {
@@ -29,6 +30,6 @@ type InstanceRepo interface {
 }
 
 type InstanceServerClient interface {
-	GetInstances(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error)
-	GetInstanceByName(ctx context.Context, connectionURL string, instanceName string) (incusapi.InstanceFull, error)
+	GetInstances(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.InstanceFull, error)
+	GetInstanceByName(ctx context.Context, cluster provisioning.Cluster, instanceName string) (incusapi.InstanceFull, error)
 }

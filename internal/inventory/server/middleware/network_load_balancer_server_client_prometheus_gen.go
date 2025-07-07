@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -39,7 +40,7 @@ func NewNetworkLoadBalancerServerClientWithPrometheus(base inventory.NetworkLoad
 }
 
 // GetNetworkLoadBalancerByName implements inventory.NetworkLoadBalancerServerClient.
-func (_d NetworkLoadBalancerServerClientWithPrometheus) GetNetworkLoadBalancerByName(ctx context.Context, connectionURL string, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
+func (_d NetworkLoadBalancerServerClientWithPrometheus) GetNetworkLoadBalancerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,11 +50,11 @@ func (_d NetworkLoadBalancerServerClientWithPrometheus) GetNetworkLoadBalancerBy
 
 		networkLoadBalancerServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkLoadBalancerByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkLoadBalancerByName(ctx, connectionURL, networkName, networkLoadBalancerName)
+	return _d.base.GetNetworkLoadBalancerByName(ctx, cluster, networkName, networkLoadBalancerName)
 }
 
 // GetNetworkLoadBalancers implements inventory.NetworkLoadBalancerServerClient.
-func (_d NetworkLoadBalancerServerClientWithPrometheus) GetNetworkLoadBalancers(ctx context.Context, connectionURL string, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
+func (_d NetworkLoadBalancerServerClientWithPrometheus) GetNetworkLoadBalancers(ctx context.Context, cluster provisioning.Cluster, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,5 +64,5 @@ func (_d NetworkLoadBalancerServerClientWithPrometheus) GetNetworkLoadBalancers(
 
 		networkLoadBalancerServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkLoadBalancers", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkLoadBalancers(ctx, connectionURL, networkName)
+	return _d.base.GetNetworkLoadBalancers(ctx, cluster, networkName)
 }

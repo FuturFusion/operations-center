@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -39,7 +40,7 @@ func NewNetworkForwardServerClientWithPrometheus(base inventory.NetworkForwardSe
 }
 
 // GetNetworkForwardByName implements inventory.NetworkForwardServerClient.
-func (_d NetworkForwardServerClientWithPrometheus) GetNetworkForwardByName(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
+func (_d NetworkForwardServerClientWithPrometheus) GetNetworkForwardByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,11 +50,11 @@ func (_d NetworkForwardServerClientWithPrometheus) GetNetworkForwardByName(ctx c
 
 		networkForwardServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkForwardByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkForwardByName(ctx, connectionURL, networkName, networkForwardName)
+	return _d.base.GetNetworkForwardByName(ctx, cluster, networkName, networkForwardName)
 }
 
 // GetNetworkForwards implements inventory.NetworkForwardServerClient.
-func (_d NetworkForwardServerClientWithPrometheus) GetNetworkForwards(ctx context.Context, connectionURL string, networkName string) (networkForwards []api.NetworkForward, err error) {
+func (_d NetworkForwardServerClientWithPrometheus) GetNetworkForwards(ctx context.Context, cluster provisioning.Cluster, networkName string) (networkForwards []api.NetworkForward, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,5 +64,5 @@ func (_d NetworkForwardServerClientWithPrometheus) GetNetworkForwards(ctx contex
 
 		networkForwardServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkForwards", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkForwards(ctx, connectionURL, networkName)
+	return _d.base.GetNetworkForwards(ctx, cluster, networkName)
 }

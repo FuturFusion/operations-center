@@ -9,10 +9,11 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetStoragePools(ctx context.Context, connectionURL string) ([]incusapi.StoragePool, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetStoragePools(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.StoragePool, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -25,8 +26,8 @@ func (s serverClient) GetStoragePools(ctx context.Context, connectionURL string)
 	return serverStoragePools, nil
 }
 
-func (s serverClient) GetStoragePoolByName(ctx context.Context, connectionURL string, storagePoolName string) (incusapi.StoragePool, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetStoragePoolByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) (incusapi.StoragePool, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return incusapi.StoragePool{}, err
 	}

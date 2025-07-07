@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -43,12 +44,12 @@ func NewServerClientWithSlog(base inventory.ServerClient, log *slog.Logger, opts
 }
 
 // GetImageByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetImageByName(ctx context.Context, connectionURL string, imageName string) (image api.Image, err error) {
+func (_d ServerClientWithSlog) GetImageByName(ctx context.Context, cluster provisioning.Cluster, imageName string) (image api.Image, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("imageName", imageName),
 		)
 	}
@@ -75,16 +76,16 @@ func (_d ServerClientWithSlog) GetImageByName(ctx context.Context, connectionURL
 			log.Debug("<= method GetImageByName finished")
 		}
 	}()
-	return _d._base.GetImageByName(ctx, connectionURL, imageName)
+	return _d._base.GetImageByName(ctx, cluster, imageName)
 }
 
 // GetImages implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetImages(ctx context.Context, connectionURL string) (images []api.Image, err error) {
+func (_d ServerClientWithSlog) GetImages(ctx context.Context, cluster provisioning.Cluster) (images []api.Image, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetImages")
@@ -110,16 +111,16 @@ func (_d ServerClientWithSlog) GetImages(ctx context.Context, connectionURL stri
 			log.Debug("<= method GetImages finished")
 		}
 	}()
-	return _d._base.GetImages(ctx, connectionURL)
+	return _d._base.GetImages(ctx, cluster)
 }
 
 // GetInstanceByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetInstanceByName(ctx context.Context, connectionURL string, instanceName string) (instanceFull api.InstanceFull, err error) {
+func (_d ServerClientWithSlog) GetInstanceByName(ctx context.Context, cluster provisioning.Cluster, instanceName string) (instanceFull api.InstanceFull, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("instanceName", instanceName),
 		)
 	}
@@ -146,16 +147,16 @@ func (_d ServerClientWithSlog) GetInstanceByName(ctx context.Context, connection
 			log.Debug("<= method GetInstanceByName finished")
 		}
 	}()
-	return _d._base.GetInstanceByName(ctx, connectionURL, instanceName)
+	return _d._base.GetInstanceByName(ctx, cluster, instanceName)
 }
 
 // GetInstances implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetInstances(ctx context.Context, connectionURL string) (instanceFulls []api.InstanceFull, err error) {
+func (_d ServerClientWithSlog) GetInstances(ctx context.Context, cluster provisioning.Cluster) (instanceFulls []api.InstanceFull, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetInstances")
@@ -181,16 +182,16 @@ func (_d ServerClientWithSlog) GetInstances(ctx context.Context, connectionURL s
 			log.Debug("<= method GetInstances finished")
 		}
 	}()
-	return _d._base.GetInstances(ctx, connectionURL)
+	return _d._base.GetInstances(ctx, cluster)
 }
 
 // GetNetworkACLByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkACLByName(ctx context.Context, connectionURL string, networkACLName string) (networkACL api.NetworkACL, err error) {
+func (_d ServerClientWithSlog) GetNetworkACLByName(ctx context.Context, cluster provisioning.Cluster, networkACLName string) (networkACL api.NetworkACL, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkACLName", networkACLName),
 		)
 	}
@@ -217,16 +218,16 @@ func (_d ServerClientWithSlog) GetNetworkACLByName(ctx context.Context, connecti
 			log.Debug("<= method GetNetworkACLByName finished")
 		}
 	}()
-	return _d._base.GetNetworkACLByName(ctx, connectionURL, networkACLName)
+	return _d._base.GetNetworkACLByName(ctx, cluster, networkACLName)
 }
 
 // GetNetworkACLs implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkACLs(ctx context.Context, connectionURL string) (networkACLs []api.NetworkACL, err error) {
+func (_d ServerClientWithSlog) GetNetworkACLs(ctx context.Context, cluster provisioning.Cluster) (networkACLs []api.NetworkACL, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetNetworkACLs")
@@ -252,16 +253,16 @@ func (_d ServerClientWithSlog) GetNetworkACLs(ctx context.Context, connectionURL
 			log.Debug("<= method GetNetworkACLs finished")
 		}
 	}()
-	return _d._base.GetNetworkACLs(ctx, connectionURL)
+	return _d._base.GetNetworkACLs(ctx, cluster)
 }
 
 // GetNetworkAddressSetByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, connectionURL string, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
+func (_d ServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, cluster provisioning.Cluster, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkAddressSetName", networkAddressSetName),
 		)
 	}
@@ -288,16 +289,16 @@ func (_d ServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, c
 			log.Debug("<= method GetNetworkAddressSetByName finished")
 		}
 	}()
-	return _d._base.GetNetworkAddressSetByName(ctx, connectionURL, networkAddressSetName)
+	return _d._base.GetNetworkAddressSetByName(ctx, cluster, networkAddressSetName)
 }
 
 // GetNetworkAddressSets implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkAddressSets(ctx context.Context, connectionURL string) (networkAddressSets []api.NetworkAddressSet, err error) {
+func (_d ServerClientWithSlog) GetNetworkAddressSets(ctx context.Context, cluster provisioning.Cluster) (networkAddressSets []api.NetworkAddressSet, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetNetworkAddressSets")
@@ -323,16 +324,16 @@ func (_d ServerClientWithSlog) GetNetworkAddressSets(ctx context.Context, connec
 			log.Debug("<= method GetNetworkAddressSets finished")
 		}
 	}()
-	return _d._base.GetNetworkAddressSets(ctx, connectionURL)
+	return _d._base.GetNetworkAddressSets(ctx, cluster)
 }
 
 // GetNetworkByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkByName(ctx context.Context, connectionURL string, networkName string) (network api.Network, err error) {
+func (_d ServerClientWithSlog) GetNetworkByName(ctx context.Context, cluster provisioning.Cluster, networkName string) (network api.Network, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkName", networkName),
 		)
 	}
@@ -359,16 +360,16 @@ func (_d ServerClientWithSlog) GetNetworkByName(ctx context.Context, connectionU
 			log.Debug("<= method GetNetworkByName finished")
 		}
 	}()
-	return _d._base.GetNetworkByName(ctx, connectionURL, networkName)
+	return _d._base.GetNetworkByName(ctx, cluster, networkName)
 }
 
 // GetNetworkForwardByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
+func (_d ServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkForwardName string) (networkForward api.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkName", networkName),
 			slog.String("networkForwardName", networkForwardName),
 		)
@@ -396,16 +397,16 @@ func (_d ServerClientWithSlog) GetNetworkForwardByName(ctx context.Context, conn
 			log.Debug("<= method GetNetworkForwardByName finished")
 		}
 	}()
-	return _d._base.GetNetworkForwardByName(ctx, connectionURL, networkName, networkForwardName)
+	return _d._base.GetNetworkForwardByName(ctx, cluster, networkName, networkForwardName)
 }
 
 // GetNetworkForwards implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkForwards(ctx context.Context, connectionURL string, networkName string) (networkForwards []api.NetworkForward, err error) {
+func (_d ServerClientWithSlog) GetNetworkForwards(ctx context.Context, cluster provisioning.Cluster, networkName string) (networkForwards []api.NetworkForward, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkName", networkName),
 		)
 	}
@@ -432,16 +433,16 @@ func (_d ServerClientWithSlog) GetNetworkForwards(ctx context.Context, connectio
 			log.Debug("<= method GetNetworkForwards finished")
 		}
 	}()
-	return _d._base.GetNetworkForwards(ctx, connectionURL, networkName)
+	return _d._base.GetNetworkForwards(ctx, cluster, networkName)
 }
 
 // GetNetworkIntegrationByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, connectionURL string, networkIntegrationName string) (networkIntegration api.NetworkIntegration, err error) {
+func (_d ServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, cluster provisioning.Cluster, networkIntegrationName string) (networkIntegration api.NetworkIntegration, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkIntegrationName", networkIntegrationName),
 		)
 	}
@@ -468,16 +469,16 @@ func (_d ServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, 
 			log.Debug("<= method GetNetworkIntegrationByName finished")
 		}
 	}()
-	return _d._base.GetNetworkIntegrationByName(ctx, connectionURL, networkIntegrationName)
+	return _d._base.GetNetworkIntegrationByName(ctx, cluster, networkIntegrationName)
 }
 
 // GetNetworkIntegrations implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, connectionURL string) (networkIntegrations []api.NetworkIntegration, err error) {
+func (_d ServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, cluster provisioning.Cluster) (networkIntegrations []api.NetworkIntegration, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetNetworkIntegrations")
@@ -503,16 +504,16 @@ func (_d ServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, conne
 			log.Debug("<= method GetNetworkIntegrations finished")
 		}
 	}()
-	return _d._base.GetNetworkIntegrations(ctx, connectionURL)
+	return _d._base.GetNetworkIntegrations(ctx, cluster)
 }
 
 // GetNetworkLoadBalancerByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context, connectionURL string, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
+func (_d ServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkLoadBalancerName string) (networkLoadBalancer api.NetworkLoadBalancer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkName", networkName),
 			slog.String("networkLoadBalancerName", networkLoadBalancerName),
 		)
@@ -540,16 +541,16 @@ func (_d ServerClientWithSlog) GetNetworkLoadBalancerByName(ctx context.Context,
 			log.Debug("<= method GetNetworkLoadBalancerByName finished")
 		}
 	}()
-	return _d._base.GetNetworkLoadBalancerByName(ctx, connectionURL, networkName, networkLoadBalancerName)
+	return _d._base.GetNetworkLoadBalancerByName(ctx, cluster, networkName, networkLoadBalancerName)
 }
 
 // GetNetworkLoadBalancers implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, connectionURL string, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
+func (_d ServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, cluster provisioning.Cluster, networkName string) (networkLoadBalancers []api.NetworkLoadBalancer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkName", networkName),
 		)
 	}
@@ -576,16 +577,16 @@ func (_d ServerClientWithSlog) GetNetworkLoadBalancers(ctx context.Context, conn
 			log.Debug("<= method GetNetworkLoadBalancers finished")
 		}
 	}()
-	return _d._base.GetNetworkLoadBalancers(ctx, connectionURL, networkName)
+	return _d._base.GetNetworkLoadBalancers(ctx, cluster, networkName)
 }
 
 // GetNetworkPeerByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
+func (_d ServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkName", networkName),
 			slog.String("networkPeerName", networkPeerName),
 		)
@@ -613,16 +614,16 @@ func (_d ServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, connect
 			log.Debug("<= method GetNetworkPeerByName finished")
 		}
 	}()
-	return _d._base.GetNetworkPeerByName(ctx, connectionURL, networkName, networkPeerName)
+	return _d._base.GetNetworkPeerByName(ctx, cluster, networkName, networkPeerName)
 }
 
 // GetNetworkPeers implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkPeers(ctx context.Context, connectionURL string, networkName string) (networkPeers []api.NetworkPeer, err error) {
+func (_d ServerClientWithSlog) GetNetworkPeers(ctx context.Context, cluster provisioning.Cluster, networkName string) (networkPeers []api.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkName", networkName),
 		)
 	}
@@ -649,16 +650,16 @@ func (_d ServerClientWithSlog) GetNetworkPeers(ctx context.Context, connectionUR
 			log.Debug("<= method GetNetworkPeers finished")
 		}
 	}()
-	return _d._base.GetNetworkPeers(ctx, connectionURL, networkName)
+	return _d._base.GetNetworkPeers(ctx, cluster, networkName)
 }
 
 // GetNetworkZoneByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, connectionURL string, networkZoneName string) (networkZone api.NetworkZone, err error) {
+func (_d ServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, cluster provisioning.Cluster, networkZoneName string) (networkZone api.NetworkZone, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkZoneName", networkZoneName),
 		)
 	}
@@ -685,16 +686,16 @@ func (_d ServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, connect
 			log.Debug("<= method GetNetworkZoneByName finished")
 		}
 	}()
-	return _d._base.GetNetworkZoneByName(ctx, connectionURL, networkZoneName)
+	return _d._base.GetNetworkZoneByName(ctx, cluster, networkZoneName)
 }
 
 // GetNetworkZones implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkZones(ctx context.Context, connectionURL string) (networkZones []api.NetworkZone, err error) {
+func (_d ServerClientWithSlog) GetNetworkZones(ctx context.Context, cluster provisioning.Cluster) (networkZones []api.NetworkZone, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetNetworkZones")
@@ -720,16 +721,16 @@ func (_d ServerClientWithSlog) GetNetworkZones(ctx context.Context, connectionUR
 			log.Debug("<= method GetNetworkZones finished")
 		}
 	}()
-	return _d._base.GetNetworkZones(ctx, connectionURL)
+	return _d._base.GetNetworkZones(ctx, cluster)
 }
 
 // GetNetworks implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworks(ctx context.Context, connectionURL string) (networks []api.Network, err error) {
+func (_d ServerClientWithSlog) GetNetworks(ctx context.Context, cluster provisioning.Cluster) (networks []api.Network, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetNetworks")
@@ -755,16 +756,16 @@ func (_d ServerClientWithSlog) GetNetworks(ctx context.Context, connectionURL st
 			log.Debug("<= method GetNetworks finished")
 		}
 	}()
-	return _d._base.GetNetworks(ctx, connectionURL)
+	return _d._base.GetNetworks(ctx, cluster)
 }
 
 // GetProfileByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetProfileByName(ctx context.Context, connectionURL string, profileName string) (profile api.Profile, err error) {
+func (_d ServerClientWithSlog) GetProfileByName(ctx context.Context, cluster provisioning.Cluster, profileName string) (profile api.Profile, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("profileName", profileName),
 		)
 	}
@@ -791,16 +792,16 @@ func (_d ServerClientWithSlog) GetProfileByName(ctx context.Context, connectionU
 			log.Debug("<= method GetProfileByName finished")
 		}
 	}()
-	return _d._base.GetProfileByName(ctx, connectionURL, profileName)
+	return _d._base.GetProfileByName(ctx, cluster, profileName)
 }
 
 // GetProfiles implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetProfiles(ctx context.Context, connectionURL string) (profiles []api.Profile, err error) {
+func (_d ServerClientWithSlog) GetProfiles(ctx context.Context, cluster provisioning.Cluster) (profiles []api.Profile, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetProfiles")
@@ -826,16 +827,16 @@ func (_d ServerClientWithSlog) GetProfiles(ctx context.Context, connectionURL st
 			log.Debug("<= method GetProfiles finished")
 		}
 	}()
-	return _d._base.GetProfiles(ctx, connectionURL)
+	return _d._base.GetProfiles(ctx, cluster)
 }
 
 // GetProjectByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetProjectByName(ctx context.Context, connectionURL string, projectName string) (project api.Project, err error) {
+func (_d ServerClientWithSlog) GetProjectByName(ctx context.Context, cluster provisioning.Cluster, projectName string) (project api.Project, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("projectName", projectName),
 		)
 	}
@@ -862,16 +863,16 @@ func (_d ServerClientWithSlog) GetProjectByName(ctx context.Context, connectionU
 			log.Debug("<= method GetProjectByName finished")
 		}
 	}()
-	return _d._base.GetProjectByName(ctx, connectionURL, projectName)
+	return _d._base.GetProjectByName(ctx, cluster, projectName)
 }
 
 // GetProjects implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetProjects(ctx context.Context, connectionURL string) (projects []api.Project, err error) {
+func (_d ServerClientWithSlog) GetProjects(ctx context.Context, cluster provisioning.Cluster) (projects []api.Project, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetProjects")
@@ -897,16 +898,16 @@ func (_d ServerClientWithSlog) GetProjects(ctx context.Context, connectionURL st
 			log.Debug("<= method GetProjects finished")
 		}
 	}()
-	return _d._base.GetProjects(ctx, connectionURL)
+	return _d._base.GetProjects(ctx, cluster)
 }
 
 // GetStorageBucketByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (storageBucket api.StorageBucket, err error) {
+func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageBucketName string) (storageBucket api.StorageBucket, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("storagePoolName", storagePoolName),
 			slog.String("storageBucketName", storageBucketName),
 		)
@@ -934,16 +935,16 @@ func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, conne
 			log.Debug("<= method GetStorageBucketByName finished")
 		}
 	}()
-	return _d._base.GetStorageBucketByName(ctx, connectionURL, storagePoolName, storageBucketName)
+	return _d._base.GetStorageBucketByName(ctx, cluster, storagePoolName, storageBucketName)
 }
 
 // GetStorageBuckets implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetStorageBuckets(ctx context.Context, connectionURL string, storagePoolName string) (storageBuckets []api.StorageBucket, err error) {
+func (_d ServerClientWithSlog) GetStorageBuckets(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) (storageBuckets []api.StorageBucket, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("storagePoolName", storagePoolName),
 		)
 	}
@@ -970,16 +971,16 @@ func (_d ServerClientWithSlog) GetStorageBuckets(ctx context.Context, connection
 			log.Debug("<= method GetStorageBuckets finished")
 		}
 	}()
-	return _d._base.GetStorageBuckets(ctx, connectionURL, storagePoolName)
+	return _d._base.GetStorageBuckets(ctx, cluster, storagePoolName)
 }
 
 // GetStoragePoolByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetStoragePoolByName(ctx context.Context, connectionURL string, storagePoolName string) (storagePool api.StoragePool, err error) {
+func (_d ServerClientWithSlog) GetStoragePoolByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) (storagePool api.StoragePool, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("storagePoolName", storagePoolName),
 		)
 	}
@@ -1006,16 +1007,16 @@ func (_d ServerClientWithSlog) GetStoragePoolByName(ctx context.Context, connect
 			log.Debug("<= method GetStoragePoolByName finished")
 		}
 	}()
-	return _d._base.GetStoragePoolByName(ctx, connectionURL, storagePoolName)
+	return _d._base.GetStoragePoolByName(ctx, cluster, storagePoolName)
 }
 
 // GetStoragePools implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetStoragePools(ctx context.Context, connectionURL string) (storagePools []api.StoragePool, err error) {
+func (_d ServerClientWithSlog) GetStoragePools(ctx context.Context, cluster provisioning.Cluster) (storagePools []api.StoragePool, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetStoragePools")
@@ -1041,16 +1042,16 @@ func (_d ServerClientWithSlog) GetStoragePools(ctx context.Context, connectionUR
 			log.Debug("<= method GetStoragePools finished")
 		}
 	}()
-	return _d._base.GetStoragePools(ctx, connectionURL)
+	return _d._base.GetStoragePools(ctx, cluster)
 }
 
 // GetStorageVolumeByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
+func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("storagePoolName", storagePoolName),
 			slog.String("storageVolumeName", storageVolumeName),
 			slog.String("storageVolumeType", storageVolumeType),
@@ -1079,16 +1080,16 @@ func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, conne
 			log.Debug("<= method GetStorageVolumeByName finished")
 		}
 	}()
-	return _d._base.GetStorageVolumeByName(ctx, connectionURL, storagePoolName, storageVolumeName, storageVolumeType)
+	return _d._base.GetStorageVolumeByName(ctx, cluster, storagePoolName, storageVolumeName, storageVolumeType)
 }
 
 // GetStorageVolumes implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetStorageVolumes(ctx context.Context, connectionURL string, storagePoolName string) (storageVolumes []api.StorageVolume, err error) {
+func (_d ServerClientWithSlog) GetStorageVolumes(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) (storageVolumes []api.StorageVolume, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("storagePoolName", storagePoolName),
 		)
 	}
@@ -1115,16 +1116,16 @@ func (_d ServerClientWithSlog) GetStorageVolumes(ctx context.Context, connection
 			log.Debug("<= method GetStorageVolumes finished")
 		}
 	}()
-	return _d._base.GetStorageVolumes(ctx, connectionURL, storagePoolName)
+	return _d._base.GetStorageVolumes(ctx, cluster, storagePoolName)
 }
 
 // HasExtension implements inventory.ServerClient.
-func (_d ServerClientWithSlog) HasExtension(ctx context.Context, connectionURL string, extension string) (exists bool) {
+func (_d ServerClientWithSlog) HasExtension(ctx context.Context, cluster provisioning.Cluster, extension string) (exists bool) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("extension", extension),
 		)
 	}
@@ -1139,5 +1140,5 @@ func (_d ServerClientWithSlog) HasExtension(ctx context.Context, connectionURL s
 		}
 		log.Debug("<= method HasExtension finished")
 	}()
-	return _d._base.HasExtension(ctx, connectionURL, extension)
+	return _d._base.HasExtension(ctx, cluster, extension)
 }

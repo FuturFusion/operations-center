@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -43,12 +44,12 @@ func NewNetworkPeerServerClientWithSlog(base inventory.NetworkPeerServerClient, 
 }
 
 // GetNetworkPeerByName implements inventory.NetworkPeerServerClient.
-func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
+func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkName", networkName),
 			slog.String("networkPeerName", networkPeerName),
 		)
@@ -76,16 +77,16 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Conte
 			log.Debug("<= method GetNetworkPeerByName finished")
 		}
 	}()
-	return _d._base.GetNetworkPeerByName(ctx, connectionURL, networkName, networkPeerName)
+	return _d._base.GetNetworkPeerByName(ctx, cluster, networkName, networkPeerName)
 }
 
 // GetNetworkPeers implements inventory.NetworkPeerServerClient.
-func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, connectionURL string, networkName string) (networkPeers []api.NetworkPeer, err error) {
+func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, cluster provisioning.Cluster, networkName string) (networkPeers []api.NetworkPeer, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkName", networkName),
 		)
 	}
@@ -112,5 +113,5 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, c
 			log.Debug("<= method GetNetworkPeers finished")
 		}
 	}()
-	return _d._base.GetNetworkPeers(ctx, connectionURL, networkName)
+	return _d._base.GetNetworkPeers(ctx, cluster, networkName)
 }

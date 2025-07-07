@@ -6,8 +6,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 type NetworkIntegrationService interface {
@@ -29,6 +30,6 @@ type NetworkIntegrationRepo interface {
 }
 
 type NetworkIntegrationServerClient interface {
-	GetNetworkIntegrations(ctx context.Context, connectionURL string) ([]incusapi.NetworkIntegration, error)
-	GetNetworkIntegrationByName(ctx context.Context, connectionURL string, networkIntegrationName string) (incusapi.NetworkIntegration, error)
+	GetNetworkIntegrations(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkIntegration, error)
+	GetNetworkIntegrationByName(ctx context.Context, cluster provisioning.Cluster, networkIntegrationName string) (incusapi.NetworkIntegration, error)
 }

@@ -6,8 +6,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 type NetworkPeerService interface {
@@ -29,6 +30,6 @@ type NetworkPeerRepo interface {
 }
 
 type NetworkPeerServerClient interface {
-	GetNetworkPeers(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkPeer, error)
-	GetNetworkPeerByName(ctx context.Context, connectionURL string, networkName string, networkPeerName string) (incusapi.NetworkPeer, error)
+	GetNetworkPeers(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]incusapi.NetworkPeer, error)
+	GetNetworkPeerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkPeerName string) (incusapi.NetworkPeer, error)
 }

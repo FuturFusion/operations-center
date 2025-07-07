@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -39,7 +40,7 @@ func NewImageServerClientWithPrometheus(base inventory.ImageServerClient, instan
 }
 
 // GetImageByName implements inventory.ImageServerClient.
-func (_d ImageServerClientWithPrometheus) GetImageByName(ctx context.Context, connectionURL string, imageName string) (image api.Image, err error) {
+func (_d ImageServerClientWithPrometheus) GetImageByName(ctx context.Context, cluster provisioning.Cluster, imageName string) (image api.Image, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,11 +50,11 @@ func (_d ImageServerClientWithPrometheus) GetImageByName(ctx context.Context, co
 
 		imageServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetImageByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetImageByName(ctx, connectionURL, imageName)
+	return _d.base.GetImageByName(ctx, cluster, imageName)
 }
 
 // GetImages implements inventory.ImageServerClient.
-func (_d ImageServerClientWithPrometheus) GetImages(ctx context.Context, connectionURL string) (images []api.Image, err error) {
+func (_d ImageServerClientWithPrometheus) GetImages(ctx context.Context, cluster provisioning.Cluster) (images []api.Image, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,5 +64,5 @@ func (_d ImageServerClientWithPrometheus) GetImages(ctx context.Context, connect
 
 		imageServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetImages", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetImages(ctx, connectionURL)
+	return _d.base.GetImages(ctx, cluster)
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -39,7 +40,7 @@ func NewProfileServerClientWithPrometheus(base inventory.ProfileServerClient, in
 }
 
 // GetProfileByName implements inventory.ProfileServerClient.
-func (_d ProfileServerClientWithPrometheus) GetProfileByName(ctx context.Context, connectionURL string, profileName string) (profile api.Profile, err error) {
+func (_d ProfileServerClientWithPrometheus) GetProfileByName(ctx context.Context, cluster provisioning.Cluster, profileName string) (profile api.Profile, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,11 +50,11 @@ func (_d ProfileServerClientWithPrometheus) GetProfileByName(ctx context.Context
 
 		profileServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetProfileByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetProfileByName(ctx, connectionURL, profileName)
+	return _d.base.GetProfileByName(ctx, cluster, profileName)
 }
 
 // GetProfiles implements inventory.ProfileServerClient.
-func (_d ProfileServerClientWithPrometheus) GetProfiles(ctx context.Context, connectionURL string) (profiles []api.Profile, err error) {
+func (_d ProfileServerClientWithPrometheus) GetProfiles(ctx context.Context, cluster provisioning.Cluster) (profiles []api.Profile, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,5 +64,5 @@ func (_d ProfileServerClientWithPrometheus) GetProfiles(ctx context.Context, con
 
 		profileServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetProfiles", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetProfiles(ctx, connectionURL)
+	return _d.base.GetProfiles(ctx, cluster)
 }

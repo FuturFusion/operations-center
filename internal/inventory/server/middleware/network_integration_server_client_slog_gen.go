@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -43,12 +44,12 @@ func NewNetworkIntegrationServerClientWithSlog(base inventory.NetworkIntegration
 }
 
 // GetNetworkIntegrationByName implements inventory.NetworkIntegrationServerClient.
-func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, connectionURL string, networkIntegrationName string) (networkIntegration api.NetworkIntegration, err error) {
+func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, cluster provisioning.Cluster, networkIntegrationName string) (networkIntegration api.NetworkIntegration, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("networkIntegrationName", networkIntegrationName),
 		)
 	}
@@ -75,16 +76,16 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx
 			log.Debug("<= method GetNetworkIntegrationByName finished")
 		}
 	}()
-	return _d._base.GetNetworkIntegrationByName(ctx, connectionURL, networkIntegrationName)
+	return _d._base.GetNetworkIntegrationByName(ctx, cluster, networkIntegrationName)
 }
 
 // GetNetworkIntegrations implements inventory.NetworkIntegrationServerClient.
-func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, connectionURL string) (networkIntegrations []api.NetworkIntegration, err error) {
+func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, cluster provisioning.Cluster) (networkIntegrations []api.NetworkIntegration, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetNetworkIntegrations")
@@ -110,5 +111,5 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx cont
 			log.Debug("<= method GetNetworkIntegrations finished")
 		}
 	}()
-	return _d._base.GetNetworkIntegrations(ctx, connectionURL)
+	return _d._base.GetNetworkIntegrations(ctx, cluster)
 }

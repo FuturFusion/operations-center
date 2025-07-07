@@ -445,7 +445,7 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 			}
 
 			networkAddressSetClient := &serverMock.NetworkAddressSetServerClientMock{
-				GetNetworkAddressSetByNameFunc: func(ctx context.Context, connectionURL string, networkAddressSetName string) (incusapi.NetworkAddressSet, error) {
+				GetNetworkAddressSetByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkAddressSetName string) (incusapi.NetworkAddressSet, error) {
 					require.Equal(t, tc.repoGetByUUIDNetworkAddressSet.Name, networkAddressSetName)
 					return tc.networkAddressSetClientGetNetworkAddressSetByName, tc.networkAddressSetClientGetNetworkAddressSetByNameErr
 				},
@@ -626,10 +626,10 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 			}
 
 			networkAddressSetClient := &serverMock.NetworkAddressSetServerClientMock{
-				HasExtensionFunc: func(ctx context.Context, connectionURL, extension string) bool {
+				HasExtensionFunc: func(ctx context.Context, cluster provisioning.Cluster, extension string) bool {
 					return tc.networkAddressSetClientHasExtension
 				},
-				GetNetworkAddressSetsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkAddressSet, error) {
+				GetNetworkAddressSetsFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkAddressSet, error) {
 					return tc.networkAddressSetClientGetNetworkAddressSets, tc.networkAddressSetClientGetNetworkAddressSetsErr
 				},
 			}

@@ -4,6 +4,7 @@ all: False
 template: matryer
 require-template-schema-exists: false
 force-file-write: true
+include-auto-generated: true
 include-interface-regex: "(.+Repo|.+Port|.*ServerClient|ClusterService|ServerService|TokenService|InventorySyncer)"
 dir: >-
   {{- $targetDir := "mock" -}}

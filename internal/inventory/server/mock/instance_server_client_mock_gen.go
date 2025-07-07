@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -22,10 +23,10 @@ var _ inventory.InstanceServerClient = &InstanceServerClientMock{}
 //
 //		// make and configure a mocked inventory.InstanceServerClient
 //		mockedInstanceServerClient := &InstanceServerClientMock{
-//			GetInstanceByNameFunc: func(ctx context.Context, connectionURL string, instanceName string) (api.InstanceFull, error) {
+//			GetInstanceByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, instanceName string) (api.InstanceFull, error) {
 //				panic("mock out the GetInstanceByName method")
 //			},
-//			GetInstancesFunc: func(ctx context.Context, connectionURL string) ([]api.InstanceFull, error) {
+//			GetInstancesFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]api.InstanceFull, error) {
 //				panic("mock out the GetInstances method")
 //			},
 //		}
@@ -36,10 +37,10 @@ var _ inventory.InstanceServerClient = &InstanceServerClientMock{}
 //	}
 type InstanceServerClientMock struct {
 	// GetInstanceByNameFunc mocks the GetInstanceByName method.
-	GetInstanceByNameFunc func(ctx context.Context, connectionURL string, instanceName string) (api.InstanceFull, error)
+	GetInstanceByNameFunc func(ctx context.Context, cluster provisioning.Cluster, instanceName string) (api.InstanceFull, error)
 
 	// GetInstancesFunc mocks the GetInstances method.
-	GetInstancesFunc func(ctx context.Context, connectionURL string) ([]api.InstanceFull, error)
+	GetInstancesFunc func(ctx context.Context, cluster provisioning.Cluster) ([]api.InstanceFull, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -47,8 +48,8 @@ type InstanceServerClientMock struct {
 		GetInstanceByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ConnectionURL is the connectionURL argument value.
-			ConnectionURL string
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
 			// InstanceName is the instanceName argument value.
 			InstanceName string
 		}
@@ -56,8 +57,8 @@ type InstanceServerClientMock struct {
 		GetInstances []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ConnectionURL is the connectionURL argument value.
-			ConnectionURL string
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
 		}
 	}
 	lockGetInstanceByName sync.RWMutex
@@ -65,23 +66,23 @@ type InstanceServerClientMock struct {
 }
 
 // GetInstanceByName calls GetInstanceByNameFunc.
-func (mock *InstanceServerClientMock) GetInstanceByName(ctx context.Context, connectionURL string, instanceName string) (api.InstanceFull, error) {
+func (mock *InstanceServerClientMock) GetInstanceByName(ctx context.Context, cluster provisioning.Cluster, instanceName string) (api.InstanceFull, error) {
 	if mock.GetInstanceByNameFunc == nil {
 		panic("InstanceServerClientMock.GetInstanceByNameFunc: method is nil but InstanceServerClient.GetInstanceByName was just called")
 	}
 	callInfo := struct {
-		Ctx           context.Context
-		ConnectionURL string
-		InstanceName  string
+		Ctx          context.Context
+		Cluster      provisioning.Cluster
+		InstanceName string
 	}{
-		Ctx:           ctx,
-		ConnectionURL: connectionURL,
-		InstanceName:  instanceName,
+		Ctx:          ctx,
+		Cluster:      cluster,
+		InstanceName: instanceName,
 	}
 	mock.lockGetInstanceByName.Lock()
 	mock.calls.GetInstanceByName = append(mock.calls.GetInstanceByName, callInfo)
 	mock.lockGetInstanceByName.Unlock()
-	return mock.GetInstanceByNameFunc(ctx, connectionURL, instanceName)
+	return mock.GetInstanceByNameFunc(ctx, cluster, instanceName)
 }
 
 // GetInstanceByNameCalls gets all the calls that were made to GetInstanceByName.
@@ -89,14 +90,14 @@ func (mock *InstanceServerClientMock) GetInstanceByName(ctx context.Context, con
 //
 //	len(mockedInstanceServerClient.GetInstanceByNameCalls())
 func (mock *InstanceServerClientMock) GetInstanceByNameCalls() []struct {
-	Ctx           context.Context
-	ConnectionURL string
-	InstanceName  string
+	Ctx          context.Context
+	Cluster      provisioning.Cluster
+	InstanceName string
 } {
 	var calls []struct {
-		Ctx           context.Context
-		ConnectionURL string
-		InstanceName  string
+		Ctx          context.Context
+		Cluster      provisioning.Cluster
+		InstanceName string
 	}
 	mock.lockGetInstanceByName.RLock()
 	calls = mock.calls.GetInstanceByName
@@ -105,21 +106,21 @@ func (mock *InstanceServerClientMock) GetInstanceByNameCalls() []struct {
 }
 
 // GetInstances calls GetInstancesFunc.
-func (mock *InstanceServerClientMock) GetInstances(ctx context.Context, connectionURL string) ([]api.InstanceFull, error) {
+func (mock *InstanceServerClientMock) GetInstances(ctx context.Context, cluster provisioning.Cluster) ([]api.InstanceFull, error) {
 	if mock.GetInstancesFunc == nil {
 		panic("InstanceServerClientMock.GetInstancesFunc: method is nil but InstanceServerClient.GetInstances was just called")
 	}
 	callInfo := struct {
-		Ctx           context.Context
-		ConnectionURL string
+		Ctx     context.Context
+		Cluster provisioning.Cluster
 	}{
-		Ctx:           ctx,
-		ConnectionURL: connectionURL,
+		Ctx:     ctx,
+		Cluster: cluster,
 	}
 	mock.lockGetInstances.Lock()
 	mock.calls.GetInstances = append(mock.calls.GetInstances, callInfo)
 	mock.lockGetInstances.Unlock()
-	return mock.GetInstancesFunc(ctx, connectionURL)
+	return mock.GetInstancesFunc(ctx, cluster)
 }
 
 // GetInstancesCalls gets all the calls that were made to GetInstances.
@@ -127,12 +128,12 @@ func (mock *InstanceServerClientMock) GetInstances(ctx context.Context, connecti
 //
 //	len(mockedInstanceServerClient.GetInstancesCalls())
 func (mock *InstanceServerClientMock) GetInstancesCalls() []struct {
-	Ctx           context.Context
-	ConnectionURL string
+	Ctx     context.Context
+	Cluster provisioning.Cluster
 } {
 	var calls []struct {
-		Ctx           context.Context
-		ConnectionURL string
+		Ctx     context.Context
+		Cluster provisioning.Cluster
 	}
 	mock.lockGetInstances.RLock()
 	calls = mock.calls.GetInstances

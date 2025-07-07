@@ -448,7 +448,7 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 			}
 
 			instanceClient := &serverMock.InstanceServerClientMock{
-				GetInstanceByNameFunc: func(ctx context.Context, connectionURL string, instanceName string) (incusapi.InstanceFull, error) {
+				GetInstanceByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, instanceName string) (incusapi.InstanceFull, error) {
 					require.Equal(t, tc.repoGetByUUIDInstance.Name, instanceName)
 					return tc.instanceClientGetInstanceByName, tc.instanceClientGetInstanceByNameErr
 				},
@@ -619,7 +619,7 @@ func TestInstanceService_SyncAll(t *testing.T) {
 			}
 
 			instanceClient := &serverMock.InstanceServerClientMock{
-				GetInstancesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error) {
+				GetInstancesFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.InstanceFull, error) {
 					return tc.instanceClientGetInstances, tc.instanceClientGetInstancesErr
 				},
 			}

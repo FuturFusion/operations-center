@@ -445,7 +445,7 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 			}
 
 			networkACLClient := &serverMock.NetworkACLServerClientMock{
-				GetNetworkACLByNameFunc: func(ctx context.Context, connectionURL string, networkACLName string) (incusapi.NetworkACL, error) {
+				GetNetworkACLByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkACLName string) (incusapi.NetworkACL, error) {
 					require.Equal(t, tc.repoGetByUUIDNetworkACL.Name, networkACLName)
 					return tc.networkACLClientGetNetworkACLByName, tc.networkACLClientGetNetworkACLByNameErr
 				},
@@ -610,7 +610,7 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 			}
 
 			networkACLClient := &serverMock.NetworkACLServerClientMock{
-				GetNetworkACLsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.NetworkACL, error) {
+				GetNetworkACLsFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkACL, error) {
 					return tc.networkACLClientGetNetworkACLs, tc.networkACLClientGetNetworkACLsErr
 				},
 			}

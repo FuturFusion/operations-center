@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -43,12 +44,12 @@ func NewStorageBucketServerClientWithSlog(base inventory.StorageBucketServerClie
 }
 
 // GetStorageBucketByName implements inventory.StorageBucketServerClient.
-func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.Context, connectionURL string, storagePoolName string, storageBucketName string) (storageBucket api.StorageBucket, err error) {
+func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageBucketName string) (storageBucket api.StorageBucket, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("storagePoolName", storagePoolName),
 			slog.String("storageBucketName", storageBucketName),
 		)
@@ -76,16 +77,16 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.C
 			log.Debug("<= method GetStorageBucketByName finished")
 		}
 	}()
-	return _d._base.GetStorageBucketByName(ctx, connectionURL, storagePoolName, storageBucketName)
+	return _d._base.GetStorageBucketByName(ctx, cluster, storagePoolName, storageBucketName)
 }
 
 // GetStorageBuckets implements inventory.StorageBucketServerClient.
-func (_d StorageBucketServerClientWithSlog) GetStorageBuckets(ctx context.Context, connectionURL string, storagePoolName string) (storageBuckets []api.StorageBucket, err error) {
+func (_d StorageBucketServerClientWithSlog) GetStorageBuckets(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) (storageBuckets []api.StorageBucket, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("storagePoolName", storagePoolName),
 		)
 	}
@@ -112,5 +113,5 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBuckets(ctx context.Contex
 			log.Debug("<= method GetStorageBuckets finished")
 		}
 	}()
-	return _d._base.GetStorageBuckets(ctx, connectionURL, storagePoolName)
+	return _d._base.GetStorageBuckets(ctx, cluster, storagePoolName)
 }

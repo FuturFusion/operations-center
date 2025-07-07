@@ -435,7 +435,7 @@ func TestStoragePoolService_ResyncByUUID(t *testing.T) {
 			}
 
 			storagePoolClient := &serverMock.StoragePoolServerClientMock{
-				GetStoragePoolByNameFunc: func(ctx context.Context, connectionURL string, storagePoolName string) (incusapi.StoragePool, error) {
+				GetStoragePoolByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) (incusapi.StoragePool, error) {
 					require.Equal(t, tc.repoGetByUUIDStoragePool.Name, storagePoolName)
 					return tc.storagePoolClientGetStoragePoolByName, tc.storagePoolClientGetStoragePoolByNameErr
 				},
@@ -582,7 +582,7 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 			}
 
 			storagePoolClient := &serverMock.StoragePoolServerClientMock{
-				GetStoragePoolsFunc: func(ctx context.Context, connectionURL string) ([]incusapi.StoragePool, error) {
+				GetStoragePoolsFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.StoragePool, error) {
 					return tc.storagePoolClientGetStoragePools, tc.storagePoolClientGetStoragePoolsErr
 				},
 			}

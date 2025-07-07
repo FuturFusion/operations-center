@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 )
 
@@ -43,12 +44,12 @@ func NewStoragePoolServerClientWithSlog(base inventory.StoragePoolServerClient, 
 }
 
 // GetStoragePoolByName implements inventory.StoragePoolServerClient.
-func (_d StoragePoolServerClientWithSlog) GetStoragePoolByName(ctx context.Context, connectionURL string, storagePoolName string) (storagePool api.StoragePool, err error) {
+func (_d StoragePoolServerClientWithSlog) GetStoragePoolByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) (storagePool api.StoragePool, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 			slog.String("storagePoolName", storagePoolName),
 		)
 	}
@@ -75,16 +76,16 @@ func (_d StoragePoolServerClientWithSlog) GetStoragePoolByName(ctx context.Conte
 			log.Debug("<= method GetStoragePoolByName finished")
 		}
 	}()
-	return _d._base.GetStoragePoolByName(ctx, connectionURL, storagePoolName)
+	return _d._base.GetStoragePoolByName(ctx, cluster, storagePoolName)
 }
 
 // GetStoragePools implements inventory.StoragePoolServerClient.
-func (_d StoragePoolServerClientWithSlog) GetStoragePools(ctx context.Context, connectionURL string) (storagePools []api.StoragePool, err error) {
+func (_d StoragePoolServerClientWithSlog) GetStoragePools(ctx context.Context, cluster provisioning.Cluster) (storagePools []api.StoragePool, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("connectionURL", connectionURL),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling GetStoragePools")
@@ -110,5 +111,5 @@ func (_d StoragePoolServerClientWithSlog) GetStoragePools(ctx context.Context, c
 			log.Debug("<= method GetStoragePools finished")
 		}
 	}()
-	return _d._base.GetStoragePools(ctx, connectionURL)
+	return _d._base.GetStoragePools(ctx, cluster)
 }

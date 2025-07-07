@@ -9,10 +9,11 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetStorageVolumes(ctx context.Context, connectionURL string, storageVolumeName string) ([]incusapi.StorageVolume, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetStorageVolumes(ctx context.Context, cluster provisioning.Cluster, storageVolumeName string) ([]incusapi.StorageVolume, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -25,8 +26,8 @@ func (s serverClient) GetStorageVolumes(ctx context.Context, connectionURL strin
 	return serverStorageVolumes, nil
 }
 
-func (s serverClient) GetStorageVolumeByName(ctx context.Context, connectionURL string, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetStorageVolumeByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return incusapi.StorageVolume{}, err
 	}

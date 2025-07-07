@@ -4,8 +4,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 type {{ .Name | pascalcase }}Service interface {
@@ -28,8 +29,8 @@ type {{ .Name | pascalcase }}Repo interface {
 
 type {{ .Name | pascalcase }}ServerClient interface {
 {{- with .RequiresExtension }}
-	HasExtension(ctx context.Context, connectionURL string, extension string) (exists bool)
+	HasExtension(ctx context.Context, cluster provisioning.Cluster, extension string) (exists bool)
 {{- end }}
-	Get{{ .PluralName | pascalcase }}(ctx context.Context, connectionURL string {{- if .HasParent }}, {{ .ParentName | camelcase }}Name string {{ end }}) ([]incusapi.{{ .ObjectType | pascalcase }}, error)
-	Get{{ .Name | pascalcase }}ByName(ctx context.Context, connectionURL string, {{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }} {{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error)
+	Get{{ .PluralName | pascalcase }}(ctx context.Context, cluster provisioning.Cluster {{- if .HasParent }}, {{ .ParentName | camelcase }}Name string {{ end }}) ([]incusapi.{{ .ObjectType | pascalcase }}, error)
+	Get{{ .Name | pascalcase }}ByName(ctx context.Context, cluster provisioning.Cluster, {{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }} {{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error)
 }

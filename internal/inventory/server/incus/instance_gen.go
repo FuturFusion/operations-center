@@ -9,10 +9,11 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetInstances(ctx context.Context, connectionURL string) ([]incusapi.InstanceFull, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetInstances(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.InstanceFull, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -25,8 +26,8 @@ func (s serverClient) GetInstances(ctx context.Context, connectionURL string) ([
 	return serverInstances, nil
 }
 
-func (s serverClient) GetInstanceByName(ctx context.Context, connectionURL string, instanceName string) (incusapi.InstanceFull, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetInstanceByName(ctx context.Context, cluster provisioning.Cluster, instanceName string) (incusapi.InstanceFull, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return incusapi.InstanceFull{}, err
 	}

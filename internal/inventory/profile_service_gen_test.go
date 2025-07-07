@@ -439,7 +439,7 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 			}
 
 			profileClient := &serverMock.ProfileServerClientMock{
-				GetProfileByNameFunc: func(ctx context.Context, connectionURL string, profileName string) (incusapi.Profile, error) {
+				GetProfileByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, profileName string) (incusapi.Profile, error) {
 					require.Equal(t, tc.repoGetByUUIDProfile.Name, profileName)
 					return tc.profileClientGetProfileByName, tc.profileClientGetProfileByNameErr
 				},
@@ -592,7 +592,7 @@ func TestProfileService_SyncAll(t *testing.T) {
 			}
 
 			profileClient := &serverMock.ProfileServerClientMock{
-				GetProfilesFunc: func(ctx context.Context, connectionURL string) ([]incusapi.Profile, error) {
+				GetProfilesFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Profile, error) {
 					return tc.profileClientGetProfiles, tc.profileClientGetProfilesErr
 				},
 			}

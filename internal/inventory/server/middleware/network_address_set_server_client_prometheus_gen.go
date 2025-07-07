@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -39,7 +40,7 @@ func NewNetworkAddressSetServerClientWithPrometheus(base inventory.NetworkAddres
 }
 
 // GetNetworkAddressSetByName implements inventory.NetworkAddressSetServerClient.
-func (_d NetworkAddressSetServerClientWithPrometheus) GetNetworkAddressSetByName(ctx context.Context, connectionURL string, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
+func (_d NetworkAddressSetServerClientWithPrometheus) GetNetworkAddressSetByName(ctx context.Context, cluster provisioning.Cluster, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,11 +50,11 @@ func (_d NetworkAddressSetServerClientWithPrometheus) GetNetworkAddressSetByName
 
 		networkAddressSetServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkAddressSetByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkAddressSetByName(ctx, connectionURL, networkAddressSetName)
+	return _d.base.GetNetworkAddressSetByName(ctx, cluster, networkAddressSetName)
 }
 
 // GetNetworkAddressSets implements inventory.NetworkAddressSetServerClient.
-func (_d NetworkAddressSetServerClientWithPrometheus) GetNetworkAddressSets(ctx context.Context, connectionURL string) (networkAddressSets []api.NetworkAddressSet, err error) {
+func (_d NetworkAddressSetServerClientWithPrometheus) GetNetworkAddressSets(ctx context.Context, cluster provisioning.Cluster) (networkAddressSets []api.NetworkAddressSet, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,15 +64,15 @@ func (_d NetworkAddressSetServerClientWithPrometheus) GetNetworkAddressSets(ctx 
 
 		networkAddressSetServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkAddressSets", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkAddressSets(ctx, connectionURL)
+	return _d.base.GetNetworkAddressSets(ctx, cluster)
 }
 
 // HasExtension implements inventory.NetworkAddressSetServerClient.
-func (_d NetworkAddressSetServerClientWithPrometheus) HasExtension(ctx context.Context, connectionURL string, extension string) (exists bool) {
+func (_d NetworkAddressSetServerClientWithPrometheus) HasExtension(ctx context.Context, cluster provisioning.Cluster, extension string) (exists bool) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
 		networkAddressSetServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "HasExtension", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.HasExtension(ctx, connectionURL, extension)
+	return _d.base.HasExtension(ctx, cluster, extension)
 }

@@ -6,8 +6,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 type NetworkForwardService interface {
@@ -29,6 +30,6 @@ type NetworkForwardRepo interface {
 }
 
 type NetworkForwardServerClient interface {
-	GetNetworkForwards(ctx context.Context, connectionURL string, networkName string) ([]incusapi.NetworkForward, error)
-	GetNetworkForwardByName(ctx context.Context, connectionURL string, networkName string, networkForwardName string) (incusapi.NetworkForward, error)
+	GetNetworkForwards(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]incusapi.NetworkForward, error)
+	GetNetworkForwardByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkForwardName string) (incusapi.NetworkForward, error)
 }

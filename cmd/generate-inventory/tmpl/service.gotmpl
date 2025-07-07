@@ -182,7 +182,7 @@ func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uui
 			return err
 		}
 
-		retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, cluster.ConnectionURL, {{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}.{{ .Name | pascalcase }} {{- end}})
+		retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, *cluster, {{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}.{{ .Name | pascalcase }} {{- end}})
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, {{ .Name | camelcase }}.UUID)
 			if err != nil {
@@ -235,13 +235,13 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 	}
 {{- with .RequiresExtension }}
 
-	if !s.networkAddressSetClient.HasExtension(ctx, cluster.ConnectionURL, "{{ . }}") {
+	if !s.networkAddressSetClient.HasExtension(ctx, *cluster, "{{ . }}") {
 		return nil
 	}
 {{ end }}
 
 {{ if .HasParent }}
-	retrieved{{ .ParentPluralName | pascalcase }}, err := s.{{ .ParentName | camelcase }}Client.Get{{ .ParentName | pascalcase }}s(ctx, cluster.ConnectionURL)
+	retrieved{{ .ParentPluralName | pascalcase }}, err := s.{{ .ParentName | camelcase }}Client.Get{{ .ParentName | pascalcase }}s(ctx, *cluster)
 	if err != nil {
 		return err
 	}
@@ -253,13 +253,13 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 		}
 {{- end }}
 
-		retrieved{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, cluster.ConnectionURL, {{ .ParentName | camelcase }}.Name)
+		retrieved{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, *cluster, {{ .ParentName | camelcase }}.Name)
 		if err != nil {
 			return err
 		}
 
 {{ else }}
-	retrieved{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, cluster.ConnectionURL)
+	retrieved{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, *cluster)
 	if err != nil {
 		return err
 	}

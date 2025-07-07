@@ -170,7 +170,7 @@ func (s networkLoadBalancerService) ResyncByUUID(ctx context.Context, id uuid.UU
 			return err
 		}
 
-		retrievedNetworkLoadBalancer, err := s.networkLoadBalancerClient.GetNetworkLoadBalancerByName(ctx, cluster.ConnectionURL, networkLoadBalancer.NetworkName, networkLoadBalancer.Name)
+		retrievedNetworkLoadBalancer, err := s.networkLoadBalancerClient.GetNetworkLoadBalancerByName(ctx, *cluster, networkLoadBalancer.NetworkName, networkLoadBalancer.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkLoadBalancer.UUID)
 			if err != nil {
@@ -213,7 +213,7 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, name string
 		return err
 	}
 
-	retrievedNetworks, err := s.networkClient.GetNetworks(ctx, cluster.ConnectionURL)
+	retrievedNetworks, err := s.networkClient.GetNetworks(ctx, *cluster)
 	if err != nil {
 		return err
 	}
@@ -223,7 +223,7 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, name string
 			continue
 		}
 
-		retrievedNetworkLoadBalancers, err := s.networkLoadBalancerClient.GetNetworkLoadBalancers(ctx, cluster.ConnectionURL, network.Name)
+		retrievedNetworkLoadBalancers, err := s.networkLoadBalancerClient.GetNetworkLoadBalancers(ctx, *cluster, network.Name)
 		if err != nil {
 			return err
 		}

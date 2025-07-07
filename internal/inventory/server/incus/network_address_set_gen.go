@@ -9,10 +9,11 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkAddressSets(ctx context.Context, connectionURL string) ([]incusapi.NetworkAddressSet, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetNetworkAddressSets(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkAddressSet, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -25,8 +26,8 @@ func (s serverClient) GetNetworkAddressSets(ctx context.Context, connectionURL s
 	return serverNetworkAddressSets, nil
 }
 
-func (s serverClient) GetNetworkAddressSetByName(ctx context.Context, connectionURL string, networkAddressSetName string) (incusapi.NetworkAddressSet, error) {
-	client, err := s.getClient(ctx, connectionURL)
+func (s serverClient) GetNetworkAddressSetByName(ctx context.Context, cluster provisioning.Cluster, networkAddressSetName string) (incusapi.NetworkAddressSet, error) {
+	client, err := s.getClient(ctx, cluster)
 	if err != nil {
 		return incusapi.NetworkAddressSet{}, err
 	}

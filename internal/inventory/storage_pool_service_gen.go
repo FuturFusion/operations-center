@@ -156,7 +156,7 @@ func (s storagePoolService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 			return err
 		}
 
-		retrievedStoragePool, err := s.storagePoolClient.GetStoragePoolByName(ctx, cluster.ConnectionURL, storagePool.Name)
+		retrievedStoragePool, err := s.storagePoolClient.GetStoragePoolByName(ctx, *cluster, storagePool.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, storagePool.UUID)
 			if err != nil {
@@ -199,7 +199,7 @@ func (s storagePoolService) SyncCluster(ctx context.Context, name string) error 
 		return err
 	}
 
-	retrievedStoragePools, err := s.storagePoolClient.GetStoragePools(ctx, cluster.ConnectionURL)
+	retrievedStoragePools, err := s.storagePoolClient.GetStoragePools(ctx, *cluster)
 	if err != nil {
 		return err
 	}

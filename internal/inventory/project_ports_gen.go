@@ -6,8 +6,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-
 	incusapi "github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 type ProjectService interface {
@@ -29,6 +30,6 @@ type ProjectRepo interface {
 }
 
 type ProjectServerClient interface {
-	GetProjects(ctx context.Context, connectionURL string) ([]incusapi.Project, error)
-	GetProjectByName(ctx context.Context, connectionURL string, projectName string) (incusapi.Project, error)
+	GetProjects(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Project, error)
+	GetProjectByName(ctx context.Context, cluster provisioning.Cluster, projectName string) (incusapi.Project, error)
 }
