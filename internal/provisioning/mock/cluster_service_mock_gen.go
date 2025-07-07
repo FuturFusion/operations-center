@@ -45,6 +45,9 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
+//			ResyncInventoryFunc: func(ctx context.Context) error {
+//				panic("mock out the ResyncInventory method")
+//			},
 //			ResyncInventoryByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the ResyncInventoryByName method")
 //			},
@@ -81,6 +84,9 @@ type ClusterServiceMock struct {
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
+
+	// ResyncInventoryFunc mocks the ResyncInventory method.
+	ResyncInventoryFunc func(ctx context.Context) error
 
 	// ResyncInventoryByNameFunc mocks the ResyncInventoryByName method.
 	ResyncInventoryByNameFunc func(ctx context.Context, name string) error
@@ -144,6 +150,11 @@ type ClusterServiceMock struct {
 			// NewName is the newName argument value.
 			NewName string
 		}
+		// ResyncInventory holds details about calls to the ResyncInventory method.
+		ResyncInventory []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// ResyncInventoryByName holds details about calls to the ResyncInventoryByName method.
 		ResyncInventoryByName []struct {
 			// Ctx is the ctx argument value.
@@ -167,6 +178,7 @@ type ClusterServiceMock struct {
 	lockGetAllWithFilter      sync.RWMutex
 	lockGetByName             sync.RWMutex
 	lockRename                sync.RWMutex
+	lockResyncInventory       sync.RWMutex
 	lockResyncInventoryByName sync.RWMutex
 	lockUpdate                sync.RWMutex
 }
@@ -452,6 +464,38 @@ func (mock *ClusterServiceMock) RenameCalls() []struct {
 	mock.lockRename.RLock()
 	calls = mock.calls.Rename
 	mock.lockRename.RUnlock()
+	return calls
+}
+
+// ResyncInventory calls ResyncInventoryFunc.
+func (mock *ClusterServiceMock) ResyncInventory(ctx context.Context) error {
+	if mock.ResyncInventoryFunc == nil {
+		panic("ClusterServiceMock.ResyncInventoryFunc: method is nil but ClusterService.ResyncInventory was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockResyncInventory.Lock()
+	mock.calls.ResyncInventory = append(mock.calls.ResyncInventory, callInfo)
+	mock.lockResyncInventory.Unlock()
+	return mock.ResyncInventoryFunc(ctx)
+}
+
+// ResyncInventoryCalls gets all the calls that were made to ResyncInventory.
+// Check the length with:
+//
+//	len(mockedClusterService.ResyncInventoryCalls())
+func (mock *ClusterServiceMock) ResyncInventoryCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockResyncInventory.RLock()
+	calls = mock.calls.ResyncInventory
+	mock.lockResyncInventory.RUnlock()
 	return calls
 }
 

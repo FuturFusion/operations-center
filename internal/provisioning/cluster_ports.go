@@ -16,6 +16,7 @@ type ClusterService interface {
 	Update(ctx context.Context, cluster Cluster) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
+	ResyncInventory(ctx context.Context) error
 	ResyncInventoryByName(ctx context.Context, name string) error
 }
 

@@ -26,7 +26,10 @@ type Config struct {
 	// Root CA certificate used to verify the signature of index.sjson.
 	UpdateSignatureVerificationRootCA string `yaml:"update.signature_verification_root_ca"`
 
+	ConnectivityCheckInterval time.Duration `yaml:"-"`
 	PendingServerPollInterval time.Duration `yaml:"-"`
+
+	InventoryUpdateInterval time.Duration `yaml:"-"`
 
 	// An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
 	TrustedTLSClientCertFingerprints []string `yaml:"trusted_tls_client_cert_fingerprints"`

@@ -452,12 +452,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 	})
 
 	// Start background task to test connectivity and update configuration with servers in ready state.
-	const connectivityInterval = 5 * time.Minute
 	pollReadyServersTask := func(ctx context.Context) {
 		slog.InfoContext(ctx, "Connectivity test for ready servers triggered")
 
 		// Within the first connectivityInterval of the hour, we also update the configuration.
-		updateConfiguration := time.Since(time.Now().Truncate(time.Hour)) <= connectivityInterval
+		updateConfiguration := time.Since(time.Now().Truncate(time.Hour)) <= d.config.ConnectivityCheckInterval
 		err := serverSvc.PollServers(ctx, api.ServerStatusReady, updateConfiguration)
 		if err != nil {
 			slog.ErrorContext(ctx, "Connectivity test for some servers failed", logger.Err(err))
@@ -466,9 +465,25 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 	}
 
-	pollReadyServersTaskStop, _ := task.Start(ctx, pollReadyServersTask, task.Every(connectivityInterval))
+	pollReadyServersTaskStop, _ := task.Start(ctx, pollReadyServersTask, task.Every(d.config.ConnectivityCheckInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return pollReadyServersTaskStop(deadlineFrom(ctx, 1*time.Second))
+	})
+
+	// Start background task to refresh inventory.
+	refreshInventoryTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "Inventory update triggered")
+		err := clusterSvc.ResyncInventory(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Inventory update failed", logger.Err(err))
+		} else {
+			slog.InfoContext(ctx, "Inventory update completed")
+		}
+	}
+
+	refreshInventoryTaskStop, _ := task.Start(ctx, refreshInventoryTask, task.Every(d.config.InventoryUpdateInterval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return refreshInventoryTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
 
 	// Wait for immediate errors during startup.

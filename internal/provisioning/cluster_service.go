@@ -449,6 +449,28 @@ func (s clusterService) DeleteByName(ctx context.Context, name string) error {
 	return s.repo.DeleteByName(ctx, name)
 }
 
+func (s clusterService) ResyncInventory(ctx context.Context) error {
+	clusters, err := s.GetAll(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to get clusters while resyncing the inventory: %w", err)
+	}
+
+	for _, cluster := range clusters {
+		// Exit early, if context is done.
+		err = ctx.Err()
+		if err != nil {
+			return fmt.Errorf("Failed to resync inventory: %w", err)
+		}
+
+		err = s.ResyncInventoryByName(ctx, cluster.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to resync inventory: %w", err)
+		}
+	}
+
+	return nil
+}
+
 func (s clusterService) ResyncInventoryByName(ctx context.Context, name string) error {
 	if name == "" {
 		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
