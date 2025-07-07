@@ -75,9 +75,6 @@ func TestClusterService_Create(t *testing.T) {
 			clientSetServerConfig: []queue.Item[struct{}]{
 				{}, // Server 1
 				{}, // Server 2
-
-				{}, // Server 1
-				{}, // Server 2
 			},
 			clientEnableClusterCertificate: "certificate",
 			clientGetOSData:                api.OSData{},
@@ -352,37 +349,6 @@ func TestClusterService_Create(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 		},
-		// TODO: Remove once https://github.com/lxc/incus/pull/2218 is available in incus-os.
-		{
-			name: "error - client.SetServerConfig",
-			cluster: provisioning.Cluster{
-				Name:        "one",
-				ServerNames: []string{"server1", "server2"},
-			},
-			serverSvcGetByName: []queue.Item[*provisioning.Server]{
-				{
-					Value: &provisioning.Server{
-						Name: "server1",
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name: "server2",
-					},
-				},
-			},
-			clientSetServerConfig: []queue.Item[struct{}]{
-				{}, // Server 1
-				{}, // Server 2
-
-				// Cluster
-				{
-					Err: boom.Error,
-				},
-			},
-
-			assertErr: boom.ErrorIs,
-		},
 		{
 			name: "error - serverSvc.GetByName - 2nd transaction",
 			cluster: provisioning.Cluster{
@@ -405,9 +371,6 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			},
 			clientSetServerConfig: []queue.Item[struct{}]{
-				{}, // Server 1
-				{}, // Server 2
-
 				{}, // Server 1
 				{}, // Server 2
 			},
@@ -439,9 +402,6 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			},
 			clientSetServerConfig: []queue.Item[struct{}]{
-				{}, // Server 1
-				{}, // Server 2
-
 				{}, // Server 1
 				{}, // Server 2
 			},
@@ -481,9 +441,6 @@ func TestClusterService_Create(t *testing.T) {
 			clientSetServerConfig: []queue.Item[struct{}]{
 				{}, // Server 1
 				{}, // Server 2
-
-				{}, // Server 1
-				{}, // Server 2
 			},
 			clientEnableClusterCertificate: "certificate",
 			repoUpdateErr:                  boom.Error,
@@ -519,9 +476,6 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			},
 			clientSetServerConfig: []queue.Item[struct{}]{
-				{}, // Server 1
-				{}, // Server 2
-
 				{}, // Server 1
 				{}, // Server 2
 			},
@@ -561,9 +515,6 @@ func TestClusterService_Create(t *testing.T) {
 			clientSetServerConfig: []queue.Item[struct{}]{
 				{}, // Server 1
 				{}, // Server 2
-
-				{}, // Server 1
-				{}, // Server 2
 			},
 			clientEnableClusterCertificate: "certificate",
 			clientCreateProjectErr:         boom.Error,
@@ -599,9 +550,6 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			},
 			clientSetServerConfig: []queue.Item[struct{}]{
-				{}, // Server 1
-				{}, // Server 2
-
 				{}, // Server 1
 				{}, // Server 2
 			},
@@ -641,9 +589,6 @@ func TestClusterService_Create(t *testing.T) {
 			clientSetServerConfig: []queue.Item[struct{}]{
 				{}, // Server 1
 				{}, // Server 2
-
-				{}, // Server 1
-				{}, // Server 2
 			},
 			clientEnableClusterCertificate: "certificate",
 			clientGetOSDataErr:             boom.Error,
@@ -679,9 +624,6 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			},
 			clientSetServerConfig: []queue.Item[struct{}]{
-				{}, // Server 1
-				{}, // Server 2
-
 				{}, // Server 1
 				{}, // Server 2
 			},
