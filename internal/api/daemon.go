@@ -470,6 +470,22 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return pollReadyServersTaskStop(deadlineFrom(ctx, 1*time.Second))
 	})
 
+	// Start background task to refresh inventory.
+	refreshInventoryTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "Inventory update triggered")
+		err := clusterSvc.ResyncInventory(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Inventory update failed", logger.Err(err))
+		} else {
+			slog.InfoContext(ctx, "Inventory update completed")
+		}
+	}
+
+	refreshInventoryTaskStop, _ := task.Start(ctx, refreshInventoryTask, task.Every(d.config.InventoryUpdateInterval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return refreshInventoryTaskStop(deadlineFrom(ctx, 10*time.Second))
+	})
+
 	// Wait for immediate errors during startup.
 	select {
 	case <-errgroupCtx.Done():

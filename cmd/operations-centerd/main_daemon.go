@@ -77,6 +77,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 
 		ConnectivityCheckInterval: 5 * time.Minute,
 		PendingServerPollInterval: 1 * time.Minute,
+		InventoryUpdateInterval:   1 * time.Hour,
 	}
 
 	err = cfg.LoadConfig(c.env.VarDir())
