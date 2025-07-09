@@ -39,7 +39,7 @@ CREATE TABLE servers (
   last_seen DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00',
   UNIQUE (name),
   UNIQUE (certificate),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
 CREATE TABLE updates (
@@ -67,7 +67,7 @@ CREATE TABLE images (
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
   UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
 CREATE TABLE instances (
@@ -81,8 +81,8 @@ CREATE TABLE instances (
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
   UNIQUE (cluster_id, server_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id),
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE,
+  FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
 CREATE TABLE networks (
@@ -95,7 +95,7 @@ CREATE TABLE networks (
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
   UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
 CREATE TABLE network_acls (
@@ -108,7 +108,7 @@ CREATE TABLE network_acls (
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
   UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
 CREATE TABLE network_address_sets (
@@ -121,7 +121,7 @@ CREATE TABLE network_address_sets (
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
   UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
 CREATE TABLE network_forwards (
@@ -134,7 +134,7 @@ CREATE TABLE network_forwards (
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
   UNIQUE (cluster_id, network_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
 CREATE TABLE network_integrations (
@@ -146,7 +146,7 @@ CREATE TABLE network_integrations (
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
   UNIQUE (cluster_id, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
 CREATE TABLE network_load_balancers (
@@ -159,7 +159,7 @@ CREATE TABLE network_load_balancers (
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
   UNIQUE (cluster_id, network_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
 CREATE TABLE network_peers (
@@ -172,7 +172,7 @@ CREATE TABLE network_peers (
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
   UNIQUE (cluster_id, network_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
 CREATE TABLE network_zones (
@@ -185,7 +185,7 @@ CREATE TABLE network_zones (
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
   UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
 CREATE TABLE profiles (
@@ -198,7 +198,7 @@ CREATE TABLE profiles (
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
   UNIQUE (cluster_id, project_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
 CREATE TABLE projects (
@@ -210,7 +210,7 @@ CREATE TABLE projects (
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
   UNIQUE (cluster_id, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
 CREATE TABLE storage_buckets (
@@ -225,8 +225,8 @@ CREATE TABLE storage_buckets (
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
   UNIQUE (cluster_id, server_id, project_name, storage_pool_name, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id),
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE,
+  FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
 CREATE TABLE storage_pools (
@@ -238,7 +238,7 @@ CREATE TABLE storage_pools (
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
   UNIQUE (cluster_id, name),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
 );
 
 CREATE TABLE storage_volumes (
@@ -254,8 +254,8 @@ CREATE TABLE storage_volumes (
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
   UNIQUE (cluster_id, server_id, project_name, storage_pool_name, name, type),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id),
-  FOREIGN KEY (server_id) REFERENCES servers(id)
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE,
+  FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
 CREATE VIEW resources AS
@@ -322,4 +322,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (6, strftime("%s"))
+INSERT INTO schema (version, updated_at) VALUES (7, strftime("%s"))
