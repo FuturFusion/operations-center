@@ -1,7 +1,9 @@
 package config
 
 import (
+	_ "embed"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -47,7 +49,15 @@ type Config struct {
 	OpenfgaStoreID  string `yaml:"openfga.store.id"`
 }
 
+//go:embed default.yml
+var defaultConfig []byte
+
 func (c *Config) LoadConfig(path string) error {
+	err := yaml.Unmarshal(defaultConfig, c)
+	if err != nil {
+		return fmt.Errorf("Failed to unmarshal built in default config: %w", err)
+	}
+
 	contents, err := os.ReadFile(filepath.Join(path, "config.yml"))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
