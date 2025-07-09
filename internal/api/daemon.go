@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	ghClient "github.com/google/go-github/v69/github"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"golang.org/x/sync/errgroup"
 
@@ -36,7 +35,6 @@ import (
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/github"
 	provisioningIncusAdapter "github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
 	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
@@ -226,40 +224,23 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	if d.config.UpdatesSource != "" {
-		if strings.HasPrefix(d.config.UpdatesSource, "https://github.com/") {
-			gh := ghClient.NewClient(nil)
-			if d.config.GithubToken != "" {
-				gh = gh.WithAuthToken(d.config.GithubToken)
-			}
-
-			updateServiceOptions = append(updateServiceOptions,
-				provisioning.UpdateServiceWithSource(
-					"github.com/lxc/incus-os",
-					provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
-						github.New(gh),
-						slog.Default(),
-					),
-				),
-			)
-		} else {
-			origin, err := url.Parse(d.config.UpdatesSource)
-			if err != nil {
-				return fmt.Errorf(`config "update.source" is not a valid URL: %w`, err)
-			}
-
-			updateServiceOptions = append(updateServiceOptions,
-				provisioning.UpdateServiceWithSource(
-					origin.Host,
-					provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
-						updateserver.New(
-							d.config.UpdatesSource,
-							verifier,
-						),
-						slog.Default(),
-					),
-				),
-			)
+		origin, err := url.Parse(d.config.UpdatesSource)
+		if err != nil {
+			return fmt.Errorf(`config "update.source" is not a valid URL: %w`, err)
 		}
+
+		updateServiceOptions = append(updateServiceOptions,
+			provisioning.UpdateServiceWithSource(
+				origin.Host,
+				provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
+					updateserver.New(
+						d.config.UpdatesSource,
+						verifier,
+					),
+					slog.Default(),
+				),
+			),
+		)
 	}
 
 	updateSvc := provisioningServiceMiddleware.NewUpdateServiceWithSlog(
