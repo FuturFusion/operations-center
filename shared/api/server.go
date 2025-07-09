@@ -173,8 +173,8 @@ type OSData struct {
 	// Network contains the network data of the server OS, in the same form as presented by Incus OS in the network API.
 	Network incusosapi.SystemNetwork `json:"network" yaml:"network"`
 
-	// Encryption contains the encryption data of the server OS, in the same form as presented by Incus OS in the encryption API.
-	Encryption incusosapi.SystemEncryption `json:"encryption" yaml:"encryption"`
+	// Security contains the security data of the server OS, in the same form as presented by Incus OS in the security API.
+	Security incusosapi.SystemSecurity `json:"security" yaml:"security"`
 }
 
 // Value implements the sql driver.Valuer interface.
