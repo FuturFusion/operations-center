@@ -330,9 +330,28 @@ func (s serverService) DeleteByName(ctx context.Context, name string) error {
 		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	// FIXME: deleteting a server also requires to delete all the inventory (in a transaction).
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		server, err := s.repo.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get server for delete: %w", err)
+		}
 
-	return s.repo.DeleteByName(ctx, name)
+		if server.Cluster != nil {
+			return fmt.Errorf("Failed to delete server, server is part of cluster %q", *server.Cluster)
+		}
+
+		err = s.repo.DeleteByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to delete server: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to delete server: %w", err)
+	}
+
+	return nil
 }
 
 // PollServers tests server connectivity for servers registered in operations center.

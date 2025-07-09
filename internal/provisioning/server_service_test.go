@@ -1000,6 +1000,8 @@ func TestServerService_DeleteByName(t *testing.T) {
 	tests := []struct {
 		name                string
 		nameArg             string
+		repoGetByNameServer *provisioning.Server
+		repoGetByNameErr    error
 		repoDeleteByNameErr error
 
 		assertErr require.ErrorAssertionFunc
@@ -1007,6 +1009,9 @@ func TestServerService_DeleteByName(t *testing.T) {
 		{
 			name:    "success",
 			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Cluster: nil,
+			},
 
 			assertErr: require.NoError,
 		},
@@ -1019,8 +1024,29 @@ func TestServerService_DeleteByName(t *testing.T) {
 			},
 		},
 		{
-			name:                "error - repo.DeleteByID",
-			nameArg:             "one",
+			name:             "error - repo.GetByName",
+			nameArg:          "one",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - assigned to cluster",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Cluster: ptr.To("one"),
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, `Failed to delete server, server is part of cluster "one"`)
+			},
+		},
+		{
+			name:    "error - repo.DeleteByName",
+			nameArg: "one",
+			repoGetByNameServer: &provisioning.Server{
+				Cluster: nil,
+			},
 			repoDeleteByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -1031,6 +1057,9 @@ func TestServerService_DeleteByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
 				DeleteByNameFunc: func(ctx context.Context, name string) error {
 					return tc.repoDeleteByNameErr
 				},
