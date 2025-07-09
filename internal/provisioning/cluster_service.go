@@ -444,9 +444,45 @@ func (s clusterService) DeleteByName(ctx context.Context, name string) error {
 		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	// FIXME: deleteting a cluster also requires to delete all the inventory (in a transaction).
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		cluster, err := s.repo.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to delete cluster: %w", err)
+		}
 
-	return s.repo.DeleteByName(ctx, name)
+		switch cluster.Status {
+		case api.ClusterStatusUnknown,
+			api.ClusterStatusPending:
+			// delete is fine
+		case api.ClusterStatusReady:
+			return fmt.Errorf("Delete for cluster in state %q is not allowed", cluster.Status.String())
+		default:
+			return fmt.Errorf("Delete for cluster with invalid state")
+		}
+
+		servers, err := s.serverSvc.GetAllNamesWithFilter(ctx, ServerFilter{
+			Cluster: &name,
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to get servers linked with cluster: %w", err)
+		}
+
+		if len(servers) > 0 {
+			return fmt.Errorf("Delete for cluster with %d linked servers is not allowd (%v)", len(servers), servers)
+		}
+
+		err = s.repo.DeleteByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to delete cluster: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to delete cluster: %w", err)
+	}
+
+	return nil
 }
 
 func (s clusterService) ResyncInventory(ctx context.Context) error {

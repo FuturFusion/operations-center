@@ -1367,15 +1367,22 @@ func TestClusterService_Rename(t *testing.T) {
 
 func TestClusterService_DeleteByName(t *testing.T) {
 	tests := []struct {
-		name              string
-		nameArg           string
-		repoDeleteByIDErr error
+		name                                string
+		nameArg                             string
+		repoGetByNameCluster                *provisioning.Cluster
+		repoGetByNameErr                    error
+		repoDeleteByNameErr                 error
+		serverSvcGetAllNamesWithFilterNames []string
+		serverSvcGetAllNamesWithFilterErr   error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name:    "success",
 			nameArg: "one",
+			repoGetByNameCluster: &provisioning.Cluster{
+				Status: api.ClusterStatusPending,
+			},
 
 			assertErr: require.NoError,
 		},
@@ -1388,9 +1395,61 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			},
 		},
 		{
-			name:              "error - repo.DeleteByID",
-			nameArg:           "one",
-			repoDeleteByIDErr: boom.Error,
+			name:             "error - repo.GetByName",
+			nameArg:          "one",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - cluster state ready",
+			nameArg: "one",
+			repoGetByNameCluster: &provisioning.Cluster{
+				Status: api.ClusterStatusReady,
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, `Delete for cluster in state "ready" is not allowed`)
+			},
+		},
+		{
+			name:                 "error - cluster state not set",
+			nameArg:              "one",
+			repoGetByNameCluster: &provisioning.Cluster{},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "Delete for cluster with invalid state")
+			},
+		},
+		{
+			name:    "error - cluster with linked servers",
+			nameArg: "one",
+			repoGetByNameCluster: &provisioning.Cluster{
+				Status: api.ClusterStatusPending,
+			},
+			serverSvcGetAllNamesWithFilterNames: []string{"one"},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "Failed to delete cluster: Delete for cluster with 1 linked servers is not allowd ([one])")
+			},
+		},
+		{
+			name:    "error - serverSvc.GetallNamesWithFilter",
+			nameArg: "one",
+			repoGetByNameCluster: &provisioning.Cluster{
+				Status: api.ClusterStatusPending,
+			},
+			serverSvcGetAllNamesWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - repo.DeleteByID",
+			nameArg: "one",
+			repoGetByNameCluster: &provisioning.Cluster{
+				Status: api.ClusterStatusPending,
+			},
+			repoDeleteByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -1400,12 +1459,21 @@ func TestClusterService_DeleteByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByNameCluster, tc.repoGetByNameErr
+				},
 				DeleteByNameFunc: func(ctx context.Context, name string) error {
-					return tc.repoDeleteByIDErr
+					return tc.repoDeleteByNameErr
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetAllNamesWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) ([]string, error) {
+					return tc.serverSvcGetAllNamesWithFilterNames, tc.serverSvcGetAllNamesWithFilterErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, serverSvc, nil)
 
 			// Run test
 			err := clusterSvc.DeleteByName(context.Background(), tc.nameArg)
