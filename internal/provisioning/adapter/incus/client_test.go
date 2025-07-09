@@ -181,7 +181,7 @@ func TestClient(t *testing.T) {
 								responseBody: []byte(`{
   "metadata": {
     "config": {
-      "recovery_keys": [ "very secret recovery key" ]
+      "encryption_recovery_keys": [ "very secret recovery key" ]
     }
   }
 }`),
@@ -202,11 +202,11 @@ func TestClient(t *testing.T) {
 									},
 								},
 							},
-							Encryption: incusosapi.SystemEncryption{
+							Security: incusosapi.SystemSecurity{
 								Config: struct {
-									RecoveryKeys []string `json:"recovery_keys" yaml:"recovery_keys"`
+									EncryptionRecoveryKeys []string `json:"encryption_recovery_keys" yaml:"encryption_recovery_keys"`
 								}{
-									RecoveryKeys: []string{"very secret recovery key"},
+									EncryptionRecoveryKeys: []string{"very secret recovery key"},
 								},
 							},
 						}
@@ -280,7 +280,7 @@ func TestClient(t *testing.T) {
 					assertResult: noResult,
 				},
 				{
-					name: "error - encryption data unexpected http status code",
+					name: "error - security data unexpected http status code",
 					response: []queue.Item[response]{
 						// GET /os/1.0/system/network
 						{
@@ -295,7 +295,7 @@ func TestClient(t *testing.T) {
 					assertResult: noResult,
 				},
 				{
-					name: "error - encryption data invalid JSON",
+					name: "error - security data invalid JSON",
 					response: []queue.Item[response]{
 						// GET /os/1.0/system/network
 						{
