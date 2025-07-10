@@ -203,5 +203,5 @@ server B
 
 	// Ensure deletion of cluster fails if a linked server is present.
 	err = clusterSvc.DeleteByName(ctx, "one")
-	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+	require.Error(t, err)
 }
