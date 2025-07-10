@@ -97,18 +97,18 @@ func (c client) GetOSData(ctx context.Context, server provisioning.Server) (api.
 
 	resp, _, err = client.RawQuery(http.MethodGet, "/os/1.0/system/security", http.NoBody, "")
 	if err != nil {
-		return api.OSData{}, fmt.Errorf("Get OS encryption data from %q failed: %w", server.ConnectionURL, err)
+		return api.OSData{}, fmt.Errorf("Get OS security data from %q failed: %w", server.ConnectionURL, err)
 	}
 
-	var encryption incusosapi.SystemEncryption
-	err = json.Unmarshal(resp.Metadata, &encryption)
+	var security incusosapi.SystemSecurity
+	err = json.Unmarshal(resp.Metadata, &security)
 	if err != nil {
-		return api.OSData{}, fmt.Errorf("Unexpected response metadata while fetching OS encryption information from %q: %w", server.ConnectionURL, err)
+		return api.OSData{}, fmt.Errorf("Unexpected response metadata while fetching OS security information from %q: %w", server.ConnectionURL, err)
 	}
 
 	return api.OSData{
-		Network:    network,
-		Encryption: encryption,
+		Network:  network,
+		Security: security,
 	}, nil
 }
 

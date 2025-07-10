@@ -339,7 +339,7 @@ func (s serverService) DeleteByName(ctx context.Context, name string) error {
 // This is used in the following ways:
 //   - Periodic connectivity test for all servers in the inventory.
 //   - Periodic connectivity test for all pending servers in the inventory.
-//   - Periodic update of server configuration data (network, encryption, resources)
+//   - Periodic update of server configuration data (network, security, resources)
 func (s serverService) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error {
 	servers, err := s.repo.GetAllWithFilter(ctx, ServerFilter{
 		Status: ptr.To(serverStatus),
