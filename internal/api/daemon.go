@@ -168,54 +168,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 	)
 
 	// Setup Services
-	tokenSvc := provisioningServiceMiddleware.NewTokenServiceWithSlog(
-		provisioning.NewTokenService(
-			provisioningRepoMiddleware.NewTokenRepoWithSlog(
-				provisioningSqlite.NewToken(dbWithTransaction),
-				slog.Default(),
-			),
-		),
-		slog.Default(),
-	)
-
-	serverSvc := provisioningServiceMiddleware.NewServerServiceWithSlog(
-		provisioning.NewServerService(
-			provisioningRepoMiddleware.NewServerRepoWithSlog(
-				provisioningSqlite.NewServer(dbWithTransaction),
-				slog.Default(),
-			),
-			provisioningAdapterMiddleware.NewServerClientPortWithSlog(
-				provisioningIncusAdapter.New(
-					d.clientCertificate,
-					d.clientKey,
-				),
-				slog.Default(),
-			),
-			tokenSvc,
-		),
-		slog.Default(),
-	)
-
-	clusterSvc := provisioning.NewClusterService(
-		provisioningRepoMiddleware.NewClusterRepoWithSlog(
-			provisioningSqlite.NewCluster(dbWithTransaction),
-			slog.Default(),
-		),
-		provisioningAdapterMiddleware.NewClusterClientPortWithSlog(
-			provisioningIncusAdapter.New(
-				d.clientCertificate,
-				d.clientKey,
-			),
-			slog.Default(),
-		),
-		serverSvc,
-		nil,
-	)
-	clusterSvcWrapped := provisioningServiceMiddleware.NewClusterServiceWithSlog(
-		clusterSvc,
-		slog.Default(),
-	)
-
 	verifier := signature.NewVerifier([]byte(d.config.UpdateSignatureVerificationRootCA))
 
 	repoUpdateFiles, err := localfs.New(
@@ -267,6 +219,56 @@ func (d *Daemon) Start(ctx context.Context) error {
 			),
 			updateServiceOptions...,
 		),
+		slog.Default(),
+	)
+
+	tokenSvc := provisioningServiceMiddleware.NewTokenServiceWithSlog(
+		provisioning.NewTokenService(
+			provisioningRepoMiddleware.NewTokenRepoWithSlog(
+				provisioningSqlite.NewToken(dbWithTransaction),
+				slog.Default(),
+			),
+			updateSvc,
+			fmt.Sprintf("https://%s:%d", serverAddress, d.config.RestServerPort),
+		),
+		slog.Default(),
+	)
+
+	serverSvc := provisioningServiceMiddleware.NewServerServiceWithSlog(
+		provisioning.NewServerService(
+			provisioningRepoMiddleware.NewServerRepoWithSlog(
+				provisioningSqlite.NewServer(dbWithTransaction),
+				slog.Default(),
+			),
+			provisioningAdapterMiddleware.NewServerClientPortWithSlog(
+				provisioningIncusAdapter.New(
+					d.clientCertificate,
+					d.clientKey,
+				),
+				slog.Default(),
+			),
+			tokenSvc,
+		),
+		slog.Default(),
+	)
+
+	clusterSvc := provisioning.NewClusterService(
+		provisioningRepoMiddleware.NewClusterRepoWithSlog(
+			provisioningSqlite.NewCluster(dbWithTransaction),
+			slog.Default(),
+		),
+		provisioningAdapterMiddleware.NewClusterClientPortWithSlog(
+			provisioningIncusAdapter.New(
+				d.clientCertificate,
+				d.clientKey,
+			),
+			slog.Default(),
+		),
+		serverSvc,
+		nil,
+	)
+	clusterSvcWrapped := provisioningServiceMiddleware.NewClusterServiceWithSlog(
+		clusterSvc,
 		slog.Default(),
 	)
 
