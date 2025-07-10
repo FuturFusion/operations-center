@@ -2,6 +2,7 @@ package provisioning
 
 import (
 	"context"
+	"io"
 
 	"github.com/google/uuid"
 )
@@ -14,6 +15,7 @@ type TokenService interface {
 	Update(ctx context.Context, token Token) error
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	Consume(ctx context.Context, id uuid.UUID) error
+	GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig TokenSeedConfig) (_ io.ReadCloser, _ int, err error)
 }
 
 type TokenRepo interface {

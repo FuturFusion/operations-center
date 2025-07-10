@@ -83,7 +83,7 @@ func TestTokenService_Create(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo,
+			tokenSvc := provisioning.NewTokenService(repo, nil, "server01:7443",
 				provisioning.WithRandomUUID(func() (uuid.UUID, error) { return tc.randomUUIDValue, tc.randomUUIDErr }),
 			)
 
@@ -143,7 +143,7 @@ func TestTokenService_GetAll(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo, nil, "server01:7443")
 
 			// Run test
 			tokens, err := tokenSvc.GetAll(context.Background())
@@ -192,7 +192,7 @@ func TestTokenService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo, nil, "server01:7443")
 
 			// Run test
 			tokenIDs, err := tokenSvc.GetAllUUIDs(context.Background())
@@ -243,7 +243,7 @@ func TestTokenService_GetByID(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo, nil, "server01:7443")
 
 			// Run test
 			token, err := tokenSvc.GetByUUID(context.Background(), tc.idArg)
@@ -311,7 +311,7 @@ func TestTokenService_Update(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo, nil, "server01:7443")
 
 			// Run test
 			err := tokenSvc.Update(context.Background(), tc.token)
@@ -354,7 +354,7 @@ func TestTokenService_DeleteByUUID(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo, nil, "server01:7443")
 
 			// Run test
 			err := tokenSvc.DeleteByUUID(context.Background(), tc.idArg)
@@ -462,7 +462,7 @@ func TestTokenService_Consume(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo, nil, "server01:7443")
 
 			// Run test
 			err := tokenSvc.Consume(context.Background(), tc.tokenArg)
@@ -471,4 +471,8 @@ func TestTokenService_Consume(t *testing.T) {
 			tc.assertErr(t, err)
 		})
 	}
+}
+
+func TestTokenService_GetPreSeedISO(t *testing.T) {
+	// t.Fatal("not implemented")
 }
