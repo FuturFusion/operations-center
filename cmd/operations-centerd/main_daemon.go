@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"os/signal"
 	"time"
@@ -66,9 +67,16 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Create run directory %q: %v", c.env.RunDir(), err)
 	}
 
+	operationsCenterAddress := fmt.Sprintf("https://%s:%d", c.flagServerAddr, c.flagServerPort)
+	_, err = url.Parse(operationsCenterAddress)
+	if err != nil {
+		operationsCenterAddress = ""
+	}
+
 	cfg := &config.Config{
-		RestServerPort: c.flagServerPort,
-		RestServerAddr: c.flagServerAddr,
+		OperationsCenterAddress: operationsCenterAddress,
+		RestServerPort:          c.flagServerPort,
+		RestServerAddr:          c.flagServerAddr,
 
 		ClientCertificateFilename: "client.crt",
 		ClientKeyFilename:         "client.key",
