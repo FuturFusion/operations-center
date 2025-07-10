@@ -32,14 +32,20 @@ test:
 	$(GO) test ./... -v -cover
 
 .PHONY: static-analysis
-static-analysis:
+static-analysis: license-check lint
+
+.PHONY: license-check
+license-check:
 ifeq ($(shell command -v go-licenses),)
 	(cd / ; $(GO) install -v -x github.com/google/go-licenses@latest)
 endif
+	go-licenses check --disallowed_types=forbidden,unknown,restricted --ignore libguestfs.org/libnbd --ignore github.com/rootless-containers/proto/go-proto ./...
+
+.PHONY: lint
+lint:
 ifeq ($(shell command -v golangci-lint),)
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$($(GO) env GOPATH)/bin
 endif
-	go-licenses check --disallowed_types=forbidden,unknown,restricted --ignore libguestfs.org/libnbd --ignore github.com/rootless-containers/proto/go-proto ./...
 	golangci-lint run ./...
 	run-parts $(shell run-parts -V >/dev/null 2>&1 && echo -n "--verbose --exit-on-error --regex '\.sh$$'") scripts/lint
 
