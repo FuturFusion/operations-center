@@ -77,7 +77,7 @@ server B
 		GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
 			return api.OSData{}, nil
 		},
-		InitializeDefaultNetworkingFunc: func(ctx context.Context, servers []provisioning.Server, primaryNic string) error {
+		InitializeDefaultNetworkingFunc: func(ctx context.Context, servers []provisioning.Server) error {
 			return nil
 		},
 	}

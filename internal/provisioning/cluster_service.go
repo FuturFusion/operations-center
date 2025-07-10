@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"slices"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -289,33 +288,23 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		return newCluster, err
 	}
 
-	// Initialize default networking.
-	osData, err := s.client.GetOSData(ctx, cluster)
-	if err != nil {
-		return newCluster, err
+	// Refresh OS Data.
+	for i, server := range servers {
+		osData, err := s.client.GetOSData(ctx, server)
+		if err != nil {
+			return newCluster, err
+		}
+
+		servers[i].OSData = osData
 	}
 
-	err = s.client.InitializeDefaultNetworking(ctx, servers, detectClusteringInterface(osData.Network))
+	// Initialize default networking.
+	err = s.client.InitializeDefaultNetworking(ctx, servers)
 	if err != nil {
 		return newCluster, err
 	}
 
 	return newCluster, nil
-}
-
-// detectClusteringInterface returns the first interface that has the role
-// "clustering" and at least one IP address assigned.
-func detectClusteringInterface(network api.ServerSystemNetwork) string {
-	for name, iface := range network.State.Interfaces {
-		// TODO: use constant from incus-osd/api instead of string "clustering".
-		if slices.Contains(iface.Roles, "clustering") && len(iface.Addresses) > 0 {
-			return name
-		}
-	}
-
-	// TODO: Once incus-osd ensures the correct setting of the interface roles,
-	// the can be set to empty string.
-	return "enp5s0"
 }
 
 func (s clusterService) GetAll(ctx context.Context) (Clusters, error) {
