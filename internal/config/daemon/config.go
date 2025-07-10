@@ -12,8 +12,9 @@ import (
 )
 
 type Config struct {
-	RestServerAddr string `yaml:"-"`
-	RestServerPort int    `yaml:"-"`
+	PrimaryInterfaceRegex string `yaml:"-"`
+	RestServerAddr        string `yaml:"-"`
+	RestServerPort        int    `yaml:"-"`
 
 	ClientCertificateFilename string `yaml:"-"`
 	ClientKeyFilename         string `yaml:"-"`

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 )
 
 // Token defines a registration token for use during registration.
@@ -32,4 +33,15 @@ type TokenPut struct {
 	// Description of this token.
 	// Example: "Test Environment"
 	Description string `json:"description" yaml:"description"`
+}
+
+// TokenISOPost defines the configuration to generate a pre-seeded ISO for a given Token.
+//
+// swagger:model
+type TokenISOPost struct {
+	// List of applications to include.
+	Applications []string `json:"applications" yaml:"applications"`
+
+	// Network configuration to be included in the pre-seeded ISO.
+	Network incusosapi.SystemNetworkConfig `json:"network" yaml:"network"`
 }
