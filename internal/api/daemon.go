@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -161,54 +162,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 	)
 
 	// Setup Services
-	tokenSvc := provisioningServiceMiddleware.NewTokenServiceWithSlog(
-		provisioning.NewTokenService(
-			provisioningRepoMiddleware.NewTokenRepoWithSlog(
-				provisioningSqlite.NewToken(dbWithTransaction),
-				slog.Default(),
-			),
-		),
-		slog.Default(),
-	)
-
-	serverSvc := provisioningServiceMiddleware.NewServerServiceWithSlog(
-		provisioning.NewServerService(
-			provisioningRepoMiddleware.NewServerRepoWithSlog(
-				provisioningSqlite.NewServer(dbWithTransaction),
-				slog.Default(),
-			),
-			provisioningAdapterMiddleware.NewServerClientPortWithSlog(
-				provisioningIncusAdapter.New(
-					d.clientCertificate,
-					d.clientKey,
-				),
-				slog.Default(),
-			),
-			tokenSvc,
-		),
-		slog.Default(),
-	)
-
-	clusterSvc := provisioning.NewClusterService(
-		provisioningRepoMiddleware.NewClusterRepoWithSlog(
-			provisioningSqlite.NewCluster(dbWithTransaction),
-			slog.Default(),
-		),
-		provisioningAdapterMiddleware.NewClusterClientPortWithSlog(
-			provisioningIncusAdapter.New(
-				d.clientCertificate,
-				d.clientKey,
-			),
-			slog.Default(),
-		),
-		serverSvc,
-		nil,
-	)
-	clusterSvcWrapped := provisioningServiceMiddleware.NewClusterServiceWithSlog(
-		clusterSvc,
-		slog.Default(),
-	)
-
 	verifier := signature.NewVerifier([]byte(d.config.UpdateSignatureVerificationRootCA))
 
 	repoUpdateFiles, err := localfs.New(
@@ -260,6 +213,71 @@ func (d *Daemon) Start(ctx context.Context) error {
 			),
 			updateServiceOptions...,
 		),
+		slog.Default(),
+	)
+
+	var ifaceNameRe *regexp.Regexp
+	if d.config.PrimaryInterfaceRegex != "" {
+		ifaceNameRe, err = regexp.Compile(d.config.PrimaryInterfaceRegex)
+		if err != nil {
+			return fmt.Errorf("Failed to compile primary interface regex: %w", err)
+		}
+	}
+
+	serverAddress, err := primaryServerAddress(d.config.RestServerAddr, ifaceNameRe)
+	if err != nil {
+		return fmt.Errorf("Failed to determine server address: %w", err)
+	}
+
+	slog.DebugContext(ctx, "Server address used in pre-seed", slog.String("address", serverAddress), slog.Int("port", d.config.RestServerPort))
+
+	tokenSvc := provisioningServiceMiddleware.NewTokenServiceWithSlog(
+		provisioning.NewTokenService(
+			provisioningRepoMiddleware.NewTokenRepoWithSlog(
+				provisioningSqlite.NewToken(dbWithTransaction),
+				slog.Default(),
+			),
+			updateSvc,
+			fmt.Sprintf("https://%s:%d", serverAddress, d.config.RestServerPort),
+		),
+		slog.Default(),
+	)
+
+	serverSvc := provisioningServiceMiddleware.NewServerServiceWithSlog(
+		provisioning.NewServerService(
+			provisioningRepoMiddleware.NewServerRepoWithSlog(
+				provisioningSqlite.NewServer(dbWithTransaction),
+				slog.Default(),
+			),
+			provisioningAdapterMiddleware.NewServerClientPortWithSlog(
+				provisioningIncusAdapter.New(
+					d.clientCertificate,
+					d.clientKey,
+				),
+				slog.Default(),
+			),
+			tokenSvc,
+		),
+		slog.Default(),
+	)
+
+	clusterSvc := provisioning.NewClusterService(
+		provisioningRepoMiddleware.NewClusterRepoWithSlog(
+			provisioningSqlite.NewCluster(dbWithTransaction),
+			slog.Default(),
+		),
+		provisioningAdapterMiddleware.NewClusterClientPortWithSlog(
+			provisioningIncusAdapter.New(
+				d.clientCertificate,
+				d.clientKey,
+			),
+			slog.Default(),
+		),
+		serverSvc,
+		nil,
+	)
+	clusterSvcWrapped := provisioningServiceMiddleware.NewClusterServiceWithSlog(
+		clusterSvc,
 		slog.Default(),
 	)
 
@@ -516,4 +534,80 @@ func deadlineFrom(ctx context.Context, defaultDeadline time.Duration) time.Durat
 	}
 
 	return defaultDeadline
+}
+
+func primaryServerAddress(restServerAddr string, ifaceNameRe *regexp.Regexp) (string, error) {
+	if restServerAddr != "" {
+		return restServerAddr, nil
+	}
+
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return "", fmt.Errorf("Failed to list network interfaces")
+	}
+
+	for _, iface := range ifaces {
+		// Skip interface, which are down or not running.
+		if iface.Flags&net.FlagUp != net.FlagUp || iface.Flags&net.FlagRunning != net.FlagRunning {
+			continue
+		}
+
+		// Skip loopback interface.
+		if iface.Flags&net.FlagLoopback == net.FlagLoopback {
+			continue
+		}
+
+		if ifaceNameRe != nil && !ifaceNameRe.MatchString(iface.Name) {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+
+		var ipAddressCandidates []net.IP
+		for _, addr := range addrs {
+			var ipAddr net.IP
+			switch ip := addr.(type) {
+			case *net.IPNet:
+				ipAddr = ip.IP
+			case *net.IPAddr:
+				ipAddr = ip.IP
+			default:
+				continue
+			}
+
+			// Skip loopback address.
+			if ipAddr.IsLoopback() {
+				continue
+			}
+
+			// Skip link local addresses.
+			if ipAddr.IsLinkLocalUnicast() || ipAddr.IsLinkLocalMulticast() {
+				continue
+			}
+
+			ipAddressCandidates = append(ipAddressCandidates, ipAddr)
+		}
+
+		if len(ipAddressCandidates) == 0 {
+			continue
+		}
+
+		if len(ipAddressCandidates) == 1 {
+			return ipAddressCandidates[0].String(), nil
+		}
+
+		// Prefer IPv6 over IPv4.
+		for _, ipAddr := range ipAddressCandidates {
+			if ipAddr.To4() == nil {
+				return ipAddr.String(), nil
+			}
+		}
+
+		return ipAddressCandidates[0].String(), nil
+	}
+
+	return "", fmt.Errorf("Failed to determine a suitable server address")
 }

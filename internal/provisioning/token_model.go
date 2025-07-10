@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
@@ -34,3 +35,8 @@ func (t Token) Validate() error {
 }
 
 type Tokens []Token
+
+type TokenSeedConfig struct {
+	Applications []string
+	Network      incusosapi.SystemNetworkConfig
+}
