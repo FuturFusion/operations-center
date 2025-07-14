@@ -124,7 +124,7 @@ func (_d TokenServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID
 }
 
 // GetPreSeedISO implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (readCloser io.ReadCloser, n int, err error) {
+func (_d TokenServiceWithPrometheus) GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (readCloser io.ReadCloser, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
