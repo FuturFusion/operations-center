@@ -24,6 +24,7 @@ import (
 	authnunixsocket "github.com/FuturFusion/operations-center/internal/authn/unixsocket"
 	"github.com/FuturFusion/operations-center/internal/authz"
 	authzchain "github.com/FuturFusion/operations-center/internal/authz/chain"
+	oidcAuthorizer "github.com/FuturFusion/operations-center/internal/authz/oidc"
 	authzopenfga "github.com/FuturFusion/operations-center/internal/authz/openfga"
 	authztlz "github.com/FuturFusion/operations-center/internal/authz/tls"
 	"github.com/FuturFusion/operations-center/internal/authz/unixsocket"
@@ -148,6 +149,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 		authorizers = append(authorizers, openfgaAuthorizer)
 		d.shutdownFuncs = append(d.shutdownFuncs, openfgaAuthorizer.Shutdown)
+	}
+
+	// If OIDC is configured and OpenFGA is explicitly not configured, grant
+	// unrestricted access to all authenticated OIDC users.
+	if d.config.OidcIssuer != "" && d.config.OidcClientID != "" && d.config.OpenfgaAPIURL == "" && d.config.OpenfgaAPIToken == "" && d.config.OpenfgaStoreID == "" {
+		authorizers = append(authorizers, oidcAuthorizer.New())
 	}
 
 	authorizer := authzchain.New(authorizers...)

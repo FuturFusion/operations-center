@@ -11,6 +11,8 @@ import (
 // UnixSocket represents an unix socket authorizer.
 type UnixSocket struct{}
 
+var _ authz.Authorizer = UnixSocket{}
+
 func New() UnixSocket {
 	return UnixSocket{}
 }
