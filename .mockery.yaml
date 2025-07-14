@@ -5,7 +5,7 @@ template: matryer
 require-template-schema-exists: false
 force-file-write: true
 include-auto-generated: true
-include-interface-regex: "(.+Repo|.+Port|.*ServerClient|ClusterService|ServerService|TokenService|InventorySyncer)"
+include-interface-regex: "(.+Repo|.+Port|.*ServerClient|ClusterService|ServerService|TokenService|UpdateService|InventorySyncer)"
 dir: >-
   {{- $targetDir := "mock" -}}
   {{- if and (.InterfaceName | hasSuffix "ServerClient") -}}
