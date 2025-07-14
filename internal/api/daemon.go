@@ -36,6 +36,7 @@ import (
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/flasher"
 	provisioningIncusAdapter "github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
 	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
@@ -229,7 +230,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 				slog.Default(),
 			),
 			updateSvc,
-			fmt.Sprintf("https://%s:%d", serverAddress, d.config.RestServerPort),
+			flasher.New(fmt.Sprintf("https://%s:%d", d.config.OperationsCenterAddress, d.config.RestServerPort)),
 		),
 		slog.Default(),
 	)
