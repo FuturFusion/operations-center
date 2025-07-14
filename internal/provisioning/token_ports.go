@@ -15,7 +15,7 @@ type TokenService interface {
 	Update(ctx context.Context, token Token) error
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	Consume(ctx context.Context, id uuid.UUID) error
-	GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig TokenSeedConfig) (_ io.ReadCloser, _ int, err error)
+	GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig TokenSeedConfig) (_ io.ReadCloser, _ error)
 }
 
 type TokenRepo interface {
@@ -25,4 +25,8 @@ type TokenRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Token, error)
 	Update(ctx context.Context, token Token) error
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
+}
+
+type FlasherPort interface {
+	GenerateSeededISO(ctx context.Context, id uuid.UUID, seedConfig TokenSeedConfig, rc io.ReadCloser) (_ io.ReadCloser, _ error)
 }

@@ -419,7 +419,7 @@ func (t *tokenHandler) tokenISOPost(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	rc, fileSize, err := t.service.GetPreSeedISO(r.Context(), UUID, provisioning.TokenSeedConfig{
+	rc, err := t.service.GetPreSeedISO(r.Context(), UUID, provisioning.TokenSeedConfig{
 		Applications: tokenISOPost.Applications,
 		Network:      tokenISOPost.Network,
 	})
@@ -427,5 +427,5 @@ func (t *tokenHandler) tokenISOPost(r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	return response.ReadCloserResponse(r, rc, fmt.Sprintf("pre-seed-%s.iso", UUID.String()), fileSize, nil)
+	return response.ReadCloserResponse(r, rc, true, fmt.Sprintf("pre-seed-%s.iso", UUID.String()), -1, nil)
 }
