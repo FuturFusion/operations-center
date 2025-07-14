@@ -41,7 +41,7 @@ var _ provisioning.TokenService = &TokenServiceMock{}
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
 //				panic("mock out the GetByUUID method")
 //			},
-//			GetPreSeedISOFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (io.ReadCloser, int, error) {
+//			GetPreSeedISOFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (io.ReadCloser, error) {
 //				panic("mock out the GetPreSeedISO method")
 //			},
 //			UpdateFunc: func(ctx context.Context, token provisioning.Token) error {
@@ -73,7 +73,7 @@ type TokenServiceMock struct {
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error)
 
 	// GetPreSeedISOFunc mocks the GetPreSeedISO method.
-	GetPreSeedISOFunc func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (io.ReadCloser, int, error)
+	GetPreSeedISOFunc func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (io.ReadCloser, error)
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, token provisioning.Token) error
@@ -354,7 +354,7 @@ func (mock *TokenServiceMock) GetByUUIDCalls() []struct {
 }
 
 // GetPreSeedISO calls GetPreSeedISOFunc.
-func (mock *TokenServiceMock) GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (io.ReadCloser, int, error) {
+func (mock *TokenServiceMock) GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (io.ReadCloser, error) {
 	if mock.GetPreSeedISOFunc == nil {
 		panic("TokenServiceMock.GetPreSeedISOFunc: method is nil but TokenService.GetPreSeedISO was just called")
 	}

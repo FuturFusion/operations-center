@@ -250,7 +250,7 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 }
 
 // GetPreSeedISO implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (readCloser io.ReadCloser, n int, err error) {
+func (_d TokenServiceWithSlog) GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (readCloser io.ReadCloser, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -265,7 +265,6 @@ func (_d TokenServiceWithSlog) GetPreSeedISO(ctx context.Context, id uuid.UUID, 
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
 				slog.Any("readCloser", readCloser),
-				slog.Int("n", n),
 				slog.Any("err", err),
 			)
 		} else {
