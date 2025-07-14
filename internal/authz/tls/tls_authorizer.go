@@ -14,6 +14,8 @@ type TLS struct {
 	certificateFingerprints []string
 }
 
+var _ authz.Authorizer = TLS{}
+
 func New(ctx context.Context, certificateFingerprints []string) TLS {
 	return TLS{
 		certificateFingerprints: certificateFingerprints,

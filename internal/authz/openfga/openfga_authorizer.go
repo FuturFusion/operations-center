@@ -22,6 +22,8 @@ type FGA struct {
 	client *client.OpenFgaClient
 }
 
+var _ authz.Authorizer = FGA{}
+
 func New(ctx context.Context, apiURL string, apiToken string, storeID string) (*FGA, error) {
 	var err error
 	f := &FGA{}
