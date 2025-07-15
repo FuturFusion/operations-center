@@ -161,7 +161,6 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		serverAddressURL, _ := url.Parse(server.ConnectionURL)
 
 		err = s.client.SetServerConfig(ctx, server, map[string]string{
-			"core.https_address":    serverAddressURL.Host, // TODO: Remove once https://github.com/lxc/incus/pull/2218 is available in incus-os.
 			"cluster.https_address": serverAddressURL.Host,
 		})
 		if err != nil {
@@ -224,17 +223,6 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	for i := range servers {
 		servers[i].Cluster = &newCluster.Name
 		servers[i].ClusterCertificate = &clusterCertificate
-	}
-
-	// TODO: Remove once https://github.com/lxc/incus/pull/2218 is available in incus-os.
-	// Reset core.https_address to :8443
-	for _, server := range servers {
-		err = s.client.SetServerConfig(ctx, server, map[string]string{
-			"core.https_address": ":8443",
-		})
-		if err != nil {
-			return newCluster, fmt.Errorf("Failed to reset core.https_address on %q: %w", server.Name, err)
-		}
 	}
 
 	// 2nd DB transaction.
