@@ -26,7 +26,7 @@ const TokenOverview = () => {
   return (
     <div className="container">
       <div className="row">
-        <div className="col-2 detail-table-header">UUID</div>
+        <div className="col-2 detail-table-header">Token</div>
         <div className="col-10 detail-table-cell">{token?.uuid}</div>
       </div>
       <div className="row">
