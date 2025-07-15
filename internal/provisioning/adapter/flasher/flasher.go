@@ -41,44 +41,39 @@ func (f flasher) GenerateSeededISO(ctx context.Context, id uuid.UUID, seedConfig
 	}
 
 	// Create seed tarball.
+	var target *seed.InstallTarget
+	if seedConfig.InstallTarget.ID != "" {
+		target = &seedConfig.InstallTarget
+	}
+
 	tarball, err := createSeedTarball(
 		&seed.Applications{
 			Applications: applications,
-			Version:      "",
+			Version:      "1",
 		},
 		&seed.Incus{
-			// ApplyDefaults: true,
-			// Preseed: &incusapi.InitPreseed{
-			// 	Server: incusapi.InitLocalPreseed{
-			// 		ServerPut: incusapi.ServerPut{
-			// 			Config: map[string]string{},
-			// 		},
-			// 		Certificates: []incusapi.CertificatesPost{},
-			// 	},
-			// },
-			Version: "",
+			ApplyDefaults: false,
+			Version:       "1",
 		},
 		&seed.Install{
 			ForceInstall: true,
-			ForceReboot:  true,
-			// Target: &InstallSeedTarget{
-			// 	ID: "",
-			// },
-			Version: "",
+			ForceReboot:  false,
+			Target:       target,
+			Version:      "1",
 		},
 		&seed.Network{
 			SystemNetworkConfig: seedConfig.Network,
-			Version:             "",
+			Version:             "1",
 		},
 		&seed.Provider{
 			SystemProviderConfig: incusosapi.SystemProviderConfig{
-				Name: "images",
+				Name: "operations-center",
 				Config: map[string]string{
 					"server_url":   f.serverURL,
 					"server_token": id.String(),
 				},
 			},
-			Version: "",
+			Version: "1",
 		},
 	)
 	if err != nil {
