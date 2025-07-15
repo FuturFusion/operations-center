@@ -25,7 +25,7 @@ const Token = () => {
     return <div>Error while loading tokens: {error.message}</div>;
   }
 
-  const headers = ["UUID", "Description", "Expiry", "Remaining uses"];
+  const headers = ["Token", "Description", "Expiry", "Remaining uses"];
   const rows = tokens.map((item) => {
     return [
       {

@@ -21,19 +21,18 @@ const StorageBucket = () => {
   }
 
   const headers = [
-    "UUID",
+    "Name",
     "Cluster",
     "Server",
     "Project name",
     "Parent name",
-    "Name",
     "Last updated",
   ];
   const rows = buckets.map((item) => {
     return [
       {
-        content: item.uuid,
-        sortKey: item.uuid,
+        content: item.name,
+        sortKey: item.name,
       },
       {
         content: item.cluster,
@@ -50,10 +49,6 @@ const StorageBucket = () => {
       {
         content: item.parent_name,
         sortKey: item.parent_name,
-      },
-      {
-        content: item.name,
-        sortKey: item.name,
       },
       {
         content: item.last_updated,

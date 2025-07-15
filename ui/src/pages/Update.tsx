@@ -22,14 +22,7 @@ const Update = () => {
     return <div>Error while loading updates: {error.message}</div>;
   }
 
-  const headers = [
-    "UUID",
-    "Version",
-    "Published at",
-    "Severity",
-    "Origin",
-    "Channel",
-  ];
+  const headers = ["Version", "Published at", "Severity", "Origin", "Channel"];
   const rows = updates.map((item) => {
     return [
       {
@@ -38,13 +31,9 @@ const Update = () => {
             to={`/ui/provisioning/updates/${item.uuid}`}
             className="data-table-link"
           >
-            {item.uuid}
+            {item.version}
           </Link>
         ),
-        sortKey: item.uuid,
-      },
-      {
-        content: item.version,
         sortKey: item.version,
       },
       {
