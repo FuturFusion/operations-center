@@ -223,6 +223,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.Default(),
 	)
 
+	serverCertificate, err := os.ReadFile(filepath.Join(d.env.VarDir(), "server.crt"))
+	if err != nil {
+		return fmt.Errorf("Failed to read server certificate from %q: %w", filepath.Join(d.env.VarDir(), "server.crt"), err)
+	}
+
 	tokenSvc := provisioningServiceMiddleware.NewTokenServiceWithSlog(
 		provisioning.NewTokenService(
 			provisioningRepoMiddleware.NewTokenRepoWithSlog(
@@ -230,7 +235,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 				slog.Default(),
 			),
 			updateSvc,
-			flasher.New(fmt.Sprintf("https://%s:%d", d.config.OperationsCenterAddress, d.config.RestServerPort)),
+			flasher.New(
+				fmt.Sprintf("https://%s:%d", d.config.OperationsCenterAddress, d.config.RestServerPort),
+				string(serverCertificate),
+			),
 		),
 		slog.Default(),
 	)
