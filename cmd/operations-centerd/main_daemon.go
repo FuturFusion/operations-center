@@ -6,8 +6,11 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"time"
 
+	incustls "github.com/lxc/incus/v6/shared/tls"
+	"github.com/lxc/incus/v6/shared/util"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
 
@@ -92,6 +95,17 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		unix.SIGTERM,
 	)
 	defer stop()
+
+	// Generate client certificate if none are found.
+	clientCertFilename := filepath.Join(c.env.VarDir(), cfg.ClientCertificateFilename)
+	clientKeyFilename := filepath.Join(c.env.VarDir(), cfg.ClientKeyFilename)
+	if !util.PathExists(clientCertFilename) || !util.PathExists(clientKeyFilename) {
+		slog.InfoContext(cmd.Context(), "No client certificate found, generate client.crt and client.key")
+		err := incustls.FindOrGenCert(clientCertFilename, clientKeyFilename, true, false)
+		if err != nil {
+			return fmt.Errorf("Failed to generate client certificate: %w", err)
+		}
+	}
 
 	d := api.NewDaemon(cmd.Context(), c.env, cfg)
 
