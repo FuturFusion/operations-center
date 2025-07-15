@@ -21,14 +21,16 @@ import (
 const seedTarballStartPosition = 2148532224
 
 type flasher struct {
-	serverURL string
+	serverURL         string
+	serverCertificate string
 }
 
 var _ provisioning.FlasherPort = flasher{}
 
-func New(serverURL string) provisioning.FlasherPort {
+func New(serverURL string, serverCertificate string) provisioning.FlasherPort {
 	return flasher{
-		serverURL: serverURL,
+		serverURL:         serverURL,
+		serverCertificate: serverCertificate, // TODO: return as part of the seed, does require https://github.com/lxc/incus-os/issues/208.
 	}
 }
 

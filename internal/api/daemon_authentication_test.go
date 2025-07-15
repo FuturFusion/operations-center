@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -42,6 +43,12 @@ var users = []string{
 func TestAuthentication(t *testing.T) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
+
+	// Add dummy server.crt.
+	f, err := os.Create(filepath.Join(tmpDir, "server.crt"))
+	require.NoError(t, err)
+	err = f.Close()
+	require.NoError(t, err)
 
 	// Setup client certificate
 	certPEM, keyPEM, err := incustls.GenerateMemCert(true, false)

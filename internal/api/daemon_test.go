@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -18,6 +19,12 @@ import (
 
 func TestStartAndStop(t *testing.T) {
 	tmpDir := t.TempDir()
+
+	// Add dummy server.crt.
+	f, err := os.Create(filepath.Join(tmpDir, "server.crt"))
+	require.NoError(t, err)
+	err = f.Close()
+	require.NoError(t, err)
 
 	// Block port 17444
 	go func() {
