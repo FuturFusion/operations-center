@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -81,18 +80,7 @@ func TestClusterService_Create(t *testing.T) {
 				{}, // Server 2
 			},
 			clientEnableClusterCertificate: "certificate",
-			clientGetOSData: api.OSData{
-				Network: incusosapi.SystemNetwork{
-					Config: &incusosapi.SystemNetworkConfig{
-						Interfaces: []incusosapi.SystemNetworkInterface{
-							{
-								Name:  "eth0",
-								Roles: []string{"primary"},
-							},
-						},
-					},
-				},
-			},
+			clientGetOSData:                api.OSData{},
 
 			assertErr: require.NoError,
 		},
@@ -697,19 +685,8 @@ func TestClusterService_Create(t *testing.T) {
 				{}, // Server 1
 				{}, // Server 2
 			},
-			clientEnableClusterCertificate: "certificate",
-			clientGetOSData: api.OSData{
-				Network: incusosapi.SystemNetwork{
-					Config: &incusosapi.SystemNetworkConfig{
-						Interfaces: []incusosapi.SystemNetworkInterface{
-							{
-								Name:  "eth0",
-								Roles: []string{"primary"},
-							},
-						},
-					},
-				},
-			},
+			clientEnableClusterCertificate:       "certificate",
+			clientGetOSData:                      api.OSData{},
 			clientInitializeDefaultNetworkingErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -763,7 +740,7 @@ func TestClusterService_Create(t *testing.T) {
 				GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
 					return tc.clientGetOSData, tc.clientGetOSDataErr
 				},
-				InitializeDefaultNetworkingFunc: func(ctx context.Context, servers []provisioning.Server, primaryNic string) error {
+				InitializeDefaultNetworkingFunc: func(ctx context.Context, servers []provisioning.Server) error {
 					return tc.clientInitializeDefaultNetworkingErr
 				},
 			}

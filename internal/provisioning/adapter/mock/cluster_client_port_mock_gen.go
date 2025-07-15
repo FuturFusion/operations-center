@@ -40,7 +40,7 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
 //				panic("mock out the GetOSData method")
 //			},
-//			InitializeDefaultNetworkingFunc: func(ctx context.Context, servers []provisioning.Server, primaryNic string) error {
+//			InitializeDefaultNetworkingFunc: func(ctx context.Context, servers []provisioning.Server) error {
 //				panic("mock out the InitializeDefaultNetworking method")
 //			},
 //			InitializeDefaultStorageFunc: func(ctx context.Context, servers []provisioning.Server) error {
@@ -81,7 +81,7 @@ type ClusterClientPortMock struct {
 	GetOSDataFunc func(ctx context.Context, server provisioning.Server) (api.OSData, error)
 
 	// InitializeDefaultNetworkingFunc mocks the InitializeDefaultNetworking method.
-	InitializeDefaultNetworkingFunc func(ctx context.Context, servers []provisioning.Server, primaryNic string) error
+	InitializeDefaultNetworkingFunc func(ctx context.Context, servers []provisioning.Server) error
 
 	// InitializeDefaultStorageFunc mocks the InitializeDefaultStorage method.
 	InitializeDefaultStorageFunc func(ctx context.Context, servers []provisioning.Server) error
@@ -149,8 +149,6 @@ type ClusterClientPortMock struct {
 			Ctx context.Context
 			// Servers is the servers argument value.
 			Servers []provisioning.Server
-			// PrimaryNic is the primaryNic argument value.
-			PrimaryNic string
 		}
 		// InitializeDefaultStorage holds details about calls to the InitializeDefaultStorage method.
 		InitializeDefaultStorage []struct {
@@ -425,23 +423,21 @@ func (mock *ClusterClientPortMock) GetOSDataCalls() []struct {
 }
 
 // InitializeDefaultNetworking calls InitializeDefaultNetworkingFunc.
-func (mock *ClusterClientPortMock) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server, primaryNic string) error {
+func (mock *ClusterClientPortMock) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server) error {
 	if mock.InitializeDefaultNetworkingFunc == nil {
 		panic("ClusterClientPortMock.InitializeDefaultNetworkingFunc: method is nil but ClusterClientPort.InitializeDefaultNetworking was just called")
 	}
 	callInfo := struct {
-		Ctx        context.Context
-		Servers    []provisioning.Server
-		PrimaryNic string
+		Ctx     context.Context
+		Servers []provisioning.Server
 	}{
-		Ctx:        ctx,
-		Servers:    servers,
-		PrimaryNic: primaryNic,
+		Ctx:     ctx,
+		Servers: servers,
 	}
 	mock.lockInitializeDefaultNetworking.Lock()
 	mock.calls.InitializeDefaultNetworking = append(mock.calls.InitializeDefaultNetworking, callInfo)
 	mock.lockInitializeDefaultNetworking.Unlock()
-	return mock.InitializeDefaultNetworkingFunc(ctx, servers, primaryNic)
+	return mock.InitializeDefaultNetworkingFunc(ctx, servers)
 }
 
 // InitializeDefaultNetworkingCalls gets all the calls that were made to InitializeDefaultNetworking.
@@ -449,14 +445,12 @@ func (mock *ClusterClientPortMock) InitializeDefaultNetworking(ctx context.Conte
 //
 //	len(mockedClusterClientPort.InitializeDefaultNetworkingCalls())
 func (mock *ClusterClientPortMock) InitializeDefaultNetworkingCalls() []struct {
-	Ctx        context.Context
-	Servers    []provisioning.Server
-	PrimaryNic string
+	Ctx     context.Context
+	Servers []provisioning.Server
 } {
 	var calls []struct {
-		Ctx        context.Context
-		Servers    []provisioning.Server
-		PrimaryNic string
+		Ctx     context.Context
+		Servers []provisioning.Server
 	}
 	mock.lockInitializeDefaultNetworking.RLock()
 	calls = mock.calls.InitializeDefaultNetworking

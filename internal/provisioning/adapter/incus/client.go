@@ -3,9 +3,13 @@ package incus
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/rand/v2"
+	"net"
 	"net/http"
 	"net/url"
+	"slices"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incus "github.com/lxc/incus/v6/client"
@@ -362,6 +366,9 @@ func (c client) InitializeDefaultStorage(ctx context.Context, servers []provisio
 	err = client.CreateStoragePool(incusapi.StoragePoolsPost{
 		Name:   "local",
 		Driver: "zfs",
+		StoragePoolPut: incusapi.StoragePoolPut{
+			Description: "Local storage pool (on system drive)",
+		},
 	})
 	if err != nil {
 		return err
@@ -423,10 +430,10 @@ func (c client) InitializeDefaultStorage(ctx context.Context, servers []provisio
 
 // InitializeDefaultNetworking performs the post-clustering initialization for the networking:
 //   - Create local network bridge "incusbr0" on each server.
-//   - Create an "internal" network bridge on each server.
+//   - Create an "meshbr0" network bridge on each server.
 //   - Update the default profile in the default project to use incusbr0 for networking.
-//   - Update the default profile in the internal project to use internal-mesh for networking.
-func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server, primaryNic string) error {
+//   - Update the default profile in the internal project to use meshbr0 for networking.
+func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server) error {
 	// Use the first server of the cluster for communication.
 	client, err := c.getClient(ctx, servers[0])
 	if err != nil {
@@ -471,7 +478,7 @@ func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provi
 		return nil
 	}
 
-	// Create local network bridges "incusbr0" and "internal" on each server.
+	// Create local network bridges "incusbr0" and "meshbr0" on each server.
 	for _, server := range servers {
 		// Create the bridge networks.
 		for _, bridge := range []struct {
@@ -483,7 +490,7 @@ func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provi
 				description: "Local network bridge (NAT)",
 			},
 			{
-				name:        "internal",
+				name:        "meshbr0",
 				description: "Internal mesh network bridge",
 			},
 		} {
@@ -501,7 +508,7 @@ func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provi
 	}
 
 	// Finalize network bridges on the cluster.
-	for _, name := range []string{"incusbr0", "internal"} {
+	for _, name := range []string{"incusbr0", "meshbr0"} {
 		err = client.CreateNetwork(incusapi.NetworksPost{
 			Name: name,
 		})
@@ -510,21 +517,43 @@ func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provi
 		}
 	}
 
-	// Set network config for internal mesh.
-	internalNetwork, internalNetworkETag, err := client.GetNetwork("internal")
+	// Set network config for meshbr0 on each server.
+	clusterIPv6Prefix, err := randomSubnetV6()
 	if err != nil {
 		return err
 	}
 
-	internalNetwork.Config["ipv4.address"] = "none"
-	internalNetwork.Config["ipv6.address"] = "fdff:ffff:dc01::1/64"
-	internalNetwork.Config["tunnel.mesh.id"] = "1000"
-	internalNetwork.Config["tunnel.mesh.interface"] = primaryNic
-	internalNetwork.Config["tunnel.mesh.protocol"] = "vxlan"
-
-	err = client.UpdateNetwork("internal", internalNetwork.Writable(), internalNetworkETag)
+	meshbr0, meshbr0ETag, err := client.GetNetwork("meshbr0")
 	if err != nil {
 		return err
+	}
+
+	meshbr0.Config["ipv4.address"] = "none"
+	// TODO: For now, we pass ::1 for the host part. It is planned to omit the
+	// host part, which would then cause Incus to derive the host part
+	// automatically from the MAC address of the interface (EUI-64).
+	// This functionality is not yet present in Incus.
+	meshbr0.Config["ipv6.address"] = clusterIPv6Prefix.String() + "/64"
+	meshbr0.Config["tunnel.mesh.id"] = "1000"
+	meshbr0.Config["tunnel.mesh.protocol"] = "vxlan"
+
+	err = client.UpdateNetwork("meshbr0", meshbr0.Writable(), meshbr0ETag)
+	if err != nil {
+		return err
+	}
+
+	for _, server := range servers {
+		meshbr0, meshbr0ETag, err := client.UseTarget(server.Name).GetNetwork("meshbr0")
+		if err != nil {
+			return err
+		}
+
+		meshbr0.Config["tunnel.mesh.interface"] = detectClusteringInterface(server.OSData.Network)
+
+		err = client.UseTarget(server.Name).UpdateNetwork("meshbr0", meshbr0.Writable(), meshbr0ETag)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Add incusbr0 to the default profile.
@@ -539,10 +568,10 @@ func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provi
 		return err
 	}
 
-	// Add internal mesh to the default profile of internal project.
+	// Add meshbr0 to the default profile of internal project.
 	internalProfileDefault.Devices["eth0"] = map[string]string{
 		"type":    "nic",
-		"network": "internal",
+		"network": "meshbr0",
 		"name":    "eth0",
 	}
 
@@ -552,4 +581,33 @@ func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provi
 	}
 
 	return nil
+}
+
+func randomSubnetV6() (net.IP, error) {
+	for range 100 {
+		cidr := fmt.Sprintf("fd42:%x:%x:%x::1/64", rand.IntN(65535), rand.IntN(65535), rand.IntN(65535))
+		addr, _, err := net.ParseCIDR(cidr)
+		if err != nil {
+			continue
+		}
+
+		return addr, nil
+	}
+
+	return nil, errors.New("Failed to automatically find an IPv6 subnet")
+}
+
+// detectClusteringInterface returns the first interface that has the role
+// "clustering" and at least one IP address assigned.
+func detectClusteringInterface(network api.ServerSystemNetwork) string {
+	for name, iface := range network.State.Interfaces {
+		// TODO: use constant from incus-osd/api instead of string "clustering".
+		if slices.Contains(iface.Roles, "clustering") && len(iface.Addresses) > 0 {
+			return name
+		}
+	}
+
+	// TODO: Once incus-osd ensures the correct setting of the interface roles,
+	// the can be set to empty string.
+	return "enp5s0"
 }
