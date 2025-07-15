@@ -420,8 +420,9 @@ func (t *tokenHandler) tokenISOPost(r *http.Request) response.Response {
 	}
 
 	rc, err := t.service.GetPreSeedISO(r.Context(), UUID, provisioning.TokenSeedConfig{
-		Applications: tokenISOPost.Applications,
-		Network:      tokenISOPost.Network,
+		Applications:  tokenISOPost.Applications,
+		Network:       tokenISOPost.Network,
+		InstallTarget: tokenISOPost.InstallTarget,
 	})
 	if err != nil {
 		return response.SmartError(err)

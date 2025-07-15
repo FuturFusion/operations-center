@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	incusosapiseed "github.com/lxc/incus-os/incus-osd/api/seed"
 )
 
 // Token defines a registration token for use during registration.
@@ -44,4 +45,7 @@ type TokenISOPost struct {
 
 	// Network configuration to be included in the pre-seeded ISO.
 	Network incusosapi.SystemNetworkConfig `json:"network" yaml:"network"`
+
+	// InstallTarget defines options used to select the target install disk.
+	InstallTarget incusosapiseed.InstallTarget `json:"target" yaml:"target"`
 }
