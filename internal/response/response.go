@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -271,35 +272,68 @@ type readCloserResponse struct {
 	filename string
 	fileSize int
 	headers  map[string]string
+	compress bool
 }
 
 // ReadCloserResponse returns a new file taking the file content from a io.ReadCloser.
-func ReadCloserResponse(r *http.Request, rc io.ReadCloser, filename string, fileSize int, headers map[string]string) Response {
+// If the fileSize is unknown, -1 should be passed in order to omit the
+// Content-Length HTTP header.
+// If compress is set to true and the client provides the HTTP header
+// "Accept-Encoding: gzip", the file is streamed with "Content-Encoding: gzip".
+// If compress is set to true but the client does not offer "Content-Encoding: gzip",
+// the file is returned as .gz file.
+func ReadCloserResponse(r *http.Request, rc io.ReadCloser, compress bool, filename string, fileSize int, headers map[string]string) Response {
 	return &readCloserResponse{
 		req:      r,
 		rc:       rc,
 		filename: filename,
 		fileSize: fileSize,
 		headers:  headers,
+		compress: compress,
 	}
 }
 
 func (r readCloserResponse) Render(w http.ResponseWriter) error {
+	defer func() {
+		_ = r.rc.Close()
+	}()
+
 	if r.headers != nil {
 		for k, v := range r.headers {
 			w.Header().Set(k, v)
 		}
 	}
 
-	// Only set Content-Type header if it is still set to the default or not yet set at all.
-	if w.Header().Get("Content-Type") == "application/json" || w.Header().Get("Content-Type") == "" {
-		w.Header().Set("Content-Type", "application/octet-stream")
+	acceptCompress := strings.Contains(r.req.Header.Get("Accept-Encoding"), "gzip")
+
+	fileName := r.filename
+	contentType := "application/octet-stream"
+	var writer io.Writer = w
+	if r.compress {
+		gzWriter := gzip.NewWriter(w)
+		defer gzWriter.Close()
+
+		writer = gzWriter
+
+		if acceptCompress {
+			w.Header().Set("Content-Encoding", "gzip")
+		} else {
+			contentType = "application/gzip"
+			fileName += ".gz"
+		}
 	}
 
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", r.filename))
-	w.Header().Set("Content-Length", strconv.Itoa(r.fileSize))
+	// Only set Content-Type header if it is still set to the default or not yet set at all.
+	if w.Header().Get("Content-Type") == "application/json" || w.Header().Get("Content-Type") == "" {
+		w.Header().Set("Content-Type", contentType)
+	}
 
-	_, err := io.Copy(w, r.rc)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fileName))
+	if r.fileSize >= 0 {
+		w.Header().Set("Content-Length", strconv.Itoa(r.fileSize))
+	}
+
+	_, err := io.Copy(writer, r.rc)
 	if err != nil {
 		return err
 	}
