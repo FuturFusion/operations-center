@@ -1,7 +1,11 @@
 package provisioning_test
 
 import (
+	"bytes"
 	"context"
+	"io"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -10,8 +14,11 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
+	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 var (
@@ -83,7 +90,7 @@ func TestTokenService_Create(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo,
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil,
 				provisioning.WithRandomUUID(func() (uuid.UUID, error) { return tc.randomUUIDValue, tc.randomUUIDErr }),
 			)
 
@@ -143,7 +150,7 @@ func TestTokenService_GetAll(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
 
 			// Run test
 			tokens, err := tokenSvc.GetAll(context.Background())
@@ -192,7 +199,7 @@ func TestTokenService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
 
 			// Run test
 			tokenIDs, err := tokenSvc.GetAllUUIDs(context.Background())
@@ -243,7 +250,7 @@ func TestTokenService_GetByID(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
 
 			// Run test
 			token, err := tokenSvc.GetByUUID(context.Background(), tc.idArg)
@@ -311,7 +318,7 @@ func TestTokenService_Update(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
 
 			// Run test
 			err := tokenSvc.Update(context.Background(), tc.token)
@@ -354,7 +361,7 @@ func TestTokenService_DeleteByUUID(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
 
 			// Run test
 			err := tokenSvc.DeleteByUUID(context.Background(), tc.idArg)
@@ -462,13 +469,210 @@ func TestTokenService_Consume(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(repo)
+			tokenSvc := provisioning.NewTokenService(repo, nil, nil)
 
 			// Run test
 			err := tokenSvc.Consume(context.Background(), tc.tokenArg)
 
 			// Assert
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestTokenService_GetPreSeedISO(t *testing.T) {
+	updateUUID := uuid.MustParse(`00219aa8-ae44-4306-927e-728a2f780836`)
+
+	tmpDir := t.TempDir()
+	isoGzFilename := filepath.Join(tmpDir, "some.iso.gz")
+
+	f, err := os.Create(isoGzFilename)
+	defer func() { _ = f.Close() }()
+	require.NoError(t, err)
+
+	_, err = io.WriteString(f, `Foobar`)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name                                  string
+		tokenArg                              uuid.UUID
+		updateSvcGetAllUpdates                provisioning.Updates
+		updateSvcGetAllErr                    error
+		updateSvcGetUpdateAllFilesUpdateFiles provisioning.UpdateFiles
+		updateSvcGetUpdateAllFilesErr         error
+		updateSvcGetFileByFilenameReadCloser  io.ReadCloser
+		updateSvcGetFileByFilenameErr         error
+		flasherAdapterGenerateSeededISOErr    error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:     "success",
+			tokenArg: uuidA,
+			updateSvcGetAllUpdates: provisioning.Updates{
+				{
+					UUID: updateUUID,
+				},
+			},
+			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
+				{
+					Filename: isoGzFilename,
+					Type:     api.UpdateFileTypeImageISO,
+				},
+			},
+			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
+				f, err := os.Open(isoGzFilename)
+				require.NoError(t, err)
+
+				return f
+			}(),
+
+			assertErr: require.NoError,
+		},
+
+		{
+			name:               "error - updateSvc.GetAll",
+			tokenArg:           uuidA,
+			updateSvcGetAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                   "error - updateSvc.GetAll - no updates",
+			tokenArg:               uuidA,
+			updateSvcGetAllUpdates: provisioning.Updates{},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "Failed to get updates: No updates found")
+			},
+		},
+		{
+			name:     "error - updateSvc.GetUpdateAllFiles",
+			tokenArg: uuidA,
+			updateSvcGetAllUpdates: provisioning.Updates{
+				{
+					UUID: updateUUID,
+				},
+			},
+			updateSvcGetUpdateAllFilesErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:     "error - updateSvc.GetUpdateAllFiles - no files",
+			tokenArg: uuidA,
+			updateSvcGetAllUpdates: provisioning.Updates{
+				{
+					UUID: updateUUID,
+				},
+			},
+			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "Failed to find ISO file for latest update")
+			},
+		},
+		{
+			name:     "error - updateSvc.GetUpdateByFilename",
+			tokenArg: uuidA,
+			updateSvcGetAllUpdates: provisioning.Updates{
+				{
+					UUID: updateUUID,
+				},
+			},
+			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
+				{
+					Filename: isoGzFilename,
+					Type:     api.UpdateFileTypeImageISO,
+				},
+			},
+			updateSvcGetFileByFilenameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:     "error - updateSvc.GetUpdateByFilename not *os.File",
+			tokenArg: uuidA,
+			updateSvcGetAllUpdates: provisioning.Updates{
+				{
+					UUID: updateUUID,
+				},
+			},
+			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
+				{
+					Filename: isoGzFilename,
+					Type:     api.UpdateFileTypeImageISO,
+				},
+			},
+			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
+				return io.NopCloser(bytes.NewBufferString(``))
+			}(),
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "is not a file")
+			},
+		},
+		{
+			name:     "error - flasher.GenerateSeededISO",
+			tokenArg: uuidA,
+			updateSvcGetAllUpdates: provisioning.Updates{
+				{
+					UUID: updateUUID,
+				},
+			},
+			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
+				{
+					Filename: isoGzFilename,
+					Type:     api.UpdateFileTypeImageISO,
+				},
+			},
+			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
+				f, err := os.Open(isoGzFilename)
+				require.NoError(t, err)
+
+				return f
+			}(),
+			flasherAdapterGenerateSeededISOErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			updateSvc := &svcMock.UpdateServiceMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
+					return tc.updateSvcGetAllUpdates, tc.updateSvcGetAllErr
+				},
+				GetUpdateAllFilesFunc: func(ctx context.Context, id uuid.UUID) (provisioning.UpdateFiles, error) {
+					return tc.updateSvcGetUpdateAllFilesUpdateFiles, tc.updateSvcGetUpdateAllFilesErr
+				},
+				GetUpdateFileByFilenameFunc: func(ctx context.Context, id uuid.UUID, filename string) (io.ReadCloser, int, error) {
+					return tc.updateSvcGetFileByFilenameReadCloser, -1, tc.updateSvcGetFileByFilenameErr
+				},
+			}
+
+			flasherAdapter := &adapterMock.FlasherPortMock{
+				GenerateSeededISOFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (io.ReadCloser, error) {
+					return rc, tc.flasherAdapterGenerateSeededISOErr
+				},
+			}
+
+			tokenSvc := provisioning.NewTokenService(nil, updateSvc, flasherAdapter)
+
+			// Run test
+			rc, err := tokenSvc.GetPreSeedISO(context.Background(), tc.tokenArg, provisioning.TokenSeedConfig{})
+
+			// Assert
+			tc.assertErr(t, err)
+			if rc != nil {
+				defer rc.Close()
+
+				body, err := io.ReadAll(rc)
+				require.NoError(t, err)
+				require.Equal(t, `Foobar`, string(body))
+			}
 		})
 	}
 }

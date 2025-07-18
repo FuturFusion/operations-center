@@ -3,15 +3,20 @@ package provisioning
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/transaction"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type tokenService struct {
-	repo TokenRepo
+	repo      TokenRepo
+	updateSvc UpdateService
+	flasher   FlasherPort
 
 	randomUUID func() (uuid.UUID, error)
 }
@@ -20,9 +25,11 @@ var _ TokenService = &tokenService{}
 
 type TokenServiceOption func(s *tokenService)
 
-func NewTokenService(repo TokenRepo, opts ...TokenServiceOption) tokenService {
+func NewTokenService(repo TokenRepo, updateSvc UpdateService, flasher FlasherPort, opts ...TokenServiceOption) tokenService {
 	tokenSvc := tokenService{
 		repo:       repo,
+		updateSvc:  updateSvc,
+		flasher:    flasher,
 		randomUUID: uuid.NewRandom,
 	}
 
@@ -102,4 +109,54 @@ func (s tokenService) Consume(ctx context.Context, id uuid.UUID) error {
 
 		return nil
 	})
+}
+
+func (s tokenService) GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig TokenSeedConfig) (_ io.ReadCloser, err error) {
+	// TODO: Allow filters?
+	updates, err := s.updateSvc.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get updates: %w", err)
+	}
+
+	if len(updates) == 0 {
+		return nil, fmt.Errorf("Failed to get updates: No updates found")
+	}
+
+	// Update service does return the updates ordered by version in descending order.
+	latestUpdate := updates[0]
+
+	updateFiles, err := s.updateSvc.GetUpdateAllFiles(ctx, latestUpdate.UUID)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get files for update %q: %w", latestUpdate.UUID.String(), err)
+	}
+
+	var filename string
+	for _, file := range updateFiles {
+		// TODO: filter for the correct architecture.
+		if file.Type == api.UpdateFileTypeImageISO {
+			filename = file.Filename
+			break
+		}
+	}
+
+	if filename == "" {
+		return nil, fmt.Errorf("Failed to find ISO file for latest update %q", latestUpdate.UUID.String())
+	}
+
+	filereader, _, err := s.updateSvc.GetUpdateFileByFilename(ctx, latestUpdate.UUID, filename)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get file %q form latest update %q: %w", filename, latestUpdate.UUID.String(), err)
+	}
+
+	file, ok := filereader.(*os.File)
+	if !ok {
+		return nil, fmt.Errorf("Latest update %q is not a file", filename)
+	}
+
+	rc, err := s.flasher.GenerateSeededISO(ctx, id, seedConfig, file)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to generate seeded ISO: %w", err)
+	}
+
+	return rc, nil
 }

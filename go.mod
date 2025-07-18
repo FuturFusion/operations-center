@@ -185,7 +185,7 @@ require (
 	github.com/fvbommel/sortorder v1.1.0
 	github.com/google/uuid v1.6.0
 	github.com/lmittmann/tint v1.1.2
-	github.com/lxc/incus-os/incus-osd v0.0.0-20250709124545-451c1ab9c4f0
+	github.com/lxc/incus-os/incus-osd v0.0.0-20250712005207-26c993304ce6
 	github.com/lxc/incus/v6 v6.14.1-0.20250701200831-a082b0228592
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/oauth2-proxy/mockoidc v0.0.0-20240214162133-caebfff84d25

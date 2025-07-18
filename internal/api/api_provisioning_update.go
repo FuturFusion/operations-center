@@ -397,5 +397,5 @@ func (u *updateHandler) updateFileGet(r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	return response.ReadCloserResponse(r, rc, filename, fileSize, nil)
+	return response.ReadCloserResponse(r, rc, false, filename, fileSize, nil)
 }

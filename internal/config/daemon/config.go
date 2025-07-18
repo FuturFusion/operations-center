@@ -12,8 +12,9 @@ import (
 )
 
 type Config struct {
-	RestServerAddr string `yaml:"-"`
-	RestServerPort int    `yaml:"-"`
+	OperationsCenterAddress string `yaml:"address"`
+	RestServerAddr          string `yaml:"-"`
+	RestServerPort          int    `yaml:"-"`
 
 	ClientCertificateFilename string `yaml:"-"`
 	ClientKeyFilename         string `yaml:"-"`
@@ -64,5 +65,15 @@ func (c *Config) LoadConfig(path string) error {
 		return err
 	}
 
-	return yaml.Unmarshal(contents, c)
+	err = yaml.Unmarshal(contents, c)
+	if err != nil {
+		return err
+	}
+
+	// Validate config.
+	if c.OperationsCenterAddress == "" {
+		return fmt.Errorf(`Invalid config, "address" property can not be empty`)
+	}
+
+	return nil
 }

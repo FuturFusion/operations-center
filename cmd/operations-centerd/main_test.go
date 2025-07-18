@@ -32,6 +32,12 @@ func TestMain0RunDaemon(t *testing.T) {
 
 	tmpDir := t.TempDir()
 
+	// Add dummy server.crt.
+	f, err := os.Create(filepath.Join(tmpDir, "server.crt"))
+	require.NoError(t, err)
+	err = f.Close()
+	require.NoError(t, err)
+
 	// Start daemon.
 	go func() {
 		daemonErr = main0([]string{"--verbose", "--server-port", "27443"}, nil, stderrWriter, mockEnv{
