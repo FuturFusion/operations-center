@@ -122,7 +122,25 @@ func (c *cmdUpdateList) Run(cmd *cobra.Command, args []string) error {
 		data = append(data, []string{update.UUID.String(), update.Origin, update.Channel, update.Version, update.PublishedAt.String(), update.Severity.String()})
 	}
 
-	sort.ColumnsNaturally(data)
+	sort.ColumnsSort(data, []sort.ColumnSorter{
+		{
+			Index: 1, // Origin
+			Less:  sort.NaturalLess,
+		},
+		{
+			Index: 2, // Channel
+			Less:  sort.NaturalLess,
+		},
+		{
+			Index:   3, // Version
+			Reverse: true,
+			Less:    sort.NaturalLess,
+		},
+		{
+			Index: 0, // UUID
+			Less:  sort.StringLess,
+		},
+	})
 
 	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, updates)
 }
