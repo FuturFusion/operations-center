@@ -90,6 +90,30 @@ The basic idea is:
 {{- $defaultColumns = append $defaultColumns "Name" -}}
 const {{ .Name | camelcase }}DefaultColumns = `{{- range $item := $defaultColumns -}} {{- "{{" }} .{{ $item }} {{ "}}" -}}, {{- end -}}{{- "{{ .LastUpdated }}" -}}`
 
+var {{ .Name | camelcase }}ColumnSorters = map[string]sort.ColumnSorter{
+	"Cluster": {
+		Less: sort.NaturalLess,
+	},
+{{- if .ServerIDByLocation }}
+	"Server": {
+		Less: sort.NaturalLess,
+	},
+{{- end }}
+{{- if .HasProject }}
+	"ProjectName": {
+		Less: sort.NaturalLess,
+	},
+{{- end }}
+{{- if .HasParent }}
+	"ParentName": {
+		Less: sort.NaturalLess,
+	},
+{{- end }}
+	"Name": {
+		Less: sort.NaturalLess,
+	},
+}
+
 func (c *cmd{{ .Name | pascalcase }}List) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
@@ -156,15 +180,23 @@ func (c *cmd{{ .Name | pascalcase }}List) Run(cmd *cobra.Command, args []string)
 	fields := strings.Split(c.flagColumns, ",")
 
 	header := []string{}
+	columnSorters := []sort.ColumnSorter{}
 	tmpl := template.New("")
 
-	for _, field := range fields {
+	for i, field := range fields {
 		title := strings.Trim(field, "{} .")
-		header = append(header, title)
+
 		fieldTmpl := tmpl.New(title)
 		_, err := fieldTmpl.Parse(field)
 		if err != nil {
 			return err
+		}
+
+		header = append(header, title)
+		sorter, ok := {{ .Name | camelcase }}ColumnSorters[title]
+		if ok {
+			sorter.Index = i
+			columnSorters = append(columnSorters, sorter)
 		}
 	}
 
@@ -186,7 +218,7 @@ func (c *cmd{{ .Name | pascalcase }}List) Run(cmd *cobra.Command, args []string)
 		data = append(data, row)
 	}
 
-	sort.ColumnsNaturally(data)
+	sort.ColumnsSort(data, columnSorters)
 
 	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, {{ .PluralName | camelcase }})
 }
