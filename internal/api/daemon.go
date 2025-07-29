@@ -236,7 +236,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 			),
 			updateSvc,
 			flasher.New(
-				fmt.Sprintf("https://%s:%d", d.config.OperationsCenterAddress, d.config.RestServerPort),
+				d.config.OperationsCenterAddress,
 				string(serverCertificate),
 			),
 		),
