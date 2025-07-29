@@ -77,6 +77,10 @@ func (f UpdateFilter) AppendToURLValues(query url.Values) url.Values {
 		query.Add("channel", *f.Channel)
 	}
 
+	if f.Origin != nil {
+		query.Add("origin", *f.Origin)
+	}
+
 	return query
 }
 
