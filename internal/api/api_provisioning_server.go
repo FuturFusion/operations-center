@@ -198,6 +198,7 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 				VersionData:   server.VersionData,
 				Status:        server.Status,
 				LastUpdated:   server.LastUpdated,
+				LastSeen:      server.LastSeen,
 			})
 		}
 
