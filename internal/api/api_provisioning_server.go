@@ -116,6 +116,11 @@ func registerProvisioningServerHandler(router Router, authorizer authz.Authorize
 //	    type: string
 //	    example: cluster
 //	  - in: query
+//	    name: status
+//	    description: Status to filter for.
+//	    type: string
+//	    example: ready
+//	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
@@ -159,6 +164,16 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 
 	if r.URL.Query().Get("cluster") != "" {
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
+	}
+
+	if r.URL.Query().Get("status") != "" {
+		var status api.ServerStatus
+		err = status.UnmarshalText([]byte(r.URL.Query().Get("status")))
+		if err != nil {
+			return response.SmartError(fmt.Errorf("Invalid status"))
+		}
+
+		filter.Status = &status
 	}
 
 	if r.URL.Query().Get("filter") != "" {
