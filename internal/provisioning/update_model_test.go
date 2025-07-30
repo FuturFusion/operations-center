@@ -29,9 +29,10 @@ func TestUpdate_Filter(t *testing.T) {
 			name: "complete filter",
 			filter: provisioning.UpdateFilter{
 				Channel: ptr.To("channel"),
+				Origin:  ptr.To("origin"),
 			},
 
-			want: `channel=channel`,
+			want: `channel=channel&origin=origin`,
 		},
 	}
 

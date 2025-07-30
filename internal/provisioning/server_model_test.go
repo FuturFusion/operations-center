@@ -229,11 +229,13 @@ func TestServer_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: provisioning.ServerFilter{
-				Cluster:    ptr.To("cluster"),
-				Expression: ptr.To("true"),
+				Cluster:     ptr.To("cluster"),
+				Status:      ptr.To(api.ServerStatusReady),
+				Certificate: ptr.To("certificate"),
+				Expression:  ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true`,
+			want: `certificate=certificate&cluster=cluster&filter=true&status=ready`,
 		},
 	}
 
