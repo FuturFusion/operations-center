@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus-os/incus-osd/api/seed"
+	"github.com/lxc/incus/v6/shared/api"
 	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -23,14 +24,16 @@ const seedTarballStartPosition = 2148532224
 type flasher struct {
 	serverURL         string
 	serverCertificate string
+	clientCertificate string
 }
 
 var _ provisioning.FlasherPort = flasher{}
 
-func New(serverURL string, serverCertificate string) provisioning.FlasherPort {
+func New(serverURL string, serverCertificate string, clientCertificate string) provisioning.FlasherPort {
 	return flasher{
 		serverURL:         serverURL,
 		serverCertificate: serverCertificate,
+		clientCertificate: clientCertificate,
 	}
 }
 
@@ -53,7 +56,21 @@ func (f flasher) GenerateSeededISO(ctx context.Context, id uuid.UUID, seedConfig
 		},
 		&seed.Incus{
 			ApplyDefaults: false,
-			Version:       "1",
+			Preseed: &api.InitPreseed{
+				Server: api.InitLocalPreseed{
+					Certificates: []api.CertificatesPost{
+						{
+							CertificatePut: api.CertificatePut{
+								Name:        "operations-center",
+								Type:        "client",
+								Certificate: f.clientCertificate,
+								Description: "Operations Center Client Certificate",
+							},
+						},
+					},
+				},
+			},
+			Version: "1",
 		},
 		&seed.Install{
 			ForceInstall: true,

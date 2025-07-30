@@ -238,6 +238,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 			flasher.New(
 				d.config.OperationsCenterAddress,
 				string(serverCertificate),
+				d.clientCertificate,
 			),
 		),
 		slog.Default(),
