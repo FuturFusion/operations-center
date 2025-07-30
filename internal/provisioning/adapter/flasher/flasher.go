@@ -30,7 +30,7 @@ var _ provisioning.FlasherPort = flasher{}
 func New(serverURL string, serverCertificate string) provisioning.FlasherPort {
 	return flasher{
 		serverURL:         serverURL,
-		serverCertificate: serverCertificate, // TODO: return as part of the seed, does require https://github.com/lxc/incus-os/issues/208.
+		serverCertificate: serverCertificate,
 	}
 }
 
@@ -69,8 +69,9 @@ func (f flasher) GenerateSeededISO(ctx context.Context, id uuid.UUID, seedConfig
 			SystemProviderConfig: incusosapi.SystemProviderConfig{
 				Name: "operations-center",
 				Config: map[string]string{
-					"server_url":   f.serverURL,
-					"server_token": id.String(),
+					"server_url":         f.serverURL,
+					"server_token":       id.String(),
+					"server_certificate": f.serverCertificate,
 				},
 			},
 			Version: "1",
