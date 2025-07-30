@@ -4,11 +4,13 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	incustls "github.com/lxc/incus/v6/shared/tls"
+	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -640,6 +642,7 @@ func TestServerService_UpdateSystemNetwork(t *testing.T) {
 
 	tests := []struct {
 		name                         string
+		ctx                          context.Context
 		repoGetByNameServer          provisioning.Server
 		repoGetByNameErr             error
 		repoUpdate                   []queue.Item[repoUpdateFuncItem]
@@ -649,6 +652,7 @@ func TestServerService_UpdateSystemNetwork(t *testing.T) {
 	}{
 		{
 			name: "success",
+			ctx:  context.Background(),
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
@@ -673,12 +677,14 @@ one
 		},
 		{
 			name:             "error - repo.GetByName",
+			ctx:              context.Background(),
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - repo.UpdateByID",
+			ctx:  context.Background(),
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
@@ -703,7 +709,44 @@ one
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - client.UpdateNetworkConfig with cancelled context with cause",
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancelCause(context.Background())
+				cancel(nil)
+				return ctx
+			}(),
+			repoGetByNameServer: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+			repoUpdate: []queue.Item[repoUpdateFuncItem]{
+				{
+					Value: repoUpdateFuncItem{
+						lastSeen: fixedDate,
+						status:   api.ServerStatusPending,
+					},
+				},
+				{
+					Value: repoUpdateFuncItem{
+						status: api.ServerStatusReady,
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorIs(tt, err, context.Canceled)
+			},
+		},
+		{
 			name: "error - client.UpdateNetworkConfig",
+			ctx:  context.Background(),
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
@@ -734,6 +777,7 @@ one
 		},
 		{
 			name: "error - client.UpdateNetworkConfig - reverter error",
+			ctx:  context.Background(),
 			repoGetByNameServer: provisioning.Server{
 				Name:          "one",
 				Type:          api.ServerTypeIncus,
@@ -783,18 +827,134 @@ one
 
 			client := &adapterMock.ServerClientPortMock{
 				UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
-					return tc.clientUpdateNetworkConfigErr
+					return errors.Join(tc.clientUpdateNetworkConfigErr, ctx.Err())
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+			// Register our own self update signal, such that we can ensure, that all the listeners
+			// have been removed after successful processing.
+			selfUpdateSignal := signals.New[provisioning.Server]()
+
+			serverSvc := provisioning.NewServerService(repo, client, nil,
+				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
+				provisioning.ServerServiceWithSelfUpdateSignal(selfUpdateSignal),
+			)
 
 			// Run test
-			err := serverSvc.UpdateSystemNetwork(context.Background(), "name", provisioning.ServerSystemNetwork{})
+			err := serverSvc.UpdateSystemNetwork(tc.ctx, "one", provisioning.ServerSystemNetwork{})
 
 			// Assert
 			tc.assertErr(t, err)
 			require.Empty(t, tc.repoUpdate)
+			require.True(t, selfUpdateSignal.IsEmpty())
+		})
+	}
+}
+
+func TestServerService_UpdateSystemNetworkWithSelfUpdateSignal(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	type repoUpdateFuncItem struct {
+		lastSeen time.Time
+		status   api.ServerStatus
+	}
+
+	tests := []struct {
+		name                         string
+		repoGetByNameServer          provisioning.Server
+		repoGetByNameErr             error
+		repoUpdate                   []queue.Item[repoUpdateFuncItem]
+		clientUpdateNetworkConfigErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByNameServer: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+			repoUpdate: []queue.Item[repoUpdateFuncItem]{
+				{
+					Value: repoUpdateFuncItem{
+						lastSeen: fixedDate,
+						status:   api.ServerStatusPending,
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					value, err := queue.Pop(t, &tc.repoUpdate)
+
+					require.Equal(t, value.lastSeen, in.LastSeen)
+					require.Equal(t, value.status, in.Status)
+					return err
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
+					// Simulate network change, which prevents a clean response.
+					<-ctx.Done()
+					return ctx.Err()
+				},
+			}
+
+			selfUpdateSignal := signals.New[provisioning.Server]()
+
+			serverSvc := provisioning.NewServerService(repo, client, nil,
+				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
+				provisioning.ServerServiceWithSelfUpdateSignal(selfUpdateSignal),
+			)
+
+			// Run test
+			wg := sync.WaitGroup{}
+			wg.Add(1)
+
+			var err error
+			go func() {
+				defer wg.Done()
+				err = serverSvc.UpdateSystemNetwork(context.Background(), "one", provisioning.ServerSystemNetwork{})
+			}()
+
+			// Wait for subscriber.
+			for selfUpdateSignal.IsEmpty() {
+				time.Sleep(time.Millisecond)
+			}
+
+			// Simulate update from a different node, which is ignored.
+			selfUpdateSignal.Emit(context.Background(), provisioning.Server{
+				Name: "another",
+			})
+
+			selfUpdateSignal.Emit(context.Background(), provisioning.Server{
+				Name: "one",
+			})
+
+			wg.Wait()
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Empty(t, tc.repoUpdate)
+			require.True(t, selfUpdateSignal.IsEmpty())
 		})
 	}
 }
