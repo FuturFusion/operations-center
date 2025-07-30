@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
@@ -137,7 +138,7 @@ func (c *cmdUpdateList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, update := range updates {
-		data = append(data, []string{update.UUID.String(), update.Origin, update.Channel, update.Version, update.PublishedAt.String(), update.Severity.String(), update.Status.String()})
+		data = append(data, []string{update.UUID.String(), update.Origin, update.Channel, update.Version, update.PublishedAt.Truncate(time.Second).String(), update.Severity.String(), update.Status.String()})
 	}
 
 	sort.ColumnsSort(data, []sort.ColumnSorter{
@@ -204,7 +205,7 @@ func (c *cmdUpdateShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Origin: %s\n", update.Origin)
 	fmt.Printf("Channel: %s\n", update.Channel)
 	fmt.Printf("Version: %s\n", update.Version)
-	fmt.Printf("Published At: %s\n", update.PublishedAt.String())
+	fmt.Printf("Published At: %s\n", update.PublishedAt.Truncate(time.Second).String())
 	fmt.Printf("Severity: %s\n", update.Severity.String())
 	fmt.Printf("Status: %s\n", update.Status.String())
 	fmt.Printf("Changelog:\n%s\n\n", indent("  ", update.Changelog))
