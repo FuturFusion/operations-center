@@ -169,7 +169,12 @@ func (c *cmdTokenList) Run(cmd *cobra.Command, args []string) error {
 		data = append(data, []string{token.UUID.String(), strconv.FormatInt(int64(token.UsesRemaining), 10), token.ExpireAt.String(), token.Description})
 	}
 
-	sort.ColumnsNaturally(data)
+	sort.ColumnsSort(data, []sort.ColumnSorter{
+		{
+			Index: 0, // UUID
+			Less:  sort.StringLess,
+		},
+	})
 
 	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, tokens)
 }

@@ -65,6 +65,18 @@ type cmdNetworkLoadBalancerList struct {
 
 const networkLoadBalancerDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
 
+var networkLoadBalancerColumnSorters = map[string]sort.ColumnSorter{
+	"Cluster": {
+		Less: sort.NaturalLess,
+	},
+	"ParentName": {
+		Less: sort.NaturalLess,
+	},
+	"Name": {
+		Less: sort.NaturalLess,
+	},
+}
+
 func (c *cmdNetworkLoadBalancerList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
@@ -113,15 +125,23 @@ func (c *cmdNetworkLoadBalancerList) Run(cmd *cobra.Command, args []string) erro
 	fields := strings.Split(c.flagColumns, ",")
 
 	header := []string{}
+	columnSorters := []sort.ColumnSorter{}
 	tmpl := template.New("")
 
-	for _, field := range fields {
+	for i, field := range fields {
 		title := strings.Trim(field, "{} .")
-		header = append(header, title)
+
 		fieldTmpl := tmpl.New(title)
 		_, err := fieldTmpl.Parse(field)
 		if err != nil {
 			return err
+		}
+
+		header = append(header, title)
+		sorter, ok := networkLoadBalancerColumnSorters[title]
+		if ok {
+			sorter.Index = i
+			columnSorters = append(columnSorters, sorter)
 		}
 	}
 
@@ -143,7 +163,7 @@ func (c *cmdNetworkLoadBalancerList) Run(cmd *cobra.Command, args []string) erro
 		data = append(data, row)
 	}
 
-	sort.ColumnsNaturally(data)
+	sort.ColumnsSort(data, columnSorters)
 
 	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, networkLoadBalancers)
 }

@@ -2,8 +2,6 @@ package sort
 
 import (
 	"sort"
-
-	"github.com/fvbommel/sortorder"
 )
 
 // columnsNaturally represents the type for sorting columns in a natural order from left to right.
@@ -35,7 +33,7 @@ func (c columnsNaturally) Less(i, j int) bool {
 			return true
 		}
 
-		return sortorder.NaturalLess(c[i][k], c[j][k])
+		return NaturalLess(c[i][k], c[j][k])
 	}
 
 	return false

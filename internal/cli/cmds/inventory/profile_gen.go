@@ -66,6 +66,18 @@ type cmdProfileList struct {
 
 const profileDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
 
+var profileColumnSorters = map[string]sort.ColumnSorter{
+	"Cluster": {
+		Less: sort.NaturalLess,
+	},
+	"ProjectName": {
+		Less: sort.NaturalLess,
+	},
+	"Name": {
+		Less: sort.NaturalLess,
+	},
+}
+
 func (c *cmdProfileList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
@@ -119,15 +131,23 @@ func (c *cmdProfileList) Run(cmd *cobra.Command, args []string) error {
 	fields := strings.Split(c.flagColumns, ",")
 
 	header := []string{}
+	columnSorters := []sort.ColumnSorter{}
 	tmpl := template.New("")
 
-	for _, field := range fields {
+	for i, field := range fields {
 		title := strings.Trim(field, "{} .")
-		header = append(header, title)
+
 		fieldTmpl := tmpl.New(title)
 		_, err := fieldTmpl.Parse(field)
 		if err != nil {
 			return err
+		}
+
+		header = append(header, title)
+		sorter, ok := profileColumnSorters[title]
+		if ok {
+			sorter.Index = i
+			columnSorters = append(columnSorters, sorter)
 		}
 	}
 
@@ -149,7 +169,7 @@ func (c *cmdProfileList) Run(cmd *cobra.Command, args []string) error {
 		data = append(data, row)
 	}
 
-	sort.ColumnsNaturally(data)
+	sort.ColumnsSort(data, columnSorters)
 
 	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, profiles)
 }

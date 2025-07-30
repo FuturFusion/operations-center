@@ -67,6 +67,21 @@ type cmdInstanceList struct {
 
 const instanceDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
 
+var instanceColumnSorters = map[string]sort.ColumnSorter{
+	"Cluster": {
+		Less: sort.NaturalLess,
+	},
+	"Server": {
+		Less: sort.NaturalLess,
+	},
+	"ProjectName": {
+		Less: sort.NaturalLess,
+	},
+	"Name": {
+		Less: sort.NaturalLess,
+	},
+}
+
 func (c *cmdInstanceList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
@@ -125,15 +140,23 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	fields := strings.Split(c.flagColumns, ",")
 
 	header := []string{}
+	columnSorters := []sort.ColumnSorter{}
 	tmpl := template.New("")
 
-	for _, field := range fields {
+	for i, field := range fields {
 		title := strings.Trim(field, "{} .")
-		header = append(header, title)
+
 		fieldTmpl := tmpl.New(title)
 		_, err := fieldTmpl.Parse(field)
 		if err != nil {
 			return err
+		}
+
+		header = append(header, title)
+		sorter, ok := instanceColumnSorters[title]
+		if ok {
+			sorter.Index = i
+			columnSorters = append(columnSorters, sorter)
 		}
 	}
 
@@ -155,7 +178,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		data = append(data, row)
 	}
 
-	sort.ColumnsNaturally(data)
+	sort.ColumnsSort(data, columnSorters)
 
 	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, instances)
 }
