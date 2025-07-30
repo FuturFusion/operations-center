@@ -11,6 +11,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/render"
 	"github.com/FuturFusion/operations-center/internal/sort"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type CmdServer struct {
@@ -74,6 +75,7 @@ type cmdServerList struct {
 	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
+	flagFilterStatus     string
 	flagFilterExpression string
 
 	flagFormat string
@@ -90,6 +92,7 @@ func (c *cmdServerList) Command() *cobra.Command {
 	cmd.RunE = c.Run
 
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
+	cmd.Flags().StringVar(&c.flagFilterStatus, "status", "", "status to filter for, valid values: pending, ready")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
@@ -111,6 +114,16 @@ func (c *cmdServerList) Run(cmd *cobra.Command, args []string) error {
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = ptr.To(c.flagFilterCluster)
+	}
+
+	if c.flagFilterStatus != "" {
+		var status api.ServerStatus
+		err = status.UnmarshalText([]byte(c.flagFilterStatus))
+		if err != nil {
+			return fmt.Errorf("Invalid value for status: %v", err)
+		}
+
+		filter.Status = &status
 	}
 
 	if c.flagFilterExpression != "" {
