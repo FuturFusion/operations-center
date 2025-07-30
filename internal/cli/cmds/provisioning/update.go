@@ -72,6 +72,8 @@ type cmdUpdateList struct {
 	ocClient *client.OperationsCenterClient
 
 	flagFilterChannel string
+	flagFilterOrigin  string
+	flagFilterStatus  string
 
 	flagFormat string
 }
@@ -87,6 +89,8 @@ func (c *cmdUpdateList) Command() *cobra.Command {
 	cmd.RunE = c.Run
 
 	cmd.Flags().StringVar(&c.flagFilterChannel, "channel", "", "channel name to filter for")
+	cmd.Flags().StringVar(&c.flagFilterOrigin, "origin", "", "origin to filter for")
+	cmd.Flags().StringVar(&c.flagFilterStatus, "status", "", "status to filter for, valid values: pending, ready")
 
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
@@ -109,17 +113,31 @@ func (c *cmdUpdateList) Run(cmd *cobra.Command, args []string) error {
 		filter.Channel = ptr.To(c.flagFilterChannel)
 	}
 
+	if c.flagFilterOrigin != "" {
+		filter.Origin = ptr.To(c.flagFilterOrigin)
+	}
+
+	if c.flagFilterStatus != "" {
+		var status api.UpdateStatus
+		err = status.UnmarshalText([]byte(c.flagFilterStatus))
+		if err != nil {
+			return fmt.Errorf("Invalid value for status: %v", err)
+		}
+
+		filter.Status = &status
+	}
+
 	updates, err := c.ocClient.GetWithFilterUpdates(cmd.Context(), filter)
 	if err != nil {
 		return err
 	}
 
 	// Render the table.
-	header := []string{"UUID", "Origin", "Channel", "Version", "Published At", "Severity"}
+	header := []string{"UUID", "Origin", "Channel", "Version", "Published At", "Severity", "Status"}
 	data := [][]string{}
 
 	for _, update := range updates {
-		data = append(data, []string{update.UUID.String(), update.Origin, update.Channel, update.Version, update.PublishedAt.String(), update.Severity.String()})
+		data = append(data, []string{update.UUID.String(), update.Origin, update.Channel, update.Version, update.PublishedAt.String(), update.Severity.String(), update.Status.String()})
 	}
 
 	sort.ColumnsSort(data, []sort.ColumnSorter{
@@ -187,7 +205,8 @@ func (c *cmdUpdateShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Channel: %s\n", update.Channel)
 	fmt.Printf("Version: %s\n", update.Version)
 	fmt.Printf("Published At: %s\n", update.PublishedAt.String())
-	fmt.Printf("Severity: %s\n", update.Severity)
+	fmt.Printf("Severity: %s\n", update.Severity.String())
+	fmt.Printf("Status: %s\n", update.Status.String())
 	fmt.Printf("Changelog:\n%s\n\n", indent("  ", update.Changelog))
 	fmt.Println("Files:")
 
