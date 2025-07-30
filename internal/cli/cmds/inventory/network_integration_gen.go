@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -146,6 +147,8 @@ func (c *cmdNetworkIntegrationList) Run(cmd *cobra.Command, args []string) error
 	wr := &bytes.Buffer{}
 
 	for _, networkIntegration := range networkIntegrations {
+		networkIntegration.LastUpdated = networkIntegration.LastUpdated.Truncate(time.Second)
+
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
@@ -205,7 +208,7 @@ func (c *cmdNetworkIntegrationShow) Run(cmd *cobra.Command, args []string) error
 	fmt.Printf("UUID: %s\n", networkIntegration.UUID.String())
 	fmt.Printf("Cluster: %s\n", networkIntegration.Cluster)
 	fmt.Printf("Name: %s\n", networkIntegration.Name)
-	fmt.Printf("Last Updated: %s\n", networkIntegration.LastUpdated.String())
+	fmt.Printf("Last Updated: %s\n", networkIntegration.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -155,6 +156,8 @@ func (c *cmdNetworkAddressSetList) Run(cmd *cobra.Command, args []string) error 
 	wr := &bytes.Buffer{}
 
 	for _, networkAddressSet := range networkAddressSets {
+		networkAddressSet.LastUpdated = networkAddressSet.LastUpdated.Truncate(time.Second)
+
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
@@ -215,7 +218,7 @@ func (c *cmdNetworkAddressSetShow) Run(cmd *cobra.Command, args []string) error 
 	fmt.Printf("Cluster: %s\n", networkAddressSet.Cluster)
 	fmt.Printf("Project Name: %s\n", networkAddressSet.ProjectName)
 	fmt.Printf("Name: %s\n", networkAddressSet.Name)
-	fmt.Printf("Last Updated: %s\n", networkAddressSet.LastUpdated.String())
+	fmt.Printf("Last Updated: %s\n", networkAddressSet.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

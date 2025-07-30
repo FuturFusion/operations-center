@@ -2,6 +2,7 @@ package provisioning
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -140,7 +141,7 @@ func (c *cmdServerList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, server := range servers {
-		data = append(data, []string{server.Cluster, server.Name, server.ConnectionURL, server.Type.String(), server.Status.String(), server.LastUpdated.String(), server.LastSeen.String()})
+		data = append(data, []string{server.Cluster, server.Name, server.ConnectionURL, server.Type.String(), server.Status.String(), server.LastUpdated.Truncate(time.Second).String(), server.LastSeen.Truncate(time.Second).String()})
 	}
 
 	sort.ColumnsNaturally(data)
@@ -264,8 +265,8 @@ func (c *cmdServerShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Connection URL: %s\n", server.ConnectionURL)
 	fmt.Printf("Type: %s\n", server.Type.String())
 	fmt.Printf("Status: %s\n", server.Status.String())
-	fmt.Printf("Last Updated: %s\n", server.LastUpdated.String())
-	fmt.Printf("Last Seen: %s\n", server.LastSeen.String())
+	fmt.Printf("Last Updated: %s\n", server.LastUpdated.Truncate(time.Second).String())
+	fmt.Printf("Last Seen: %s\n", server.LastSeen.Truncate(time.Second).String())
 
 	return nil
 }

@@ -166,7 +166,7 @@ func (c *cmdTokenList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, token := range tokens {
-		data = append(data, []string{token.UUID.String(), strconv.FormatInt(int64(token.UsesRemaining), 10), token.ExpireAt.String(), token.Description})
+		data = append(data, []string{token.UUID.String(), strconv.FormatInt(int64(token.UsesRemaining), 10), token.ExpireAt.Truncate(time.Second).String(), token.Description})
 	}
 
 	sort.ColumnsSort(data, []sort.ColumnSorter{
@@ -250,7 +250,7 @@ func (c *cmdTokenShow) Run(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("UUID: %s\n", token.UUID.String())
 	fmt.Printf("Uses Remaining: %s\n", strconv.FormatInt(int64(token.UsesRemaining), 10))
-	fmt.Printf("Expire At: %s\n", token.ExpireAt.String())
+	fmt.Printf("Expire At: %s\n", token.ExpireAt.Truncate(time.Second).String())
 	fmt.Printf("Description: %s\n", token.Description)
 
 	return nil

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -149,6 +150,8 @@ func (c *cmdNetworkLoadBalancerList) Run(cmd *cobra.Command, args []string) erro
 	wr := &bytes.Buffer{}
 
 	for _, networkLoadBalancer := range networkLoadBalancers {
+		networkLoadBalancer.LastUpdated = networkLoadBalancer.LastUpdated.Truncate(time.Second)
+
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
@@ -209,7 +212,7 @@ func (c *cmdNetworkLoadBalancerShow) Run(cmd *cobra.Command, args []string) erro
 	fmt.Printf("Cluster: %s\n", networkLoadBalancer.Cluster)
 	fmt.Printf("Network Name: %s\n", networkLoadBalancer.NetworkName)
 	fmt.Printf("Name: %s\n", networkLoadBalancer.Name)
-	fmt.Printf("Last Updated: %s\n", networkLoadBalancer.LastUpdated.String())
+	fmt.Printf("Last Updated: %s\n", networkLoadBalancer.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

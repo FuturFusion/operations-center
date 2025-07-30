@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -146,6 +147,8 @@ func (c *cmdStoragePoolList) Run(cmd *cobra.Command, args []string) error {
 	wr := &bytes.Buffer{}
 
 	for _, storagePool := range storagePools {
+		storagePool.LastUpdated = storagePool.LastUpdated.Truncate(time.Second)
+
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
@@ -205,7 +208,7 @@ func (c *cmdStoragePoolShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("UUID: %s\n", storagePool.UUID.String())
 	fmt.Printf("Cluster: %s\n", storagePool.Cluster)
 	fmt.Printf("Name: %s\n", storagePool.Name)
-	fmt.Printf("Last Updated: %s\n", storagePool.LastUpdated.String())
+	fmt.Printf("Last Updated: %s\n", storagePool.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil
