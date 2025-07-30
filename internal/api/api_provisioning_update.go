@@ -146,6 +146,20 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 		filter.Channel = ptr.To(r.URL.Query().Get("channel"))
 	}
 
+	if r.URL.Query().Get("origin") != "" {
+		filter.Origin = ptr.To(r.URL.Query().Get("origin"))
+	}
+
+	if r.URL.Query().Get("status") != "" {
+		var status api.UpdateStatus
+		err = status.UnmarshalText([]byte(r.URL.Query().Get("status")))
+		if err != nil {
+			return response.SmartError(fmt.Errorf("Invalid status"))
+		}
+
+		filter.Status = &status
+	}
+
 	if recursion == 1 {
 		updates, err := u.service.GetAllWithFilter(r.Context(), filter)
 		if err != nil {
@@ -163,6 +177,7 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 				URL:         update.URL,
 				Channel:     update.Channel,
 				Changelog:   update.Changelog,
+				Status:      update.Status,
 			})
 		}
 
@@ -271,6 +286,7 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 			URL:         update.URL,
 			Channel:     update.Channel,
 			Changelog:   update.Changelog,
+			Status:      update.Status,
 		},
 		update,
 	)
