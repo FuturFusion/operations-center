@@ -7,10 +7,86 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
+
+func TestUpdate_Validate(t *testing.T) {
+	tests := []struct {
+		name   string
+		server provisioning.Update
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "valid",
+			server: provisioning.Update{
+				Severity: api.UpdateSeverityLow,
+				Status:   api.UpdateStatusReady,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - severity empty",
+			server: provisioning.Update{
+				Severity: "", // empty
+				Status:   api.UpdateStatusReady,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - severity invalid",
+			server: provisioning.Update{
+				Severity: "invalid", // invalid
+				Status:   api.UpdateStatusReady,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - status empty",
+			server: provisioning.Update{
+				Severity: api.UpdateSeverityLow,
+				Status:   "", // empty
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - status invalid",
+			server: provisioning.Update{
+				Severity: api.UpdateSeverityLow,
+				Status:   "invalid", // invalid
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.server.Validate()
+
+			tc.assertErr(t, err)
+		})
+	}
+}
 
 func TestUpdate_Filter(t *testing.T) {
 	tests := []struct {
@@ -30,9 +106,10 @@ func TestUpdate_Filter(t *testing.T) {
 			filter: provisioning.UpdateFilter{
 				Channel: ptr.To("channel"),
 				Origin:  ptr.To("origin"),
+				Status:  ptr.To(api.UpdateStatusReady),
 			},
 
-			want: `channel=channel&origin=origin`,
+			want: `channel=channel&origin=origin&status=ready`,
 		},
 	}
 

@@ -13,8 +13,10 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/transaction"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 const defaultLatestLimit = 3
@@ -63,6 +65,13 @@ func (s updateService) CreateFromArchive(ctx context.Context, tarReader *tar.Rea
 		return uuid.UUID{}, err
 	}
 
+	update.Status = api.UpdateStatusReady
+
+	err = update.Validate()
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("Validate update: %w", err)
+	}
+
 	err = s.repo.Upsert(ctx, *update)
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("Failed to persist the update from archive in the repository: %w", err)
@@ -90,7 +99,7 @@ func (s updateService) GetAllWithFilter(ctx context.Context, filter UpdateFilter
 	var err error
 	var updates Updates
 
-	if filter.UUID == nil && filter.Channel == nil {
+	if filter.UUID == nil && filter.Channel == nil && filter.Origin == nil && filter.Status == nil {
 		updates, err = s.repo.GetAll(ctx)
 	} else {
 		updates, err = s.repo.GetAllWithFilter(ctx, filter)
@@ -179,9 +188,35 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 	}
 
 	for _, update := range updates {
-		_, err := s.repo.GetByUUID(ctx, update.UUID)
-		if err == nil {
-			// Update is already in the DB.
+		var found bool
+		err = transaction.Do(ctx, func(ctx context.Context) error {
+			_, err := s.repo.GetByUUID(ctx, update.UUID)
+			if err == nil {
+				// Update is already in the DB.
+				found = true
+				return nil
+			}
+
+			if !errors.Is(err, domain.ErrNotFound) {
+				return err
+			}
+
+			// Overwrite origin with our value to ensure cleanup to work.
+			update.Origin = origin
+			update.Status = api.UpdateStatusPending
+
+			err = update.Validate()
+			if err != nil {
+				return fmt.Errorf("Validate update: %w", err)
+			}
+
+			return s.repo.Upsert(ctx, update)
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to create update in pending state: %w", err)
+		}
+
+		if found {
 			continue
 		}
 
@@ -238,8 +273,7 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 			}
 		}
 
-		// Overwrite origin with our value to ensure cleanup to work.
-		update.Origin = origin
+		update.Status = api.UpdateStatusReady
 
 		err = s.repo.Upsert(ctx, update)
 		if err != nil {

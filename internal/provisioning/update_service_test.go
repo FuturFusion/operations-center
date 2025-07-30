@@ -18,6 +18,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/testing/queue"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestUpdateService_CreateFromArchive(t *testing.T) {
@@ -35,7 +36,8 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 			name: "success",
 
 			repoUpdateFilesCreateFromArchiveUpdate: &provisioning.Update{
-				UUID: uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
+				UUID:     uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
+				Severity: api.UpdateSeverityLow,
 			},
 
 			assertErr: require.NoError,
@@ -49,10 +51,23 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - Upsert",
+			name: "error - Validate",
 
 			repoUpdateFilesCreateFromArchiveUpdate: &provisioning.Update{
 				UUID: uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - Upsert",
+
+			repoUpdateFilesCreateFromArchiveUpdate: &provisioning.Update{
+				UUID:     uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
+				Severity: api.UpdateSeverityLow,
 			},
 			repoUpsertErr: boom.Error,
 
@@ -535,7 +550,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 			name: "success - one update, present",
 			ctx:  context.Background(),
 			sourceGetLatestUpdates: provisioning.Updates{
-				provisioning.Update{},
+				{
+					Severity: api.UpdateSeverityLow,
+				},
 			},
 			repoGetByUUIDErr: nil,
 
@@ -545,7 +562,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 			name: "success - one update, not present, with files",
 			ctx:  context.Background(),
 			sourceGetLatestUpdates: provisioning.Updates{
-				provisioning.Update{},
+				{
+					Severity: api.UpdateSeverityLow,
+				},
 			},
 			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
@@ -579,6 +598,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 				{},
 			},
 			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+				// ready
 				{},
 			},
 
@@ -588,7 +610,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 			name: "success - one update, not present, with files and sha256 checksum",
 			ctx:  context.Background(),
 			sourceGetLatestUpdates: provisioning.Updates{
-				provisioning.Update{},
+				{
+					Severity: api.UpdateSeverityLow,
+				},
 			},
 			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
@@ -625,6 +649,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 				{},
 			},
 			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+				// ready
 				{},
 			},
 
@@ -662,16 +689,67 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name: "error - repo.GetByUUID",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					Severity: api.UpdateSeverityLow,
+				},
+			},
+			repoGetByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:             "error - Validate",
+			ctx:              context.Background(),
+			repoGetByUUIDErr: domain.ErrNotFound,
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					Severity: "invalid", // invalid
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - repo.Upsert pending",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					Severity: api.UpdateSeverityLow,
+				},
+			},
+			repoGetByUUIDErr: domain.ErrNotFound,
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name: "error - source.GetUpdateAllFiles",
 			ctx:  context.Background(),
 			sourceGetLatestUpdates: provisioning.Updates{
-				provisioning.Update{},
+				{
+					Severity: api.UpdateSeverityLow,
+				},
 			},
 			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Err: boom.Error,
 				},
+			},
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
 			},
 
 			assertErr: boom.ErrorIs,
@@ -684,7 +762,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 				return ctx
 			}(),
 			sourceGetLatestUpdates: provisioning.Updates{
-				provisioning.Update{},
+				{
+					Severity: api.UpdateSeverityLow,
+				},
 			},
 			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
@@ -697,6 +777,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+			},
 
 			assertErr: boom.ErrorIs,
 		},
@@ -704,7 +788,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 			name: "error - source.GetUpdateFileByFilename",
 			ctx:  context.Background(),
 			sourceGetLatestUpdates: provisioning.Updates{
-				provisioning.Update{},
+				{
+					Severity: api.UpdateSeverityLow,
+				},
 			},
 			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
@@ -725,6 +811,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 					Err: boom.Error,
 				},
 			},
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+			},
 
 			assertErr: boom.ErrorIs,
 		},
@@ -732,7 +822,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 			name: "error - files repo Put",
 			ctx:  context.Background(),
 			sourceGetLatestUpdates: provisioning.Updates{
-				provisioning.Update{},
+				{
+					Severity: api.UpdateSeverityLow,
+				},
 			},
 			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
@@ -767,6 +859,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 					Err: boom.Error,
 				},
 			},
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+			},
 
 			assertErr: boom.ErrorIs,
 		},
@@ -774,7 +870,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 			name: "error - checksum error",
 			ctx:  context.Background(),
 			sourceGetLatestUpdates: provisioning.Updates{
-				provisioning.Update{},
+				{
+					Severity: api.UpdateSeverityLow,
+				},
 			},
 			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
@@ -809,6 +907,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 			}]{
 				{},
 			},
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+			},
 
 			assertErr: func(tt require.TestingT, err error, i ...any) {
 				require.ErrorContains(tt, err, "Invalid update, file sha256 mismatch for file")
@@ -818,7 +920,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 			name: "error - commit",
 			ctx:  context.Background(),
 			sourceGetLatestUpdates: provisioning.Updates{
-				provisioning.Update{},
+				{
+					Severity: api.UpdateSeverityLow,
+				},
 			},
 			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
@@ -858,6 +962,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+			},
 
 			assertErr: boom.ErrorIs,
 		},
@@ -865,7 +973,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 			name: "error - cancel",
 			ctx:  context.Background(),
 			sourceGetLatestUpdates: provisioning.Updates{
-				provisioning.Update{},
+				{
+					Severity: api.UpdateSeverityLow,
+				},
 			},
 			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
@@ -905,6 +1015,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+			},
 
 			assertErr: boom.ErrorIs,
 		},
@@ -912,7 +1026,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 			name: "error - repo.Upsert",
 			ctx:  context.Background(),
 			sourceGetLatestUpdates: provisioning.Updates{
-				provisioning.Update{},
+				{
+					Severity: api.UpdateSeverityLow,
+				},
 			},
 			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
@@ -946,6 +1062,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 				{},
 			},
 			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+				// ready
 				{
 					Err: boom.Error,
 				},
