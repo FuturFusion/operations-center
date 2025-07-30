@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -28,6 +29,23 @@ type Update struct {
 	Changelog   string             `json:"-"`
 	Files       UpdateFiles        `json:"files"`
 	URL         string             `json:"url"`
+	Status      api.UpdateStatus   `json:"-"`
+}
+
+func (u Update) Validate() error {
+	var updateSeverity api.UpdateSeverity
+	err := updateSeverity.UnmarshalText([]byte(u.Severity))
+	if u.Severity == "" || err != nil {
+		return domain.NewValidationErrf("Invalid update, validation of severity failed: %v", err)
+	}
+
+	var updateStatus api.UpdateStatus
+	err = updateStatus.UnmarshalText([]byte(u.Status))
+	if u.Status == "" || err != nil {
+		return domain.NewValidationErrf("Invalid update, validation of status failed: %v", err)
+	}
+
+	return nil
 }
 
 type Updates []Update
@@ -70,6 +88,7 @@ type UpdateFilter struct {
 	UUID    *uuid.UUID
 	Channel *string
 	Origin  *string
+	Status  *api.UpdateStatus
 }
 
 func (f UpdateFilter) AppendToURLValues(query url.Values) url.Values {
@@ -79,6 +98,10 @@ func (f UpdateFilter) AppendToURLValues(query url.Values) url.Values {
 
 	if f.Origin != nil {
 		query.Add("origin", *f.Origin)
+	}
+
+	if f.Status != nil {
+		query.Add("status", f.Status.String())
 	}
 
 	return query

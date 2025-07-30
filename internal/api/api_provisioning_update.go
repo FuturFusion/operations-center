@@ -97,6 +97,16 @@ func registerUpdateHandler(router Router, authorizer authz.Authorizer, service p
 //	    description: Channel to filter for.
 //	    type: string
 //	    example: stable
+//	  - in: query
+//	    name: origin
+//	    description: Origin to filter for.
+//	    type: string
+//	    example: images.linuxcontainers.org
+//	  - in: query
+//	    name: status
+//	    description: Status to filter for.
+//	    type: string
+//	    example: ready
 //	responses:
 //	  "200":
 //	    description: API updates
@@ -136,6 +146,20 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 		filter.Channel = ptr.To(r.URL.Query().Get("channel"))
 	}
 
+	if r.URL.Query().Get("origin") != "" {
+		filter.Origin = ptr.To(r.URL.Query().Get("origin"))
+	}
+
+	if r.URL.Query().Get("status") != "" {
+		var status api.UpdateStatus
+		err = status.UnmarshalText([]byte(r.URL.Query().Get("status")))
+		if err != nil {
+			return response.SmartError(fmt.Errorf("Invalid status"))
+		}
+
+		filter.Status = &status
+	}
+
 	if recursion == 1 {
 		updates, err := u.service.GetAllWithFilter(r.Context(), filter)
 		if err != nil {
@@ -153,6 +177,7 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 				URL:         update.URL,
 				Channel:     update.Channel,
 				Changelog:   update.Changelog,
+				Status:      update.Status,
 			})
 		}
 
@@ -261,6 +286,7 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 			URL:         update.URL,
 			Channel:     update.Channel,
 			Changelog:   update.Changelog,
+			Status:      update.Status,
 		},
 		update,
 	)

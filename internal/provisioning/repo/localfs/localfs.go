@@ -20,6 +20,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/signature"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type localfs struct {
@@ -258,7 +259,9 @@ func extractTar(tarReader *tar.Reader, destDir string) (extractedFiles map[strin
 }
 
 func readUpdateJSONAndChangelog(updateJSONBody []byte, destDir string, extractedFiles map[string]struct{}) (*provisioning.Update, error) {
-	updateManifest := &provisioning.Update{}
+	updateManifest := &provisioning.Update{
+		Status: api.UpdateStatusUnknown,
+	}
 
 	err := json.Unmarshal(updateJSONBody, updateManifest)
 	if err != nil {

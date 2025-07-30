@@ -68,6 +68,67 @@ func (u *UpdateSeverity) Scan(value any) error {
 	}
 }
 
+type UpdateStatus string
+
+const (
+	UpdateStatusUnknown UpdateStatus = "unknown"
+	UpdateStatusPending UpdateStatus = "pending"
+	UpdateStatusReady   UpdateStatus = "ready"
+)
+
+var updateStatuses = map[UpdateStatus]struct{}{
+	UpdateStatusUnknown: {},
+	UpdateStatusPending: {},
+	UpdateStatusReady:   {},
+}
+
+func (s UpdateStatus) String() string {
+	return string(s)
+}
+
+// MarshalText implements the encoding.TextMarshaler interface.
+func (s UpdateStatus) MarshalText() ([]byte, error) {
+	return []byte(s), nil
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (s *UpdateStatus) UnmarshalText(text []byte) error {
+	if len(text) == 0 {
+		*s = UpdateStatusUnknown
+		return nil
+	}
+
+	_, ok := updateStatuses[UpdateStatus(text)]
+	if !ok {
+		return fmt.Errorf("%q is not a valid update status", string(text))
+	}
+
+	*s = UpdateStatus(text)
+
+	return nil
+}
+
+// Value implements the sql driver.Valuer interface.
+func (s UpdateStatus) Value() (driver.Value, error) {
+	return string(s), nil
+}
+
+// Scan implements the sql.Scanner interface.
+func (s *UpdateStatus) Scan(value any) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid update status")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return s.UnmarshalText([]byte(v))
+	case []byte:
+		return s.UnmarshalText(v)
+	default:
+		return fmt.Errorf("type %T is not supported for update status", value)
+	}
+}
+
 // Update defines an update for a given server type.
 //
 // swagger:model
@@ -101,6 +162,11 @@ type Update struct {
 
 	// Changelog of the Update as plain text.
 	Changelog string `json:"changelog" yaml:"changelog"`
+
+	// Status contains the status the update is currently in.
+	// Possible values for status are: pending, ready
+	// Example: ready
+	Status UpdateStatus `json:"update_status" yaml:"update_status"`
 }
 
 type UpdateFileComponent string
