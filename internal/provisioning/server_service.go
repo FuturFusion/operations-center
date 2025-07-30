@@ -12,6 +12,7 @@ import (
 	"github.com/expr-lang/expr/vm"
 	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/revert"
+	"github.com/maniartech/signals"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/logger"
@@ -27,9 +28,16 @@ type serverService struct {
 
 	now                    func() time.Time
 	initialConnectionDelay time.Duration
+
+	selfUpdateSignal signals.Signal[Server]
 }
 
 var _ ServerService = &serverService{}
+
+// ErrSelfUpdateNotification is used as cause when the context is
+// cancelled while waiting for the update of the network config
+// to complete.
+var ErrSelfUpdateNotification = errors.New("self update notification")
 
 type ServerServiceOption func(s *serverService)
 
@@ -53,6 +61,8 @@ func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenSe
 
 		now:                    time.Now,
 		initialConnectionDelay: 1 * time.Second,
+
+		selfUpdateSignal: signals.New[Server](),
 	}
 
 	for _, opt := range opts {
@@ -270,8 +280,25 @@ func (s serverService) UpdateSystemNetwork(ctx context.Context, name string, sys
 		}
 	})
 
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+
+	// Listen to self update signal for the case, when the network update prevents the response for the regular update call.
+	signalHandlerKey := uuid.New().String()
+	s.selfUpdateSignal.AddListener(func(_ context.Context, inServer Server) {
+		if inServer.Name == server.Name {
+			// Received self update from the updated server. Cancel potientiall hanging update config request.
+			cancel(ErrSelfUpdateNotification)
+			s.selfUpdateSignal.RemoveListener(signalHandlerKey)
+		}
+	}, signalHandlerKey)
+	defer s.selfUpdateSignal.RemoveListener(signalHandlerKey)
+
 	err = s.client.UpdateNetworkConfig(ctx, *updatedServer)
-	if err != nil {
+	// If context is cancelled with cause ErrSelfUpdateNotification, the self update
+	// call has been processed and the operations was therefore successful.
+	// Therefore this is not considered an error.
+	if err != nil && !errors.Is(context.Cause(ctx), ErrSelfUpdateNotification) {
 		return err
 	}
 
@@ -281,13 +308,17 @@ func (s serverService) UpdateSystemNetwork(ctx context.Context, name string, sys
 }
 
 func (s serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUpdate) error {
-	return transaction.Do(ctx, func(ctx context.Context) error {
+	var server *Server
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+
 		authenticationCertificatePEM := pem.EncodeToMemory(&pem.Block{
 			Type:  "CERTIFICATE",
 			Bytes: serverUpdate.AuthenticationCertificate.Raw,
 		})
 
-		server, err := s.repo.GetByCertificate(ctx, string(authenticationCertificatePEM))
+		server, err = s.repo.GetByCertificate(ctx, string(authenticationCertificatePEM))
 		if err != nil {
 			if errors.Is(err, domain.ErrNotFound) {
 				return domain.ErrNotAuthorized
@@ -307,6 +338,13 @@ func (s serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUp
 
 		return s.repo.Update(ctx, *server)
 	})
+	if err != nil {
+		return err
+	}
+
+	s.selfUpdateSignal.Emit(ctx, *server)
+
+	return nil
 }
 
 func (s serverService) Rename(ctx context.Context, oldName string, newName string) error {

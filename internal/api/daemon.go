@@ -255,6 +255,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 					d.clientKey,
 				),
 				slog.Default(),
+				provisioningAdapterMiddleware.ServerClientPortWithSlogWithInformativeErrFunc(
+					func(err error) bool {
+						// ErrSelfUpdateNotification is used as cause when the context is
+						// cancelled. This is an expected success path and therefore not
+						// an error.
+						return errors.Is(err, provisioning.ErrSelfUpdateNotification)
+					},
+				),
 			),
 			tokenSvc,
 		),

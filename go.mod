@@ -187,6 +187,7 @@ require (
 	github.com/lmittmann/tint v1.1.2
 	github.com/lxc/incus-os/incus-osd v0.0.0-20250712005207-26c993304ce6
 	github.com/lxc/incus/v6 v6.14.1-0.20250701200831-a082b0228592
+	github.com/maniartech/signals v1.2.0
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/oauth2-proxy/mockoidc v0.0.0-20240214162133-caebfff84d25
 	github.com/olekukonko/tablewriter v0.0.5
