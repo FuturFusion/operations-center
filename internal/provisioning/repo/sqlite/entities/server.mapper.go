@@ -37,6 +37,14 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
   ORDER BY servers.name
 `)
 
+var serverObjectsByClusterAndStatus = RegisterStmt(`
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.certificate, clusters.certificate AS cluster_certificate, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen
+  FROM servers
+  LEFT JOIN clusters ON servers.cluster_id = clusters.id
+  WHERE ( cluster = ? AND servers.status = ? )
+  ORDER BY servers.name
+`)
+
 var serverObjectsByStatus = RegisterStmt(`
 SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.certificate, clusters.certificate AS cluster_certificate, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen
   FROM servers
@@ -247,7 +255,31 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 	}
 
 	for i, filter := range filters {
-		if filter.Status != nil && filter.Name == nil && filter.Cluster == nil && filter.Certificate == nil {
+		if filter.Cluster != nil && filter.Status != nil && filter.Name == nil && filter.Certificate == nil {
+			args = append(args, []any{filter.Cluster, filter.Status}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, serverObjectsByClusterAndStatus)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"serverObjectsByClusterAndStatus\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(serverObjectsByClusterAndStatus)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"serverObjects\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.Status != nil && filter.Name == nil && filter.Cluster == nil && filter.Certificate == nil {
 			args = append(args, []any{filter.Status}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, serverObjectsByStatus)
