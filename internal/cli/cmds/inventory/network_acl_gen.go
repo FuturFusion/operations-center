@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -155,6 +156,8 @@ func (c *cmdNetworkACLList) Run(cmd *cobra.Command, args []string) error {
 	wr := &bytes.Buffer{}
 
 	for _, networkACL := range networkACLs {
+		networkACL.LastUpdated = networkACL.LastUpdated.Truncate(time.Second)
+
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
@@ -215,7 +218,7 @@ func (c *cmdNetworkACLShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Cluster: %s\n", networkACL.Cluster)
 	fmt.Printf("Project Name: %s\n", networkACL.ProjectName)
 	fmt.Printf("Name: %s\n", networkACL.Name)
-	fmt.Printf("Last Updated: %s\n", networkACL.LastUpdated.String())
+	fmt.Printf("Last Updated: %s\n", networkACL.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

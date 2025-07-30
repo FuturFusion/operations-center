@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -149,6 +150,8 @@ func (c *cmdNetworkPeerList) Run(cmd *cobra.Command, args []string) error {
 	wr := &bytes.Buffer{}
 
 	for _, networkPeer := range networkPeers {
+		networkPeer.LastUpdated = networkPeer.LastUpdated.Truncate(time.Second)
+
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
@@ -209,7 +212,7 @@ func (c *cmdNetworkPeerShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Cluster: %s\n", networkPeer.Cluster)
 	fmt.Printf("Network Name: %s\n", networkPeer.NetworkName)
 	fmt.Printf("Name: %s\n", networkPeer.Name)
-	fmt.Printf("Last Updated: %s\n", networkPeer.LastUpdated.String())
+	fmt.Printf("Last Updated: %s\n", networkPeer.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

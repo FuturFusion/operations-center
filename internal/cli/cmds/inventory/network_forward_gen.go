@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -149,6 +150,8 @@ func (c *cmdNetworkForwardList) Run(cmd *cobra.Command, args []string) error {
 	wr := &bytes.Buffer{}
 
 	for _, networkForward := range networkForwards {
+		networkForward.LastUpdated = networkForward.LastUpdated.Truncate(time.Second)
+
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
@@ -209,7 +212,7 @@ func (c *cmdNetworkForwardShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Cluster: %s\n", networkForward.Cluster)
 	fmt.Printf("Network Name: %s\n", networkForward.NetworkName)
 	fmt.Printf("Name: %s\n", networkForward.Name)
-	fmt.Printf("Last Updated: %s\n", networkForward.LastUpdated.String())
+	fmt.Printf("Last Updated: %s\n", networkForward.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

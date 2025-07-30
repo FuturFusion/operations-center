@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -146,6 +147,8 @@ func (c *cmdProjectList) Run(cmd *cobra.Command, args []string) error {
 	wr := &bytes.Buffer{}
 
 	for _, project := range projects {
+		project.LastUpdated = project.LastUpdated.Truncate(time.Second)
+
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
@@ -205,7 +208,7 @@ func (c *cmdProjectShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("UUID: %s\n", project.UUID.String())
 	fmt.Printf("Cluster: %s\n", project.Cluster)
 	fmt.Printf("Name: %s\n", project.Name)
-	fmt.Printf("Last Updated: %s\n", project.LastUpdated.String())
+	fmt.Printf("Last Updated: %s\n", project.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil

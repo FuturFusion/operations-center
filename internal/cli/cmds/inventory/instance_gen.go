@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -164,6 +165,8 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	wr := &bytes.Buffer{}
 
 	for _, instance := range instances {
+		instance.LastUpdated = instance.LastUpdated.Truncate(time.Second)
+
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
@@ -225,7 +228,7 @@ func (c *cmdInstanceShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Server: %s\n", instance.Server)
 	fmt.Printf("Project Name: %s\n", instance.ProjectName)
 	fmt.Printf("Name: %s\n", instance.Name)
-	fmt.Printf("Last Updated: %s\n", instance.LastUpdated.String())
+	fmt.Printf("Last Updated: %s\n", instance.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
 	return nil
