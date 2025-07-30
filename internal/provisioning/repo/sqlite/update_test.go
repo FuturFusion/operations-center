@@ -28,6 +28,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		Severity:    api.UpdateSeverityNone,
 		Origin:      "linuxcontainers.org",
 		Channel:     "daily",
+		Status:      api.UpdateStatusReady,
 		Changelog:   "Some changes",
 		Files: provisioning.UpdateFiles{
 			{
@@ -51,6 +52,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		Severity:    api.UpdateSeverityNone,
 		Origin:      "linuxcontainers.org",
 		Channel:     "stable",
+		Status:      api.UpdateStatusReady,
 		Changelog:   "Other changes",
 		Files: provisioning.UpdateFiles{
 			{

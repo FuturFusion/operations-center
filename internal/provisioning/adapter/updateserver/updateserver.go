@@ -81,6 +81,7 @@ func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Up
 
 	updatesList := make([]provisioning.Update, 0, len(updates.Updates))
 	for _, update := range updates.Updates {
+		update.Status = api.UpdateStatusUnknown
 		update.ExternalID = update.Version
 		update.UUID = uuidFromUpdateServer(update)
 
