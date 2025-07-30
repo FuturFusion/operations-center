@@ -97,6 +97,16 @@ func registerUpdateHandler(router Router, authorizer authz.Authorizer, service p
 //	    description: Channel to filter for.
 //	    type: string
 //	    example: stable
+//	  - in: query
+//	    name: origin
+//	    description: Origin to filter for.
+//	    type: string
+//	    example: images.linuxcontainers.org
+//	  - in: query
+//	    name: status
+//	    description: Status to filter for.
+//	    type: string
+//	    example: ready
 //	responses:
 //	  "200":
 //	    description: API updates
