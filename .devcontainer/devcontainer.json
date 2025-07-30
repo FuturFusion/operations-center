@@ -81,7 +81,8 @@
     "--security-opt",
     "seccomp=unconfined",
     "-v", "${env:HOME}/.ssh:/home/vscode/.ssh:ro",
-    "--name", "${localEnv:USER}_operations_center_devcontainer"
+    "--name", "${localEnv:USER}_operations_center_devcontainer",
+    "--privileged"
   ],
 
   "remoteUser": "vscode"

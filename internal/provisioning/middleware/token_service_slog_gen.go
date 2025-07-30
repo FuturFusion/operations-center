@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"io"
 	"log/slog"
 
 	"github.com/FuturFusion/operations-center/internal/logger"
@@ -246,6 +247,42 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 		}
 	}()
 	return _d._base.GetByUUID(ctx, id)
+}
+
+// GetPreSeedISO implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (readCloser io.ReadCloser, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.Any("seedConfig", seedConfig),
+		)
+	}
+	log.Debug("=> calling GetPreSeedISO")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("readCloser", readCloser),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetPreSeedISO returned an informative error")
+			} else {
+				log.Error("<= method GetPreSeedISO returned an error")
+			}
+		} else {
+			log.Debug("<= method GetPreSeedISO finished")
+		}
+	}()
+	return _d._base.GetPreSeedISO(ctx, id, seedConfig)
 }
 
 // Update implements provisioning.TokenService.

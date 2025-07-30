@@ -6,6 +6,7 @@ package mock
 
 import (
 	"context"
+	"io"
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -40,6 +41,9 @@ var _ provisioning.TokenService = &TokenServiceMock{}
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
 //				panic("mock out the GetByUUID method")
 //			},
+//			GetPreSeedISOFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (io.ReadCloser, error) {
+//				panic("mock out the GetPreSeedISO method")
+//			},
 //			UpdateFunc: func(ctx context.Context, token provisioning.Token) error {
 //				panic("mock out the Update method")
 //			},
@@ -67,6 +71,9 @@ type TokenServiceMock struct {
 
 	// GetByUUIDFunc mocks the GetByUUID method.
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error)
+
+	// GetPreSeedISOFunc mocks the GetPreSeedISO method.
+	GetPreSeedISOFunc func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (io.ReadCloser, error)
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, token provisioning.Token) error
@@ -111,6 +118,15 @@ type TokenServiceMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
+		// GetPreSeedISO holds details about calls to the GetPreSeedISO method.
+		GetPreSeedISO []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+			// SeedConfig is the seedConfig argument value.
+			SeedConfig provisioning.TokenSeedConfig
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -119,13 +135,14 @@ type TokenServiceMock struct {
 			Token provisioning.Token
 		}
 	}
-	lockConsume      sync.RWMutex
-	lockCreate       sync.RWMutex
-	lockDeleteByUUID sync.RWMutex
-	lockGetAll       sync.RWMutex
-	lockGetAllUUIDs  sync.RWMutex
-	lockGetByUUID    sync.RWMutex
-	lockUpdate       sync.RWMutex
+	lockConsume       sync.RWMutex
+	lockCreate        sync.RWMutex
+	lockDeleteByUUID  sync.RWMutex
+	lockGetAll        sync.RWMutex
+	lockGetAllUUIDs   sync.RWMutex
+	lockGetByUUID     sync.RWMutex
+	lockGetPreSeedISO sync.RWMutex
+	lockUpdate        sync.RWMutex
 }
 
 // Consume calls ConsumeFunc.
@@ -333,6 +350,46 @@ func (mock *TokenServiceMock) GetByUUIDCalls() []struct {
 	mock.lockGetByUUID.RLock()
 	calls = mock.calls.GetByUUID
 	mock.lockGetByUUID.RUnlock()
+	return calls
+}
+
+// GetPreSeedISO calls GetPreSeedISOFunc.
+func (mock *TokenServiceMock) GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (io.ReadCloser, error) {
+	if mock.GetPreSeedISOFunc == nil {
+		panic("TokenServiceMock.GetPreSeedISOFunc: method is nil but TokenService.GetPreSeedISO was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		ID         uuid.UUID
+		SeedConfig provisioning.TokenSeedConfig
+	}{
+		Ctx:        ctx,
+		ID:         id,
+		SeedConfig: seedConfig,
+	}
+	mock.lockGetPreSeedISO.Lock()
+	mock.calls.GetPreSeedISO = append(mock.calls.GetPreSeedISO, callInfo)
+	mock.lockGetPreSeedISO.Unlock()
+	return mock.GetPreSeedISOFunc(ctx, id, seedConfig)
+}
+
+// GetPreSeedISOCalls gets all the calls that were made to GetPreSeedISO.
+// Check the length with:
+//
+//	len(mockedTokenService.GetPreSeedISOCalls())
+func (mock *TokenServiceMock) GetPreSeedISOCalls() []struct {
+	Ctx        context.Context
+	ID         uuid.UUID
+	SeedConfig provisioning.TokenSeedConfig
+} {
+	var calls []struct {
+		Ctx        context.Context
+		ID         uuid.UUID
+		SeedConfig provisioning.TokenSeedConfig
+	}
+	mock.lockGetPreSeedISO.RLock()
+	calls = mock.calls.GetPreSeedISO
+	mock.lockGetPreSeedISO.RUnlock()
 	return calls
 }
 

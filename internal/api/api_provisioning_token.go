@@ -29,6 +29,7 @@ func registerProvisioningTokenHandler(router Router, authorizer authz.Authorizer
 	router.HandleFunc("GET /{uuid}", response.With(handler.tokenGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /{uuid}", response.With(handler.tokenPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{uuid}", response.With(handler.tokenDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
+	router.HandleFunc("POST /{uuid}/iso", response.With(handler.tokenISOPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 }
 
 // swagger:operation GET /1.0/provisioning/tokens tokens tokens_get
@@ -374,4 +375,58 @@ func (t *tokenHandler) tokenDelete(r *http.Request) response.Response {
 	}
 
 	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/tokens/{uuid}/iso tokens token_iso_post
+//
+//	Generate pre-seed IncusOS ISO
+//
+//	Generate and retrieve pre-seed IncusOS ISO file.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/octet-stream
+//	  - application/gzip
+//	parameters:
+//	  - in: body
+//	    name: tokenISOPost
+//	    description: Seed configuration for the generated ISO image.
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/TokenISOPost"
+//	responses:
+//	  "200":
+//	    description: Raw file data
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (t *tokenHandler) tokenISOPost(r *http.Request) response.Response {
+	UUIDString := r.PathValue("uuid")
+
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	var tokenISOPost api.TokenISOPost
+	err = json.NewDecoder(r.Body).Decode(&tokenISOPost)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	rc, err := t.service.GetPreSeedISO(r.Context(), UUID, provisioning.TokenSeedConfig{
+		Applications:  tokenISOPost.Applications,
+		Network:       tokenISOPost.Network,
+		InstallTarget: tokenISOPost.InstallTarget,
+	})
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.ReadCloserResponse(r, rc, true, fmt.Sprintf("pre-seed-%s.iso", UUID.String()), -1, nil)
 }

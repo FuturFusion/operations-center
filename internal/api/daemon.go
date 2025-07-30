@@ -36,6 +36,7 @@ import (
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/flasher"
 	provisioningIncusAdapter "github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
 	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
@@ -168,54 +169,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 	)
 
 	// Setup Services
-	tokenSvc := provisioningServiceMiddleware.NewTokenServiceWithSlog(
-		provisioning.NewTokenService(
-			provisioningRepoMiddleware.NewTokenRepoWithSlog(
-				provisioningSqlite.NewToken(dbWithTransaction),
-				slog.Default(),
-			),
-		),
-		slog.Default(),
-	)
-
-	serverSvc := provisioningServiceMiddleware.NewServerServiceWithSlog(
-		provisioning.NewServerService(
-			provisioningRepoMiddleware.NewServerRepoWithSlog(
-				provisioningSqlite.NewServer(dbWithTransaction),
-				slog.Default(),
-			),
-			provisioningAdapterMiddleware.NewServerClientPortWithSlog(
-				provisioningIncusAdapter.New(
-					d.clientCertificate,
-					d.clientKey,
-				),
-				slog.Default(),
-			),
-			tokenSvc,
-		),
-		slog.Default(),
-	)
-
-	clusterSvc := provisioning.NewClusterService(
-		provisioningRepoMiddleware.NewClusterRepoWithSlog(
-			provisioningSqlite.NewCluster(dbWithTransaction),
-			slog.Default(),
-		),
-		provisioningAdapterMiddleware.NewClusterClientPortWithSlog(
-			provisioningIncusAdapter.New(
-				d.clientCertificate,
-				d.clientKey,
-			),
-			slog.Default(),
-		),
-		serverSvc,
-		nil,
-	)
-	clusterSvcWrapped := provisioningServiceMiddleware.NewClusterServiceWithSlog(
-		clusterSvc,
-		slog.Default(),
-	)
-
 	verifier := signature.NewVerifier([]byte(d.config.UpdateSignatureVerificationRootCA))
 
 	repoUpdateFiles, err := localfs.New(
@@ -267,6 +220,64 @@ func (d *Daemon) Start(ctx context.Context) error {
 			),
 			updateServiceOptions...,
 		),
+		slog.Default(),
+	)
+
+	serverCertificate, err := os.ReadFile(filepath.Join(d.env.VarDir(), "server.crt"))
+	if err != nil {
+		return fmt.Errorf("Failed to read server certificate from %q: %w", filepath.Join(d.env.VarDir(), "server.crt"), err)
+	}
+
+	tokenSvc := provisioningServiceMiddleware.NewTokenServiceWithSlog(
+		provisioning.NewTokenService(
+			provisioningRepoMiddleware.NewTokenRepoWithSlog(
+				provisioningSqlite.NewToken(dbWithTransaction),
+				slog.Default(),
+			),
+			updateSvc,
+			flasher.New(
+				d.config.OperationsCenterAddress,
+				string(serverCertificate),
+			),
+		),
+		slog.Default(),
+	)
+
+	serverSvc := provisioningServiceMiddleware.NewServerServiceWithSlog(
+		provisioning.NewServerService(
+			provisioningRepoMiddleware.NewServerRepoWithSlog(
+				provisioningSqlite.NewServer(dbWithTransaction),
+				slog.Default(),
+			),
+			provisioningAdapterMiddleware.NewServerClientPortWithSlog(
+				provisioningIncusAdapter.New(
+					d.clientCertificate,
+					d.clientKey,
+				),
+				slog.Default(),
+			),
+			tokenSvc,
+		),
+		slog.Default(),
+	)
+
+	clusterSvc := provisioning.NewClusterService(
+		provisioningRepoMiddleware.NewClusterRepoWithSlog(
+			provisioningSqlite.NewCluster(dbWithTransaction),
+			slog.Default(),
+		),
+		provisioningAdapterMiddleware.NewClusterClientPortWithSlog(
+			provisioningIncusAdapter.New(
+				d.clientCertificate,
+				d.clientKey,
+			),
+			slog.Default(),
+		),
+		serverSvc,
+		nil,
+	)
+	clusterSvcWrapped := provisioningServiceMiddleware.NewClusterServiceWithSlog(
+		clusterSvc,
 		slog.Default(),
 	)
 

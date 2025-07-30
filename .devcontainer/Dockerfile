@@ -11,7 +11,7 @@ ARG USER_GID=1000
 # Install necessary tools.
 RUN echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | tee /etc/apt/sources.list.d/goreleaser.list && \
     apt update && \
-    apt install -y vim sudo man less goreleaser jq fish zsh sqlite3 direnv docker.io
+    apt install -y vim sudo man less goreleaser jq fish zsh sqlite3 direnv docker.io kpartx
 
 # Install tools for building UI.
 RUN curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash - && \
@@ -26,6 +26,9 @@ RUN groupadd -g 1000 $USERNAME && \
     mkdir -p /etc/sudoers.d && \
     echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME && \
     chmod 0440 /etc/sudoers.d/$USERNAME
+
+# Make sure we have a loop back device.
+RUN test -b /dev/loop0 || mknod -m 660 /dev/loop0 b 7 0
 
 # Setup for vscode user.
 USER $USERNAME

@@ -238,6 +238,9 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 			}
 		}
 
+		// Overwrite origin with our value to ensure cleanup to work.
+		update.Origin = origin
+
 		err = s.repo.Upsert(ctx, update)
 		if err != nil {
 			return fmt.Errorf("Failed to persist the update in the repository for source %q: %w", origin, err)

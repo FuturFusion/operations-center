@@ -78,6 +78,14 @@ func (f ServerFilter) AppendToURLValues(query url.Values) url.Values {
 		query.Add("cluster", *f.Cluster)
 	}
 
+	if f.Status != nil {
+		query.Add("status", string(*f.Status))
+	}
+
+	if f.Certificate != nil {
+		query.Add("certificate", *f.Certificate)
+	}
+
 	if f.Expression != nil {
 		query.Add("filter", *f.Expression)
 	}
