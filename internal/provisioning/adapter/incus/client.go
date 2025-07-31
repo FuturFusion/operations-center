@@ -606,3 +606,15 @@ func detectClusteringInterface(network api.ServerSystemNetwork) string {
 	// the can be set to empty string.
 	return "enp5s0"
 }
+
+func (c client) UpdateClusterCertificate(ctx context.Context, cluster provisioning.Cluster, certificatePEM string, keyPEM string) error {
+	client, err := c.getClient(ctx, cluster)
+	if err != nil {
+		return err
+	}
+
+	return client.UpdateClusterCertificate(incusapi.ClusterCertificatePut{
+		ClusterCertificate:    certificatePEM,
+		ClusterCertificateKey: keyPEM,
+	}, "")
+}

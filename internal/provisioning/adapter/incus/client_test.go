@@ -2794,6 +2794,43 @@ func TestClientCluster(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "UpdateClusterCertificate",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Cluster) (any, error) {
+				return nil, client.UpdateClusterCertificate(ctx, target, "new cert", "new key")
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"PUT /1.0/cluster/certificate"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"PUT /1.0/cluster/certificate"},
+				},
+			},
+		},
 	}
 
 	for _, method := range methods {

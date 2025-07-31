@@ -2,6 +2,7 @@ package provisioning
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/url"
 	"time"
@@ -496,4 +497,37 @@ func (s clusterService) ResyncInventoryByName(ctx context.Context, name string) 
 	}
 
 	return nil
+}
+
+func (s clusterService) UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) error {
+	_, err := tls.X509KeyPair([]byte(certificatePEM), []byte(keyPEM))
+	if err != nil {
+		return fmt.Errorf("Failed to validate key pair: %w", err)
+	}
+
+	cluster, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get cluster for certificate update: %w", err)
+	}
+
+	err = s.client.UpdateClusterCertificate(ctx, *cluster, certificatePEM, keyPEM)
+	if err != nil {
+		return fmt.Errorf("Failed to update cluster certificate: %w", err)
+	}
+
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		cluster, err := s.repo.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get cluster for certificate update: %w", err)
+		}
+
+		cluster.Certificate = certificatePEM
+
+		err = s.repo.Update(ctx, *cluster)
+		if err != nil {
+			return fmt.Errorf("Failed to persist updated cluster certificate: %w", err)
+		}
+
+		return nil
+	})
 }

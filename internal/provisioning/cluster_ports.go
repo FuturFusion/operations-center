@@ -18,6 +18,7 @@ type ClusterService interface {
 	DeleteByName(ctx context.Context, name string) error
 	ResyncInventory(ctx context.Context) error
 	ResyncInventoryByName(ctx context.Context, name string) error
+	UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) error
 }
 
 type ClusterRepo interface {
@@ -52,4 +53,5 @@ type ClusterClientPort interface {
 	InitializeDefaultStorage(ctx context.Context, servers []Server) error
 	GetOSData(ctx context.Context, server Server) (api.OSData, error)
 	InitializeDefaultNetworking(ctx context.Context, servers []Server) error
+	UpdateClusterCertificate(ctx context.Context, cluster Cluster, certificatePEM string, keyPEM string) error
 }
