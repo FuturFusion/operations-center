@@ -190,3 +190,17 @@ func (_d ClusterServiceWithPrometheus) Update(ctx context.Context, cluster provi
 	}()
 	return _d.base.Update(ctx, cluster)
 }
+
+// UpdateCertificate implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateCertificate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateCertificate(ctx, name, certificatePEM, keyPEM)
+}

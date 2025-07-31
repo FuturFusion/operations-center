@@ -54,6 +54,9 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
 //				panic("mock out the Update method")
 //			},
+//			UpdateCertificateFunc: func(ctx context.Context, name string, certificatePEM string, keyPEM string) error {
+//				panic("mock out the UpdateCertificate method")
+//			},
 //		}
 //
 //		// use mockedClusterService in code that requires provisioning.ClusterService
@@ -93,6 +96,9 @@ type ClusterServiceMock struct {
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, cluster provisioning.Cluster) error
+
+	// UpdateCertificateFunc mocks the UpdateCertificate method.
+	UpdateCertificateFunc func(ctx context.Context, name string, certificatePEM string, keyPEM string) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -169,6 +175,17 @@ type ClusterServiceMock struct {
 			// Cluster is the cluster argument value.
 			Cluster provisioning.Cluster
 		}
+		// UpdateCertificate holds details about calls to the UpdateCertificate method.
+		UpdateCertificate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// CertificatePEM is the certificatePEM argument value.
+			CertificatePEM string
+			// KeyPEM is the keyPEM argument value.
+			KeyPEM string
+		}
 	}
 	lockCreate                sync.RWMutex
 	lockDeleteByName          sync.RWMutex
@@ -181,6 +198,7 @@ type ClusterServiceMock struct {
 	lockResyncInventory       sync.RWMutex
 	lockResyncInventoryByName sync.RWMutex
 	lockUpdate                sync.RWMutex
+	lockUpdateCertificate     sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -568,5 +586,49 @@ func (mock *ClusterServiceMock) UpdateCalls() []struct {
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update
 	mock.lockUpdate.RUnlock()
+	return calls
+}
+
+// UpdateCertificate calls UpdateCertificateFunc.
+func (mock *ClusterServiceMock) UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) error {
+	if mock.UpdateCertificateFunc == nil {
+		panic("ClusterServiceMock.UpdateCertificateFunc: method is nil but ClusterService.UpdateCertificate was just called")
+	}
+	callInfo := struct {
+		Ctx            context.Context
+		Name           string
+		CertificatePEM string
+		KeyPEM         string
+	}{
+		Ctx:            ctx,
+		Name:           name,
+		CertificatePEM: certificatePEM,
+		KeyPEM:         keyPEM,
+	}
+	mock.lockUpdateCertificate.Lock()
+	mock.calls.UpdateCertificate = append(mock.calls.UpdateCertificate, callInfo)
+	mock.lockUpdateCertificate.Unlock()
+	return mock.UpdateCertificateFunc(ctx, name, certificatePEM, keyPEM)
+}
+
+// UpdateCertificateCalls gets all the calls that were made to UpdateCertificate.
+// Check the length with:
+//
+//	len(mockedClusterService.UpdateCertificateCalls())
+func (mock *ClusterServiceMock) UpdateCertificateCalls() []struct {
+	Ctx            context.Context
+	Name           string
+	CertificatePEM string
+	KeyPEM         string
+} {
+	var calls []struct {
+		Ctx            context.Context
+		Name           string
+		CertificatePEM string
+		KeyPEM         string
+	}
+	mock.lockUpdateCertificate.RLock()
+	calls = mock.calls.UpdateCertificate
+	mock.lockUpdateCertificate.RUnlock()
 	return calls
 }

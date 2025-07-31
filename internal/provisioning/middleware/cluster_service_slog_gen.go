@@ -418,3 +418,39 @@ func (_d ClusterServiceWithSlog) Update(ctx context.Context, cluster provisionin
 	}()
 	return _d._base.Update(ctx, cluster)
 }
+
+// UpdateCertificate implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.String("certificatePEM", certificatePEM),
+			slog.String("keyPEM", keyPEM),
+		)
+	}
+	log.Debug("=> calling UpdateCertificate")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method UpdateCertificate returned an informative error")
+			} else {
+				log.Error("<= method UpdateCertificate returned an error")
+			}
+		} else {
+			log.Debug("<= method UpdateCertificate finished")
+		}
+	}()
+	return _d._base.UpdateCertificate(ctx, name, certificatePEM, keyPEM)
+}
