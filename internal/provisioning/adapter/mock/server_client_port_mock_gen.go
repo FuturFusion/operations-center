@@ -28,7 +28,7 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			GetResourcesFunc: func(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
 //				panic("mock out the GetResources method")
 //			},
-//			PingFunc: func(ctx context.Context, server provisioning.Server) error {
+//			PingFunc: func(ctx context.Context, target provisioning.ServerOrCluster) error {
 //				panic("mock out the Ping method")
 //			},
 //			UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
@@ -48,7 +48,7 @@ type ServerClientPortMock struct {
 	GetResourcesFunc func(ctx context.Context, server provisioning.Server) (api.HardwareData, error)
 
 	// PingFunc mocks the Ping method.
-	PingFunc func(ctx context.Context, server provisioning.Server) error
+	PingFunc func(ctx context.Context, target provisioning.ServerOrCluster) error
 
 	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
 	UpdateNetworkConfigFunc func(ctx context.Context, server provisioning.Server) error
@@ -73,8 +73,8 @@ type ServerClientPortMock struct {
 		Ping []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Server is the server argument value.
-			Server provisioning.Server
+			// Target is the target argument value.
+			Target provisioning.ServerOrCluster
 		}
 		// UpdateNetworkConfig holds details about calls to the UpdateNetworkConfig method.
 		UpdateNetworkConfig []struct {
@@ -163,21 +163,21 @@ func (mock *ServerClientPortMock) GetResourcesCalls() []struct {
 }
 
 // Ping calls PingFunc.
-func (mock *ServerClientPortMock) Ping(ctx context.Context, server provisioning.Server) error {
+func (mock *ServerClientPortMock) Ping(ctx context.Context, target provisioning.ServerOrCluster) error {
 	if mock.PingFunc == nil {
 		panic("ServerClientPortMock.PingFunc: method is nil but ServerClientPort.Ping was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
-		Server provisioning.Server
+		Target provisioning.ServerOrCluster
 	}{
 		Ctx:    ctx,
-		Server: server,
+		Target: target,
 	}
 	mock.lockPing.Lock()
 	mock.calls.Ping = append(mock.calls.Ping, callInfo)
 	mock.lockPing.Unlock()
-	return mock.PingFunc(ctx, server)
+	return mock.PingFunc(ctx, target)
 }
 
 // PingCalls gets all the calls that were made to Ping.
@@ -186,11 +186,11 @@ func (mock *ServerClientPortMock) Ping(ctx context.Context, server provisioning.
 //	len(mockedServerClientPort.PingCalls())
 func (mock *ServerClientPortMock) PingCalls() []struct {
 	Ctx    context.Context
-	Server provisioning.Server
+	Target provisioning.ServerOrCluster
 } {
 	var calls []struct {
 		Ctx    context.Context
-		Server provisioning.Server
+		Target provisioning.ServerOrCluster
 	}
 	mock.lockPing.RLock()
 	calls = mock.calls.Ping

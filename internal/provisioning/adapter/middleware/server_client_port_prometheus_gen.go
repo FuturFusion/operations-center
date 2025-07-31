@@ -67,7 +67,7 @@ func (_d ServerClientPortWithPrometheus) GetResources(ctx context.Context, serve
 }
 
 // Ping implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithPrometheus) Ping(ctx context.Context, server provisioning.Server) (err error) {
+func (_d ServerClientPortWithPrometheus) Ping(ctx context.Context, target provisioning.ServerOrCluster) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -77,7 +77,7 @@ func (_d ServerClientPortWithPrometheus) Ping(ctx context.Context, server provis
 
 		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Ping", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.Ping(ctx, server)
+	return _d.base.Ping(ctx, target)
 }
 
 // UpdateNetworkConfig implements provisioning.ServerClientPort.

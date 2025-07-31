@@ -113,12 +113,12 @@ func (_d ServerClientPortWithSlog) GetResources(ctx context.Context, server prov
 }
 
 // Ping implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) Ping(ctx context.Context, server provisioning.Server) (err error) {
+func (_d ServerClientPortWithSlog) Ping(ctx context.Context, target provisioning.ServerOrCluster) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("server", server),
+			slog.Any("target", target),
 		)
 	}
 	log.Debug("=> calling Ping")
@@ -143,7 +143,7 @@ func (_d ServerClientPortWithSlog) Ping(ctx context.Context, server provisioning
 			log.Debug("<= method Ping finished")
 		}
 	}()
-	return _d._base.Ping(ctx, server)
+	return _d._base.Ping(ctx, target)
 }
 
 // UpdateNetworkConfig implements provisioning.ServerClientPort.
