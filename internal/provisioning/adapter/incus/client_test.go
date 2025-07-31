@@ -28,9 +28,23 @@ type clientPort interface {
 	provisioning.ClusterClientPort
 }
 
-type methodTestSet struct {
+type methodTestSetServerOrCluster struct {
+	name       string
+	clientCall func(ctx context.Context, client clientPort, target provisioning.ServerOrCluster) (any, error)
+
+	testCases []methodTestCase
+}
+
+type methodTestSetServer struct {
 	name       string
 	clientCall func(ctx context.Context, client clientPort, target provisioning.Server) (any, error)
+
+	testCases []methodTestCase
+}
+
+type methodTestSetCluster struct {
+	name       string
+	clientCall func(ctx context.Context, client clientPort, target provisioning.Cluster) (any, error)
 
 	testCases []methodTestCase
 }
@@ -54,13 +68,13 @@ func noResult(t *testing.T, res any) {
 	t.Helper()
 }
 
-func TestClient(t *testing.T) {
+func TestClient_ServerOrCluster(t *testing.T) {
 	caPool, certPEM, keyPEM := setupCerts(t)
 
-	methods := []methodTestSet{
+	methods := []methodTestSetServerOrCluster{
 		{
 			name: "Ping",
-			clientCall: func(ctx context.Context, c clientPort, target provisioning.Server) (any, error) {
+			clientCall: func(ctx context.Context, c clientPort, target provisioning.ServerOrCluster) (any, error) {
 				return nil, c.Ping(ctx, target)
 			},
 			testCases: []methodTestCase{
@@ -95,6 +109,108 @@ func TestClient(t *testing.T) {
 				},
 			},
 		},
+	}
+
+	for _, method := range methods {
+		t.Run(method.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			// serverOrClusterGetClientErr error - invalid key pair
+			serverOrClusterGetClientErr(t, method, caPool, certPEM)
+
+			// run regular test cases
+			for _, tc := range method.testCases {
+				t.Run(tc.name, func(t *testing.T) {
+					// Setup
+					var gotPaths []string
+					var gotBodies []string
+					server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						gotPaths = append(gotPaths, fmt.Sprintf("%s %s", r.Method, r.URL.String()))
+
+						body, _ := io.ReadAll(r.Body)
+						gotBodies = append(gotBodies, string(body))
+
+						response, _ := queue.Pop(t, &tc.response)
+						w.WriteHeader(response.statusCode)
+						_, _ = w.Write(response.responseBody)
+					}))
+					server.TLS = &tls.Config{
+						NextProtos: []string{"h2", "http/1.1"},
+						ClientAuth: tls.RequireAndVerifyClientCert,
+						ClientCAs:  caPool,
+					}
+
+					server.StartTLS()
+					defer server.Close()
+
+					client := incus.New(certPEM, keyPEM)
+
+					serverCert := pem.EncodeToMemory(&pem.Block{
+						Type:  "CERTIFICATE",
+						Bytes: server.Certificate().Raw,
+					})
+
+					target := provisioning.Server{
+						ConnectionURL: server.URL,
+						Certificate:   string(serverCert),
+					}
+
+					// Run test
+					retValue, err := method.clientCall(ctx, client, target)
+
+					// Assert
+					tc.assertErr(t, err)
+
+					require.Equal(t, tc.wantPaths, gotPaths)
+
+					if tc.assertResult != nil || retValue != nil {
+						tc.assertResult(t, retValue)
+					}
+
+					if tc.assertBodies != nil {
+						tc.assertBodies(t, gotBodies)
+					}
+
+					require.Empty(t, tc.response)
+				})
+			}
+		})
+	}
+}
+
+func serverOrClusterGetClientErr(t *testing.T, method methodTestSetServerOrCluster, caPool *x509.CertPool, certPEM string) {
+	t.Helper()
+
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	server.TLS = &tls.Config{
+		NextProtos: []string{"h2", "http/1.1"},
+		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientCAs:  caPool,
+	}
+
+	server.StartTLS()
+	defer server.Close()
+
+	client := incus.New(certPEM, certPEM) // invalid key
+
+	serverCert := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: server.Certificate().Raw,
+	})
+
+	target := provisioning.Server{
+		ConnectionURL: server.URL,
+		Certificate:   string(serverCert),
+	}
+
+	_, err := method.clientCall(context.Background(), client, target)
+	require.Error(t, err)
+}
+
+func TestClientServer(t *testing.T) {
+	caPool, certPEM, keyPEM := setupCerts(t)
+
+	methods := []methodTestSetServer{
 		{
 			name: "GetResources",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
@@ -605,9 +721,9 @@ func TestClient(t *testing.T) {
 			},
 		},
 		{
-			name: "GetClusterNodeNames",
+			name: "UpdateNetworkConfig",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
-				return client.GetClusterNodeNames(ctx, target)
+				return nil, client.UpdateNetworkConfig(ctx, target)
 			},
 			testCases: []methodTestCase{
 				{
@@ -615,20 +731,14 @@ func TestClient(t *testing.T) {
 					response: []queue.Item[response]{
 						{
 							Value: response{
-								statusCode: http.StatusOK,
-								responseBody: []byte(`{
-  "metadata": [ "https://127.0.0.1/cluster/members/one" ]
-}`),
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{}`),
 							},
 						},
 					},
 
 					assertErr: require.NoError,
-					assertResult: func(t *testing.T, res any) {
-						t.Helper()
-						require.Len(t, res, 1)
-					},
-					wantPaths: []string{"GET /1.0/cluster/members"},
+					wantPaths: []string{"PUT /os/1.0/system/network"},
 				},
 				{
 					name: "error - unexpected http status code",
@@ -640,114 +750,15 @@ func TestClient(t *testing.T) {
 						},
 					},
 
-					assertErr:    require.Error,
-					assertResult: noResult,
-					wantPaths:    []string{"GET /1.0/cluster/members"},
-				},
-			},
-		},
-		{
-			name: "GetClusterJoinToken",
-			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
-				return client.GetClusterJoinToken(ctx, target, "server1")
-			},
-			testCases: []methodTestCase{
-				{
-					name: "success",
-					response: []queue.Item[response]{
-						// GET /1.0/events
-						{
-							Value: response{
-								statusCode:   http.StatusForbidden,
-								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
-							},
-						},
-						// POST /1.0/cluster/members
-						{
-							Value: response{
-								statusCode: http.StatusOK,
-								responseBody: []byte(`{
-  "metadata": {
-    "metadata": {
-      "serverName": "server1",
-      "secret": "secret",
-      "fingerprint": "fingerprint",
-      "addresses": ["1.0.0.1", "1.0.0.2"],
-      "expiresAt": "2025-06-17T15:39:19.0Z"
-    }
-  }
-}`),
-							},
-						},
-					},
-
-					assertErr: require.NoError,
-					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members"},
-					assertResult: func(t *testing.T, res any) {
-						t.Helper()
-						// base64 encoded token from response body metadata.metadata.
-						wantToken := "eyJzZXJ2ZXJfbmFtZSI6InNlcnZlcjEiLCJmaW5nZXJwcmludCI6ImZpbmdlcnByaW50IiwiYWRkcmVzc2VzIjpbIjEuMC4wLjEiLCIxLjAuMC4yIl0sInNlY3JldCI6InNlY3JldCIsImV4cGlyZXNfYXQiOiIyMDI1LTA2LTE3VDE1OjM5OjE5WiJ9"
-						require.Equal(t, wantToken, res)
-					},
-				},
-				{
-					name: "error - CreateClusterMember - unexpected status code",
-					response: []queue.Item[response]{
-						// GET /1.0/events
-						{
-							Value: response{
-								statusCode:   http.StatusForbidden,
-								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
-							},
-						},
-						// POST /1.0/cluster/members
-						{
-							Value: response{
-								statusCode: http.StatusInternalServerError,
-							},
-						},
-					},
-
-					assertErr:    require.Error,
-					wantPaths:    []string{"GET /1.0/events", "POST /1.0/cluster/members"},
-					assertResult: noResult,
-				},
-				{
-					name: "error - invalid cluster join token",
-					response: []queue.Item[response]{
-						// GET /1.0/events
-						{
-							Value: response{
-								statusCode:   http.StatusForbidden,
-								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
-							},
-						},
-						// POST /1.0/cluster/members
-						{
-							Value: response{
-								statusCode: http.StatusOK,
-								responseBody: []byte(`{
-  "metadata": {
-    "metadata": {
-    }
-  }
-}`), // Join token content
-							},
-						},
-					},
-
-					assertErr: func(tt require.TestingT, err error, i ...any) {
-						require.ErrorContains(tt, err, "Failed converting token operation to join token")
-					},
-					wantPaths:    []string{"GET /1.0/events", "POST /1.0/cluster/members"},
-					assertResult: noResult,
+					assertErr: require.Error,
+					wantPaths: []string{"PUT /os/1.0/system/network"},
 				},
 			},
 		},
 		{
 			name: "JoinCluster",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
-				return nil, client.JoinCluster(ctx, target, "token", provisioning.Server{})
+				return nil, client.JoinCluster(ctx, target, "token", provisioning.Cluster{})
 			},
 			testCases: []methodTestCase{
 				{
@@ -828,78 +839,6 @@ func TestClient(t *testing.T) {
 
 					assertErr: require.Error,
 					wantPaths: []string{"GET /1.0/events", "PUT /1.0/cluster", "GET /1.0/operations//wait?timeout=-1"},
-				},
-			},
-		},
-		{
-			name: "UpdateNetworkConfig",
-			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
-				return nil, client.UpdateNetworkConfig(ctx, target)
-			},
-			testCases: []methodTestCase{
-				{
-					name: "success",
-					response: []queue.Item[response]{
-						{
-							Value: response{
-								statusCode:   http.StatusOK,
-								responseBody: []byte(`{}`),
-							},
-						},
-					},
-
-					assertErr: require.NoError,
-					wantPaths: []string{"PUT /os/1.0/system/network"},
-				},
-				{
-					name: "error - unexpected http status code",
-					response: []queue.Item[response]{
-						{
-							Value: response{
-								statusCode: http.StatusInternalServerError,
-							},
-						},
-					},
-
-					assertErr: require.Error,
-					wantPaths: []string{"PUT /os/1.0/system/network"},
-				},
-			},
-		},
-		{
-			name: "CreateProject",
-			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
-				return nil, client.CreateProject(ctx, target, "project")
-			},
-			testCases: []methodTestCase{
-				{
-					name: "success",
-					response: []queue.Item[response]{
-						{
-							Value: response{
-								statusCode: http.StatusOK,
-								responseBody: []byte(`{
-  "metadata": {}
-}`),
-							},
-						},
-					},
-
-					assertErr: require.NoError,
-					wantPaths: []string{"POST /1.0/projects"},
-				},
-				{
-					name: "error - unexpected http status code",
-					response: []queue.Item[response]{
-						{
-							Value: response{
-								statusCode: http.StatusInternalServerError,
-							},
-						},
-					},
-
-					assertErr: require.Error,
-					wantPaths: []string{"POST /1.0/projects"},
 				},
 			},
 		},
@@ -2566,7 +2505,7 @@ func TestClient(t *testing.T) {
 			ctx := context.Background()
 
 			// getClient error - invalid key pair
-			getClientErr(t, method, caPool, certPEM)
+			serverGetClientErr(t, method, caPool, certPEM)
 
 			// run regular test cases
 			for _, tc := range method.testCases {
@@ -2622,17 +2561,285 @@ func TestClient(t *testing.T) {
 						},
 					}
 
-					// "state": {
-					//   "interfaces": {
-					//     "eth0": {
-					//       "addresses": ["192.168.1.2"],
-					//       "roles": ["clustering"],
-					//       "lacp": {
-					//         "local_mac": "45:e3:51:39:0c:51"
-					//       }
-					//     }
-					//   }
-					// }
+					// Run test
+					retValue, err := method.clientCall(ctx, client, target)
+
+					// Assert
+					tc.assertErr(t, err)
+
+					require.Equal(t, tc.wantPaths, gotPaths)
+
+					if tc.assertResult != nil || retValue != nil {
+						tc.assertResult(t, retValue)
+					}
+
+					if tc.assertBodies != nil {
+						tc.assertBodies(t, gotBodies)
+					}
+
+					require.Empty(t, tc.response)
+				})
+			}
+		})
+	}
+}
+
+func serverGetClientErr(t *testing.T, method methodTestSetServer, caPool *x509.CertPool, certPEM string) {
+	t.Helper()
+
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	server.TLS = &tls.Config{
+		NextProtos: []string{"h2", "http/1.1"},
+		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientCAs:  caPool,
+	}
+
+	server.StartTLS()
+	defer server.Close()
+
+	client := incus.New(certPEM, certPEM) // invalid key
+
+	serverCert := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: server.Certificate().Raw,
+	})
+
+	target := provisioning.Server{
+		ConnectionURL: server.URL,
+		Certificate:   string(serverCert),
+	}
+
+	_, err := method.clientCall(context.Background(), client, target)
+	require.Error(t, err)
+}
+
+func TestClientCluster(t *testing.T) {
+	caPool, certPEM, keyPEM := setupCerts(t)
+
+	methods := []methodTestSetCluster{
+		{
+			name: "GetClusterNodeNames",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Cluster) (any, error) {
+				return client.GetClusterNodeNames(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": [ "https://127.0.0.1/cluster/members/one" ]
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+						require.Len(t, res, 1)
+					},
+					wantPaths: []string{"GET /1.0/cluster/members"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/cluster/members"},
+				},
+			},
+		},
+		{
+			name: "GetClusterJoinToken",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Cluster) (any, error) {
+				return client.GetClusterJoinToken(ctx, target, "server1")
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "metadata": {
+      "serverName": "server1",
+      "secret": "secret",
+      "fingerprint": "fingerprint",
+      "addresses": ["1.0.0.1", "1.0.0.2"],
+      "expiresAt": "2025-06-17T15:39:19.0Z"
+    }
+  }
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /1.0/events", "POST /1.0/cluster/members"},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+						// base64 encoded token from response body metadata.metadata.
+						wantToken := "eyJzZXJ2ZXJfbmFtZSI6InNlcnZlcjEiLCJmaW5nZXJwcmludCI6ImZpbmdlcnByaW50IiwiYWRkcmVzc2VzIjpbIjEuMC4wLjEiLCIxLjAuMC4yIl0sInNlY3JldCI6InNlY3JldCIsImV4cGlyZXNfYXQiOiIyMDI1LTA2LTE3VDE1OjM5OjE5WiJ9"
+						require.Equal(t, wantToken, res)
+					},
+				},
+				{
+					name: "error - CreateClusterMember - unexpected status code",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /1.0/events", "POST /1.0/cluster/members"},
+					assertResult: noResult,
+				},
+				{
+					name: "error - invalid cluster join token",
+					response: []queue.Item[response]{
+						// GET /1.0/events
+						{
+							Value: response{
+								statusCode:   http.StatusForbidden,
+								responseBody: []byte(`{"type": "error", "error_code": 403, "error": "websocket forbidden"}`), // Prevent the websocket listener.
+							},
+						},
+						// POST /1.0/cluster/members
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "metadata": {
+    }
+  }
+}`), // Join token content
+							},
+						},
+					},
+
+					assertErr: func(tt require.TestingT, err error, i ...any) {
+						require.ErrorContains(tt, err, "Failed converting token operation to join token")
+					},
+					wantPaths:    []string{"GET /1.0/events", "POST /1.0/cluster/members"},
+					assertResult: noResult,
+				},
+			},
+		},
+		{
+			name: "CreateProject",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Cluster) (any, error) {
+				return nil, client.CreateProject(ctx, target, "project")
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"POST /1.0/projects"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"POST /1.0/projects"},
+				},
+			},
+		},
+	}
+
+	for _, method := range methods {
+		t.Run(method.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			// clusterGetClientErr error - invalid key pair
+			clusterGetClientErr(t, method, caPool, certPEM)
+
+			// run regular test cases
+			for _, tc := range method.testCases {
+				t.Run(tc.name, func(t *testing.T) {
+					// Setup
+					var gotPaths []string
+					var gotBodies []string
+					server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						gotPaths = append(gotPaths, fmt.Sprintf("%s %s", r.Method, r.URL.String()))
+
+						body, _ := io.ReadAll(r.Body)
+						gotBodies = append(gotBodies, string(body))
+
+						response, _ := queue.Pop(t, &tc.response)
+						w.WriteHeader(response.statusCode)
+						_, _ = w.Write(response.responseBody)
+					}))
+					server.TLS = &tls.Config{
+						NextProtos: []string{"h2", "http/1.1"},
+						ClientAuth: tls.RequireAndVerifyClientCert,
+						ClientCAs:  caPool,
+					}
+
+					server.StartTLS()
+					defer server.Close()
+
+					client := incus.New(certPEM, keyPEM)
+
+					serverCert := pem.EncodeToMemory(&pem.Block{
+						Type:  "CERTIFICATE",
+						Bytes: server.Certificate().Raw,
+					})
+
+					target := provisioning.Cluster{
+						Name:          "server01",
+						ConnectionURL: server.URL,
+						Certificate:   string(serverCert),
+					}
 
 					// Run test
 					retValue, err := method.clientCall(ctx, client, target)
@@ -2657,7 +2864,7 @@ func TestClient(t *testing.T) {
 	}
 }
 
-func getClientErr(t *testing.T, method methodTestSet, caPool *x509.CertPool, certPEM string) {
+func clusterGetClientErr(t *testing.T, method methodTestSetCluster, caPool *x509.CertPool, certPEM string) {
 	t.Helper()
 
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
@@ -2677,7 +2884,7 @@ func getClientErr(t *testing.T, method methodTestSet, caPool *x509.CertPool, cer
 		Bytes: server.Certificate().Raw,
 	})
 
-	target := provisioning.Server{
+	target := provisioning.Cluster{
 		ConnectionURL: server.URL,
 		Certificate:   string(serverCert),
 	}

@@ -35,15 +35,20 @@ type InventorySyncer interface {
 	SyncCluster(ctx context.Context, cluster string) error
 }
 
+type ServerOrCluster interface {
+	GetCertificate() string
+	GetConnectionURL() string
+}
+
 type ClusterClientPort interface {
-	Ping(ctx context.Context, server Server) error
+	Ping(ctx context.Context, target ServerOrCluster) error
 	EnableOSServiceLVM(ctx context.Context, server Server) error
 	SetServerConfig(ctx context.Context, server Server, config map[string]string) error
 	EnableCluster(ctx context.Context, server Server) (clusterCertificate string, _ error)
-	GetClusterNodeNames(ctx context.Context, server Server) (nodeNames []string, _ error)
-	GetClusterJoinToken(ctx context.Context, server Server, memberName string) (joinToken string, _ error)
-	JoinCluster(ctx context.Context, server Server, joinToken string, cluster Server) error
-	CreateProject(ctx context.Context, server Server, name string) error
+	GetClusterNodeNames(ctx context.Context, cluster Cluster) (nodeNames []string, _ error)
+	GetClusterJoinToken(ctx context.Context, cluster Cluster, memberName string) (joinToken string, _ error)
+	JoinCluster(ctx context.Context, server Server, joinToken string, cluster Cluster) error
+	CreateProject(ctx context.Context, cluster Cluster, name string) error
 	InitializeDefaultStorage(ctx context.Context, servers []Server) error
 	GetOSData(ctx context.Context, server Server) (api.OSData, error)
 	InitializeDefaultNetworking(ctx context.Context, servers []Server) error

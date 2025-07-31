@@ -176,8 +176,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 
 	// From now on, use the cluster certificate to connect to the cluster instead
 	// of the certificate of the bootstrap server.
-	// Fake "server", which represents the cluster to get the join tokens.
-	cluster := Server{
+	cluster := Cluster{
 		Name:          newCluster.Name,
 		ConnectionURL: bootstrapServer.ConnectionURL,
 		Certificate:   clusterCertificate,

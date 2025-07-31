@@ -38,7 +38,7 @@ type ServerRepo interface {
 }
 
 type ServerClientPort interface {
-	Ping(ctx context.Context, server Server) error
+	Ping(ctx context.Context, target ServerOrCluster) error
 	GetResources(ctx context.Context, server Server) (api.HardwareData, error)
 	GetOSData(ctx context.Context, server Server) (api.OSData, error)
 	UpdateNetworkConfig(ctx context.Context, server Server) error

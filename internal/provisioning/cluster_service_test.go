@@ -651,7 +651,7 @@ func TestClusterService_Create(t *testing.T) {
 			}
 
 			client := &adapterMock.ClusterClientPortMock{
-				PingFunc: func(ctx context.Context, server provisioning.Server) error {
+				PingFunc: func(ctx context.Context, target provisioning.ServerOrCluster) error {
 					return tc.clientPingErr
 				},
 				EnableOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) error {
@@ -664,16 +664,16 @@ func TestClusterService_Create(t *testing.T) {
 				EnableClusterFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
 					return tc.clientEnableClusterCertificate, tc.clientEnableClusterErr
 				},
-				GetClusterNodeNamesFunc: func(ctx context.Context, server provisioning.Server) ([]string, error) {
+				GetClusterNodeNamesFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]string, error) {
 					return []string{"one"}, tc.clientGetClusterNodeNamesErr
 				},
-				GetClusterJoinTokenFunc: func(ctx context.Context, server provisioning.Server, memberName string) (string, error) {
+				GetClusterJoinTokenFunc: func(ctx context.Context, cluster provisioning.Cluster, memberName string) (string, error) {
 					return tc.clientGetClusterJoinToken, tc.clientGetClusterJoinTokenErr
 				},
-				JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) error {
+				JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) error {
 					return tc.clientJoinClusterErr
 				},
-				CreateProjectFunc: func(ctx context.Context, server provisioning.Server, name string) error {
+				CreateProjectFunc: func(ctx context.Context, cluster provisioning.Cluster, name string) error {
 					return tc.clientCreateProjectErr
 				},
 				InitializeDefaultStorageFunc: func(ctx context.Context, servers []provisioning.Server) error {

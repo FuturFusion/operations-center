@@ -36,31 +36,26 @@ func New(clientCert string, clientKey string) client {
 	}
 }
 
-func (c client) getClient(ctx context.Context, server provisioning.Server) (incus.InstanceServer, error) {
-	serverCertificate := server.Certificate
-	if server.ClusterCertificate != nil {
-		serverCertificate = *server.ClusterCertificate
-	}
-
+func (c client) getClient(ctx context.Context, target provisioning.ServerOrCluster) (incus.InstanceServer, error) {
 	args := &incus.ConnectionArgs{
 		TLSClientCert: c.clientCert,
 		TLSClientKey:  c.clientKey,
-		TLSServerCert: serverCertificate,
+		TLSServerCert: target.GetCertificate(),
 		SkipGetServer: true,
 	}
 
-	return incus.ConnectIncusWithContext(ctx, server.ConnectionURL, args)
+	return incus.ConnectIncusWithContext(ctx, target.GetConnectionURL(), args)
 }
 
-func (c client) Ping(ctx context.Context, server provisioning.Server) error {
-	client, err := c.getClient(ctx, server)
+func (c client) Ping(ctx context.Context, target provisioning.ServerOrCluster) error {
+	client, err := c.getClient(ctx, target)
 	if err != nil {
 		return err
 	}
 
 	_, _, err = client.GetServer()
 	if err != nil {
-		return fmt.Errorf("Failed to ping %q: %w", server.ConnectionURL, err)
+		return fmt.Errorf("Failed to ping %q: %w", target.GetConnectionURL(), err)
 	}
 
 	return nil
@@ -212,8 +207,8 @@ func (c client) EnableCluster(ctx context.Context, server provisioning.Server) (
 	return clusterCertificate, nil
 }
 
-func (c client) GetClusterNodeNames(ctx context.Context, server provisioning.Server) ([]string, error) {
-	client, err := c.getClient(ctx, server)
+func (c client) GetClusterNodeNames(ctx context.Context, cluster provisioning.Cluster) ([]string, error) {
+	client, err := c.getClient(ctx, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -226,8 +221,8 @@ func (c client) GetClusterNodeNames(ctx context.Context, server provisioning.Ser
 	return nodeNames, nil
 }
 
-func (c client) GetClusterJoinToken(ctx context.Context, server provisioning.Server, memberName string) (joinToken string, _ error) {
-	client, err := c.getClient(ctx, server)
+func (c client) GetClusterJoinToken(ctx context.Context, cluster provisioning.Cluster, memberName string) (joinToken string, _ error) {
+	client, err := c.getClient(ctx, cluster)
 	if err != nil {
 		return "", err
 	}
@@ -236,7 +231,7 @@ func (c client) GetClusterJoinToken(ctx context.Context, server provisioning.Ser
 		ServerName: memberName,
 	})
 	if err != nil {
-		return "", fmt.Errorf("Failed to get cluster join token on %q: %w", server.ConnectionURL, err)
+		return "", fmt.Errorf("Failed to get cluster join token on %q: %w", cluster.ConnectionURL, err)
 	}
 
 	opAPI := op.Get()
@@ -248,7 +243,7 @@ func (c client) GetClusterJoinToken(ctx context.Context, server provisioning.Ser
 	return token.String(), nil
 }
 
-func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) error {
+func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
 		return err
@@ -282,8 +277,8 @@ func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joi
 	return nil
 }
 
-func (c client) CreateProject(ctx context.Context, server provisioning.Server, name string) error {
-	client, err := c.getClient(ctx, server)
+func (c client) CreateProject(ctx context.Context, cluster provisioning.Cluster, name string) error {
+	client, err := c.getClient(ctx, cluster)
 	if err != nil {
 		return err
 	}

@@ -245,3 +245,17 @@ func TestServer_Filter(t *testing.T) {
 		})
 	}
 }
+
+func TestServer_Getters(t *testing.T) {
+	cluster := provisioning.Server{
+		ConnectionURL: "connection_url",
+		Certificate:   "cert",
+	}
+
+	require.Equal(t, cluster.Certificate, cluster.GetCertificate())
+	require.Equal(t, cluster.ConnectionURL, cluster.GetConnectionURL())
+
+	cluster.ClusterCertificate = ptr.To("cluster cert")
+
+	require.Equal(t, *cluster.ClusterCertificate, cluster.GetCertificate())
+}
