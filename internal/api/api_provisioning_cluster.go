@@ -30,6 +30,7 @@ func registerProvisioningClusterHandler(router Router, authorizer authz.Authoriz
 	router.HandleFunc("DELETE /{name}", response.With(handler.clusterDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{name}", response.With(handler.clusterPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/resync-inventory", response.With(handler.clusterResyncInventoryPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("PUT /{name}/certificate", response.With(handler.clusterCertificatePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/provisioning/clusters clusters clusters_get
@@ -482,6 +483,65 @@ func (c *clusterHandler) clusterResyncInventoryPost(r *http.Request) response.Re
 	err := c.service.ResyncInventoryByName(r.Context(), name)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to resync inventory for cluster: %w", err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation PUT /1.0/provisioning/clusters/{name}/certificate clusters cluster_certificate_put
+//
+//	Update the cluster's certificate and key
+//
+//	Update the cluster's certificate and key.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: cluster_certificate_put
+//	    description: Cluster certificate definition
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/ClusterCertificatePut"
+//	responses:
+//	  "200":
+//	    description: Empty response
+//	    schema:
+//	      type: object
+//	      description: Cluster certificate update response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (c *clusterHandler) clusterCertificatePut(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	var request api.ClusterCertificatePut
+
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	err = c.service.UpdateCertificate(r.Context(), name, request.ClusterCertificate, request.ClusterCertificateKey)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to update certificate for cluster: %w", err))
 	}
 
 	return response.EmptySyncResponse
