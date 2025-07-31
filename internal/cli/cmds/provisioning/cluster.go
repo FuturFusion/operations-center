@@ -1,7 +1,9 @@
 package provisioning
 
 import (
+	"crypto/tls"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -67,6 +69,13 @@ func (c *CmdCluster) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(clusterResyncCmd.Command())
+
+	// Update certificate
+	clusterUpdateCertificateCmd := cmdClusterUpdateCertificate{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterUpdateCertificateCmd.Command())
 
 	return cmd
 }
@@ -284,6 +293,61 @@ func (c *cmdClusterResync) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	err = c.ocClient.ResyncCluster(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Update cluster certificate.
+type cmdClusterUpdateCertificate struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdClusterUpdateCertificate) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "update-certificate <name> <cert.crt> <cert.key>"
+	cmd.Short = "Update cluster certificate"
+	cmd.Long = `Description:
+  Update the certificate and key for a cluster.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdClusterUpdateCertificate) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 3, 3)
+	if exit {
+		return err
+	}
+
+	name := args[0]
+	certificateFilename := args[1]
+	certificateKeyFilename := args[2]
+
+	certificatePEM, err := os.ReadFile(certificateFilename)
+	if err != nil {
+		return fmt.Errorf("Failed to read certificate file %q: %w", certificateFilename, err)
+	}
+
+	certificateKeyPEM, err := os.ReadFile(certificateKeyFilename)
+	if err != nil {
+		return fmt.Errorf("Failed to read key file %q: %w", certificateKeyFilename, err)
+	}
+
+	_, err = tls.LoadX509KeyPair(certificateFilename, certificateKeyFilename)
+	if err != nil {
+		return fmt.Errorf("Failed to load X509 key pair: %w", err)
+	}
+
+	err = c.ocClient.UpdateClusterCertificate(cmd.Context(), name, api.ClusterCertificatePut{
+		ClusterCertificate:    string(certificatePEM),
+		ClusterCertificateKey: string(certificateKeyPEM),
+	})
 	if err != nil {
 		return err
 	}
