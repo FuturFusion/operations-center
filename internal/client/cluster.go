@@ -81,3 +81,12 @@ func (c OperationsCenterClient) ResyncCluster(ctx context.Context, name string) 
 
 	return nil
 }
+
+func (c OperationsCenterClient) UpdateClusterCertificate(ctx context.Context, name string, requestBody api.ClusterCertificatePut) error {
+	_, err := c.doRequest(ctx, http.MethodPut, path.Join("/provisioning/clusters", name, "certificate"), nil, requestBody)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

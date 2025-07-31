@@ -22,7 +22,7 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //
 //		// make and configure a mocked provisioning.ClusterClientPort
 //		mockedClusterClientPort := &ClusterClientPortMock{
-//			CreateProjectFunc: func(ctx context.Context, server provisioning.Server, name string) error {
+//			CreateProjectFunc: func(ctx context.Context, cluster provisioning.Cluster, name string) error {
 //				panic("mock out the CreateProject method")
 //			},
 //			EnableClusterFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
@@ -31,10 +31,10 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			EnableOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the EnableOSServiceLVM method")
 //			},
-//			GetClusterJoinTokenFunc: func(ctx context.Context, server provisioning.Server, memberName string) (string, error) {
+//			GetClusterJoinTokenFunc: func(ctx context.Context, cluster provisioning.Cluster, memberName string) (string, error) {
 //				panic("mock out the GetClusterJoinToken method")
 //			},
-//			GetClusterNodeNamesFunc: func(ctx context.Context, server provisioning.Server) ([]string, error) {
+//			GetClusterNodeNamesFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]string, error) {
 //				panic("mock out the GetClusterNodeNames method")
 //			},
 //			GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
@@ -46,14 +46,17 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			InitializeDefaultStorageFunc: func(ctx context.Context, servers []provisioning.Server) error {
 //				panic("mock out the InitializeDefaultStorage method")
 //			},
-//			JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) error {
+//			JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) error {
 //				panic("mock out the JoinCluster method")
 //			},
-//			PingFunc: func(ctx context.Context, server provisioning.Server) error {
+//			PingFunc: func(ctx context.Context, target provisioning.ServerOrCluster) error {
 //				panic("mock out the Ping method")
 //			},
 //			SetServerConfigFunc: func(ctx context.Context, server provisioning.Server, config map[string]string) error {
 //				panic("mock out the SetServerConfig method")
+//			},
+//			UpdateClusterCertificateFunc: func(ctx context.Context, cluster provisioning.Cluster, certificatePEM string, keyPEM string) error {
+//				panic("mock out the UpdateClusterCertificate method")
 //			},
 //		}
 //
@@ -63,7 +66,7 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //	}
 type ClusterClientPortMock struct {
 	// CreateProjectFunc mocks the CreateProject method.
-	CreateProjectFunc func(ctx context.Context, server provisioning.Server, name string) error
+	CreateProjectFunc func(ctx context.Context, cluster provisioning.Cluster, name string) error
 
 	// EnableClusterFunc mocks the EnableCluster method.
 	EnableClusterFunc func(ctx context.Context, server provisioning.Server) (string, error)
@@ -72,10 +75,10 @@ type ClusterClientPortMock struct {
 	EnableOSServiceLVMFunc func(ctx context.Context, server provisioning.Server) error
 
 	// GetClusterJoinTokenFunc mocks the GetClusterJoinToken method.
-	GetClusterJoinTokenFunc func(ctx context.Context, server provisioning.Server, memberName string) (string, error)
+	GetClusterJoinTokenFunc func(ctx context.Context, cluster provisioning.Cluster, memberName string) (string, error)
 
 	// GetClusterNodeNamesFunc mocks the GetClusterNodeNames method.
-	GetClusterNodeNamesFunc func(ctx context.Context, server provisioning.Server) ([]string, error)
+	GetClusterNodeNamesFunc func(ctx context.Context, cluster provisioning.Cluster) ([]string, error)
 
 	// GetOSDataFunc mocks the GetOSData method.
 	GetOSDataFunc func(ctx context.Context, server provisioning.Server) (api.OSData, error)
@@ -87,13 +90,16 @@ type ClusterClientPortMock struct {
 	InitializeDefaultStorageFunc func(ctx context.Context, servers []provisioning.Server) error
 
 	// JoinClusterFunc mocks the JoinCluster method.
-	JoinClusterFunc func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) error
+	JoinClusterFunc func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) error
 
 	// PingFunc mocks the Ping method.
-	PingFunc func(ctx context.Context, server provisioning.Server) error
+	PingFunc func(ctx context.Context, target provisioning.ServerOrCluster) error
 
 	// SetServerConfigFunc mocks the SetServerConfig method.
 	SetServerConfigFunc func(ctx context.Context, server provisioning.Server, config map[string]string) error
+
+	// UpdateClusterCertificateFunc mocks the UpdateClusterCertificate method.
+	UpdateClusterCertificateFunc func(ctx context.Context, cluster provisioning.Cluster, certificatePEM string, keyPEM string) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -101,8 +107,8 @@ type ClusterClientPortMock struct {
 		CreateProject []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Server is the server argument value.
-			Server provisioning.Server
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
 			// Name is the name argument value.
 			Name string
 		}
@@ -124,8 +130,8 @@ type ClusterClientPortMock struct {
 		GetClusterJoinToken []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Server is the server argument value.
-			Server provisioning.Server
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
 			// MemberName is the memberName argument value.
 			MemberName string
 		}
@@ -133,8 +139,8 @@ type ClusterClientPortMock struct {
 		GetClusterNodeNames []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Server is the server argument value.
-			Server provisioning.Server
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
 		}
 		// GetOSData holds details about calls to the GetOSData method.
 		GetOSData []struct {
@@ -166,14 +172,14 @@ type ClusterClientPortMock struct {
 			// JoinToken is the joinToken argument value.
 			JoinToken string
 			// Cluster is the cluster argument value.
-			Cluster provisioning.Server
+			Cluster provisioning.Cluster
 		}
 		// Ping holds details about calls to the Ping method.
 		Ping []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Server is the server argument value.
-			Server provisioning.Server
+			// Target is the target argument value.
+			Target provisioning.ServerOrCluster
 		}
 		// SetServerConfig holds details about calls to the SetServerConfig method.
 		SetServerConfig []struct {
@@ -183,6 +189,17 @@ type ClusterClientPortMock struct {
 			Server provisioning.Server
 			// Config is the config argument value.
 			Config map[string]string
+		}
+		// UpdateClusterCertificate holds details about calls to the UpdateClusterCertificate method.
+		UpdateClusterCertificate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
+			// CertificatePEM is the certificatePEM argument value.
+			CertificatePEM string
+			// KeyPEM is the keyPEM argument value.
+			KeyPEM string
 		}
 	}
 	lockCreateProject               sync.RWMutex
@@ -196,26 +213,27 @@ type ClusterClientPortMock struct {
 	lockJoinCluster                 sync.RWMutex
 	lockPing                        sync.RWMutex
 	lockSetServerConfig             sync.RWMutex
+	lockUpdateClusterCertificate    sync.RWMutex
 }
 
 // CreateProject calls CreateProjectFunc.
-func (mock *ClusterClientPortMock) CreateProject(ctx context.Context, server provisioning.Server, name string) error {
+func (mock *ClusterClientPortMock) CreateProject(ctx context.Context, cluster provisioning.Cluster, name string) error {
 	if mock.CreateProjectFunc == nil {
 		panic("ClusterClientPortMock.CreateProjectFunc: method is nil but ClusterClientPort.CreateProject was just called")
 	}
 	callInfo := struct {
-		Ctx    context.Context
-		Server provisioning.Server
-		Name   string
+		Ctx     context.Context
+		Cluster provisioning.Cluster
+		Name    string
 	}{
-		Ctx:    ctx,
-		Server: server,
-		Name:   name,
+		Ctx:     ctx,
+		Cluster: cluster,
+		Name:    name,
 	}
 	mock.lockCreateProject.Lock()
 	mock.calls.CreateProject = append(mock.calls.CreateProject, callInfo)
 	mock.lockCreateProject.Unlock()
-	return mock.CreateProjectFunc(ctx, server, name)
+	return mock.CreateProjectFunc(ctx, cluster, name)
 }
 
 // CreateProjectCalls gets all the calls that were made to CreateProject.
@@ -223,14 +241,14 @@ func (mock *ClusterClientPortMock) CreateProject(ctx context.Context, server pro
 //
 //	len(mockedClusterClientPort.CreateProjectCalls())
 func (mock *ClusterClientPortMock) CreateProjectCalls() []struct {
-	Ctx    context.Context
-	Server provisioning.Server
-	Name   string
+	Ctx     context.Context
+	Cluster provisioning.Cluster
+	Name    string
 } {
 	var calls []struct {
-		Ctx    context.Context
-		Server provisioning.Server
-		Name   string
+		Ctx     context.Context
+		Cluster provisioning.Cluster
+		Name    string
 	}
 	mock.lockCreateProject.RLock()
 	calls = mock.calls.CreateProject
@@ -311,23 +329,23 @@ func (mock *ClusterClientPortMock) EnableOSServiceLVMCalls() []struct {
 }
 
 // GetClusterJoinToken calls GetClusterJoinTokenFunc.
-func (mock *ClusterClientPortMock) GetClusterJoinToken(ctx context.Context, server provisioning.Server, memberName string) (string, error) {
+func (mock *ClusterClientPortMock) GetClusterJoinToken(ctx context.Context, cluster provisioning.Cluster, memberName string) (string, error) {
 	if mock.GetClusterJoinTokenFunc == nil {
 		panic("ClusterClientPortMock.GetClusterJoinTokenFunc: method is nil but ClusterClientPort.GetClusterJoinToken was just called")
 	}
 	callInfo := struct {
 		Ctx        context.Context
-		Server     provisioning.Server
+		Cluster    provisioning.Cluster
 		MemberName string
 	}{
 		Ctx:        ctx,
-		Server:     server,
+		Cluster:    cluster,
 		MemberName: memberName,
 	}
 	mock.lockGetClusterJoinToken.Lock()
 	mock.calls.GetClusterJoinToken = append(mock.calls.GetClusterJoinToken, callInfo)
 	mock.lockGetClusterJoinToken.Unlock()
-	return mock.GetClusterJoinTokenFunc(ctx, server, memberName)
+	return mock.GetClusterJoinTokenFunc(ctx, cluster, memberName)
 }
 
 // GetClusterJoinTokenCalls gets all the calls that were made to GetClusterJoinToken.
@@ -336,12 +354,12 @@ func (mock *ClusterClientPortMock) GetClusterJoinToken(ctx context.Context, serv
 //	len(mockedClusterClientPort.GetClusterJoinTokenCalls())
 func (mock *ClusterClientPortMock) GetClusterJoinTokenCalls() []struct {
 	Ctx        context.Context
-	Server     provisioning.Server
+	Cluster    provisioning.Cluster
 	MemberName string
 } {
 	var calls []struct {
 		Ctx        context.Context
-		Server     provisioning.Server
+		Cluster    provisioning.Cluster
 		MemberName string
 	}
 	mock.lockGetClusterJoinToken.RLock()
@@ -351,21 +369,21 @@ func (mock *ClusterClientPortMock) GetClusterJoinTokenCalls() []struct {
 }
 
 // GetClusterNodeNames calls GetClusterNodeNamesFunc.
-func (mock *ClusterClientPortMock) GetClusterNodeNames(ctx context.Context, server provisioning.Server) ([]string, error) {
+func (mock *ClusterClientPortMock) GetClusterNodeNames(ctx context.Context, cluster provisioning.Cluster) ([]string, error) {
 	if mock.GetClusterNodeNamesFunc == nil {
 		panic("ClusterClientPortMock.GetClusterNodeNamesFunc: method is nil but ClusterClientPort.GetClusterNodeNames was just called")
 	}
 	callInfo := struct {
-		Ctx    context.Context
-		Server provisioning.Server
+		Ctx     context.Context
+		Cluster provisioning.Cluster
 	}{
-		Ctx:    ctx,
-		Server: server,
+		Ctx:     ctx,
+		Cluster: cluster,
 	}
 	mock.lockGetClusterNodeNames.Lock()
 	mock.calls.GetClusterNodeNames = append(mock.calls.GetClusterNodeNames, callInfo)
 	mock.lockGetClusterNodeNames.Unlock()
-	return mock.GetClusterNodeNamesFunc(ctx, server)
+	return mock.GetClusterNodeNamesFunc(ctx, cluster)
 }
 
 // GetClusterNodeNamesCalls gets all the calls that were made to GetClusterNodeNames.
@@ -373,12 +391,12 @@ func (mock *ClusterClientPortMock) GetClusterNodeNames(ctx context.Context, serv
 //
 //	len(mockedClusterClientPort.GetClusterNodeNamesCalls())
 func (mock *ClusterClientPortMock) GetClusterNodeNamesCalls() []struct {
-	Ctx    context.Context
-	Server provisioning.Server
+	Ctx     context.Context
+	Cluster provisioning.Cluster
 } {
 	var calls []struct {
-		Ctx    context.Context
-		Server provisioning.Server
+		Ctx     context.Context
+		Cluster provisioning.Cluster
 	}
 	mock.lockGetClusterNodeNames.RLock()
 	calls = mock.calls.GetClusterNodeNames
@@ -495,7 +513,7 @@ func (mock *ClusterClientPortMock) InitializeDefaultStorageCalls() []struct {
 }
 
 // JoinCluster calls JoinClusterFunc.
-func (mock *ClusterClientPortMock) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) error {
+func (mock *ClusterClientPortMock) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) error {
 	if mock.JoinClusterFunc == nil {
 		panic("ClusterClientPortMock.JoinClusterFunc: method is nil but ClusterClientPort.JoinCluster was just called")
 	}
@@ -503,7 +521,7 @@ func (mock *ClusterClientPortMock) JoinCluster(ctx context.Context, server provi
 		Ctx       context.Context
 		Server    provisioning.Server
 		JoinToken string
-		Cluster   provisioning.Server
+		Cluster   provisioning.Cluster
 	}{
 		Ctx:       ctx,
 		Server:    server,
@@ -524,13 +542,13 @@ func (mock *ClusterClientPortMock) JoinClusterCalls() []struct {
 	Ctx       context.Context
 	Server    provisioning.Server
 	JoinToken string
-	Cluster   provisioning.Server
+	Cluster   provisioning.Cluster
 } {
 	var calls []struct {
 		Ctx       context.Context
 		Server    provisioning.Server
 		JoinToken string
-		Cluster   provisioning.Server
+		Cluster   provisioning.Cluster
 	}
 	mock.lockJoinCluster.RLock()
 	calls = mock.calls.JoinCluster
@@ -539,21 +557,21 @@ func (mock *ClusterClientPortMock) JoinClusterCalls() []struct {
 }
 
 // Ping calls PingFunc.
-func (mock *ClusterClientPortMock) Ping(ctx context.Context, server provisioning.Server) error {
+func (mock *ClusterClientPortMock) Ping(ctx context.Context, target provisioning.ServerOrCluster) error {
 	if mock.PingFunc == nil {
 		panic("ClusterClientPortMock.PingFunc: method is nil but ClusterClientPort.Ping was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
-		Server provisioning.Server
+		Target provisioning.ServerOrCluster
 	}{
 		Ctx:    ctx,
-		Server: server,
+		Target: target,
 	}
 	mock.lockPing.Lock()
 	mock.calls.Ping = append(mock.calls.Ping, callInfo)
 	mock.lockPing.Unlock()
-	return mock.PingFunc(ctx, server)
+	return mock.PingFunc(ctx, target)
 }
 
 // PingCalls gets all the calls that were made to Ping.
@@ -562,11 +580,11 @@ func (mock *ClusterClientPortMock) Ping(ctx context.Context, server provisioning
 //	len(mockedClusterClientPort.PingCalls())
 func (mock *ClusterClientPortMock) PingCalls() []struct {
 	Ctx    context.Context
-	Server provisioning.Server
+	Target provisioning.ServerOrCluster
 } {
 	var calls []struct {
 		Ctx    context.Context
-		Server provisioning.Server
+		Target provisioning.ServerOrCluster
 	}
 	mock.lockPing.RLock()
 	calls = mock.calls.Ping
@@ -611,5 +629,49 @@ func (mock *ClusterClientPortMock) SetServerConfigCalls() []struct {
 	mock.lockSetServerConfig.RLock()
 	calls = mock.calls.SetServerConfig
 	mock.lockSetServerConfig.RUnlock()
+	return calls
+}
+
+// UpdateClusterCertificate calls UpdateClusterCertificateFunc.
+func (mock *ClusterClientPortMock) UpdateClusterCertificate(ctx context.Context, cluster provisioning.Cluster, certificatePEM string, keyPEM string) error {
+	if mock.UpdateClusterCertificateFunc == nil {
+		panic("ClusterClientPortMock.UpdateClusterCertificateFunc: method is nil but ClusterClientPort.UpdateClusterCertificate was just called")
+	}
+	callInfo := struct {
+		Ctx            context.Context
+		Cluster        provisioning.Cluster
+		CertificatePEM string
+		KeyPEM         string
+	}{
+		Ctx:            ctx,
+		Cluster:        cluster,
+		CertificatePEM: certificatePEM,
+		KeyPEM:         keyPEM,
+	}
+	mock.lockUpdateClusterCertificate.Lock()
+	mock.calls.UpdateClusterCertificate = append(mock.calls.UpdateClusterCertificate, callInfo)
+	mock.lockUpdateClusterCertificate.Unlock()
+	return mock.UpdateClusterCertificateFunc(ctx, cluster, certificatePEM, keyPEM)
+}
+
+// UpdateClusterCertificateCalls gets all the calls that were made to UpdateClusterCertificate.
+// Check the length with:
+//
+//	len(mockedClusterClientPort.UpdateClusterCertificateCalls())
+func (mock *ClusterClientPortMock) UpdateClusterCertificateCalls() []struct {
+	Ctx            context.Context
+	Cluster        provisioning.Cluster
+	CertificatePEM string
+	KeyPEM         string
+} {
+	var calls []struct {
+		Ctx            context.Context
+		Cluster        provisioning.Cluster
+		CertificatePEM string
+		KeyPEM         string
+	}
+	mock.lockUpdateClusterCertificate.RLock()
+	calls = mock.calls.UpdateClusterCertificate
+	mock.lockUpdateClusterCertificate.RUnlock()
 	return calls
 }

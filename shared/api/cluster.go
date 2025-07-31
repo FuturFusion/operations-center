@@ -99,3 +99,16 @@ type ClusterPost struct {
 	// Example: [ "server1", "server2" ]
 	ServerNames []string `json:"server_names" yaml:"server_names"`
 }
+
+// ClusterCertificatePut represents the certificate and key pair for all cluster members.
+//
+// swagger:model
+type ClusterCertificatePut struct {
+	// The new certificate (X509 PEM encoded) for the cluster.
+	// Example: X509 PEM certificate
+	ClusterCertificate string `json:"cluster_certificate" yaml:"cluster_certificate"`
+
+	// The new certificate key (X509 PEM encoded) for the cluster.
+	// Example: X509 PEM certificate key
+	ClusterCertificateKey string `json:"cluster_certificate_key" yaml:"cluster_certificate_key"`
+}

@@ -47,7 +47,7 @@ server B
 	}
 
 	client := &adapterMock.ClusterClientPortMock{
-		PingFunc: func(ctx context.Context, server provisioning.Server) error {
+		PingFunc: func(ctx context.Context, target provisioning.ServerOrCluster) error {
 			return nil
 		},
 		EnableOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) error {
@@ -56,19 +56,19 @@ server B
 		SetServerConfigFunc: func(ctx context.Context, server provisioning.Server, config map[string]string) error {
 			return nil
 		},
-		GetClusterNodeNamesFunc: func(ctx context.Context, server provisioning.Server) ([]string, error) {
-			return []string{server.Name}, nil
+		GetClusterNodeNamesFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]string, error) {
+			return []string{cluster.Name}, nil
 		},
-		GetClusterJoinTokenFunc: func(ctx context.Context, server provisioning.Server, memberName string) (string, error) {
+		GetClusterJoinTokenFunc: func(ctx context.Context, cluster provisioning.Cluster, memberName string) (string, error) {
 			return "token", nil
 		},
 		EnableClusterFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
 			return "certificate", nil
 		},
-		JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Server) error {
+		JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) error {
 			return nil
 		},
-		CreateProjectFunc: func(ctx context.Context, server provisioning.Server, name string) error {
+		CreateProjectFunc: func(ctx context.Context, cluster provisioning.Cluster, name string) error {
 			return nil
 		},
 		InitializeDefaultStorageFunc: func(ctx context.Context, servers []provisioning.Server) error {

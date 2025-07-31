@@ -18,6 +18,14 @@ type Cluster struct {
 	LastUpdated   time.Time `db:"update_timestamp"`
 }
 
+func (c Cluster) GetCertificate() string {
+	return c.Certificate
+}
+
+func (c Cluster) GetConnectionURL() string {
+	return c.ConnectionURL
+}
+
 func (c Cluster) Validate() error {
 	if c.Name == "" {
 		return domain.NewValidationErrf("Invalid cluster, name can not be empty")

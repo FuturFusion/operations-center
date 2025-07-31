@@ -126,7 +126,7 @@ one
 			}
 
 			client := &adapterMock.ServerClientPortMock{
-				PingFunc: func(ctx context.Context, server provisioning.Server) error {
+				PingFunc: func(ctx context.Context, target provisioning.ServerOrCluster) error {
 					return nil
 				},
 				GetResourcesFunc: func(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
@@ -1347,7 +1347,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			}
 
 			client := &adapterMock.ServerClientPortMock{
-				PingFunc: func(ctx context.Context, server provisioning.Server) error {
+				PingFunc: func(ctx context.Context, target provisioning.ServerOrCluster) error {
 					return tc.clientPingErr
 				},
 				GetResourcesFunc: func(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
