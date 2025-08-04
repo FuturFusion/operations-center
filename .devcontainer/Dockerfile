@@ -4,9 +4,12 @@ ARG DEBIAN_VERSION=bookworm
 # Go development container
 
 FROM golang:${GO_VERSION}-${DEBIAN_VERSION}
+ARG TARGETOS
+ARG TARGETARCH
 ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=1000
+ARG INCUS_TERRAFORM_PROVIDER_VERSION=0.4.0
 
 # Install necessary tools.
 RUN <<EOF
@@ -20,7 +23,11 @@ deb-src [signed-by=/etc/apt/keyrings/opentofu.gpg,/etc/apt/keyrings/opentofu-rep
 EOT
 
 apt update
-apt install -y vim sudo man less goreleaser jq fish zsh sqlite3 direnv docker.io kpartx tofu
+apt install -y vim sudo man less goreleaser jq fish zsh sqlite3 direnv docker.io kpartx tofu unzip
+
+mkdir -p /usr/local/share/terraform/plugins/registry.opentofu.org/lxc/incus/${INCUS_TERRAFORM_PROVIDER_VERSION}/${TARGETOS}_${TARGETARCH}
+curl -sLo /usr/local/share/terraform/plugins/terraform-provider-incus.zip https://github.com/lxc/terraform-provider-incus/releases/download/v${INCUS_TERRAFORM_PROVIDER_VERSION}/terraform-provider-incus_${INCUS_TERRAFORM_PROVIDER_VERSION}_${TARGETOS}_${TARGETARCH}.zip
+unzip -d /usr/local/share/terraform/plugins/registry.opentofu.org/lxc/incus/${INCUS_TERRAFORM_PROVIDER_VERSION}/${TARGETOS}_${TARGETARCH} /usr/local/share/terraform/plugins/terraform-provider-incus.zip
 EOF
 
 # Install tools for building UI.
