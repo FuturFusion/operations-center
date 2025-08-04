@@ -9,9 +9,19 @@ ARG USER_UID=1000
 ARG USER_GID=1000
 
 # Install necessary tools.
-RUN echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | tee /etc/apt/sources.list.d/goreleaser.list && \
-    apt update && \
-    apt install -y vim sudo man less goreleaser jq fish zsh sqlite3 direnv docker.io kpartx
+RUN <<EOF
+echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | tee /etc/apt/sources.list.d/goreleaser.list
+curl -fsSL https://get.opentofu.org/opentofu.gpg | tee /etc/apt/keyrings/opentofu.gpg >/dev/null
+curl -fsSL https://packages.opentofu.org/opentofu/tofu/gpgkey | gpg --no-tty --batch --dearmor -o /etc/apt/keyrings/opentofu-repo.gpg >/dev/null
+
+cat <<EOT | tee /etc/apt/sources.list.d/opentofu.list > /dev/null
+deb [signed-by=/etc/apt/keyrings/opentofu.gpg,/etc/apt/keyrings/opentofu-repo.gpg] https://packages.opentofu.org/opentofu/tofu/any/ any main
+deb-src [signed-by=/etc/apt/keyrings/opentofu.gpg,/etc/apt/keyrings/opentofu-repo.gpg] https://packages.opentofu.org/opentofu/tofu/any/ any main
+EOT
+
+apt update
+apt install -y vim sudo man less goreleaser jq fish zsh sqlite3 direnv docker.io kpartx tofu
+EOF
 
 # Install tools for building UI.
 RUN curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash - && \
