@@ -5,10 +5,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/tls"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"sync"
 
 	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
@@ -20,21 +23,29 @@ import (
 
 const seedTarballStartPosition = 2148532224
 
-type flasher struct {
+type Flasher struct {
+	mu sync.Mutex
+
 	serverURL         string
 	serverCertificate string
 }
 
-var _ provisioning.FlasherPort = flasher{}
+var _ provisioning.FlasherPort = &Flasher{}
 
-func New(serverURL string, serverCertificate string) provisioning.FlasherPort {
-	return flasher{
+func New(serverURL string, serverCertificate string) *Flasher {
+	return &Flasher{
+		mu:                sync.Mutex{},
 		serverURL:         serverURL,
 		serverCertificate: serverCertificate,
 	}
 }
 
-func (f flasher) GenerateSeededISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, file io.ReadCloser) (_ io.ReadCloser, _ error) {
+func (f *Flasher) GenerateSeededISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, file io.ReadCloser) (_ io.ReadCloser, _ error) {
+	f.mu.Lock()
+	serverURL := f.serverURL
+	serverCertificate := f.serverCertificate
+	f.mu.Unlock()
+
 	applications := make([]seed.Application, 0, len(seedConfig.Applications))
 	for _, application := range seedConfig.Applications {
 		applications = append(applications, seed.Application{Name: application})
@@ -69,9 +80,9 @@ func (f flasher) GenerateSeededISO(ctx context.Context, id uuid.UUID, seedConfig
 			SystemProviderConfig: incusosapi.SystemProviderConfig{
 				Name: "operations-center",
 				Config: map[string]string{
-					"server_url":         f.serverURL,
+					"server_url":         serverURL,
 					"server_token":       id.String(),
-					"server_certificate": f.serverCertificate,
+					"server_certificate": serverCertificate,
 				},
 			},
 			Version: "1",
@@ -154,4 +165,16 @@ func createSeedTarball(applicationSeed *seed.Applications, incusSeed *seed.Incus
 	}
 
 	return buf.Bytes(), nil
+}
+
+func (f *Flasher) UpdateCertificate(cert tls.Certificate) {
+	serverCert := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: cert.Certificate[0],
+	})
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.serverCertificate = string(serverCert)
 }
