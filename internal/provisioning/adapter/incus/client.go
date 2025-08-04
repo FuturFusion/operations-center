@@ -580,7 +580,7 @@ func (c client) InitializeDefaultNetworking(ctx context.Context, servers []provi
 
 func randomSubnetV6() (net.IP, error) {
 	for range 100 {
-		cidr := fmt.Sprintf("fd42:%x:%x:%x::1/64", rand.IntN(65535), rand.IntN(65535), rand.IntN(65535))
+		cidr := fmt.Sprintf("fd42:%x:%x:%x::/64", rand.IntN(65535), rand.IntN(65535), rand.IntN(65535))
 		addr, _, err := net.ParseCIDR(cidr)
 		if err != nil {
 			continue
