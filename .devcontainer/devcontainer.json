@@ -15,6 +15,7 @@
         "Gruntfuggly.todo-tree",
         "casualjim.gotemplate",
         "eamodio.gitlens",
+        "hashicorp.terraform",
       ],
       "settings": {
         "files.insertFinalNewline": true,
