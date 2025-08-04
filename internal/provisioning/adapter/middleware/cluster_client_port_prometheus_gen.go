@@ -39,7 +39,7 @@ func NewClusterClientPortWithPrometheus(base provisioning.ClusterClientPort, ins
 }
 
 // CreateProject implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) CreateProject(ctx context.Context, cluster provisioning.Cluster, name string) (err error) {
+func (_d ClusterClientPortWithPrometheus) CreateProject(ctx context.Context, cluster provisioning.Cluster, name string, description string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,7 +49,7 @@ func (_d ClusterClientPortWithPrometheus) CreateProject(ctx context.Context, clu
 
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "CreateProject", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.CreateProject(ctx, cluster, name)
+	return _d.base.CreateProject(ctx, cluster, name, description)
 }
 
 // EnableCluster implements provisioning.ClusterClientPort.

@@ -22,7 +22,7 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //
 //		// make and configure a mocked provisioning.ClusterClientPort
 //		mockedClusterClientPort := &ClusterClientPortMock{
-//			CreateProjectFunc: func(ctx context.Context, cluster provisioning.Cluster, name string) error {
+//			CreateProjectFunc: func(ctx context.Context, cluster provisioning.Cluster, name string, description string) error {
 //				panic("mock out the CreateProject method")
 //			},
 //			EnableClusterFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
@@ -66,7 +66,7 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //	}
 type ClusterClientPortMock struct {
 	// CreateProjectFunc mocks the CreateProject method.
-	CreateProjectFunc func(ctx context.Context, cluster provisioning.Cluster, name string) error
+	CreateProjectFunc func(ctx context.Context, cluster provisioning.Cluster, name string, description string) error
 
 	// EnableClusterFunc mocks the EnableCluster method.
 	EnableClusterFunc func(ctx context.Context, server provisioning.Server) (string, error)
@@ -111,6 +111,8 @@ type ClusterClientPortMock struct {
 			Cluster provisioning.Cluster
 			// Name is the name argument value.
 			Name string
+			// Description is the description argument value.
+			Description string
 		}
 		// EnableCluster holds details about calls to the EnableCluster method.
 		EnableCluster []struct {
@@ -217,23 +219,25 @@ type ClusterClientPortMock struct {
 }
 
 // CreateProject calls CreateProjectFunc.
-func (mock *ClusterClientPortMock) CreateProject(ctx context.Context, cluster provisioning.Cluster, name string) error {
+func (mock *ClusterClientPortMock) CreateProject(ctx context.Context, cluster provisioning.Cluster, name string, description string) error {
 	if mock.CreateProjectFunc == nil {
 		panic("ClusterClientPortMock.CreateProjectFunc: method is nil but ClusterClientPort.CreateProject was just called")
 	}
 	callInfo := struct {
-		Ctx     context.Context
-		Cluster provisioning.Cluster
-		Name    string
+		Ctx         context.Context
+		Cluster     provisioning.Cluster
+		Name        string
+		Description string
 	}{
-		Ctx:     ctx,
-		Cluster: cluster,
-		Name:    name,
+		Ctx:         ctx,
+		Cluster:     cluster,
+		Name:        name,
+		Description: description,
 	}
 	mock.lockCreateProject.Lock()
 	mock.calls.CreateProject = append(mock.calls.CreateProject, callInfo)
 	mock.lockCreateProject.Unlock()
-	return mock.CreateProjectFunc(ctx, cluster, name)
+	return mock.CreateProjectFunc(ctx, cluster, name, description)
 }
 
 // CreateProjectCalls gets all the calls that were made to CreateProject.
@@ -241,14 +245,16 @@ func (mock *ClusterClientPortMock) CreateProject(ctx context.Context, cluster pr
 //
 //	len(mockedClusterClientPort.CreateProjectCalls())
 func (mock *ClusterClientPortMock) CreateProjectCalls() []struct {
-	Ctx     context.Context
-	Cluster provisioning.Cluster
-	Name    string
+	Ctx         context.Context
+	Cluster     provisioning.Cluster
+	Name        string
+	Description string
 } {
 	var calls []struct {
-		Ctx     context.Context
-		Cluster provisioning.Cluster
-		Name    string
+		Ctx         context.Context
+		Cluster     provisioning.Cluster
+		Name        string
+		Description string
 	}
 	mock.lockCreateProject.RLock()
 	calls = mock.calls.CreateProject

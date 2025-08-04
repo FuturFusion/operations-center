@@ -277,7 +277,7 @@ func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joi
 	return nil
 }
 
-func (c client) CreateProject(ctx context.Context, cluster provisioning.Cluster, name string) error {
+func (c client) CreateProject(ctx context.Context, cluster provisioning.Cluster, name string, description string) error {
 	client, err := c.getClient(ctx, cluster)
 	if err != nil {
 		return err
@@ -286,7 +286,7 @@ func (c client) CreateProject(ctx context.Context, cluster provisioning.Cluster,
 	err = client.CreateProject(incusapi.ProjectsPost{
 		Name: name,
 		ProjectPut: incusapi.ProjectPut{
-			Description: "Internal project to isolate fully managed resources.",
+			Description: description,
 			Config:      map[string]string{},
 		},
 	})

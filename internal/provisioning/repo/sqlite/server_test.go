@@ -68,7 +68,7 @@ server B
 		JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) error {
 			return nil
 		},
-		CreateProjectFunc: func(ctx context.Context, cluster provisioning.Cluster, name string) error {
+		CreateProjectFunc: func(ctx context.Context, cluster provisioning.Cluster, name string, description string) error {
 			return nil
 		},
 		InitializeDefaultStorageFunc: func(ctx context.Context, servers []provisioning.Server) error {
