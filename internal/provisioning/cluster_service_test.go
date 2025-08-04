@@ -674,7 +674,7 @@ func TestClusterService_Create(t *testing.T) {
 				JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) error {
 					return tc.clientJoinClusterErr
 				},
-				CreateProjectFunc: func(ctx context.Context, cluster provisioning.Cluster, name string) error {
+				CreateProjectFunc: func(ctx context.Context, cluster provisioning.Cluster, name string, description string) error {
 					return tc.clientCreateProjectErr
 				},
 				InitializeDefaultStorageFunc: func(ctx context.Context, servers []provisioning.Server) error {

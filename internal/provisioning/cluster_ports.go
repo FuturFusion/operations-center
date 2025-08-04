@@ -49,7 +49,7 @@ type ClusterClientPort interface {
 	GetClusterNodeNames(ctx context.Context, cluster Cluster) (nodeNames []string, _ error)
 	GetClusterJoinToken(ctx context.Context, cluster Cluster, memberName string) (joinToken string, _ error)
 	JoinCluster(ctx context.Context, server Server, joinToken string, cluster Cluster) error
-	CreateProject(ctx context.Context, cluster Cluster, name string) error
+	CreateProject(ctx context.Context, cluster Cluster, name string, description string) error
 	InitializeDefaultStorage(ctx context.Context, servers []Server) error
 	GetOSData(ctx context.Context, server Server) (api.OSData, error)
 	InitializeDefaultNetworking(ctx context.Context, servers []Server) error

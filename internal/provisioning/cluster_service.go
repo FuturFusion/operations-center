@@ -265,7 +265,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	// Perform post-clustering initialization.
 
 	// Create an internal project.
-	err = s.client.CreateProject(ctx, cluster, "internal")
+	err = s.client.CreateProject(ctx, cluster, "internal", "Internal project to isolate fully managed resources.")
 	if err != nil {
 		return newCluster, err
 	}

@@ -2760,7 +2760,7 @@ func TestClientCluster(t *testing.T) {
 		{
 			name: "CreateProject",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Cluster) (any, error) {
-				return nil, client.CreateProject(ctx, target, "project")
+				return nil, client.CreateProject(ctx, target, "project", "project description")
 			},
 			testCases: []methodTestCase{
 				{

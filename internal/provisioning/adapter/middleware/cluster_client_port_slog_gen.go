@@ -43,13 +43,14 @@ func NewClusterClientPortWithSlog(base provisioning.ClusterClientPort, log *slog
 }
 
 // CreateProject implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) CreateProject(ctx context.Context, cluster provisioning.Cluster, name string) (err error) {
+func (_d ClusterClientPortWithSlog) CreateProject(ctx context.Context, cluster provisioning.Cluster, name string, description string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("cluster", cluster),
 			slog.String("name", name),
+			slog.String("description", description),
 		)
 	}
 	log.Debug("=> calling CreateProject")
@@ -74,7 +75,7 @@ func (_d ClusterClientPortWithSlog) CreateProject(ctx context.Context, cluster p
 			log.Debug("<= method CreateProject finished")
 		}
 	}()
-	return _d._base.CreateProject(ctx, cluster, name)
+	return _d._base.CreateProject(ctx, cluster, name, description)
 }
 
 // EnableCluster implements provisioning.ClusterClientPort.
