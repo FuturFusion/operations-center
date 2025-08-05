@@ -123,9 +123,9 @@ func TestStartAndStop(t *testing.T) {
 			ctx := context.Background()
 			d := api.NewDaemon(
 				ctx,
-				mockEnv{
-					unixSocket: tc.unixSocket,
-					varDir:     tmpDir,
+				api.MockEnv{
+					UnixSocket:   tc.unixSocket,
+					VarDirectory: tmpDir,
 				},
 				&config.Config{
 					RestServerPort: tc.bindPort,
@@ -143,13 +143,3 @@ func TestStartAndStop(t *testing.T) {
 		})
 	}
 }
-
-type mockEnv struct {
-	logDir     string
-	varDir     string
-	unixSocket string
-}
-
-func (e mockEnv) LogDir() string        { return e.logDir }
-func (e mockEnv) VarDir() string        { return e.varDir }
-func (e mockEnv) GetUnixSocket() string { return e.unixSocket }

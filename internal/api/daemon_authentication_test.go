@@ -643,9 +643,9 @@ func TestAuthentication(t *testing.T) {
 
 	d := api.NewDaemon(
 		ctx,
-		mockEnv{
-			unixSocket: filepath.Join(tmpDir, "unix.socket"),
-			varDir:     tmpDir,
+		api.MockEnv{
+			UnixSocket:   filepath.Join(tmpDir, "unix.socket"),
+			VarDirectory: tmpDir,
 		},
 		&config.Config{
 			RestServerPort:                   17443,
