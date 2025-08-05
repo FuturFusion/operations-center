@@ -158,6 +158,28 @@ func (r *syncResponse) Code() int {
 	return r.code
 }
 
+type manualResponse struct {
+	hook func(w http.ResponseWriter) error
+}
+
+// ManualResponse creates a new manual response responder.
+func ManualResponse(hook func(w http.ResponseWriter) error) Response {
+	return &manualResponse{hook: hook}
+}
+
+func (r *manualResponse) Render(w http.ResponseWriter) error {
+	return r.hook(w)
+}
+
+func (r *manualResponse) String() string {
+	return "unknown"
+}
+
+// Code returns the HTTP code.
+func (r *manualResponse) Code() int {
+	return http.StatusNotImplemented
+}
+
 // Error response.
 type errorResponse struct {
 	code int    // Code to return in both the HTTP header and Code field of the response body.

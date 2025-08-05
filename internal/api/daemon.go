@@ -296,6 +296,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	registerUIHandlers(router, d.env.VarDir())
 
+	const osRouterPrefix = "/os"
+	osRouter := router.SubGroup(osRouterPrefix).AddMiddlewares(
+		authenticator.Middleware,
+	)
+	registerOSProxy(osRouter, osRouterPrefix, authorizer)
+
 	if oidcVerifier != nil {
 		registerOIDCHandlers(router, oidcVerifier)
 	}

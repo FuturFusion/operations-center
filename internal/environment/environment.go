@@ -105,3 +105,10 @@ func (e Environment) pathWithEnvOverride(prefixDir, suffixDir string) string {
 
 	return filepath.Join(prefix, suffixDir)
 }
+
+const IncusOSSocket = "/run/incus-os/unix.socket"
+
+// IsIncusOS checks if the host system is running Incus OS.
+func IsIncusOS() bool {
+	return file.PathExists(IncusOSSocket)
+}
