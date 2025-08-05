@@ -260,7 +260,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	isoFlasher := flasher.New(
 		d.config.OperationsCenterAddress,
-		string(serverCertificatePEM),
+		serverCertificate,
 	)
 
 	serverCertificateUpdate.AddListener(func(_ context.Context, cert tls.Certificate) {
