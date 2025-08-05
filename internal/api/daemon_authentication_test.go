@@ -41,6 +41,10 @@ var users = []string{
 }
 
 func TestAuthentication(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Authentication tests are slow due to the use of test containers")
+	}
+
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 
