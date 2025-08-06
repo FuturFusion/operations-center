@@ -177,12 +177,12 @@ func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uui
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByName(ctx, {{ .Name | camelcase }}.Cluster)
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, {{ .Name | camelcase }}.Cluster)
 		if err != nil {
 			return err
 		}
 
-		retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, *cluster, {{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}.{{ .Name | pascalcase }} {{- end}})
+		retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, endpoint, {{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}.{{ .Name | pascalcase }} {{- end}})
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, {{ .Name | camelcase }}.UUID)
 			if err != nil {
@@ -229,19 +229,19 @@ func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uui
 }
 
 func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name string) error {
-	cluster, err := s.clusterSvc.GetByName(ctx, name)
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
 	if err != nil {
 		return err
 	}
 {{- with .RequiresExtension }}
 
-	if !s.networkAddressSetClient.HasExtension(ctx, *cluster, "{{ . }}") {
+	if !s.networkAddressSetClient.HasExtension(ctx, endpoint, "{{ . }}") {
 		return nil
 	}
 {{ end }}
 
 {{ if .HasParent }}
-	retrieved{{ .ParentPluralName | pascalcase }}, err := s.{{ .ParentName | camelcase }}Client.Get{{ .ParentName | pascalcase }}s(ctx, *cluster)
+	retrieved{{ .ParentPluralName | pascalcase }}, err := s.{{ .ParentName | camelcase }}Client.Get{{ .ParentName | pascalcase }}s(ctx, endpoint)
 	if err != nil {
 		return err
 	}
@@ -253,13 +253,13 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 		}
 {{- end }}
 
-		retrieved{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, *cluster, {{ .ParentName | camelcase }}.Name)
+		retrieved{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, endpoint, {{ .ParentName | camelcase }}.Name)
 		if err != nil {
 			return err
 		}
 
 {{ else }}
-	retrieved{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, *cluster)
+	retrieved{{ .PluralName | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .PluralName | pascalcase }}(ctx, endpoint)
 	if err != nil {
 		return err
 	}
