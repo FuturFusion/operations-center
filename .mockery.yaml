@@ -5,7 +5,8 @@ template: matryer
 require-template-schema-exists: false
 force-file-write: true
 include-auto-generated: true
-include-interface-regex: "(.+Repo|.+Port|.*ServerClient|ClusterService|ServerService|TokenService|UpdateService|InventorySyncer)"
+include-interface-regex: "(.+Repo|.+Port|.*ServerClient|.+Service|InventorySyncer)"
+exclude-interface-regex: "(Image|Instance|InventoryAggregate|Network|NetworkACL|NetworkAddressSet|NetworkForward|NetworkIntegration|NetworkLoadBalancer|NetworkPeer|NetworkZone|Profile|Project|StorageBucket|StoragePool|StorageVolume)Service"
 dir: >-
   {{- $targetDir := "mock" -}}
   {{- if and (.InterfaceName | hasSuffix "ServerClient") -}}
@@ -24,3 +25,4 @@ pkgname: mock
 packages:
   github.com/FuturFusion/operations-center/internal/inventory:
   github.com/FuturFusion/operations-center/internal/provisioning:
+  github.com/FuturFusion/operations-center/internal/system:

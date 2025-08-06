@@ -25,3 +25,4 @@ pkgname: middleware
 packages:
   github.com/FuturFusion/operations-center/internal/inventory:
   github.com/FuturFusion/operations-center/internal/provisioning:
+  github.com/FuturFusion/operations-center/internal/system:

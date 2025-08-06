@@ -41,6 +41,10 @@ var users = []string{
 }
 
 func TestAuthentication(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Authentication tests are slow due to the use of test containers")
+	}
+
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 
@@ -639,9 +643,9 @@ func TestAuthentication(t *testing.T) {
 
 	d := api.NewDaemon(
 		ctx,
-		mockEnv{
-			unixSocket: filepath.Join(tmpDir, "unix.socket"),
-			varDir:     tmpDir,
+		api.MockEnv{
+			UnixSocket:   filepath.Join(tmpDir, "unix.socket"),
+			VarDirectory: tmpDir,
 		},
 		&config.Config{
 			RestServerPort:                   17443,

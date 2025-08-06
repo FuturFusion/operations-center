@@ -16,8 +16,10 @@ import (
 	"time"
 
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	"github.com/maniartech/signals"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/FuturFusion/operations-center/internal/api/listener"
 	"github.com/FuturFusion/operations-center/internal/authn"
 	authnoidc "github.com/FuturFusion/operations-center/internal/authn/oidc"
 	authntls "github.com/FuturFusion/operations-center/internal/authn/tls"
@@ -47,6 +49,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/signature"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/internal/system"
+	systemServiceMiddleware "github.com/FuturFusion/operations-center/internal/system/middleware"
 	"github.com/FuturFusion/operations-center/internal/task"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/internal/version"
@@ -112,6 +116,32 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
+	certFile := filepath.Join(d.env.VarDir(), "server.crt")
+	keyFile := filepath.Join(d.env.VarDir(), "server.key")
+
+	// Ensure that the certificate exists, or create a new one if it does not.
+	err = incusTLS.FindOrGenCert(certFile, keyFile, false, true)
+	if err != nil {
+		return err
+	}
+
+	serverCertificatePEM, err := os.ReadFile(certFile)
+	if err != nil {
+		return fmt.Errorf("Failed to read server certificate from %q: %w", certFile, err)
+	}
+
+	serverKeyPEM, err := os.ReadFile(keyFile)
+	if err != nil {
+		return fmt.Errorf("Failed to read server key from %q: %w", keyFile, err)
+	}
+
+	serverCertificate, err := tls.X509KeyPair(serverCertificatePEM, serverKeyPEM)
+	if err != nil {
+		return fmt.Errorf("Failed to validate server certificate key pair: %w", err)
+	}
+
+	serverCertificateUpdate := signals.NewSync[tls.Certificate]()
+
 	// UnixSocket authenticator is always available.
 	authers := []authn.Auther{
 		authnunixsocket.UnixSocket{},
@@ -171,6 +201,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// Setup Services
 	verifier := signature.NewVerifier([]byte(d.config.UpdateSignatureVerificationRootCA))
 
+	systemSvc := systemServiceMiddleware.NewSystemServiceWithSlog(
+		system.NewSystemService(d.env, serverCertificateUpdate),
+		slog.Default(),
+	)
+
 	repoUpdateFiles, err := localfs.New(
 		filepath.Join(d.env.VarDir(), "updates"),
 		verifier,
@@ -223,10 +258,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.Default(),
 	)
 
-	serverCertificate, err := os.ReadFile(filepath.Join(d.env.VarDir(), "server.crt"))
-	if err != nil {
-		return fmt.Errorf("Failed to read server certificate from %q: %w", filepath.Join(d.env.VarDir(), "server.crt"), err)
-	}
+	isoFlasher := flasher.New(
+		d.config.OperationsCenterAddress,
+		serverCertificate,
+	)
+
+	serverCertificateUpdate.AddListener(func(_ context.Context, cert tls.Certificate) {
+		isoFlasher.UpdateCertificate(cert)
+	})
 
 	tokenSvc := provisioningServiceMiddleware.NewTokenServiceWithSlog(
 		provisioning.NewTokenService(
@@ -235,10 +274,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 				slog.Default(),
 			),
 			updateSvc,
-			flasher.New(
-				d.config.OperationsCenterAddress,
-				string(serverCertificate),
-			),
+			isoFlasher,
 		),
 		slog.Default(),
 	)
@@ -346,8 +382,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 	provisioningServerRouter := provisioningRouter.SubGroup("/servers")
 	registerProvisioningServerHandler(provisioningServerRouter, authorizer, serverSvc, d.clientCertificate)
 
-	updateRouter := provisioningRouter.SubGroup("/updates")
-	registerUpdateHandler(updateRouter, authorizer, updateSvc)
+	provisioningUpdateRouter := provisioningRouter.SubGroup("/updates")
+	registerUpdateHandler(provisioningUpdateRouter, authorizer, updateSvc)
+
+	systemRouter := api10router.SubGroup("/system")
+	registerSystemHandler(systemRouter, authorizer, systemSvc)
 
 	inventoryRouter := api10router.SubGroup("/inventory")
 
@@ -368,10 +407,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 		IdleTimeout: 30 * time.Second,
 		Addr:        fmt.Sprintf("%s:%d", d.config.RestServerAddr, d.config.RestServerPort),
 		ErrorLog:    errorLogger,
-		TLSConfig: &tls.Config{
-			NextProtos: []string{"h2", "http/1.1"},
-			ClientAuth: tls.RequestClientCert,
-		},
 	}
 
 	d.shutdownFuncs = append(d.shutdownFuncs, server.Shutdown)
@@ -409,16 +444,18 @@ func (d *Daemon) Start(ctx context.Context) error {
 	group.Go(func() error {
 		slog.InfoContext(ctx, "Start https listener", slog.Any("addr", server.Addr))
 
-		certFile := filepath.Join(d.env.VarDir(), "server.crt")
-		keyFile := filepath.Join(d.env.VarDir(), "server.key")
-
-		// Ensure that the certificate exists, or create a new one if it does not.
-		err := incusTLS.FindOrGenCert(certFile, keyFile, false, true)
+		tcpListener, err := net.Listen("tcp", server.Addr)
 		if err != nil {
 			return err
 		}
 
-		err = server.ListenAndServeTLS(certFile, keyFile)
+		fancyListener := listener.NewFancyTLSListener(tcpListener, serverCertificate)
+
+		serverCertificateUpdate.AddListener(func(_ context.Context, cert tls.Certificate) {
+			fancyListener.Config(cert)
+		})
+
+		err = server.Serve(fancyListener)
 		if errors.Is(err, http.ErrServerClosed) {
 			// Ignore error from graceful shutdown.
 			return nil
