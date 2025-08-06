@@ -30,6 +30,6 @@ type NetworkLoadBalancerRepo interface {
 }
 
 type NetworkLoadBalancerServerClient interface {
-	GetNetworkLoadBalancers(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]incusapi.NetworkLoadBalancer, error)
-	GetNetworkLoadBalancerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error)
+	GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]incusapi.NetworkLoadBalancer, error)
+	GetNetworkLoadBalancerByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error)
 }

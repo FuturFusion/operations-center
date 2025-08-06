@@ -151,12 +151,12 @@ func (s networkACLService) ResyncByUUID(ctx context.Context, id uuid.UUID) error
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByName(ctx, networkACL.Cluster)
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkACL.Cluster)
 		if err != nil {
 			return err
 		}
 
-		retrievedNetworkACL, err := s.networkACLClient.GetNetworkACLByName(ctx, *cluster, networkACL.Name)
+		retrievedNetworkACL, err := s.networkACLClient.GetNetworkACLByName(ctx, endpoint, networkACL.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkACL.UUID)
 			if err != nil {
@@ -195,12 +195,12 @@ func (s networkACLService) ResyncByUUID(ctx context.Context, id uuid.UUID) error
 }
 
 func (s networkACLService) SyncCluster(ctx context.Context, name string) error {
-	cluster, err := s.clusterSvc.GetByName(ctx, name)
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
 	if err != nil {
 		return err
 	}
 
-	retrievedNetworkACLs, err := s.networkACLClient.GetNetworkACLs(ctx, *cluster)
+	retrievedNetworkACLs, err := s.networkACLClient.GetNetworkACLs(ctx, endpoint)
 	if err != nil {
 		return err
 	}

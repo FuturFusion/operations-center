@@ -40,7 +40,7 @@ func NewNetworkACLServerClientWithPrometheus(base inventory.NetworkACLServerClie
 }
 
 // GetNetworkACLByName implements inventory.NetworkACLServerClient.
-func (_d NetworkACLServerClientWithPrometheus) GetNetworkACLByName(ctx context.Context, cluster provisioning.Cluster, networkACLName string) (networkACL api.NetworkACL, err error) {
+func (_d NetworkACLServerClientWithPrometheus) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, networkACLName string) (networkACL api.NetworkACL, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,11 +50,11 @@ func (_d NetworkACLServerClientWithPrometheus) GetNetworkACLByName(ctx context.C
 
 		networkACLServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkACLByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkACLByName(ctx, cluster, networkACLName)
+	return _d.base.GetNetworkACLByName(ctx, endpoint, networkACLName)
 }
 
 // GetNetworkACLs implements inventory.NetworkACLServerClient.
-func (_d NetworkACLServerClientWithPrometheus) GetNetworkACLs(ctx context.Context, cluster provisioning.Cluster) (networkACLs []api.NetworkACL, err error) {
+func (_d NetworkACLServerClientWithPrometheus) GetNetworkACLs(ctx context.Context, endpoint provisioning.Endpoint) (networkACLs []api.NetworkACL, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -64,5 +64,5 @@ func (_d NetworkACLServerClientWithPrometheus) GetNetworkACLs(ctx context.Contex
 
 		networkACLServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkACLs", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkACLs(ctx, cluster)
+	return _d.base.GetNetworkACLs(ctx, endpoint)
 }

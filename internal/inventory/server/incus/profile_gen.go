@@ -12,8 +12,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetProfiles(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Profile, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetProfiles(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.Profile, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +26,8 @@ func (s serverClient) GetProfiles(ctx context.Context, cluster provisioning.Clus
 	return serverProfiles, nil
 }
 
-func (s serverClient) GetProfileByName(ctx context.Context, cluster provisioning.Cluster, profileName string) (incusapi.Profile, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, profileName string) (incusapi.Profile, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.Profile{}, err
 	}

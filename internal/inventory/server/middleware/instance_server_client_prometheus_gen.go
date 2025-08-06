@@ -40,7 +40,7 @@ func NewInstanceServerClientWithPrometheus(base inventory.InstanceServerClient, 
 }
 
 // GetInstanceByName implements inventory.InstanceServerClient.
-func (_d InstanceServerClientWithPrometheus) GetInstanceByName(ctx context.Context, cluster provisioning.Cluster, instanceName string) (instanceFull api.InstanceFull, err error) {
+func (_d InstanceServerClientWithPrometheus) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, instanceName string) (instanceFull api.InstanceFull, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,11 +50,11 @@ func (_d InstanceServerClientWithPrometheus) GetInstanceByName(ctx context.Conte
 
 		instanceServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetInstanceByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetInstanceByName(ctx, cluster, instanceName)
+	return _d.base.GetInstanceByName(ctx, endpoint, instanceName)
 }
 
 // GetInstances implements inventory.InstanceServerClient.
-func (_d InstanceServerClientWithPrometheus) GetInstances(ctx context.Context, cluster provisioning.Cluster) (instanceFulls []api.InstanceFull, err error) {
+func (_d InstanceServerClientWithPrometheus) GetInstances(ctx context.Context, endpoint provisioning.Endpoint) (instanceFulls []api.InstanceFull, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -64,5 +64,5 @@ func (_d InstanceServerClientWithPrometheus) GetInstances(ctx context.Context, c
 
 		instanceServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetInstances", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetInstances(ctx, cluster)
+	return _d.base.GetInstances(ctx, endpoint)
 }

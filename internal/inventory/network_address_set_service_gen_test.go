@@ -287,8 +287,8 @@ func TestNetworkAddressSetService_GetByUUID(t *testing.T) {
 func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 	tests := []struct {
 		name                                                 string
-		clusterSvcGetByIDCluster                             provisioning.Cluster
-		clusterSvcGetByIDErr                                 error
+		clusterSvcGetEndpoint                                provisioning.Endpoint
+		clusterSvcGetEndpointErr                             error
 		networkAddressSetClientGetNetworkAddressSetByName    incusapi.NetworkAddressSet
 		networkAddressSetClientGetNetworkAddressSetByNameErr error
 		repoGetByUUIDNetworkAddressSet                       inventory.NetworkAddressSet
@@ -305,8 +305,12 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByName: incusapi.NetworkAddressSet{
 				NetworkAddressSetPost: incusapi.NetworkAddressSetPost{
@@ -324,8 +328,12 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByNameErr: domain.ErrNotFound,
 
@@ -344,7 +352,7 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDErr: boom.Error,
+			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -355,8 +363,12 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByNameErr: boom.Error,
 
@@ -369,8 +381,12 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByNameErr: domain.ErrNotFound,
 			repoDeleteByUUIDErr: boom.Error,
@@ -384,8 +400,12 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "", // invalid
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByName: incusapi.NetworkAddressSet{
 				NetworkAddressSetPost: incusapi.NetworkAddressSetPost{
@@ -406,8 +426,12 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkAddressSetClientGetNetworkAddressSetByName: incusapi.NetworkAddressSet{
 				NetworkAddressSetPost: incusapi.NetworkAddressSetPost{
@@ -438,14 +462,14 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
 					require.Equal(t, "one", name)
-					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
 				},
 			}
 
 			networkAddressSetClient := &serverMock.NetworkAddressSetServerClientMock{
-				GetNetworkAddressSetByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkAddressSetName string) (incusapi.NetworkAddressSet, error) {
+				GetNetworkAddressSetByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkAddressSetName string) (incusapi.NetworkAddressSet, error) {
 					require.Equal(t, tc.repoGetByUUIDNetworkAddressSet.Name, networkAddressSetName)
 					return tc.networkAddressSetClientGetNetworkAddressSetByName, tc.networkAddressSetClientGetNetworkAddressSetByNameErr
 				},
@@ -468,8 +492,8 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster
 	tests := []struct {
 		name                                            string
-		clusterSvcGetByIDCluster                        provisioning.Cluster
-		clusterSvcGetByIDErr                            error
+		clusterSvcGetEndpoint                           provisioning.Endpoint
+		clusterSvcGetEndpointErr                        error
 		networkAddressSetClientHasExtension             bool
 		networkAddressSetClientGetNetworkAddressSets    []incusapi.NetworkAddressSet
 		networkAddressSetClientGetNetworkAddressSetsErr error
@@ -481,8 +505,12 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 	}{
 		{
 			name: "success",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkAddressSetClientHasExtension: true,
 			networkAddressSetClientGetNetworkAddressSets: []incusapi.NetworkAddressSet{
@@ -498,8 +526,12 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "success - with sync filter",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkAddressSetClientHasExtension: true,
 			networkAddressSetClientGetNetworkAddressSets: []incusapi.NetworkAddressSet{
@@ -526,23 +558,31 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "success - does not have extension",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkAddressSetClientHasExtension: false,
 
 			assertErr: require.NoError,
 		},
 		{
-			name:                 "error - cluster service get by ID",
-			clusterSvcGetByIDErr: boom.Error,
+			name:                     "error - cluster service get by ID",
+			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - networkAddressSet client get NetworkAddressSets",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkAddressSetClientHasExtension:             true,
 			networkAddressSetClientGetNetworkAddressSetsErr: boom.Error,
@@ -551,8 +591,12 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - network_address_sets delete by cluster ID",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkAddressSetClientHasExtension: true,
 			networkAddressSetClientGetNetworkAddressSets: []incusapi.NetworkAddressSet{
@@ -569,8 +613,12 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - validate",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkAddressSetClientHasExtension: true,
 			networkAddressSetClientGetNetworkAddressSets: []incusapi.NetworkAddressSet{
@@ -589,8 +637,12 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - networkAddressSet create",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkAddressSetClientHasExtension: true,
 			networkAddressSetClientGetNetworkAddressSets: []incusapi.NetworkAddressSet{
@@ -620,16 +672,16 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
-					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
 				},
 			}
 
 			networkAddressSetClient := &serverMock.NetworkAddressSetServerClientMock{
-				HasExtensionFunc: func(ctx context.Context, cluster provisioning.Cluster, extension string) bool {
+				HasExtensionFunc: func(ctx context.Context, endpoint provisioning.Endpoint, extension string) bool {
 					return tc.networkAddressSetClientHasExtension
 				},
-				GetNetworkAddressSetsFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkAddressSet, error) {
+				GetNetworkAddressSetsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.NetworkAddressSet, error) {
 					return tc.networkAddressSetClientGetNetworkAddressSets, tc.networkAddressSetClientGetNetworkAddressSetsErr
 				},
 			}

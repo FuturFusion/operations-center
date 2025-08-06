@@ -40,7 +40,7 @@ func NewNetworkIntegrationServerClientWithPrometheus(base inventory.NetworkInteg
 }
 
 // GetNetworkIntegrationByName implements inventory.NetworkIntegrationServerClient.
-func (_d NetworkIntegrationServerClientWithPrometheus) GetNetworkIntegrationByName(ctx context.Context, cluster provisioning.Cluster, networkIntegrationName string) (networkIntegration api.NetworkIntegration, err error) {
+func (_d NetworkIntegrationServerClientWithPrometheus) GetNetworkIntegrationByName(ctx context.Context, endpoint provisioning.Endpoint, networkIntegrationName string) (networkIntegration api.NetworkIntegration, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,11 +50,11 @@ func (_d NetworkIntegrationServerClientWithPrometheus) GetNetworkIntegrationByNa
 
 		networkIntegrationServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkIntegrationByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkIntegrationByName(ctx, cluster, networkIntegrationName)
+	return _d.base.GetNetworkIntegrationByName(ctx, endpoint, networkIntegrationName)
 }
 
 // GetNetworkIntegrations implements inventory.NetworkIntegrationServerClient.
-func (_d NetworkIntegrationServerClientWithPrometheus) GetNetworkIntegrations(ctx context.Context, cluster provisioning.Cluster) (networkIntegrations []api.NetworkIntegration, err error) {
+func (_d NetworkIntegrationServerClientWithPrometheus) GetNetworkIntegrations(ctx context.Context, endpoint provisioning.Endpoint) (networkIntegrations []api.NetworkIntegration, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -64,5 +64,5 @@ func (_d NetworkIntegrationServerClientWithPrometheus) GetNetworkIntegrations(ct
 
 		networkIntegrationServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkIntegrations", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkIntegrations(ctx, cluster)
+	return _d.base.GetNetworkIntegrations(ctx, endpoint)
 }

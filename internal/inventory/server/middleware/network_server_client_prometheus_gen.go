@@ -40,7 +40,7 @@ func NewNetworkServerClientWithPrometheus(base inventory.NetworkServerClient, in
 }
 
 // GetNetworkByName implements inventory.NetworkServerClient.
-func (_d NetworkServerClientWithPrometheus) GetNetworkByName(ctx context.Context, cluster provisioning.Cluster, networkName string) (network api.Network, err error) {
+func (_d NetworkServerClientWithPrometheus) GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (network api.Network, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,11 +50,11 @@ func (_d NetworkServerClientWithPrometheus) GetNetworkByName(ctx context.Context
 
 		networkServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkByName(ctx, cluster, networkName)
+	return _d.base.GetNetworkByName(ctx, endpoint, networkName)
 }
 
 // GetNetworks implements inventory.NetworkServerClient.
-func (_d NetworkServerClientWithPrometheus) GetNetworks(ctx context.Context, cluster provisioning.Cluster) (networks []api.Network, err error) {
+func (_d NetworkServerClientWithPrometheus) GetNetworks(ctx context.Context, endpoint provisioning.Endpoint) (networks []api.Network, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -64,5 +64,5 @@ func (_d NetworkServerClientWithPrometheus) GetNetworks(ctx context.Context, clu
 
 		networkServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworks", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworks(ctx, cluster)
+	return _d.base.GetNetworks(ctx, endpoint)
 }

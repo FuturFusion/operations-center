@@ -12,8 +12,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetProjects(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Project, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetProjects(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.Project, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +26,8 @@ func (s serverClient) GetProjects(ctx context.Context, cluster provisioning.Clus
 	return serverProjects, nil
 }
 
-func (s serverClient) GetProjectByName(ctx context.Context, cluster provisioning.Cluster, projectName string) (incusapi.Project, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetProjectByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string) (incusapi.Project, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.Project{}, err
 	}

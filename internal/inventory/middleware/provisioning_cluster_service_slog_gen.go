@@ -76,8 +76,8 @@ func (_d ProvisioningClusterServiceWithSlog) GetAll(ctx context.Context) (cluste
 	return _d._base.GetAll(ctx)
 }
 
-// GetByName implements inventory.ProvisioningClusterService.
-func (_d ProvisioningClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cluster *provisioning.Cluster, err error) {
+// GetEndpoint implements inventory.ProvisioningClusterService.
+func (_d ProvisioningClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (endpoint provisioning.Endpoint, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -85,12 +85,12 @@ func (_d ProvisioningClusterServiceWithSlog) GetByName(ctx context.Context, name
 			slog.String("name", name),
 		)
 	}
-	log.Debug("=> calling GetByName")
+	log.Debug("=> calling GetEndpoint")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("cluster", cluster),
+				slog.Any("endpoint", endpoint),
 				slog.Any("err", err),
 			)
 		} else {
@@ -100,13 +100,13 @@ func (_d ProvisioningClusterServiceWithSlog) GetByName(ctx context.Context, name
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetByName returned an informative error")
+				log.Debug("<= method GetEndpoint returned an informative error")
 			} else {
-				log.Error("<= method GetByName returned an error")
+				log.Error("<= method GetEndpoint returned an error")
 			}
 		} else {
-			log.Debug("<= method GetByName finished")
+			log.Debug("<= method GetEndpoint finished")
 		}
 	}()
-	return _d._base.GetByName(ctx, name)
+	return _d._base.GetEndpoint(ctx, name)
 }

@@ -40,7 +40,7 @@ func NewProfileServerClientWithPrometheus(base inventory.ProfileServerClient, in
 }
 
 // GetProfileByName implements inventory.ProfileServerClient.
-func (_d ProfileServerClientWithPrometheus) GetProfileByName(ctx context.Context, cluster provisioning.Cluster, profileName string) (profile api.Profile, err error) {
+func (_d ProfileServerClientWithPrometheus) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, profileName string) (profile api.Profile, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,11 +50,11 @@ func (_d ProfileServerClientWithPrometheus) GetProfileByName(ctx context.Context
 
 		profileServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetProfileByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetProfileByName(ctx, cluster, profileName)
+	return _d.base.GetProfileByName(ctx, endpoint, profileName)
 }
 
 // GetProfiles implements inventory.ProfileServerClient.
-func (_d ProfileServerClientWithPrometheus) GetProfiles(ctx context.Context, cluster provisioning.Cluster) (profiles []api.Profile, err error) {
+func (_d ProfileServerClientWithPrometheus) GetProfiles(ctx context.Context, endpoint provisioning.Endpoint) (profiles []api.Profile, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -64,5 +64,5 @@ func (_d ProfileServerClientWithPrometheus) GetProfiles(ctx context.Context, clu
 
 		profileServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetProfiles", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetProfiles(ctx, cluster)
+	return _d.base.GetProfiles(ctx, endpoint)
 }

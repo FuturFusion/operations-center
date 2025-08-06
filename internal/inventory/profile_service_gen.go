@@ -151,12 +151,12 @@ func (s profileService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByName(ctx, profile.Cluster)
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, profile.Cluster)
 		if err != nil {
 			return err
 		}
 
-		retrievedProfile, err := s.profileClient.GetProfileByName(ctx, *cluster, profile.Name)
+		retrievedProfile, err := s.profileClient.GetProfileByName(ctx, endpoint, profile.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, profile.UUID)
 			if err != nil {
@@ -195,12 +195,12 @@ func (s profileService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s profileService) SyncCluster(ctx context.Context, name string) error {
-	cluster, err := s.clusterSvc.GetByName(ctx, name)
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
 	if err != nil {
 		return err
 	}
 
-	retrievedProfiles, err := s.profileClient.GetProfiles(ctx, *cluster)
+	retrievedProfiles, err := s.profileClient.GetProfiles(ctx, endpoint)
 	if err != nil {
 		return err
 	}

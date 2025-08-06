@@ -30,6 +30,6 @@ type ProjectRepo interface {
 }
 
 type ProjectServerClient interface {
-	GetProjects(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Project, error)
-	GetProjectByName(ctx context.Context, cluster provisioning.Cluster, projectName string) (incusapi.Project, error)
+	GetProjects(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.Project, error)
+	GetProjectByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string) (incusapi.Project, error)
 }

@@ -40,7 +40,7 @@ func NewNetworkZoneServerClientWithPrometheus(base inventory.NetworkZoneServerCl
 }
 
 // GetNetworkZoneByName implements inventory.NetworkZoneServerClient.
-func (_d NetworkZoneServerClientWithPrometheus) GetNetworkZoneByName(ctx context.Context, cluster provisioning.Cluster, networkZoneName string) (networkZone api.NetworkZone, err error) {
+func (_d NetworkZoneServerClientWithPrometheus) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, networkZoneName string) (networkZone api.NetworkZone, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,11 +50,11 @@ func (_d NetworkZoneServerClientWithPrometheus) GetNetworkZoneByName(ctx context
 
 		networkZoneServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkZoneByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkZoneByName(ctx, cluster, networkZoneName)
+	return _d.base.GetNetworkZoneByName(ctx, endpoint, networkZoneName)
 }
 
 // GetNetworkZones implements inventory.NetworkZoneServerClient.
-func (_d NetworkZoneServerClientWithPrometheus) GetNetworkZones(ctx context.Context, cluster provisioning.Cluster) (networkZones []api.NetworkZone, err error) {
+func (_d NetworkZoneServerClientWithPrometheus) GetNetworkZones(ctx context.Context, endpoint provisioning.Endpoint) (networkZones []api.NetworkZone, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -64,5 +64,5 @@ func (_d NetworkZoneServerClientWithPrometheus) GetNetworkZones(ctx context.Cont
 
 		networkZoneServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkZones", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkZones(ctx, cluster)
+	return _d.base.GetNetworkZones(ctx, endpoint)
 }

@@ -23,10 +23,10 @@ var _ inventory.NetworkPeerServerClient = &NetworkPeerServerClientMock{}
 //
 //		// make and configure a mocked inventory.NetworkPeerServerClient
 //		mockedNetworkPeerServerClient := &NetworkPeerServerClientMock{
-//			GetNetworkPeerByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkName string, networkPeerName string) (api.NetworkPeer, error) {
+//			GetNetworkPeerByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkPeerName string) (api.NetworkPeer, error) {
 //				panic("mock out the GetNetworkPeerByName method")
 //			},
-//			GetNetworkPeersFunc: func(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]api.NetworkPeer, error) {
+//			GetNetworkPeersFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]api.NetworkPeer, error) {
 //				panic("mock out the GetNetworkPeers method")
 //			},
 //		}
@@ -37,10 +37,10 @@ var _ inventory.NetworkPeerServerClient = &NetworkPeerServerClientMock{}
 //	}
 type NetworkPeerServerClientMock struct {
 	// GetNetworkPeerByNameFunc mocks the GetNetworkPeerByName method.
-	GetNetworkPeerByNameFunc func(ctx context.Context, cluster provisioning.Cluster, networkName string, networkPeerName string) (api.NetworkPeer, error)
+	GetNetworkPeerByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkPeerName string) (api.NetworkPeer, error)
 
 	// GetNetworkPeersFunc mocks the GetNetworkPeers method.
-	GetNetworkPeersFunc func(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]api.NetworkPeer, error)
+	GetNetworkPeersFunc func(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]api.NetworkPeer, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -48,8 +48,8 @@ type NetworkPeerServerClientMock struct {
 		GetNetworkPeerByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 			// NetworkName is the networkName argument value.
 			NetworkName string
 			// NetworkPeerName is the networkPeerName argument value.
@@ -59,8 +59,8 @@ type NetworkPeerServerClientMock struct {
 		GetNetworkPeers []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 			// NetworkName is the networkName argument value.
 			NetworkName string
 		}
@@ -70,25 +70,25 @@ type NetworkPeerServerClientMock struct {
 }
 
 // GetNetworkPeerByName calls GetNetworkPeerByNameFunc.
-func (mock *NetworkPeerServerClientMock) GetNetworkPeerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkPeerName string) (api.NetworkPeer, error) {
+func (mock *NetworkPeerServerClientMock) GetNetworkPeerByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkPeerName string) (api.NetworkPeer, error) {
 	if mock.GetNetworkPeerByNameFunc == nil {
 		panic("NetworkPeerServerClientMock.GetNetworkPeerByNameFunc: method is nil but NetworkPeerServerClient.GetNetworkPeerByName was just called")
 	}
 	callInfo := struct {
 		Ctx             context.Context
-		Cluster         provisioning.Cluster
+		Endpoint        provisioning.Endpoint
 		NetworkName     string
 		NetworkPeerName string
 	}{
 		Ctx:             ctx,
-		Cluster:         cluster,
+		Endpoint:        endpoint,
 		NetworkName:     networkName,
 		NetworkPeerName: networkPeerName,
 	}
 	mock.lockGetNetworkPeerByName.Lock()
 	mock.calls.GetNetworkPeerByName = append(mock.calls.GetNetworkPeerByName, callInfo)
 	mock.lockGetNetworkPeerByName.Unlock()
-	return mock.GetNetworkPeerByNameFunc(ctx, cluster, networkName, networkPeerName)
+	return mock.GetNetworkPeerByNameFunc(ctx, endpoint, networkName, networkPeerName)
 }
 
 // GetNetworkPeerByNameCalls gets all the calls that were made to GetNetworkPeerByName.
@@ -97,13 +97,13 @@ func (mock *NetworkPeerServerClientMock) GetNetworkPeerByName(ctx context.Contex
 //	len(mockedNetworkPeerServerClient.GetNetworkPeerByNameCalls())
 func (mock *NetworkPeerServerClientMock) GetNetworkPeerByNameCalls() []struct {
 	Ctx             context.Context
-	Cluster         provisioning.Cluster
+	Endpoint        provisioning.Endpoint
 	NetworkName     string
 	NetworkPeerName string
 } {
 	var calls []struct {
 		Ctx             context.Context
-		Cluster         provisioning.Cluster
+		Endpoint        provisioning.Endpoint
 		NetworkName     string
 		NetworkPeerName string
 	}
@@ -114,23 +114,23 @@ func (mock *NetworkPeerServerClientMock) GetNetworkPeerByNameCalls() []struct {
 }
 
 // GetNetworkPeers calls GetNetworkPeersFunc.
-func (mock *NetworkPeerServerClientMock) GetNetworkPeers(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]api.NetworkPeer, error) {
+func (mock *NetworkPeerServerClientMock) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]api.NetworkPeer, error) {
 	if mock.GetNetworkPeersFunc == nil {
 		panic("NetworkPeerServerClientMock.GetNetworkPeersFunc: method is nil but NetworkPeerServerClient.GetNetworkPeers was just called")
 	}
 	callInfo := struct {
 		Ctx         context.Context
-		Cluster     provisioning.Cluster
+		Endpoint    provisioning.Endpoint
 		NetworkName string
 	}{
 		Ctx:         ctx,
-		Cluster:     cluster,
+		Endpoint:    endpoint,
 		NetworkName: networkName,
 	}
 	mock.lockGetNetworkPeers.Lock()
 	mock.calls.GetNetworkPeers = append(mock.calls.GetNetworkPeers, callInfo)
 	mock.lockGetNetworkPeers.Unlock()
-	return mock.GetNetworkPeersFunc(ctx, cluster, networkName)
+	return mock.GetNetworkPeersFunc(ctx, endpoint, networkName)
 }
 
 // GetNetworkPeersCalls gets all the calls that were made to GetNetworkPeers.
@@ -139,12 +139,12 @@ func (mock *NetworkPeerServerClientMock) GetNetworkPeers(ctx context.Context, cl
 //	len(mockedNetworkPeerServerClient.GetNetworkPeersCalls())
 func (mock *NetworkPeerServerClientMock) GetNetworkPeersCalls() []struct {
 	Ctx         context.Context
-	Cluster     provisioning.Cluster
+	Endpoint    provisioning.Endpoint
 	NetworkName string
 } {
 	var calls []struct {
 		Ctx         context.Context
-		Cluster     provisioning.Cluster
+		Endpoint    provisioning.Endpoint
 		NetworkName string
 	}
 	mock.lockGetNetworkPeers.RLock()

@@ -12,8 +12,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkACLs(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkACL, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetNetworkACLs(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.NetworkACL, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +26,8 @@ func (s serverClient) GetNetworkACLs(ctx context.Context, cluster provisioning.C
 	return serverNetworkACLs, nil
 }
 
-func (s serverClient) GetNetworkACLByName(ctx context.Context, cluster provisioning.Cluster, networkACLName string) (incusapi.NetworkACL, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, networkACLName string) (incusapi.NetworkACL, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.NetworkACL{}, err
 	}

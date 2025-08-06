@@ -12,8 +12,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetImages(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Image, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetImages(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.Image, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +26,8 @@ func (s serverClient) GetImages(ctx context.Context, cluster provisioning.Cluste
 	return serverImages, nil
 }
 
-func (s serverClient) GetImageByName(ctx context.Context, cluster provisioning.Cluster, imageName string) (incusapi.Image, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, imageName string) (incusapi.Image, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.Image{}, err
 	}

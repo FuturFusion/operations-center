@@ -30,6 +30,6 @@ type NetworkForwardRepo interface {
 }
 
 type NetworkForwardServerClient interface {
-	GetNetworkForwards(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]incusapi.NetworkForward, error)
-	GetNetworkForwardByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkForwardName string) (incusapi.NetworkForward, error)
+	GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]incusapi.NetworkForward, error)
+	GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkForwardName string) (incusapi.NetworkForward, error)
 }

@@ -76,38 +76,3 @@ func (_d ProvisioningServerServiceWithSlog) GetAllByClusterName(ctx context.Cont
 	}()
 	return _d._base.GetAllByClusterName(ctx, name)
 }
-
-// GetByName implements inventory.ProvisioningServerService.
-func (_d ProvisioningServerServiceWithSlog) GetByName(ctx context.Context, name string) (server *provisioning.Server, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.String("name", name),
-		)
-	}
-	log.Debug("=> calling GetByName")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("server", server),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetByName returned an informative error")
-			} else {
-				log.Error("<= method GetByName returned an error")
-			}
-		} else {
-			log.Debug("<= method GetByName finished")
-		}
-	}()
-	return _d._base.GetByName(ctx, name)
-}

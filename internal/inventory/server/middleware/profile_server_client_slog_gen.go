@@ -44,12 +44,12 @@ func NewProfileServerClientWithSlog(base inventory.ProfileServerClient, log *slo
 }
 
 // GetProfileByName implements inventory.ProfileServerClient.
-func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, cluster provisioning.Cluster, profileName string) (profile api.Profile, err error) {
+func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, profileName string) (profile api.Profile, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 			slog.String("profileName", profileName),
 		)
 	}
@@ -76,16 +76,16 @@ func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, clus
 			log.Debug("<= method GetProfileByName finished")
 		}
 	}()
-	return _d._base.GetProfileByName(ctx, cluster, profileName)
+	return _d._base.GetProfileByName(ctx, endpoint, profileName)
 }
 
 // GetProfiles implements inventory.ProfileServerClient.
-func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, cluster provisioning.Cluster) (profiles []api.Profile, err error) {
+func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, endpoint provisioning.Endpoint) (profiles []api.Profile, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 		)
 	}
 	log.Debug("=> calling GetProfiles")
@@ -111,5 +111,5 @@ func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, cluster p
 			log.Debug("<= method GetProfiles finished")
 		}
 	}()
-	return _d._base.GetProfiles(ctx, cluster)
+	return _d._base.GetProfiles(ctx, endpoint)
 }

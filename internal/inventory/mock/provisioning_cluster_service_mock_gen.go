@@ -25,8 +25,8 @@ var _ inventory.ProvisioningClusterService = &ProvisioningClusterServiceMock{}
 //			GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
 //				panic("mock out the GetAll method")
 //			},
-//			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
-//				panic("mock out the GetByName method")
+//			GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+//				panic("mock out the GetEndpoint method")
 //			},
 //		}
 //
@@ -38,8 +38,8 @@ type ProvisioningClusterServiceMock struct {
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Clusters, error)
 
-	// GetByNameFunc mocks the GetByName method.
-	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Cluster, error)
+	// GetEndpointFunc mocks the GetEndpoint method.
+	GetEndpointFunc func(ctx context.Context, name string) (provisioning.Endpoint, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -48,16 +48,16 @@ type ProvisioningClusterServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetByName holds details about calls to the GetByName method.
-		GetByName []struct {
+		// GetEndpoint holds details about calls to the GetEndpoint method.
+		GetEndpoint []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
 		}
 	}
-	lockGetAll    sync.RWMutex
-	lockGetByName sync.RWMutex
+	lockGetAll      sync.RWMutex
+	lockGetEndpoint sync.RWMutex
 }
 
 // GetAll calls GetAllFunc.
@@ -92,10 +92,10 @@ func (mock *ProvisioningClusterServiceMock) GetAllCalls() []struct {
 	return calls
 }
 
-// GetByName calls GetByNameFunc.
-func (mock *ProvisioningClusterServiceMock) GetByName(ctx context.Context, name string) (*provisioning.Cluster, error) {
-	if mock.GetByNameFunc == nil {
-		panic("ProvisioningClusterServiceMock.GetByNameFunc: method is nil but ProvisioningClusterService.GetByName was just called")
+// GetEndpoint calls GetEndpointFunc.
+func (mock *ProvisioningClusterServiceMock) GetEndpoint(ctx context.Context, name string) (provisioning.Endpoint, error) {
+	if mock.GetEndpointFunc == nil {
+		panic("ProvisioningClusterServiceMock.GetEndpointFunc: method is nil but ProvisioningClusterService.GetEndpoint was just called")
 	}
 	callInfo := struct {
 		Ctx  context.Context
@@ -104,17 +104,17 @@ func (mock *ProvisioningClusterServiceMock) GetByName(ctx context.Context, name 
 		Ctx:  ctx,
 		Name: name,
 	}
-	mock.lockGetByName.Lock()
-	mock.calls.GetByName = append(mock.calls.GetByName, callInfo)
-	mock.lockGetByName.Unlock()
-	return mock.GetByNameFunc(ctx, name)
+	mock.lockGetEndpoint.Lock()
+	mock.calls.GetEndpoint = append(mock.calls.GetEndpoint, callInfo)
+	mock.lockGetEndpoint.Unlock()
+	return mock.GetEndpointFunc(ctx, name)
 }
 
-// GetByNameCalls gets all the calls that were made to GetByName.
+// GetEndpointCalls gets all the calls that were made to GetEndpoint.
 // Check the length with:
 //
-//	len(mockedProvisioningClusterService.GetByNameCalls())
-func (mock *ProvisioningClusterServiceMock) GetByNameCalls() []struct {
+//	len(mockedProvisioningClusterService.GetEndpointCalls())
+func (mock *ProvisioningClusterServiceMock) GetEndpointCalls() []struct {
 	Ctx  context.Context
 	Name string
 } {
@@ -122,8 +122,8 @@ func (mock *ProvisioningClusterServiceMock) GetByNameCalls() []struct {
 		Ctx  context.Context
 		Name string
 	}
-	mock.lockGetByName.RLock()
-	calls = mock.calls.GetByName
-	mock.lockGetByName.RUnlock()
+	mock.lockGetEndpoint.RLock()
+	calls = mock.calls.GetEndpoint
+	mock.lockGetEndpoint.RUnlock()
 	return calls
 }

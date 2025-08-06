@@ -25,9 +25,6 @@ var _ inventory.ProvisioningServerService = &ProvisioningServerServiceMock{}
 //			GetAllByClusterNameFunc: func(ctx context.Context, name string) (provisioning.Servers, error) {
 //				panic("mock out the GetAllByClusterName method")
 //			},
-//			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
-//				panic("mock out the GetByName method")
-//			},
 //		}
 //
 //		// use mockedProvisioningServerService in code that requires inventory.ProvisioningServerService
@@ -38,9 +35,6 @@ type ProvisioningServerServiceMock struct {
 	// GetAllByClusterNameFunc mocks the GetAllByClusterName method.
 	GetAllByClusterNameFunc func(ctx context.Context, name string) (provisioning.Servers, error)
 
-	// GetByNameFunc mocks the GetByName method.
-	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Server, error)
-
 	// calls tracks calls to the methods.
 	calls struct {
 		// GetAllByClusterName holds details about calls to the GetAllByClusterName method.
@@ -50,16 +44,8 @@ type ProvisioningServerServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
-		// GetByName holds details about calls to the GetByName method.
-		GetByName []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Name is the name argument value.
-			Name string
-		}
 	}
 	lockGetAllByClusterName sync.RWMutex
-	lockGetByName           sync.RWMutex
 }
 
 // GetAllByClusterName calls GetAllByClusterNameFunc.
@@ -95,41 +81,5 @@ func (mock *ProvisioningServerServiceMock) GetAllByClusterNameCalls() []struct {
 	mock.lockGetAllByClusterName.RLock()
 	calls = mock.calls.GetAllByClusterName
 	mock.lockGetAllByClusterName.RUnlock()
-	return calls
-}
-
-// GetByName calls GetByNameFunc.
-func (mock *ProvisioningServerServiceMock) GetByName(ctx context.Context, name string) (*provisioning.Server, error) {
-	if mock.GetByNameFunc == nil {
-		panic("ProvisioningServerServiceMock.GetByNameFunc: method is nil but ProvisioningServerService.GetByName was just called")
-	}
-	callInfo := struct {
-		Ctx  context.Context
-		Name string
-	}{
-		Ctx:  ctx,
-		Name: name,
-	}
-	mock.lockGetByName.Lock()
-	mock.calls.GetByName = append(mock.calls.GetByName, callInfo)
-	mock.lockGetByName.Unlock()
-	return mock.GetByNameFunc(ctx, name)
-}
-
-// GetByNameCalls gets all the calls that were made to GetByName.
-// Check the length with:
-//
-//	len(mockedProvisioningServerService.GetByNameCalls())
-func (mock *ProvisioningServerServiceMock) GetByNameCalls() []struct {
-	Ctx  context.Context
-	Name string
-} {
-	var calls []struct {
-		Ctx  context.Context
-		Name string
-	}
-	mock.lockGetByName.RLock()
-	calls = mock.calls.GetByName
-	mock.lockGetByName.RUnlock()
 	return calls
 }

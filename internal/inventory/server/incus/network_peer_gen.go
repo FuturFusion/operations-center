@@ -12,8 +12,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkPeers(ctx context.Context, cluster provisioning.Cluster, networkPeerName string) ([]incusapi.NetworkPeer, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, networkPeerName string) ([]incusapi.NetworkPeer, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +26,8 @@ func (s serverClient) GetNetworkPeers(ctx context.Context, cluster provisioning.
 	return serverNetworkPeers, nil
 }
 
-func (s serverClient) GetNetworkPeerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetNetworkPeerByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.NetworkPeer{}, err
 	}

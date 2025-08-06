@@ -151,12 +151,12 @@ func (s networkIntegrationService) ResyncByUUID(ctx context.Context, id uuid.UUI
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByName(ctx, networkIntegration.Cluster)
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkIntegration.Cluster)
 		if err != nil {
 			return err
 		}
 
-		retrievedNetworkIntegration, err := s.networkIntegrationClient.GetNetworkIntegrationByName(ctx, *cluster, networkIntegration.Name)
+		retrievedNetworkIntegration, err := s.networkIntegrationClient.GetNetworkIntegrationByName(ctx, endpoint, networkIntegration.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkIntegration.UUID)
 			if err != nil {
@@ -194,12 +194,12 @@ func (s networkIntegrationService) ResyncByUUID(ctx context.Context, id uuid.UUI
 }
 
 func (s networkIntegrationService) SyncCluster(ctx context.Context, name string) error {
-	cluster, err := s.clusterSvc.GetByName(ctx, name)
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
 	if err != nil {
 		return err
 	}
 
-	retrievedNetworkIntegrations, err := s.networkIntegrationClient.GetNetworkIntegrations(ctx, *cluster)
+	retrievedNetworkIntegrations, err := s.networkIntegrationClient.GetNetworkIntegrations(ctx, endpoint)
 	if err != nil {
 		return err
 	}

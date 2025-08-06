@@ -12,8 +12,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkLoadBalancers(ctx context.Context, cluster provisioning.Cluster, networkLoadBalancerName string) ([]incusapi.NetworkLoadBalancer, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, networkLoadBalancerName string) ([]incusapi.NetworkLoadBalancer, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +26,8 @@ func (s serverClient) GetNetworkLoadBalancers(ctx context.Context, cluster provi
 	return serverNetworkLoadBalancers, nil
 }
 
-func (s serverClient) GetNetworkLoadBalancerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetNetworkLoadBalancerByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.NetworkLoadBalancer{}, err
 	}

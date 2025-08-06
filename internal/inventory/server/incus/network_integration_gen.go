@@ -12,8 +12,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkIntegrations(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkIntegration, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetNetworkIntegrations(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.NetworkIntegration, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +26,8 @@ func (s serverClient) GetNetworkIntegrations(ctx context.Context, cluster provis
 	return serverNetworkIntegrations, nil
 }
 
-func (s serverClient) GetNetworkIntegrationByName(ctx context.Context, cluster provisioning.Cluster, networkIntegrationName string) (incusapi.NetworkIntegration, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetNetworkIntegrationByName(ctx context.Context, endpoint provisioning.Endpoint, networkIntegrationName string) (incusapi.NetworkIntegration, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.NetworkIntegration{}, err
 	}

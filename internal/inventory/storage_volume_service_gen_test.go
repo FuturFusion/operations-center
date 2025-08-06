@@ -288,8 +288,8 @@ func TestStorageVolumeService_GetByUUID(t *testing.T) {
 func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 	tests := []struct {
 		name                                         string
-		clusterSvcGetByIDCluster                     provisioning.Cluster
-		clusterSvcGetByIDErr                         error
+		clusterSvcGetEndpoint                        provisioning.Endpoint
+		clusterSvcGetEndpointErr                     error
 		storageVolumeClientGetStorageVolumeByName    incusapi.StorageVolume
 		storageVolumeClientGetStorageVolumeByNameErr error
 		repoGetByUUIDStorageVolume                   inventory.StorageVolume
@@ -307,8 +307,12 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 				Name:            "one",
 				StoragePoolName: "storage_pool",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
 				Name:     "storageVolume one",
@@ -326,8 +330,12 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 				Name:            "one",
 				StoragePoolName: "storage_pool",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storageVolumeClientGetStorageVolumeByNameErr: domain.ErrNotFound,
 
@@ -347,7 +355,7 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 				Name:            "one",
 				StoragePoolName: "storage_pool",
 			},
-			clusterSvcGetByIDErr: boom.Error,
+			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -359,8 +367,12 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 				Name:            "one",
 				StoragePoolName: "storage_pool",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storageVolumeClientGetStorageVolumeByNameErr: boom.Error,
 
@@ -374,8 +386,12 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 				Name:            "one",
 				StoragePoolName: "storage_pool",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storageVolumeClientGetStorageVolumeByNameErr: domain.ErrNotFound,
 			repoDeleteByUUIDErr:                          boom.Error,
@@ -390,8 +406,12 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 				Name:            "", // invalid
 				StoragePoolName: "storage_pool",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
 				Name:     "storageVolume one",
@@ -412,8 +432,12 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 				Name:            "one",
 				StoragePoolName: "storage_pool",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
 				Name:     "storageVolume one",
@@ -443,14 +467,14 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
 					require.Equal(t, "one", name)
-					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
 				},
 			}
 
 			storageVolumeClient := &serverMock.StorageVolumeServerClientMock{
-				GetStorageVolumeByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error) {
+				GetStorageVolumeByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error) {
 					require.Equal(t, tc.repoGetByUUIDStorageVolume.Name, storageVolumeName)
 					require.Equal(t, "storage_pool", storagePoolName)
 					return tc.storageVolumeClientGetStorageVolumeByName, tc.storageVolumeClientGetStorageVolumeByNameErr
@@ -474,8 +498,8 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster
 	tests := []struct {
 		name                                    string
-		clusterSvcGetByIDCluster                provisioning.Cluster
-		clusterSvcGetByIDErr                    error
+		clusterSvcGetEndpoint                   provisioning.Endpoint
+		clusterSvcGetEndpointErr                error
 		storagePoolClientGetStoragePools        []incusapi.StoragePool
 		storagePoolClientGetStoragePoolsErr     error
 		storageVolumeClientGetStorageVolumes    []incusapi.StorageVolume
@@ -488,8 +512,12 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 	}{
 		{
 			name: "success",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -508,8 +536,12 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "success - with parent filter",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -536,8 +568,12 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "success - with sync filter",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -565,15 +601,19 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:                 "error - cluster service get by ID",
-			clusterSvcGetByIDErr: boom.Error,
+			name:                     "error - cluster service get by ID",
+			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - storagePool client get StoragePools",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storagePoolClientGetStoragePoolsErr: boom.Error,
 
@@ -581,8 +621,12 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - storageVolume client get StorageVolumes",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -595,8 +639,12 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - storage_volumes delete by cluster ID",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -616,8 +664,12 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - validate",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -639,8 +691,12 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - storageVolume create",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -673,19 +729,19 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
-					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
 				},
 			}
 
 			storagePoolClient := &serverMock.StoragePoolServerClientMock{
-				GetStoragePoolsFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.StoragePool, error) {
+				GetStoragePoolsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.StoragePool, error) {
 					return tc.storagePoolClientGetStoragePools, tc.storagePoolClientGetStoragePoolsErr
 				},
 			}
 
 			storageVolumeClient := &serverMock.StorageVolumeServerClientMock{
-				GetStorageVolumesFunc: func(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) ([]incusapi.StorageVolume, error) {
+				GetStorageVolumesFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]incusapi.StorageVolume, error) {
 					return tc.storageVolumeClientGetStorageVolumes, tc.storageVolumeClientGetStorageVolumesErr
 				},
 			}

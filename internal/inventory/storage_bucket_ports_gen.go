@@ -30,6 +30,6 @@ type StorageBucketRepo interface {
 }
 
 type StorageBucketServerClient interface {
-	GetStorageBuckets(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) ([]incusapi.StorageBucket, error)
-	GetStorageBucketByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error)
+	GetStorageBuckets(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]incusapi.StorageBucket, error)
+	GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error)
 }

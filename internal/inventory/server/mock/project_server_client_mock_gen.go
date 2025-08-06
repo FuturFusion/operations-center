@@ -23,10 +23,10 @@ var _ inventory.ProjectServerClient = &ProjectServerClientMock{}
 //
 //		// make and configure a mocked inventory.ProjectServerClient
 //		mockedProjectServerClient := &ProjectServerClientMock{
-//			GetProjectByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, projectName string) (api.Project, error) {
+//			GetProjectByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string) (api.Project, error) {
 //				panic("mock out the GetProjectByName method")
 //			},
-//			GetProjectsFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]api.Project, error) {
+//			GetProjectsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.Project, error) {
 //				panic("mock out the GetProjects method")
 //			},
 //		}
@@ -37,10 +37,10 @@ var _ inventory.ProjectServerClient = &ProjectServerClientMock{}
 //	}
 type ProjectServerClientMock struct {
 	// GetProjectByNameFunc mocks the GetProjectByName method.
-	GetProjectByNameFunc func(ctx context.Context, cluster provisioning.Cluster, projectName string) (api.Project, error)
+	GetProjectByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, projectName string) (api.Project, error)
 
 	// GetProjectsFunc mocks the GetProjects method.
-	GetProjectsFunc func(ctx context.Context, cluster provisioning.Cluster) ([]api.Project, error)
+	GetProjectsFunc func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.Project, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -48,8 +48,8 @@ type ProjectServerClientMock struct {
 		GetProjectByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 			// ProjectName is the projectName argument value.
 			ProjectName string
 		}
@@ -57,8 +57,8 @@ type ProjectServerClientMock struct {
 		GetProjects []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 		}
 	}
 	lockGetProjectByName sync.RWMutex
@@ -66,23 +66,23 @@ type ProjectServerClientMock struct {
 }
 
 // GetProjectByName calls GetProjectByNameFunc.
-func (mock *ProjectServerClientMock) GetProjectByName(ctx context.Context, cluster provisioning.Cluster, projectName string) (api.Project, error) {
+func (mock *ProjectServerClientMock) GetProjectByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string) (api.Project, error) {
 	if mock.GetProjectByNameFunc == nil {
 		panic("ProjectServerClientMock.GetProjectByNameFunc: method is nil but ProjectServerClient.GetProjectByName was just called")
 	}
 	callInfo := struct {
 		Ctx         context.Context
-		Cluster     provisioning.Cluster
+		Endpoint    provisioning.Endpoint
 		ProjectName string
 	}{
 		Ctx:         ctx,
-		Cluster:     cluster,
+		Endpoint:    endpoint,
 		ProjectName: projectName,
 	}
 	mock.lockGetProjectByName.Lock()
 	mock.calls.GetProjectByName = append(mock.calls.GetProjectByName, callInfo)
 	mock.lockGetProjectByName.Unlock()
-	return mock.GetProjectByNameFunc(ctx, cluster, projectName)
+	return mock.GetProjectByNameFunc(ctx, endpoint, projectName)
 }
 
 // GetProjectByNameCalls gets all the calls that were made to GetProjectByName.
@@ -91,12 +91,12 @@ func (mock *ProjectServerClientMock) GetProjectByName(ctx context.Context, clust
 //	len(mockedProjectServerClient.GetProjectByNameCalls())
 func (mock *ProjectServerClientMock) GetProjectByNameCalls() []struct {
 	Ctx         context.Context
-	Cluster     provisioning.Cluster
+	Endpoint    provisioning.Endpoint
 	ProjectName string
 } {
 	var calls []struct {
 		Ctx         context.Context
-		Cluster     provisioning.Cluster
+		Endpoint    provisioning.Endpoint
 		ProjectName string
 	}
 	mock.lockGetProjectByName.RLock()
@@ -106,21 +106,21 @@ func (mock *ProjectServerClientMock) GetProjectByNameCalls() []struct {
 }
 
 // GetProjects calls GetProjectsFunc.
-func (mock *ProjectServerClientMock) GetProjects(ctx context.Context, cluster provisioning.Cluster) ([]api.Project, error) {
+func (mock *ProjectServerClientMock) GetProjects(ctx context.Context, endpoint provisioning.Endpoint) ([]api.Project, error) {
 	if mock.GetProjectsFunc == nil {
 		panic("ProjectServerClientMock.GetProjectsFunc: method is nil but ProjectServerClient.GetProjects was just called")
 	}
 	callInfo := struct {
-		Ctx     context.Context
-		Cluster provisioning.Cluster
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
 	}{
-		Ctx:     ctx,
-		Cluster: cluster,
+		Ctx:      ctx,
+		Endpoint: endpoint,
 	}
 	mock.lockGetProjects.Lock()
 	mock.calls.GetProjects = append(mock.calls.GetProjects, callInfo)
 	mock.lockGetProjects.Unlock()
-	return mock.GetProjectsFunc(ctx, cluster)
+	return mock.GetProjectsFunc(ctx, endpoint)
 }
 
 // GetProjectsCalls gets all the calls that were made to GetProjects.
@@ -128,12 +128,12 @@ func (mock *ProjectServerClientMock) GetProjects(ctx context.Context, cluster pr
 //
 //	len(mockedProjectServerClient.GetProjectsCalls())
 func (mock *ProjectServerClientMock) GetProjectsCalls() []struct {
-	Ctx     context.Context
-	Cluster provisioning.Cluster
+	Ctx      context.Context
+	Endpoint provisioning.Endpoint
 } {
 	var calls []struct {
-		Ctx     context.Context
-		Cluster provisioning.Cluster
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
 	}
 	mock.lockGetProjects.RLock()
 	calls = mock.calls.GetProjects

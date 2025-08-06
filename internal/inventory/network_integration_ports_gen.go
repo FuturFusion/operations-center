@@ -30,6 +30,6 @@ type NetworkIntegrationRepo interface {
 }
 
 type NetworkIntegrationServerClient interface {
-	GetNetworkIntegrations(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkIntegration, error)
-	GetNetworkIntegrationByName(ctx context.Context, cluster provisioning.Cluster, networkIntegrationName string) (incusapi.NetworkIntegration, error)
+	GetNetworkIntegrations(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.NetworkIntegration, error)
+	GetNetworkIntegrationByName(ctx context.Context, endpoint provisioning.Endpoint, networkIntegrationName string) (incusapi.NetworkIntegration, error)
 }

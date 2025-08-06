@@ -40,7 +40,7 @@ func NewNetworkPeerServerClientWithPrometheus(base inventory.NetworkPeerServerCl
 }
 
 // GetNetworkPeerByName implements inventory.NetworkPeerServerClient.
-func (_d NetworkPeerServerClientWithPrometheus) GetNetworkPeerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
+func (_d NetworkPeerServerClientWithPrometheus) GetNetworkPeerByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkPeerName string) (networkPeer api.NetworkPeer, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,11 +50,11 @@ func (_d NetworkPeerServerClientWithPrometheus) GetNetworkPeerByName(ctx context
 
 		networkPeerServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkPeerByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkPeerByName(ctx, cluster, networkName, networkPeerName)
+	return _d.base.GetNetworkPeerByName(ctx, endpoint, networkName, networkPeerName)
 }
 
 // GetNetworkPeers implements inventory.NetworkPeerServerClient.
-func (_d NetworkPeerServerClientWithPrometheus) GetNetworkPeers(ctx context.Context, cluster provisioning.Cluster, networkName string) (networkPeers []api.NetworkPeer, err error) {
+func (_d NetworkPeerServerClientWithPrometheus) GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (networkPeers []api.NetworkPeer, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -64,5 +64,5 @@ func (_d NetworkPeerServerClientWithPrometheus) GetNetworkPeers(ctx context.Cont
 
 		networkPeerServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkPeers", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkPeers(ctx, cluster, networkName)
+	return _d.base.GetNetworkPeers(ctx, endpoint, networkName)
 }
