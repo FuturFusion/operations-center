@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -129,7 +130,7 @@ func New(serverPort string, opts ...Option) (OperationsCenterClient, error) {
 	return c, nil
 }
 
-func (c OperationsCenterClient) doRequest(ctx context.Context, method string, endpoint string, query url.Values, content any) (*api.Response, error) {
+func (c OperationsCenterClient) doRequestRawResponse(ctx context.Context, method string, endpoint string, query url.Values, content any) (*http.Response, error) {
 	apiEndpoint, err := url.JoinPath(apiVersionPrefix, endpoint)
 	if err != nil {
 		return nil, err
@@ -166,24 +167,49 @@ func (c OperationsCenterClient) doRequest(ctx context.Context, method string, en
 	}
 
 	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("Accept-Encoding", "gzip")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
+	if resp.Header.Get("Content-Encoding") == "gzip" {
+		resp.Body, err = gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return resp, nil
+}
+
+func (c OperationsCenterClient) doRequest(ctx context.Context, method string, endpoint string, query url.Values, content any) (*api.Response, error) {
+	resp, err := c.doRequestRawResponse(ctx, method, endpoint, query, content)
+	if err != nil {
+		return nil, err
+	}
+
+	return processResponse(resp)
+}
+
+func processResponse(resp *http.Response) (*api.Response, error) {
 	defer resp.Body.Close()
 
 	decoder := json.NewDecoder(resp.Body)
 	response := api.Response{}
 
-	err = decoder.Decode(&response)
+	err := decoder.Decode(&response)
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid character 'C'") {
 			return nil, fmt.Errorf("Client sent an HTTP request to an HTTPS server")
 		}
 
-		return nil, err
+		if resp.StatusCode >= 400 {
+			return nil, fmt.Errorf("Received an error from the server: %s", resp.Status)
+		}
+
+		return nil, fmt.Errorf("Failed to decode server response: %w", err)
 	}
 
 	if response.Code != 0 {
