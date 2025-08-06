@@ -112,6 +112,11 @@ func (s tokenService) Consume(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s tokenService) GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig TokenSeedConfig) (_ io.ReadCloser, err error) {
+	_, err = s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get token %s: %w", id.String(), err)
+	}
+
 	// TODO: Allow filters?
 	updates, err := s.updateSvc.GetAll(ctx)
 	if err != nil {
