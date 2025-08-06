@@ -42,6 +42,9 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
 //				panic("mock out the GetByName method")
 //			},
+//			GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+//				panic("mock out the GetEndpoint method")
+//			},
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
@@ -84,6 +87,9 @@ type ClusterServiceMock struct {
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Cluster, error)
+
+	// GetEndpointFunc mocks the GetEndpoint method.
+	GetEndpointFunc func(ctx context.Context, name string) (provisioning.Endpoint, error)
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
@@ -147,6 +153,13 @@ type ClusterServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// GetEndpoint holds details about calls to the GetEndpoint method.
+		GetEndpoint []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 		// Rename holds details about calls to the Rename method.
 		Rename []struct {
 			// Ctx is the ctx argument value.
@@ -194,6 +207,7 @@ type ClusterServiceMock struct {
 	lockGetAllNamesWithFilter sync.RWMutex
 	lockGetAllWithFilter      sync.RWMutex
 	lockGetByName             sync.RWMutex
+	lockGetEndpoint           sync.RWMutex
 	lockRename                sync.RWMutex
 	lockResyncInventory       sync.RWMutex
 	lockResyncInventoryByName sync.RWMutex
@@ -442,6 +456,42 @@ func (mock *ClusterServiceMock) GetByNameCalls() []struct {
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
 	mock.lockGetByName.RUnlock()
+	return calls
+}
+
+// GetEndpoint calls GetEndpointFunc.
+func (mock *ClusterServiceMock) GetEndpoint(ctx context.Context, name string) (provisioning.Endpoint, error) {
+	if mock.GetEndpointFunc == nil {
+		panic("ClusterServiceMock.GetEndpointFunc: method is nil but ClusterService.GetEndpoint was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockGetEndpoint.Lock()
+	mock.calls.GetEndpoint = append(mock.calls.GetEndpoint, callInfo)
+	mock.lockGetEndpoint.Unlock()
+	return mock.GetEndpointFunc(ctx, name)
+}
+
+// GetEndpointCalls gets all the calls that were made to GetEndpoint.
+// Check the length with:
+//
+//	len(mockedClusterService.GetEndpointCalls())
+func (mock *ClusterServiceMock) GetEndpointCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockGetEndpoint.RLock()
+	calls = mock.calls.GetEndpoint
+	mock.lockGetEndpoint.RUnlock()
 	return calls
 }
 

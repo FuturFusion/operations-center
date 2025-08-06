@@ -283,6 +283,41 @@ func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cl
 	return _d._base.GetByName(ctx, name)
 }
 
+// GetEndpoint implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (endpoint provisioning.Endpoint, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.Debug("=> calling GetEndpoint")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("endpoint", endpoint),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetEndpoint returned an informative error")
+			} else {
+				log.Error("<= method GetEndpoint returned an error")
+			}
+		} else {
+			log.Debug("<= method GetEndpoint finished")
+		}
+	}()
+	return _d._base.GetEndpoint(ctx, name)
+}
+
 // Rename implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	log := _d._log.With()

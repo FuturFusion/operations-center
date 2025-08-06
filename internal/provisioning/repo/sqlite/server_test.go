@@ -47,19 +47,19 @@ server B
 	}
 
 	client := &adapterMock.ClusterClientPortMock{
-		PingFunc: func(ctx context.Context, target provisioning.ServerOrCluster) error {
+		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 			return nil
 		},
 		EnableOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) error {
 			return nil
 		},
-		SetServerConfigFunc: func(ctx context.Context, server provisioning.Server, config map[string]string) error {
+		SetServerConfigFunc: func(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) error {
 			return nil
 		},
-		GetClusterNodeNamesFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]string, error) {
-			return []string{cluster.Name}, nil
+		GetClusterNodeNamesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]string, error) {
+			return []string{"one"}, nil
 		},
-		GetClusterJoinTokenFunc: func(ctx context.Context, cluster provisioning.Cluster, memberName string) (string, error) {
+		GetClusterJoinTokenFunc: func(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (string, error) {
 			return "token", nil
 		},
 		EnableClusterFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
@@ -68,13 +68,13 @@ server B
 		JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) error {
 			return nil
 		},
-		CreateProjectFunc: func(ctx context.Context, cluster provisioning.Cluster, name string, description string) error {
+		CreateProjectFunc: func(ctx context.Context, endpoint provisioning.Endpoint, name string, description string) error {
 			return nil
 		},
 		InitializeDefaultStorageFunc: func(ctx context.Context, servers []provisioning.Server) error {
 			return nil
 		},
-		GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
+		GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 			return api.OSData{}, nil
 		},
 		InitializeDefaultNetworkingFunc: func(ctx context.Context, servers []provisioning.Server) error {

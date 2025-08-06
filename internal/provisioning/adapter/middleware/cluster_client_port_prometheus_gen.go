@@ -39,7 +39,7 @@ func NewClusterClientPortWithPrometheus(base provisioning.ClusterClientPort, ins
 }
 
 // CreateProject implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) CreateProject(ctx context.Context, cluster provisioning.Cluster, name string, description string) (err error) {
+func (_d ClusterClientPortWithPrometheus) CreateProject(ctx context.Context, endpoint provisioning.Endpoint, name string, description string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,7 +49,7 @@ func (_d ClusterClientPortWithPrometheus) CreateProject(ctx context.Context, clu
 
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "CreateProject", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.CreateProject(ctx, cluster, name, description)
+	return _d.base.CreateProject(ctx, endpoint, name, description)
 }
 
 // EnableCluster implements provisioning.ClusterClientPort.
@@ -81,7 +81,7 @@ func (_d ClusterClientPortWithPrometheus) EnableOSServiceLVM(ctx context.Context
 }
 
 // GetClusterJoinToken implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) GetClusterJoinToken(ctx context.Context, cluster provisioning.Cluster, memberName string) (joinToken string, err error) {
+func (_d ClusterClientPortWithPrometheus) GetClusterJoinToken(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (joinToken string, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -91,11 +91,11 @@ func (_d ClusterClientPortWithPrometheus) GetClusterJoinToken(ctx context.Contex
 
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetClusterJoinToken", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetClusterJoinToken(ctx, cluster, memberName)
+	return _d.base.GetClusterJoinToken(ctx, endpoint, memberName)
 }
 
 // GetClusterNodeNames implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) GetClusterNodeNames(ctx context.Context, cluster provisioning.Cluster) (nodeNames []string, err error) {
+func (_d ClusterClientPortWithPrometheus) GetClusterNodeNames(ctx context.Context, endpoint provisioning.Endpoint) (nodeNames []string, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -105,11 +105,11 @@ func (_d ClusterClientPortWithPrometheus) GetClusterNodeNames(ctx context.Contex
 
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetClusterNodeNames", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetClusterNodeNames(ctx, cluster)
+	return _d.base.GetClusterNodeNames(ctx, endpoint)
 }
 
 // GetOSData implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) GetOSData(ctx context.Context, server provisioning.Server) (oSData api.OSData, err error) {
+func (_d ClusterClientPortWithPrometheus) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -119,7 +119,7 @@ func (_d ClusterClientPortWithPrometheus) GetOSData(ctx context.Context, server 
 
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSData", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetOSData(ctx, server)
+	return _d.base.GetOSData(ctx, endpoint)
 }
 
 // InitializeDefaultNetworking implements provisioning.ClusterClientPort.
@@ -165,7 +165,7 @@ func (_d ClusterClientPortWithPrometheus) JoinCluster(ctx context.Context, serve
 }
 
 // Ping implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) Ping(ctx context.Context, target provisioning.ServerOrCluster) (err error) {
+func (_d ClusterClientPortWithPrometheus) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -175,11 +175,11 @@ func (_d ClusterClientPortWithPrometheus) Ping(ctx context.Context, target provi
 
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Ping", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.Ping(ctx, target)
+	return _d.base.Ping(ctx, endpoint)
 }
 
 // SetServerConfig implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) SetServerConfig(ctx context.Context, server provisioning.Server, config map[string]string) (err error) {
+func (_d ClusterClientPortWithPrometheus) SetServerConfig(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -189,11 +189,11 @@ func (_d ClusterClientPortWithPrometheus) SetServerConfig(ctx context.Context, s
 
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SetServerConfig", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.SetServerConfig(ctx, server, config)
+	return _d.base.SetServerConfig(ctx, endpoint, config)
 }
 
 // UpdateClusterCertificate implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) UpdateClusterCertificate(ctx context.Context, cluster provisioning.Cluster, certificatePEM string, keyPEM string) (err error) {
+func (_d ClusterClientPortWithPrometheus) UpdateClusterCertificate(ctx context.Context, endpoint provisioning.Endpoint, certificatePEM string, keyPEM string) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -203,5 +203,5 @@ func (_d ClusterClientPortWithPrometheus) UpdateClusterCertificate(ctx context.C
 
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateClusterCertificate", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateClusterCertificate(ctx, cluster, certificatePEM, keyPEM)
+	return _d.base.UpdateClusterCertificate(ctx, endpoint, certificatePEM, keyPEM)
 }

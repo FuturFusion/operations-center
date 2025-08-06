@@ -22,13 +22,13 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //
 //		// make and configure a mocked provisioning.ServerClientPort
 //		mockedServerClientPort := &ServerClientPortMock{
-//			GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
+//			GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 //				panic("mock out the GetOSData method")
 //			},
-//			GetResourcesFunc: func(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
+//			GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
 //				panic("mock out the GetResources method")
 //			},
-//			PingFunc: func(ctx context.Context, target provisioning.ServerOrCluster) error {
+//			PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 //				panic("mock out the Ping method")
 //			},
 //			UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
@@ -42,13 +42,13 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //	}
 type ServerClientPortMock struct {
 	// GetOSDataFunc mocks the GetOSData method.
-	GetOSDataFunc func(ctx context.Context, server provisioning.Server) (api.OSData, error)
+	GetOSDataFunc func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error)
 
 	// GetResourcesFunc mocks the GetResources method.
-	GetResourcesFunc func(ctx context.Context, server provisioning.Server) (api.HardwareData, error)
+	GetResourcesFunc func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error)
 
 	// PingFunc mocks the Ping method.
-	PingFunc func(ctx context.Context, target provisioning.ServerOrCluster) error
+	PingFunc func(ctx context.Context, endpoint provisioning.Endpoint) error
 
 	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
 	UpdateNetworkConfigFunc func(ctx context.Context, server provisioning.Server) error
@@ -59,22 +59,22 @@ type ServerClientPortMock struct {
 		GetOSData []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Server is the server argument value.
-			Server provisioning.Server
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 		}
 		// GetResources holds details about calls to the GetResources method.
 		GetResources []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Server is the server argument value.
-			Server provisioning.Server
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 		}
 		// Ping holds details about calls to the Ping method.
 		Ping []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Target is the target argument value.
-			Target provisioning.ServerOrCluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 		}
 		// UpdateNetworkConfig holds details about calls to the UpdateNetworkConfig method.
 		UpdateNetworkConfig []struct {
@@ -91,21 +91,21 @@ type ServerClientPortMock struct {
 }
 
 // GetOSData calls GetOSDataFunc.
-func (mock *ServerClientPortMock) GetOSData(ctx context.Context, server provisioning.Server) (api.OSData, error) {
+func (mock *ServerClientPortMock) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 	if mock.GetOSDataFunc == nil {
 		panic("ServerClientPortMock.GetOSDataFunc: method is nil but ServerClientPort.GetOSData was just called")
 	}
 	callInfo := struct {
-		Ctx    context.Context
-		Server provisioning.Server
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
 	}{
-		Ctx:    ctx,
-		Server: server,
+		Ctx:      ctx,
+		Endpoint: endpoint,
 	}
 	mock.lockGetOSData.Lock()
 	mock.calls.GetOSData = append(mock.calls.GetOSData, callInfo)
 	mock.lockGetOSData.Unlock()
-	return mock.GetOSDataFunc(ctx, server)
+	return mock.GetOSDataFunc(ctx, endpoint)
 }
 
 // GetOSDataCalls gets all the calls that were made to GetOSData.
@@ -113,12 +113,12 @@ func (mock *ServerClientPortMock) GetOSData(ctx context.Context, server provisio
 //
 //	len(mockedServerClientPort.GetOSDataCalls())
 func (mock *ServerClientPortMock) GetOSDataCalls() []struct {
-	Ctx    context.Context
-	Server provisioning.Server
+	Ctx      context.Context
+	Endpoint provisioning.Endpoint
 } {
 	var calls []struct {
-		Ctx    context.Context
-		Server provisioning.Server
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
 	}
 	mock.lockGetOSData.RLock()
 	calls = mock.calls.GetOSData
@@ -127,21 +127,21 @@ func (mock *ServerClientPortMock) GetOSDataCalls() []struct {
 }
 
 // GetResources calls GetResourcesFunc.
-func (mock *ServerClientPortMock) GetResources(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
+func (mock *ServerClientPortMock) GetResources(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
 	if mock.GetResourcesFunc == nil {
 		panic("ServerClientPortMock.GetResourcesFunc: method is nil but ServerClientPort.GetResources was just called")
 	}
 	callInfo := struct {
-		Ctx    context.Context
-		Server provisioning.Server
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
 	}{
-		Ctx:    ctx,
-		Server: server,
+		Ctx:      ctx,
+		Endpoint: endpoint,
 	}
 	mock.lockGetResources.Lock()
 	mock.calls.GetResources = append(mock.calls.GetResources, callInfo)
 	mock.lockGetResources.Unlock()
-	return mock.GetResourcesFunc(ctx, server)
+	return mock.GetResourcesFunc(ctx, endpoint)
 }
 
 // GetResourcesCalls gets all the calls that were made to GetResources.
@@ -149,12 +149,12 @@ func (mock *ServerClientPortMock) GetResources(ctx context.Context, server provi
 //
 //	len(mockedServerClientPort.GetResourcesCalls())
 func (mock *ServerClientPortMock) GetResourcesCalls() []struct {
-	Ctx    context.Context
-	Server provisioning.Server
+	Ctx      context.Context
+	Endpoint provisioning.Endpoint
 } {
 	var calls []struct {
-		Ctx    context.Context
-		Server provisioning.Server
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
 	}
 	mock.lockGetResources.RLock()
 	calls = mock.calls.GetResources
@@ -163,21 +163,21 @@ func (mock *ServerClientPortMock) GetResourcesCalls() []struct {
 }
 
 // Ping calls PingFunc.
-func (mock *ServerClientPortMock) Ping(ctx context.Context, target provisioning.ServerOrCluster) error {
+func (mock *ServerClientPortMock) Ping(ctx context.Context, endpoint provisioning.Endpoint) error {
 	if mock.PingFunc == nil {
 		panic("ServerClientPortMock.PingFunc: method is nil but ServerClientPort.Ping was just called")
 	}
 	callInfo := struct {
-		Ctx    context.Context
-		Target provisioning.ServerOrCluster
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
 	}{
-		Ctx:    ctx,
-		Target: target,
+		Ctx:      ctx,
+		Endpoint: endpoint,
 	}
 	mock.lockPing.Lock()
 	mock.calls.Ping = append(mock.calls.Ping, callInfo)
 	mock.lockPing.Unlock()
-	return mock.PingFunc(ctx, target)
+	return mock.PingFunc(ctx, endpoint)
 }
 
 // PingCalls gets all the calls that were made to Ping.
@@ -185,12 +185,12 @@ func (mock *ServerClientPortMock) Ping(ctx context.Context, target provisioning.
 //
 //	len(mockedServerClientPort.PingCalls())
 func (mock *ServerClientPortMock) PingCalls() []struct {
-	Ctx    context.Context
-	Target provisioning.ServerOrCluster
+	Ctx      context.Context
+	Endpoint provisioning.Endpoint
 } {
 	var calls []struct {
-		Ctx    context.Context
-		Target provisioning.ServerOrCluster
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
 	}
 	mock.lockPing.RLock()
 	calls = mock.calls.Ping

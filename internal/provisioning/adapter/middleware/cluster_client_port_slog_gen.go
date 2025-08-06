@@ -43,12 +43,12 @@ func NewClusterClientPortWithSlog(base provisioning.ClusterClientPort, log *slog
 }
 
 // CreateProject implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) CreateProject(ctx context.Context, cluster provisioning.Cluster, name string, description string) (err error) {
+func (_d ClusterClientPortWithSlog) CreateProject(ctx context.Context, endpoint provisioning.Endpoint, name string, description string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 			slog.String("name", name),
 			slog.String("description", description),
 		)
@@ -75,7 +75,7 @@ func (_d ClusterClientPortWithSlog) CreateProject(ctx context.Context, cluster p
 			log.Debug("<= method CreateProject finished")
 		}
 	}()
-	return _d._base.CreateProject(ctx, cluster, name, description)
+	return _d._base.CreateProject(ctx, endpoint, name, description)
 }
 
 // EnableCluster implements provisioning.ClusterClientPort.
@@ -148,12 +148,12 @@ func (_d ClusterClientPortWithSlog) EnableOSServiceLVM(ctx context.Context, serv
 }
 
 // GetClusterJoinToken implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) GetClusterJoinToken(ctx context.Context, cluster provisioning.Cluster, memberName string) (joinToken string, err error) {
+func (_d ClusterClientPortWithSlog) GetClusterJoinToken(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (joinToken string, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 			slog.String("memberName", memberName),
 		)
 	}
@@ -180,16 +180,16 @@ func (_d ClusterClientPortWithSlog) GetClusterJoinToken(ctx context.Context, clu
 			log.Debug("<= method GetClusterJoinToken finished")
 		}
 	}()
-	return _d._base.GetClusterJoinToken(ctx, cluster, memberName)
+	return _d._base.GetClusterJoinToken(ctx, endpoint, memberName)
 }
 
 // GetClusterNodeNames implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) GetClusterNodeNames(ctx context.Context, cluster provisioning.Cluster) (nodeNames []string, err error) {
+func (_d ClusterClientPortWithSlog) GetClusterNodeNames(ctx context.Context, endpoint provisioning.Endpoint) (nodeNames []string, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 		)
 	}
 	log.Debug("=> calling GetClusterNodeNames")
@@ -215,16 +215,16 @@ func (_d ClusterClientPortWithSlog) GetClusterNodeNames(ctx context.Context, clu
 			log.Debug("<= method GetClusterNodeNames finished")
 		}
 	}()
-	return _d._base.GetClusterNodeNames(ctx, cluster)
+	return _d._base.GetClusterNodeNames(ctx, endpoint)
 }
 
 // GetOSData implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, server provisioning.Server) (oSData api.OSData, err error) {
+func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("server", server),
+			slog.Any("endpoint", endpoint),
 		)
 	}
 	log.Debug("=> calling GetOSData")
@@ -250,7 +250,7 @@ func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, server provis
 			log.Debug("<= method GetOSData finished")
 		}
 	}()
-	return _d._base.GetOSData(ctx, server)
+	return _d._base.GetOSData(ctx, endpoint)
 }
 
 // InitializeDefaultNetworking implements provisioning.ClusterClientPort.
@@ -358,12 +358,12 @@ func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server prov
 }
 
 // Ping implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) Ping(ctx context.Context, target provisioning.ServerOrCluster) (err error) {
+func (_d ClusterClientPortWithSlog) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("target", target),
+			slog.Any("endpoint", endpoint),
 		)
 	}
 	log.Debug("=> calling Ping")
@@ -388,16 +388,16 @@ func (_d ClusterClientPortWithSlog) Ping(ctx context.Context, target provisionin
 			log.Debug("<= method Ping finished")
 		}
 	}()
-	return _d._base.Ping(ctx, target)
+	return _d._base.Ping(ctx, endpoint)
 }
 
 // SetServerConfig implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) SetServerConfig(ctx context.Context, server provisioning.Server, config map[string]string) (err error) {
+func (_d ClusterClientPortWithSlog) SetServerConfig(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("server", server),
+			slog.Any("endpoint", endpoint),
 			slog.Any("config", config),
 		)
 	}
@@ -423,16 +423,16 @@ func (_d ClusterClientPortWithSlog) SetServerConfig(ctx context.Context, server 
 			log.Debug("<= method SetServerConfig finished")
 		}
 	}()
-	return _d._base.SetServerConfig(ctx, server, config)
+	return _d._base.SetServerConfig(ctx, endpoint, config)
 }
 
 // UpdateClusterCertificate implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) UpdateClusterCertificate(ctx context.Context, cluster provisioning.Cluster, certificatePEM string, keyPEM string) (err error) {
+func (_d ClusterClientPortWithSlog) UpdateClusterCertificate(ctx context.Context, endpoint provisioning.Endpoint, certificatePEM string, keyPEM string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 			slog.String("certificatePEM", certificatePEM),
 			slog.String("keyPEM", keyPEM),
 		)
@@ -459,5 +459,5 @@ func (_d ClusterClientPortWithSlog) UpdateClusterCertificate(ctx context.Context
 			log.Debug("<= method UpdateClusterCertificate finished")
 		}
 	}()
-	return _d._base.UpdateClusterCertificate(ctx, cluster, certificatePEM, keyPEM)
+	return _d._base.UpdateClusterCertificate(ctx, endpoint, certificatePEM, keyPEM)
 }
