@@ -26,16 +26,16 @@ type Server struct {
 	LastSeen           time.Time
 }
 
+func (s Server) GetConnectionURL() string {
+	return s.ConnectionURL
+}
+
 func (s Server) GetCertificate() string {
 	if s.ClusterCertificate != nil {
 		return *s.ClusterCertificate
 	}
 
 	return s.Certificate
-}
-
-func (s Server) GetConnectionURL() string {
-	return s.ConnectionURL
 }
 
 func (s Server) Validate() error {

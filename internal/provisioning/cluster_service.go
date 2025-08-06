@@ -175,19 +175,26 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		return newCluster, fmt.Errorf("Failed to enable clustering on bootstrap server %q: %w", bootstrapServer.Name, err)
 	}
 
-	// From now on, use the cluster certificate to connect to the cluster instead
-	// of the certificate of the bootstrap server.
 	cluster := Cluster{
 		Name:          newCluster.Name,
 		ConnectionURL: bootstrapServer.ConnectionURL,
 		Certificate:   clusterCertificate,
 	}
 
+	// From now on, use the cluster certificate to connect to the cluster instead
+	// of the certificate of the bootstrap server.
+	clusterEndpoint := ClusterEndpoint{
+		Server{
+			ConnectionURL:      bootstrapServer.ConnectionURL,
+			ClusterCertificate: &clusterCertificate,
+		},
+	}
+
 	// Ensure, that the bootstrap server has joined the cluster.
 	var i int
 	for i = range s.createClusterRetries {
 		var nodeNames []string
-		nodeNames, err = s.client.GetClusterNodeNames(ctx, cluster)
+		nodeNames, err = s.client.GetClusterNodeNames(ctx, clusterEndpoint)
 		if err == nil && len(nodeNames) > 0 {
 			break
 		}
@@ -203,7 +210,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	// Get join tokens on from the cluster, skip the bootstrap server.
 	joinTokens := make([]string, 0, len(servers[1:]))
 	for _, server := range servers[1:] {
-		joinToken, err := s.client.GetClusterJoinToken(ctx, cluster, server.Name)
+		joinToken, err := s.client.GetClusterJoinToken(ctx, clusterEndpoint, server.Name)
 		if err != nil {
 			return newCluster, fmt.Errorf("Failed to get cluster join token from cluster %q (%s) for server %q: %w", cluster.Name, cluster.ConnectionURL, server.Name, err)
 		}
@@ -265,7 +272,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	// Perform post-clustering initialization.
 
 	// Create an internal project.
-	err = s.client.CreateProject(ctx, cluster, "internal", "Internal project to isolate fully managed resources.")
+	err = s.client.CreateProject(ctx, clusterEndpoint, "internal", "Internal project to isolate fully managed resources.")
 	if err != nil {
 		return newCluster, err
 	}
@@ -505,12 +512,12 @@ func (s clusterService) UpdateCertificate(ctx context.Context, name string, cert
 		return fmt.Errorf("Failed to validate key pair: %w", err)
 	}
 
-	cluster, err := s.repo.GetByName(ctx, name)
+	endpoint, err := s.GetEndpoint(ctx, name)
 	if err != nil {
-		return fmt.Errorf("Failed to get cluster for certificate update: %w", err)
+		return fmt.Errorf("Failed to get cluster endpoint for certificate update: %w", err)
 	}
 
-	err = s.client.UpdateClusterCertificate(ctx, *cluster, certificatePEM, keyPEM)
+	err = s.client.UpdateClusterCertificate(ctx, endpoint, certificatePEM, keyPEM)
 	if err != nil {
 		return fmt.Errorf("Failed to update cluster certificate: %w", err)
 	}
@@ -530,4 +537,15 @@ func (s clusterService) UpdateCertificate(ctx context.Context, name string, cert
 
 		return nil
 	})
+}
+
+func (s clusterService) GetEndpoint(ctx context.Context, name string) (Endpoint, error) {
+	servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+		Cluster: &name,
+	})
+	if err != nil {
+		return ClusterEndpoint{}, err
+	}
+
+	return ClusterEndpoint(servers), nil
 }

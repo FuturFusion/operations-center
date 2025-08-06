@@ -126,13 +126,13 @@ one
 			}
 
 			client := &adapterMock.ServerClientPortMock{
-				PingFunc: func(ctx context.Context, target provisioning.ServerOrCluster) error {
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return nil
 				},
-				GetResourcesFunc: func(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
+				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
 					return api.HardwareData{}, nil
 				},
-				GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
+				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
 				},
 			}
@@ -1347,13 +1347,13 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			}
 
 			client := &adapterMock.ServerClientPortMock{
-				PingFunc: func(ctx context.Context, target provisioning.ServerOrCluster) error {
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return tc.clientPingErr
 				},
-				GetResourcesFunc: func(ctx context.Context, server provisioning.Server) (api.HardwareData, error) {
+				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
 					return api.HardwareData{}, tc.clientGetResourcesErr
 				},
-				GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
+				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, tc.clientGetOSDataErr
 				},
 			}

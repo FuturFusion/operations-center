@@ -106,13 +106,3 @@ func TestCluster_Filter(t *testing.T) {
 		})
 	}
 }
-
-func TestCluster_Getters(t *testing.T) {
-	cluster := provisioning.Cluster{
-		ConnectionURL: "connection_url",
-		Certificate:   "cert",
-	}
-
-	require.Equal(t, cluster.Certificate, cluster.GetCertificate())
-	require.Equal(t, cluster.ConnectionURL, cluster.GetConnectionURL())
-}
