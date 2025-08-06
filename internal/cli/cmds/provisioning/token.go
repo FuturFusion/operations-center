@@ -273,7 +273,7 @@ type cmdTokenGetISO struct {
 
 func (c *cmdTokenGetISO) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "get-iso <uuid> <target.iso> [<pre-seed.yaml>]"
+	cmd.Use = "get-iso <uuid> <target.iso> [pre-seed.yaml]"
 	cmd.Short = "Get a pre-seeded ISO for a token"
 	cmd.Long = `Description:
   Get a pre-seeded ISO for a token.
