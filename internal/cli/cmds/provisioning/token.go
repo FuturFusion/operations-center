@@ -2,10 +2,13 @@ package provisioning
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
@@ -59,6 +62,13 @@ func (c *CmdToken) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(tokenShowCmd.Command())
+
+	// Get ISO
+	tokenGetISOCmd := cmdTokenGetISO{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(tokenGetISOCmd.Command())
 
 	return cmd
 }
@@ -252,6 +262,70 @@ func (c *cmdTokenShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Uses Remaining: %s\n", strconv.FormatInt(int64(token.UsesRemaining), 10))
 	fmt.Printf("Expire At: %s\n", token.ExpireAt.Truncate(time.Second).String())
 	fmt.Printf("Description: %s\n", token.Description)
+
+	return nil
+}
+
+// Get ISO for token.
+type cmdTokenGetISO struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdTokenGetISO) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "get-iso <uuid> <target.iso> [<pre-seed.yaml>]"
+	cmd.Short = "Get a pre-seeded ISO for a token"
+	cmd.Long = `Description:
+  Get a pre-seeded ISO for a token.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdTokenGetISO) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 2, 3)
+	if exit {
+		return err
+	}
+
+	id := args[0]
+	targetFilename := args[1]
+	var preseed api.TokenISOPost
+	if len(args) == 3 {
+		body, err := os.ReadFile(args[2])
+		if err != nil {
+			return err
+		}
+
+		err = yaml.Unmarshal(body, &preseed)
+		if err != nil {
+			return err
+		}
+	}
+
+	targetFile, err := os.OpenFile(targetFilename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		return err
+	}
+
+	defer targetFile.Close()
+
+	isoReader, err := c.ocClient.GetTokenISO(cmd.Context(), id, preseed)
+	if err != nil {
+		return err
+	}
+
+	defer isoReader.Close()
+
+	size, err := io.Copy(targetFile, isoReader)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully written %d bytes to %q\n", size, targetFilename)
 
 	return nil
 }
