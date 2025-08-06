@@ -47,7 +47,7 @@ func (c *cmdDaemon) Command() *cobra.Command {
 `
 	cmd.RunE = c.Run
 
-	cmd.Flags().StringVar(&c.flagServerAddr, "server-addr", "127.0.0.1", "Address to bind to")
+	cmd.Flags().StringVar(&c.flagServerAddr, "server-addr", "", "Address to bind to")
 	cmd.Flags().IntVar(&c.flagServerPort, "server-port", defaultRestServerPort, "IP port to bind to")
 
 	return cmd
