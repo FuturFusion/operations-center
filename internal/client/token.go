@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -65,4 +66,18 @@ func (c OperationsCenterClient) DeleteToken(ctx context.Context, id string) erro
 	}
 
 	return nil
+}
+
+func (c OperationsCenterClient) GetTokenISO(ctx context.Context, id string, preseed api.TokenISOPost) (io.ReadCloser, error) {
+	resp, err := c.doRequestRawResponse(ctx, http.MethodPost, path.Join("/provisioning/tokens", id, "iso"), nil, preseed)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		_, err = processResponse(resp)
+		return nil, err
+	}
+
+	return resp.Body, nil
 }

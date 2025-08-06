@@ -17,6 +17,7 @@ type ResponseRaw struct {
 	Code  int    `json:"error_code" yaml:"error_code"`
 	Error string `json:"error" yaml:"error"`
 
+	// Valid for Sync and Error responses
 	Metadata any `json:"metadata" yaml:"metadata"`
 }
 

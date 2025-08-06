@@ -496,6 +496,7 @@ func TestTokenService_GetPreSeedISO(t *testing.T) {
 	tests := []struct {
 		name                                  string
 		tokenArg                              uuid.UUID
+		repoGetByUUIDErr                      error
 		updateSvcGetAllUpdates                provisioning.Updates
 		updateSvcGetAllErr                    error
 		updateSvcGetUpdateAllFilesUpdateFiles provisioning.UpdateFiles
@@ -530,6 +531,13 @@ func TestTokenService_GetPreSeedISO(t *testing.T) {
 			assertErr: require.NoError,
 		},
 
+		{
+			name:             "error - repo.GetByUUID",
+			tokenArg:         uuidA,
+			repoGetByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
 		{
 			name:               "error - updateSvc.GetAll",
 			tokenArg:           uuidA,
@@ -641,6 +649,12 @@ func TestTokenService_GetPreSeedISO(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			repo := &mock.TokenRepoMock{
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
+					return nil, tc.repoGetByUUIDErr
+				},
+			}
+
 			updateSvc := &svcMock.UpdateServiceMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
 					return tc.updateSvcGetAllUpdates, tc.updateSvcGetAllErr
@@ -659,7 +673,7 @@ func TestTokenService_GetPreSeedISO(t *testing.T) {
 				},
 			}
 
-			tokenSvc := provisioning.NewTokenService(nil, updateSvc, flasherAdapter)
+			tokenSvc := provisioning.NewTokenService(repo, updateSvc, flasherAdapter)
 
 			// Run test
 			rc, err := tokenSvc.GetPreSeedISO(context.Background(), tc.tokenArg, provisioning.TokenSeedConfig{})
