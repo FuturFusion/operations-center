@@ -44,7 +44,7 @@ type ClusterClientPort interface {
 	EnableCluster(ctx context.Context, server Server) (clusterCertificate string, _ error)
 	GetClusterNodeNames(ctx context.Context, endpoint Endpoint) (nodeNames []string, _ error)
 	GetClusterJoinToken(ctx context.Context, endpoint Endpoint, memberName string) (joinToken string, _ error)
-	JoinCluster(ctx context.Context, server Server, joinToken string, cluster Cluster) error
+	JoinCluster(ctx context.Context, server Server, joinToken string, endpoint Endpoint) error
 	CreateProject(ctx context.Context, endpoint Endpoint, name string, description string) error
 	InitializeDefaultStorage(ctx context.Context, servers []Server) error
 	GetOSData(ctx context.Context, endpoint Endpoint) (api.OSData, error)

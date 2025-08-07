@@ -243,7 +243,7 @@ func (c client) GetClusterJoinToken(ctx context.Context, endpoint provisioning.E
 	return token.String(), nil
 }
 
-func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) error {
+func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
 		return err
@@ -251,7 +251,7 @@ func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joi
 
 	// Ignore error, connection URL has been parsed by incus client already.
 	serverAddressURL, _ := url.Parse(server.ConnectionURL)
-	clusterAddressURL, _ := url.Parse(cluster.ConnectionURL)
+	clusterAddressURL, _ := url.Parse(endpoint.GetConnectionURL())
 
 	op, err := client.UpdateCluster(incusapi.ClusterPut{
 		Cluster: incusapi.Cluster{
@@ -260,7 +260,7 @@ func (c client) JoinCluster(ctx context.Context, server provisioning.Server, joi
 			// TODO: Add storage pool config?
 			MemberConfig: []incusapi.ClusterMemberConfigKey{},
 		},
-		ClusterCertificate: cluster.Certificate,
+		ClusterCertificate: endpoint.GetCertificate(),
 		ServerAddress:      serverAddressURL.Host,
 		ClusterToken:       joinToken,
 		ClusterAddress:     clusterAddressURL.Host,

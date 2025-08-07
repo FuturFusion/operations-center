@@ -126,7 +126,6 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 
 		// Create Cluster record in pending state in the repo.
 		newCluster.Status = api.ClusterStatusPending
-		newCluster.ConnectionURL = bootstrapServer.ConnectionURL
 
 		newCluster.ID, err = s.repo.Create(ctx, newCluster)
 		if err != nil {
@@ -175,12 +174,6 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		return newCluster, fmt.Errorf("Failed to enable clustering on bootstrap server %q: %w", bootstrapServer.Name, err)
 	}
 
-	cluster := Cluster{
-		Name:          newCluster.Name,
-		ConnectionURL: bootstrapServer.ConnectionURL,
-		Certificate:   clusterCertificate,
-	}
-
 	// From now on, use the cluster certificate to connect to the cluster instead
 	// of the certificate of the bootstrap server.
 	clusterEndpoint := ClusterEndpoint{
@@ -212,7 +205,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	for _, server := range servers[1:] {
 		joinToken, err := s.client.GetClusterJoinToken(ctx, clusterEndpoint, server.Name)
 		if err != nil {
-			return newCluster, fmt.Errorf("Failed to get cluster join token from cluster %q (%s) for server %q: %w", cluster.Name, cluster.ConnectionURL, server.Name, err)
+			return newCluster, fmt.Errorf("Failed to get cluster join token from cluster %q (bootstrap server: %s) for server %q: %w", newCluster.Name, bootstrapServer.ConnectionURL, server.Name, err)
 		}
 
 		joinTokens = append(joinTokens, joinToken)
@@ -220,7 +213,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 
 	// Send the join tokens to the remaining servers to join the cluster.
 	for i, server := range servers[1:] {
-		err := s.client.JoinCluster(ctx, server, joinTokens[i], cluster)
+		err := s.client.JoinCluster(ctx, server, joinTokens[i], clusterEndpoint)
 		if err != nil {
 			return newCluster, fmt.Errorf("Failed to join cluster on %q: %w", server.Name, err)
 		}

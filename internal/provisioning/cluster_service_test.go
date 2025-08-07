@@ -671,7 +671,7 @@ func TestClusterService_Create(t *testing.T) {
 				GetClusterJoinTokenFunc: func(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (string, error) {
 					return tc.clientGetClusterJoinToken, tc.clientGetClusterJoinTokenErr
 				},
-				JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) error {
+				JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) error {
 					return tc.clientJoinClusterErr
 				},
 				CreateProjectFunc: func(ctx context.Context, endpoint provisioning.Endpoint, name string, description string) error {
