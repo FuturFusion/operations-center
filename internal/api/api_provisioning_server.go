@@ -440,7 +440,6 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 		HardwareData: currentServer.HardwareData,
 		VersionData:  server.VersionData,
 		Status:       server.Status,
-		LastUpdated:  server.LastUpdated,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating server %q: %w", name, err))

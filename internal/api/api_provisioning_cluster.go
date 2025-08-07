@@ -331,7 +331,6 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 	err = c.service.Update(ctx, provisioning.Cluster{
 		Name:          cluster.Name,
 		ConnectionURL: cluster.ConnectionURL,
-		LastUpdated:   cluster.LastUpdated,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating cluster %q: %w", name, err))
