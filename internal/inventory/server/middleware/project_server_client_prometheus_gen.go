@@ -40,7 +40,7 @@ func NewProjectServerClientWithPrometheus(base inventory.ProjectServerClient, in
 }
 
 // GetProjectByName implements inventory.ProjectServerClient.
-func (_d ProjectServerClientWithPrometheus) GetProjectByName(ctx context.Context, cluster provisioning.Cluster, projectName string) (project api.Project, err error) {
+func (_d ProjectServerClientWithPrometheus) GetProjectByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string) (project api.Project, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,11 +50,11 @@ func (_d ProjectServerClientWithPrometheus) GetProjectByName(ctx context.Context
 
 		projectServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetProjectByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetProjectByName(ctx, cluster, projectName)
+	return _d.base.GetProjectByName(ctx, endpoint, projectName)
 }
 
 // GetProjects implements inventory.ProjectServerClient.
-func (_d ProjectServerClientWithPrometheus) GetProjects(ctx context.Context, cluster provisioning.Cluster) (projects []api.Project, err error) {
+func (_d ProjectServerClientWithPrometheus) GetProjects(ctx context.Context, endpoint provisioning.Endpoint) (projects []api.Project, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -64,5 +64,5 @@ func (_d ProjectServerClientWithPrometheus) GetProjects(ctx context.Context, clu
 
 		projectServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetProjects", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetProjects(ctx, cluster)
+	return _d.base.GetProjects(ctx, endpoint)
 }

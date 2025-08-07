@@ -12,8 +12,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetInstances(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.InstanceFull, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetInstances(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.InstanceFull, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +26,8 @@ func (s serverClient) GetInstances(ctx context.Context, cluster provisioning.Clu
 	return serverInstances, nil
 }
 
-func (s serverClient) GetInstanceByName(ctx context.Context, cluster provisioning.Cluster, instanceName string) (incusapi.InstanceFull, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, instanceName string) (incusapi.InstanceFull, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.InstanceFull{}, err
 	}

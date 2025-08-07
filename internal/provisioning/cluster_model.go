@@ -1,6 +1,7 @@
 package provisioning
 
 import (
+	"iter"
 	"net/url"
 	"time"
 
@@ -16,14 +17,6 @@ type Cluster struct {
 	Status        api.ClusterStatus
 	ServerNames   []string  `db:"ignore"`
 	LastUpdated   time.Time `db:"update_timestamp"`
-}
-
-func (c Cluster) GetCertificate() string {
-	return c.Certificate
-}
-
-func (c Cluster) GetConnectionURL() string {
-	return c.ConnectionURL
 }
 
 func (c Cluster) Validate() error {
@@ -60,4 +53,33 @@ func (f ClusterFilter) AppendToURLValues(query url.Values) url.Values {
 
 func (f ClusterFilter) String() string {
 	return f.AppendToURLValues(url.Values{}).Encode()
+}
+
+type ClusterEndpoint []Server
+
+func (c ClusterEndpoint) GetConnectionURL() string {
+	if len(c) == 0 {
+		return ""
+	}
+
+	return c[0].GetConnectionURL()
+}
+
+func (c ClusterEndpoint) GetCertificate() string {
+	if len(c) == 0 {
+		return ""
+	}
+
+	return c[0].GetCertificate()
+}
+
+func (c ClusterEndpoint) GetEndpoints() iter.Seq[Endpoint] {
+	return func(yield func(Endpoint) bool) {
+		for _, server := range c {
+			cont := yield(server)
+			if !cont {
+				return
+			}
+		}
+	}
 }

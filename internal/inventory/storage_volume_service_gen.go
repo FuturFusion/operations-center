@@ -165,12 +165,12 @@ func (s storageVolumeService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByName(ctx, storageVolume.Cluster)
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, storageVolume.Cluster)
 		if err != nil {
 			return err
 		}
 
-		retrievedStorageVolume, err := s.storageVolumeClient.GetStorageVolumeByName(ctx, *cluster, storageVolume.StoragePoolName, storageVolume.Name, storageVolume.Type)
+		retrievedStorageVolume, err := s.storageVolumeClient.GetStorageVolumeByName(ctx, endpoint, storageVolume.StoragePoolName, storageVolume.Name, storageVolume.Type)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, storageVolume.UUID)
 			if err != nil {
@@ -211,12 +211,12 @@ func (s storageVolumeService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 }
 
 func (s storageVolumeService) SyncCluster(ctx context.Context, name string) error {
-	cluster, err := s.clusterSvc.GetByName(ctx, name)
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
 	if err != nil {
 		return err
 	}
 
-	retrievedStoragePools, err := s.storagePoolClient.GetStoragePools(ctx, *cluster)
+	retrievedStoragePools, err := s.storagePoolClient.GetStoragePools(ctx, endpoint)
 	if err != nil {
 		return err
 	}
@@ -226,7 +226,7 @@ func (s storageVolumeService) SyncCluster(ctx context.Context, name string) erro
 			continue
 		}
 
-		retrievedStorageVolumes, err := s.storageVolumeClient.GetStorageVolumes(ctx, *cluster, storagePool.Name)
+		retrievedStorageVolumes, err := s.storageVolumeClient.GetStorageVolumes(ctx, endpoint, storagePool.Name)
 		if err != nil {
 			return err
 		}

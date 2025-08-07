@@ -21,16 +21,16 @@ func New(clientCert string, clientKey string) inventory.ServerClient {
 	}
 }
 
-func (s serverClient) getClient(ctx context.Context, cluster provisioning.Cluster) (incus.InstanceServer, error) {
-	return incus.ConnectIncusWithContext(ctx, cluster.ConnectionURL, &incus.ConnectionArgs{
+func (s serverClient) getClient(ctx context.Context, endpoint provisioning.Endpoint) (incus.InstanceServer, error) {
+	return incus.ConnectIncusWithContext(ctx, endpoint.GetConnectionURL(), &incus.ConnectionArgs{
 		TLSClientCert: s.clientCert,
 		TLSClientKey:  s.clientKey,
-		TLSServerCert: cluster.Certificate,
+		TLSServerCert: endpoint.GetCertificate(),
 	})
 }
 
-func (s serverClient) HasExtension(ctx context.Context, cluster provisioning.Cluster, extension string) (exists bool) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) HasExtension(ctx context.Context, endpoint provisioning.Endpoint, extension string) (exists bool) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return false
 	}

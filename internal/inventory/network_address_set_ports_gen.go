@@ -30,7 +30,7 @@ type NetworkAddressSetRepo interface {
 }
 
 type NetworkAddressSetServerClient interface {
-	HasExtension(ctx context.Context, cluster provisioning.Cluster, extension string) (exists bool)
-	GetNetworkAddressSets(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkAddressSet, error)
-	GetNetworkAddressSetByName(ctx context.Context, cluster provisioning.Cluster, networkAddressSetName string) (incusapi.NetworkAddressSet, error)
+	HasExtension(ctx context.Context, endpoint provisioning.Endpoint, extension string) (exists bool)
+	GetNetworkAddressSets(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.NetworkAddressSet, error)
+	GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, networkAddressSetName string) (incusapi.NetworkAddressSet, error)
 }

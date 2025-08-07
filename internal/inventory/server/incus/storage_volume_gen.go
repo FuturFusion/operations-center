@@ -12,8 +12,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetStorageVolumes(ctx context.Context, cluster provisioning.Cluster, storageVolumeName string) ([]incusapi.StorageVolume, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storageVolumeName string) ([]incusapi.StorageVolume, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +26,8 @@ func (s serverClient) GetStorageVolumes(ctx context.Context, cluster provisionin
 	return serverStorageVolumes, nil
 }
 
-func (s serverClient) GetStorageVolumeByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.StorageVolume{}, err
 	}

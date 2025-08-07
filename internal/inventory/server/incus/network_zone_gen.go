@@ -12,8 +12,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkZones(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkZone, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetNetworkZones(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.NetworkZone, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +26,8 @@ func (s serverClient) GetNetworkZones(ctx context.Context, cluster provisioning.
 	return serverNetworkZones, nil
 }
 
-func (s serverClient) GetNetworkZoneByName(ctx context.Context, cluster provisioning.Cluster, networkZoneName string) (incusapi.NetworkZone, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, networkZoneName string) (incusapi.NetworkZone, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.NetworkZone{}, err
 	}

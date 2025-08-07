@@ -30,6 +30,6 @@ type ProfileRepo interface {
 }
 
 type ProfileServerClient interface {
-	GetProfiles(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Profile, error)
-	GetProfileByName(ctx context.Context, cluster provisioning.Cluster, profileName string) (incusapi.Profile, error)
+	GetProfiles(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.Profile, error)
+	GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, profileName string) (incusapi.Profile, error)
 }

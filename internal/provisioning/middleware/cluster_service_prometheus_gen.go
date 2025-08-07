@@ -135,6 +135,20 @@ func (_d ClusterServiceWithPrometheus) GetByName(ctx context.Context, name strin
 	return _d.base.GetByName(ctx, name)
 }
 
+// GetEndpoint implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) GetEndpoint(ctx context.Context, name string) (endpoint provisioning.Endpoint, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetEndpoint", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetEndpoint(ctx, name)
+}
+
 // Rename implements provisioning.ClusterService.
 func (_d ClusterServiceWithPrometheus) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	_since := time.Now()

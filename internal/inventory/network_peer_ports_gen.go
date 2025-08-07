@@ -30,6 +30,6 @@ type NetworkPeerRepo interface {
 }
 
 type NetworkPeerServerClient interface {
-	GetNetworkPeers(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]incusapi.NetworkPeer, error)
-	GetNetworkPeerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkPeerName string) (incusapi.NetworkPeer, error)
+	GetNetworkPeers(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]incusapi.NetworkPeer, error)
+	GetNetworkPeerByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkPeerName string) (incusapi.NetworkPeer, error)
 }

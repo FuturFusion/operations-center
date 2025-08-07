@@ -12,8 +12,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetStorageBuckets(ctx context.Context, cluster provisioning.Cluster, storageBucketName string) ([]incusapi.StorageBucket, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetStorageBuckets(ctx context.Context, endpoint provisioning.Endpoint, storageBucketName string) ([]incusapi.StorageBucket, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +26,8 @@ func (s serverClient) GetStorageBuckets(ctx context.Context, cluster provisionin
 	return serverStorageBuckets, nil
 }
 
-func (s serverClient) GetStorageBucketByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.StorageBucket{}, err
 	}

@@ -652,35 +652,35 @@ func TestClusterService_Create(t *testing.T) {
 			}
 
 			client := &adapterMock.ClusterClientPortMock{
-				PingFunc: func(ctx context.Context, target provisioning.ServerOrCluster) error {
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return tc.clientPingErr
 				},
 				EnableOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) error {
 					return tc.clientEnableOSServiceLVMErr
 				},
-				SetServerConfigFunc: func(ctx context.Context, server provisioning.Server, config map[string]string) error {
+				SetServerConfigFunc: func(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) error {
 					_, err := queue.Pop(t, &tc.clientSetServerConfig)
 					return err
 				},
 				EnableClusterFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
 					return tc.clientEnableClusterCertificate, tc.clientEnableClusterErr
 				},
-				GetClusterNodeNamesFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]string, error) {
+				GetClusterNodeNamesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]string, error) {
 					return []string{"one"}, tc.clientGetClusterNodeNamesErr
 				},
-				GetClusterJoinTokenFunc: func(ctx context.Context, cluster provisioning.Cluster, memberName string) (string, error) {
+				GetClusterJoinTokenFunc: func(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (string, error) {
 					return tc.clientGetClusterJoinToken, tc.clientGetClusterJoinTokenErr
 				},
-				JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) error {
+				JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) error {
 					return tc.clientJoinClusterErr
 				},
-				CreateProjectFunc: func(ctx context.Context, cluster provisioning.Cluster, name string, description string) error {
+				CreateProjectFunc: func(ctx context.Context, endpoint provisioning.Endpoint, name string, description string) error {
 					return tc.clientCreateProjectErr
 				},
 				InitializeDefaultStorageFunc: func(ctx context.Context, servers []provisioning.Server) error {
 					return tc.clientInitializeDefaultStorageErr
 				},
-				GetOSDataFunc: func(ctx context.Context, server provisioning.Server) (api.OSData, error) {
+				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return tc.clientGetOSData, tc.clientGetOSDataErr
 				},
 				InitializeDefaultNetworkingFunc: func(ctx context.Context, servers []provisioning.Server) error {
@@ -1542,7 +1542,10 @@ func TestClusterService_UpdateCertificate(t *testing.T) {
 		name                              string
 		certificatePEM                    string
 		keyPEM                            string
-		repoGetByName                     []queue.Item[*provisioning.Cluster]
+		serverSvcGetAllWithFilter         provisioning.Servers
+		serverSvcGetAllWithFilterErr      error
+		repoGetByName                     *provisioning.Cluster
+		repoGetByNameErr                  error
 		clientUpdateClusterCertificateErr error
 		repoUpdateErr                     error
 
@@ -1552,21 +1555,16 @@ func TestClusterService_UpdateCertificate(t *testing.T) {
 			name:           "success",
 			certificatePEM: string(certPEM),
 			keyPEM:         string(keyPEM),
-			repoGetByName: []queue.Item[*provisioning.Cluster]{
+			serverSvcGetAllWithFilter: provisioning.Servers{
 				{
-					Value: &provisioning.Cluster{
-						Name:          "one",
-						ServerNames:   []string{"server1", "server2"},
-						ConnectionURL: "http://one/",
-					},
+					ConnectionURL: "http://one/",
+					Certificate:   "cert",
 				},
-				{
-					Value: &provisioning.Cluster{
-						Name:          "one",
-						ServerNames:   []string{"server1", "server2"},
-						ConnectionURL: "http://one/",
-					},
-				},
+			},
+			repoGetByName: &provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
 			},
 
 			assertErr: require.NoError,
@@ -1579,50 +1577,26 @@ func TestClusterService_UpdateCertificate(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
-			name:           "error - repo.GetByName",
-			certificatePEM: string(certPEM),
-			keyPEM:         string(keyPEM),
-			repoGetByName: []queue.Item[*provisioning.Cluster]{
-				{
-					Err: boom.Error,
-				},
-			},
+			name:                         "error - serverSvc.GetAllWithFilter",
+			certificatePEM:               string(certPEM),
+			keyPEM:                       string(keyPEM),
+			serverSvcGetAllWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:           "error - client.UpdateClusterCertificate",
-			certificatePEM: string(certPEM),
-			keyPEM:         string(keyPEM),
-			repoGetByName: []queue.Item[*provisioning.Cluster]{
-				{
-					Value: &provisioning.Cluster{
-						Name:          "one",
-						ServerNames:   []string{"server1", "server2"},
-						ConnectionURL: "http://one/",
-					},
-				},
-			},
+			name:                              "error - client.UpdateClusterCertificate",
+			certificatePEM:                    string(certPEM),
+			keyPEM:                            string(keyPEM),
 			clientUpdateClusterCertificateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:           "error - repo.GetByName 2nd call",
-			certificatePEM: string(certPEM),
-			keyPEM:         string(keyPEM),
-			repoGetByName: []queue.Item[*provisioning.Cluster]{
-				{
-					Value: &provisioning.Cluster{
-						Name:          "one",
-						ServerNames:   []string{"server1", "server2"},
-						ConnectionURL: "http://one/",
-					},
-				},
-				{
-					Err: boom.Error,
-				},
-			},
+			name:             "error - repo.GetByName",
+			certificatePEM:   string(certPEM),
+			keyPEM:           string(keyPEM),
+			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -1630,22 +1604,12 @@ func TestClusterService_UpdateCertificate(t *testing.T) {
 			name:           "error - repo.Update",
 			certificatePEM: string(certPEM),
 			keyPEM:         string(keyPEM),
-			repoGetByName: []queue.Item[*provisioning.Cluster]{
-				{
-					Value: &provisioning.Cluster{
-						Name:          "one",
-						ServerNames:   []string{"server1", "server2"},
-						ConnectionURL: "http://one/",
-					},
-				},
-				{
-					Value: &provisioning.Cluster{
-						Name:          "one",
-						ServerNames:   []string{"server1", "server2"},
-						ConnectionURL: "http://one/",
-					},
-				},
+			repoGetByName: &provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
 			},
+
 			repoUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -1657,7 +1621,7 @@ func TestClusterService_UpdateCertificate(t *testing.T) {
 			// Setup
 			repo := &mock.ClusterRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
-					return queue.Pop(t, &tc.repoGetByName)
+					return tc.repoGetByName, tc.repoGetByNameErr
 				},
 				UpdateFunc: func(ctx context.Context, in provisioning.Cluster) error {
 					return tc.repoUpdateErr
@@ -1665,19 +1629,24 @@ func TestClusterService_UpdateCertificate(t *testing.T) {
 			}
 
 			client := &adapterMock.ClusterClientPortMock{
-				UpdateClusterCertificateFunc: func(ctx context.Context, cluster provisioning.Cluster, certificatePEM, keyPEM string) error {
+				UpdateClusterCertificateFunc: func(ctx context.Context, endpoint provisioning.Endpoint, certificatePEM, keyPEM string) error {
 					return tc.clientUpdateClusterCertificateErr
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, client, nil, nil)
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.serverSvcGetAllWithFilter, tc.serverSvcGetAllWithFilterErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, nil)
 
 			// Run test
 			err := clusterSvc.UpdateCertificate(context.Background(), "cluster", tc.certificatePEM, tc.keyPEM)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Empty(t, tc.repoGetByName)
 		})
 	}
 }

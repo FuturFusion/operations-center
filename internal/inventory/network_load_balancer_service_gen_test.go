@@ -287,8 +287,8 @@ func TestNetworkLoadBalancerService_GetByUUID(t *testing.T) {
 func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 	tests := []struct {
 		name                                                     string
-		clusterSvcGetByIDCluster                                 provisioning.Cluster
-		clusterSvcGetByIDErr                                     error
+		clusterSvcGetEndpoint                                    provisioning.Endpoint
+		clusterSvcGetEndpointErr                                 error
 		networkLoadBalancerClientGetNetworkLoadBalancerByName    incusapi.NetworkLoadBalancer
 		networkLoadBalancerClientGetNetworkLoadBalancerByNameErr error
 		repoGetByUUIDNetworkLoadBalancer                         inventory.NetworkLoadBalancer
@@ -306,8 +306,12 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 				Name:        "one",
 				NetworkName: "network",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByName: incusapi.NetworkLoadBalancer{
 				ListenAddress: "networkLoadBalancer one",
@@ -323,8 +327,12 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 				Name:        "one",
 				NetworkName: "network",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByNameErr: domain.ErrNotFound,
 
@@ -344,7 +352,7 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 				Name:        "one",
 				NetworkName: "network",
 			},
-			clusterSvcGetByIDErr: boom.Error,
+			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -356,8 +364,12 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 				Name:        "one",
 				NetworkName: "network",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByNameErr: boom.Error,
 
@@ -371,8 +383,12 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 				Name:        "one",
 				NetworkName: "network",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByNameErr: domain.ErrNotFound,
 			repoDeleteByUUIDErr: boom.Error,
@@ -387,8 +403,12 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 				Name:        "", // invalid
 				NetworkName: "network",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByName: incusapi.NetworkLoadBalancer{
 				ListenAddress: "networkLoadBalancer one",
@@ -407,8 +427,12 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 				Name:        "one",
 				NetworkName: "network",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkLoadBalancerClientGetNetworkLoadBalancerByName: incusapi.NetworkLoadBalancer{
 				ListenAddress: "networkLoadBalancer one",
@@ -436,14 +460,14 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
 					require.Equal(t, "one", name)
-					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
 				},
 			}
 
 			networkLoadBalancerClient := &serverMock.NetworkLoadBalancerServerClientMock{
-				GetNetworkLoadBalancerByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
+				GetNetworkLoadBalancerByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkLoadBalancerName string) (incusapi.NetworkLoadBalancer, error) {
 					require.Equal(t, tc.repoGetByUUIDNetworkLoadBalancer.Name, networkLoadBalancerName)
 					require.Equal(t, "network", networkName)
 					return tc.networkLoadBalancerClientGetNetworkLoadBalancerByName, tc.networkLoadBalancerClientGetNetworkLoadBalancerByNameErr
@@ -467,8 +491,8 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster
 	tests := []struct {
 		name                                                string
-		clusterSvcGetByIDCluster                            provisioning.Cluster
-		clusterSvcGetByIDErr                                error
+		clusterSvcGetEndpoint                               provisioning.Endpoint
+		clusterSvcGetEndpointErr                            error
 		networkClientGetNetworks                            []incusapi.Network
 		networkClientGetNetworksErr                         error
 		networkLoadBalancerClientGetNetworkLoadBalancers    []incusapi.NetworkLoadBalancer
@@ -481,8 +505,12 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 	}{
 		{
 			name: "success",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -499,8 +527,12 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "success - with parent filter",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -525,8 +557,12 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "success - with sync filter",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -550,15 +586,19 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:                 "error - cluster service get by ID",
-			clusterSvcGetByIDErr: boom.Error,
+			name:                     "error - cluster service get by ID",
+			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - network client get Networks",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworksErr: boom.Error,
 
@@ -566,8 +606,12 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - networkLoadBalancer client get NetworkLoadBalancers",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -580,8 +624,12 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - network_load_balancers delete by cluster ID",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -599,8 +647,12 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - validate",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -620,8 +672,12 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - networkLoadBalancer create",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -652,19 +708,19 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
-					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
 				},
 			}
 
 			networkClient := &serverMock.NetworkServerClientMock{
-				GetNetworksFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Network, error) {
+				GetNetworksFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.Network, error) {
 					return tc.networkClientGetNetworks, tc.networkClientGetNetworksErr
 				},
 			}
 
 			networkLoadBalancerClient := &serverMock.NetworkLoadBalancerServerClientMock{
-				GetNetworkLoadBalancersFunc: func(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]incusapi.NetworkLoadBalancer, error) {
+				GetNetworkLoadBalancersFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]incusapi.NetworkLoadBalancer, error) {
 					return tc.networkLoadBalancerClientGetNetworkLoadBalancers, tc.networkLoadBalancerClientGetNetworkLoadBalancersErr
 				},
 			}

@@ -12,8 +12,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkForwards(ctx context.Context, cluster provisioning.Cluster, networkForwardName string) ([]incusapi.NetworkForward, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetNetworkForwards(ctx context.Context, endpoint provisioning.Endpoint, networkForwardName string) ([]incusapi.NetworkForward, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +26,8 @@ func (s serverClient) GetNetworkForwards(ctx context.Context, cluster provisioni
 	return serverNetworkForwards, nil
 }
 
-func (s serverClient) GetNetworkForwardByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetNetworkForwardByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.NetworkForward{}, err
 	}

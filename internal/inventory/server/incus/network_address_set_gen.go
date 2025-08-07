@@ -12,8 +12,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetNetworkAddressSets(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.NetworkAddressSet, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetNetworkAddressSets(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.NetworkAddressSet, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +26,8 @@ func (s serverClient) GetNetworkAddressSets(ctx context.Context, cluster provisi
 	return serverNetworkAddressSets, nil
 }
 
-func (s serverClient) GetNetworkAddressSetByName(ctx context.Context, cluster provisioning.Cluster, networkAddressSetName string) (incusapi.NetworkAddressSet, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, networkAddressSetName string) (incusapi.NetworkAddressSet, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.NetworkAddressSet{}, err
 	}

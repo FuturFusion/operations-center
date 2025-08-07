@@ -39,7 +39,7 @@ func NewServerClientPortWithPrometheus(base provisioning.ServerClientPort, insta
 }
 
 // GetOSData implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithPrometheus) GetOSData(ctx context.Context, server provisioning.Server) (oSData api.OSData, err error) {
+func (_d ServerClientPortWithPrometheus) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,11 +49,11 @@ func (_d ServerClientPortWithPrometheus) GetOSData(ctx context.Context, server p
 
 		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSData", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetOSData(ctx, server)
+	return _d.base.GetOSData(ctx, endpoint)
 }
 
 // GetResources implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithPrometheus) GetResources(ctx context.Context, server provisioning.Server) (hardwareData api.HardwareData, err error) {
+func (_d ServerClientPortWithPrometheus) GetResources(ctx context.Context, endpoint provisioning.Endpoint) (hardwareData api.HardwareData, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,11 +63,11 @@ func (_d ServerClientPortWithPrometheus) GetResources(ctx context.Context, serve
 
 		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetResources", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetResources(ctx, server)
+	return _d.base.GetResources(ctx, endpoint)
 }
 
 // Ping implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithPrometheus) Ping(ctx context.Context, target provisioning.ServerOrCluster) (err error) {
+func (_d ServerClientPortWithPrometheus) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -77,7 +77,7 @@ func (_d ServerClientPortWithPrometheus) Ping(ctx context.Context, target provis
 
 		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Ping", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.Ping(ctx, target)
+	return _d.base.Ping(ctx, endpoint)
 }
 
 // UpdateNetworkConfig implements provisioning.ServerClientPort.

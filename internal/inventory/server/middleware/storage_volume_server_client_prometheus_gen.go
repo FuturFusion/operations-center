@@ -40,7 +40,7 @@ func NewStorageVolumeServerClientWithPrometheus(base inventory.StorageVolumeServ
 }
 
 // GetStorageVolumeByName implements inventory.StorageVolumeServerClient.
-func (_d StorageVolumeServerClientWithPrometheus) GetStorageVolumeByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
+func (_d StorageVolumeServerClientWithPrometheus) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,11 +50,11 @@ func (_d StorageVolumeServerClientWithPrometheus) GetStorageVolumeByName(ctx con
 
 		storageVolumeServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetStorageVolumeByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetStorageVolumeByName(ctx, cluster, storagePoolName, storageVolumeName, storageVolumeType)
+	return _d.base.GetStorageVolumeByName(ctx, endpoint, storagePoolName, storageVolumeName, storageVolumeType)
 }
 
 // GetStorageVolumes implements inventory.StorageVolumeServerClient.
-func (_d StorageVolumeServerClientWithPrometheus) GetStorageVolumes(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) (storageVolumes []api.StorageVolume, err error) {
+func (_d StorageVolumeServerClientWithPrometheus) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageVolumes []api.StorageVolume, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -64,5 +64,5 @@ func (_d StorageVolumeServerClientWithPrometheus) GetStorageVolumes(ctx context.
 
 		storageVolumeServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetStorageVolumes", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetStorageVolumes(ctx, cluster, storagePoolName)
+	return _d.base.GetStorageVolumes(ctx, endpoint, storagePoolName)
 }

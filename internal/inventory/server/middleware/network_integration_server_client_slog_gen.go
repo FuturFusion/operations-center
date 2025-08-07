@@ -44,12 +44,12 @@ func NewNetworkIntegrationServerClientWithSlog(base inventory.NetworkIntegration
 }
 
 // GetNetworkIntegrationByName implements inventory.NetworkIntegrationServerClient.
-func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, cluster provisioning.Cluster, networkIntegrationName string) (networkIntegration api.NetworkIntegration, err error) {
+func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx context.Context, endpoint provisioning.Endpoint, networkIntegrationName string) (networkIntegration api.NetworkIntegration, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 			slog.String("networkIntegrationName", networkIntegrationName),
 		)
 	}
@@ -76,16 +76,16 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx
 			log.Debug("<= method GetNetworkIntegrationByName finished")
 		}
 	}()
-	return _d._base.GetNetworkIntegrationByName(ctx, cluster, networkIntegrationName)
+	return _d._base.GetNetworkIntegrationByName(ctx, endpoint, networkIntegrationName)
 }
 
 // GetNetworkIntegrations implements inventory.NetworkIntegrationServerClient.
-func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, cluster provisioning.Cluster) (networkIntegrations []api.NetworkIntegration, err error) {
+func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx context.Context, endpoint provisioning.Endpoint) (networkIntegrations []api.NetworkIntegration, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 		)
 	}
 	log.Debug("=> calling GetNetworkIntegrations")
@@ -111,5 +111,5 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx cont
 			log.Debug("<= method GetNetworkIntegrations finished")
 		}
 	}()
-	return _d._base.GetNetworkIntegrations(ctx, cluster)
+	return _d._base.GetNetworkIntegrations(ctx, endpoint)
 }

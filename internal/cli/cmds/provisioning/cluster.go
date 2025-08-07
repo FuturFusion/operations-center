@@ -89,7 +89,7 @@ type cmdClusterAdd struct {
 
 func (c *cmdClusterAdd) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "add <name>"
+	cmd.Use = "add <name> <connection-url>"
 	cmd.Short = "Add a new cluster"
 	cmd.Long = `Description:
   Add a new cluster
@@ -108,16 +108,18 @@ func (c *cmdClusterAdd) Command() *cobra.Command {
 
 func (c *cmdClusterAdd) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
-	exit, err := validate.Args(cmd, args, 1, 1)
+	exit, err := validate.Args(cmd, args, 2, 2)
 	if exit {
 		return err
 	}
 
 	name := args[0]
+	connectionURL := args[1]
 
 	err = c.ocClient.CreateCluster(cmd.Context(), api.ClusterPost{
 		Cluster: api.Cluster{
-			Name: name,
+			Name:          name,
+			ConnectionURL: connectionURL,
 		},
 		ServerNames: c.serverNames,
 	})

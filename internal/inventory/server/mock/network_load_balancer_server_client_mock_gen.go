@@ -23,10 +23,10 @@ var _ inventory.NetworkLoadBalancerServerClient = &NetworkLoadBalancerServerClie
 //
 //		// make and configure a mocked inventory.NetworkLoadBalancerServerClient
 //		mockedNetworkLoadBalancerServerClient := &NetworkLoadBalancerServerClientMock{
-//			GetNetworkLoadBalancerByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkName string, networkLoadBalancerName string) (api.NetworkLoadBalancer, error) {
+//			GetNetworkLoadBalancerByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkLoadBalancerName string) (api.NetworkLoadBalancer, error) {
 //				panic("mock out the GetNetworkLoadBalancerByName method")
 //			},
-//			GetNetworkLoadBalancersFunc: func(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]api.NetworkLoadBalancer, error) {
+//			GetNetworkLoadBalancersFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]api.NetworkLoadBalancer, error) {
 //				panic("mock out the GetNetworkLoadBalancers method")
 //			},
 //		}
@@ -37,10 +37,10 @@ var _ inventory.NetworkLoadBalancerServerClient = &NetworkLoadBalancerServerClie
 //	}
 type NetworkLoadBalancerServerClientMock struct {
 	// GetNetworkLoadBalancerByNameFunc mocks the GetNetworkLoadBalancerByName method.
-	GetNetworkLoadBalancerByNameFunc func(ctx context.Context, cluster provisioning.Cluster, networkName string, networkLoadBalancerName string) (api.NetworkLoadBalancer, error)
+	GetNetworkLoadBalancerByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkLoadBalancerName string) (api.NetworkLoadBalancer, error)
 
 	// GetNetworkLoadBalancersFunc mocks the GetNetworkLoadBalancers method.
-	GetNetworkLoadBalancersFunc func(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]api.NetworkLoadBalancer, error)
+	GetNetworkLoadBalancersFunc func(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]api.NetworkLoadBalancer, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -48,8 +48,8 @@ type NetworkLoadBalancerServerClientMock struct {
 		GetNetworkLoadBalancerByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 			// NetworkName is the networkName argument value.
 			NetworkName string
 			// NetworkLoadBalancerName is the networkLoadBalancerName argument value.
@@ -59,8 +59,8 @@ type NetworkLoadBalancerServerClientMock struct {
 		GetNetworkLoadBalancers []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 			// NetworkName is the networkName argument value.
 			NetworkName string
 		}
@@ -70,25 +70,25 @@ type NetworkLoadBalancerServerClientMock struct {
 }
 
 // GetNetworkLoadBalancerByName calls GetNetworkLoadBalancerByNameFunc.
-func (mock *NetworkLoadBalancerServerClientMock) GetNetworkLoadBalancerByName(ctx context.Context, cluster provisioning.Cluster, networkName string, networkLoadBalancerName string) (api.NetworkLoadBalancer, error) {
+func (mock *NetworkLoadBalancerServerClientMock) GetNetworkLoadBalancerByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkLoadBalancerName string) (api.NetworkLoadBalancer, error) {
 	if mock.GetNetworkLoadBalancerByNameFunc == nil {
 		panic("NetworkLoadBalancerServerClientMock.GetNetworkLoadBalancerByNameFunc: method is nil but NetworkLoadBalancerServerClient.GetNetworkLoadBalancerByName was just called")
 	}
 	callInfo := struct {
 		Ctx                     context.Context
-		Cluster                 provisioning.Cluster
+		Endpoint                provisioning.Endpoint
 		NetworkName             string
 		NetworkLoadBalancerName string
 	}{
 		Ctx:                     ctx,
-		Cluster:                 cluster,
+		Endpoint:                endpoint,
 		NetworkName:             networkName,
 		NetworkLoadBalancerName: networkLoadBalancerName,
 	}
 	mock.lockGetNetworkLoadBalancerByName.Lock()
 	mock.calls.GetNetworkLoadBalancerByName = append(mock.calls.GetNetworkLoadBalancerByName, callInfo)
 	mock.lockGetNetworkLoadBalancerByName.Unlock()
-	return mock.GetNetworkLoadBalancerByNameFunc(ctx, cluster, networkName, networkLoadBalancerName)
+	return mock.GetNetworkLoadBalancerByNameFunc(ctx, endpoint, networkName, networkLoadBalancerName)
 }
 
 // GetNetworkLoadBalancerByNameCalls gets all the calls that were made to GetNetworkLoadBalancerByName.
@@ -97,13 +97,13 @@ func (mock *NetworkLoadBalancerServerClientMock) GetNetworkLoadBalancerByName(ct
 //	len(mockedNetworkLoadBalancerServerClient.GetNetworkLoadBalancerByNameCalls())
 func (mock *NetworkLoadBalancerServerClientMock) GetNetworkLoadBalancerByNameCalls() []struct {
 	Ctx                     context.Context
-	Cluster                 provisioning.Cluster
+	Endpoint                provisioning.Endpoint
 	NetworkName             string
 	NetworkLoadBalancerName string
 } {
 	var calls []struct {
 		Ctx                     context.Context
-		Cluster                 provisioning.Cluster
+		Endpoint                provisioning.Endpoint
 		NetworkName             string
 		NetworkLoadBalancerName string
 	}
@@ -114,23 +114,23 @@ func (mock *NetworkLoadBalancerServerClientMock) GetNetworkLoadBalancerByNameCal
 }
 
 // GetNetworkLoadBalancers calls GetNetworkLoadBalancersFunc.
-func (mock *NetworkLoadBalancerServerClientMock) GetNetworkLoadBalancers(ctx context.Context, cluster provisioning.Cluster, networkName string) ([]api.NetworkLoadBalancer, error) {
+func (mock *NetworkLoadBalancerServerClientMock) GetNetworkLoadBalancers(ctx context.Context, endpoint provisioning.Endpoint, networkName string) ([]api.NetworkLoadBalancer, error) {
 	if mock.GetNetworkLoadBalancersFunc == nil {
 		panic("NetworkLoadBalancerServerClientMock.GetNetworkLoadBalancersFunc: method is nil but NetworkLoadBalancerServerClient.GetNetworkLoadBalancers was just called")
 	}
 	callInfo := struct {
 		Ctx         context.Context
-		Cluster     provisioning.Cluster
+		Endpoint    provisioning.Endpoint
 		NetworkName string
 	}{
 		Ctx:         ctx,
-		Cluster:     cluster,
+		Endpoint:    endpoint,
 		NetworkName: networkName,
 	}
 	mock.lockGetNetworkLoadBalancers.Lock()
 	mock.calls.GetNetworkLoadBalancers = append(mock.calls.GetNetworkLoadBalancers, callInfo)
 	mock.lockGetNetworkLoadBalancers.Unlock()
-	return mock.GetNetworkLoadBalancersFunc(ctx, cluster, networkName)
+	return mock.GetNetworkLoadBalancersFunc(ctx, endpoint, networkName)
 }
 
 // GetNetworkLoadBalancersCalls gets all the calls that were made to GetNetworkLoadBalancers.
@@ -139,12 +139,12 @@ func (mock *NetworkLoadBalancerServerClientMock) GetNetworkLoadBalancers(ctx con
 //	len(mockedNetworkLoadBalancerServerClient.GetNetworkLoadBalancersCalls())
 func (mock *NetworkLoadBalancerServerClientMock) GetNetworkLoadBalancersCalls() []struct {
 	Ctx         context.Context
-	Cluster     provisioning.Cluster
+	Endpoint    provisioning.Endpoint
 	NetworkName string
 } {
 	var calls []struct {
 		Ctx         context.Context
-		Cluster     provisioning.Cluster
+		Endpoint    provisioning.Endpoint
 		NetworkName string
 	}
 	mock.lockGetNetworkLoadBalancers.RLock()

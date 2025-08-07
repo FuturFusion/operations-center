@@ -44,12 +44,12 @@ func NewImageServerClientWithSlog(base inventory.ImageServerClient, log *slog.Lo
 }
 
 // GetImageByName implements inventory.ImageServerClient.
-func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, cluster provisioning.Cluster, imageName string) (image api.Image, err error) {
+func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, imageName string) (image api.Image, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 			slog.String("imageName", imageName),
 		)
 	}
@@ -76,16 +76,16 @@ func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, cluster 
 			log.Debug("<= method GetImageByName finished")
 		}
 	}()
-	return _d._base.GetImageByName(ctx, cluster, imageName)
+	return _d._base.GetImageByName(ctx, endpoint, imageName)
 }
 
 // GetImages implements inventory.ImageServerClient.
-func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, cluster provisioning.Cluster) (images []api.Image, err error) {
+func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, endpoint provisioning.Endpoint) (images []api.Image, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 		)
 	}
 	log.Debug("=> calling GetImages")
@@ -111,5 +111,5 @@ func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, cluster provi
 			log.Debug("<= method GetImages finished")
 		}
 	}()
-	return _d._base.GetImages(ctx, cluster)
+	return _d._base.GetImages(ctx, endpoint)
 }

@@ -287,8 +287,8 @@ func TestInstanceService_GetByUUID(t *testing.T) {
 func TestInstanceService_ResyncByUUID(t *testing.T) {
 	tests := []struct {
 		name                               string
-		clusterSvcGetByIDCluster           provisioning.Cluster
-		clusterSvcGetByIDErr               error
+		clusterSvcGetEndpoint              provisioning.Endpoint
+		clusterSvcGetEndpointErr           error
 		instanceClientGetInstanceByName    incusapi.InstanceFull
 		instanceClientGetInstanceByNameErr error
 		repoGetByUUIDInstance              inventory.Instance
@@ -305,8 +305,12 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			instanceClientGetInstanceByName: incusapi.InstanceFull{
 				Instance: incusapi.Instance{
@@ -325,8 +329,12 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			instanceClientGetInstanceByNameErr: domain.ErrNotFound,
 
@@ -345,7 +353,7 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDErr: boom.Error,
+			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -356,8 +364,12 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			instanceClientGetInstanceByNameErr: boom.Error,
 
@@ -370,8 +382,12 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			instanceClientGetInstanceByNameErr: domain.ErrNotFound,
 			repoDeleteByUUIDErr:                boom.Error,
@@ -385,8 +401,12 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "", // invalid
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			instanceClientGetInstanceByName: incusapi.InstanceFull{
 				Instance: incusapi.Instance{
@@ -408,8 +428,12 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			instanceClientGetInstanceByName: incusapi.InstanceFull{
 				Instance: incusapi.Instance{
@@ -441,14 +465,14 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
 					require.Equal(t, "one", name)
-					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
 				},
 			}
 
 			instanceClient := &serverMock.InstanceServerClientMock{
-				GetInstanceByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, instanceName string) (incusapi.InstanceFull, error) {
+				GetInstanceByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, instanceName string) (incusapi.InstanceFull, error) {
 					require.Equal(t, tc.repoGetByUUIDInstance.Name, instanceName)
 					return tc.instanceClientGetInstanceByName, tc.instanceClientGetInstanceByNameErr
 				},
@@ -471,8 +495,8 @@ func TestInstanceService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster
 	tests := []struct {
 		name                          string
-		clusterSvcGetByIDCluster      provisioning.Cluster
-		clusterSvcGetByIDErr          error
+		clusterSvcGetEndpoint         provisioning.Endpoint
+		clusterSvcGetEndpointErr      error
 		instanceClientGetInstances    []incusapi.InstanceFull
 		instanceClientGetInstancesErr error
 		repoDeleteByClusterNameErr    error
@@ -483,8 +507,12 @@ func TestInstanceService_SyncAll(t *testing.T) {
 	}{
 		{
 			name: "success",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			instanceClientGetInstances: []incusapi.InstanceFull{
 				{
@@ -500,8 +528,12 @@ func TestInstanceService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "success - with sync filter",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			instanceClientGetInstances: []incusapi.InstanceFull{
 				{
@@ -528,15 +560,19 @@ func TestInstanceService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:                 "error - cluster service get by ID",
-			clusterSvcGetByIDErr: boom.Error,
+			name:                     "error - cluster service get by ID",
+			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - instance client get Instances",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			instanceClientGetInstancesErr: boom.Error,
 
@@ -544,8 +580,12 @@ func TestInstanceService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - instances delete by cluster ID",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			instanceClientGetInstances: []incusapi.InstanceFull{
 				{
@@ -562,8 +602,12 @@ func TestInstanceService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - validate",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			instanceClientGetInstances: []incusapi.InstanceFull{
 				{
@@ -582,8 +626,12 @@ func TestInstanceService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - instance create",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			instanceClientGetInstances: []incusapi.InstanceFull{
 				{
@@ -613,13 +661,13 @@ func TestInstanceService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
-					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
 				},
 			}
 
 			instanceClient := &serverMock.InstanceServerClientMock{
-				GetInstancesFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.InstanceFull, error) {
+				GetInstancesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.InstanceFull, error) {
 					return tc.instanceClientGetInstances, tc.instanceClientGetInstancesErr
 				},
 			}

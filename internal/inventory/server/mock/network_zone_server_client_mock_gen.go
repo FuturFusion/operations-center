@@ -23,10 +23,10 @@ var _ inventory.NetworkZoneServerClient = &NetworkZoneServerClientMock{}
 //
 //		// make and configure a mocked inventory.NetworkZoneServerClient
 //		mockedNetworkZoneServerClient := &NetworkZoneServerClientMock{
-//			GetNetworkZoneByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkZoneName string) (api.NetworkZone, error) {
+//			GetNetworkZoneByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkZoneName string) (api.NetworkZone, error) {
 //				panic("mock out the GetNetworkZoneByName method")
 //			},
-//			GetNetworkZonesFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]api.NetworkZone, error) {
+//			GetNetworkZonesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.NetworkZone, error) {
 //				panic("mock out the GetNetworkZones method")
 //			},
 //		}
@@ -37,10 +37,10 @@ var _ inventory.NetworkZoneServerClient = &NetworkZoneServerClientMock{}
 //	}
 type NetworkZoneServerClientMock struct {
 	// GetNetworkZoneByNameFunc mocks the GetNetworkZoneByName method.
-	GetNetworkZoneByNameFunc func(ctx context.Context, cluster provisioning.Cluster, networkZoneName string) (api.NetworkZone, error)
+	GetNetworkZoneByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, networkZoneName string) (api.NetworkZone, error)
 
 	// GetNetworkZonesFunc mocks the GetNetworkZones method.
-	GetNetworkZonesFunc func(ctx context.Context, cluster provisioning.Cluster) ([]api.NetworkZone, error)
+	GetNetworkZonesFunc func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.NetworkZone, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -48,8 +48,8 @@ type NetworkZoneServerClientMock struct {
 		GetNetworkZoneByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 			// NetworkZoneName is the networkZoneName argument value.
 			NetworkZoneName string
 		}
@@ -57,8 +57,8 @@ type NetworkZoneServerClientMock struct {
 		GetNetworkZones []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 		}
 	}
 	lockGetNetworkZoneByName sync.RWMutex
@@ -66,23 +66,23 @@ type NetworkZoneServerClientMock struct {
 }
 
 // GetNetworkZoneByName calls GetNetworkZoneByNameFunc.
-func (mock *NetworkZoneServerClientMock) GetNetworkZoneByName(ctx context.Context, cluster provisioning.Cluster, networkZoneName string) (api.NetworkZone, error) {
+func (mock *NetworkZoneServerClientMock) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, networkZoneName string) (api.NetworkZone, error) {
 	if mock.GetNetworkZoneByNameFunc == nil {
 		panic("NetworkZoneServerClientMock.GetNetworkZoneByNameFunc: method is nil but NetworkZoneServerClient.GetNetworkZoneByName was just called")
 	}
 	callInfo := struct {
 		Ctx             context.Context
-		Cluster         provisioning.Cluster
+		Endpoint        provisioning.Endpoint
 		NetworkZoneName string
 	}{
 		Ctx:             ctx,
-		Cluster:         cluster,
+		Endpoint:        endpoint,
 		NetworkZoneName: networkZoneName,
 	}
 	mock.lockGetNetworkZoneByName.Lock()
 	mock.calls.GetNetworkZoneByName = append(mock.calls.GetNetworkZoneByName, callInfo)
 	mock.lockGetNetworkZoneByName.Unlock()
-	return mock.GetNetworkZoneByNameFunc(ctx, cluster, networkZoneName)
+	return mock.GetNetworkZoneByNameFunc(ctx, endpoint, networkZoneName)
 }
 
 // GetNetworkZoneByNameCalls gets all the calls that were made to GetNetworkZoneByName.
@@ -91,12 +91,12 @@ func (mock *NetworkZoneServerClientMock) GetNetworkZoneByName(ctx context.Contex
 //	len(mockedNetworkZoneServerClient.GetNetworkZoneByNameCalls())
 func (mock *NetworkZoneServerClientMock) GetNetworkZoneByNameCalls() []struct {
 	Ctx             context.Context
-	Cluster         provisioning.Cluster
+	Endpoint        provisioning.Endpoint
 	NetworkZoneName string
 } {
 	var calls []struct {
 		Ctx             context.Context
-		Cluster         provisioning.Cluster
+		Endpoint        provisioning.Endpoint
 		NetworkZoneName string
 	}
 	mock.lockGetNetworkZoneByName.RLock()
@@ -106,21 +106,21 @@ func (mock *NetworkZoneServerClientMock) GetNetworkZoneByNameCalls() []struct {
 }
 
 // GetNetworkZones calls GetNetworkZonesFunc.
-func (mock *NetworkZoneServerClientMock) GetNetworkZones(ctx context.Context, cluster provisioning.Cluster) ([]api.NetworkZone, error) {
+func (mock *NetworkZoneServerClientMock) GetNetworkZones(ctx context.Context, endpoint provisioning.Endpoint) ([]api.NetworkZone, error) {
 	if mock.GetNetworkZonesFunc == nil {
 		panic("NetworkZoneServerClientMock.GetNetworkZonesFunc: method is nil but NetworkZoneServerClient.GetNetworkZones was just called")
 	}
 	callInfo := struct {
-		Ctx     context.Context
-		Cluster provisioning.Cluster
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
 	}{
-		Ctx:     ctx,
-		Cluster: cluster,
+		Ctx:      ctx,
+		Endpoint: endpoint,
 	}
 	mock.lockGetNetworkZones.Lock()
 	mock.calls.GetNetworkZones = append(mock.calls.GetNetworkZones, callInfo)
 	mock.lockGetNetworkZones.Unlock()
-	return mock.GetNetworkZonesFunc(ctx, cluster)
+	return mock.GetNetworkZonesFunc(ctx, endpoint)
 }
 
 // GetNetworkZonesCalls gets all the calls that were made to GetNetworkZones.
@@ -128,12 +128,12 @@ func (mock *NetworkZoneServerClientMock) GetNetworkZones(ctx context.Context, cl
 //
 //	len(mockedNetworkZoneServerClient.GetNetworkZonesCalls())
 func (mock *NetworkZoneServerClientMock) GetNetworkZonesCalls() []struct {
-	Ctx     context.Context
-	Cluster provisioning.Cluster
+	Ctx      context.Context
+	Endpoint provisioning.Endpoint
 } {
 	var calls []struct {
-		Ctx     context.Context
-		Cluster provisioning.Cluster
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
 	}
 	mock.lockGetNetworkZones.RLock()
 	calls = mock.calls.GetNetworkZones

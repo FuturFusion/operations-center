@@ -10,8 +10,8 @@ import (
   "github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) Get{{ .PluralName | pascalcase }}(ctx context.Context, cluster provisioning.Cluster {{- if .HasParent }}, {{ .Name | camelcase }}Name string {{- end -}} ) ([]incusapi.{{ .ObjectType | pascalcase }}, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) Get{{ .PluralName | pascalcase }}(ctx context.Context, endpoint provisioning.Endpoint {{- if .HasParent }}, {{ .Name | camelcase }}Name string {{- end -}} ) ([]incusapi.{{ .ObjectType | pascalcase }}, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -24,8 +24,8 @@ func (s serverClient) Get{{ .PluralName | pascalcase }}(ctx context.Context, clu
 	return server{{ .PluralName | pascalcase }}, nil
 }
 
-func (s serverClient) Get{{ .Name | pascalcase }}ByName(ctx context.Context, cluster provisioning.Cluster, {{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }}{{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error) {
-	client, err := s.getClient(ctx, cluster)
+func (s serverClient) Get{{ .Name | pascalcase }}ByName(ctx context.Context, endpoint provisioning.Endpoint, {{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }}{{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error) {
+	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.{{ .ObjectType | pascalcase }}{}, err
 	}

@@ -23,13 +23,13 @@ var _ inventory.NetworkAddressSetServerClient = &NetworkAddressSetServerClientMo
 //
 //		// make and configure a mocked inventory.NetworkAddressSetServerClient
 //		mockedNetworkAddressSetServerClient := &NetworkAddressSetServerClientMock{
-//			GetNetworkAddressSetByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkAddressSetName string) (api.NetworkAddressSet, error) {
+//			GetNetworkAddressSetByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkAddressSetName string) (api.NetworkAddressSet, error) {
 //				panic("mock out the GetNetworkAddressSetByName method")
 //			},
-//			GetNetworkAddressSetsFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]api.NetworkAddressSet, error) {
+//			GetNetworkAddressSetsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.NetworkAddressSet, error) {
 //				panic("mock out the GetNetworkAddressSets method")
 //			},
-//			HasExtensionFunc: func(ctx context.Context, cluster provisioning.Cluster, extension string) bool {
+//			HasExtensionFunc: func(ctx context.Context, endpoint provisioning.Endpoint, extension string) bool {
 //				panic("mock out the HasExtension method")
 //			},
 //		}
@@ -40,13 +40,13 @@ var _ inventory.NetworkAddressSetServerClient = &NetworkAddressSetServerClientMo
 //	}
 type NetworkAddressSetServerClientMock struct {
 	// GetNetworkAddressSetByNameFunc mocks the GetNetworkAddressSetByName method.
-	GetNetworkAddressSetByNameFunc func(ctx context.Context, cluster provisioning.Cluster, networkAddressSetName string) (api.NetworkAddressSet, error)
+	GetNetworkAddressSetByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, networkAddressSetName string) (api.NetworkAddressSet, error)
 
 	// GetNetworkAddressSetsFunc mocks the GetNetworkAddressSets method.
-	GetNetworkAddressSetsFunc func(ctx context.Context, cluster provisioning.Cluster) ([]api.NetworkAddressSet, error)
+	GetNetworkAddressSetsFunc func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.NetworkAddressSet, error)
 
 	// HasExtensionFunc mocks the HasExtension method.
-	HasExtensionFunc func(ctx context.Context, cluster provisioning.Cluster, extension string) bool
+	HasExtensionFunc func(ctx context.Context, endpoint provisioning.Endpoint, extension string) bool
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -54,8 +54,8 @@ type NetworkAddressSetServerClientMock struct {
 		GetNetworkAddressSetByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 			// NetworkAddressSetName is the networkAddressSetName argument value.
 			NetworkAddressSetName string
 		}
@@ -63,15 +63,15 @@ type NetworkAddressSetServerClientMock struct {
 		GetNetworkAddressSets []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 		}
 		// HasExtension holds details about calls to the HasExtension method.
 		HasExtension []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 			// Extension is the extension argument value.
 			Extension string
 		}
@@ -82,23 +82,23 @@ type NetworkAddressSetServerClientMock struct {
 }
 
 // GetNetworkAddressSetByName calls GetNetworkAddressSetByNameFunc.
-func (mock *NetworkAddressSetServerClientMock) GetNetworkAddressSetByName(ctx context.Context, cluster provisioning.Cluster, networkAddressSetName string) (api.NetworkAddressSet, error) {
+func (mock *NetworkAddressSetServerClientMock) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, networkAddressSetName string) (api.NetworkAddressSet, error) {
 	if mock.GetNetworkAddressSetByNameFunc == nil {
 		panic("NetworkAddressSetServerClientMock.GetNetworkAddressSetByNameFunc: method is nil but NetworkAddressSetServerClient.GetNetworkAddressSetByName was just called")
 	}
 	callInfo := struct {
 		Ctx                   context.Context
-		Cluster               provisioning.Cluster
+		Endpoint              provisioning.Endpoint
 		NetworkAddressSetName string
 	}{
 		Ctx:                   ctx,
-		Cluster:               cluster,
+		Endpoint:              endpoint,
 		NetworkAddressSetName: networkAddressSetName,
 	}
 	mock.lockGetNetworkAddressSetByName.Lock()
 	mock.calls.GetNetworkAddressSetByName = append(mock.calls.GetNetworkAddressSetByName, callInfo)
 	mock.lockGetNetworkAddressSetByName.Unlock()
-	return mock.GetNetworkAddressSetByNameFunc(ctx, cluster, networkAddressSetName)
+	return mock.GetNetworkAddressSetByNameFunc(ctx, endpoint, networkAddressSetName)
 }
 
 // GetNetworkAddressSetByNameCalls gets all the calls that were made to GetNetworkAddressSetByName.
@@ -107,12 +107,12 @@ func (mock *NetworkAddressSetServerClientMock) GetNetworkAddressSetByName(ctx co
 //	len(mockedNetworkAddressSetServerClient.GetNetworkAddressSetByNameCalls())
 func (mock *NetworkAddressSetServerClientMock) GetNetworkAddressSetByNameCalls() []struct {
 	Ctx                   context.Context
-	Cluster               provisioning.Cluster
+	Endpoint              provisioning.Endpoint
 	NetworkAddressSetName string
 } {
 	var calls []struct {
 		Ctx                   context.Context
-		Cluster               provisioning.Cluster
+		Endpoint              provisioning.Endpoint
 		NetworkAddressSetName string
 	}
 	mock.lockGetNetworkAddressSetByName.RLock()
@@ -122,21 +122,21 @@ func (mock *NetworkAddressSetServerClientMock) GetNetworkAddressSetByNameCalls()
 }
 
 // GetNetworkAddressSets calls GetNetworkAddressSetsFunc.
-func (mock *NetworkAddressSetServerClientMock) GetNetworkAddressSets(ctx context.Context, cluster provisioning.Cluster) ([]api.NetworkAddressSet, error) {
+func (mock *NetworkAddressSetServerClientMock) GetNetworkAddressSets(ctx context.Context, endpoint provisioning.Endpoint) ([]api.NetworkAddressSet, error) {
 	if mock.GetNetworkAddressSetsFunc == nil {
 		panic("NetworkAddressSetServerClientMock.GetNetworkAddressSetsFunc: method is nil but NetworkAddressSetServerClient.GetNetworkAddressSets was just called")
 	}
 	callInfo := struct {
-		Ctx     context.Context
-		Cluster provisioning.Cluster
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
 	}{
-		Ctx:     ctx,
-		Cluster: cluster,
+		Ctx:      ctx,
+		Endpoint: endpoint,
 	}
 	mock.lockGetNetworkAddressSets.Lock()
 	mock.calls.GetNetworkAddressSets = append(mock.calls.GetNetworkAddressSets, callInfo)
 	mock.lockGetNetworkAddressSets.Unlock()
-	return mock.GetNetworkAddressSetsFunc(ctx, cluster)
+	return mock.GetNetworkAddressSetsFunc(ctx, endpoint)
 }
 
 // GetNetworkAddressSetsCalls gets all the calls that were made to GetNetworkAddressSets.
@@ -144,12 +144,12 @@ func (mock *NetworkAddressSetServerClientMock) GetNetworkAddressSets(ctx context
 //
 //	len(mockedNetworkAddressSetServerClient.GetNetworkAddressSetsCalls())
 func (mock *NetworkAddressSetServerClientMock) GetNetworkAddressSetsCalls() []struct {
-	Ctx     context.Context
-	Cluster provisioning.Cluster
+	Ctx      context.Context
+	Endpoint provisioning.Endpoint
 } {
 	var calls []struct {
-		Ctx     context.Context
-		Cluster provisioning.Cluster
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
 	}
 	mock.lockGetNetworkAddressSets.RLock()
 	calls = mock.calls.GetNetworkAddressSets
@@ -158,23 +158,23 @@ func (mock *NetworkAddressSetServerClientMock) GetNetworkAddressSetsCalls() []st
 }
 
 // HasExtension calls HasExtensionFunc.
-func (mock *NetworkAddressSetServerClientMock) HasExtension(ctx context.Context, cluster provisioning.Cluster, extension string) bool {
+func (mock *NetworkAddressSetServerClientMock) HasExtension(ctx context.Context, endpoint provisioning.Endpoint, extension string) bool {
 	if mock.HasExtensionFunc == nil {
 		panic("NetworkAddressSetServerClientMock.HasExtensionFunc: method is nil but NetworkAddressSetServerClient.HasExtension was just called")
 	}
 	callInfo := struct {
 		Ctx       context.Context
-		Cluster   provisioning.Cluster
+		Endpoint  provisioning.Endpoint
 		Extension string
 	}{
 		Ctx:       ctx,
-		Cluster:   cluster,
+		Endpoint:  endpoint,
 		Extension: extension,
 	}
 	mock.lockHasExtension.Lock()
 	mock.calls.HasExtension = append(mock.calls.HasExtension, callInfo)
 	mock.lockHasExtension.Unlock()
-	return mock.HasExtensionFunc(ctx, cluster, extension)
+	return mock.HasExtensionFunc(ctx, endpoint, extension)
 }
 
 // HasExtensionCalls gets all the calls that were made to HasExtension.
@@ -183,12 +183,12 @@ func (mock *NetworkAddressSetServerClientMock) HasExtension(ctx context.Context,
 //	len(mockedNetworkAddressSetServerClient.HasExtensionCalls())
 func (mock *NetworkAddressSetServerClientMock) HasExtensionCalls() []struct {
 	Ctx       context.Context
-	Cluster   provisioning.Cluster
+	Endpoint  provisioning.Endpoint
 	Extension string
 } {
 	var calls []struct {
 		Ctx       context.Context
-		Cluster   provisioning.Cluster
+		Endpoint  provisioning.Endpoint
 		Extension string
 	}
 	mock.lockHasExtension.RLock()

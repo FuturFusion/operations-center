@@ -76,6 +76,9 @@ type Cluster struct {
 	Name string `json:"name" yaml:"name"`
 
 	// URL, hostname or IP address of the cluster endpoint.
+	// This is only user facing, e.g. the address of a load balancer infront of
+	// the cluster and not used by Operations Center for direct communication
+	// Operations Center relies on the connection URL of the cluster members.
 	// Example: https://incus.local:6443
 	ConnectionURL string `json:"connection_url" yaml:"connection_url"`
 

@@ -40,7 +40,7 @@ func NewImageServerClientWithPrometheus(base inventory.ImageServerClient, instan
 }
 
 // GetImageByName implements inventory.ImageServerClient.
-func (_d ImageServerClientWithPrometheus) GetImageByName(ctx context.Context, cluster provisioning.Cluster, imageName string) (image api.Image, err error) {
+func (_d ImageServerClientWithPrometheus) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, imageName string) (image api.Image, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,11 +50,11 @@ func (_d ImageServerClientWithPrometheus) GetImageByName(ctx context.Context, cl
 
 		imageServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetImageByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetImageByName(ctx, cluster, imageName)
+	return _d.base.GetImageByName(ctx, endpoint, imageName)
 }
 
 // GetImages implements inventory.ImageServerClient.
-func (_d ImageServerClientWithPrometheus) GetImages(ctx context.Context, cluster provisioning.Cluster) (images []api.Image, err error) {
+func (_d ImageServerClientWithPrometheus) GetImages(ctx context.Context, endpoint provisioning.Endpoint) (images []api.Image, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -64,5 +64,5 @@ func (_d ImageServerClientWithPrometheus) GetImages(ctx context.Context, cluster
 
 		imageServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetImages", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetImages(ctx, cluster)
+	return _d.base.GetImages(ctx, endpoint)
 }

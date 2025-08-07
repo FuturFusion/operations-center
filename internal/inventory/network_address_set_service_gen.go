@@ -151,12 +151,12 @@ func (s networkAddressSetService) ResyncByUUID(ctx context.Context, id uuid.UUID
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByName(ctx, networkAddressSet.Cluster)
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, networkAddressSet.Cluster)
 		if err != nil {
 			return err
 		}
 
-		retrievedNetworkAddressSet, err := s.networkAddressSetClient.GetNetworkAddressSetByName(ctx, *cluster, networkAddressSet.Name)
+		retrievedNetworkAddressSet, err := s.networkAddressSetClient.GetNetworkAddressSetByName(ctx, endpoint, networkAddressSet.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkAddressSet.UUID)
 			if err != nil {
@@ -195,16 +195,16 @@ func (s networkAddressSetService) ResyncByUUID(ctx context.Context, id uuid.UUID
 }
 
 func (s networkAddressSetService) SyncCluster(ctx context.Context, name string) error {
-	cluster, err := s.clusterSvc.GetByName(ctx, name)
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
 	if err != nil {
 		return err
 	}
 
-	if !s.networkAddressSetClient.HasExtension(ctx, *cluster, "network_address_set") {
+	if !s.networkAddressSetClient.HasExtension(ctx, endpoint, "network_address_set") {
 		return nil
 	}
 
-	retrievedNetworkAddressSets, err := s.networkAddressSetClient.GetNetworkAddressSets(ctx, *cluster)
+	retrievedNetworkAddressSets, err := s.networkAddressSetClient.GetNetworkAddressSets(ctx, endpoint)
 	if err != nil {
 		return err
 	}

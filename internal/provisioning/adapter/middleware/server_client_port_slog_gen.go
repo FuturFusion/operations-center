@@ -43,12 +43,12 @@ func NewServerClientPortWithSlog(base provisioning.ServerClientPort, log *slog.L
 }
 
 // GetOSData implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) GetOSData(ctx context.Context, server provisioning.Server) (oSData api.OSData, err error) {
+func (_d ServerClientPortWithSlog) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (oSData api.OSData, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("server", server),
+			slog.Any("endpoint", endpoint),
 		)
 	}
 	log.Debug("=> calling GetOSData")
@@ -74,16 +74,16 @@ func (_d ServerClientPortWithSlog) GetOSData(ctx context.Context, server provisi
 			log.Debug("<= method GetOSData finished")
 		}
 	}()
-	return _d._base.GetOSData(ctx, server)
+	return _d._base.GetOSData(ctx, endpoint)
 }
 
 // GetResources implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) GetResources(ctx context.Context, server provisioning.Server) (hardwareData api.HardwareData, err error) {
+func (_d ServerClientPortWithSlog) GetResources(ctx context.Context, endpoint provisioning.Endpoint) (hardwareData api.HardwareData, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("server", server),
+			slog.Any("endpoint", endpoint),
 		)
 	}
 	log.Debug("=> calling GetResources")
@@ -109,16 +109,16 @@ func (_d ServerClientPortWithSlog) GetResources(ctx context.Context, server prov
 			log.Debug("<= method GetResources finished")
 		}
 	}()
-	return _d._base.GetResources(ctx, server)
+	return _d._base.GetResources(ctx, endpoint)
 }
 
 // Ping implements provisioning.ServerClientPort.
-func (_d ServerClientPortWithSlog) Ping(ctx context.Context, target provisioning.ServerOrCluster) (err error) {
+func (_d ServerClientPortWithSlog) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("target", target),
+			slog.Any("endpoint", endpoint),
 		)
 	}
 	log.Debug("=> calling Ping")
@@ -143,7 +143,7 @@ func (_d ServerClientPortWithSlog) Ping(ctx context.Context, target provisioning
 			log.Debug("<= method Ping finished")
 		}
 	}()
-	return _d._base.Ping(ctx, target)
+	return _d._base.Ping(ctx, endpoint)
 }
 
 // UpdateNetworkConfig implements provisioning.ServerClientPort.

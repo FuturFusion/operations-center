@@ -40,7 +40,7 @@ func NewStoragePoolServerClientWithPrometheus(base inventory.StoragePoolServerCl
 }
 
 // GetStoragePoolByName implements inventory.StoragePoolServerClient.
-func (_d StoragePoolServerClientWithPrometheus) GetStoragePoolByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) (storagePool api.StoragePool, err error) {
+func (_d StoragePoolServerClientWithPrometheus) GetStoragePoolByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storagePool api.StoragePool, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,11 +50,11 @@ func (_d StoragePoolServerClientWithPrometheus) GetStoragePoolByName(ctx context
 
 		storagePoolServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetStoragePoolByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetStoragePoolByName(ctx, cluster, storagePoolName)
+	return _d.base.GetStoragePoolByName(ctx, endpoint, storagePoolName)
 }
 
 // GetStoragePools implements inventory.StoragePoolServerClient.
-func (_d StoragePoolServerClientWithPrometheus) GetStoragePools(ctx context.Context, cluster provisioning.Cluster) (storagePools []api.StoragePool, err error) {
+func (_d StoragePoolServerClientWithPrometheus) GetStoragePools(ctx context.Context, endpoint provisioning.Endpoint) (storagePools []api.StoragePool, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -64,5 +64,5 @@ func (_d StoragePoolServerClientWithPrometheus) GetStoragePools(ctx context.Cont
 
 		storagePoolServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetStoragePools", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetStoragePools(ctx, cluster)
+	return _d.base.GetStoragePools(ctx, endpoint)
 }

@@ -287,8 +287,8 @@ func TestProfileService_GetByUUID(t *testing.T) {
 func TestProfileService_ResyncByUUID(t *testing.T) {
 	tests := []struct {
 		name                             string
-		clusterSvcGetByIDCluster         provisioning.Cluster
-		clusterSvcGetByIDErr             error
+		clusterSvcGetEndpoint            provisioning.Endpoint
+		clusterSvcGetEndpointErr         error
 		profileClientGetProfileByName    incusapi.Profile
 		profileClientGetProfileByNameErr error
 		repoGetByUUIDProfile             inventory.Profile
@@ -305,8 +305,12 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			profileClientGetProfileByName: incusapi.Profile{
 				Name:    "profile one",
@@ -322,8 +326,12 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			profileClientGetProfileByNameErr: domain.ErrNotFound,
 
@@ -342,7 +350,7 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDErr: boom.Error,
+			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -353,8 +361,12 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			profileClientGetProfileByNameErr: boom.Error,
 
@@ -367,8 +379,12 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			profileClientGetProfileByNameErr: domain.ErrNotFound,
 			repoDeleteByUUIDErr:              boom.Error,
@@ -382,8 +398,12 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "", // invalid
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			profileClientGetProfileByName: incusapi.Profile{
 				Name:    "profile one",
@@ -402,8 +422,12 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			profileClientGetProfileByName: incusapi.Profile{
 				Name:    "profile one",
@@ -432,14 +456,14 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
 					require.Equal(t, "one", name)
-					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
 				},
 			}
 
 			profileClient := &serverMock.ProfileServerClientMock{
-				GetProfileByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, profileName string) (incusapi.Profile, error) {
+				GetProfileByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, profileName string) (incusapi.Profile, error) {
 					require.Equal(t, tc.repoGetByUUIDProfile.Name, profileName)
 					return tc.profileClientGetProfileByName, tc.profileClientGetProfileByNameErr
 				},
@@ -462,8 +486,8 @@ func TestProfileService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster
 	tests := []struct {
 		name                        string
-		clusterSvcGetByIDCluster    provisioning.Cluster
-		clusterSvcGetByIDErr        error
+		clusterSvcGetEndpoint       provisioning.Endpoint
+		clusterSvcGetEndpointErr    error
 		profileClientGetProfiles    []incusapi.Profile
 		profileClientGetProfilesErr error
 		repoDeleteByClusterNameErr  error
@@ -474,8 +498,12 @@ func TestProfileService_SyncAll(t *testing.T) {
 	}{
 		{
 			name: "success",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			profileClientGetProfiles: []incusapi.Profile{
 				{
@@ -488,8 +516,12 @@ func TestProfileService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "success - with sync filter",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			profileClientGetProfiles: []incusapi.Profile{
 				{
@@ -510,15 +542,19 @@ func TestProfileService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:                 "error - cluster service get by ID",
-			clusterSvcGetByIDErr: boom.Error,
+			name:                     "error - cluster service get by ID",
+			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - profile client get Profiles",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			profileClientGetProfilesErr: boom.Error,
 
@@ -526,8 +562,12 @@ func TestProfileService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - profiles delete by cluster ID",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			profileClientGetProfiles: []incusapi.Profile{
 				{
@@ -541,8 +581,12 @@ func TestProfileService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - validate",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			profileClientGetProfiles: []incusapi.Profile{
 				{
@@ -558,8 +602,12 @@ func TestProfileService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - profile create",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			profileClientGetProfiles: []incusapi.Profile{
 				{
@@ -586,13 +634,13 @@ func TestProfileService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
-					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
 				},
 			}
 
 			profileClient := &serverMock.ProfileServerClientMock{
-				GetProfilesFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Profile, error) {
+				GetProfilesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.Profile, error) {
 					return tc.profileClientGetProfiles, tc.profileClientGetProfilesErr
 				},
 			}

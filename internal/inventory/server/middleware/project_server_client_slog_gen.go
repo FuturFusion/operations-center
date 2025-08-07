@@ -44,12 +44,12 @@ func NewProjectServerClientWithSlog(base inventory.ProjectServerClient, log *slo
 }
 
 // GetProjectByName implements inventory.ProjectServerClient.
-func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, cluster provisioning.Cluster, projectName string) (project api.Project, err error) {
+func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string) (project api.Project, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 			slog.String("projectName", projectName),
 		)
 	}
@@ -76,16 +76,16 @@ func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, clus
 			log.Debug("<= method GetProjectByName finished")
 		}
 	}()
-	return _d._base.GetProjectByName(ctx, cluster, projectName)
+	return _d._base.GetProjectByName(ctx, endpoint, projectName)
 }
 
 // GetProjects implements inventory.ProjectServerClient.
-func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, cluster provisioning.Cluster) (projects []api.Project, err error) {
+func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, endpoint provisioning.Endpoint) (projects []api.Project, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 		)
 	}
 	log.Debug("=> calling GetProjects")
@@ -111,5 +111,5 @@ func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, cluster p
 			log.Debug("<= method GetProjects finished")
 		}
 	}()
-	return _d._base.GetProjects(ctx, cluster)
+	return _d._base.GetProjects(ctx, endpoint)
 }

@@ -44,12 +44,12 @@ func NewNetworkZoneServerClientWithSlog(base inventory.NetworkZoneServerClient, 
 }
 
 // GetNetworkZoneByName implements inventory.NetworkZoneServerClient.
-func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, cluster provisioning.Cluster, networkZoneName string) (networkZone api.NetworkZone, err error) {
+func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, networkZoneName string) (networkZone api.NetworkZone, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 			slog.String("networkZoneName", networkZoneName),
 		)
 	}
@@ -76,16 +76,16 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Conte
 			log.Debug("<= method GetNetworkZoneByName finished")
 		}
 	}()
-	return _d._base.GetNetworkZoneByName(ctx, cluster, networkZoneName)
+	return _d._base.GetNetworkZoneByName(ctx, endpoint, networkZoneName)
 }
 
 // GetNetworkZones implements inventory.NetworkZoneServerClient.
-func (_d NetworkZoneServerClientWithSlog) GetNetworkZones(ctx context.Context, cluster provisioning.Cluster) (networkZones []api.NetworkZone, err error) {
+func (_d NetworkZoneServerClientWithSlog) GetNetworkZones(ctx context.Context, endpoint provisioning.Endpoint) (networkZones []api.NetworkZone, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 		)
 	}
 	log.Debug("=> calling GetNetworkZones")
@@ -111,5 +111,5 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZones(ctx context.Context, c
 			log.Debug("<= method GetNetworkZones finished")
 		}
 	}()
-	return _d._base.GetNetworkZones(ctx, cluster)
+	return _d._base.GetNetworkZones(ctx, endpoint)
 }

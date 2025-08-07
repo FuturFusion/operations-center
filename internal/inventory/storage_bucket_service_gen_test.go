@@ -288,8 +288,8 @@ func TestStorageBucketService_GetByUUID(t *testing.T) {
 func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 	tests := []struct {
 		name                                         string
-		clusterSvcGetByIDCluster                     provisioning.Cluster
-		clusterSvcGetByIDErr                         error
+		clusterSvcGetEndpoint                        provisioning.Endpoint
+		clusterSvcGetEndpointErr                     error
 		storageBucketClientGetStorageBucketByName    incusapi.StorageBucket
 		storageBucketClientGetStorageBucketByNameErr error
 		repoGetByUUIDStorageBucket                   inventory.StorageBucket
@@ -307,8 +307,12 @@ func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 				Name:            "one",
 				StoragePoolName: "storage_pool",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
 				Name:     "storageBucket one",
@@ -326,8 +330,12 @@ func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 				Name:            "one",
 				StoragePoolName: "storage_pool",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storageBucketClientGetStorageBucketByNameErr: domain.ErrNotFound,
 
@@ -347,7 +355,7 @@ func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 				Name:            "one",
 				StoragePoolName: "storage_pool",
 			},
-			clusterSvcGetByIDErr: boom.Error,
+			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -359,8 +367,12 @@ func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 				Name:            "one",
 				StoragePoolName: "storage_pool",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storageBucketClientGetStorageBucketByNameErr: boom.Error,
 
@@ -374,8 +386,12 @@ func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 				Name:            "one",
 				StoragePoolName: "storage_pool",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storageBucketClientGetStorageBucketByNameErr: domain.ErrNotFound,
 			repoDeleteByUUIDErr:                          boom.Error,
@@ -390,8 +406,12 @@ func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 				Name:            "", // invalid
 				StoragePoolName: "storage_pool",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
 				Name:     "storageBucket one",
@@ -412,8 +432,12 @@ func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 				Name:            "one",
 				StoragePoolName: "storage_pool",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
 				Name:     "storageBucket one",
@@ -443,14 +467,14 @@ func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
 					require.Equal(t, "one", name)
-					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
 				},
 			}
 
 			storageBucketClient := &serverMock.StorageBucketServerClientMock{
-				GetStorageBucketByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
+				GetStorageBucketByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
 					require.Equal(t, tc.repoGetByUUIDStorageBucket.Name, storageBucketName)
 					require.Equal(t, "storage_pool", storagePoolName)
 					return tc.storageBucketClientGetStorageBucketByName, tc.storageBucketClientGetStorageBucketByNameErr
@@ -474,8 +498,8 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster
 	tests := []struct {
 		name                                    string
-		clusterSvcGetByIDCluster                provisioning.Cluster
-		clusterSvcGetByIDErr                    error
+		clusterSvcGetEndpoint                   provisioning.Endpoint
+		clusterSvcGetEndpointErr                error
 		storagePoolClientGetStoragePools        []incusapi.StoragePool
 		storagePoolClientGetStoragePoolsErr     error
 		storageBucketClientGetStorageBuckets    []incusapi.StorageBucket
@@ -488,8 +512,12 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 	}{
 		{
 			name: "success",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -508,8 +536,12 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "success - with parent filter",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -536,8 +568,12 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "success - with sync filter",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -565,15 +601,19 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:                 "error - cluster service get by ID",
-			clusterSvcGetByIDErr: boom.Error,
+			name:                     "error - cluster service get by ID",
+			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - storagePool client get StoragePools",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storagePoolClientGetStoragePoolsErr: boom.Error,
 
@@ -581,8 +621,12 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - storageBucket client get StorageBuckets",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -595,8 +639,12 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - storage_buckets delete by cluster ID",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -616,8 +664,12 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - validate",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -639,8 +691,12 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - storageBucket create",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			storagePoolClientGetStoragePools: []incusapi.StoragePool{
 				{
@@ -673,19 +729,19 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
-					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
 				},
 			}
 
 			storagePoolClient := &serverMock.StoragePoolServerClientMock{
-				GetStoragePoolsFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.StoragePool, error) {
+				GetStoragePoolsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.StoragePool, error) {
 					return tc.storagePoolClientGetStoragePools, tc.storagePoolClientGetStoragePoolsErr
 				},
 			}
 
 			storageBucketClient := &serverMock.StorageBucketServerClientMock{
-				GetStorageBucketsFunc: func(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) ([]incusapi.StorageBucket, error) {
+				GetStorageBucketsFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]incusapi.StorageBucket, error) {
 					return tc.storageBucketClientGetStorageBuckets, tc.storageBucketClientGetStorageBucketsErr
 				},
 			}

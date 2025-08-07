@@ -44,12 +44,12 @@ func NewInstanceServerClientWithSlog(base inventory.InstanceServerClient, log *s
 }
 
 // GetInstanceByName implements inventory.InstanceServerClient.
-func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, cluster provisioning.Cluster, instanceName string) (instanceFull api.InstanceFull, err error) {
+func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, instanceName string) (instanceFull api.InstanceFull, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 			slog.String("instanceName", instanceName),
 		)
 	}
@@ -76,16 +76,16 @@ func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, cl
 			log.Debug("<= method GetInstanceByName finished")
 		}
 	}()
-	return _d._base.GetInstanceByName(ctx, cluster, instanceName)
+	return _d._base.GetInstanceByName(ctx, endpoint, instanceName)
 }
 
 // GetInstances implements inventory.InstanceServerClient.
-func (_d InstanceServerClientWithSlog) GetInstances(ctx context.Context, cluster provisioning.Cluster) (instanceFulls []api.InstanceFull, err error) {
+func (_d InstanceServerClientWithSlog) GetInstances(ctx context.Context, endpoint provisioning.Endpoint) (instanceFulls []api.InstanceFull, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 		)
 	}
 	log.Debug("=> calling GetInstances")
@@ -111,5 +111,5 @@ func (_d InstanceServerClientWithSlog) GetInstances(ctx context.Context, cluster
 			log.Debug("<= method GetInstances finished")
 		}
 	}()
-	return _d._base.GetInstances(ctx, cluster)
+	return _d._base.GetInstances(ctx, endpoint)
 }

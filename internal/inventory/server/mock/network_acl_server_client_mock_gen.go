@@ -23,10 +23,10 @@ var _ inventory.NetworkACLServerClient = &NetworkACLServerClientMock{}
 //
 //		// make and configure a mocked inventory.NetworkACLServerClient
 //		mockedNetworkACLServerClient := &NetworkACLServerClientMock{
-//			GetNetworkACLByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkACLName string) (api.NetworkACL, error) {
+//			GetNetworkACLByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkACLName string) (api.NetworkACL, error) {
 //				panic("mock out the GetNetworkACLByName method")
 //			},
-//			GetNetworkACLsFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]api.NetworkACL, error) {
+//			GetNetworkACLsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.NetworkACL, error) {
 //				panic("mock out the GetNetworkACLs method")
 //			},
 //		}
@@ -37,10 +37,10 @@ var _ inventory.NetworkACLServerClient = &NetworkACLServerClientMock{}
 //	}
 type NetworkACLServerClientMock struct {
 	// GetNetworkACLByNameFunc mocks the GetNetworkACLByName method.
-	GetNetworkACLByNameFunc func(ctx context.Context, cluster provisioning.Cluster, networkACLName string) (api.NetworkACL, error)
+	GetNetworkACLByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, networkACLName string) (api.NetworkACL, error)
 
 	// GetNetworkACLsFunc mocks the GetNetworkACLs method.
-	GetNetworkACLsFunc func(ctx context.Context, cluster provisioning.Cluster) ([]api.NetworkACL, error)
+	GetNetworkACLsFunc func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.NetworkACL, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -48,8 +48,8 @@ type NetworkACLServerClientMock struct {
 		GetNetworkACLByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 			// NetworkACLName is the networkACLName argument value.
 			NetworkACLName string
 		}
@@ -57,8 +57,8 @@ type NetworkACLServerClientMock struct {
 		GetNetworkACLs []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 		}
 	}
 	lockGetNetworkACLByName sync.RWMutex
@@ -66,23 +66,23 @@ type NetworkACLServerClientMock struct {
 }
 
 // GetNetworkACLByName calls GetNetworkACLByNameFunc.
-func (mock *NetworkACLServerClientMock) GetNetworkACLByName(ctx context.Context, cluster provisioning.Cluster, networkACLName string) (api.NetworkACL, error) {
+func (mock *NetworkACLServerClientMock) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, networkACLName string) (api.NetworkACL, error) {
 	if mock.GetNetworkACLByNameFunc == nil {
 		panic("NetworkACLServerClientMock.GetNetworkACLByNameFunc: method is nil but NetworkACLServerClient.GetNetworkACLByName was just called")
 	}
 	callInfo := struct {
 		Ctx            context.Context
-		Cluster        provisioning.Cluster
+		Endpoint       provisioning.Endpoint
 		NetworkACLName string
 	}{
 		Ctx:            ctx,
-		Cluster:        cluster,
+		Endpoint:       endpoint,
 		NetworkACLName: networkACLName,
 	}
 	mock.lockGetNetworkACLByName.Lock()
 	mock.calls.GetNetworkACLByName = append(mock.calls.GetNetworkACLByName, callInfo)
 	mock.lockGetNetworkACLByName.Unlock()
-	return mock.GetNetworkACLByNameFunc(ctx, cluster, networkACLName)
+	return mock.GetNetworkACLByNameFunc(ctx, endpoint, networkACLName)
 }
 
 // GetNetworkACLByNameCalls gets all the calls that were made to GetNetworkACLByName.
@@ -91,12 +91,12 @@ func (mock *NetworkACLServerClientMock) GetNetworkACLByName(ctx context.Context,
 //	len(mockedNetworkACLServerClient.GetNetworkACLByNameCalls())
 func (mock *NetworkACLServerClientMock) GetNetworkACLByNameCalls() []struct {
 	Ctx            context.Context
-	Cluster        provisioning.Cluster
+	Endpoint       provisioning.Endpoint
 	NetworkACLName string
 } {
 	var calls []struct {
 		Ctx            context.Context
-		Cluster        provisioning.Cluster
+		Endpoint       provisioning.Endpoint
 		NetworkACLName string
 	}
 	mock.lockGetNetworkACLByName.RLock()
@@ -106,21 +106,21 @@ func (mock *NetworkACLServerClientMock) GetNetworkACLByNameCalls() []struct {
 }
 
 // GetNetworkACLs calls GetNetworkACLsFunc.
-func (mock *NetworkACLServerClientMock) GetNetworkACLs(ctx context.Context, cluster provisioning.Cluster) ([]api.NetworkACL, error) {
+func (mock *NetworkACLServerClientMock) GetNetworkACLs(ctx context.Context, endpoint provisioning.Endpoint) ([]api.NetworkACL, error) {
 	if mock.GetNetworkACLsFunc == nil {
 		panic("NetworkACLServerClientMock.GetNetworkACLsFunc: method is nil but NetworkACLServerClient.GetNetworkACLs was just called")
 	}
 	callInfo := struct {
-		Ctx     context.Context
-		Cluster provisioning.Cluster
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
 	}{
-		Ctx:     ctx,
-		Cluster: cluster,
+		Ctx:      ctx,
+		Endpoint: endpoint,
 	}
 	mock.lockGetNetworkACLs.Lock()
 	mock.calls.GetNetworkACLs = append(mock.calls.GetNetworkACLs, callInfo)
 	mock.lockGetNetworkACLs.Unlock()
-	return mock.GetNetworkACLsFunc(ctx, cluster)
+	return mock.GetNetworkACLsFunc(ctx, endpoint)
 }
 
 // GetNetworkACLsCalls gets all the calls that were made to GetNetworkACLs.
@@ -128,12 +128,12 @@ func (mock *NetworkACLServerClientMock) GetNetworkACLs(ctx context.Context, clus
 //
 //	len(mockedNetworkACLServerClient.GetNetworkACLsCalls())
 func (mock *NetworkACLServerClientMock) GetNetworkACLsCalls() []struct {
-	Ctx     context.Context
-	Cluster provisioning.Cluster
+	Ctx      context.Context
+	Endpoint provisioning.Endpoint
 } {
 	var calls []struct {
-		Ctx     context.Context
-		Cluster provisioning.Cluster
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
 	}
 	mock.lockGetNetworkACLs.RLock()
 	calls = mock.calls.GetNetworkACLs

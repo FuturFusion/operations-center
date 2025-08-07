@@ -286,8 +286,8 @@ func TestProjectService_GetByUUID(t *testing.T) {
 func TestProjectService_ResyncByUUID(t *testing.T) {
 	tests := []struct {
 		name                             string
-		clusterSvcGetByIDCluster         provisioning.Cluster
-		clusterSvcGetByIDErr             error
+		clusterSvcGetEndpoint            provisioning.Endpoint
+		clusterSvcGetEndpointErr         error
 		projectClientGetProjectByName    incusapi.Project
 		projectClientGetProjectByNameErr error
 		repoGetByUUIDProject             inventory.Project
@@ -304,8 +304,12 @@ func TestProjectService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			projectClientGetProjectByName: incusapi.Project{
 				Name: "project one",
@@ -320,8 +324,12 @@ func TestProjectService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			projectClientGetProjectByNameErr: domain.ErrNotFound,
 
@@ -340,7 +348,7 @@ func TestProjectService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDErr: boom.Error,
+			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -351,8 +359,12 @@ func TestProjectService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			projectClientGetProjectByNameErr: boom.Error,
 
@@ -365,8 +377,12 @@ func TestProjectService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			projectClientGetProjectByNameErr: domain.ErrNotFound,
 			repoDeleteByUUIDErr:              boom.Error,
@@ -380,8 +396,12 @@ func TestProjectService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "", // invalid
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			projectClientGetProjectByName: incusapi.Project{
 				Name: "project one",
@@ -399,8 +419,12 @@ func TestProjectService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			projectClientGetProjectByName: incusapi.Project{
 				Name: "project one",
@@ -428,14 +452,14 @@ func TestProjectService_ResyncByUUID(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
 					require.Equal(t, "one", name)
-					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
 				},
 			}
 
 			projectClient := &serverMock.ProjectServerClientMock{
-				GetProjectByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, projectName string) (incusapi.Project, error) {
+				GetProjectByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string) (incusapi.Project, error) {
 					require.Equal(t, tc.repoGetByUUIDProject.Name, projectName)
 					return tc.projectClientGetProjectByName, tc.projectClientGetProjectByNameErr
 				},
@@ -458,8 +482,8 @@ func TestProjectService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster
 	tests := []struct {
 		name                        string
-		clusterSvcGetByIDCluster    provisioning.Cluster
-		clusterSvcGetByIDErr        error
+		clusterSvcGetEndpoint       provisioning.Endpoint
+		clusterSvcGetEndpointErr    error
 		projectClientGetProjects    []incusapi.Project
 		projectClientGetProjectsErr error
 		repoDeleteByClusterNameErr  error
@@ -470,8 +494,12 @@ func TestProjectService_SyncAll(t *testing.T) {
 	}{
 		{
 			name: "success",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			projectClientGetProjects: []incusapi.Project{
 				{
@@ -483,8 +511,12 @@ func TestProjectService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "success - with sync filter",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			projectClientGetProjects: []incusapi.Project{
 				{
@@ -503,15 +535,19 @@ func TestProjectService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:                 "error - cluster service get by ID",
-			clusterSvcGetByIDErr: boom.Error,
+			name:                     "error - cluster service get by ID",
+			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - project client get Projects",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			projectClientGetProjectsErr: boom.Error,
 
@@ -519,8 +555,12 @@ func TestProjectService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - projects delete by cluster ID",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			projectClientGetProjects: []incusapi.Project{
 				{
@@ -533,8 +573,12 @@ func TestProjectService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - validate",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			projectClientGetProjects: []incusapi.Project{
 				{
@@ -549,8 +593,12 @@ func TestProjectService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - project create",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			projectClientGetProjects: []incusapi.Project{
 				{
@@ -576,13 +624,13 @@ func TestProjectService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
-					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
 				},
 			}
 
 			projectClient := &serverMock.ProjectServerClientMock{
-				GetProjectsFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Project, error) {
+				GetProjectsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.Project, error) {
 					return tc.projectClientGetProjects, tc.projectClientGetProjectsErr
 				},
 			}

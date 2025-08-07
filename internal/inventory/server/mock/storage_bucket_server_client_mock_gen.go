@@ -23,10 +23,10 @@ var _ inventory.StorageBucketServerClient = &StorageBucketServerClientMock{}
 //
 //		// make and configure a mocked inventory.StorageBucketServerClient
 //		mockedStorageBucketServerClient := &StorageBucketServerClientMock{
-//			GetStorageBucketByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageBucketName string) (api.StorageBucket, error) {
+//			GetStorageBucketByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageBucketName string) (api.StorageBucket, error) {
 //				panic("mock out the GetStorageBucketByName method")
 //			},
-//			GetStorageBucketsFunc: func(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) ([]api.StorageBucket, error) {
+//			GetStorageBucketsFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageBucket, error) {
 //				panic("mock out the GetStorageBuckets method")
 //			},
 //		}
@@ -37,10 +37,10 @@ var _ inventory.StorageBucketServerClient = &StorageBucketServerClientMock{}
 //	}
 type StorageBucketServerClientMock struct {
 	// GetStorageBucketByNameFunc mocks the GetStorageBucketByName method.
-	GetStorageBucketByNameFunc func(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageBucketName string) (api.StorageBucket, error)
+	GetStorageBucketByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageBucketName string) (api.StorageBucket, error)
 
 	// GetStorageBucketsFunc mocks the GetStorageBuckets method.
-	GetStorageBucketsFunc func(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) ([]api.StorageBucket, error)
+	GetStorageBucketsFunc func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageBucket, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -48,8 +48,8 @@ type StorageBucketServerClientMock struct {
 		GetStorageBucketByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 			// StoragePoolName is the storagePoolName argument value.
 			StoragePoolName string
 			// StorageBucketName is the storageBucketName argument value.
@@ -59,8 +59,8 @@ type StorageBucketServerClientMock struct {
 		GetStorageBuckets []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 			// StoragePoolName is the storagePoolName argument value.
 			StoragePoolName string
 		}
@@ -70,25 +70,25 @@ type StorageBucketServerClientMock struct {
 }
 
 // GetStorageBucketByName calls GetStorageBucketByNameFunc.
-func (mock *StorageBucketServerClientMock) GetStorageBucketByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string, storageBucketName string) (api.StorageBucket, error) {
+func (mock *StorageBucketServerClientMock) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageBucketName string) (api.StorageBucket, error) {
 	if mock.GetStorageBucketByNameFunc == nil {
 		panic("StorageBucketServerClientMock.GetStorageBucketByNameFunc: method is nil but StorageBucketServerClient.GetStorageBucketByName was just called")
 	}
 	callInfo := struct {
 		Ctx               context.Context
-		Cluster           provisioning.Cluster
+		Endpoint          provisioning.Endpoint
 		StoragePoolName   string
 		StorageBucketName string
 	}{
 		Ctx:               ctx,
-		Cluster:           cluster,
+		Endpoint:          endpoint,
 		StoragePoolName:   storagePoolName,
 		StorageBucketName: storageBucketName,
 	}
 	mock.lockGetStorageBucketByName.Lock()
 	mock.calls.GetStorageBucketByName = append(mock.calls.GetStorageBucketByName, callInfo)
 	mock.lockGetStorageBucketByName.Unlock()
-	return mock.GetStorageBucketByNameFunc(ctx, cluster, storagePoolName, storageBucketName)
+	return mock.GetStorageBucketByNameFunc(ctx, endpoint, storagePoolName, storageBucketName)
 }
 
 // GetStorageBucketByNameCalls gets all the calls that were made to GetStorageBucketByName.
@@ -97,13 +97,13 @@ func (mock *StorageBucketServerClientMock) GetStorageBucketByName(ctx context.Co
 //	len(mockedStorageBucketServerClient.GetStorageBucketByNameCalls())
 func (mock *StorageBucketServerClientMock) GetStorageBucketByNameCalls() []struct {
 	Ctx               context.Context
-	Cluster           provisioning.Cluster
+	Endpoint          provisioning.Endpoint
 	StoragePoolName   string
 	StorageBucketName string
 } {
 	var calls []struct {
 		Ctx               context.Context
-		Cluster           provisioning.Cluster
+		Endpoint          provisioning.Endpoint
 		StoragePoolName   string
 		StorageBucketName string
 	}
@@ -114,23 +114,23 @@ func (mock *StorageBucketServerClientMock) GetStorageBucketByNameCalls() []struc
 }
 
 // GetStorageBuckets calls GetStorageBucketsFunc.
-func (mock *StorageBucketServerClientMock) GetStorageBuckets(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) ([]api.StorageBucket, error) {
+func (mock *StorageBucketServerClientMock) GetStorageBuckets(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageBucket, error) {
 	if mock.GetStorageBucketsFunc == nil {
 		panic("StorageBucketServerClientMock.GetStorageBucketsFunc: method is nil but StorageBucketServerClient.GetStorageBuckets was just called")
 	}
 	callInfo := struct {
 		Ctx             context.Context
-		Cluster         provisioning.Cluster
+		Endpoint        provisioning.Endpoint
 		StoragePoolName string
 	}{
 		Ctx:             ctx,
-		Cluster:         cluster,
+		Endpoint:        endpoint,
 		StoragePoolName: storagePoolName,
 	}
 	mock.lockGetStorageBuckets.Lock()
 	mock.calls.GetStorageBuckets = append(mock.calls.GetStorageBuckets, callInfo)
 	mock.lockGetStorageBuckets.Unlock()
-	return mock.GetStorageBucketsFunc(ctx, cluster, storagePoolName)
+	return mock.GetStorageBucketsFunc(ctx, endpoint, storagePoolName)
 }
 
 // GetStorageBucketsCalls gets all the calls that were made to GetStorageBuckets.
@@ -139,12 +139,12 @@ func (mock *StorageBucketServerClientMock) GetStorageBuckets(ctx context.Context
 //	len(mockedStorageBucketServerClient.GetStorageBucketsCalls())
 func (mock *StorageBucketServerClientMock) GetStorageBucketsCalls() []struct {
 	Ctx             context.Context
-	Cluster         provisioning.Cluster
+	Endpoint        provisioning.Endpoint
 	StoragePoolName string
 } {
 	var calls []struct {
 		Ctx             context.Context
-		Cluster         provisioning.Cluster
+		Endpoint        provisioning.Endpoint
 		StoragePoolName string
 	}
 	mock.lockGetStorageBuckets.RLock()

@@ -287,8 +287,8 @@ func TestNetworkService_GetByUUID(t *testing.T) {
 func TestNetworkService_ResyncByUUID(t *testing.T) {
 	tests := []struct {
 		name                             string
-		clusterSvcGetByIDCluster         provisioning.Cluster
-		clusterSvcGetByIDErr             error
+		clusterSvcGetEndpoint            provisioning.Endpoint
+		clusterSvcGetEndpointErr         error
 		networkClientGetNetworkByName    incusapi.Network
 		networkClientGetNetworkByNameErr error
 		repoGetByUUIDNetwork             inventory.Network
@@ -305,8 +305,12 @@ func TestNetworkService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworkByName: incusapi.Network{
 				Name:    "network one",
@@ -322,8 +326,12 @@ func TestNetworkService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworkByNameErr: domain.ErrNotFound,
 
@@ -342,7 +350,7 @@ func TestNetworkService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDErr: boom.Error,
+			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -353,8 +361,12 @@ func TestNetworkService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworkByNameErr: boom.Error,
 
@@ -367,8 +379,12 @@ func TestNetworkService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworkByNameErr: domain.ErrNotFound,
 			repoDeleteByUUIDErr:              boom.Error,
@@ -382,8 +398,12 @@ func TestNetworkService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "", // invalid
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworkByName: incusapi.Network{
 				Name:    "network one",
@@ -402,8 +422,12 @@ func TestNetworkService_ResyncByUUID(t *testing.T) {
 				Cluster: "one",
 				Name:    "one",
 			},
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworkByName: incusapi.Network{
 				Name:    "network one",
@@ -432,14 +456,14 @@ func TestNetworkService_ResyncByUUID(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
 					require.Equal(t, "one", name)
-					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
 				},
 			}
 
 			networkClient := &serverMock.NetworkServerClientMock{
-				GetNetworkByNameFunc: func(ctx context.Context, cluster provisioning.Cluster, networkName string) (incusapi.Network, error) {
+				GetNetworkByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (incusapi.Network, error) {
 					require.Equal(t, tc.repoGetByUUIDNetwork.Name, networkName)
 					return tc.networkClientGetNetworkByName, tc.networkClientGetNetworkByNameErr
 				},
@@ -462,8 +486,8 @@ func TestNetworkService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster
 	tests := []struct {
 		name                        string
-		clusterSvcGetByIDCluster    provisioning.Cluster
-		clusterSvcGetByIDErr        error
+		clusterSvcGetEndpoint       provisioning.Endpoint
+		clusterSvcGetEndpointErr    error
 		networkClientGetNetworks    []incusapi.Network
 		networkClientGetNetworksErr error
 		repoDeleteByClusterNameErr  error
@@ -474,8 +498,12 @@ func TestNetworkService_SyncAll(t *testing.T) {
 	}{
 		{
 			name: "success",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -488,8 +516,12 @@ func TestNetworkService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "success - with sync filter",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -510,15 +542,19 @@ func TestNetworkService_SyncAll(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:                 "error - cluster service get by ID",
-			clusterSvcGetByIDErr: boom.Error,
+			name:                     "error - cluster service get by ID",
+			clusterSvcGetEndpointErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - network client get Networks",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworksErr: boom.Error,
 
@@ -526,8 +562,12 @@ func TestNetworkService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - networks delete by cluster ID",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -541,8 +581,12 @@ func TestNetworkService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - validate",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -558,8 +602,12 @@ func TestNetworkService_SyncAll(t *testing.T) {
 		},
 		{
 			name: "error - network create",
-			clusterSvcGetByIDCluster: provisioning.Cluster{
-				Name: "cluster-one",
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:      "https://server-one/",
+					Certificate:        "cert",
+					ClusterCertificate: ptr.To("cluster-cert"),
+				},
 			},
 			networkClientGetNetworks: []incusapi.Network{
 				{
@@ -586,13 +634,13 @@ func TestNetworkService_SyncAll(t *testing.T) {
 			}
 
 			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
-					return &tc.clusterSvcGetByIDCluster, tc.clusterSvcGetByIDErr
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
 				},
 			}
 
 			networkClient := &serverMock.NetworkServerClientMock{
-				GetNetworksFunc: func(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.Network, error) {
+				GetNetworksFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.Network, error) {
 					return tc.networkClientGetNetworks, tc.networkClientGetNetworksErr
 				},
 			}

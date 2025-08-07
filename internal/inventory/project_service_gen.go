@@ -151,12 +151,12 @@ func (s projectService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		cluster, err := s.clusterSvc.GetByName(ctx, project.Cluster)
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, project.Cluster)
 		if err != nil {
 			return err
 		}
 
-		retrievedProject, err := s.projectClient.GetProjectByName(ctx, *cluster, project.Name)
+		retrievedProject, err := s.projectClient.GetProjectByName(ctx, endpoint, project.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, project.UUID)
 			if err != nil {
@@ -194,12 +194,12 @@ func (s projectService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s projectService) SyncCluster(ctx context.Context, name string) error {
-	cluster, err := s.clusterSvc.GetByName(ctx, name)
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
 	if err != nil {
 		return err
 	}
 
-	retrievedProjects, err := s.projectClient.GetProjects(ctx, *cluster)
+	retrievedProjects, err := s.projectClient.GetProjects(ctx, endpoint)
 	if err != nil {
 		return err
 	}

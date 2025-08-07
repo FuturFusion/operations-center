@@ -30,6 +30,6 @@ type StoragePoolRepo interface {
 }
 
 type StoragePoolServerClient interface {
-	GetStoragePools(ctx context.Context, cluster provisioning.Cluster) ([]incusapi.StoragePool, error)
-	GetStoragePoolByName(ctx context.Context, cluster provisioning.Cluster, storagePoolName string) (incusapi.StoragePool, error)
+	GetStoragePools(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.StoragePool, error)
+	GetStoragePoolByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (incusapi.StoragePool, error)
 }
