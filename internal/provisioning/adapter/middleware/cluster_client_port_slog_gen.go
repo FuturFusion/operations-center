@@ -322,14 +322,14 @@ func (_d ClusterClientPortWithSlog) InitializeDefaultStorage(ctx context.Context
 }
 
 // JoinCluster implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) (err error) {
+func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
 			slog.String("joinToken", joinToken),
-			slog.Any("cluster", cluster),
+			slog.Any("endpoint", endpoint),
 		)
 	}
 	log.Debug("=> calling JoinCluster")
@@ -354,7 +354,7 @@ func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server prov
 			log.Debug("<= method JoinCluster finished")
 		}
 	}()
-	return _d._base.JoinCluster(ctx, server, joinToken, cluster)
+	return _d._base.JoinCluster(ctx, server, joinToken, endpoint)
 }
 
 // Ping implements provisioning.ClusterClientPort.

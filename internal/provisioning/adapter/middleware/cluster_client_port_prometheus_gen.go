@@ -151,7 +151,7 @@ func (_d ClusterClientPortWithPrometheus) InitializeDefaultStorage(ctx context.C
 }
 
 // JoinCluster implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) (err error) {
+func (_d ClusterClientPortWithPrometheus) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -161,7 +161,7 @@ func (_d ClusterClientPortWithPrometheus) JoinCluster(ctx context.Context, serve
 
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "JoinCluster", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.JoinCluster(ctx, server, joinToken, cluster)
+	return _d.base.JoinCluster(ctx, server, joinToken, endpoint)
 }
 
 // Ping implements provisioning.ClusterClientPort.

@@ -65,7 +65,7 @@ server B
 		EnableClusterFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
 			return "certificate", nil
 		},
-		JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) error {
+		JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) error {
 			return nil
 		},
 		CreateProjectFunc: func(ctx context.Context, endpoint provisioning.Endpoint, name string, description string) error {

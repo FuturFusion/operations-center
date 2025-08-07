@@ -46,7 +46,7 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			InitializeDefaultStorageFunc: func(ctx context.Context, servers []provisioning.Server) error {
 //				panic("mock out the InitializeDefaultStorage method")
 //			},
-//			JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) error {
+//			JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) error {
 //				panic("mock out the JoinCluster method")
 //			},
 //			PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
@@ -90,7 +90,7 @@ type ClusterClientPortMock struct {
 	InitializeDefaultStorageFunc func(ctx context.Context, servers []provisioning.Server) error
 
 	// JoinClusterFunc mocks the JoinCluster method.
-	JoinClusterFunc func(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) error
+	JoinClusterFunc func(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) error
 
 	// PingFunc mocks the Ping method.
 	PingFunc func(ctx context.Context, endpoint provisioning.Endpoint) error
@@ -173,8 +173,8 @@ type ClusterClientPortMock struct {
 			Server provisioning.Server
 			// JoinToken is the joinToken argument value.
 			JoinToken string
-			// Cluster is the cluster argument value.
-			Cluster provisioning.Cluster
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
 		}
 		// Ping holds details about calls to the Ping method.
 		Ping []struct {
@@ -519,7 +519,7 @@ func (mock *ClusterClientPortMock) InitializeDefaultStorageCalls() []struct {
 }
 
 // JoinCluster calls JoinClusterFunc.
-func (mock *ClusterClientPortMock) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, cluster provisioning.Cluster) error {
+func (mock *ClusterClientPortMock) JoinCluster(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) error {
 	if mock.JoinClusterFunc == nil {
 		panic("ClusterClientPortMock.JoinClusterFunc: method is nil but ClusterClientPort.JoinCluster was just called")
 	}
@@ -527,17 +527,17 @@ func (mock *ClusterClientPortMock) JoinCluster(ctx context.Context, server provi
 		Ctx       context.Context
 		Server    provisioning.Server
 		JoinToken string
-		Cluster   provisioning.Cluster
+		Endpoint  provisioning.Endpoint
 	}{
 		Ctx:       ctx,
 		Server:    server,
 		JoinToken: joinToken,
-		Cluster:   cluster,
+		Endpoint:  endpoint,
 	}
 	mock.lockJoinCluster.Lock()
 	mock.calls.JoinCluster = append(mock.calls.JoinCluster, callInfo)
 	mock.lockJoinCluster.Unlock()
-	return mock.JoinClusterFunc(ctx, server, joinToken, cluster)
+	return mock.JoinClusterFunc(ctx, server, joinToken, endpoint)
 }
 
 // JoinClusterCalls gets all the calls that were made to JoinCluster.
@@ -548,13 +548,13 @@ func (mock *ClusterClientPortMock) JoinClusterCalls() []struct {
 	Ctx       context.Context
 	Server    provisioning.Server
 	JoinToken string
-	Cluster   provisioning.Cluster
+	Endpoint  provisioning.Endpoint
 } {
 	var calls []struct {
 		Ctx       context.Context
 		Server    provisioning.Server
 		JoinToken string
-		Cluster   provisioning.Cluster
+		Endpoint  provisioning.Endpoint
 	}
 	mock.lockJoinCluster.RLock()
 	calls = mock.calls.JoinCluster
