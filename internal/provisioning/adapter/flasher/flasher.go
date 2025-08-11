@@ -49,6 +49,10 @@ func (f *Flasher) GenerateSeededISO(ctx context.Context, id uuid.UUID, seedConfi
 	serverCertificate := f.serverCertificate
 	f.mu.Unlock()
 
+	if serverURL == "" {
+		return nil, errors.New(`Unabled to generate seeded ISO, server URL is not provided. Set "address" in "config.yml".`)
+	}
+
 	applications := make([]seed.Application, 0, len(seedConfig.Applications))
 	for _, application := range seedConfig.Applications {
 		applications = append(applications, seed.Application{Name: application})
