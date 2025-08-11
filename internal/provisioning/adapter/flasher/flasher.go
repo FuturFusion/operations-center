@@ -53,17 +53,7 @@ func (f *Flasher) GenerateSeededISO(ctx context.Context, id uuid.UUID, seedConfi
 		return nil, errors.New(`Unabled to generate seeded ISO, server URL is not provided. Set "address" in "config.yml".`)
 	}
 
-	applications := make([]seed.Application, 0, len(seedConfig.Applications))
-	for _, application := range seedConfig.Applications {
-		applications = append(applications, seed.Application{Name: application})
-	}
-
 	// Create seed tarball.
-	var target *seed.InstallTarget
-	if seedConfig.InstallTarget.ID != "" {
-		target = &seedConfig.InstallTarget
-	}
-
 	seedProvider := &seed.Provider{
 		SystemProviderConfig: incusosapi.SystemProviderConfig{
 			Name: "operations-center",
@@ -80,24 +70,13 @@ func (f *Flasher) GenerateSeededISO(ctx context.Context, id uuid.UUID, seedConfi
 	}
 
 	tarball, err := createSeedTarball(
-		&seed.Applications{
-			Applications: applications,
-			Version:      "1",
-		},
+		seedConfig.Applications,
 		&seed.Incus{
 			ApplyDefaults: false,
 			Version:       "1",
 		},
-		&seed.Install{
-			ForceInstall: true,
-			ForceReboot:  false,
-			Target:       target,
-			Version:      "1",
-		},
-		&seed.Network{
-			SystemNetworkConfig: seedConfig.Network,
-			Version:             "1",
-		},
+		seedConfig.Install,
+		seedConfig.Network,
 		seedProvider,
 	)
 	if err != nil {
@@ -112,7 +91,7 @@ func (f *Flasher) GenerateSeededISO(ctx context.Context, id uuid.UUID, seedConfi
 	return newInjectReader(newParentCloser(gzipReader, file), seedTarballStartPosition, tarball), nil
 }
 
-func createSeedTarball(applicationSeed *seed.Applications, incusSeed *seed.Incus, installSeed *seed.Install, networkSeed *seed.Network, providerSeed *seed.Provider) (_ []byte, err error) {
+func createSeedTarball(applicationSeed map[string]any, incusSeed *seed.Incus, installSeed map[string]any, networkSeed map[string]any, providerSeed *seed.Provider) (_ []byte, err error) {
 	seedData := []struct {
 		filename string
 		data     any
