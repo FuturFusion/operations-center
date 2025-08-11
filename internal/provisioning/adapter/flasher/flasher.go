@@ -179,7 +179,7 @@ func (f *Flasher) UpdateCertificate(cert tls.Certificate) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	if isSelfSigned(cert) {
+	if !isSelfSigned(cert) {
 		f.serverCertificate = ""
 		return
 	}
