@@ -480,7 +480,7 @@ func TestTokenService_Consume(t *testing.T) {
 	}
 }
 
-func TestTokenService_GetPreSeedISO(t *testing.T) {
+func TestTokenService_GetPreSeedImage(t *testing.T) {
 	updateUUID := uuid.MustParse(`00219aa8-ae44-4306-927e-728a2f780836`)
 
 	tmpDir := t.TempDir()
@@ -503,7 +503,7 @@ func TestTokenService_GetPreSeedISO(t *testing.T) {
 		updateSvcGetUpdateAllFilesErr         error
 		updateSvcGetFileByFilenameReadCloser  io.ReadCloser
 		updateSvcGetFileByFilenameErr         error
-		flasherAdapterGenerateSeededISOErr    error
+		flasherAdapterGenerateSeededImageErr  error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -577,7 +577,7 @@ func TestTokenService_GetPreSeedISO(t *testing.T) {
 			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{},
 
 			assertErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorContains(tt, err, "Failed to find ISO file for latest update")
+				require.ErrorContains(tt, err, "Failed to find image file for latest update")
 			},
 		},
 		{
@@ -621,7 +621,7 @@ func TestTokenService_GetPreSeedISO(t *testing.T) {
 			},
 		},
 		{
-			name:     "error - flasher.GenerateSeededISO",
+			name:     "error - flasher.GenerateSeededImage",
 			tokenArg: uuidA,
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
@@ -640,7 +640,7 @@ func TestTokenService_GetPreSeedISO(t *testing.T) {
 
 				return f
 			}(),
-			flasherAdapterGenerateSeededISOErr: boom.Error,
+			flasherAdapterGenerateSeededImageErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -668,15 +668,17 @@ func TestTokenService_GetPreSeedISO(t *testing.T) {
 			}
 
 			flasherAdapter := &adapterMock.FlasherPortMock{
-				GenerateSeededISOFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (io.ReadCloser, error) {
-					return rc, tc.flasherAdapterGenerateSeededISOErr
+				GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (io.ReadCloser, error) {
+					return rc, tc.flasherAdapterGenerateSeededImageErr
 				},
 			}
 
 			tokenSvc := provisioning.NewTokenService(repo, updateSvc, flasherAdapter)
 
 			// Run test
-			rc, err := tokenSvc.GetPreSeedISO(context.Background(), tc.tokenArg, provisioning.TokenSeedConfig{})
+			rc, err := tokenSvc.GetPreSeedImage(context.Background(), tc.tokenArg, provisioning.TokenSeedConfig{
+				ImageType: api.ImageTypeISO,
+			})
 
 			// Assert
 			tc.assertErr(t, err)

@@ -123,8 +123,8 @@ func (_d TokenServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID
 	return _d.base.GetByUUID(ctx, id)
 }
 
-// GetPreSeedISO implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (readCloser io.ReadCloser, err error) {
+// GetPreSeedImage implements provisioning.TokenService.
+func (_d TokenServiceWithPrometheus) GetPreSeedImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (readCloser io.ReadCloser, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -132,9 +132,9 @@ func (_d TokenServiceWithPrometheus) GetPreSeedISO(ctx context.Context, id uuid.
 			result = "error"
 		}
 
-		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetPreSeedISO", result).Observe(time.Since(_since).Seconds())
+		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetPreSeedImage", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetPreSeedISO(ctx, id, seedConfig)
+	return _d.base.GetPreSeedImage(ctx, id, seedConfig)
 }
 
 // Update implements provisioning.TokenService.

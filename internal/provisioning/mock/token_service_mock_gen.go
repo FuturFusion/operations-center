@@ -41,8 +41,8 @@ var _ provisioning.TokenService = &TokenServiceMock{}
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
 //				panic("mock out the GetByUUID method")
 //			},
-//			GetPreSeedISOFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (io.ReadCloser, error) {
-//				panic("mock out the GetPreSeedISO method")
+//			GetPreSeedImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (io.ReadCloser, error) {
+//				panic("mock out the GetPreSeedImage method")
 //			},
 //			UpdateFunc: func(ctx context.Context, token provisioning.Token) error {
 //				panic("mock out the Update method")
@@ -72,8 +72,8 @@ type TokenServiceMock struct {
 	// GetByUUIDFunc mocks the GetByUUID method.
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error)
 
-	// GetPreSeedISOFunc mocks the GetPreSeedISO method.
-	GetPreSeedISOFunc func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (io.ReadCloser, error)
+	// GetPreSeedImageFunc mocks the GetPreSeedImage method.
+	GetPreSeedImageFunc func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (io.ReadCloser, error)
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, token provisioning.Token) error
@@ -118,8 +118,8 @@ type TokenServiceMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
-		// GetPreSeedISO holds details about calls to the GetPreSeedISO method.
-		GetPreSeedISO []struct {
+		// GetPreSeedImage holds details about calls to the GetPreSeedImage method.
+		GetPreSeedImage []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
@@ -135,14 +135,14 @@ type TokenServiceMock struct {
 			Token provisioning.Token
 		}
 	}
-	lockConsume       sync.RWMutex
-	lockCreate        sync.RWMutex
-	lockDeleteByUUID  sync.RWMutex
-	lockGetAll        sync.RWMutex
-	lockGetAllUUIDs   sync.RWMutex
-	lockGetByUUID     sync.RWMutex
-	lockGetPreSeedISO sync.RWMutex
-	lockUpdate        sync.RWMutex
+	lockConsume         sync.RWMutex
+	lockCreate          sync.RWMutex
+	lockDeleteByUUID    sync.RWMutex
+	lockGetAll          sync.RWMutex
+	lockGetAllUUIDs     sync.RWMutex
+	lockGetByUUID       sync.RWMutex
+	lockGetPreSeedImage sync.RWMutex
+	lockUpdate          sync.RWMutex
 }
 
 // Consume calls ConsumeFunc.
@@ -353,10 +353,10 @@ func (mock *TokenServiceMock) GetByUUIDCalls() []struct {
 	return calls
 }
 
-// GetPreSeedISO calls GetPreSeedISOFunc.
-func (mock *TokenServiceMock) GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (io.ReadCloser, error) {
-	if mock.GetPreSeedISOFunc == nil {
-		panic("TokenServiceMock.GetPreSeedISOFunc: method is nil but TokenService.GetPreSeedISO was just called")
+// GetPreSeedImage calls GetPreSeedImageFunc.
+func (mock *TokenServiceMock) GetPreSeedImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (io.ReadCloser, error) {
+	if mock.GetPreSeedImageFunc == nil {
+		panic("TokenServiceMock.GetPreSeedImageFunc: method is nil but TokenService.GetPreSeedImage was just called")
 	}
 	callInfo := struct {
 		Ctx        context.Context
@@ -367,17 +367,17 @@ func (mock *TokenServiceMock) GetPreSeedISO(ctx context.Context, id uuid.UUID, s
 		ID:         id,
 		SeedConfig: seedConfig,
 	}
-	mock.lockGetPreSeedISO.Lock()
-	mock.calls.GetPreSeedISO = append(mock.calls.GetPreSeedISO, callInfo)
-	mock.lockGetPreSeedISO.Unlock()
-	return mock.GetPreSeedISOFunc(ctx, id, seedConfig)
+	mock.lockGetPreSeedImage.Lock()
+	mock.calls.GetPreSeedImage = append(mock.calls.GetPreSeedImage, callInfo)
+	mock.lockGetPreSeedImage.Unlock()
+	return mock.GetPreSeedImageFunc(ctx, id, seedConfig)
 }
 
-// GetPreSeedISOCalls gets all the calls that were made to GetPreSeedISO.
+// GetPreSeedImageCalls gets all the calls that were made to GetPreSeedImage.
 // Check the length with:
 //
-//	len(mockedTokenService.GetPreSeedISOCalls())
-func (mock *TokenServiceMock) GetPreSeedISOCalls() []struct {
+//	len(mockedTokenService.GetPreSeedImageCalls())
+func (mock *TokenServiceMock) GetPreSeedImageCalls() []struct {
 	Ctx        context.Context
 	ID         uuid.UUID
 	SeedConfig provisioning.TokenSeedConfig
@@ -387,9 +387,9 @@ func (mock *TokenServiceMock) GetPreSeedISOCalls() []struct {
 		ID         uuid.UUID
 		SeedConfig provisioning.TokenSeedConfig
 	}
-	mock.lockGetPreSeedISO.RLock()
-	calls = mock.calls.GetPreSeedISO
-	mock.lockGetPreSeedISO.RUnlock()
+	mock.lockGetPreSeedImage.RLock()
+	calls = mock.calls.GetPreSeedImage
+	mock.lockGetPreSeedImage.RUnlock()
 	return calls
 }
 

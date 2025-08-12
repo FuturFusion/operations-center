@@ -5,10 +5,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusosapi "github.com/lxc/incus-os/incus-osd/api"
-	incusosapiseed "github.com/lxc/incus-os/incus-osd/api/seed"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 var ExpireAtInfinity = time.Date(9999, 12, 31, 23, 59, 59, 999999999, time.UTC)
@@ -38,7 +37,18 @@ func (t Token) Validate() error {
 type Tokens []Token
 
 type TokenSeedConfig struct {
-	Applications  []string
-	Network       incusosapi.SystemNetworkConfig
-	InstallTarget incusosapiseed.InstallTarget
+	ImageType    api.ImageType
+	Applications map[string]any
+	Network      map[string]any
+	Install      map[string]any
+}
+
+func (t TokenSeedConfig) Validate() error {
+	var imageType api.ImageType
+	err := imageType.UnmarshalText([]byte(t.ImageType))
+	if t.ImageType == "" || err != nil {
+		return domain.NewValidationErrf("Invalid token seed configuration, validation of image type failed: %v", err)
+	}
+
+	return nil
 }
