@@ -10,3 +10,20 @@ export interface TokenFormValues {
   expire_at: string;
   uses_remaining: number;
 }
+
+export interface InstallTargetFormValues {
+  id: string;
+}
+
+export interface InstallFormValues {
+  force_install: boolean;
+  force_reboot: boolean;
+  target: InstallTargetFormValues;
+}
+
+export interface DownloadImageFormValues {
+  applications: string[];
+  type: string;
+  install: InstallFormValues;
+  network: string;
+}
