@@ -249,8 +249,8 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 	return _d._base.GetByUUID(ctx, id)
 }
 
-// GetPreSeedISO implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (readCloser io.ReadCloser, err error) {
+// GetPreSeedImage implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (readCloser io.ReadCloser, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -259,7 +259,7 @@ func (_d TokenServiceWithSlog) GetPreSeedISO(ctx context.Context, id uuid.UUID, 
 			slog.Any("seedConfig", seedConfig),
 		)
 	}
-	log.Debug("=> calling GetPreSeedISO")
+	log.Debug("=> calling GetPreSeedImage")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -274,15 +274,15 @@ func (_d TokenServiceWithSlog) GetPreSeedISO(ctx context.Context, id uuid.UUID, 
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetPreSeedISO returned an informative error")
+				log.Debug("<= method GetPreSeedImage returned an informative error")
 			} else {
-				log.Error("<= method GetPreSeedISO returned an error")
+				log.Error("<= method GetPreSeedImage returned an error")
 			}
 		} else {
-			log.Debug("<= method GetPreSeedISO finished")
+			log.Debug("<= method GetPreSeedImage finished")
 		}
 	}()
-	return _d._base.GetPreSeedISO(ctx, id, seedConfig)
+	return _d._base.GetPreSeedImage(ctx, id, seedConfig)
 }
 
 // Update implements provisioning.TokenService.

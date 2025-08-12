@@ -39,8 +39,8 @@ func NewFlasherPortWithPrometheus(base provisioning.FlasherPort, instanceName st
 	}
 }
 
-// GenerateSeededISO implements provisioning.FlasherPort.
-func (_d FlasherPortWithPrometheus) GenerateSeededISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (readCloser io.ReadCloser, err error) {
+// GenerateSeededImage implements provisioning.FlasherPort.
+func (_d FlasherPortWithPrometheus) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (readCloser io.ReadCloser, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -48,7 +48,7 @@ func (_d FlasherPortWithPrometheus) GenerateSeededISO(ctx context.Context, id uu
 			result = "error"
 		}
 
-		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GenerateSeededISO", result).Observe(time.Since(_since).Seconds())
+		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GenerateSeededImage", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GenerateSeededISO(ctx, id, seedConfig, rc)
+	return _d.base.GenerateSeededImage(ctx, id, seedConfig, rc)
 }

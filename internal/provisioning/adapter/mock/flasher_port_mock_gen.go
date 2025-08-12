@@ -23,8 +23,8 @@ var _ provisioning.FlasherPort = &FlasherPortMock{}
 //
 //		// make and configure a mocked provisioning.FlasherPort
 //		mockedFlasherPort := &FlasherPortMock{
-//			GenerateSeededISOFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (io.ReadCloser, error) {
-//				panic("mock out the GenerateSeededISO method")
+//			GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (io.ReadCloser, error) {
+//				panic("mock out the GenerateSeededImage method")
 //			},
 //		}
 //
@@ -33,13 +33,13 @@ var _ provisioning.FlasherPort = &FlasherPortMock{}
 //
 //	}
 type FlasherPortMock struct {
-	// GenerateSeededISOFunc mocks the GenerateSeededISO method.
-	GenerateSeededISOFunc func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (io.ReadCloser, error)
+	// GenerateSeededImageFunc mocks the GenerateSeededImage method.
+	GenerateSeededImageFunc func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (io.ReadCloser, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// GenerateSeededISO holds details about calls to the GenerateSeededISO method.
-		GenerateSeededISO []struct {
+		// GenerateSeededImage holds details about calls to the GenerateSeededImage method.
+		GenerateSeededImage []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
@@ -50,13 +50,13 @@ type FlasherPortMock struct {
 			Rc io.ReadCloser
 		}
 	}
-	lockGenerateSeededISO sync.RWMutex
+	lockGenerateSeededImage sync.RWMutex
 }
 
-// GenerateSeededISO calls GenerateSeededISOFunc.
-func (mock *FlasherPortMock) GenerateSeededISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (io.ReadCloser, error) {
-	if mock.GenerateSeededISOFunc == nil {
-		panic("FlasherPortMock.GenerateSeededISOFunc: method is nil but FlasherPort.GenerateSeededISO was just called")
+// GenerateSeededImage calls GenerateSeededImageFunc.
+func (mock *FlasherPortMock) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (io.ReadCloser, error) {
+	if mock.GenerateSeededImageFunc == nil {
+		panic("FlasherPortMock.GenerateSeededImageFunc: method is nil but FlasherPort.GenerateSeededImage was just called")
 	}
 	callInfo := struct {
 		Ctx        context.Context
@@ -69,17 +69,17 @@ func (mock *FlasherPortMock) GenerateSeededISO(ctx context.Context, id uuid.UUID
 		SeedConfig: seedConfig,
 		Rc:         rc,
 	}
-	mock.lockGenerateSeededISO.Lock()
-	mock.calls.GenerateSeededISO = append(mock.calls.GenerateSeededISO, callInfo)
-	mock.lockGenerateSeededISO.Unlock()
-	return mock.GenerateSeededISOFunc(ctx, id, seedConfig, rc)
+	mock.lockGenerateSeededImage.Lock()
+	mock.calls.GenerateSeededImage = append(mock.calls.GenerateSeededImage, callInfo)
+	mock.lockGenerateSeededImage.Unlock()
+	return mock.GenerateSeededImageFunc(ctx, id, seedConfig, rc)
 }
 
-// GenerateSeededISOCalls gets all the calls that were made to GenerateSeededISO.
+// GenerateSeededImageCalls gets all the calls that were made to GenerateSeededImage.
 // Check the length with:
 //
-//	len(mockedFlasherPort.GenerateSeededISOCalls())
-func (mock *FlasherPortMock) GenerateSeededISOCalls() []struct {
+//	len(mockedFlasherPort.GenerateSeededImageCalls())
+func (mock *FlasherPortMock) GenerateSeededImageCalls() []struct {
 	Ctx        context.Context
 	ID         uuid.UUID
 	SeedConfig provisioning.TokenSeedConfig
@@ -91,8 +91,8 @@ func (mock *FlasherPortMock) GenerateSeededISOCalls() []struct {
 		SeedConfig provisioning.TokenSeedConfig
 		Rc         io.ReadCloser
 	}
-	mock.lockGenerateSeededISO.RLock()
-	calls = mock.calls.GenerateSeededISO
-	mock.lockGenerateSeededISO.RUnlock()
+	mock.lockGenerateSeededImage.RLock()
+	calls = mock.calls.GenerateSeededImage
+	mock.lockGenerateSeededImage.RUnlock()
 	return calls
 }

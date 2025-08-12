@@ -43,8 +43,8 @@ func NewFlasherPortWithSlog(base provisioning.FlasherPort, log *slog.Logger, opt
 	return this
 }
 
-// GenerateSeededISO implements provisioning.FlasherPort.
-func (_d FlasherPortWithSlog) GenerateSeededISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (readCloser io.ReadCloser, err error) {
+// GenerateSeededImage implements provisioning.FlasherPort.
+func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (readCloser io.ReadCloser, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -54,7 +54,7 @@ func (_d FlasherPortWithSlog) GenerateSeededISO(ctx context.Context, id uuid.UUI
 			slog.Any("rc", rc),
 		)
 	}
-	log.Debug("=> calling GenerateSeededISO")
+	log.Debug("=> calling GenerateSeededImage")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -69,13 +69,13 @@ func (_d FlasherPortWithSlog) GenerateSeededISO(ctx context.Context, id uuid.UUI
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GenerateSeededISO returned an informative error")
+				log.Debug("<= method GenerateSeededImage returned an informative error")
 			} else {
-				log.Error("<= method GenerateSeededISO returned an error")
+				log.Error("<= method GenerateSeededImage returned an error")
 			}
 		} else {
-			log.Debug("<= method GenerateSeededISO finished")
+			log.Debug("<= method GenerateSeededImage finished")
 		}
 	}()
-	return _d._base.GenerateSeededISO(ctx, id, seedConfig, rc)
+	return _d._base.GenerateSeededImage(ctx, id, seedConfig, rc)
 }

@@ -43,14 +43,14 @@ func New(serverURL string, serverCertificate tls.Certificate) *Flasher {
 	return flasher
 }
 
-func (f *Flasher) GenerateSeededISO(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, file io.ReadCloser) (_ io.ReadCloser, _ error) {
+func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, file io.ReadCloser) (_ io.ReadCloser, _ error) {
 	f.mu.Lock()
 	serverURL := f.serverURL
 	serverCertificate := f.serverCertificate
 	f.mu.Unlock()
 
 	if serverURL == "" {
-		return nil, errors.New(`Unabled to generate seeded ISO, server URL is not provided. Set "address" in "config.yml".`)
+		return nil, errors.New(`Unabled to generate seeded image, server URL is not provided. Set "address" in "config.yml".`)
 	}
 
 	// Create seed tarball.
