@@ -68,8 +68,8 @@ func (c OperationsCenterClient) DeleteToken(ctx context.Context, id string) erro
 	return nil
 }
 
-func (c OperationsCenterClient) GetTokenISO(ctx context.Context, id string, preseed api.TokenISOPost) (io.ReadCloser, error) {
-	resp, err := c.doRequestRawResponse(ctx, http.MethodPost, path.Join("/provisioning/tokens", id, "iso"), nil, preseed)
+func (c OperationsCenterClient) GetTokenImage(ctx context.Context, id string, preseed api.TokenImagePost) (io.ReadCloser, error) {
+	resp, err := c.doRequestRawResponse(ctx, http.MethodPost, path.Join("/provisioning/tokens", id, "image"), nil, preseed)
 	if err != nil {
 		return nil, err
 	}

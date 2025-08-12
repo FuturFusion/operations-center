@@ -63,12 +63,12 @@ func (c *CmdToken) Command() *cobra.Command {
 
 	cmd.AddCommand(tokenShowCmd.Command())
 
-	// Get ISO
-	tokenGetISOCmd := cmdTokenGetISO{
+	// Get Image
+	tokenGetImageCmd := cmdTokenGetImage{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(tokenGetISOCmd.Command())
+	cmd.AddCommand(tokenGetImageCmd.Command())
 
 	return cmd
 }
@@ -266,25 +266,39 @@ func (c *cmdTokenShow) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Get ISO for token.
-type cmdTokenGetISO struct {
+// Get image for token.
+type cmdTokenGetImage struct {
 	ocClient *client.OperationsCenterClient
+
+	flagImageType string
 }
 
-func (c *cmdTokenGetISO) Command() *cobra.Command {
+func (c *cmdTokenGetImage) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "get-iso <uuid> <target.iso> [pre-seed.yaml]"
-	cmd.Short = "Get a pre-seeded ISO for a token"
+	cmd.Use = "get-image <uuid> <target-file> [pre-seed.yaml]"
+	cmd.Short = "Get a pre-seeded ISO or raw image for a token"
 	cmd.Long = `Description:
-  Get a pre-seeded ISO for a token.
+  Get a pre-seeded ISO or raw image for a token.
 `
 
 	cmd.RunE = c.Run
 
+	cmd.Flags().StringVar(&c.flagImageType, "type", "iso", "type of image (iso|raw)")
+	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
+		imageType := cmd.Flag("type").Value.String()
+		switch imageType {
+		case api.ImageTypeISO.String(), api.ImageTypeRaw.String():
+		default:
+			return fmt.Errorf(`Invalid value for flag "--type": %q`, imageType)
+		}
+
+		return nil
+	}
+
 	return cmd
 }
 
-func (c *cmdTokenGetISO) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenGetImage) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 2, 3)
 	if exit {
@@ -293,14 +307,24 @@ func (c *cmdTokenGetISO) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 	targetFilename := args[1]
-	var preseed api.TokenISOPost
+
+	var imageType api.ImageType
+	err = imageType.UnmarshalText([]byte(c.flagImageType))
+	if err != nil {
+		return err
+	}
+
+	preseed := api.TokenImagePost{
+		Type: imageType,
+	}
+
 	if len(args) == 3 {
 		body, err := os.ReadFile(args[2])
 		if err != nil {
 			return err
 		}
 
-		err = yaml.Unmarshal(body, &preseed)
+		err = yaml.Unmarshal(body, &preseed.Seeds)
 		if err != nil {
 			return err
 		}
@@ -313,14 +337,14 @@ func (c *cmdTokenGetISO) Run(cmd *cobra.Command, args []string) error {
 
 	defer targetFile.Close()
 
-	isoReader, err := c.ocClient.GetTokenISO(cmd.Context(), id, preseed)
+	imageReader, err := c.ocClient.GetTokenImage(cmd.Context(), id, preseed)
 	if err != nil {
 		return err
 	}
 
-	defer isoReader.Close()
+	defer imageReader.Close()
 
-	size, err := io.Copy(targetFile, isoReader)
+	size, err := io.Copy(targetFile, imageReader)
 	if err != nil {
 		return err
 	}
