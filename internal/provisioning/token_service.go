@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/transaction"
-	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type tokenService struct {
@@ -111,7 +110,12 @@ func (s tokenService) Consume(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
-func (s tokenService) GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfig TokenSeedConfig) (_ io.ReadCloser, err error) {
+func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, seedConfig TokenSeedConfig) (_ io.ReadCloser, err error) {
+	err = seedConfig.Validate()
+	if err != nil {
+		return nil, fmt.Errorf("Validate seed config: %w", err)
+	}
+
 	_, err = s.repo.GetByUUID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to get token %s: %w", id.String(), err)
@@ -138,14 +142,14 @@ func (s tokenService) GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfi
 	var filename string
 	for _, file := range updateFiles {
 		// TODO: filter for the correct architecture.
-		if file.Type == api.UpdateFileTypeImageISO {
+		if file.Type == seedConfig.ImageType.UpdateFileType() {
 			filename = file.Filename
 			break
 		}
 	}
 
 	if filename == "" {
-		return nil, fmt.Errorf("Failed to find ISO file for latest update %q", latestUpdate.UUID.String())
+		return nil, fmt.Errorf("Failed to find image file for latest update %q", latestUpdate.UUID.String())
 	}
 
 	filereader, _, err := s.updateSvc.GetUpdateFileByFilename(ctx, latestUpdate.UUID, filename)
@@ -158,9 +162,9 @@ func (s tokenService) GetPreSeedISO(ctx context.Context, id uuid.UUID, seedConfi
 		return nil, fmt.Errorf("Latest update %q is not a file", filename)
 	}
 
-	rc, err := s.flasher.GenerateSeededISO(ctx, id, seedConfig, file)
+	rc, err := s.flasher.GenerateSeededImage(ctx, id, seedConfig, file)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to generate seeded ISO: %w", err)
+		return nil, fmt.Errorf("Failed to generate seeded image: %w", err)
 	}
 
 	return rc, nil
