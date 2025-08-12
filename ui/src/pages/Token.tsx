@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { fetchTokens } from "api/token";
 import DataTable from "components/DataTable";
+import TokenActions from "components/TokenActions";
 import { formatDate } from "util/date";
 
 const Token = () => {
@@ -25,7 +26,13 @@ const Token = () => {
     return <div>Error while loading tokens: {error.message}</div>;
   }
 
-  const headers = ["Token", "Description", "Expiry", "Remaining uses"];
+  const headers = [
+    "Token",
+    "Description",
+    "Expiry",
+    "Remaining uses",
+    "Actions",
+  ];
   const rows = tokens.map((item) => {
     return [
       {
@@ -50,6 +57,9 @@ const Token = () => {
       {
         content: item.uses_remaining,
         sortKey: item.uses_remaining,
+      },
+      {
+        content: <TokenActions token={item} />,
       },
     ];
   });
