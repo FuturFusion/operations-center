@@ -258,13 +258,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.Default(),
 	)
 
-	isoFlasher := flasher.New(
+	imageFlasher := flasher.New(
 		d.config.OperationsCenterAddress,
 		serverCertificate,
 	)
 
 	serverCertificateUpdate.AddListener(func(_ context.Context, cert tls.Certificate) {
-		isoFlasher.UpdateCertificate(cert)
+		imageFlasher.UpdateCertificate(cert)
 	})
 
 	tokenSvc := provisioningServiceMiddleware.NewTokenServiceWithSlog(
@@ -274,7 +274,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 				slog.Default(),
 			),
 			updateSvc,
-			isoFlasher,
+			imageFlasher,
 		),
 		slog.Default(),
 	)

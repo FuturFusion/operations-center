@@ -29,7 +29,7 @@ func registerProvisioningTokenHandler(router Router, authorizer authz.Authorizer
 	router.HandleFunc("GET /{uuid}", response.With(handler.tokenGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /{uuid}", response.With(handler.tokenPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{uuid}", response.With(handler.tokenDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
-	router.HandleFunc("POST /{uuid}/iso", response.With(handler.tokenISOPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{uuid}/image", response.With(handler.tokenImagePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 }
 
 // swagger:operation GET /1.0/provisioning/tokens tokens tokens_get
@@ -377,11 +377,11 @@ func (t *tokenHandler) tokenDelete(r *http.Request) response.Response {
 	return response.EmptySyncResponse
 }
 
-// swagger:operation POST /1.0/provisioning/tokens/{uuid}/iso tokens token_iso_post
+// swagger:operation POST /1.0/provisioning/tokens/{uuid}/image tokens token_image_post
 //
-//	Generate pre-seed IncusOS ISO
+//	Generate pre-seed IncusOS ISO or raw image
 //
-//	Generate and retrieve pre-seed IncusOS ISO file.
+//	Generate and retrieve pre-seed IncusOS ISO or raw image file.
 //
 //	---
 //	consumes:
@@ -391,11 +391,11 @@ func (t *tokenHandler) tokenDelete(r *http.Request) response.Response {
 //	  - application/gzip
 //	parameters:
 //	  - in: body
-//	    name: tokenISOPost
-//	    description: Seed configuration for the generated ISO image.
+//	    name: tokenImagePost
+//	    description: Seed configuration for the generated ISO or raw image.
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/TokenISOPost"
+//	      $ref: "#/definitions/TokenImagePost"
 //	responses:
 //	  "200":
 //	    description: Raw file data
@@ -405,7 +405,7 @@ func (t *tokenHandler) tokenDelete(r *http.Request) response.Response {
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (t *tokenHandler) tokenISOPost(r *http.Request) response.Response {
+func (t *tokenHandler) tokenImagePost(r *http.Request) response.Response {
 	UUIDString := r.PathValue("uuid")
 
 	UUID, err := uuid.Parse(UUIDString)
@@ -413,20 +413,21 @@ func (t *tokenHandler) tokenISOPost(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	var tokenISOPost api.TokenISOPost
-	err = json.NewDecoder(r.Body).Decode(&tokenISOPost)
+	var tokenImagePost api.TokenImagePost
+	err = json.NewDecoder(r.Body).Decode(&tokenImagePost)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
-	rc, err := t.service.GetPreSeedISO(r.Context(), UUID, provisioning.TokenSeedConfig{
-		Applications: tokenISOPost.Applications,
-		Network:      tokenISOPost.Network,
-		Install:      tokenISOPost.Install,
+	rc, err := t.service.GetPreSeedImage(r.Context(), UUID, provisioning.TokenSeedConfig{
+		ImageType:    tokenImagePost.Type,
+		Applications: tokenImagePost.Seeds.Applications,
+		Network:      tokenImagePost.Seeds.Network,
+		Install:      tokenImagePost.Seeds.Install,
 	})
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	return response.ReadCloserResponse(r, rc, true, fmt.Sprintf("pre-seed-%s.iso", UUID.String()), -1, nil)
+	return response.ReadCloserResponse(r, rc, true, fmt.Sprintf("pre-seed-%s%s", UUID.String(), tokenImagePost.Type.FileExt()), -1, nil)
 }
