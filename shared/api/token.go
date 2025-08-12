@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,20 +35,86 @@ type TokenPut struct {
 	Description string `json:"description" yaml:"description"`
 }
 
-// TokenISOPost defines the configuration to generate a pre-seeded ISO for a given Token.
+type ImageType string
+
+const (
+	ImageTypeISO ImageType = "iso"
+	ImageTypeRaw ImageType = "raw"
+)
+
+var imageTypes = map[ImageType]struct {
+	fileExt        string
+	updateFileType UpdateFileType
+}{
+	ImageTypeISO: {
+		fileExt:        ".iso",
+		updateFileType: UpdateFileTypeImageISO,
+	},
+	ImageTypeRaw: {
+		fileExt:        ".raw",
+		updateFileType: UpdateFileTypeImageRaw,
+	},
+}
+
+func (i ImageType) String() string {
+	return string(i)
+}
+
+// MarshalText implements the encoding.TextMarshaler interface.
+func (i ImageType) MarshalText() ([]byte, error) {
+	return []byte(i), nil
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (i *ImageType) UnmarshalText(text []byte) error {
+	if len(text) == 0 {
+		return fmt.Errorf("image type is empty")
+	}
+
+	_, ok := imageTypes[ImageType(text)]
+	if !ok {
+		return fmt.Errorf("%q is not a valid image type", string(text))
+	}
+
+	*i = ImageType(text)
+
+	return nil
+}
+
+func (i ImageType) FileExt() string {
+	return imageTypes[i].fileExt
+}
+
+func (i ImageType) UpdateFileType() UpdateFileType {
+	return imageTypes[i].updateFileType
+}
+
+// TokenImagePost defines the configuration to generate a pre-seeded ISO or raw
+// image for a given Token.
 //
-// Operations Center just passes through the provided configuration for application.yaml,
-// install.yaml and network.yaml as is without any validation of the provided configuration
-// besides of ensuring it to be valid yaml.
+// Operations Center just passes through the provided configuration for
+// application.yaml, install.yaml and network.yaml as is without any validation
+// of the provided configuration besides of ensuring it to be valid yaml.
 //
 // swagger:model
-type TokenISOPost struct {
-	// Applications represents the applications configuration (application.yaml) to be included in the pre-seeded ISO.
+type TokenImagePost struct {
+	// Type contains the type of image to be generated.
+	// Possible values for status are: iso, raw
+	// Example: iso
+	Type ImageType `json:"type" yaml:"type"`
+
+	// Seeds represents the seed configuration for e.g. application.yaml,
+	// install.yaml and network.yaml.
+	Seeds TokenImagePostSeeds `json:"seeds" yaml:"seeds"`
+}
+
+type TokenImagePostSeeds struct {
+	// Applications represents the applications configuration (application.yaml) to be included in the pre-seeded image.
 	Applications map[string]any `json:"applications" yaml:"applications"`
 
-	// Network represents the network configuration (network.yaml) to be included in the pre-seeded ISO.
+	// Network represents the network configuration (network.yaml) to be included in the pre-seeded image.
 	Network map[string]any `json:"network" yaml:"network"`
 
-	// Install represents the install configuration (install.yaml) to be included in the pre-seeded ISO.
+	// Install represents the install configuration (install.yaml) to be included in the pre-seeded image.
 	Install map[string]any `json:"install" yaml:"install"`
 }
