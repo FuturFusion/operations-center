@@ -102,6 +102,96 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 	}
 }
 
+func TestUpdateService_CleanupAll(t *testing.T) {
+	tests := []struct {
+		name                   string
+		filesRepoCleanupAllErr error
+		repoGetAll             provisioning.Updates
+		repoGetAllErr          error
+		repoDeleteByUUID       []queue.Item[struct{}]
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetAll: provisioning.Updates{
+				{
+					UUID: uuid.MustParse("3b9d0f85-67b4-480e-b369-fef25e9d8ccc"),
+				},
+				{
+					UUID: uuid.MustParse("ce9b4489-cc2e-4726-9103-ea22d07a2110"),
+				},
+			},
+			repoDeleteByUUID: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                   "error - filesRepo.CleanupAll",
+			filesRepoCleanupAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:          "error - repo.GetAll",
+			repoGetAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.DeleteByID",
+			repoGetAll: provisioning.Updates{
+				{
+					UUID: uuid.MustParse("3b9d0f85-67b4-480e-b369-fef25e9d8ccc"),
+				},
+				{
+					UUID: uuid.MustParse("ce9b4489-cc2e-4726-9103-ea22d07a2110"),
+				},
+			},
+			repoDeleteByUUID: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.UpdateRepoMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
+					return tc.repoGetAll, tc.repoGetAllErr
+				},
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					_, err := queue.Pop(t, &tc.repoDeleteByUUID)
+					return err
+				},
+			}
+
+			repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
+				CleanupAllFunc: func(ctx context.Context) error {
+					return tc.filesRepoCleanupAllErr
+				},
+			}
+
+			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles)
+
+			// Run test
+			err := updateSvc.CleanupAll(context.Background())
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Empty(t, tc.repoDeleteByUUID)
+		})
+	}
+}
+
 func TestUpdateService_GetAll(t *testing.T) {
 	tests := []struct {
 		name              string

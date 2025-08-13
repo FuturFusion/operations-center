@@ -20,6 +20,7 @@ type UpdateService interface {
 	GetUpdateFileByFilename(ctx context.Context, id uuid.UUID, filename string) (io.ReadCloser, int, error)
 
 	CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uuid.UUID, error)
+	CleanupAll(ctx context.Context) error
 	Refresh(ctx context.Context) error
 }
 
@@ -43,6 +44,7 @@ type UpdateFilesRepo interface {
 	Put(ctx context.Context, update Update, filename string, content io.ReadCloser) (CommitFunc, CancelFunc, error)
 	Delete(ctx context.Context, update Update) error
 	UsageInformation(ctx context.Context) (UsageInformation, error)
+	CleanupAll(ctx context.Context) error
 	CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (*Update, error)
 }
 

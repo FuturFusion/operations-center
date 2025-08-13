@@ -80,6 +80,38 @@ func (s updateService) CreateFromArchive(ctx context.Context, tarReader *tar.Rea
 	return update.UUID, nil
 }
 
+func (s updateService) CleanupAll(ctx context.Context) error {
+	// Since we are going to delete all the updates anyway and because this
+	// method is intended to be an escape hatch, which should also work, if
+	// the disk is completely full and therefore writes to the DB would likely fail,
+	// the updates are removed first and only after the DB is updated.
+	err := s.filesRepo.CleanupAll(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to cleanup: %w", err)
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		updates, err := s.repo.GetAll(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to get all updates during cleanup: %w", err)
+		}
+
+		for _, update := range updates {
+			err = s.repo.DeleteByUUID(ctx, update.UUID)
+			if err != nil {
+				return fmt.Errorf("Failed to delete update %v: %w", update.UUID, err)
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s updateService) GetAll(ctx context.Context) (Updates, error) {
 	updates, err := s.repo.GetAll(ctx)
 	if err != nil {
