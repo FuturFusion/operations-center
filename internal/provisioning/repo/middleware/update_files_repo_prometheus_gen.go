@@ -39,6 +39,20 @@ func NewUpdateFilesRepoWithPrometheus(base provisioning.UpdateFilesRepo, instanc
 	}
 }
 
+// CleanupAll implements provisioning.UpdateFilesRepo.
+func (_d UpdateFilesRepoWithPrometheus) CleanupAll(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateFilesRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "CleanupAll", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.CleanupAll(ctx)
+}
+
 // CreateFromArchive implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithPrometheus) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (update *provisioning.Update, err error) {
 	_since := time.Now()

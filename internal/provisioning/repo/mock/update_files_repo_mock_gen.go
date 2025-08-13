@@ -23,6 +23,9 @@ var _ provisioning.UpdateFilesRepo = &UpdateFilesRepoMock{}
 //
 //		// make and configure a mocked provisioning.UpdateFilesRepo
 //		mockedUpdateFilesRepo := &UpdateFilesRepoMock{
+//			CleanupAllFunc: func(ctx context.Context) error {
+//				panic("mock out the CleanupAll method")
+//			},
 //			CreateFromArchiveFunc: func(ctx context.Context, tarReader *tar.Reader) (*provisioning.Update, error) {
 //				panic("mock out the CreateFromArchive method")
 //			},
@@ -45,6 +48,9 @@ var _ provisioning.UpdateFilesRepo = &UpdateFilesRepoMock{}
 //
 //	}
 type UpdateFilesRepoMock struct {
+	// CleanupAllFunc mocks the CleanupAll method.
+	CleanupAllFunc func(ctx context.Context) error
+
 	// CreateFromArchiveFunc mocks the CreateFromArchive method.
 	CreateFromArchiveFunc func(ctx context.Context, tarReader *tar.Reader) (*provisioning.Update, error)
 
@@ -62,6 +68,11 @@ type UpdateFilesRepoMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// CleanupAll holds details about calls to the CleanupAll method.
+		CleanupAll []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// CreateFromArchive holds details about calls to the CreateFromArchive method.
 		CreateFromArchive []struct {
 			// Ctx is the ctx argument value.
@@ -102,11 +113,44 @@ type UpdateFilesRepoMock struct {
 			Ctx context.Context
 		}
 	}
+	lockCleanupAll        sync.RWMutex
 	lockCreateFromArchive sync.RWMutex
 	lockDelete            sync.RWMutex
 	lockGet               sync.RWMutex
 	lockPut               sync.RWMutex
 	lockUsageInformation  sync.RWMutex
+}
+
+// CleanupAll calls CleanupAllFunc.
+func (mock *UpdateFilesRepoMock) CleanupAll(ctx context.Context) error {
+	if mock.CleanupAllFunc == nil {
+		panic("UpdateFilesRepoMock.CleanupAllFunc: method is nil but UpdateFilesRepo.CleanupAll was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockCleanupAll.Lock()
+	mock.calls.CleanupAll = append(mock.calls.CleanupAll, callInfo)
+	mock.lockCleanupAll.Unlock()
+	return mock.CleanupAllFunc(ctx)
+}
+
+// CleanupAllCalls gets all the calls that were made to CleanupAll.
+// Check the length with:
+//
+//	len(mockedUpdateFilesRepo.CleanupAllCalls())
+func (mock *UpdateFilesRepoMock) CleanupAllCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockCleanupAll.RLock()
+	calls = mock.calls.CleanupAll
+	mock.lockCleanupAll.RUnlock()
+	return calls
 }
 
 // CreateFromArchive calls CreateFromArchiveFunc.
