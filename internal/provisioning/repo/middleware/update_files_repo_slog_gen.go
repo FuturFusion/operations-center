@@ -113,7 +113,7 @@ func (_d UpdateFilesRepoWithSlog) Delete(ctx context.Context, update provisionin
 }
 
 // Get implements provisioning.UpdateFilesRepo.
-func (_d UpdateFilesRepoWithSlog) Get(ctx context.Context, update provisioning.Update, filename string) (readCloser io.ReadCloser, n int, err error) {
+func (_d UpdateFilesRepoWithSlog) Get(ctx context.Context, update provisioning.Update, filename string) (readCloser io.ReadCloser, size int, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -128,7 +128,7 @@ func (_d UpdateFilesRepoWithSlog) Get(ctx context.Context, update provisioning.U
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
 				slog.Any("readCloser", readCloser),
-				slog.Int("n", n),
+				slog.Int("size", size),
 				slog.Any("err", err),
 			)
 		} else {
@@ -185,4 +185,38 @@ func (_d UpdateFilesRepoWithSlog) Put(ctx context.Context, update provisioning.U
 		}
 	}()
 	return _d._base.Put(ctx, update, filename, content)
+}
+
+// UsageInformation implements provisioning.UpdateFilesRepo.
+func (_d UpdateFilesRepoWithSlog) UsageInformation(ctx context.Context) (usageInformation provisioning.UsageInformation, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.Debug("=> calling UsageInformation")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("usageInformation", usageInformation),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method UsageInformation returned an informative error")
+			} else {
+				log.Error("<= method UsageInformation returned an error")
+			}
+		} else {
+			log.Debug("<= method UsageInformation finished")
+		}
+	}()
+	return _d._base.UsageInformation(ctx)
 }
