@@ -149,3 +149,9 @@ func (u *UpdateFiles) Scan(value any) error {
 		return fmt.Errorf("type %T is not supported for update file", value)
 	}
 }
+
+type UsageInformation struct {
+	TotalSpaceBytes     uint64
+	AvailableSpaceBytes uint64
+	UsedSpaceBytes      uint64
+}

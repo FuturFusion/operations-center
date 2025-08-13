@@ -528,7 +528,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 			commitErr error
 			cancelErr error
 		}]
-		repoUpdateFilesDelete []queue.Item[struct{}]
+		repoUsageInformation    provisioning.UsageInformation
+		repoUsageInformationErr error
+		repoUpdateFilesDelete   []queue.Item[struct{}]
 
 		repoGetByUUIDErr            error
 		repoUpsert                  []queue.Item[struct{}]
@@ -564,13 +566,22 @@ func TestUpdateService_Refresh(t *testing.T) {
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
 					Severity: api.UpdateSeverityLow,
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
+						},
+					},
 				},
 			},
 			repoGetByUUIDErr: domain.ErrNotFound,
+			repoUsageInformation: provisioning.UsageInformation{
+				TotalSpaceBytes:     50 * 1024 * 1024 * 1024, // 50 GiB
+				AvailableSpaceBytes: 5*1024*1024*1024 + 5,    // 10 GiB + 5 bytes (just fits in)
+			},
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
-						provisioning.UpdateFile{
+						{
 							Filename: "dummy.txt",
 							Size:     5,
 						},
@@ -615,6 +626,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 			repoGetByUUIDErr: domain.ErrNotFound,
+			repoUsageInformation: provisioning.UsageInformation{
+				TotalSpaceBytes:     50 * 1024 * 1024 * 1024, // 50 GiB
+				AvailableSpaceBytes: 10 * 1024 * 1024 * 1024, // 10 GiB
+			},
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
@@ -732,6 +747,54 @@ func TestUpdateService_Refresh(t *testing.T) {
 			},
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - filesRepo.UsageInformation",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					Severity: api.UpdateSeverityLow,
+				},
+			},
+			repoGetByUUIDErr: domain.ErrNotFound,
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+			},
+			repoUsageInformationErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - not enough space left in filesRepo",
+			ctx:  context.Background(),
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					Severity: api.UpdateSeverityLow,
+					Files: provisioning.UpdateFiles{
+						// 2 files, 1 GiB each, will drop below the 10% free space available threshold.
+						{
+							Size: 1 * 1024 * 1024 * 1024, // 1 GiB,
+						},
+						{
+							Size: 1 * 1024 * 1024 * 1024, // 1 GiB,
+						},
+					},
+				},
+			},
+			repoGetByUUIDErr: domain.ErrNotFound,
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+			},
+			repoUsageInformation: provisioning.UsageInformation{
+				TotalSpaceBytes:     50 * 1024 * 1024 * 1024, // 50 GiB
+				AvailableSpaceBytes: 6 * 1024 * 1024 * 1024,  // 6 GiB
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "Not enough space available in files repository")
+			},
 		},
 		{
 			name: "error - source.GetUpdateAllFiles",
@@ -1161,6 +1224,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 				DeleteFunc: func(ctx context.Context, update provisioning.Update) error {
 					_, err := queue.Pop(t, &tc.repoUpdateFilesDelete)
 					return err
+				},
+				UsageInformationFunc: func(ctx context.Context) (provisioning.UsageInformation, error) {
+					return tc.repoUsageInformation, tc.repoUsageInformationErr
 				},
 			}
 

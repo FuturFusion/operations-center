@@ -220,6 +220,20 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 			continue
 		}
 
+		var requiredSpaceTotal int
+		for _, file := range update.Files {
+			requiredSpaceTotal += file.Size
+		}
+
+		ui, err := s.filesRepo.UsageInformation(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to get usage information: %w", err)
+		}
+
+		if (float64(ui.AvailableSpaceBytes)-float64(requiredSpaceTotal))/float64(ui.TotalSpaceBytes) < 0.1 {
+			return fmt.Errorf("Not enough space available in files repository, require: %d, available: %d, required headroom after download: 10%%", requiredSpaceTotal, ui.AvailableSpaceBytes)
+		}
+
 		updateFiles, err := src.GetUpdateAllFiles(ctx, update)
 		if err != nil {
 			return fmt.Errorf(`Failed to get files for update "%s:%s@%s": %w`, origin, update.Channel, update.Version, err)
