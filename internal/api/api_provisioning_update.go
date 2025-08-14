@@ -29,7 +29,7 @@ func registerUpdateHandler(router Router, authorizer authz.Authorizer, service p
 	router.HandleFunc("GET /{uuid}", response.With(handler.updateGet))
 	router.HandleFunc("GET /{uuid}/changelog", response.With(handler.updateChangelogGet))
 	router.HandleFunc("GET /{uuid}/files", response.With(handler.updateFilesGet))
-	router.HandleFunc("GET /{uuid}/files/{filename}", response.With(handler.updateFileGet))
+	router.HandleFunc("GET /{uuid}/files/{filename...}", response.With(handler.updateFileGet))
 
 	// authentication and authorization required to upload updates.
 	router.HandleFunc("POST /{$}", response.With(handler.updatesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
