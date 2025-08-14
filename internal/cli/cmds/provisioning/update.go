@@ -72,6 +72,13 @@ func (c *CmdUpdate) Command() *cobra.Command {
 
 	cmd.AddCommand(updateCleanupCmd.Command())
 
+	// Refresh
+	updateRefreshCmd := cmdUpdateRefresh{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateRefreshCmd.Command())
+
 	return cmd
 }
 
@@ -307,9 +314,42 @@ func (c *cmdUpdateCleanup) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = c.ocClient.CleanupAll(cmd.Context())
+	err = c.ocClient.CleanupAllUpdates(cmd.Context())
 	if err != nil {
 		return fmt.Errorf("Failed to cleanup updates: %w", err)
+	}
+
+	return nil
+}
+
+// Refresh updates.
+type cmdUpdateRefresh struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdUpdateRefresh) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "refresh"
+	cmd.Short = "Refresh updates"
+	cmd.Long = `Description:
+  Refresh updates provided by Operations Center.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdUpdateRefresh) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 0, 0)
+	if exit {
+		return err
+	}
+
+	err = c.ocClient.RefreshUpdates(cmd.Context())
+	if err != nil {
+		return fmt.Errorf("Failed to refresh updates: %w", err)
 	}
 
 	return nil
