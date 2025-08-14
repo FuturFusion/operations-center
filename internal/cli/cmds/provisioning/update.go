@@ -325,6 +325,8 @@ func (c *cmdUpdateCleanup) Run(cmd *cobra.Command, args []string) error {
 // Refresh updates.
 type cmdUpdateRefresh struct {
 	ocClient *client.OperationsCenterClient
+
+	flagWait bool
 }
 
 func (c *cmdUpdateRefresh) Command() *cobra.Command {
@@ -337,6 +339,8 @@ func (c *cmdUpdateRefresh) Command() *cobra.Command {
 
 	cmd.RunE = c.Run
 
+	cmd.Flags().BoolVar(&c.flagWait, "wait", false, "wait for the operation to complete")
+
 	return cmd
 }
 
@@ -347,7 +351,7 @@ func (c *cmdUpdateRefresh) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = c.ocClient.RefreshUpdates(cmd.Context())
+	err = c.ocClient.RefreshUpdates(cmd.Context(), c.flagWait)
 	if err != nil {
 		return fmt.Errorf("Failed to refresh updates: %w", err)
 	}

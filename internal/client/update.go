@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -89,8 +90,11 @@ func (c OperationsCenterClient) CleanupAllUpdates(ctx context.Context) error {
 	return nil
 }
 
-func (c OperationsCenterClient) RefreshUpdates(ctx context.Context) error {
-	_, err := c.doRequest(ctx, http.MethodPost, "/provisioning/updates/:refresh", nil, nil)
+func (c OperationsCenterClient) RefreshUpdates(ctx context.Context, wait bool) error {
+	query := url.Values{}
+	query.Add("wait", strconv.FormatBool(wait))
+
+	_, err := c.doRequest(ctx, http.MethodPost, "/provisioning/updates/:refresh", query, nil)
 	if err != nil {
 		return err
 	}
