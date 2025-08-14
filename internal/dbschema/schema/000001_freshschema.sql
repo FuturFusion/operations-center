@@ -55,6 +55,7 @@ CREATE TABLE updates (
   files TEXT NOT NULL,
   "url" NOT NULL DEFAULT '',
   "status" NOT NULL DEFAULT 'ready',
+  last_updated DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00',
   UNIQUE(uuid)
 );
 
@@ -323,4 +324,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (8, strftime("%s"))
+INSERT INTO schema (version, updated_at) VALUES (9, strftime("%s"))

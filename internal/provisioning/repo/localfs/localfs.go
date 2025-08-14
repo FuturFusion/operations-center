@@ -131,6 +131,27 @@ func (l localfs) Delete(ctx context.Context, update provisioning.Update) error {
 	return os.RemoveAll(fullFilename)
 }
 
+func (l localfs) CleanupAll(ctx context.Context) error {
+	dir, err := os.ReadDir(l.storageDir)
+	if err != nil {
+		return fmt.Errorf("Failed to read storage directory %q: %w", l.storageDir, err)
+	}
+
+	var errs []error
+	for _, entry := range dir {
+		err = os.RemoveAll(filepath.Join(l.storageDir, entry.Name()))
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) != 0 {
+		return fmt.Errorf("Cleanup storage directory %q caused errors, operation might be still partly successful: %v", l.storageDir, errors.Join(errs...))
+	}
+
+	return nil
+}
+
 const tmpUpdateDirPrefix = "tmp-update-*"
 
 func (l localfs) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (_ *provisioning.Update, err error) {

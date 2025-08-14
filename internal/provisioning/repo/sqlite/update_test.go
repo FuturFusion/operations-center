@@ -123,6 +123,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 	dbUpdateA, err := update.GetByUUID(ctx, updateA.UUID)
 	require.NoError(t, err)
 	updateA.ID = dbUpdateA.ID
+	updateA.LastUpdated = dbUpdateA.LastUpdated
 	require.Equal(t, updateA, *dbUpdateA)
 
 	// Upsert existing entry

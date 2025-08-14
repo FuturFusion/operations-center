@@ -40,6 +40,20 @@ func NewUpdateServiceWithPrometheus(base provisioning.UpdateService, instanceNam
 	}
 }
 
+// CleanupAll implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) CleanupAll(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "CleanupAll", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.CleanupAll(ctx)
+}
+
 // CreateFromArchive implements provisioning.UpdateService.
 func (_d UpdateServiceWithPrometheus) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uUID uuid.UUID, err error) {
 	_since := time.Now()

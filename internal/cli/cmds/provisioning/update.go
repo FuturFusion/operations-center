@@ -65,6 +65,20 @@ func (c *CmdUpdate) Command() *cobra.Command {
 
 	cmd.AddCommand(updateFilesCmd.Command())
 
+	// Cleanup
+	updateCleanupCmd := cmdUpdateCleanup{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateCleanupCmd.Command())
+
+	// Refresh
+	updateRefreshCmd := cmdUpdateRefresh{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateRefreshCmd.Command())
+
 	return cmd
 }
 
@@ -275,6 +289,77 @@ func (c *cmdUpdateAdd) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Cleanup updates.
+type cmdUpdateCleanup struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdUpdateCleanup) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "cleanup"
+	cmd.Short = "Cleanup updates"
+	cmd.Long = `Description:
+  Remove all update artifacts from Operations Center.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdUpdateCleanup) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 0, 0)
+	if exit {
+		return err
+	}
+
+	err = c.ocClient.CleanupAllUpdates(cmd.Context())
+	if err != nil {
+		return fmt.Errorf("Failed to cleanup updates: %w", err)
+	}
+
+	return nil
+}
+
+// Refresh updates.
+type cmdUpdateRefresh struct {
+	ocClient *client.OperationsCenterClient
+
+	flagWait bool
+}
+
+func (c *cmdUpdateRefresh) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "refresh"
+	cmd.Short = "Refresh updates"
+	cmd.Long = `Description:
+  Refresh updates provided by Operations Center.
+`
+
+	cmd.RunE = c.Run
+
+	cmd.Flags().BoolVar(&c.flagWait, "wait", false, "wait for the operation to complete")
+
+	return cmd
+}
+
+func (c *cmdUpdateRefresh) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 0, 0)
+	if exit {
+		return err
+	}
+
+	err = c.ocClient.RefreshUpdates(cmd.Context(), c.flagWait)
+	if err != nil {
+		return fmt.Errorf("Failed to refresh updates: %w", err)
+	}
+
+	return nil
+}
+
+// File sub-command.
 type cmdUpdateFiles struct {
 	ocClient *client.OperationsCenterClient
 }
