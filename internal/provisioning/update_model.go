@@ -30,6 +30,7 @@ type Update struct {
 	Files       UpdateFiles        `json:"files"`
 	URL         string             `json:"url"`
 	Status      api.UpdateStatus   `json:"-"`
+	LastUpdated time.Time          `json:"-" db:"update_timestamp"`
 }
 
 func (u Update) Validate() error {
