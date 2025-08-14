@@ -2,13 +2,17 @@ package api
 
 import (
 	"archive/tar"
+	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/authz"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -266,6 +270,12 @@ func (u *updateHandler) updatesDelete(r *http.Request) response.Response {
 //	Refresh the updates provided by Operations Center.
 //
 //	---
+//	parameters:
+//	  - in: query
+//	    name: wait
+//	    description: If set, refresh operation is executed synchronously and waited for the result.
+//	    type: boolean
+//	    example: true
 //	produces:
 //	  - application/json
 //	responses:
@@ -278,12 +288,50 @@ func (u *updateHandler) updatesDelete(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updatesRefreshPost(r *http.Request) response.Response {
-	err := u.service.Refresh(r.Context())
-	if err != nil {
-		return response.SmartError(err)
+	var wait bool
+
+	if r.FormValue("wait") != "" {
+		var err error
+		wait, err = strconv.ParseBool(r.FormValue("wait"))
+		if err != nil {
+			return response.SmartError(err)
+		}
 	}
 
-	return response.EmptySyncResponse
+	if wait {
+		err := u.service.Refresh(r.Context())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		return response.EmptySyncResponse
+	}
+
+	go func() {
+		// TODO: It would be better to have the application context, such that
+		// the refresh operation is properly cancelled on shutdown.
+		ctx := context.Background()
+
+		err := u.service.Refresh(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Refresh updates failed", logger.Err(err))
+		} else {
+			slog.InfoContext(ctx, "Refresh updates completed")
+		}
+	}()
+
+	// TODO: We do not yet have proper operations as in Incus, but returning a
+	// SyncResponse also feels wrong.
+	return response.ManualResponse(func(w http.ResponseWriter) error {
+		w.WriteHeader(http.StatusAccepted)
+
+		body := api.ResponseRaw{
+			Type:   api.AsyncResponse,
+			Status: "Started",
+		}
+
+		return json.NewEncoder(w).Encode(body)
+	})
 }
 
 // swagger:operation GET /1.0/provisioning/updates/{uuid} updates update_get
