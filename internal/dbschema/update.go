@@ -35,6 +35,16 @@ var updates = map[int]update{
 	6: updateFromV5,
 	7: updateFromV6,
 	8: updateFromV7,
+	9: updateFromV8,
+}
+
+func updateFromV8(ctx context.Context, tx *sql.Tx) error {
+	// v8..v9 add column last_updated to updates
+	stmt := `
+ALTER TABLE updates ADD COLUMN last_updated DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00';
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV7(ctx context.Context, tx *sql.Tx) error {
