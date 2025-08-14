@@ -233,6 +233,21 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 				return err
 			}
 
+			// Make sure, we do have enough space left in the files repository before moving the state to pending.
+			var requiredSpaceTotal int
+			for _, file := range update.Files {
+				requiredSpaceTotal += file.Size
+			}
+
+			ui, err := s.filesRepo.UsageInformation(ctx)
+			if err != nil {
+				return fmt.Errorf("Failed to get usage information: %w", err)
+			}
+
+			if (float64(ui.AvailableSpaceBytes)-float64(requiredSpaceTotal))/float64(ui.TotalSpaceBytes) < 0.1 {
+				return fmt.Errorf("Not enough space available in files repository, require: %d, available: %d, required headroom after download: 10%%", requiredSpaceTotal, ui.AvailableSpaceBytes)
+			}
+
 			// Overwrite origin with our value to ensure cleanup to work.
 			update.Origin = origin
 			update.Status = api.UpdateStatusPending
@@ -250,20 +265,6 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 
 		if found {
 			continue
-		}
-
-		var requiredSpaceTotal int
-		for _, file := range update.Files {
-			requiredSpaceTotal += file.Size
-		}
-
-		ui, err := s.filesRepo.UsageInformation(ctx)
-		if err != nil {
-			return fmt.Errorf("Failed to get usage information: %w", err)
-		}
-
-		if (float64(ui.AvailableSpaceBytes)-float64(requiredSpaceTotal))/float64(ui.TotalSpaceBytes) < 0.1 {
-			return fmt.Errorf("Not enough space available in files repository, require: %d, available: %d, required headroom after download: 10%%", requiredSpaceTotal, ui.AvailableSpaceBytes)
 		}
 
 		updateFiles, err := src.GetUpdateAllFiles(ctx, update)
