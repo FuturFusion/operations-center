@@ -79,3 +79,12 @@ func (c OperationsCenterClient) GetUpdateFiles(ctx context.Context, id string) (
 
 	return updateFiles, nil
 }
+
+func (c OperationsCenterClient) CleanupAll(ctx context.Context) error {
+	_, err := c.doRequest(ctx, http.MethodDelete, "/provisioning/updates", nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

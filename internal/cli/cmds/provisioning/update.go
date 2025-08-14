@@ -65,6 +65,13 @@ func (c *CmdUpdate) Command() *cobra.Command {
 
 	cmd.AddCommand(updateFilesCmd.Command())
 
+	// Cleanup
+	updateCleanupCmd := cmdUpdateCleanup{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateCleanupCmd.Command())
+
 	return cmd
 }
 
@@ -275,6 +282,40 @@ func (c *cmdUpdateAdd) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Cleanup updates.
+type cmdUpdateCleanup struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdUpdateCleanup) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "cleanup"
+	cmd.Short = "Cleanup updates"
+	cmd.Long = `Description:
+  Remove all update artifacts from Operations Center.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdUpdateCleanup) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 0, 0)
+	if exit {
+		return err
+	}
+
+	err = c.ocClient.CleanupAll(cmd.Context())
+	if err != nil {
+		return fmt.Errorf("Failed to cleanup updates: %w", err)
+	}
+
+	return nil
+}
+
+// File sub-command.
 type cmdUpdateFiles struct {
 	ocClient *client.OperationsCenterClient
 }
