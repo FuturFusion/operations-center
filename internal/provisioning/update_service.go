@@ -10,6 +10,7 @@ import (
 	"hash"
 	"io"
 	"sort"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -19,13 +20,17 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-const defaultLatestLimit = 3
+const (
+	defaultLatestLimit      = 3
+	defaultPendingGraceTime = 24 * time.Hour
+)
 
 type updateService struct {
-	repo        UpdateRepo
-	filesRepo   UpdateFilesRepo
-	source      map[string]UpdateSourcePort
-	latestLimit int
+	repo               UpdateRepo
+	filesRepo          UpdateFilesRepo
+	source             map[string]UpdateSourcePort
+	latestLimit        int
+	pendingGracePeriod time.Duration
 }
 
 var _ UpdateService = &updateService{}
@@ -44,12 +49,19 @@ func UpdateServiceWithLatestLimit(limit int) UpdateServiceOption {
 	}
 }
 
+func UpdateServiceWithPendingGracePeriod(pendingGracePeriod time.Duration) UpdateServiceOption {
+	return func(service *updateService) {
+		service.pendingGracePeriod = pendingGracePeriod
+	}
+}
+
 func NewUpdateService(repo UpdateRepo, filesRepo UpdateFilesRepo, opts ...UpdateServiceOption) updateService {
 	service := updateService{
-		repo:        repo,
-		filesRepo:   filesRepo,
-		source:      make(map[string]UpdateSourcePort),
-		latestLimit: defaultLatestLimit,
+		repo:               repo,
+		filesRepo:          filesRepo,
+		source:             make(map[string]UpdateSourcePort),
+		latestLimit:        defaultLatestLimit,
+		pendingGracePeriod: defaultPendingGraceTime,
 	}
 
 	for _, opt := range opts {
