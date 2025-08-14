@@ -34,6 +34,7 @@ func registerUpdateHandler(router Router, authorizer authz.Authorizer, service p
 	// authentication and authorization required to upload updates.
 	router.HandleFunc("POST /{$}", response.With(handler.updatesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
 	router.HandleFunc("DELETE /{$}", response.With(handler.updatesDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
+	router.HandleFunc("POST /:refresh", response.With(handler.updatesRefreshPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
 }
 
 // swagger:operation GET /1.0/provisioning/updates updates updates_get
@@ -251,6 +252,33 @@ func (u *updateHandler) updatesPost(r *http.Request) response.Response {
 //	    $ref: "#/responses/InternalServerError"
 func (u *updateHandler) updatesDelete(r *http.Request) response.Response {
 	err := u.service.CleanupAll(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/updates/:refresh updates updates_refresh_post
+//
+//	Trigger a refresh of the updates
+//
+//	Refresh the updates provided by Operations Center.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (u *updateHandler) updatesRefreshPost(r *http.Request) response.Response {
+	err := u.service.Refresh(r.Context())
 	if err != nil {
 		return response.SmartError(err)
 	}
