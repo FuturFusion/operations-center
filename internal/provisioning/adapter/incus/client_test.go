@@ -85,7 +85,7 @@ func TestClient_Endpoint(t *testing.T) {
 					},
 
 					assertErr: require.NoError,
-					wantPaths: []string{"GET /1.0"},
+					wantPaths: []string{"GET /"},
 				},
 				{
 					name: "error - unexpected http status code",
@@ -98,7 +98,7 @@ func TestClient_Endpoint(t *testing.T) {
 					},
 
 					assertErr: require.Error,
-					wantPaths: []string{"GET /1.0"},
+					wantPaths: []string{"GET /"},
 				},
 			},
 		},
@@ -455,21 +455,39 @@ func TestClientServer(t *testing.T) {
 
 						require.Equal(t, want, res)
 					},
-					wantPaths: []string{"GET /1.0/resources"},
+					wantPaths: []string{"GET /os/1.0/system/resources"},
 				},
 				{
-					name: "error - unexpected http status code",
+					name: "error - resource data unexpected http status code",
 					response: []queue.Item[response]{
 						{
 							Value: response{
-								statusCode: http.StatusInternalServerError,
+								statusCode:   http.StatusInternalServerError,
+								responseBody: []byte(http.StatusText(http.StatusInternalServerError)),
 							},
 						},
 					},
 
 					assertErr:    require.Error,
 					assertResult: noResult,
-					wantPaths:    []string{"GET /1.0/resources"},
+					wantPaths:    []string{"GET /os/1.0/system/resources"},
+				},
+				{
+					name: "error - resource data invalid JSON",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`),
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /os/1.0/system/resources"},
 				},
 			},
 		},

@@ -53,7 +53,7 @@ func (c client) Ping(ctx context.Context, endpoint provisioning.Endpoint) error 
 		return err
 	}
 
-	_, _, err = client.GetServer()
+	_, _, err = client.RawQuery(http.MethodGet, "/", http.NoBody, "")
 	if err != nil {
 		return fmt.Errorf("Failed to ping %q: %w", endpoint.GetConnectionURL(), err)
 	}
@@ -67,13 +67,19 @@ func (c client) GetResources(ctx context.Context, endpoint provisioning.Endpoint
 		return api.HardwareData{}, err
 	}
 
-	resources, err := client.GetServerResources()
+	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0/system/resources", http.NoBody, "")
 	if err != nil {
 		return api.HardwareData{}, fmt.Errorf("Get resources from %q failed: %w", endpoint.GetConnectionURL(), err)
 	}
 
+	var resources incusapi.Resources
+	err = json.Unmarshal(resp.Metadata, &resources)
+	if err != nil {
+		return api.HardwareData{}, fmt.Errorf("Unexpected response metadata while getting resource information from %q: %w", endpoint.GetConnectionURL(), err)
+	}
+
 	return api.HardwareData{
-		Resources: *resources,
+		Resources: resources,
 	}, nil
 }
 
