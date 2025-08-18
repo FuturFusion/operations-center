@@ -30,6 +30,7 @@ type Update struct {
 	Files       UpdateFiles        `json:"files"`
 	URL         string             `json:"url"`
 	Status      api.UpdateStatus   `json:"-"`
+	LastUpdated time.Time          `json:"-" db:"update_timestamp"`
 }
 
 func (u Update) Validate() error {
@@ -148,4 +149,10 @@ func (u *UpdateFiles) Scan(value any) error {
 	default:
 		return fmt.Errorf("type %T is not supported for update file", value)
 	}
+}
+
+type UsageInformation struct {
+	TotalSpaceBytes     uint64
+	AvailableSpaceBytes uint64
+	UsedSpaceBytes      uint64
 }

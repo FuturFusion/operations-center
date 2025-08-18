@@ -2,13 +2,17 @@ package api
 
 import (
 	"archive/tar"
+	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/authz"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/response"
@@ -33,6 +37,8 @@ func registerUpdateHandler(router Router, authorizer authz.Authorizer, service p
 
 	// authentication and authorization required to upload updates.
 	router.HandleFunc("POST /{$}", response.With(handler.updatesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
+	router.HandleFunc("DELETE /{$}", response.With(handler.updatesDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
+	router.HandleFunc("POST /:refresh", response.With(handler.updatesRefreshPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
 }
 
 // swagger:operation GET /1.0/provisioning/updates updates updates_get
@@ -210,7 +216,7 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 //	  - application/json
 //	responses:
 //	  "200":
-//	    $ref: "#/responses/EmptySyncResponse"
+//	    $ref: "#/responses/SyncResponse"
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -228,6 +234,104 @@ func (u *updateHandler) updatesPost(r *http.Request) response.Response {
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/updates"+id.String())
+}
+
+// swagger:operation DELETE /1.0/provisioning/updates updates updates_delete
+//
+//	Remove all updates
+//
+//	Remove all updates and free up all disk space occupied by updates.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (u *updateHandler) updatesDelete(r *http.Request) response.Response {
+	err := u.service.CleanupAll(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/updates/:refresh updates updates_refresh_post
+//
+//	Trigger a refresh of the updates
+//
+//	Refresh the updates provided by Operations Center.
+//
+//	---
+//	parameters:
+//	  - in: query
+//	    name: wait
+//	    description: If set, refresh operation is executed synchronously and waited for the result.
+//	    type: boolean
+//	    example: true
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (u *updateHandler) updatesRefreshPost(r *http.Request) response.Response {
+	var wait bool
+
+	if r.FormValue("wait") != "" {
+		var err error
+		wait, err = strconv.ParseBool(r.FormValue("wait"))
+		if err != nil {
+			return response.SmartError(err)
+		}
+	}
+
+	if wait {
+		err := u.service.Refresh(r.Context())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		return response.EmptySyncResponse
+	}
+
+	go func() {
+		// TODO: It would be better to have the application context, such that
+		// the refresh operation is properly cancelled on shutdown.
+		ctx := context.Background()
+
+		err := u.service.Refresh(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Refresh updates failed", logger.Err(err))
+		} else {
+			slog.InfoContext(ctx, "Refresh updates completed")
+		}
+	}()
+
+	// TODO: We do not yet have proper operations as in Incus, but returning a
+	// SyncResponse also feels wrong.
+	return response.ManualResponse(func(w http.ResponseWriter) error {
+		w.WriteHeader(http.StatusAccepted)
+
+		body := api.ResponseRaw{
+			Type:   api.AsyncResponse,
+			Status: "Started",
+		}
+
+		return json.NewEncoder(w).Encode(body)
+	})
 }
 
 // swagger:operation GET /1.0/provisioning/updates/{uuid} updates update_get

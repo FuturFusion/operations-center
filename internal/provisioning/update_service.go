@@ -10,22 +10,26 @@ import (
 	"hash"
 	"io"
 	"sort"
+	"time"
 
 	"github.com/google/uuid"
 
-	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-const defaultLatestLimit = 3
+const (
+	defaultLatestLimit      = 3
+	defaultPendingGraceTime = 24 * time.Hour
+)
 
 type updateService struct {
-	repo        UpdateRepo
-	filesRepo   UpdateFilesRepo
-	source      map[string]UpdateSourcePort
-	latestLimit int
+	repo               UpdateRepo
+	filesRepo          UpdateFilesRepo
+	source             map[string]UpdateSourcePort
+	latestLimit        int
+	pendingGracePeriod time.Duration
 }
 
 var _ UpdateService = &updateService{}
@@ -44,12 +48,19 @@ func UpdateServiceWithLatestLimit(limit int) UpdateServiceOption {
 	}
 }
 
+func UpdateServiceWithPendingGracePeriod(pendingGracePeriod time.Duration) UpdateServiceOption {
+	return func(service *updateService) {
+		service.pendingGracePeriod = pendingGracePeriod
+	}
+}
+
 func NewUpdateService(repo UpdateRepo, filesRepo UpdateFilesRepo, opts ...UpdateServiceOption) updateService {
 	service := updateService{
-		repo:        repo,
-		filesRepo:   filesRepo,
-		source:      make(map[string]UpdateSourcePort),
-		latestLimit: defaultLatestLimit,
+		repo:               repo,
+		filesRepo:          filesRepo,
+		source:             make(map[string]UpdateSourcePort),
+		latestLimit:        defaultLatestLimit,
+		pendingGracePeriod: defaultPendingGraceTime,
 	}
 
 	for _, opt := range opts {
@@ -78,6 +89,38 @@ func (s updateService) CreateFromArchive(ctx context.Context, tarReader *tar.Rea
 	}
 
 	return update.UUID, nil
+}
+
+func (s updateService) CleanupAll(ctx context.Context) error {
+	// Since we are going to delete all the updates anyway and because this
+	// method is intended to be an escape hatch, which should also work, if
+	// the disk is completely full and therefore writes to the DB would likely fail,
+	// the updates are removed first and only after the DB is updated.
+	err := s.filesRepo.CleanupAll(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to cleanup: %w", err)
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		updates, err := s.repo.GetAll(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to get all updates during cleanup: %w", err)
+		}
+
+		for _, update := range updates {
+			err = s.repo.DeleteByUUID(ctx, update.UUID)
+			if err != nil {
+				return fmt.Errorf("Failed to delete update %v: %w", update.UUID, err)
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s updateService) GetAll(ctx context.Context) (Updates, error) {
@@ -181,26 +224,67 @@ func (s updateService) Refresh(ctx context.Context) error {
 	return nil
 }
 
+// refreshOrigin refreshes the updates from an origin.
+//
+// This operations is performed in the following steps:
+//
+//   - Get latest updates (up to the defined limit) from the origin.
+//   - Get all existing updates for the respective origin from the DB.
+//   - Merge the two sets such that updates already present in the DB take precedence over same updates from origin.
+//   - Determine the resulting state using the following logic:
+//     Sort the merged list of updates by published at date in descending order.
+//     Pending updates are not considered. If pending updates are in pending state for more than `pendingGraceTime`, these updates are removed.
+//     At least the most recent update currently available in the DB is kept.
+//     Select the n most recent updates from the merged list, where n is defined by the parameter `latestLimit`.
+//     The remainder of the updates are omitted (ignored, if not yet downloaded, deleted if already present in the DB).
+//   - Remove the updates, which are marked for removal.
+//   - Download the updates, that are part of the resulting state and not yet present on the system.
 func (s updateService) refreshOrigin(ctx context.Context, origin string, src UpdateSourcePort) error {
-	updates, err := src.GetLatest(ctx, s.latestLimit)
+	originUpdates, err := src.GetLatest(ctx, s.latestLimit)
 	if err != nil {
 		return fmt.Errorf("Failed to fetch latest updates from source %q: %w", origin, err)
 	}
 
-	for _, update := range updates {
-		var found bool
-		err = transaction.Do(ctx, func(ctx context.Context) error {
-			_, err := s.repo.GetByUUID(ctx, update.UUID)
-			if err == nil {
-				// Update is already in the DB.
-				found = true
-				return nil
+	toDownloadUpdates := make([]Update, 0, len(originUpdates))
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		dbUpdates, err := s.repo.GetAllWithFilter(ctx, UpdateFilter{
+			Origin: ptr.To(origin),
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to get all updates from repository for source %q: %w", origin, err)
+		}
+
+		var toDeleteUpdates []Update
+		toDeleteUpdates, toDownloadUpdates = s.determineToDeleteAndToDownloadUpdates(dbUpdates, originUpdates)
+
+		// Remove updates marked for removal.
+		for _, update := range toDeleteUpdates {
+			err = s.filesRepo.Delete(ctx, update)
+			if err != nil {
+				return fmt.Errorf("Failed to forget update %s from source %q: %w", update.UUID, origin, err)
 			}
 
-			if !errors.Is(err, domain.ErrNotFound) {
-				return err
+			err = s.repo.DeleteByUUID(ctx, update.UUID)
+			if err != nil {
+				return fmt.Errorf("Failed to remove update %s from source %q from repository: %w", update.UUID, origin, err)
 			}
+		}
 
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("Unable to refresh updates from source: %w", err)
+	}
+
+	if len(toDownloadUpdates) > 0 {
+		// Make sure, we do have enough space left in the files repository before moving the state to pending.
+		err = s.isSpaceAvailable(ctx, toDownloadUpdates)
+		if err != nil {
+			return err
+		}
+
+		// Move updates marked for download in pending state.
+		for i, update := range toDownloadUpdates {
 			// Overwrite origin with our value to ensure cleanup to work.
 			update.Origin = origin
 			update.Status = api.UpdateStatusPending
@@ -210,22 +294,31 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 				return fmt.Errorf("Validate update: %w", err)
 			}
 
-			return s.repo.Upsert(ctx, update)
-		})
-		if err != nil {
-			return fmt.Errorf("Failed to create update in pending state: %w", err)
-		}
+			toDownloadUpdates[i] = update
 
-		if found {
-			continue
+			err = s.repo.Upsert(ctx, update)
+			if err != nil {
+				return fmt.Errorf("Failed to move update in pending state: %w", err)
+			}
 		}
+	}
 
+	// TODO: Should we have a compensating operation if the download of an update fails
+	// to reset the state of the update in the DB?
+	// TODO: Should partially downloaded updates be removed, if downloading fails?
+	for _, update := range toDownloadUpdates {
 		updateFiles, err := src.GetUpdateAllFiles(ctx, update)
 		if err != nil {
 			return fmt.Errorf(`Failed to get files for update "%s:%s@%s": %w`, origin, update.Channel, update.Version, err)
 		}
 
 		update.Files = updateFiles
+
+		// Make sure, we do have enough space left in the files repository before moving the state to pending.
+		err = s.isSpaceAvailable(ctx, []Update{update})
+		if err != nil {
+			return err
+		}
 
 		for _, updateFile := range updateFiles {
 			if ctx.Err() != nil {
@@ -281,36 +374,96 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 		}
 	}
 
-	err = transaction.Do(ctx, func(ctx context.Context) error {
-		allUpdates, err := s.repo.GetAllWithFilter(ctx, UpdateFilter{
-			Origin: ptr.To(origin),
-		})
-		if err != nil {
-			return fmt.Errorf("Failed to get all updates from repository for source %q: %w", origin, err)
-		}
+	return nil
+}
 
-		sort.Slice(allUpdates, func(i, j int) bool {
-			return allUpdates[i].PublishedAt.After(allUpdates[j].PublishedAt)
-		})
-
-		if len(allUpdates) > s.latestLimit {
-			for _, update := range allUpdates[s.latestLimit:] {
-				err = s.filesRepo.Delete(ctx, update)
-				if err != nil {
-					return fmt.Errorf("Failed to forget update %s from source %q: %w", update.UUID, origin, err)
-				}
-
-				err = s.repo.DeleteByUUID(ctx, update.UUID)
-				if err != nil {
-					return fmt.Errorf("Failed to remove update %s from source %q from repository: %w", update.UUID, origin, err)
-				}
+func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []Update, originUpdates []Update) (toDeleteUpdates []Update, toDownloadUpdates []Update) {
+	// Merge dbUpdates and originUpdates to the desired end state.
+	mergedUpdates := make([]Update, 0, len(dbUpdates)+len(originUpdates))
+	mergedUpdates = append(mergedUpdates, dbUpdates...)
+	for _, originUpdate := range originUpdates {
+		// Add updates from origin to the merged updates list, if they are not yet present.
+		var found bool
+		for _, update := range mergedUpdates {
+			if originUpdate.UUID == update.UUID {
+				found = true
+				break
 			}
 		}
 
-		return nil
+		if !found {
+			mergedUpdates = append(mergedUpdates, originUpdate)
+		}
+	}
+
+	// Make sure, all updates are sorted by published at date.
+	sort.Slice(mergedUpdates, func(i, j int) bool {
+		return mergedUpdates[i].PublishedAt.After(mergedUpdates[j].PublishedAt)
 	})
+
+	// If there are currently no updates in the DB, we don't need to reserve
+	// a slot for the most recent update from the DB.
+	mostRecentInDBFound := len(dbUpdates) == 0
+
+	toDeleteUpdates = make([]Update, 0, len(dbUpdates))
+	toDownloadUpdates = make([]Update, 0, len(originUpdates))
+	updateCount := 0
+	for _, update := range mergedUpdates {
+		// Mark updates in state pending for more than the defined grace time for deletion.
+		if update.Status == api.UpdateStatusPending && time.Since(update.LastUpdated) > s.pendingGracePeriod {
+			toDeleteUpdates = append(toDeleteUpdates, update)
+			continue
+		}
+
+		switch update.Status {
+		case api.UpdateStatusReady:
+			// Update from the DB, already downloaded.
+			if updateCount >= s.latestLimit {
+				// Already enough updates, mark the remaining ones for removal.
+				toDeleteUpdates = append(toDeleteUpdates, update)
+				continue
+			}
+
+			mostRecentInDBFound = true
+			updateCount++
+
+		case api.UpdateStatusUnknown:
+			if !mostRecentInDBFound && updateCount+1 >= s.latestLimit {
+				// We have not yet found the most recent one from the DB and we only have
+				// 1 slot left, so we can no longer add more updates from origin.
+				continue
+			}
+
+			toDownloadUpdates = append(toDownloadUpdates, update)
+			updateCount++
+		default:
+			// Unlikely to happen, this would be an update in state pending, younger than grace time
+			// so effectively an update the is fetched right now.
+		}
+	}
+
+	return toDeleteUpdates, toDownloadUpdates
+}
+
+func (s updateService) isSpaceAvailable(ctx context.Context, downloadUpdates []Update) error {
+	var requiredSpaceTotal int
+	for _, update := range downloadUpdates {
+		for _, file := range update.Files {
+			requiredSpaceTotal += file.Size
+		}
+	}
+
+	ui, err := s.filesRepo.UsageInformation(ctx)
 	if err != nil {
-		return fmt.Errorf("Unable to refresh updates from source: %w", err)
+		return fmt.Errorf("Failed to get usage information: %w", err)
+	}
+
+	if ui.TotalSpaceBytes < 1 {
+		return fmt.Errorf("Files repository reported an invalid total space: %d", ui.TotalSpaceBytes)
+	}
+
+	if (float64(ui.AvailableSpaceBytes)-float64(requiredSpaceTotal))/float64(ui.TotalSpaceBytes) < 0.1 {
+		return fmt.Errorf("Not enough space available in files repository, require: %d, available: %d, required headroom after download: 10%%", requiredSpaceTotal, ui.AvailableSpaceBytes)
 	}
 
 	return nil

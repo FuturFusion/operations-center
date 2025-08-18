@@ -44,6 +44,39 @@ func NewUpdateServiceWithSlog(base provisioning.UpdateService, log *slog.Logger,
 	return this
 }
 
+// CleanupAll implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) CleanupAll(ctx context.Context) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.Debug("=> calling CleanupAll")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method CleanupAll returned an informative error")
+			} else {
+				log.Error("<= method CleanupAll returned an error")
+			}
+		} else {
+			log.Debug("<= method CleanupAll finished")
+		}
+	}()
+	return _d._base.CleanupAll(ctx)
+}
+
 // CreateFromArchive implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uUID uuid.UUID, err error) {
 	log := _d._log.With()

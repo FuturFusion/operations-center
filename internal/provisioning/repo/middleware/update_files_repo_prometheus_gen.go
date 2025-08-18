@@ -39,6 +39,20 @@ func NewUpdateFilesRepoWithPrometheus(base provisioning.UpdateFilesRepo, instanc
 	}
 }
 
+// CleanupAll implements provisioning.UpdateFilesRepo.
+func (_d UpdateFilesRepoWithPrometheus) CleanupAll(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateFilesRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "CleanupAll", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.CleanupAll(ctx)
+}
+
 // CreateFromArchive implements provisioning.UpdateFilesRepo.
 func (_d UpdateFilesRepoWithPrometheus) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (update *provisioning.Update, err error) {
 	_since := time.Now()
@@ -68,7 +82,7 @@ func (_d UpdateFilesRepoWithPrometheus) Delete(ctx context.Context, update provi
 }
 
 // Get implements provisioning.UpdateFilesRepo.
-func (_d UpdateFilesRepoWithPrometheus) Get(ctx context.Context, update provisioning.Update, filename string) (readCloser io.ReadCloser, n int, err error) {
+func (_d UpdateFilesRepoWithPrometheus) Get(ctx context.Context, update provisioning.Update, filename string) (readCloser io.ReadCloser, size int, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -93,4 +107,18 @@ func (_d UpdateFilesRepoWithPrometheus) Put(ctx context.Context, update provisio
 		updateFilesRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "Put", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Put(ctx, update, filename, content)
+}
+
+// UsageInformation implements provisioning.UpdateFilesRepo.
+func (_d UpdateFilesRepoWithPrometheus) UsageInformation(ctx context.Context) (usageInformation provisioning.UsageInformation, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateFilesRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UsageInformation", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UsageInformation(ctx)
 }

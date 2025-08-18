@@ -102,6 +102,96 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 	}
 }
 
+func TestUpdateService_CleanupAll(t *testing.T) {
+	tests := []struct {
+		name                   string
+		filesRepoCleanupAllErr error
+		repoGetAll             provisioning.Updates
+		repoGetAllErr          error
+		repoDeleteByUUID       []queue.Item[struct{}]
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetAll: provisioning.Updates{
+				{
+					UUID: uuid.MustParse("3b9d0f85-67b4-480e-b369-fef25e9d8ccc"),
+				},
+				{
+					UUID: uuid.MustParse("ce9b4489-cc2e-4726-9103-ea22d07a2110"),
+				},
+			},
+			repoDeleteByUUID: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                   "error - filesRepo.CleanupAll",
+			filesRepoCleanupAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:          "error - repo.GetAll",
+			repoGetAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.DeleteByID",
+			repoGetAll: provisioning.Updates{
+				{
+					UUID: uuid.MustParse("3b9d0f85-67b4-480e-b369-fef25e9d8ccc"),
+				},
+				{
+					UUID: uuid.MustParse("ce9b4489-cc2e-4726-9103-ea22d07a2110"),
+				},
+			},
+			repoDeleteByUUID: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.UpdateRepoMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
+					return tc.repoGetAll, tc.repoGetAllErr
+				},
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					_, err := queue.Pop(t, &tc.repoDeleteByUUID)
+					return err
+				},
+			}
+
+			repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
+				CleanupAllFunc: func(ctx context.Context) error {
+					return tc.filesRepoCleanupAllErr
+				},
+			}
+
+			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles)
+
+			// Run test
+			err := updateSvc.CleanupAll(context.Background())
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Empty(t, tc.repoDeleteByUUID)
+		})
+	}
+}
+
 func TestUpdateService_GetAll(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -513,9 +603,24 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 }
 
 func TestUpdateService_Refresh(t *testing.T) {
+	updatePresentUUID := uuid.MustParse(`33fe66e2-3ee6-460d-97a8-70309e33a319`)
+	updateNewUUID := uuid.MustParse(`4629fd0f-bb25-4843-978a-96c11715c84d`)
+
 	tests := []struct {
 		name string
 		ctx  context.Context
+
+		repoGetAllWithFilterUpdates provisioning.Updates
+		repoGetAllWithFilterErr     error
+		repoUpsert                  []queue.Item[struct{}]
+		repoDeleteByUUID            []queue.Item[struct{}]
+
+		repoUpdateFilesUsageInformation []queue.Item[provisioning.UsageInformation]
+		repoUpdateFilesPut              []queue.Item[struct {
+			commitErr error
+			cancelErr error
+		}]
+		repoUpdateFilesDelete []queue.Item[struct{}]
 
 		sourceGetLatestUpdates        provisioning.Updates
 		sourceGetLatestErr            error
@@ -524,78 +629,64 @@ func TestUpdateService_Refresh(t *testing.T) {
 			stream io.ReadCloser
 			size   int
 		}]
-		repoUpdateFilesPut []queue.Item[struct {
-			commitErr error
-			cancelErr error
-		}]
-		repoUpdateFilesDelete []queue.Item[struct{}]
-
-		repoGetByUUIDErr            error
-		repoUpsert                  []queue.Item[struct{}]
-		repoGetAllWithFilterUpdates provisioning.Updates
-		repoGetAllWithFilterErr     error
-		repoDeleteByUUID            []queue.Item[struct{}]
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		// Success cases
 		{
-			name:             "success - no updates, no state in the DB",
-			ctx:              context.Background(),
-			repoGetByUUIDErr: domain.ErrNotFound,
+			name: "success - no updates, no state in the DB",
+			ctx:  context.Background(),
 
 			assertErr: require.NoError,
 		},
 		{
-			name: "success - one update, present",
+			name: "success - one update, already present in DB",
 			ctx:  context.Background(),
+
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					Severity: api.UpdateSeverityLow,
+					UUID: updatePresentUUID,
 				},
 			},
-			repoGetByUUIDErr: nil,
+			repoGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID: updatePresentUUID,
+				},
+			},
 
 			assertErr: require.NoError,
 		},
 		{
-			name: "success - one update, not present, with files",
+			name: "success - one update, not present, with files and sha256 checksum",
 			ctx:  context.Background(),
+
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					Severity: api.UpdateSeverityLow,
-				},
-			},
-			repoGetByUUIDErr: domain.ErrNotFound,
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						provisioning.UpdateFile{
-							Filename: "dummy.txt",
-							Size:     5,
+					UUID:     updatePresentUUID,
+					Status:   api.UpdateStatusUnknown,
+					Severity: api.UpdateSeverityNone,
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
 						},
 					},
 				},
 			},
-			sourceGetUpdateFileByFilename: []queue.Item[struct {
-				stream io.ReadCloser
-				size   int
-			}]{
+			repoGetAllWithFilterUpdates: provisioning.Updates{
 				{
-					Value: struct {
-						stream io.ReadCloser
-						size   int
-					}{
-						stream: io.NopCloser(bytes.NewBufferString(`dummy`)),
-						size:   5,
-					},
+					UUID:   updateNewUUID,
+					Status: api.UpdateStatusReady,
 				},
 			},
-			repoUpdateFilesPut: []queue.Item[struct {
-				commitErr error
-				cancelErr error
-			}]{
-				{},
+			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+				// 1st per update check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
 			},
 			repoUpsert: []queue.Item[struct{}]{
 				// pending
@@ -604,21 +695,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 				{},
 			},
 
-			assertErr: require.NoError,
-		},
-		{
-			name: "success - one update, not present, with files and sha256 checksum",
-			ctx:  context.Background(),
-			sourceGetLatestUpdates: provisioning.Updates{
-				{
-					Severity: api.UpdateSeverityLow,
-				},
-			},
-			repoGetByUUIDErr: domain.ErrNotFound,
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
-						provisioning.UpdateFile{
+						{
 							Filename: "dummy.txt",
 							Size:     5,
 
@@ -648,32 +728,43 @@ func TestUpdateService_Refresh(t *testing.T) {
 			}]{
 				{},
 			},
-			repoUpsert: []queue.Item[struct{}]{
-				// pending
-				{},
-				// ready
-				{},
-			},
 
 			assertErr: require.NoError,
 		},
 		{
-			name: "success - no updates, cleanup state in DB",
+			name: "success - one update, wicht gets omitted, cleanup state in DB",
 			ctx:  context.Background(),
+
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					UUID:        updateNewUUID,
+					Status:      api.UpdateStatusUnknown,
+					PublishedAt: time.Date(2025, 1, 3, 0, 0, 0, 0, time.UTC), // most recent update, but we always keep the most recent update from the DB and the test is configurued to only keep 1 update, so this gets omitted.
+				},
+			},
 			repoGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID:        uuid.MustParse(`223795ef-a126-4e91-8d19-9d550ff928d6`),
-					PublishedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+					Status:      api.UpdateStatusReady,
+					PublishedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), // delete, since it is the older one.
 				},
 				{
 					UUID:        uuid.MustParse(`af49c1b9-4fdf-4542-a113-456316d045f4`),
+					Status:      api.UpdateStatusReady,
 					PublishedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
+				},
+				{
+					UUID:        uuid.MustParse(`437558e4-6839-4f9e-8549-bd507e81c328`),
+					Status:      api.UpdateStatusPending,
+					PublishedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC), // delete, since it is in pending for longer than grace period.
 				},
 			},
 			repoUpdateFilesDelete: []queue.Item[struct{}]{
 				{},
+				{},
 			},
 			repoDeleteByUUID: []queue.Item[struct{}]{
+				{},
 				{},
 			},
 
@@ -682,31 +773,195 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 		// Error cases
 		{
-			name:               "error - source.GetLatest",
-			ctx:                context.Background(),
+			name: "error - source.GetLatest",
+			ctx:  context.Background(),
+
 			sourceGetLatestErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - repo.GetByUUID",
+			name: "error - repo.GetAllWithFilter",
 			ctx:  context.Background(),
-			sourceGetLatestUpdates: provisioning.Updates{
-				{
-					Severity: api.UpdateSeverityLow,
-				},
-			},
-			repoGetByUUIDErr: boom.Error,
+
+			repoGetAllWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:             "error - Validate",
-			ctx:              context.Background(),
-			repoGetByUUIDErr: domain.ErrNotFound,
+			name: "error - filesRepo.Delete",
+			ctx:  context.Background(),
+
+			repoGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID:        uuid.MustParse(`223795ef-a126-4e91-8d19-9d550ff928d6`),
+					Status:      api.UpdateStatusReady,
+					PublishedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+				},
+				{
+					UUID:        uuid.MustParse(`af49c1b9-4fdf-4542-a113-456316d045f4`),
+					Status:      api.UpdateStatusReady,
+					PublishedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
+				},
+			},
+			repoUpdateFilesDelete: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - filesRepo.Delete",
+			ctx:  context.Background(),
+
+			repoGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID:        uuid.MustParse(`223795ef-a126-4e91-8d19-9d550ff928d6`),
+					Status:      api.UpdateStatusReady,
+					PublishedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+				},
+				{
+					UUID:        uuid.MustParse(`af49c1b9-4fdf-4542-a113-456316d045f4`),
+					Status:      api.UpdateStatusReady,
+					PublishedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
+				},
+			},
+			repoUpdateFilesDelete: []queue.Item[struct{}]{
+				{},
+			},
+			repoDeleteByUUID: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - filesRepo.UsageInformation",
+			ctx:  context.Background(),
+
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
+					UUID:     updatePresentUUID,
+					Status:   api.UpdateStatusUnknown,
+					Severity: api.UpdateSeverityNone,
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
+						},
+					},
+				},
+			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID:   updateNewUUID,
+					Status: api.UpdateStatusReady,
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
+				// global check
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - filesRepo.UsageInformation",
+			ctx:  context.Background(),
+
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					UUID:     updatePresentUUID,
+					Status:   api.UpdateStatusUnknown,
+					Severity: api.UpdateSeverityNone,
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
+						},
+					},
+				},
+			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID:   updateNewUUID,
+					Status: api.UpdateStatusReady,
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(0, 0), // invalid total size
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "Files repository reported an invalid total space: 0")
+			},
+		},
+		{
+			name: "error - not enough space available global",
+			ctx:  context.Background(),
+
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					UUID:     updatePresentUUID,
+					Status:   api.UpdateStatusUnknown,
+					Severity: api.UpdateSeverityNone,
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
+						},
+					},
+				},
+			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID:   updateNewUUID,
+					Status: api.UpdateStatusReady,
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(50, 0), // no space available
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "Not enough space available in files repository")
+			},
+		},
+		{
+			name: "error - Validate",
+			ctx:  context.Background(),
+
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					UUID:     updatePresentUUID,
+					Status:   api.UpdateStatusUnknown,
 					Severity: "invalid", // invalid
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
+						},
+					},
+				},
+			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID:   updateNewUUID,
+					Status: api.UpdateStatusReady,
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(50, 10),
 				},
 			},
 
@@ -718,12 +973,31 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name: "error - repo.Upsert pending",
 			ctx:  context.Background(),
+
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					Severity: api.UpdateSeverityLow,
+					UUID:     updatePresentUUID,
+					Status:   api.UpdateStatusUnknown,
+					Severity: api.UpdateSeverityNone,
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
+						},
+					},
 				},
 			},
-			repoGetByUUIDErr: domain.ErrNotFound,
+			repoGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID:   updateNewUUID,
+					Status: api.UpdateStatusReady,
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+			},
 			repoUpsert: []queue.Item[struct{}]{
 				// pending
 				{
@@ -736,23 +1010,96 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name: "error - source.GetUpdateAllFiles",
 			ctx:  context.Background(),
+
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					Severity: api.UpdateSeverityLow,
+					UUID:     updatePresentUUID,
+					Status:   api.UpdateStatusUnknown,
+					Severity: api.UpdateSeverityNone,
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
+						},
+					},
 				},
 			},
-			repoGetByUUIDErr: domain.ErrNotFound,
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+			repoGetAllWithFilterUpdates: provisioning.Updates{
 				{
-					Err: boom.Error,
+					UUID:   updateNewUUID,
+					Status: api.UpdateStatusReady,
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(50, 10),
 				},
 			},
 			repoUpsert: []queue.Item[struct{}]{
 				// pending
 				{},
 			},
+			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - not enough space available before download",
+			ctx:  context.Background(),
+
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					UUID:     updatePresentUUID,
+					Status:   api.UpdateStatusUnknown,
+					Severity: api.UpdateSeverityNone,
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
+						},
+					},
+				},
+			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID:   updateNewUUID,
+					Status: api.UpdateStatusReady,
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+				// 1st per update check
+				{
+					Value: usageInfoGiB(50, 0), // All space consumed
+				},
+			},
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+			},
+			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+				{
+					Value: provisioning.UpdateFiles{
+						{
+							Filename: "dummy.txt",
+							Size:     5,
+
+							// Generate hash: echo -n "dummy" | sha256sum
+							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorContains(tt, err, "Not enough space available in files repository")
+			},
 		},
 		{
 			name: "error - context cancelled",
@@ -761,25 +1108,51 @@ func TestUpdateService_Refresh(t *testing.T) {
 				cancel(boom.Error)
 				return ctx
 			}(),
+
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					Severity: api.UpdateSeverityLow,
-				},
-			},
-			repoGetByUUIDErr: domain.ErrNotFound,
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						provisioning.UpdateFile{
-							Filename: "dummy.txt",
-							Size:     5,
+					UUID:     updatePresentUUID,
+					Status:   api.UpdateStatusUnknown,
+					Severity: api.UpdateSeverityNone,
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
 						},
 					},
+				},
+			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID:   updateNewUUID,
+					Status: api.UpdateStatusReady,
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+				// 1st per update check
+				{
+					Value: usageInfoGiB(50, 10),
 				},
 			},
 			repoUpsert: []queue.Item[struct{}]{
 				// pending
 				{},
+			},
+			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
+				{
+					Value: provisioning.UpdateFiles{
+						{
+							Filename: "dummy.txt",
+							Size:     5,
+
+							// Generate hash: echo -n "dummy" | sha256sum
+							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
+						},
+					},
+				},
 			},
 
 			assertErr: boom.ErrorIs,
@@ -787,18 +1160,48 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name: "error - source.GetUpdateFileByFilename",
 			ctx:  context.Background(),
+
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					Severity: api.UpdateSeverityLow,
+					UUID:     updatePresentUUID,
+					Status:   api.UpdateStatusUnknown,
+					Severity: api.UpdateSeverityNone,
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
+						},
+					},
 				},
 			},
-			repoGetByUUIDErr: domain.ErrNotFound,
+			repoGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID:   updateNewUUID,
+					Status: api.UpdateStatusReady,
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+				// 1st per update check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+			},
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+			},
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
-						provisioning.UpdateFile{
+						{
 							Filename: "dummy.txt",
 							Size:     5,
+
+							// Generate hash: echo -n "dummy" | sha256sum
+							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
 						},
 					},
 				},
@@ -811,28 +1214,54 @@ func TestUpdateService_Refresh(t *testing.T) {
 					Err: boom.Error,
 				},
 			},
-			repoUpsert: []queue.Item[struct{}]{
-				// pending
-				{},
-			},
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - files repo Put",
+			name: "error - filesRepo.Put",
 			ctx:  context.Background(),
+
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					Severity: api.UpdateSeverityLow,
+					UUID:     updatePresentUUID,
+					Status:   api.UpdateStatusUnknown,
+					Severity: api.UpdateSeverityNone,
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
+						},
+					},
 				},
 			},
-			repoGetByUUIDErr: domain.ErrNotFound,
+			repoGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID:   updateNewUUID,
+					Status: api.UpdateStatusReady,
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+				// 1st per update check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+			},
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+			},
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
-						provisioning.UpdateFile{
+						{
 							Filename: "dummy.txt",
 							Size:     5,
+
+							// Generate hash: echo -n "dummy" | sha256sum
+							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
 						},
 					},
 				},
@@ -859,29 +1288,53 @@ func TestUpdateService_Refresh(t *testing.T) {
 					Err: boom.Error,
 				},
 			},
-			repoUpsert: []queue.Item[struct{}]{
-				// pending
-				{},
-			},
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - checksum error",
+			name: "error - filesRepo.Put",
 			ctx:  context.Background(),
+
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					Severity: api.UpdateSeverityLow,
+					UUID:     updatePresentUUID,
+					Status:   api.UpdateStatusUnknown,
+					Severity: api.UpdateSeverityNone,
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
+						},
+					},
 				},
 			},
-			repoGetByUUIDErr: domain.ErrNotFound,
+			repoGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID:   updateNewUUID,
+					Status: api.UpdateStatusReady,
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+				// 1st per update check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+			},
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+			},
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
-						provisioning.UpdateFile{
+						{
 							Filename: "dummy.txt",
 							Size:     5,
 
+							// Generate hash: echo -n "dummy" | sha256sum
 							Sha256: "invalid", // invalid hash
 						},
 					},
@@ -907,30 +1360,56 @@ func TestUpdateService_Refresh(t *testing.T) {
 			}]{
 				{},
 			},
-			repoUpsert: []queue.Item[struct{}]{
-				// pending
-				{},
-			},
 
 			assertErr: func(tt require.TestingT, err error, i ...any) {
 				require.ErrorContains(tt, err, "Invalid update, file sha256 mismatch for file")
 			},
 		},
 		{
-			name: "error - commit",
+			name: "error - filesRepo.Put - commit",
 			ctx:  context.Background(),
+
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					Severity: api.UpdateSeverityLow,
+					UUID:     updatePresentUUID,
+					Status:   api.UpdateStatusUnknown,
+					Severity: api.UpdateSeverityNone,
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
+						},
+					},
 				},
 			},
-			repoGetByUUIDErr: domain.ErrNotFound,
+			repoGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID:   updateNewUUID,
+					Status: api.UpdateStatusReady,
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+				// 1st per update check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+			},
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+			},
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
-						provisioning.UpdateFile{
+						{
 							Filename: "dummy.txt",
 							Size:     5,
+
+							// Generate hash: echo -n "dummy" | sha256sum
+							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
 						},
 					},
 				},
@@ -962,28 +1441,54 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoUpsert: []queue.Item[struct{}]{
-				// pending
-				{},
-			},
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - cancel",
+			name: "error - filesRepo.Put - cancel",
 			ctx:  context.Background(),
+
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					Severity: api.UpdateSeverityLow,
+					UUID:     updatePresentUUID,
+					Status:   api.UpdateStatusUnknown,
+					Severity: api.UpdateSeverityNone,
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
+						},
+					},
 				},
 			},
-			repoGetByUUIDErr: domain.ErrNotFound,
+			repoGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID:   updateNewUUID,
+					Status: api.UpdateStatusReady,
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+				// 1st per update check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+			},
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+			},
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
-						provisioning.UpdateFile{
+						{
 							Filename: "dummy.txt",
 							Size:     5,
+
+							// Generate hash: echo -n "dummy" | sha256sum
+							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
 						},
 					},
 				},
@@ -1015,28 +1520,58 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoUpsert: []queue.Item[struct{}]{
-				// pending
-				{},
-			},
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - repo.Upsert",
+			name: "error - filesRepo.Upsert",
 			ctx:  context.Background(),
+
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					Severity: api.UpdateSeverityLow,
+					UUID:     updatePresentUUID,
+					Status:   api.UpdateStatusUnknown,
+					Severity: api.UpdateSeverityNone,
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
+						},
+					},
 				},
 			},
-			repoGetByUUIDErr: domain.ErrNotFound,
+			repoGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID:   updateNewUUID,
+					Status: api.UpdateStatusReady,
+				},
+			},
+			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
+				// global check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+				// 1st per update check
+				{
+					Value: usageInfoGiB(50, 10),
+				},
+			},
+			repoUpsert: []queue.Item[struct{}]{
+				// pending
+				{},
+				// ready
+				{
+					Err: boom.Error,
+				},
+			},
 			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
 				{
 					Value: provisioning.UpdateFiles{
-						provisioning.UpdateFile{
+						{
 							Filename: "dummy.txt",
 							Size:     5,
+
+							// Generate hash: echo -n "dummy" | sha256sum
+							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
 						},
 					},
 				},
@@ -1061,66 +1596,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			}]{
 				{},
 			},
-			repoUpsert: []queue.Item[struct{}]{
-				// pending
-				{},
-				// ready
-				{
-					Err: boom.Error,
-				},
-			},
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name:                    "error - repo.GetAll",
-			ctx:                     context.Background(),
-			repoGetAllWithFilterErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - source.ForgetUpdate",
-			ctx:  context.Background(),
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:        uuid.MustParse(`223795ef-a126-4e91-8d19-9d550ff928d6`),
-					PublishedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
-				},
-				{
-					UUID:        uuid.MustParse(`af49c1b9-4fdf-4542-a113-456316d045f4`),
-					PublishedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
-				},
-			},
-			repoUpdateFilesDelete: []queue.Item[struct{}]{
-				{
-					Err: boom.Error,
-				},
-			},
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - repo.DeleteByUUID",
-			ctx:  context.Background(),
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:        uuid.MustParse(`223795ef-a126-4e91-8d19-9d550ff928d6`),
-					PublishedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
-				},
-				{
-					UUID:        uuid.MustParse(`af49c1b9-4fdf-4542-a113-456316d045f4`),
-					PublishedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
-				},
-			},
-			repoUpdateFilesDelete: []queue.Item[struct{}]{
-				{},
-			},
-			repoDeleteByUUID: []queue.Item[struct{}]{
-				{
-					Err: boom.Error,
-				},
-			},
 
 			assertErr: boom.ErrorIs,
 		},
@@ -1130,9 +1605,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
-				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
-					return nil, tc.repoGetByUUIDErr
-				},
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
 					return tc.repoGetAllWithFilterUpdates, tc.repoGetAllWithFilterErr
 				},
@@ -1162,6 +1634,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 					_, err := queue.Pop(t, &tc.repoUpdateFilesDelete)
 					return err
 				},
+				UsageInformationFunc: func(ctx context.Context) (provisioning.UsageInformation, error) {
+					return queue.Pop(t, &tc.repoUpdateFilesUsageInformation)
+				},
 			}
 
 			source := &adapterMock.UpdateSourcePortMock{
@@ -1177,7 +1652,13 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, provisioning.UpdateServiceWithSource("mock", source), provisioning.UpdateServiceWithLatestLimit(1))
+			updateSvc := provisioning.NewUpdateService(
+				repo,
+				repoUpdateFiles,
+				provisioning.UpdateServiceWithSource("mock", source),
+				provisioning.UpdateServiceWithLatestLimit(1),
+				provisioning.UpdateServiceWithPendingGracePeriod(24*time.Hour),
+			)
 
 			// Run test
 			err := updateSvc.Refresh(tc.ctx)
@@ -1193,5 +1674,14 @@ func TestUpdateService_Refresh(t *testing.T) {
 			require.Empty(t, tc.sourceGetUpdateAllFiles)
 			require.Empty(t, tc.sourceGetUpdateFileByFilename)
 		})
+	}
+}
+
+func usageInfoGiB(totalSpaceGiB int, availableSpaceGiB int) provisioning.UsageInformation {
+	const GiB = 1024 * 1024 * 1024
+	return provisioning.UsageInformation{
+		TotalSpaceBytes:     uint64(totalSpaceGiB) * GiB,
+		AvailableSpaceBytes: uint64(availableSpaceGiB) * GiB,
+		UsedSpaceBytes:      uint64(totalSpaceGiB-availableSpaceGiB) * GiB,
 	}
 }

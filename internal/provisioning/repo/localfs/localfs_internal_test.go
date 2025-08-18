@@ -254,6 +254,49 @@ func TestLocalfs_Delete(t *testing.T) {
 	}
 }
 
+func TestLocalfs_CleanupAll(t *testing.T) {
+	tests := []struct {
+		name        string
+		setupTmpDir func(t *testing.T, destDir string)
+	}{
+		{
+			name: "success - empty",
+			setupTmpDir: func(t *testing.T, destDir string) {
+				t.Helper()
+			},
+		},
+		{
+			name: "success - with content",
+			setupTmpDir: func(t *testing.T, destDir string) {
+				t.Helper()
+				updateID := uuid.UUID{}.String()
+
+				err := os.MkdirAll(filepath.Join(destDir, updateID), 0o700)
+				require.NoError(t, err)
+
+				err = os.WriteFile(filepath.Join(destDir, updateID, "file1.txt"), []byte(`file1 body`), 0o600)
+				require.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			tmpDir := t.TempDir()
+			tc.setupTmpDir(t, tmpDir)
+			lfs, err := New(tmpDir, nil)
+			require.NoError(t, err)
+
+			// Run test
+			err = lfs.CleanupAll(context.Background())
+
+			// Assert
+			require.NoError(t, err)
+		})
+	}
+}
+
 type testLocalfsCreateFromArchive struct {
 	name            string
 	tarContentFiles string
