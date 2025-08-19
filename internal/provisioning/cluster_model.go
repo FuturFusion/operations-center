@@ -83,3 +83,8 @@ func (c ClusterEndpoint) GetEndpoints() iter.Seq[Endpoint] {
 		}
 	}
 }
+
+type ClusterProvisioningConfig struct {
+	ClusterEndpoint ClusterEndpoint
+	Servers         []Server
+}
