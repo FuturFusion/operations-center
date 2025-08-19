@@ -6,6 +6,7 @@ package mock
 
 import (
 	"context"
+	"io"
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -44,6 +45,9 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			},
 //			GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
 //				panic("mock out the GetEndpoint method")
+//			},
+//			GetProvisionerConfigurationArchiveFunc: func(ctx context.Context, name string) (io.ReadCloser, int, error) {
+//				panic("mock out the GetProvisionerConfigurationArchive method")
 //			},
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
@@ -90,6 +94,9 @@ type ClusterServiceMock struct {
 
 	// GetEndpointFunc mocks the GetEndpoint method.
 	GetEndpointFunc func(ctx context.Context, name string) (provisioning.Endpoint, error)
+
+	// GetProvisionerConfigurationArchiveFunc mocks the GetProvisionerConfigurationArchive method.
+	GetProvisionerConfigurationArchiveFunc func(ctx context.Context, name string) (io.ReadCloser, int, error)
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
@@ -160,6 +167,13 @@ type ClusterServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// GetProvisionerConfigurationArchive holds details about calls to the GetProvisionerConfigurationArchive method.
+		GetProvisionerConfigurationArchive []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 		// Rename holds details about calls to the Rename method.
 		Rename []struct {
 			// Ctx is the ctx argument value.
@@ -200,19 +214,20 @@ type ClusterServiceMock struct {
 			KeyPEM string
 		}
 	}
-	lockCreate                sync.RWMutex
-	lockDeleteByName          sync.RWMutex
-	lockGetAll                sync.RWMutex
-	lockGetAllNames           sync.RWMutex
-	lockGetAllNamesWithFilter sync.RWMutex
-	lockGetAllWithFilter      sync.RWMutex
-	lockGetByName             sync.RWMutex
-	lockGetEndpoint           sync.RWMutex
-	lockRename                sync.RWMutex
-	lockResyncInventory       sync.RWMutex
-	lockResyncInventoryByName sync.RWMutex
-	lockUpdate                sync.RWMutex
-	lockUpdateCertificate     sync.RWMutex
+	lockCreate                             sync.RWMutex
+	lockDeleteByName                       sync.RWMutex
+	lockGetAll                             sync.RWMutex
+	lockGetAllNames                        sync.RWMutex
+	lockGetAllNamesWithFilter              sync.RWMutex
+	lockGetAllWithFilter                   sync.RWMutex
+	lockGetByName                          sync.RWMutex
+	lockGetEndpoint                        sync.RWMutex
+	lockGetProvisionerConfigurationArchive sync.RWMutex
+	lockRename                             sync.RWMutex
+	lockResyncInventory                    sync.RWMutex
+	lockResyncInventoryByName              sync.RWMutex
+	lockUpdate                             sync.RWMutex
+	lockUpdateCertificate                  sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -492,6 +507,42 @@ func (mock *ClusterServiceMock) GetEndpointCalls() []struct {
 	mock.lockGetEndpoint.RLock()
 	calls = mock.calls.GetEndpoint
 	mock.lockGetEndpoint.RUnlock()
+	return calls
+}
+
+// GetProvisionerConfigurationArchive calls GetProvisionerConfigurationArchiveFunc.
+func (mock *ClusterServiceMock) GetProvisionerConfigurationArchive(ctx context.Context, name string) (io.ReadCloser, int, error) {
+	if mock.GetProvisionerConfigurationArchiveFunc == nil {
+		panic("ClusterServiceMock.GetProvisionerConfigurationArchiveFunc: method is nil but ClusterService.GetProvisionerConfigurationArchive was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockGetProvisionerConfigurationArchive.Lock()
+	mock.calls.GetProvisionerConfigurationArchive = append(mock.calls.GetProvisionerConfigurationArchive, callInfo)
+	mock.lockGetProvisionerConfigurationArchive.Unlock()
+	return mock.GetProvisionerConfigurationArchiveFunc(ctx, name)
+}
+
+// GetProvisionerConfigurationArchiveCalls gets all the calls that were made to GetProvisionerConfigurationArchive.
+// Check the length with:
+//
+//	len(mockedClusterService.GetProvisionerConfigurationArchiveCalls())
+func (mock *ClusterServiceMock) GetProvisionerConfigurationArchiveCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockGetProvisionerConfigurationArchive.RLock()
+	calls = mock.calls.GetProvisionerConfigurationArchive
+	mock.lockGetProvisionerConfigurationArchive.RUnlock()
 	return calls
 }
 
