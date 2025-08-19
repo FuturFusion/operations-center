@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -89,4 +90,18 @@ func (c OperationsCenterClient) UpdateClusterCertificate(ctx context.Context, na
 	}
 
 	return nil
+}
+
+func (c OperationsCenterClient) GetClusterTerraformConfiguration(ctx context.Context, name string) (io.ReadCloser, error) {
+	resp, err := c.doRequestRawResponse(ctx, http.MethodGet, path.Join("/provisioning/clusters", name, "terraform-configuration"), nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		_, err = processResponse(resp)
+		return nil, err
+	}
+
+	return resp.Body, nil
 }
