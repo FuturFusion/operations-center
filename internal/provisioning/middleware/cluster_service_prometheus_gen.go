@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -147,6 +148,20 @@ func (_d ClusterServiceWithPrometheus) GetEndpoint(ctx context.Context, name str
 		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetEndpoint", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetEndpoint(ctx, name)
+}
+
+// GetProvisionerConfigurationArchive implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) GetProvisionerConfigurationArchive(ctx context.Context, name string) (readCloser io.ReadCloser, size int, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetProvisionerConfigurationArchive", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetProvisionerConfigurationArchive(ctx, name)
 }
 
 // Rename implements provisioning.ClusterService.
