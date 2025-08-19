@@ -544,7 +544,7 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 				Files: provisioning.UpdateFiles{}, // foo.bar not included
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Requested file "foo.bar" is not part of update`)
 			},
 			wantBody: []byte{},
@@ -899,7 +899,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Files repository reported an invalid total space: 0")
 			},
 		},
@@ -932,7 +932,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Not enough space available in files repository")
 			},
 		},
@@ -1097,7 +1097,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Not enough space available in files repository")
 			},
 		},
@@ -1361,7 +1361,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 				{},
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Invalid update, file sha256 mismatch for file")
 			},
 		},

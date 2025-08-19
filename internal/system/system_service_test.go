@@ -48,7 +48,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			keyPEM:  "invalid-key",
 
 			serverCertificateUpdateCallExpected: false,
-			assertError: func(tt require.TestingT, err error, i ...any) {
+			assertError: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Failed to validate key pair")
 			},
 		},
@@ -63,7 +63,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			keyPEM:  string(keyPEM),
 
 			serverCertificateUpdateCallExpected: false,
-			assertError: func(tt require.TestingT, err error, i ...any) {
+			assertError: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "server.crt")
 			},
 		},
@@ -78,7 +78,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			keyPEM:  string(keyPEM),
 
 			serverCertificateUpdateCallExpected: false,
-			assertError: func(tt require.TestingT, err error, i ...any) {
+			assertError: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "server.key")
 			},
 		},

@@ -419,8 +419,8 @@ func TestTokenService_Consume(t *testing.T) {
 				ExpireAt:      time.Now().Add(1 * time.Minute),
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorContains(tt, err, "Token exhausted", i...)
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Token exhausted")
 			},
 		},
 		{
@@ -434,8 +434,8 @@ func TestTokenService_Consume(t *testing.T) {
 				ExpireAt:      time.Now().Add(-1 * time.Minute), // Token expired
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorContains(tt, err, "Token expired", i...)
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Token expired")
 			},
 		},
 		{
@@ -574,7 +574,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			},
 			updateSvcGetAllUpdates: provisioning.Updates{},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Failed to get updates: No updates found")
 			},
 		},
@@ -606,7 +606,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			},
 			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Failed to find image file for latest update")
 			},
 		},
@@ -652,7 +652,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 				return io.NopCloser(bytes.NewBufferString(``))
 			}(),
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "is not a file")
 			},
 		},
