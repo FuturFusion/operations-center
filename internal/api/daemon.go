@@ -40,6 +40,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/flasher"
 	provisioningIncusAdapter "github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
 	provisioningAdapterMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/adapter/middleware"
+	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
 	provisioningServiceMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/middleware"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/localfs"
@@ -294,6 +295,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.Default(),
 	)
 
+	terraformProvisioner, err := terraform.New(
+		filepath.Join(d.env.VarDir(), "terraform"),
+		d.env.VarDir(),
+	)
+	if err != nil {
+		return err
+	}
+
 	clusterSvc := provisioning.NewClusterService(
 		provisioningRepoMiddleware.NewClusterRepoWithSlog(
 			provisioningSqlite.NewCluster(dbWithTransaction),
@@ -308,6 +317,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		),
 		serverSvc,
 		nil,
+		terraformProvisioner,
 	)
 	clusterSvcWrapped := provisioningServiceMiddleware.NewClusterServiceWithSlog(
 		clusterSvc,
