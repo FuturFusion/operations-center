@@ -148,11 +148,11 @@ func (c *cmdUpdateList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"UUID", "Origin", "Channel", "Version", "Published At", "Severity", "Status"}
+	header := []string{"UUID", "Origin", "Channels", "Version", "Published At", "Severity", "Status"}
 	data := [][]string{}
 
 	for _, update := range updates {
-		data = append(data, []string{update.UUID.String(), update.Origin, update.Channel, update.Version, update.PublishedAt.Truncate(time.Second).String(), update.Severity.String(), update.Status.String()})
+		data = append(data, []string{update.UUID.String(), update.Origin, strings.Join(update.Channels, ", "), update.Version, update.PublishedAt.Truncate(time.Second).String(), update.Severity.String(), update.Status.String()})
 	}
 
 	sort.ColumnsSort(data, []sort.ColumnSorter{
@@ -217,7 +217,7 @@ func (c *cmdUpdateShow) Run(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("UUID: %s\n", update.UUID.String())
 	fmt.Printf("Origin: %s\n", update.Origin)
-	fmt.Printf("Channel: %s\n", update.Channel)
+	fmt.Printf("Channel: %s\n", strings.Join(update.Channels, ", "))
 	fmt.Printf("Version: %s\n", update.Version)
 	fmt.Printf("Published At: %s\n", update.PublishedAt.Truncate(time.Second).String())
 	fmt.Printf("Severity: %s\n", update.Severity.String())
