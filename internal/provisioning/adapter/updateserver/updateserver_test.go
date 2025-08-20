@@ -37,6 +37,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 				Updates: []provisioning.Update{
 					{
 						Version:     "1",
+						Channels:    []string{"stable", "daily"},
 						Severity:    api.UpdateSeverityNone,
 						PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
 					},
@@ -46,8 +47,9 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 			assertErr: require.NoError,
 			wantUpdates: provisioning.Updates{
 				{
-					UUID:        uuid.MustParse(`87bbde05-2a3c-5508-9d31-4fe7c8cf596a`),
+					UUID:        uuid.MustParse(`1f82dc0a-0487-5532-a76a-74ed263b2280`),
 					Version:     "1",
+					Channels:    provisioning.UpdateChannels{"daily", "stable"},
 					Severity:    api.UpdateSeverityNone,
 					PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
 					Status:      api.UpdateStatusUnknown,

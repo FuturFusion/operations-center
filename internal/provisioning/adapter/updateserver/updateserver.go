@@ -106,9 +106,12 @@ func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Up
 const idSeparator = ":"
 
 func uuidFromUpdateServer(update provisioning.Update) uuid.UUID {
+	channels := update.Channels
+	sort.Strings(channels)
+
 	identifier := strings.Join([]string{
 		update.Origin,
-		update.Channel,
+		strings.Join(channels, ","),
 		update.Version,
 		update.PublishedAt.String(),
 	}, idSeparator)
