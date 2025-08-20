@@ -37,6 +37,16 @@ var updates = map[int]update{
 	8:  updateFromV7,
 	9:  updateFromV8,
 	10: updateFromV9,
+	11: updateFromV10,
+}
+
+func updateFromV10(ctx context.Context, tx *sql.Tx) error {
+	// v10..v11 rename column channel to channels in updates
+	stmt := `
+ALTER TABLE updates RENAME COLUMN channel TO channels;
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV9(ctx context.Context, tx *sql.Tx) error {
