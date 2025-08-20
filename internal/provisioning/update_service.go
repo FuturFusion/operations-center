@@ -13,6 +13,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/expr-lang/expr"
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -21,16 +22,19 @@ import (
 )
 
 const (
+	defaultFetchLimit       = 10
 	defaultLatestLimit      = 3
 	defaultPendingGraceTime = 24 * time.Hour
 )
 
 type updateService struct {
-	repo               UpdateRepo
-	filesRepo          UpdateFilesRepo
-	source             map[string]UpdateSourcePort
-	latestLimit        int
-	pendingGracePeriod time.Duration
+	repo                       UpdateRepo
+	filesRepo                  UpdateFilesRepo
+	source                     map[string]UpdateSourcePort
+	latestLimit                int
+	updateFilterExpression     string
+	updateFileFilterExpression string
+	pendingGracePeriod         time.Duration
 }
 
 var _ UpdateService = &updateService{}
@@ -52,6 +56,18 @@ func UpdateServiceWithLatestLimit(limit int) UpdateServiceOption {
 func UpdateServiceWithPendingGracePeriod(pendingGracePeriod time.Duration) UpdateServiceOption {
 	return func(service *updateService) {
 		service.pendingGracePeriod = pendingGracePeriod
+	}
+}
+
+func UpdateServiceWithFilterExpression(filterExpression string) UpdateServiceOption {
+	return func(service *updateService) {
+		service.updateFilterExpression = filterExpression
+	}
+}
+
+func UpdateServiceWithFileFilterExpression(filesFilterExpression string) UpdateServiceOption {
+	return func(service *updateService) {
+		service.updateFileFilterExpression = filesFilterExpression
 	}
 }
 
@@ -265,9 +281,21 @@ func (s updateService) Refresh(ctx context.Context) error {
 //   - Remove the updates, which are marked for removal.
 //   - Download the updates, that are part of the resulting state and not yet present on the system.
 func (s updateService) refreshOrigin(ctx context.Context, origin string, src UpdateSourcePort) error {
-	originUpdates, err := src.GetLatest(ctx, s.latestLimit)
+	originUpdates, err := src.GetLatest(ctx, defaultFetchLimit)
 	if err != nil {
 		return fmt.Errorf("Failed to fetch latest updates from source %q: %w", origin, err)
+	}
+
+	// Filter updates from orign by filter expression.
+	originUpdates, err = s.filterUpdatesByFilterExpression(originUpdates)
+	if err != nil {
+		return err
+	}
+
+	// Filter update files by architecture.
+	originUpdates, err = s.filterUpdateFileByFilterExpression(originUpdates)
+	if err != nil {
+		return err
 	}
 
 	toDownloadUpdates := make([]Update, 0, len(originUpdates))
@@ -390,6 +418,74 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 	}
 
 	return nil
+}
+
+func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates, error) {
+	if s.updateFilterExpression != "" {
+		filterExpression, err := expr.Compile(s.updateFilterExpression, []expr.Option{expr.Env(Update{})}...)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to compile filter expression: %w", err)
+		}
+
+		n := 0
+		for i := range updates {
+			output, err := expr.Run(filterExpression, updates[i])
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", s.updateFilterExpression, output)
+			}
+
+			if !result {
+				continue
+			}
+
+			updates[n] = updates[i]
+			n++
+		}
+
+		updates = updates[:n]
+	}
+
+	return updates, nil
+}
+
+func (s updateService) filterUpdateFileByFilterExpression(updates Updates) (Updates, error) {
+	if len(s.updateFileFilterExpression) > 0 {
+		fileFilterExpression, err := expr.Compile(s.updateFileFilterExpression, []expr.Option{expr.Env(UpdateFile{})}...)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to compile file filter expression: %w", err)
+		}
+
+		for i := range updates {
+			n := 0
+			for j := range updates[i].Files {
+				output, err := expr.Run(fileFilterExpression, updates[i].Files[j])
+				if err != nil {
+					return nil, err
+				}
+
+				result, ok := output.(bool)
+				if !ok {
+					return nil, fmt.Errorf("File filter expression %q does not evaluate to boolean result: %v", s.updateFilterExpression, output)
+				}
+
+				if !result {
+					continue
+				}
+
+				updates[i].Files[n] = updates[i].Files[j]
+				n++
+			}
+
+			updates[i].Files = updates[i].Files[:n]
+		}
+	}
+
+	return updates, nil
 }
 
 func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []Update, originUpdates []Update) (toDeleteUpdates []Update, toDownloadUpdates []Update) {
