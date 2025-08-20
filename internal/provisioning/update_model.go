@@ -21,7 +21,6 @@ type Update struct {
 	UUID        uuid.UUID          `json:"-" db:"primary=yes"`
 	Format      string             `json:"format" db:"ignore"`
 	Origin      string             `json:"origin"`
-	ExternalID  string             `json:"-"`
 	Version     string             `json:"version"`
 	PublishedAt time.Time          `json:"published_at"`
 	Severity    api.UpdateSeverity `json:"severity"`
