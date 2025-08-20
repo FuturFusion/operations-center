@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"slices"
 	"sort"
 	"time"
 
@@ -142,7 +143,7 @@ func (s updateService) GetAllWithFilter(ctx context.Context, filter UpdateFilter
 	var err error
 	var updates Updates
 
-	if filter.UUID == nil && filter.Channel == nil && filter.Origin == nil && filter.Status == nil {
+	if filter.UUID == nil && filter.Origin == nil && filter.Status == nil {
 		updates, err = s.repo.GetAll(ctx)
 	} else {
 		updates, err = s.repo.GetAllWithFilter(ctx, filter)
@@ -154,7 +155,21 @@ func (s updateService) GetAllWithFilter(ctx context.Context, filter UpdateFilter
 
 	sort.Sort(updates)
 
-	return updates, nil
+	if filter.Channel == nil {
+		return updates, nil
+	}
+
+	n := 0
+	for i := range updates {
+		if !slices.Contains(updates[i].Channels, *filter.Channel) {
+			continue
+		}
+
+		updates[n] = updates[i]
+		n++
+	}
+
+	return updates[:n], nil
 }
 
 func (s updateService) GetByUUID(ctx context.Context, id uuid.UUID) (*Update, error) {
@@ -162,17 +177,27 @@ func (s updateService) GetByUUID(ctx context.Context, id uuid.UUID) (*Update, er
 }
 
 func (s updateService) GetAllUUIDsWithFilter(ctx context.Context, filter UpdateFilter) ([]uuid.UUID, error) {
-	var err error
-	var updateIDs []uuid.UUID
+	if filter.Channel == nil {
+		updateIDs, err := s.repo.GetAllUUIDs(ctx)
+		if err != nil {
+			return nil, err
+		}
 
-	if filter.UUID == nil && filter.Channel == nil {
-		updateIDs, err = s.repo.GetAllUUIDs(ctx)
-	} else {
-		updateIDs, err = s.repo.GetAllUUIDsWithFilter(ctx, filter)
+		return updateIDs, nil
 	}
 
+	updates, err := s.repo.GetAll(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	updateIDs := make([]uuid.UUID, 0, len(updates))
+	for _, update := range updates {
+		if !slices.Contains(update.Channels, *filter.Channel) {
+			continue
+		}
+
+		updateIDs = append(updateIDs, update.UUID)
 	}
 
 	return updateIDs, nil
@@ -309,7 +334,7 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 	for _, update := range toDownloadUpdates {
 		updateFiles, err := src.GetUpdateAllFiles(ctx, update)
 		if err != nil {
-			return fmt.Errorf(`Failed to get files for update "%s:%s@%s": %w`, origin, update.Channel, update.Version, err)
+			return fmt.Errorf(`Failed to get files for update "%s@%s": %w`, origin, update.Version, err)
 		}
 
 		update.Files = updateFiles
@@ -329,7 +354,7 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 				var stream io.ReadCloser
 				stream, _, err = src.GetUpdateFileByFilenameUnverified(ctx, update, updateFile.Filename)
 				if err != nil {
-					return fmt.Errorf(`Failed to fetch update file "%s:%s/%s@%s": %w`, origin, update.Channel, updateFile.Filename, update.Version, err)
+					return fmt.Errorf(`Failed to fetch update file "%s/%s@%s": %w`, origin, updateFile.Filename, update.Version, err)
 				}
 
 				teeStream := stream
@@ -342,7 +367,7 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 
 				commit, cancel, err := s.filesRepo.Put(ctx, update, updateFile.Filename, teeStream)
 				if err != nil {
-					return fmt.Errorf(`Failed to read stream for update file "%s:%s/%s@%s": %w`, origin, update.Channel, updateFile.Filename, update.Version, err)
+					return fmt.Errorf(`Failed to read stream for update file "%s/%s@%s": %w`, origin, updateFile.Filename, update.Version, err)
 				}
 
 				defer func() {

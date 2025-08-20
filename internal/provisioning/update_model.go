@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,7 +25,7 @@ type Update struct {
 	Version     string             `json:"version"`
 	PublishedAt time.Time          `json:"published_at"`
 	Severity    api.UpdateSeverity `json:"severity"`
-	Channel     string             `json:"channel"`
+	Channels    UpdateChannels     `json:"channels"`
 	Changelog   string             `json:"-"`
 	Files       UpdateFiles        `json:"files"`
 	URL         string             `json:"url"`
@@ -86,7 +87,7 @@ type UpdateFile struct {
 
 type UpdateFilter struct {
 	UUID    *uuid.UUID
-	Channel *string
+	Channel *string `db:"ignore"`
 	Origin  *string
 	Status  *api.UpdateStatus
 }
@@ -154,4 +155,29 @@ type UsageInformation struct {
 	TotalSpaceBytes     uint64
 	AvailableSpaceBytes uint64
 	UsedSpaceBytes      uint64
+}
+
+type UpdateChannels []string
+
+// Value implements the sql driver.Valuer interface.
+func (c UpdateChannels) Value() (driver.Value, error) {
+	return strings.Join(c, ","), nil
+}
+
+// Scan implements the sql.Scanner interface.
+func (c *UpdateChannels) Scan(value any) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid update channels")
+	}
+
+	switch v := value.(type) {
+	case string:
+		*c = strings.Split(v, ",")
+		return nil
+	case []byte:
+		*c = strings.Split(string(v), ",")
+		return nil
+	default:
+		return fmt.Errorf("type %T is not supported for update channels", value)
+	}
 }

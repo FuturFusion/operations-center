@@ -246,9 +246,9 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 		count     int
 	}{
 		{
-			name: "success - no filter expression",
+			name: "success",
 			filter: provisioning.UpdateFilter{
-				Channel: ptr.To("one"),
+				Origin: ptr.To("one"),
 			},
 			repoGetAllWithFilter: provisioning.Updates{
 				provisioning.Update{
@@ -261,6 +261,26 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 
 			assertErr: require.NoError,
 			count:     2,
+		},
+		{
+			name: "success - with channel",
+			filter: provisioning.UpdateFilter{
+				Origin:  ptr.To("one"),
+				Channel: ptr.To("stable"),
+			},
+			repoGetAllWithFilter: provisioning.Updates{
+				provisioning.Update{
+					UUID:     uuid.MustParse(`1b6b5509-a9a6-419f-855f-7a8618ce76ad`),
+					Channels: []string{"stable", "daily"},
+				},
+				provisioning.Update{
+					UUID:     uuid.MustParse(`689396f9-cf05-4776-a567-38014d37f861`),
+					Channels: []string{"daily"},
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     1,
 		},
 		{
 			name:                    "error - repo",
@@ -341,22 +361,22 @@ func TestUpdateService_GetAllUUIDs(t *testing.T) {
 	}
 }
 
-func TestUpdateService_GetAllIDsWithFilter(t *testing.T) {
+func TestUpdateService_GetAllUUIDsWithFilter(t *testing.T) {
 	tests := []struct {
-		name                         string
-		filter                       provisioning.UpdateFilter
-		repoGetAllUUIDsWithFilter    []uuid.UUID
-		repoGetAllUUIDsWithFilterErr error
+		name               string
+		filter             provisioning.UpdateFilter
+		repoGetAllUUIDs    []uuid.UUID
+		repoGetAllUUIDsErr error
+		repoGetAll         provisioning.Updates
+		repoGetAllErr      error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
-			name: "success - no filter expression",
-			filter: provisioning.UpdateFilter{
-				Channel: ptr.To("one"),
-			},
-			repoGetAllUUIDsWithFilter: []uuid.UUID{
+			name:   "success",
+			filter: provisioning.UpdateFilter{},
+			repoGetAllUUIDs: []uuid.UUID{
 				uuid.MustParse(`8926daa1-3a48-4739-9a82-e32ebd22d343`),
 				uuid.MustParse(`84156d67-0bcb-4b60-ac23-2c67f552fb8c`),
 			},
@@ -365,8 +385,37 @@ func TestUpdateService_GetAllIDsWithFilter(t *testing.T) {
 			count:     2,
 		},
 		{
-			name:                         "error - repo",
-			repoGetAllUUIDsWithFilterErr: boom.Error,
+			name: "success - with channel",
+			filter: provisioning.UpdateFilter{
+				Channel: ptr.To("stable"),
+			},
+			repoGetAll: provisioning.Updates{
+				{
+					UUID:     uuid.MustParse(`8926daa1-3a48-4739-9a82-e32ebd22d343`),
+					Channels: []string{"stable", "daily"},
+				},
+				{
+					UUID:     uuid.MustParse(`84156d67-0bcb-4b60-ac23-2c67f552fb8c`),
+					Channels: []string{"daily"},
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     1,
+		},
+		{
+			name:               "error - repo",
+			repoGetAllUUIDsErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+		{
+			name: "error - repo",
+			filter: provisioning.UpdateFilter{
+				Channel: ptr.To("stable"),
+			},
+			repoGetAllErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -377,11 +426,11 @@ func TestUpdateService_GetAllIDsWithFilter(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
-				GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
-					return tc.repoGetAllUUIDsWithFilter, tc.repoGetAllUUIDsWithFilterErr
+				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
+					return tc.repoGetAll, tc.repoGetAllErr
 				},
-				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) ([]uuid.UUID, error) {
-					return tc.repoGetAllUUIDsWithFilter, tc.repoGetAllUUIDsWithFilterErr
+				GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
+					return tc.repoGetAllUUIDs, tc.repoGetAllUUIDsErr
 				},
 			}
 

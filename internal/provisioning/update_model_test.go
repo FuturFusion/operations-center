@@ -334,7 +334,6 @@ func TestUpdateFiles_Value(t *testing.T) {
 			got, err := tc.updateFiles.Value()
 
 			tc.assertErr(t, err)
-			t.Logf("%s", got)
 			require.Equal(t, tc.wantValue, got)
 		})
 	}
@@ -347,32 +346,47 @@ func TestUpdateFiles_Scan(t *testing.T) {
 		value any
 
 		assertErr require.ErrorAssertionFunc
+		want      provisioning.UpdateFiles
 	}{
 		{
 			name: "success - []byte",
 
-			value: []byte(`[{"filename":"dummy.txt","url":"http://localhost/dummy.txt","size":5}]`),
+			value: []byte(`[{"filename":"dummy.txt","size":5}]`),
 
 			assertErr: require.NoError,
+			want: provisioning.UpdateFiles{
+				{
+					Filename: "dummy.txt",
+					Size:     5,
+				},
+			},
 		},
 		{
 			name: "success - string",
 
-			value: `[{"filename":"dummy.txt","url":"http://localhost/dummy.txt","size":5}]`,
+			value: `[{"filename":"dummy.txt","size":5}]`,
 
 			assertErr: require.NoError,
+			want: provisioning.UpdateFiles{
+				{
+					Filename: "dummy.txt",
+					Size:     5,
+				},
+			},
 		},
 		{
 			name: "error - nil",
 
 			assertErr: require.Error,
+			want:      provisioning.UpdateFiles{},
 		},
 		{
-			name: "success - string",
+			name: "error - unsupported type",
 
 			value: 1, // not supported for UpdateFiles
 
 			assertErr: require.Error,
+			want:      provisioning.UpdateFiles{},
 		},
 	}
 
@@ -383,6 +397,89 @@ func TestUpdateFiles_Scan(t *testing.T) {
 			err := updateFiles.Scan(tc.value)
 
 			tc.assertErr(t, err)
+			require.Equal(t, tc.want, updateFiles)
+		})
+	}
+}
+
+func TestUpdateChannels_Value(t *testing.T) {
+	tests := []struct {
+		name string
+
+		updateFiles provisioning.UpdateChannels
+
+		assertErr require.ErrorAssertionFunc
+		wantValue driver.Value
+	}{
+		{
+			name: "success",
+
+			updateFiles: provisioning.UpdateChannels{"stable", "daily"},
+
+			assertErr: require.NoError,
+			wantValue: `stable,daily`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := tc.updateFiles.Value()
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantValue, got)
+		})
+	}
+}
+
+func TestUpdateChannels_Scan(t *testing.T) {
+	tests := []struct {
+		name string
+
+		value any
+
+		assertErr require.ErrorAssertionFunc
+		want      provisioning.UpdateChannels
+	}{
+		{
+			name: "success - []byte",
+
+			value: []byte(`stable,daily`),
+
+			assertErr: require.NoError,
+			want:      provisioning.UpdateChannels{"stable", "daily"},
+		},
+		{
+			name: "success - string",
+
+			value: `stable,daily`,
+
+			assertErr: require.NoError,
+			want:      provisioning.UpdateChannels{"stable", "daily"},
+		},
+		{
+			name: "error - nil",
+
+			assertErr: require.Error,
+			want:      provisioning.UpdateChannels{},
+		},
+		{
+			name: "error - unsupported type",
+
+			value: 1, // not supported for UpdateFiles
+
+			assertErr: require.Error,
+			want:      provisioning.UpdateChannels{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			updateChannels := provisioning.UpdateChannels{}
+
+			err := updateChannels.Scan(tc.value)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, updateChannels)
 		})
 	}
 }
