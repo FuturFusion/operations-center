@@ -26,7 +26,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		PublishedAt: time.Date(2025, 5, 11, 4, 16, 36, 0, time.UTC),
 		Severity:    api.UpdateSeverityNone,
 		Origin:      "linuxcontainers.org",
-		Channel:     "daily",
+		Channels:    []string{"daily"},
 		Status:      api.UpdateStatusReady,
 		Changelog:   "Some changes",
 		URL:         "/217816150",
@@ -49,8 +49,8 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		Version:     "202505110031",
 		PublishedAt: time.Date(2025, 5, 11, 0, 56, 27, 0, time.UTC),
 		Severity:    api.UpdateSeverityNone,
-		Origin:      "linuxcontainers.org",
-		Channel:     "stable",
+		Origin:      "alternative.org",
+		Channels:    []string{"stable", "daily"},
 		Status:      api.UpdateStatusReady,
 		Changelog:   "Other changes",
 		URL:         "/217808146",
@@ -107,13 +107,13 @@ func TestUpdateDatabaseActions(t *testing.T) {
 
 	// Ensure we have one entry with filter
 	updates, err = update.GetAllWithFilter(ctx, provisioning.UpdateFilter{
-		Channel: ptr.To("stable"),
+		Origin: ptr.To("linuxcontainers.org"),
 	})
 	require.NoError(t, err)
 	require.Len(t, updates, 1)
 
 	updateIDs, err = update.GetAllUUIDsWithFilter(ctx, provisioning.UpdateFilter{
-		Channel: ptr.To("stable"),
+		Origin: ptr.To("alternative.org"),
 	})
 	require.NoError(t, err)
 	require.Len(t, updateIDs, 1)

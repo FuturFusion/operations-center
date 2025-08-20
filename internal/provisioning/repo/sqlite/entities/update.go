@@ -9,15 +9,13 @@ import "github.com/google/uuid"
 //
 //generate-database:mapper stmt -e update objects
 //generate-database:mapper stmt -e update objects-by-UUID
-//generate-database:mapper stmt -e update objects-by-Channel
-//generate-database:mapper stmt -e update objects-by-Channel-and-Origin
-//generate-database:mapper stmt -e update objects-by-Channel-and-Status
-//generate-database:mapper stmt -e update objects-by-Channel-and-Origin-and-Status
 //generate-database:mapper stmt -e update objects-by-Origin
 //generate-database:mapper stmt -e update objects-by-Origin-and-Status
 //generate-database:mapper stmt -e update objects-by-Status
 //generate-database:mapper stmt -e update names
-//generate-database:mapper stmt -e update names-by-Channel
+//generate-database:mapper stmt -e update names-by-Origin
+//generate-database:mapper stmt -e update names-by-Origin-and-Status
+//generate-database:mapper stmt -e update names-by-Status
 //generate-database:mapper stmt -e update id
 //generate-database:mapper stmt -e update create
 //generate-database:mapper stmt -e update update
