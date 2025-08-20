@@ -27,15 +27,25 @@ var freshSchema string
 */
 
 var updates = map[int]update{
-	1: updateFromV0,
-	2: updateFromV1,
-	3: updateFromV2,
-	4: updateFromV3,
-	5: updateFromV4,
-	6: updateFromV5,
-	7: updateFromV6,
-	8: updateFromV7,
-	9: updateFromV8,
+	1:  updateFromV0,
+	2:  updateFromV1,
+	3:  updateFromV2,
+	4:  updateFromV3,
+	5:  updateFromV4,
+	6:  updateFromV5,
+	7:  updateFromV6,
+	8:  updateFromV7,
+	9:  updateFromV8,
+	10: updateFromV9,
+}
+
+func updateFromV9(ctx context.Context, tx *sql.Tx) error {
+	// v9..v10 remove column external_id from updates
+	stmt := `
+ALTER TABLE updates DROP COLUMN external_id;
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV8(ctx context.Context, tx *sql.Tx) error {

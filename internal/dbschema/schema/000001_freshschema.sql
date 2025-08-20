@@ -46,7 +46,6 @@ CREATE TABLE updates (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   origin TEXT NOT NULL,
-  external_id TEXT NOT NULL,
   "version" TEXT NOT NULL,
   published_at DATETIME NOT NULL,
   severity TEXT NOT NULL,
@@ -324,4 +323,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (9, strftime("%s"))
+INSERT INTO schema (version, updated_at) VALUES (10, strftime("%s"))
