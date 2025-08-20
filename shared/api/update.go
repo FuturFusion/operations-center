@@ -336,7 +336,7 @@ func (u Architecture) Value() (driver.Value, error) {
 // Scan implements the sql.Scanner interface.
 func (u *Architecture) Scan(value any) error {
 	if value == nil {
-		return fmt.Errorf("null is not a valid update file type")
+		return fmt.Errorf("null is not a valid architecture")
 	}
 
 	switch v := value.(type) {
@@ -345,7 +345,7 @@ func (u *Architecture) Scan(value any) error {
 	case []byte:
 		return u.UnmarshalText(v)
 	default:
-		return fmt.Errorf("type %T is not supported for update file type", value)
+		return fmt.Errorf("type %T is not supported for architecture", value)
 	}
 }
 
