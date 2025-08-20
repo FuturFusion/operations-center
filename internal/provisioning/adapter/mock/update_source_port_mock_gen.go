@@ -25,9 +25,6 @@ var _ provisioning.UpdateSourcePort = &UpdateSourcePortMock{}
 //			GetLatestFunc: func(ctx context.Context, limit int) (provisioning.Updates, error) {
 //				panic("mock out the GetLatest method")
 //			},
-//			GetUpdateAllFilesFunc: func(ctx context.Context, update provisioning.Update) (provisioning.UpdateFiles, error) {
-//				panic("mock out the GetUpdateAllFiles method")
-//			},
 //			GetUpdateFileByFilenameUnverifiedFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
 //				panic("mock out the GetUpdateFileByFilenameUnverified method")
 //			},
@@ -41,9 +38,6 @@ type UpdateSourcePortMock struct {
 	// GetLatestFunc mocks the GetLatest method.
 	GetLatestFunc func(ctx context.Context, limit int) (provisioning.Updates, error)
 
-	// GetUpdateAllFilesFunc mocks the GetUpdateAllFiles method.
-	GetUpdateAllFilesFunc func(ctx context.Context, update provisioning.Update) (provisioning.UpdateFiles, error)
-
 	// GetUpdateFileByFilenameUnverifiedFunc mocks the GetUpdateFileByFilenameUnverified method.
 	GetUpdateFileByFilenameUnverifiedFunc func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error)
 
@@ -56,13 +50,6 @@ type UpdateSourcePortMock struct {
 			// Limit is the limit argument value.
 			Limit int
 		}
-		// GetUpdateAllFiles holds details about calls to the GetUpdateAllFiles method.
-		GetUpdateAllFiles []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Update is the update argument value.
-			Update provisioning.Update
-		}
 		// GetUpdateFileByFilenameUnverified holds details about calls to the GetUpdateFileByFilenameUnverified method.
 		GetUpdateFileByFilenameUnverified []struct {
 			// Ctx is the ctx argument value.
@@ -74,7 +61,6 @@ type UpdateSourcePortMock struct {
 		}
 	}
 	lockGetLatest                         sync.RWMutex
-	lockGetUpdateAllFiles                 sync.RWMutex
 	lockGetUpdateFileByFilenameUnverified sync.RWMutex
 }
 
@@ -111,42 +97,6 @@ func (mock *UpdateSourcePortMock) GetLatestCalls() []struct {
 	mock.lockGetLatest.RLock()
 	calls = mock.calls.GetLatest
 	mock.lockGetLatest.RUnlock()
-	return calls
-}
-
-// GetUpdateAllFiles calls GetUpdateAllFilesFunc.
-func (mock *UpdateSourcePortMock) GetUpdateAllFiles(ctx context.Context, update provisioning.Update) (provisioning.UpdateFiles, error) {
-	if mock.GetUpdateAllFilesFunc == nil {
-		panic("UpdateSourcePortMock.GetUpdateAllFilesFunc: method is nil but UpdateSourcePort.GetUpdateAllFiles was just called")
-	}
-	callInfo := struct {
-		Ctx    context.Context
-		Update provisioning.Update
-	}{
-		Ctx:    ctx,
-		Update: update,
-	}
-	mock.lockGetUpdateAllFiles.Lock()
-	mock.calls.GetUpdateAllFiles = append(mock.calls.GetUpdateAllFiles, callInfo)
-	mock.lockGetUpdateAllFiles.Unlock()
-	return mock.GetUpdateAllFilesFunc(ctx, update)
-}
-
-// GetUpdateAllFilesCalls gets all the calls that were made to GetUpdateAllFiles.
-// Check the length with:
-//
-//	len(mockedUpdateSourcePort.GetUpdateAllFilesCalls())
-func (mock *UpdateSourcePortMock) GetUpdateAllFilesCalls() []struct {
-	Ctx    context.Context
-	Update provisioning.Update
-} {
-	var calls []struct {
-		Ctx    context.Context
-		Update provisioning.Update
-	}
-	mock.lockGetUpdateAllFiles.RLock()
-	calls = mock.calls.GetUpdateAllFiles
-	mock.lockGetUpdateAllFiles.RUnlock()
 	return calls
 }
 
