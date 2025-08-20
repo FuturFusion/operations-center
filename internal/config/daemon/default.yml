@@ -24,6 +24,20 @@ update.signature_verification_root_ca: |
   dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
   -----END CERTIFICATE-----
 
+# Filter expression for updates using https://expr-lang.org/ on struct
+# provisioning.Update.
+# If a filter is defined, the filter needs to evaluate to true for the update
+# being fetched by Operations Center.
+# Empty filter expression does not filter at all.
+update.filter_expression: "'stable' in Channels"
+
+# Filter expression for update files using https://expr-lang.org/ on struct
+# provisioning.UpdateFile.
+# If a filter is defined, the filter needs to evaluate to true for the file
+# being fetched by Operations Center.
+# Empty filter expression does not filter at all.
+update.file_filter_expression: "'x86_64' in string(Architecture)"
+
 # Array of SHA256 certificate fingerprints that belong to trusted TLS clients.
 trusted_tls_client_cert_fingerprints: []
 

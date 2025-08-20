@@ -25,6 +25,8 @@ type Config struct {
 	UpdatesSourcePollSkipFirst bool          `yaml:"update.source_skip_first_update"`
 	// Root CA certificate used to verify the signature of index.sjson.
 	UpdateSignatureVerificationRootCA string `yaml:"update.signature_verification_root_ca"`
+	UpdateFilterExpression            string `yaml:"update.filter_expression"`
+	UpdateFileFilterExpression        string `yaml:"update.file_filter_expression"`
 
 	ConnectivityCheckInterval time.Duration `yaml:"-"`
 	PendingServerPollInterval time.Duration `yaml:"-"`
