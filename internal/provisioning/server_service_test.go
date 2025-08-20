@@ -299,7 +299,7 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "does not evaluate to boolean result")
 			},
 			count: 0,
@@ -452,7 +452,7 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 				"one",
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "does not evaluate to boolean result")
 			},
 			count: 0,
@@ -740,7 +740,7 @@ one
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, context.Canceled)
 			},
 		},
@@ -1002,7 +1002,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			},
 			repoGetByCertificateErr: domain.ErrNotFound,
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrNotAuthorized)
 			},
 		},
@@ -1197,7 +1197,7 @@ func TestServerService_DeleteByName(t *testing.T) {
 				Cluster: ptr.To("one"),
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Failed to delete server, server is part of cluster "one"`)
 			},
 		},

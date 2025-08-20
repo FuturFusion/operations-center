@@ -382,7 +382,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 				require.NoError(t, err)
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Update already existing")
 			},
 			assertUpdate: func(t *testing.T, tmpDir string, update *provisioning.Update) {
@@ -415,7 +415,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 				t.Helper()
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				t.Helper()
 				require.ErrorContains(t, err, "Invalid archive, file size mismatch for file")
 			},
@@ -449,7 +449,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 				t.Helper()
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(t, err, `Invalid archive, file sha256 mismatch for file "file1.txt"`)
 			},
 			assertUpdate: func(t *testing.T, tmpDir string, update *provisioning.Update) {
@@ -489,7 +489,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 				t.Helper()
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(t, err, `Invalid archive, failed to open file "file3.txt" mentioned in manifest`)
 			},
 			assertUpdate: func(t *testing.T, tmpDir string, update *provisioning.Update) {
@@ -516,7 +516,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 				t.Helper()
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(t, err, `Invalid archive, files not mentioned in the manifest found: file2.txt`)
 			},
 			assertUpdate: func(t *testing.T, tmpDir string, update *provisioning.Update) {

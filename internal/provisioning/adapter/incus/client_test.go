@@ -235,7 +235,7 @@ func TestClient_Endpoint(t *testing.T) {
 						},
 					},
 
-					assertErr: func(tt require.TestingT, err error, i ...any) {
+					assertErr: func(tt require.TestingT, err error, a ...any) {
 						require.ErrorContains(tt, err, "Failed converting token operation to join token")
 					},
 					wantPaths:    []string{"GET /1.0/events", "POST /1.0/cluster/members"},

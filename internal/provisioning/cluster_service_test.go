@@ -102,7 +102,7 @@ func TestClusterService_Create(t *testing.T) {
 			},
 			repoExistsByName: true, // cluster with the same name already exists
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Cluster with name "one" already exists`)
 			},
 		},
@@ -851,7 +851,7 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 				},
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "does not evaluate to boolean result")
 			},
 			count: 0,
@@ -999,7 +999,7 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 				"one",
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "does not evaluate to boolean result")
 			},
 			count: 0,
@@ -1316,7 +1316,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				Status: api.ClusterStatusReady,
 			},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Delete for cluster in state "ready" is not allowed`)
 			},
 		},
@@ -1325,7 +1325,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			nameArg:              "one",
 			repoGetByNameCluster: &provisioning.Cluster{},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Delete for cluster with invalid state")
 			},
 		},
@@ -1337,7 +1337,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			},
 			serverSvcGetAllNamesWithFilterNames: []string{"one"},
 
-			assertErr: func(tt require.TestingT, err error, i ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Failed to delete cluster: Delete for cluster with 1 linked servers is not allowd ([one])")
 			},
 		},
