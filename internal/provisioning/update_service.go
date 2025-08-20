@@ -328,24 +328,14 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 		}
 	}
 
-	// TODO: Should we have a compensating operation if the download of an update fails
-	// to reset the state of the update in the DB?
-	// TODO: Should partially downloaded updates be removed, if downloading fails?
 	for _, update := range toDownloadUpdates {
-		updateFiles, err := src.GetUpdateAllFiles(ctx, update)
-		if err != nil {
-			return fmt.Errorf(`Failed to get files for update "%s@%s": %w`, origin, update.Version, err)
-		}
-
-		update.Files = updateFiles
-
-		// Make sure, we do have enough space left in the files repository before moving the state to pending.
+		// Make sure, we do have enough space left in the files repository before downloading the files.
 		err = s.isSpaceAvailable(ctx, []Update{update})
 		if err != nil {
 			return err
 		}
 
-		for _, updateFile := range updateFiles {
+		for _, updateFile := range update.Files {
 			if ctx.Err() != nil {
 				return fmt.Errorf("Stop refresh, context cancelled: %w", context.Cause(ctx))
 			}

@@ -673,7 +673,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 		sourceGetLatestUpdates        provisioning.Updates
 		sourceGetLatestErr            error
-		sourceGetUpdateAllFiles       []queue.Item[provisioning.UpdateFiles]
 		sourceGetUpdateFileByFilename []queue.Item[struct {
 			stream io.ReadCloser
 			size   int
@@ -744,19 +743,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 				{},
 			},
 
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
-						},
-					},
-				},
-			},
 			sourceGetUpdateFileByFilename: []queue.Item[struct {
 				stream io.ReadCloser
 				size   int
@@ -1057,46 +1043,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - source.GetUpdateAllFiles",
-			ctx:  context.Background(),
-
-			sourceGetLatestUpdates: provisioning.Updates{
-				{
-					UUID:     updatePresentUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: api.UpdateSeverityNone,
-					Files: provisioning.UpdateFiles{
-						{
-							Size: 5,
-						},
-					},
-				},
-			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:   updateNewUUID,
-					Status: api.UpdateStatusReady,
-				},
-			},
-			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
-				// global check
-				{
-					Value: usageInfoGiB(50, 10),
-				},
-			},
-			repoUpsert: []queue.Item[struct{}]{
-				// pending
-				{},
-			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Err: boom.Error,
-				},
-			},
-
-			assertErr: boom.ErrorIs,
-		},
-		{
 			name: "error - not enough space available before download",
 			ctx:  context.Background(),
 
@@ -1131,19 +1077,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			repoUpsert: []queue.Item[struct{}]{
 				// pending
 				{},
-			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
-						},
-					},
-				},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -1190,19 +1123,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 				// pending
 				{},
 			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
-						},
-					},
-				},
-			},
 
 			assertErr: boom.ErrorIs,
 		},
@@ -1242,19 +1162,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 				// pending
 				{},
 			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
-						},
-					},
-				},
-			},
 			sourceGetUpdateFileByFilename: []queue.Item[struct {
 				stream io.ReadCloser
 				size   int
@@ -1278,6 +1185,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
+
+							// Generate hash: echo -n "dummy" | sha256sum
+							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
 						},
 					},
 				},
@@ -1301,19 +1211,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			repoUpsert: []queue.Item[struct{}]{
 				// pending
 				{},
-			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
-						},
-					},
-				},
 			},
 			sourceGetUpdateFileByFilename: []queue.Item[struct {
 				stream io.ReadCloser
@@ -1341,7 +1238,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - filesRepo.Put",
+			name: "error - filesRepo.Put - invalid sha256",
 			ctx:  context.Background(),
 
 			sourceGetLatestUpdates: provisioning.Updates{
@@ -1352,6 +1249,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
+
+							Sha256: "invalid", // invalid hash
 						},
 					},
 				},
@@ -1375,19 +1274,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			repoUpsert: []queue.Item[struct{}]{
 				// pending
 				{},
-			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "invalid", // invalid hash
-						},
-					},
-				},
 			},
 			sourceGetUpdateFileByFilename: []queue.Item[struct {
 				stream io.ReadCloser
@@ -1449,19 +1335,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			repoUpsert: []queue.Item[struct{}]{
 				// pending
 				{},
-			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
-						},
-					},
-				},
 			},
 			sourceGetUpdateFileByFilename: []queue.Item[struct {
 				stream io.ReadCloser
@@ -1528,19 +1401,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			repoUpsert: []queue.Item[struct{}]{
 				// pending
 				{},
-			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
-						},
-					},
-				},
 			},
 			sourceGetUpdateFileByFilename: []queue.Item[struct {
 				stream io.ReadCloser
@@ -1612,19 +1472,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 					Err: boom.Error,
 				},
 			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
-						},
-					},
-				},
-			},
 			sourceGetUpdateFileByFilename: []queue.Item[struct {
 				stream io.ReadCloser
 				size   int
@@ -1692,9 +1539,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 				GetLatestFunc: func(ctx context.Context, limit int) (provisioning.Updates, error) {
 					return tc.sourceGetLatestUpdates, tc.sourceGetLatestErr
 				},
-				GetUpdateAllFilesFunc: func(ctx context.Context, update provisioning.Update) (provisioning.UpdateFiles, error) {
-					return queue.Pop(t, &tc.sourceGetUpdateAllFiles)
-				},
 				GetUpdateFileByFilenameUnverifiedFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
 					value, err := queue.Pop(t, &tc.sourceGetUpdateFileByFilename)
 					return value.stream, value.size, err
@@ -1720,7 +1564,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			require.Empty(t, tc.repoDeleteByUUID)
 			require.Empty(t, tc.repoUpdateFilesPut)
 			require.Empty(t, tc.repoUpdateFilesDelete)
-			require.Empty(t, tc.sourceGetUpdateAllFiles)
 			require.Empty(t, tc.sourceGetUpdateFileByFilename)
 		})
 	}
