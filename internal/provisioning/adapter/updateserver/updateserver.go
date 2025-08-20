@@ -82,7 +82,6 @@ func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Up
 	updatesList := make([]provisioning.Update, 0, len(updates.Updates))
 	for _, update := range updates.Updates {
 		update.Status = api.UpdateStatusUnknown
-		update.ExternalID = update.Version
 		update.UUID = uuidFromUpdateServer(update)
 
 		// Fallback to x84_64 for architecture if not defined.
@@ -176,7 +175,7 @@ func (u updateServer) GetUpdateAllFiles(ctx context.Context, inUpdate provisioni
 // It is the caller's responsibility to close the ReadCloser.
 // It is the caller's responsibility to verify the received data, e.g. using a hash.
 func (u updateServer) GetUpdateFileByFilenameUnverified(ctx context.Context, inUpdate provisioning.Update, filename string) (io.ReadCloser, int, error) {
-	updateURL := u.baseURL + "/" + path.Join(inUpdate.ExternalID, filename)
+	updateURL := u.baseURL + path.Join(inUpdate.URL, filename)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, updateURL, http.NoBody)
 	if err != nil {
 		return nil, 0, fmt.Errorf("GetUpdateFileByFilename: %w", err)

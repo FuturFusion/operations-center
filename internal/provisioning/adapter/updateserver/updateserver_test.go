@@ -47,7 +47,6 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 			wantUpdates: provisioning.Updates{
 				{
 					UUID:        uuid.MustParse(`87bbde05-2a3c-5508-9d31-4fe7c8cf596a`),
-					ExternalID:  "1",
 					Version:     "1",
 					Severity:    api.UpdateSeverityNone,
 					PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
@@ -78,7 +77,6 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 			wantUpdates: provisioning.Updates{
 				{
 					UUID:        uuid.MustParse(`25eacea3-d627-5c40-bfe5-52a9ea85e0ea`),
-					ExternalID:  "2",
 					Version:     "2",
 					Severity:    api.UpdateSeverityNone,
 					PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
@@ -229,8 +227,7 @@ func TestUpdateServer_GetUpdateAllFiles(t *testing.T) {
 
 			s := updateserver.New(svr.URL, signature.NewVerifier(caCert))
 			files, err := s.GetUpdateAllFiles(context.Background(), provisioning.Update{
-				ExternalID: "1",
-				URL:        "1/",
+				URL: "1/",
 			})
 			tc.assertErr(t, err)
 
@@ -286,7 +283,7 @@ func TestUpdateServer_GetUpdateFileByFilename(t *testing.T) {
 
 			s := updateserver.New(svr.URL, nil)
 			stream, n, err := s.GetUpdateFileByFilenameUnverified(context.Background(), provisioning.Update{
-				ExternalID: "1",
+				URL: "/1",
 			}, "one.txt")
 			tc.assertErr(t, err)
 
