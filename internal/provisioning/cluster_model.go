@@ -3,6 +3,7 @@ package provisioning
 import (
 	"iter"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -19,9 +20,15 @@ type Cluster struct {
 	LastUpdated   time.Time `db:"update_timestamp"`
 }
 
+const nameProhibitedCharacters = `\/:*?"<>|`
+
 func (c Cluster) Validate() error {
 	if c.Name == "" {
 		return domain.NewValidationErrf("Invalid cluster, name can not be empty")
+	}
+
+	if strings.ContainsAny(c.Name, nameProhibitedCharacters) {
+		return domain.NewValidationErrf("Invalid cluster, name can not contain any of %q", nameProhibitedCharacters)
 	}
 
 	if len(c.ServerNames) == 0 {

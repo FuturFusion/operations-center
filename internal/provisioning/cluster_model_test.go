@@ -41,6 +41,19 @@ func TestCluster_Validate(t *testing.T) {
 			},
 		},
 		{
+			name: "error - name prohibited character",
+			cluster: provisioning.Cluster{
+				Name:          "foo/bar", // "/" is prohibited
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
 			name: "error - server name list empty",
 			cluster: provisioning.Cluster{
 				Name:          "one",
