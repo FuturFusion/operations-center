@@ -36,7 +36,7 @@ update.filter_expression: "'stable' in Channels"
 # If a filter is defined, the filter needs to evaluate to true for the file
 # being fetched by Operations Center.
 # Empty filter expression does not filter at all.
-update.file_filter_expression: "'x86_64' in string(Architecture)"
+update.file_filter_expression: "'x86_64' == string(Architecture)"
 
 # Array of SHA256 certificate fingerprints that belong to trusted TLS clients.
 trusted_tls_client_cert_fingerprints: []
