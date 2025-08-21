@@ -5,6 +5,7 @@ package middleware
 
 import (
 	"context"
+	"io"
 	"log/slog"
 
 	"github.com/FuturFusion/operations-center/internal/logger"
@@ -316,6 +317,42 @@ func (_d ClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (
 		}
 	}()
 	return _d._base.GetEndpoint(ctx, name)
+}
+
+// GetProvisionerConfigurationArchive implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) GetProvisionerConfigurationArchive(ctx context.Context, name string) (readCloser io.ReadCloser, size int, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.Debug("=> calling GetProvisionerConfigurationArchive")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("readCloser", readCloser),
+				slog.Int("size", size),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetProvisionerConfigurationArchive returned an informative error")
+			} else {
+				log.Error("<= method GetProvisionerConfigurationArchive returned an error")
+			}
+		} else {
+			log.Debug("<= method GetProvisionerConfigurationArchive finished")
+		}
+	}()
+	return _d._base.GetProvisionerConfigurationArchive(ctx, name)
 }
 
 // Rename implements provisioning.ClusterService.

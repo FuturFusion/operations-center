@@ -12,6 +12,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/internal/file"
 	"github.com/FuturFusion/operations-center/internal/render"
 	"github.com/FuturFusion/operations-center/internal/sort"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -307,6 +308,10 @@ func (c *cmdTokenGetImage) Run(cmd *cobra.Command, args []string) error {
 
 	id := args[0]
 	targetFilename := args[1]
+
+	if file.PathExists(targetFilename) {
+		return fmt.Errorf("target file %q already exists", targetFilename)
+	}
 
 	var imageType api.ImageType
 	err = imageType.UnmarshalText([]byte(c.flagImageType))

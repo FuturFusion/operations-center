@@ -1,4 +1,4 @@
-package incus
+package terraform
 
 import (
 	"testing"

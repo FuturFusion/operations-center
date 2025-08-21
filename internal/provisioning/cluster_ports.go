@@ -2,6 +2,7 @@ package provisioning
 
 import (
 	"context"
+	"io"
 
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -20,6 +21,7 @@ type ClusterService interface {
 	ResyncInventoryByName(ctx context.Context, name string) error
 	UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) error
 	GetEndpoint(ctx context.Context, name string) (Endpoint, error)
+	GetProvisionerConfigurationArchive(ctx context.Context, name string) (_ io.ReadCloser, size int, _ error)
 }
 
 type ClusterRepo interface {
@@ -45,9 +47,12 @@ type ClusterClientPort interface {
 	GetClusterNodeNames(ctx context.Context, endpoint Endpoint) (nodeNames []string, _ error)
 	GetClusterJoinToken(ctx context.Context, endpoint Endpoint, memberName string) (joinToken string, _ error)
 	JoinCluster(ctx context.Context, server Server, joinToken string, endpoint Endpoint) error
-	CreateProject(ctx context.Context, endpoint Endpoint, name string, description string) error
-	InitializeDefaultStorage(ctx context.Context, servers []Server) error
 	GetOSData(ctx context.Context, endpoint Endpoint) (api.OSData, error)
-	InitializeDefaultNetworking(ctx context.Context, servers []Server) error
 	UpdateClusterCertificate(ctx context.Context, endpoint Endpoint, certificatePEM string, keyPEM string) error
+}
+
+type ClusterProvisioningPort interface {
+	Init(ctx context.Context, name string, config ClusterProvisioningConfig) error
+	Apply(ctx context.Context, name string) error
+	GetArchive(ctx context.Context, name string) (_ io.ReadCloser, size int, _ error)
 }

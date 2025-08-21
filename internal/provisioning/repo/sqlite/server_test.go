@@ -68,16 +68,16 @@ server B
 		JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) error {
 			return nil
 		},
-		CreateProjectFunc: func(ctx context.Context, endpoint provisioning.Endpoint, name string, description string) error {
-			return nil
-		},
-		InitializeDefaultStorageFunc: func(ctx context.Context, servers []provisioning.Server) error {
-			return nil
-		},
 		GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 			return api.OSData{}, nil
 		},
-		InitializeDefaultNetworkingFunc: func(ctx context.Context, servers []provisioning.Server) error {
+	}
+
+	terraformProvisioner := &adapterMock.ClusterProvisioningPortMock{
+		InitFunc: func(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
+			return nil
+		},
+		ApplyFunc: func(ctx context.Context, name string) error {
 			return nil
 		},
 	}
@@ -104,7 +104,7 @@ server B
 	server := sqlite.NewServer(tx)
 	serverSvc := provisioning.NewServerService(server, nil, nil)
 
-	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), client, serverSvc, nil)
+	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), client, serverSvc, nil, terraformProvisioner)
 
 	// Add server
 	_, err = server.Create(ctx, serverA)

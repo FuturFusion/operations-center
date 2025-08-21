@@ -42,42 +42,6 @@ func NewClusterClientPortWithSlog(base provisioning.ClusterClientPort, log *slog
 	return this
 }
 
-// CreateProject implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) CreateProject(ctx context.Context, endpoint provisioning.Endpoint, name string, description string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.Any("endpoint", endpoint),
-			slog.String("name", name),
-			slog.String("description", description),
-		)
-	}
-	log.Debug("=> calling CreateProject")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method CreateProject returned an informative error")
-			} else {
-				log.Error("<= method CreateProject returned an error")
-			}
-		} else {
-			log.Debug("<= method CreateProject finished")
-		}
-	}()
-	return _d._base.CreateProject(ctx, endpoint, name, description)
-}
-
 // EnableCluster implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) EnableCluster(ctx context.Context, server provisioning.Server) (clusterCertificate string, err error) {
 	log := _d._log.With()
@@ -251,74 +215,6 @@ func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint prov
 		}
 	}()
 	return _d._base.GetOSData(ctx, endpoint)
-}
-
-// InitializeDefaultNetworking implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.Any("servers", servers),
-		)
-	}
-	log.Debug("=> calling InitializeDefaultNetworking")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method InitializeDefaultNetworking returned an informative error")
-			} else {
-				log.Error("<= method InitializeDefaultNetworking returned an error")
-			}
-		} else {
-			log.Debug("<= method InitializeDefaultNetworking finished")
-		}
-	}()
-	return _d._base.InitializeDefaultNetworking(ctx, servers)
-}
-
-// InitializeDefaultStorage implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) InitializeDefaultStorage(ctx context.Context, servers []provisioning.Server) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.Any("servers", servers),
-		)
-	}
-	log.Debug("=> calling InitializeDefaultStorage")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method InitializeDefaultStorage returned an informative error")
-			} else {
-				log.Error("<= method InitializeDefaultStorage returned an error")
-			}
-		} else {
-			log.Debug("<= method InitializeDefaultStorage finished")
-		}
-	}()
-	return _d._base.InitializeDefaultStorage(ctx, servers)
 }
 
 // JoinCluster implements provisioning.ClusterClientPort.
