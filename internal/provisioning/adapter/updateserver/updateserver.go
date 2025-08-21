@@ -82,7 +82,6 @@ func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Up
 	updatesList := make([]provisioning.Update, 0, len(updates.Updates))
 	for _, update := range updates.Updates {
 		update.Status = api.UpdateStatusUnknown
-		update.ExternalID = update.Version
 		update.UUID = uuidFromUpdateServer(update)
 
 		// Fallback to x84_64 for architecture if not defined.
@@ -107,67 +106,17 @@ func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Up
 const idSeparator = ":"
 
 func uuidFromUpdateServer(update provisioning.Update) uuid.UUID {
+	channels := update.Channels
+	sort.Strings(channels)
+
 	identifier := strings.Join([]string{
 		update.Origin,
-		update.Channel,
+		strings.Join(channels, ","),
 		update.Version,
 		update.PublishedAt.String(),
 	}, idSeparator)
 
 	return uuid.NewSHA1(UpdateSourceSpaceUUID, []byte(identifier))
-}
-
-func (u updateServer) GetUpdateAllFiles(ctx context.Context, inUpdate provisioning.Update) (provisioning.UpdateFiles, error) {
-	getFile := func(filename string) ([]byte, error) {
-		updateURL := u.baseURL + "/" + path.Join(inUpdate.URL, filename)
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, updateURL, http.NoBody)
-		if err != nil {
-			return nil, fmt.Errorf("GetUpdateAllFiles: %w", err)
-		}
-
-		resp, err := u.client.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to query %q of update %q: %w", filename, inUpdate.Version, err)
-		}
-
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("Unexpected status code received: %d", resp.StatusCode)
-		}
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("GetUpdateAllFiles: %w", err)
-		}
-
-		return body, nil
-	}
-
-	contentSig, err := getFile("update.sjson")
-	if err != nil {
-		return nil, err
-	}
-
-	content, err := u.verifier.Verify(contentSig)
-	if err != nil {
-		return nil, fmt.Errorf(`Failed to verify signature of "update.sjson": %w`, err)
-	}
-
-	update := provisioning.Update{}
-	err = json.Unmarshal(content, &update)
-	if err != nil {
-		return nil, fmt.Errorf("GetUpdateAllFiles: %w", err)
-	}
-
-	// Fallback to x84_64 for architecture if not defined.
-	for i := range update.Files {
-		if update.Files[i].Architecture == api.ArchitectureUndefined {
-			update.Files[i].Architecture = api.Architecture64BitIntelX86
-		}
-	}
-
-	return update.Files, nil
 }
 
 // GetUpdateFileByFilenameUnverified downloads a file of an update.
@@ -176,7 +125,7 @@ func (u updateServer) GetUpdateAllFiles(ctx context.Context, inUpdate provisioni
 // It is the caller's responsibility to close the ReadCloser.
 // It is the caller's responsibility to verify the received data, e.g. using a hash.
 func (u updateServer) GetUpdateFileByFilenameUnverified(ctx context.Context, inUpdate provisioning.Update, filename string) (io.ReadCloser, int, error) {
-	updateURL := u.baseURL + "/" + path.Join(inUpdate.ExternalID, filename)
+	updateURL := u.baseURL + path.Join(inUpdate.URL, filename)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, updateURL, http.NoBody)
 	if err != nil {
 		return nil, 0, fmt.Errorf("GetUpdateFileByFilename: %w", err)

@@ -181,7 +181,7 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 				Severity:    update.Severity,
 				Origin:      update.Origin,
 				URL:         update.URL,
-				Channel:     update.Channel,
+				Channels:    update.Channels,
 				Changelog:   update.Changelog,
 				Status:      update.Status,
 			})
@@ -388,7 +388,7 @@ func (u *updateHandler) updateGet(r *http.Request) response.Response {
 			Severity:    update.Severity,
 			Origin:      update.Origin,
 			URL:         update.URL,
-			Channel:     update.Channel,
+			Channels:    update.Channels,
 			Changelog:   update.Changelog,
 			Status:      update.Status,
 		},

@@ -156,9 +156,9 @@ type Update struct {
 	// // Example: releases/download/202501311418/
 	URL string `json:"url" yaml:"url"`
 
-	// Channel of the Update.
+	// Channels the update is part of.
 	// Example: stable
-	Channel string `json:"channel" yaml:"channel"`
+	Channels []string `json:"channels" yaml:"channels"`
 
 	// Changelog of the Update as plain text.
 	Changelog string `json:"changelog" yaml:"changelog"`
@@ -336,7 +336,7 @@ func (u Architecture) Value() (driver.Value, error) {
 // Scan implements the sql.Scanner interface.
 func (u *Architecture) Scan(value any) error {
 	if value == nil {
-		return fmt.Errorf("null is not a valid update file type")
+		return fmt.Errorf("null is not a valid architecture")
 	}
 
 	switch v := value.(type) {
@@ -345,7 +345,7 @@ func (u *Architecture) Scan(value any) error {
 	case []byte:
 		return u.UnmarshalText(v)
 	default:
-		return fmt.Errorf("type %T is not supported for update file type", value)
+		return fmt.Errorf("type %T is not supported for architecture", value)
 	}
 }
 

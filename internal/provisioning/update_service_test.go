@@ -246,9 +246,9 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 		count     int
 	}{
 		{
-			name: "success - no filter expression",
+			name: "success",
 			filter: provisioning.UpdateFilter{
-				Channel: ptr.To("one"),
+				Origin: ptr.To("one"),
 			},
 			repoGetAllWithFilter: provisioning.Updates{
 				provisioning.Update{
@@ -261,6 +261,26 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 
 			assertErr: require.NoError,
 			count:     2,
+		},
+		{
+			name: "success - with channel",
+			filter: provisioning.UpdateFilter{
+				Origin:  ptr.To("one"),
+				Channel: ptr.To("stable"),
+			},
+			repoGetAllWithFilter: provisioning.Updates{
+				provisioning.Update{
+					UUID:     uuid.MustParse(`1b6b5509-a9a6-419f-855f-7a8618ce76ad`),
+					Channels: []string{"stable", "daily"},
+				},
+				provisioning.Update{
+					UUID:     uuid.MustParse(`689396f9-cf05-4776-a567-38014d37f861`),
+					Channels: []string{"daily"},
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     1,
 		},
 		{
 			name:                    "error - repo",
@@ -341,22 +361,22 @@ func TestUpdateService_GetAllUUIDs(t *testing.T) {
 	}
 }
 
-func TestUpdateService_GetAllIDsWithFilter(t *testing.T) {
+func TestUpdateService_GetAllUUIDsWithFilter(t *testing.T) {
 	tests := []struct {
-		name                         string
-		filter                       provisioning.UpdateFilter
-		repoGetAllUUIDsWithFilter    []uuid.UUID
-		repoGetAllUUIDsWithFilterErr error
+		name               string
+		filter             provisioning.UpdateFilter
+		repoGetAllUUIDs    []uuid.UUID
+		repoGetAllUUIDsErr error
+		repoGetAll         provisioning.Updates
+		repoGetAllErr      error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
-			name: "success - no filter expression",
-			filter: provisioning.UpdateFilter{
-				Channel: ptr.To("one"),
-			},
-			repoGetAllUUIDsWithFilter: []uuid.UUID{
+			name:   "success",
+			filter: provisioning.UpdateFilter{},
+			repoGetAllUUIDs: []uuid.UUID{
 				uuid.MustParse(`8926daa1-3a48-4739-9a82-e32ebd22d343`),
 				uuid.MustParse(`84156d67-0bcb-4b60-ac23-2c67f552fb8c`),
 			},
@@ -365,8 +385,37 @@ func TestUpdateService_GetAllIDsWithFilter(t *testing.T) {
 			count:     2,
 		},
 		{
-			name:                         "error - repo",
-			repoGetAllUUIDsWithFilterErr: boom.Error,
+			name: "success - with channel",
+			filter: provisioning.UpdateFilter{
+				Channel: ptr.To("stable"),
+			},
+			repoGetAll: provisioning.Updates{
+				{
+					UUID:     uuid.MustParse(`8926daa1-3a48-4739-9a82-e32ebd22d343`),
+					Channels: []string{"stable", "daily"},
+				},
+				{
+					UUID:     uuid.MustParse(`84156d67-0bcb-4b60-ac23-2c67f552fb8c`),
+					Channels: []string{"daily"},
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     1,
+		},
+		{
+			name:               "error - repo",
+			repoGetAllUUIDsErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+		{
+			name: "error - repo",
+			filter: provisioning.UpdateFilter{
+				Channel: ptr.To("stable"),
+			},
+			repoGetAllErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -377,11 +426,11 @@ func TestUpdateService_GetAllIDsWithFilter(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
-				GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
-					return tc.repoGetAllUUIDsWithFilter, tc.repoGetAllUUIDsWithFilterErr
+				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
+					return tc.repoGetAll, tc.repoGetAllErr
 				},
-				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) ([]uuid.UUID, error) {
-					return tc.repoGetAllUUIDsWithFilter, tc.repoGetAllUUIDsWithFilterErr
+				GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
+					return tc.repoGetAllUUIDs, tc.repoGetAllUUIDsErr
 				},
 			}
 
@@ -607,8 +656,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 	updateNewUUID := uuid.MustParse(`4629fd0f-bb25-4843-978a-96c11715c84d`)
 
 	tests := []struct {
-		name string
-		ctx  context.Context
+		name                 string
+		ctx                  context.Context
+		filterExpression     string
+		fileFilterExpression string
 
 		repoGetAllWithFilterUpdates provisioning.Updates
 		repoGetAllWithFilterErr     error
@@ -624,7 +675,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 		sourceGetLatestUpdates        provisioning.Updates
 		sourceGetLatestErr            error
-		sourceGetUpdateAllFiles       []queue.Item[provisioning.UpdateFiles]
 		sourceGetUpdateFileByFilename []queue.Item[struct {
 			stream io.ReadCloser
 			size   int
@@ -636,6 +686,22 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name: "success - no updates, no state in the DB",
 			ctx:  context.Background(),
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "success - one update, filtered",
+			ctx:              context.Background(),
+			filterExpression: "'stable' in Channels",
+
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					UUID: updatePresentUUID,
+					Channels: provisioning.UpdateChannels{
+						"daily",
+					},
+				},
+			},
 
 			assertErr: require.NoError,
 		},
@@ -657,14 +723,47 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "success - one update, not present, with files and sha256 checksum",
-			ctx:  context.Background(),
+			name: "success - enhanced example",
+			// Update source presents two updates.
+			// One update is already present in the DB and therefore skipped.
+			// The other update is not present. It consists of two files, from which
+			// one is filtered because of file filter for architecture.
+			// The file, which is downloaded has a valid sha256 checksum., one filtered",
+			ctx:                  context.Background(),
+			filterExpression:     "'stable' in Channels",
+			fileFilterExpression: "'x86_64' == string(Architecture)",
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID:     updatePresentUUID,
+					UUID:     updateNewUUID,
 					Status:   api.UpdateStatusUnknown,
 					Severity: api.UpdateSeverityNone,
+					Channels: provisioning.UpdateChannels{
+						"stable",
+					},
+					Files: provisioning.UpdateFiles{
+						{
+							Size: 5,
+
+							// Generate hash: echo -n "dummy" | sha256sum
+							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
+
+							Architecture: api.Architecture64BitIntelX86,
+						},
+						{
+							// This file is filtered because of architecture.
+							Size:         5,
+							Architecture: api.Architecture64BitARMV8LittleEndian,
+						},
+					},
+				},
+				{
+					UUID:     updateNewUUID,
+					Status:   api.UpdateStatusUnknown,
+					Severity: api.UpdateSeverityNone,
+					Channels: provisioning.UpdateChannels{
+						"daily", // This update is filtered based on filter expression
+					},
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -674,7 +773,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			},
 			repoGetAllWithFilterUpdates: provisioning.Updates{
 				{
-					UUID:   updateNewUUID,
+					UUID:   updatePresentUUID,
 					Status: api.UpdateStatusReady,
 				},
 			},
@@ -695,19 +794,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 				{},
 			},
 
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
-						},
-					},
-				},
-			},
 			sourceGetUpdateFileByFilename: []queue.Item[struct {
 				stream io.ReadCloser
 				size   int
@@ -726,13 +812,14 @@ func TestUpdateService_Refresh(t *testing.T) {
 				commitErr error
 				cancelErr error
 			}]{
+				// Finally one file is stored.
 				{},
 			},
 
 			assertErr: require.NoError,
 		},
 		{
-			name: "success - one update, wicht gets omitted, cleanup state in DB",
+			name: "success - one update, which gets omitted, cleanup state in DB",
 			ctx:  context.Background(),
 
 			sourceGetLatestUpdates: provisioning.Updates{
@@ -779,6 +866,120 @@ func TestUpdateService_Refresh(t *testing.T) {
 			sourceGetLatestErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name:             "error - invalid filter expression",
+			ctx:              context.Background(),
+			filterExpression: "%", // invalid expression.
+
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					UUID: updatePresentUUID,
+					Channels: provisioning.UpdateChannels{
+						"daily",
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Failed to compile filter expression")
+			},
+		},
+		{
+			name:             "error - filter expression run",
+			ctx:              context.Background(),
+			filterExpression: `fromBase64("~invalid")`, // invalid, returns runtime error during evauluation of the expression.
+
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					UUID: updatePresentUUID,
+					Channels: provisioning.UpdateChannels{
+						"daily",
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "illegal base64 data")
+			},
+		},
+		{
+			name:             "error - filter expression run",
+			ctx:              context.Background(),
+			filterExpression: `"string"`, // invalid, does evaluate to string instead of boolean.
+
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					UUID: updatePresentUUID,
+					Channels: provisioning.UpdateChannels{
+						"daily",
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "does not evaluate to boolean result")
+			},
+		},
+		{
+			name:                 "error - invalid file filter expression",
+			ctx:                  context.Background(),
+			fileFilterExpression: "%", // invalid expression.
+
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					UUID: updatePresentUUID,
+					Files: provisioning.UpdateFiles{
+						{
+							Architecture: "x86_64",
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Failed to compile file filter expression")
+			},
+		},
+		{
+			name:                 "error - file filter expression run",
+			ctx:                  context.Background(),
+			fileFilterExpression: `fromBase64("~invalid")`, // invalid, returns runtime error during evauluation of the expression.
+
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					UUID: updatePresentUUID,
+					Files: provisioning.UpdateFiles{
+						{
+							Architecture: "x86_64",
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "illegal base64 data")
+			},
+		},
+		{
+			name:                 "error - file filter expression run",
+			ctx:                  context.Background(),
+			fileFilterExpression: `"string"`, // invalid, does evaluate to string instead of boolean.
+
+			sourceGetLatestUpdates: provisioning.Updates{
+				{
+					UUID: updatePresentUUID,
+					Files: provisioning.UpdateFiles{
+						{
+							Architecture: "x86_64",
+						},
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "does not evaluate to boolean result")
+			},
 		},
 		{
 			name: "error - repo.GetAllWithFilter",
@@ -1008,46 +1209,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - source.GetUpdateAllFiles",
-			ctx:  context.Background(),
-
-			sourceGetLatestUpdates: provisioning.Updates{
-				{
-					UUID:     updatePresentUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: api.UpdateSeverityNone,
-					Files: provisioning.UpdateFiles{
-						{
-							Size: 5,
-						},
-					},
-				},
-			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:   updateNewUUID,
-					Status: api.UpdateStatusReady,
-				},
-			},
-			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
-				// global check
-				{
-					Value: usageInfoGiB(50, 10),
-				},
-			},
-			repoUpsert: []queue.Item[struct{}]{
-				// pending
-				{},
-			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Err: boom.Error,
-				},
-			},
-
-			assertErr: boom.ErrorIs,
-		},
-		{
 			name: "error - not enough space available before download",
 			ctx:  context.Background(),
 
@@ -1082,19 +1243,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			repoUpsert: []queue.Item[struct{}]{
 				// pending
 				{},
-			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
-						},
-					},
-				},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -1141,19 +1289,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 				// pending
 				{},
 			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
-						},
-					},
-				},
-			},
 
 			assertErr: boom.ErrorIs,
 		},
@@ -1193,19 +1328,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 				// pending
 				{},
 			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
-						},
-					},
-				},
-			},
 			sourceGetUpdateFileByFilename: []queue.Item[struct {
 				stream io.ReadCloser
 				size   int
@@ -1229,6 +1351,9 @@ func TestUpdateService_Refresh(t *testing.T) {
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
+
+							// Generate hash: echo -n "dummy" | sha256sum
+							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
 						},
 					},
 				},
@@ -1252,19 +1377,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			repoUpsert: []queue.Item[struct{}]{
 				// pending
 				{},
-			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
-						},
-					},
-				},
 			},
 			sourceGetUpdateFileByFilename: []queue.Item[struct {
 				stream io.ReadCloser
@@ -1292,7 +1404,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - filesRepo.Put",
+			name: "error - filesRepo.Put - invalid sha256",
 			ctx:  context.Background(),
 
 			sourceGetLatestUpdates: provisioning.Updates{
@@ -1303,6 +1415,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
+
+							Sha256: "invalid", // invalid hash
 						},
 					},
 				},
@@ -1326,19 +1440,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			repoUpsert: []queue.Item[struct{}]{
 				// pending
 				{},
-			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "invalid", // invalid hash
-						},
-					},
-				},
 			},
 			sourceGetUpdateFileByFilename: []queue.Item[struct {
 				stream io.ReadCloser
@@ -1400,19 +1501,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			repoUpsert: []queue.Item[struct{}]{
 				// pending
 				{},
-			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
-						},
-					},
-				},
 			},
 			sourceGetUpdateFileByFilename: []queue.Item[struct {
 				stream io.ReadCloser
@@ -1479,19 +1567,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			repoUpsert: []queue.Item[struct{}]{
 				// pending
 				{},
-			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
-						},
-					},
-				},
 			},
 			sourceGetUpdateFileByFilename: []queue.Item[struct {
 				stream io.ReadCloser
@@ -1563,19 +1638,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 					Err: boom.Error,
 				},
 			},
-			sourceGetUpdateAllFiles: []queue.Item[provisioning.UpdateFiles]{
-				{
-					Value: provisioning.UpdateFiles{
-						{
-							Filename: "dummy.txt",
-							Size:     5,
-
-							// Generate hash: echo -n "dummy" | sha256sum
-							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
-						},
-					},
-				},
-			},
 			sourceGetUpdateFileByFilename: []queue.Item[struct {
 				stream io.ReadCloser
 				size   int
@@ -1643,9 +1705,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 				GetLatestFunc: func(ctx context.Context, limit int) (provisioning.Updates, error) {
 					return tc.sourceGetLatestUpdates, tc.sourceGetLatestErr
 				},
-				GetUpdateAllFilesFunc: func(ctx context.Context, update provisioning.Update) (provisioning.UpdateFiles, error) {
-					return queue.Pop(t, &tc.sourceGetUpdateAllFiles)
-				},
 				GetUpdateFileByFilenameUnverifiedFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
 					value, err := queue.Pop(t, &tc.sourceGetUpdateFileByFilename)
 					return value.stream, value.size, err
@@ -1658,6 +1717,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 				provisioning.UpdateServiceWithSource("mock", source),
 				provisioning.UpdateServiceWithLatestLimit(1),
 				provisioning.UpdateServiceWithPendingGracePeriod(24*time.Hour),
+				provisioning.UpdateServiceWithFilterExpression(tc.filterExpression),
+				provisioning.UpdateServiceWithFileFilterExpression(tc.fileFilterExpression),
 			)
 
 			// Run test
@@ -1671,7 +1732,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 			require.Empty(t, tc.repoDeleteByUUID)
 			require.Empty(t, tc.repoUpdateFilesPut)
 			require.Empty(t, tc.repoUpdateFilesDelete)
-			require.Empty(t, tc.sourceGetUpdateAllFiles)
 			require.Empty(t, tc.sourceGetUpdateFileByFilename)
 		})
 	}

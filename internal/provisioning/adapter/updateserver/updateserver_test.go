@@ -37,6 +37,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 				Updates: []provisioning.Update{
 					{
 						Version:     "1",
+						Channels:    []string{"stable", "daily"},
 						Severity:    api.UpdateSeverityNone,
 						PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
 					},
@@ -46,9 +47,9 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 			assertErr: require.NoError,
 			wantUpdates: provisioning.Updates{
 				{
-					UUID:        uuid.MustParse(`87bbde05-2a3c-5508-9d31-4fe7c8cf596a`),
-					ExternalID:  "1",
+					UUID:        uuid.MustParse(`1f82dc0a-0487-5532-a76a-74ed263b2280`),
 					Version:     "1",
+					Channels:    provisioning.UpdateChannels{"daily", "stable"},
 					Severity:    api.UpdateSeverityNone,
 					PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
 					Status:      api.UpdateStatusUnknown,
@@ -78,7 +79,6 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 			wantUpdates: provisioning.Updates{
 				{
 					UUID:        uuid.MustParse(`25eacea3-d627-5c40-bfe5-52a9ea85e0ea`),
-					ExternalID:  "2",
 					Version:     "2",
 					Severity:    api.UpdateSeverityNone,
 					PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
@@ -136,110 +136,6 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 	}
 }
 
-func TestUpdateServer_GetUpdateAllFiles(t *testing.T) {
-	tests := []struct {
-		name       string
-		statusCode int
-		update     provisioning.Update
-
-		assertErr require.ErrorAssertionFunc
-		wantFiles provisioning.UpdateFiles
-	}{
-		{
-			name:       "success - no files",
-			statusCode: http.StatusOK,
-			update: provisioning.Update{
-				Severity: api.UpdateSeverityNone,
-				Files:    nil,
-			},
-
-			assertErr: require.NoError,
-			wantFiles: nil,
-		},
-		{
-			name:       "success - some files",
-			statusCode: http.StatusOK,
-			update: provisioning.Update{
-				Severity: api.UpdateSeverityNone,
-				Files: provisioning.UpdateFiles{
-					provisioning.UpdateFile{
-						Filename:  "one",
-						Component: api.UpdateFileComponentDebug,
-					},
-					provisioning.UpdateFile{
-						Filename:  "two",
-						Component: api.UpdateFileComponentDebug,
-					},
-					provisioning.UpdateFile{
-						Filename:  "three",
-						Component: api.UpdateFileComponentDebug,
-					},
-				},
-			},
-
-			assertErr: require.NoError,
-			wantFiles: provisioning.UpdateFiles{
-				provisioning.UpdateFile{
-					Filename:     "one",
-					Component:    api.UpdateFileComponentDebug,
-					Architecture: api.Architecture64BitIntelX86,
-				},
-				provisioning.UpdateFile{
-					Filename:     "two",
-					Component:    api.UpdateFileComponentDebug,
-					Architecture: api.Architecture64BitIntelX86,
-				},
-				provisioning.UpdateFile{
-					Filename:     "three",
-					Component:    api.UpdateFileComponentDebug,
-					Architecture: api.Architecture64BitIntelX86,
-				},
-			},
-		},
-		{
-			name:       "error - wrong status code",
-			statusCode: http.StatusInternalServerError,
-			update:     provisioning.Update{},
-
-			assertErr: require.Error,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			caCert, cert, key := signaturetest.GenerateCertChain(t)
-
-			body, err := json.Marshal(tc.update)
-			require.NoError(t, err)
-
-			signedBody := signaturetest.SignContent(t, cert, key, body)
-
-			svr := httptest.NewServer(
-				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if !strings.Contains(r.URL.Path, "/1/update.sjson") {
-						http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-						return
-					}
-
-					w.WriteHeader(tc.statusCode)
-					_, _ = w.Write(signedBody)
-				}),
-			)
-			defer svr.Close()
-
-			s := updateserver.New(svr.URL, signature.NewVerifier(caCert))
-			files, err := s.GetUpdateAllFiles(context.Background(), provisioning.Update{
-				ExternalID: "1",
-				URL:        "1/",
-			})
-			tc.assertErr(t, err)
-
-			require.Len(t, files, len(tc.wantFiles))
-			require.Equal(t, tc.wantFiles, files)
-		})
-	}
-}
-
 func TestUpdateServer_GetUpdateFileByFilename(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -286,7 +182,7 @@ func TestUpdateServer_GetUpdateFileByFilename(t *testing.T) {
 
 			s := updateserver.New(svr.URL, nil)
 			stream, n, err := s.GetUpdateFileByFilenameUnverified(context.Background(), provisioning.Update{
-				ExternalID: "1",
+				URL: "/1",
 			}, "one.txt")
 			tc.assertErr(t, err)
 

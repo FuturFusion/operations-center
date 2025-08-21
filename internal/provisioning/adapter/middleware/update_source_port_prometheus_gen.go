@@ -52,20 +52,6 @@ func (_d UpdateSourcePortWithPrometheus) GetLatest(ctx context.Context, limit in
 	return _d.base.GetLatest(ctx, limit)
 }
 
-// GetUpdateAllFiles implements provisioning.UpdateSourcePort.
-func (_d UpdateSourcePortWithPrometheus) GetUpdateAllFiles(ctx context.Context, update provisioning.Update) (updateFiles provisioning.UpdateFiles, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		updateSourcePortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdateAllFiles", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.GetUpdateAllFiles(ctx, update)
-}
-
 // GetUpdateFileByFilenameUnverified implements provisioning.UpdateSourcePort.
 func (_d UpdateSourcePortWithPrometheus) GetUpdateFileByFilenameUnverified(ctx context.Context, update provisioning.Update, filename string) (readCloser io.ReadCloser, n int, err error) {
 	_since := time.Now()

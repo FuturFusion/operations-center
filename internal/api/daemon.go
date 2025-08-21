@@ -216,6 +216,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	updateServiceOptions := []provisioning.UpdateServiceOption{
 		provisioning.UpdateServiceWithLatestLimit(3),
+		provisioning.UpdateServiceWithFilterExpression(d.config.UpdateFilterExpression),
+		provisioning.UpdateServiceWithFileFilterExpression(d.config.UpdateFileFilterExpression),
 	}
 
 	if d.config.UpdatesSource != "" {

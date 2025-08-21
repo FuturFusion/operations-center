@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"slices"
 	"sort"
 	"time"
 
+	"github.com/expr-lang/expr"
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -20,16 +22,19 @@ import (
 )
 
 const (
+	defaultFetchLimit       = 10
 	defaultLatestLimit      = 3
 	defaultPendingGraceTime = 24 * time.Hour
 )
 
 type updateService struct {
-	repo               UpdateRepo
-	filesRepo          UpdateFilesRepo
-	source             map[string]UpdateSourcePort
-	latestLimit        int
-	pendingGracePeriod time.Duration
+	repo                       UpdateRepo
+	filesRepo                  UpdateFilesRepo
+	source                     map[string]UpdateSourcePort
+	latestLimit                int
+	updateFilterExpression     string
+	updateFileFilterExpression string
+	pendingGracePeriod         time.Duration
 }
 
 var _ UpdateService = &updateService{}
@@ -51,6 +56,18 @@ func UpdateServiceWithLatestLimit(limit int) UpdateServiceOption {
 func UpdateServiceWithPendingGracePeriod(pendingGracePeriod time.Duration) UpdateServiceOption {
 	return func(service *updateService) {
 		service.pendingGracePeriod = pendingGracePeriod
+	}
+}
+
+func UpdateServiceWithFilterExpression(filterExpression string) UpdateServiceOption {
+	return func(service *updateService) {
+		service.updateFilterExpression = filterExpression
+	}
+}
+
+func UpdateServiceWithFileFilterExpression(filesFilterExpression string) UpdateServiceOption {
+	return func(service *updateService) {
+		service.updateFileFilterExpression = filesFilterExpression
 	}
 }
 
@@ -142,7 +159,7 @@ func (s updateService) GetAllWithFilter(ctx context.Context, filter UpdateFilter
 	var err error
 	var updates Updates
 
-	if filter.UUID == nil && filter.Channel == nil && filter.Origin == nil && filter.Status == nil {
+	if filter.UUID == nil && filter.Origin == nil && filter.Status == nil {
 		updates, err = s.repo.GetAll(ctx)
 	} else {
 		updates, err = s.repo.GetAllWithFilter(ctx, filter)
@@ -154,7 +171,21 @@ func (s updateService) GetAllWithFilter(ctx context.Context, filter UpdateFilter
 
 	sort.Sort(updates)
 
-	return updates, nil
+	if filter.Channel == nil {
+		return updates, nil
+	}
+
+	n := 0
+	for i := range updates {
+		if !slices.Contains(updates[i].Channels, *filter.Channel) {
+			continue
+		}
+
+		updates[n] = updates[i]
+		n++
+	}
+
+	return updates[:n], nil
 }
 
 func (s updateService) GetByUUID(ctx context.Context, id uuid.UUID) (*Update, error) {
@@ -162,17 +193,27 @@ func (s updateService) GetByUUID(ctx context.Context, id uuid.UUID) (*Update, er
 }
 
 func (s updateService) GetAllUUIDsWithFilter(ctx context.Context, filter UpdateFilter) ([]uuid.UUID, error) {
-	var err error
-	var updateIDs []uuid.UUID
+	if filter.Channel == nil {
+		updateIDs, err := s.repo.GetAllUUIDs(ctx)
+		if err != nil {
+			return nil, err
+		}
 
-	if filter.UUID == nil && filter.Channel == nil {
-		updateIDs, err = s.repo.GetAllUUIDs(ctx)
-	} else {
-		updateIDs, err = s.repo.GetAllUUIDsWithFilter(ctx, filter)
+		return updateIDs, nil
 	}
 
+	updates, err := s.repo.GetAll(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	updateIDs := make([]uuid.UUID, 0, len(updates))
+	for _, update := range updates {
+		if !slices.Contains(update.Channels, *filter.Channel) {
+			continue
+		}
+
+		updateIDs = append(updateIDs, update.UUID)
 	}
 
 	return updateIDs, nil
@@ -240,9 +281,21 @@ func (s updateService) Refresh(ctx context.Context) error {
 //   - Remove the updates, which are marked for removal.
 //   - Download the updates, that are part of the resulting state and not yet present on the system.
 func (s updateService) refreshOrigin(ctx context.Context, origin string, src UpdateSourcePort) error {
-	originUpdates, err := src.GetLatest(ctx, s.latestLimit)
+	originUpdates, err := src.GetLatest(ctx, defaultFetchLimit)
 	if err != nil {
 		return fmt.Errorf("Failed to fetch latest updates from source %q: %w", origin, err)
+	}
+
+	// Filter updates from orign by filter expression.
+	originUpdates, err = s.filterUpdatesByFilterExpression(originUpdates)
+	if err != nil {
+		return err
+	}
+
+	// Filter update files by architecture.
+	originUpdates, err = s.filterUpdateFileByFilterExpression(originUpdates)
+	if err != nil {
+		return err
 	}
 
 	toDownloadUpdates := make([]Update, 0, len(originUpdates))
@@ -303,24 +356,14 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 		}
 	}
 
-	// TODO: Should we have a compensating operation if the download of an update fails
-	// to reset the state of the update in the DB?
-	// TODO: Should partially downloaded updates be removed, if downloading fails?
 	for _, update := range toDownloadUpdates {
-		updateFiles, err := src.GetUpdateAllFiles(ctx, update)
-		if err != nil {
-			return fmt.Errorf(`Failed to get files for update "%s:%s@%s": %w`, origin, update.Channel, update.Version, err)
-		}
-
-		update.Files = updateFiles
-
-		// Make sure, we do have enough space left in the files repository before moving the state to pending.
+		// Make sure, we do have enough space left in the files repository before downloading the files.
 		err = s.isSpaceAvailable(ctx, []Update{update})
 		if err != nil {
 			return err
 		}
 
-		for _, updateFile := range updateFiles {
+		for _, updateFile := range update.Files {
 			if ctx.Err() != nil {
 				return fmt.Errorf("Stop refresh, context cancelled: %w", context.Cause(ctx))
 			}
@@ -329,7 +372,7 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 				var stream io.ReadCloser
 				stream, _, err = src.GetUpdateFileByFilenameUnverified(ctx, update, updateFile.Filename)
 				if err != nil {
-					return fmt.Errorf(`Failed to fetch update file "%s:%s/%s@%s": %w`, origin, update.Channel, updateFile.Filename, update.Version, err)
+					return fmt.Errorf(`Failed to fetch update file "%s/%s@%s": %w`, origin, updateFile.Filename, update.Version, err)
 				}
 
 				teeStream := stream
@@ -342,7 +385,7 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 
 				commit, cancel, err := s.filesRepo.Put(ctx, update, updateFile.Filename, teeStream)
 				if err != nil {
-					return fmt.Errorf(`Failed to read stream for update file "%s:%s/%s@%s": %w`, origin, update.Channel, updateFile.Filename, update.Version, err)
+					return fmt.Errorf(`Failed to read stream for update file "%s/%s@%s": %w`, origin, updateFile.Filename, update.Version, err)
 				}
 
 				defer func() {
@@ -375,6 +418,74 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 	}
 
 	return nil
+}
+
+func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates, error) {
+	if s.updateFilterExpression != "" {
+		filterExpression, err := expr.Compile(s.updateFilterExpression, []expr.Option{expr.Env(Update{})}...)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to compile filter expression: %w", err)
+		}
+
+		n := 0
+		for i := range updates {
+			output, err := expr.Run(filterExpression, updates[i])
+			if err != nil {
+				return nil, err
+			}
+
+			result, ok := output.(bool)
+			if !ok {
+				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", s.updateFilterExpression, output)
+			}
+
+			if !result {
+				continue
+			}
+
+			updates[n] = updates[i]
+			n++
+		}
+
+		updates = updates[:n]
+	}
+
+	return updates, nil
+}
+
+func (s updateService) filterUpdateFileByFilterExpression(updates Updates) (Updates, error) {
+	if len(s.updateFileFilterExpression) > 0 {
+		fileFilterExpression, err := expr.Compile(s.updateFileFilterExpression, []expr.Option{expr.Env(UpdateFile{})}...)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to compile file filter expression: %w", err)
+		}
+
+		for i := range updates {
+			n := 0
+			for j := range updates[i].Files {
+				output, err := expr.Run(fileFilterExpression, updates[i].Files[j])
+				if err != nil {
+					return nil, err
+				}
+
+				result, ok := output.(bool)
+				if !ok {
+					return nil, fmt.Errorf("File filter expression %q does not evaluate to boolean result: %v", s.updateFilterExpression, output)
+				}
+
+				if !result {
+					continue
+				}
+
+				updates[i].Files[n] = updates[i].Files[j]
+				n++
+			}
+
+			updates[i].Files = updates[i].Files[:n]
+		}
+	}
+
+	return updates, nil
 }
 
 func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []Update, originUpdates []Update) (toDeleteUpdates []Update, toDownloadUpdates []Update) {

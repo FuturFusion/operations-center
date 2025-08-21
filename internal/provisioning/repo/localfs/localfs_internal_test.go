@@ -322,7 +322,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 				Version:     "1",
 				PublishedAt: time.Date(2025, 5, 21, 7, 25, 37, 0, time.UTC),
 				Severity:    api.UpdateSeverityNone,
-				Channel:     "daily",
+				Channels:    []string{"daily"},
 				Files: provisioning.UpdateFiles{
 					provisioning.UpdateFile{
 						Filename:  "file1.txt",
@@ -350,7 +350,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 				wantUUID := uuidFromUpdate(provisioning.Update{
 					Origin:      "testdata (local)",
 					Version:     "1",
-					Channel:     "daily",
+					Channels:    []string{"daily"},
 					PublishedAt: time.Date(2025, 5, 21, 7, 25, 37, 0, time.UTC),
 				}).String()
 

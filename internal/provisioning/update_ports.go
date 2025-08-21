@@ -51,6 +51,5 @@ type UpdateFilesRepo interface {
 // A UpdateSourcePort is a source for updates (e.g. IncusOS or HypervisorOS).
 type UpdateSourcePort interface {
 	GetLatest(ctx context.Context, limit int) (Updates, error)
-	GetUpdateAllFiles(ctx context.Context, update Update) (UpdateFiles, error)
 	GetUpdateFileByFilenameUnverified(ctx context.Context, update Update, filename string) (io.ReadCloser, int, error)
 }

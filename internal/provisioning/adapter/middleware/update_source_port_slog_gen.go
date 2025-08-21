@@ -77,41 +77,6 @@ func (_d UpdateSourcePortWithSlog) GetLatest(ctx context.Context, limit int) (up
 	return _d._base.GetLatest(ctx, limit)
 }
 
-// GetUpdateAllFiles implements provisioning.UpdateSourcePort.
-func (_d UpdateSourcePortWithSlog) GetUpdateAllFiles(ctx context.Context, update provisioning.Update) (updateFiles provisioning.UpdateFiles, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.Any("update", update),
-		)
-	}
-	log.Debug("=> calling GetUpdateAllFiles")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("updateFiles", updateFiles),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetUpdateAllFiles returned an informative error")
-			} else {
-				log.Error("<= method GetUpdateAllFiles returned an error")
-			}
-		} else {
-			log.Debug("<= method GetUpdateAllFiles finished")
-		}
-	}()
-	return _d._base.GetUpdateAllFiles(ctx, update)
-}
-
 // GetUpdateFileByFilenameUnverified implements provisioning.UpdateSourcePort.
 func (_d UpdateSourcePortWithSlog) GetUpdateFileByFilenameUnverified(ctx context.Context, update provisioning.Update, filename string) (readCloser io.ReadCloser, n int, err error) {
 	log := _d._log.With()

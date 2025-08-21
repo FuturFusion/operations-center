@@ -22,14 +22,14 @@ import (
 func TestUpdateDatabaseActions(t *testing.T) {
 	updateA := provisioning.Update{
 		UUID:        uuid.MustParse(`e399698d-db42-53f6-97d7-1ad04dac34ba`),
-		ExternalID:  "lxc:incus-os:217816150",
 		Version:     "202505110348",
 		PublishedAt: time.Date(2025, 5, 11, 4, 16, 36, 0, time.UTC),
 		Severity:    api.UpdateSeverityNone,
 		Origin:      "linuxcontainers.org",
-		Channel:     "daily",
+		Channels:    []string{"daily"},
 		Status:      api.UpdateStatusReady,
 		Changelog:   "Some changes",
+		URL:         "/217816150",
 		Files: provisioning.UpdateFiles{
 			{
 				Filename:  "debug.raw.gz",
@@ -46,14 +46,14 @@ func TestUpdateDatabaseActions(t *testing.T) {
 
 	updateB := provisioning.Update{
 		UUID:        uuid.MustParse(`d3a52570-df97-56bc-a849-0d634c945b8c`),
-		ExternalID:  "lxc:incus-os:217808146",
 		Version:     "202505110031",
 		PublishedAt: time.Date(2025, 5, 11, 0, 56, 27, 0, time.UTC),
 		Severity:    api.UpdateSeverityNone,
-		Origin:      "linuxcontainers.org",
-		Channel:     "stable",
+		Origin:      "alternative.org",
+		Channels:    []string{"stable", "daily"},
 		Status:      api.UpdateStatusReady,
 		Changelog:   "Other changes",
+		URL:         "/217808146",
 		Files: provisioning.UpdateFiles{
 			{
 				Filename:  "debug.raw.gz",
@@ -107,13 +107,13 @@ func TestUpdateDatabaseActions(t *testing.T) {
 
 	// Ensure we have one entry with filter
 	updates, err = update.GetAllWithFilter(ctx, provisioning.UpdateFilter{
-		Channel: ptr.To("stable"),
+		Origin: ptr.To("linuxcontainers.org"),
 	})
 	require.NoError(t, err)
 	require.Len(t, updates, 1)
 
 	updateIDs, err = update.GetAllUUIDsWithFilter(ctx, provisioning.UpdateFilter{
-		Channel: ptr.To("stable"),
+		Origin: ptr.To("alternative.org"),
 	})
 	require.NoError(t, err)
 	require.Len(t, updateIDs, 1)

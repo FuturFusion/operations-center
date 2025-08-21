@@ -54,7 +54,7 @@ func (s ClusterStatus) Value() (driver.Value, error) {
 // Scan implements the sql.Scanner interface.
 func (s *ClusterStatus) Scan(value any) error {
 	if value == nil {
-		return fmt.Errorf("null is not a valid server status")
+		return fmt.Errorf("null is not a valid cluster status")
 	}
 
 	switch v := value.(type) {
@@ -63,7 +63,7 @@ func (s *ClusterStatus) Scan(value any) error {
 	case []byte:
 		return s.UnmarshalText(v)
 	default:
-		return fmt.Errorf("type %T is not supported for server status", value)
+		return fmt.Errorf("type %T is not supported for cluster status", value)
 	}
 }
 

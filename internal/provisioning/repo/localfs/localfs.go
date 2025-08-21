@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -225,9 +226,12 @@ const originSuffix = " (local)"
 const idSeparator = ":"
 
 func uuidFromUpdate(u provisioning.Update) uuid.UUID {
+	channels := u.Channels
+	sort.Strings(channels)
+
 	identifier := strings.Join([]string{
 		u.Origin,
-		u.Channel,
+		strings.Join(channels, ","),
 		u.Version,
 		u.PublishedAt.String(),
 	}, idSeparator)
