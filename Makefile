@@ -32,7 +32,7 @@ test:
 	$(GO) test ./... -v -cover
 
 .PHONY: static-analysis
-static-analysis: license-check lint
+static-analysis: license-check lint tofu-fmt-check
 
 .PHONY: license-check
 license-check:
@@ -48,6 +48,13 @@ ifeq ($(shell command -v golangci-lint),)
 endif
 	golangci-lint run ./...
 	run-parts $(shell run-parts -V >/dev/null 2>&1 && echo -n "--verbose --exit-on-error --regex '\.sh$$'") scripts/lint
+
+.PHONY: tofu-fmt-check
+tofu-fmt-check:
+ifeq ($(shell command -v tofu),)
+	curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh | sh -s -- --install-method standalone
+endif
+	tofu fmt -recursive -check .
 
 .PHONY: vulncheck
 vulncheck:
