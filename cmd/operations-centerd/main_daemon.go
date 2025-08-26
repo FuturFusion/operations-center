@@ -26,6 +26,7 @@ type env interface {
 	LogDir() string
 	RunDir() string
 	VarDir() string
+	UsrShareDir() string
 	GetUnixSocket() string
 }
 
