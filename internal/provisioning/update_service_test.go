@@ -18,6 +18,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/testing/queue"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -652,8 +653,12 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 }
 
 func TestUpdateService_Refresh(t *testing.T) {
-	updatePresentUUID := uuid.MustParse(`33fe66e2-3ee6-460d-97a8-70309e33a319`)
-	updateNewUUID := uuid.MustParse(`4629fd0f-bb25-4843-978a-96c11715c84d`)
+	updatePresentUUID := uuidgen.FromPattern(t, "01")
+	updateNewUUID := uuidgen.FromPattern(t, "02")
+
+	dateTime1 := time.Date(2025, 8, 21, 13, 4, 0, 0, time.UTC)
+	dateTime2 := time.Date(2025, 8, 22, 13, 4, 0, 0, time.UTC)
+	dateTime3 := time.Date(2025, 8, 23, 13, 4, 0, 0, time.UTC)
 
 	tests := []struct {
 		name                 string
@@ -696,7 +701,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID: updatePresentUUID,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
 					Channels: provisioning.UpdateChannels{
 						"daily",
 					},
@@ -711,12 +717,14 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID: updatePresentUUID,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
 				},
 			},
 			repoGetAllWithFilterUpdates: provisioning.Updates{
 				{
-					UUID: updatePresentUUID,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime1,
 				},
 			},
 
@@ -725,19 +733,21 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name: "success - enhanced example",
 			// Update source presents two updates.
-			// One update is already present in the DB and therefore skipped.
+			// One update is filtered based on filter expression and therefore skipped.
 			// The other update is not present. It consists of two files, from which
 			// one is filtered because of file filter for architecture.
-			// The file, which is downloaded has a valid sha256 checksum., one filtered",
+			// The file, which is downloaded has a valid sha256 checksum, one file is
+			// filtered.
 			ctx:                  context.Background(),
 			filterExpression:     "'stable' in Channels",
 			fileFilterExpression: "'x86_64' == string(Architecture)",
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID:     updateNewUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: api.UpdateSeverityNone,
+					UUID:        updateNewUUID,
+					PublishedAt: dateTime2,
+					Status:      api.UpdateStatusUnknown,
+					Severity:    api.UpdateSeverityNone,
 					Channels: provisioning.UpdateChannels{
 						"stable",
 					},
@@ -758,9 +768,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 				{
-					UUID:     updateNewUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: api.UpdateSeverityNone,
+					UUID:        updateNewUUID,
+					PublishedAt: dateTime3,
+					Status:      api.UpdateStatusUnknown,
+					Severity:    api.UpdateSeverityNone,
 					Channels: provisioning.UpdateChannels{
 						"daily", // This update is filtered based on filter expression
 					},
@@ -771,12 +782,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:   updatePresentUUID,
-					Status: api.UpdateStatusReady,
-				},
-			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -826,24 +832,24 @@ func TestUpdateService_Refresh(t *testing.T) {
 				{
 					UUID:        updateNewUUID,
 					Status:      api.UpdateStatusUnknown,
-					PublishedAt: time.Date(2025, 1, 3, 0, 0, 0, 0, time.UTC), // most recent update, but we always keep the most recent update from the DB and the test is configurued to only keep 1 update, so this gets omitted.
+					PublishedAt: dateTime3, // most recent update, but we always keep the most recent update from the DB and the test is configurued to only keep 1 update, so this gets omitted.
 				},
 			},
 			repoGetAllWithFilterUpdates: provisioning.Updates{
 				{
-					UUID:        uuid.MustParse(`223795ef-a126-4e91-8d19-9d550ff928d6`),
+					UUID:        uuidgen.FromPattern(t, "03"),
 					Status:      api.UpdateStatusReady,
-					PublishedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), // delete, since it is the older one.
+					PublishedAt: dateTime1, // delete, since it is the older one.
 				},
 				{
-					UUID:        uuid.MustParse(`af49c1b9-4fdf-4542-a113-456316d045f4`),
+					UUID:        uuidgen.FromPattern(t, "04"),
 					Status:      api.UpdateStatusReady,
-					PublishedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
+					PublishedAt: dateTime3,
 				},
 				{
-					UUID:        uuid.MustParse(`437558e4-6839-4f9e-8549-bd507e81c328`),
+					UUID:        uuidgen.FromPattern(t, "05"),
 					Status:      api.UpdateStatusPending,
-					PublishedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC), // delete, since it is in pending for longer than grace period.
+					PublishedAt: dateTime3, // delete, since it is in pending for longer than grace period.
 				},
 			},
 			repoUpdateFilesDelete: []queue.Item[struct{}]{
@@ -874,7 +880,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID: updatePresentUUID,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
 					Channels: provisioning.UpdateChannels{
 						"daily",
 					},
@@ -892,7 +899,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID: updatePresentUUID,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
 					Channels: provisioning.UpdateChannels{
 						"daily",
 					},
@@ -910,7 +918,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID: updatePresentUUID,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
 					Channels: provisioning.UpdateChannels{
 						"daily",
 					},
@@ -928,7 +937,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID: updatePresentUUID,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
 					Files: provisioning.UpdateFiles{
 						{
 							Architecture: "x86_64",
@@ -948,7 +958,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID: updatePresentUUID,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
 					Files: provisioning.UpdateFiles{
 						{
 							Architecture: "x86_64",
@@ -968,7 +979,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID: updatePresentUUID,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
 					Files: provisioning.UpdateFiles{
 						{
 							Architecture: "x86_64",
@@ -995,14 +1007,14 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			repoGetAllWithFilterUpdates: provisioning.Updates{
 				{
-					UUID:        uuid.MustParse(`223795ef-a126-4e91-8d19-9d550ff928d6`),
+					UUID:        uuidgen.FromPattern(t, "01"),
 					Status:      api.UpdateStatusReady,
-					PublishedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+					PublishedAt: dateTime2,
 				},
 				{
-					UUID:        uuid.MustParse(`af49c1b9-4fdf-4542-a113-456316d045f4`),
+					UUID:        uuidgen.FromPattern(t, "02"),
 					Status:      api.UpdateStatusReady,
-					PublishedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
+					PublishedAt: dateTime3,
 				},
 			},
 			repoUpdateFilesDelete: []queue.Item[struct{}]{
@@ -1019,14 +1031,14 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			repoGetAllWithFilterUpdates: provisioning.Updates{
 				{
-					UUID:        uuid.MustParse(`223795ef-a126-4e91-8d19-9d550ff928d6`),
+					UUID:        uuidgen.FromPattern(t, "01"),
 					Status:      api.UpdateStatusReady,
-					PublishedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+					PublishedAt: dateTime2,
 				},
 				{
-					UUID:        uuid.MustParse(`af49c1b9-4fdf-4542-a113-456316d045f4`),
+					UUID:        uuidgen.FromPattern(t, "02"),
 					Status:      api.UpdateStatusReady,
-					PublishedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
+					PublishedAt: dateTime3,
 				},
 			},
 			repoUpdateFilesDelete: []queue.Item[struct{}]{
@@ -1046,9 +1058,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID:     updatePresentUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: api.UpdateSeverityNone,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
+					Status:      api.UpdateStatusUnknown,
+					Severity:    api.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1056,12 +1069,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:   updateNewUUID,
-					Status: api.UpdateStatusReady,
-				},
-			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1072,14 +1080,15 @@ func TestUpdateService_Refresh(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - filesRepo.UsageInformation",
+			name: "error - filesRepo.UsageInformation - invalid total size",
 			ctx:  context.Background(),
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID:     updatePresentUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: api.UpdateSeverityNone,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
+					Status:      api.UpdateStatusUnknown,
+					Severity:    api.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1087,12 +1096,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:   updateNewUUID,
-					Status: api.UpdateStatusReady,
-				},
-			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1110,9 +1114,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID:     updatePresentUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: api.UpdateSeverityNone,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
+					Status:      api.UpdateStatusUnknown,
+					Severity:    api.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1120,12 +1125,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:   updateNewUUID,
-					Status: api.UpdateStatusReady,
-				},
-			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1143,9 +1143,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID:     updatePresentUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: "invalid", // invalid
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
+					Status:      api.UpdateStatusUnknown,
+					Severity:    "invalid", // invalid
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1153,12 +1154,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:   updateNewUUID,
-					Status: api.UpdateStatusReady,
-				},
-			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1177,9 +1173,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID:     updatePresentUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: api.UpdateSeverityNone,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
+					Status:      api.UpdateStatusUnknown,
+					Severity:    api.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1187,12 +1184,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:   updateNewUUID,
-					Status: api.UpdateStatusReady,
-				},
-			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1214,9 +1206,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID:     updatePresentUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: api.UpdateSeverityNone,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
+					Status:      api.UpdateStatusUnknown,
+					Severity:    api.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1224,12 +1217,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:   updateNewUUID,
-					Status: api.UpdateStatusReady,
-				},
-			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1259,9 +1247,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID:     updatePresentUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: api.UpdateSeverityNone,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
+					Status:      api.UpdateStatusUnknown,
+					Severity:    api.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1269,12 +1258,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:   updateNewUUID,
-					Status: api.UpdateStatusReady,
-				},
-			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1298,9 +1282,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID:     updatePresentUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: api.UpdateSeverityNone,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
+					Status:      api.UpdateStatusUnknown,
+					Severity:    api.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1308,12 +1293,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:   updateNewUUID,
-					Status: api.UpdateStatusReady,
-				},
-			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1345,9 +1325,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID:     updatePresentUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: api.UpdateSeverityNone,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
+					Status:      api.UpdateStatusUnknown,
+					Severity:    api.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1358,12 +1339,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:   updateNewUUID,
-					Status: api.UpdateStatusReady,
-				},
-			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1409,9 +1385,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID:     updatePresentUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: api.UpdateSeverityNone,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
+					Status:      api.UpdateStatusUnknown,
+					Severity:    api.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1421,12 +1398,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:   updateNewUUID,
-					Status: api.UpdateStatusReady,
-				},
-			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1472,9 +1444,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID:     updatePresentUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: api.UpdateSeverityNone,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
+					Status:      api.UpdateStatusUnknown,
+					Severity:    api.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1482,12 +1455,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:   updateNewUUID,
-					Status: api.UpdateStatusReady,
-				},
-			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1538,9 +1506,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID:     updatePresentUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: api.UpdateSeverityNone,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
+					Status:      api.UpdateStatusUnknown,
+					Severity:    api.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1548,12 +1517,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:   updateNewUUID,
-					Status: api.UpdateStatusReady,
-				},
-			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1604,9 +1568,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
-					UUID:     updatePresentUUID,
-					Status:   api.UpdateStatusUnknown,
-					Severity: api.UpdateSeverityNone,
+					UUID:        updatePresentUUID,
+					PublishedAt: dateTime2,
+					Status:      api.UpdateStatusUnknown,
+					Severity:    api.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1614,12 +1579,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
-				{
-					UUID:   updateNewUUID,
-					Status: api.UpdateStatusReady,
-				},
-			},
+			repoGetAllWithFilterUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1665,6 +1625,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// if tc.name != "error - filesRepo.UsageInformation - invalid total size" {
+			// 	t.SkipNow()
+			// }
+
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
