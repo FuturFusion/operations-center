@@ -124,8 +124,9 @@ func TestStartAndStop(t *testing.T) {
 			d := api.NewDaemon(
 				ctx,
 				api.MockEnv{
-					UnixSocket:   tc.unixSocket,
-					VarDirectory: tmpDir,
+					UnixSocket:        tc.unixSocket,
+					VarDirectory:      tmpDir,
+					UsrShareDirectory: tmpDir,
 				},
 				&config.Config{
 					RestServerPort: tc.bindPort,

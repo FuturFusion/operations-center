@@ -24,8 +24,8 @@ func (httpFS uiHTTPDir) Open(name string) (http.File, error) {
 	return fsFile, err
 }
 
-func registerUIHandlers(router Router, varDir string) {
-	uiDir := uiHTTPDir{http.Dir(filepath.Join(varDir, uiPathSegment))}
+func registerUIHandlers(router Router, usrShareDir string) {
+	uiDir := uiHTTPDir{http.Dir(filepath.Join(usrShareDir, uiPathSegment))}
 	fileServer := http.FileServer(uiDir)
 
 	router.Handle("GET /"+uiPathSegment+"/", http.StripPrefix("/"+uiPathSegment+"/", fileServer))
