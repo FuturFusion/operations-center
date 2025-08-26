@@ -539,9 +539,14 @@ func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []Update,
 			updateCount++
 
 		case api.UpdateStatusUnknown:
-			if !mostRecentInDBFound && updateCount+1 >= s.latestLimit {
-				// We have not yet found the most recent one from the DB and we only have
-				// 1 slot left, so we can no longer add more updates from origin.
+			mostRecentInDBHeadroom := 0
+			if !mostRecentInDBFound {
+				// If we have not yet found the most recent one from the DB, we keep one
+				// slot as headroom.
+				mostRecentInDBHeadroom = 1
+			}
+
+			if updateCount+mostRecentInDBHeadroom >= s.latestLimit {
 				continue
 			}
 
