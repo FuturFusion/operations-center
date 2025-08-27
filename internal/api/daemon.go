@@ -59,6 +59,7 @@ import (
 type environment interface {
 	GetUnixSocket() string
 	VarDir() string
+	UsrShareDir() string
 }
 
 type Daemon struct {
@@ -318,7 +319,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// TODO: Move access log and request ID middlewares here
 	router := newRouter(serveMux)
 
-	registerUIHandlers(router, d.env.VarDir())
+	registerUIHandlers(router, d.env.UsrShareDir())
 
 	const osRouterPrefix = "/os"
 	osRouter := router.SubGroup(osRouterPrefix).AddMiddlewares(

@@ -20,11 +20,13 @@ func (n noopAuthorizer) CheckPermission(ctx context.Context, details *authz.Requ
 }
 
 type MockEnv struct {
-	LogDirectory string
-	VarDirectory string
-	UnixSocket   string
+	LogDirectory      string
+	VarDirectory      string
+	UsrShareDirectory string
+	UnixSocket        string
 }
 
 func (e MockEnv) LogDir() string        { return e.LogDirectory }
 func (e MockEnv) VarDir() string        { return e.VarDirectory }
+func (e MockEnv) UsrShareDir() string   { return e.UsrShareDirectory }
 func (e MockEnv) GetUnixSocket() string { return e.UnixSocket }

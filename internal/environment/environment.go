@@ -10,10 +10,11 @@ import (
 )
 
 const (
-	logPathDefaultPrefix = "/var"
-	logPathSuffix        = "log"
-	runPathDefaultPrefix = "/run"
-	varPathDefaultPrefix = "/var/lib"
+	logPathDefaultPrefix      = "/var"
+	logPathSuffix             = "log"
+	runPathDefaultPrefix      = "/run"
+	varPathDefaultPrefix      = "/var/lib"
+	usrSharePathDefaultPrefix = "/usr/share"
 
 	applicationDirEnvSuffix    = "_DIR"
 	applicationSocketEnvSuffix = "_SOCKET"
@@ -54,6 +55,12 @@ func (e Environment) RunDir() string {
 // VarDir returns the path to the data directory of the application (e.g. /var/lib/<application-name>).
 // It respects <APP_PREFIX>_DIR environment variable.
 func (e Environment) VarDir() string {
+	return e.pathWithEnvOverride(varPathDefaultPrefix, e.applicationName)
+}
+
+// UsrShareDir returns the path to the static directory of the application (e.g. /usr/lib/<application-name>).
+// It respects <APP_PREFIX>_DIR environment variable.
+func (e Environment) UsrShareDir() string {
 	return e.pathWithEnvOverride(varPathDefaultPrefix, e.applicationName)
 }
 

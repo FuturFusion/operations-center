@@ -41,10 +41,11 @@ func TestMain0RunDaemon(t *testing.T) {
 	// Start daemon.
 	go func() {
 		daemonErr = main0([]string{"--verbose", "--server-port", "27443"}, nil, stderrWriter, mockEnv{
-			logDir:     tmpDir,
-			runDir:     tmpDir,
-			varDir:     tmpDir,
-			unixSocket: filepath.Join(tmpDir, "unix.socket"),
+			logDir:      tmpDir,
+			runDir:      tmpDir,
+			varDir:      tmpDir,
+			usrShareDir: tmpDir,
+			unixSocket:  filepath.Join(tmpDir, "unix.socket"),
 		})
 	}()
 
@@ -176,15 +177,17 @@ func waitFor(t *testing.T, in chan string, want string, d time.Duration) {
 }
 
 type mockEnv struct {
-	logDir     string
-	runDir     string
-	varDir     string
-	unixSocket string
+	logDir      string
+	runDir      string
+	varDir      string
+	usrShareDir string
+	unixSocket  string
 }
 
 func (e mockEnv) LogDir() string        { return e.logDir }
 func (e mockEnv) RunDir() string        { return e.runDir }
 func (e mockEnv) VarDir() string        { return e.varDir }
+func (e mockEnv) UsrShareDir() string   { return e.usrShareDir }
 func (e mockEnv) GetUnixSocket() string { return e.unixSocket }
 
 type chanWriter struct {
