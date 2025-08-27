@@ -16,7 +16,6 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/google/uuid"
 
-	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -30,7 +29,7 @@ const (
 type updateService struct {
 	repo                       UpdateRepo
 	filesRepo                  UpdateFilesRepo
-	source                     map[string]UpdateSourcePort
+	source                     UpdateSourcePort
 	latestLimit                int
 	updateFilterExpression     string
 	updateFileFilterExpression string
@@ -40,12 +39,6 @@ type updateService struct {
 var _ UpdateService = &updateService{}
 
 type UpdateServiceOption func(service *updateService)
-
-func UpdateServiceWithSource(origin string, source UpdateSourcePort) UpdateServiceOption {
-	return func(service *updateService) {
-		service.source[origin] = source
-	}
-}
 
 func UpdateServiceWithLatestLimit(limit int) UpdateServiceOption {
 	return func(service *updateService) {
@@ -71,11 +64,11 @@ func UpdateServiceWithFileFilterExpression(filesFilterExpression string) UpdateS
 	}
 }
 
-func NewUpdateService(repo UpdateRepo, filesRepo UpdateFilesRepo, opts ...UpdateServiceOption) updateService {
+func NewUpdateService(repo UpdateRepo, filesRepo UpdateFilesRepo, source UpdateSourcePort, opts ...UpdateServiceOption) updateService {
 	service := updateService{
 		repo:               repo,
 		filesRepo:          filesRepo,
-		source:             make(map[string]UpdateSourcePort),
+		source:             source,
 		latestLimit:        defaultLatestLimit,
 		pendingGracePeriod: defaultPendingGraceTime,
 	}
@@ -254,18 +247,7 @@ func (s updateService) GetUpdateFileByFilename(ctx context.Context, id uuid.UUID
 	return s.filesRepo.Get(ctx, *update, filename)
 }
 
-func (s updateService) Refresh(ctx context.Context) error {
-	for origin, source := range s.source {
-		err := s.refreshOrigin(ctx, origin, source)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// refreshOrigin refreshes the updates from an origin.
+// Refresh refreshes the updates from an origin.
 //
 // This operations is performed in the following steps:
 //
@@ -280,10 +262,10 @@ func (s updateService) Refresh(ctx context.Context) error {
 //     The remainder of the updates are omitted (ignored, if not yet downloaded, deleted if already present in the DB).
 //   - Remove the updates, which are marked for removal.
 //   - Download the updates, that are part of the resulting state and not yet present on the system.
-func (s updateService) refreshOrigin(ctx context.Context, origin string, src UpdateSourcePort) error {
-	originUpdates, err := src.GetLatest(ctx, defaultFetchLimit)
+func (s updateService) Refresh(ctx context.Context) error {
+	originUpdates, err := s.source.GetLatest(ctx, defaultFetchLimit)
 	if err != nil {
-		return fmt.Errorf("Failed to fetch latest updates from source %q: %w", origin, err)
+		return fmt.Errorf("Failed to fetch latest updates: %w", err)
 	}
 
 	// Filter updates from orign by filter expression.
@@ -300,11 +282,9 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 
 	toDownloadUpdates := make([]Update, 0, len(originUpdates))
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		dbUpdates, err := s.repo.GetAllWithFilter(ctx, UpdateFilter{
-			Origin: ptr.To(origin),
-		})
+		dbUpdates, err := s.repo.GetAll(ctx)
 		if err != nil {
-			return fmt.Errorf("Failed to get all updates from repository for source %q: %w", origin, err)
+			return fmt.Errorf("Failed to get all updates from repository: %w", err)
 		}
 
 		var toDeleteUpdates []Update
@@ -314,12 +294,12 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 		for _, update := range toDeleteUpdates {
 			err = s.filesRepo.Delete(ctx, update)
 			if err != nil {
-				return fmt.Errorf("Failed to forget update %s from source %q: %w", update.UUID, origin, err)
+				return fmt.Errorf("Failed to forget update %s: %w", update.UUID, err)
 			}
 
 			err = s.repo.DeleteByUUID(ctx, update.UUID)
 			if err != nil {
-				return fmt.Errorf("Failed to remove update %s from source %q from repository: %w", update.UUID, origin, err)
+				return fmt.Errorf("Failed to remove update %s from repository: %w", update.UUID, err)
 			}
 		}
 
@@ -339,7 +319,6 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 		// Move updates marked for download in pending state.
 		for i, update := range toDownloadUpdates {
 			// Overwrite origin with our value to ensure cleanup to work.
-			update.Origin = origin
 			update.Status = api.UpdateStatusPending
 
 			err = update.Validate()
@@ -370,9 +349,9 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 
 			err := func() (err error) {
 				var stream io.ReadCloser
-				stream, _, err = src.GetUpdateFileByFilenameUnverified(ctx, update, updateFile.Filename)
+				stream, _, err = s.source.GetUpdateFileByFilenameUnverified(ctx, update, updateFile.Filename)
 				if err != nil {
-					return fmt.Errorf(`Failed to fetch update file "%s/%s@%s": %w`, origin, updateFile.Filename, update.Version, err)
+					return fmt.Errorf(`Failed to fetch update file "%s@%s": %w`, updateFile.Filename, update.Version, err)
 				}
 
 				teeStream := stream
@@ -385,7 +364,7 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 
 				commit, cancel, err := s.filesRepo.Put(ctx, update, updateFile.Filename, teeStream)
 				if err != nil {
-					return fmt.Errorf(`Failed to read stream for update file "%s/%s@%s": %w`, origin, updateFile.Filename, update.Version, err)
+					return fmt.Errorf(`Failed to read stream for update file "%s@%s": %w`, updateFile.Filename, update.Version, err)
 				}
 
 				defer func() {
@@ -413,7 +392,7 @@ func (s updateService) refreshOrigin(ctx context.Context, origin string, src Upd
 
 		err = s.repo.Upsert(ctx, update)
 		if err != nil {
-			return fmt.Errorf("Failed to persist the update in the repository for source %q: %w", origin, err)
+			return fmt.Errorf("Failed to persist the update in the repository: %w", err)
 		}
 	}
 
