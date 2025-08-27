@@ -48,7 +48,7 @@ var targets = []struct {
 	},
 	{
 		TemplateName:   "client.gotmpl",
-		TargetName:     "internal/client/{{ .Name }}_gen.go",
+		TargetName:     "internal/client/inventory_{{ .Name }}_gen.go",
 		TargetFileType: FileTypeGo,
 	},
 	{
