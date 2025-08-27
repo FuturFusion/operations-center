@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -220,26 +219,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 		provisioning.UpdateServiceWithFileFilterExpression(d.config.UpdateFileFilterExpression),
 	}
 
-	if d.config.UpdatesSource != "" {
-		origin, err := url.Parse(d.config.UpdatesSource)
-		if err != nil {
-			return fmt.Errorf(`config "update.source" is not a valid URL: %w`, err)
-		}
-
-		updateServiceOptions = append(updateServiceOptions,
-			provisioning.UpdateServiceWithSource(
-				origin.Host,
-				provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
-					updateserver.New(
-						d.config.UpdatesSource,
-						verifier,
-					),
-					slog.Default(),
-				),
-			),
-		)
-	}
-
 	updateSvc := provisioningServiceMiddleware.NewUpdateServiceWithSlog(
 		provisioning.NewUpdateService(
 			provisioningRepoMiddleware.NewUpdateRepoWithSlog(
@@ -253,6 +232,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 			),
 			provisioningRepoMiddleware.NewUpdateFilesRepoWithSlog(
 				repoUpdateFiles,
+				slog.Default(),
+			),
+			provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
+				updateserver.New(
+					d.config.UpdatesSource,
+					verifier,
+				),
 				slog.Default(),
 			),
 			updateServiceOptions...,
