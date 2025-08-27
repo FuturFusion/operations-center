@@ -91,7 +91,7 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles)
+			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil)
 
 			// Run test
 			id, err := updateSvc.CreateFromArchive(context.Background(), nil)
@@ -181,7 +181,7 @@ func TestUpdateService_CleanupAll(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles)
+			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil)
 
 			// Run test
 			err := updateSvc.CleanupAll(context.Background())
@@ -224,7 +224,7 @@ func TestUpdateService_GetAll(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil)
+			updateSvc := provisioning.NewUpdateService(repo, nil, nil)
 
 			// Run test
 			updates, err := updateSvc.GetAll(context.Background())
@@ -304,7 +304,7 @@ func TestUpdateService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewUpdateService(repo, nil)
+			serverSvc := provisioning.NewUpdateService(repo, nil, nil)
 
 			// Run test
 			server, err := serverSvc.GetAllWithFilter(context.Background(), tc.filter)
@@ -350,7 +350,7 @@ func TestUpdateService_GetAllUUIDs(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil)
+			updateSvc := provisioning.NewUpdateService(repo, nil, nil)
 
 			// Run test
 			updates, err := updateSvc.GetAllUUIDs(context.Background())
@@ -435,7 +435,7 @@ func TestUpdateService_GetAllUUIDsWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewUpdateService(repo, nil)
+			serverSvc := provisioning.NewUpdateService(repo, nil, nil)
 
 			// Run test
 			serverIDs, err := serverSvc.GetAllUUIDsWithFilter(context.Background(), tc.filter)
@@ -481,7 +481,7 @@ func TestUpdateService_GetByUUID(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil)
+			updateSvc := provisioning.NewUpdateService(repo, nil, nil)
 
 			// Run test
 			update, err := updateSvc.GetByUUID(context.Background(), tc.idArg)
@@ -535,7 +535,7 @@ func TestUpdateService_GetUpdateAllFiles(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, nil)
+			updateSvc := provisioning.NewUpdateService(repo, nil, nil)
 
 			// Run test
 			updateFiles, err := updateSvc.GetUpdateAllFiles(context.Background(), tc.idArg)
@@ -633,7 +633,7 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 				},
 			}
 
-			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles)
+			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil)
 
 			// Run test
 			rc, size, err := updateSvc.GetUpdateFileByFilename(context.Background(), tc.idArg, "foo.bar")
@@ -666,10 +666,10 @@ func TestUpdateService_Refresh(t *testing.T) {
 		filterExpression     string
 		fileFilterExpression string
 
-		repoGetAllWithFilterUpdates provisioning.Updates
-		repoGetAllWithFilterErr     error
-		repoUpsert                  []queue.Item[struct{}]
-		repoDeleteByUUID            []queue.Item[struct{}]
+		repoGetAllUpdates provisioning.Updates
+		repoGetAllErr     error
+		repoUpsert        []queue.Item[struct{}]
+		repoDeleteByUUID  []queue.Item[struct{}]
 
 		repoUpdateFilesUsageInformation []queue.Item[provisioning.UsageInformation]
 		repoUpdateFilesPut              []queue.Item[struct {
@@ -721,7 +721,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					PublishedAt: dateTime2,
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
+			repoGetAllUpdates: provisioning.Updates{
 				{
 					UUID:        updatePresentUUID,
 					PublishedAt: dateTime1,
@@ -782,7 +782,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{},
+			repoGetAllUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -835,7 +835,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					PublishedAt: dateTime3, // most recent update, but we always keep the most recent update from the DB and the test is configurued to only keep 1 update, so this gets omitted.
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{
+			repoGetAllUpdates: provisioning.Updates{
 				{
 					UUID:        uuidgen.FromPattern(t, "03"),
 					Status:      api.UpdateStatusReady,
@@ -997,7 +997,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			name: "error - repo.GetAllWithFilter",
 			ctx:  context.Background(),
 
-			repoGetAllWithFilterErr: boom.Error,
+			repoGetAllErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -1005,7 +1005,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			name: "error - filesRepo.Delete",
 			ctx:  context.Background(),
 
-			repoGetAllWithFilterUpdates: provisioning.Updates{
+			repoGetAllUpdates: provisioning.Updates{
 				{
 					UUID:        uuidgen.FromPattern(t, "01"),
 					Status:      api.UpdateStatusReady,
@@ -1029,7 +1029,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			name: "error - filesRepo.Delete",
 			ctx:  context.Background(),
 
-			repoGetAllWithFilterUpdates: provisioning.Updates{
+			repoGetAllUpdates: provisioning.Updates{
 				{
 					UUID:        uuidgen.FromPattern(t, "01"),
 					Status:      api.UpdateStatusReady,
@@ -1069,7 +1069,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{},
+			repoGetAllUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1096,7 +1096,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{},
+			repoGetAllUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1125,7 +1125,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{},
+			repoGetAllUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1154,7 +1154,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{},
+			repoGetAllUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1184,7 +1184,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{},
+			repoGetAllUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1217,7 +1217,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{},
+			repoGetAllUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1258,7 +1258,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{},
+			repoGetAllUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1293,7 +1293,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{},
+			repoGetAllUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1339,7 +1339,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{},
+			repoGetAllUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1398,7 +1398,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{},
+			repoGetAllUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1455,7 +1455,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{},
+			repoGetAllUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1517,7 +1517,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{},
+			repoGetAllUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1579,7 +1579,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					},
 				},
 			},
-			repoGetAllWithFilterUpdates: provisioning.Updates{},
+			repoGetAllUpdates: provisioning.Updates{},
 			repoUpdateFilesUsageInformation: []queue.Item[provisioning.UsageInformation]{
 				// global check
 				{
@@ -1631,8 +1631,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
-				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
-					return tc.repoGetAllWithFilterUpdates, tc.repoGetAllWithFilterErr
+				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
+					return tc.repoGetAllUpdates, tc.repoGetAllErr
 				},
 				UpsertFunc: func(ctx context.Context, update provisioning.Update) error {
 					_, err := queue.Pop(t, &tc.repoUpsert)
@@ -1678,7 +1678,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			updateSvc := provisioning.NewUpdateService(
 				repo,
 				repoUpdateFiles,
-				provisioning.UpdateServiceWithSource("mock", source),
+				source,
 				provisioning.UpdateServiceWithLatestLimit(1),
 				provisioning.UpdateServiceWithPendingGracePeriod(24*time.Hour),
 				provisioning.UpdateServiceWithFilterExpression(tc.filterExpression),
