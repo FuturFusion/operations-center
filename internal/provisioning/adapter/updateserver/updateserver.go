@@ -42,6 +42,10 @@ type UpdatesIndex struct {
 }
 
 func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Updates, error) {
+	if u.baseURL == "" {
+		return nil, nil
+	}
+
 	indexURL := u.baseURL + "/index.sjson"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, indexURL, http.NoBody)
 	if err != nil {
