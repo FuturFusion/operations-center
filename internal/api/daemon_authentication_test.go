@@ -22,8 +22,9 @@ import (
 	testcontainers "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/openfga"
 
-	"github.com/FuturFusion/operations-center/internal/api"
+	restapi "github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 const oidcCode = `123`
@@ -641,21 +642,32 @@ func TestAuthentication(t *testing.T) {
 		},
 	}
 
-	d := api.NewDaemon(
+	config.InitTest(t)
+	err = config.UpdateNetwork(ctx, api.SystemNetworkPut{
+		OperationsCenterAddress: "https://127.0.0.1:17443",
+		RestServerPort:          17443,
+	})
+	require.NoError(t, err)
+	err = config.UpdateSecurity(ctx, api.SystemSecurityPut{
+		TrustedTLSClientCertFingerprints: []string{certFingerprint},
+		OIDC: api.SystemSecurityOIDC{
+			Issuer:   oidcProvider.Issuer(),
+			ClientID: oidcProvider.ClientID,
+			Scope:    "openid,offline_access,email",
+		},
+		OpenFGA: api.SystemSecurityOpenFGA{
+			APIURL:   openFGAEndpoint,
+			APIToken: "dummy",
+			StoreID:  openFGAStoreID,
+		},
+	})
+	require.NoError(t, err)
+
+	d := restapi.NewDaemon(
 		ctx,
-		api.MockEnv{
+		restapi.MockEnv{
 			UnixSocket:   filepath.Join(tmpDir, "unix.socket"),
 			VarDirectory: tmpDir,
-		},
-		&config.Config{
-			RestServerPort:                   17443,
-			OidcIssuer:                       oidcProvider.Issuer(),
-			OidcClientID:                     oidcProvider.ClientID,
-			OidcScope:                        "openid,offline_access,email",
-			TrustedTLSClientCertFingerprints: []string{certFingerprint},
-			OpenfgaAPIURL:                    openFGAEndpoint,
-			OpenfgaAPIToken:                  "dummy",
-			OpenfgaStoreID:                   openFGAStoreID,
 		},
 	)
 
