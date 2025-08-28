@@ -1,9 +1,9 @@
 //go:build linux || darwin || freebsd || openbsd
 
-package provisioning
+package environment
 
 import "golang.org/x/sys/unix"
 
-func getStdinFd() int {
+func GetStdinFd() int {
 	return unix.Stdin
 }
