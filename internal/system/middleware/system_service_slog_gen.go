@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/system"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // SystemServiceWithSlog implements system.SystemService that is instrumented with slog logger.
@@ -39,6 +40,72 @@ func NewSystemServiceWithSlog(base system.SystemService, log *slog.Logger, opts 
 	}
 
 	return this
+}
+
+// GetNetworkConfig implements system.SystemService.
+func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (systemNetwork api.SystemNetwork) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.Debug("=> calling GetNetworkConfig")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("systemNetwork", systemNetwork),
+			)
+		} else {
+		}
+		log.Debug("<= method GetNetworkConfig finished")
+	}()
+	return _d._base.GetNetworkConfig(ctx)
+}
+
+// GetSecurityConfig implements system.SystemService.
+func (_d SystemServiceWithSlog) GetSecurityConfig(ctx context.Context) (systemSecurity api.SystemSecurity) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.Debug("=> calling GetSecurityConfig")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("systemSecurity", systemSecurity),
+			)
+		} else {
+		}
+		log.Debug("<= method GetSecurityConfig finished")
+	}()
+	return _d._base.GetSecurityConfig(ctx)
+}
+
+// GetUpdatesConfig implements system.SystemService.
+func (_d SystemServiceWithSlog) GetUpdatesConfig(ctx context.Context) (systemUpdates api.SystemUpdates) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.Debug("=> calling GetUpdatesConfig")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("systemUpdates", systemUpdates),
+			)
+		} else {
+		}
+		log.Debug("<= method GetUpdatesConfig finished")
+	}()
+	return _d._base.GetUpdatesConfig(ctx)
 }
 
 // UpdateCertificate implements system.SystemService.
@@ -74,4 +141,106 @@ func (_d SystemServiceWithSlog) UpdateCertificate(ctx context.Context, certifica
 		}
 	}()
 	return _d._base.UpdateCertificate(ctx, certificatePEM, keyPEM)
+}
+
+// UpdateNetworkConfig implements system.SystemService.
+func (_d SystemServiceWithSlog) UpdateNetworkConfig(ctx context.Context, cfg api.SystemNetworkPut) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("cfg", cfg),
+		)
+	}
+	log.Debug("=> calling UpdateNetworkConfig")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method UpdateNetworkConfig returned an informative error")
+			} else {
+				log.Error("<= method UpdateNetworkConfig returned an error")
+			}
+		} else {
+			log.Debug("<= method UpdateNetworkConfig finished")
+		}
+	}()
+	return _d._base.UpdateNetworkConfig(ctx, cfg)
+}
+
+// UpdateSecurityConfig implements system.SystemService.
+func (_d SystemServiceWithSlog) UpdateSecurityConfig(ctx context.Context, cfg api.SystemSecurityPut) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("cfg", cfg),
+		)
+	}
+	log.Debug("=> calling UpdateSecurityConfig")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method UpdateSecurityConfig returned an informative error")
+			} else {
+				log.Error("<= method UpdateSecurityConfig returned an error")
+			}
+		} else {
+			log.Debug("<= method UpdateSecurityConfig finished")
+		}
+	}()
+	return _d._base.UpdateSecurityConfig(ctx, cfg)
+}
+
+// UpdateUpdatesConfig implements system.SystemService.
+func (_d SystemServiceWithSlog) UpdateUpdatesConfig(ctx context.Context, cfg api.SystemUpdatesPut) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("cfg", cfg),
+		)
+	}
+	log.Debug("=> calling UpdateUpdatesConfig")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method UpdateUpdatesConfig returned an informative error")
+			} else {
+				log.Error("<= method UpdateUpdatesConfig returned an error")
+			}
+		} else {
+			log.Debug("<= method UpdateUpdatesConfig finished")
+		}
+	}()
+	return _d._base.UpdateUpdatesConfig(ctx, cfg)
 }
