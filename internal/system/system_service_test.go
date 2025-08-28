@@ -12,7 +12,9 @@ import (
 	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/system"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestSystemService_UpdateCertificate(t *testing.T) {
@@ -114,6 +116,215 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			}
 
 			require.Equal(t, tc.serverCertificateUpdateCallExpected, serverCertificateUpdateCalled)
+		})
+	}
+}
+
+func TestSystemService_UpdateNetworkConfig(t *testing.T) {
+	tests := []struct {
+		name           string
+		securityConfig api.SystemNetwork
+
+		assertErr         require.ErrorAssertionFunc
+		wantNetworkConfig api.SystemNetwork
+	}{
+		{
+			name: "success",
+			securityConfig: api.SystemNetwork{
+				SystemNetworkPut: api.SystemNetworkPut{
+					OperationsCenterAddress: "https://somesource:443",
+				},
+			},
+
+			assertErr: require.NoError,
+			wantNetworkConfig: api.SystemNetwork{
+				SystemNetworkPut: api.SystemNetworkPut{
+					OperationsCenterAddress: "https://somesource:443",
+				},
+			},
+		},
+		{
+			name: "error",
+			securityConfig: api.SystemNetwork{
+				SystemNetworkPut: api.SystemNetworkPut{
+					OperationsCenterAddress: ":|\\", // invalid
+				},
+			},
+
+			assertErr: require.Error,
+			wantNetworkConfig: api.SystemNetwork{
+				SystemNetworkPut: api.SystemNetworkPut{
+					// From default.yml
+					OperationsCenterAddress: "https://127.0.0.1:443",
+					RestServerPort:          7443,
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			config.InitTest(t)
+			systemSvc := system.NewSystemService(nil, nil)
+
+			// Run test
+			err := systemSvc.UpdateNetworkConfig(t.Context(), tc.securityConfig.SystemNetworkPut)
+			gotNetworkConfig := systemSvc.GetNetworkConfig(t.Context())
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantNetworkConfig, gotNetworkConfig)
+		})
+	}
+}
+
+func TestSystemService_GetNetworkConfig(t *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		{
+			name: "success",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			networkConfig := api.SystemNetwork{
+				SystemNetworkPut: api.SystemNetworkPut{
+					OperationsCenterAddress: "https://someaddress:1234",
+				},
+			}
+
+			config.InitTest(t)
+			err := config.UpdateNetwork(t.Context(), networkConfig.SystemNetworkPut)
+			require.NoError(t, err)
+
+			systemSvc := system.NewSystemService(nil, nil)
+
+			// Run test
+			gotNetworkConfig := systemSvc.GetNetworkConfig(t.Context())
+
+			// Assert
+			require.Equal(t, networkConfig, gotNetworkConfig)
+		})
+	}
+}
+
+func TestSystemService_UpdateSecurityConfig(t *testing.T) {
+	tests := []struct {
+		name           string
+		securityConfig api.SystemSecurity
+
+		assertErr          require.ErrorAssertionFunc
+		wantSecurityConfig api.SystemSecurity
+	}{
+		{
+			name: "success",
+			securityConfig: api.SystemSecurity{
+				SystemSecurityPut: api.SystemSecurityPut{
+					TrustedTLSClientCertFingerprints: []string{"foobar"},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantSecurityConfig: api.SystemSecurity{
+				SystemSecurityPut: api.SystemSecurityPut{
+					TrustedTLSClientCertFingerprints: []string{"foobar"},
+				},
+			},
+		},
+		{
+			name: "error",
+			securityConfig: api.SystemSecurity{
+				SystemSecurityPut: api.SystemSecurityPut{
+					OIDC: api.SystemSecurityOIDC{
+						Issuer: ":|\\", // invalid
+					},
+				},
+			},
+
+			assertErr: require.Error,
+			wantSecurityConfig: api.SystemSecurity{
+				SystemSecurityPut: api.SystemSecurityPut{
+					TrustedTLSClientCertFingerprints: []string{},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			config.InitTest(t)
+			systemSvc := system.NewSystemService(nil, nil)
+
+			// Run test
+			err := systemSvc.UpdateSecurityConfig(t.Context(), tc.securityConfig.SystemSecurityPut)
+			gotSecurityConfig := systemSvc.GetSecurityConfig(t.Context())
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantSecurityConfig, gotSecurityConfig)
+		})
+	}
+}
+
+func TestSystemService_UpdateUpdatesConfig(t *testing.T) {
+	tests := []struct {
+		name           string
+		securityConfig api.SystemUpdates
+
+		assertErr         require.ErrorAssertionFunc
+		wantUpdatesConfig api.SystemUpdates
+	}{
+		{
+			name: "success",
+			securityConfig: api.SystemUpdates{
+				SystemUpdatesPut: api.SystemUpdatesPut{
+					Source: "https://somesource:443",
+				},
+			},
+
+			assertErr: require.NoError,
+			wantUpdatesConfig: api.SystemUpdates{
+				SystemUpdatesPut: api.SystemUpdatesPut{
+					Source: "https://somesource:443",
+				},
+			},
+		},
+		{
+			name: "error",
+			securityConfig: api.SystemUpdates{
+				SystemUpdatesPut: api.SystemUpdatesPut{
+					Source: ":|\\", // invalid
+				},
+			},
+
+			assertErr: require.Error,
+			wantUpdatesConfig: api.SystemUpdates{
+				SystemUpdatesPut: api.SystemUpdatesPut{
+					// From default.yml
+					Source: "https://images.linuxcontainers.org/os/",
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			config.InitTest(t)
+			systemSvc := system.NewSystemService(nil, nil)
+
+			// Run test
+			err := systemSvc.UpdateUpdatesConfig(t.Context(), tc.securityConfig.SystemUpdatesPut)
+			gotUpdatesConfig := systemSvc.GetUpdatesConfig(t.Context())
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantUpdatesConfig.Source, gotUpdatesConfig.Source)
 		})
 	}
 }

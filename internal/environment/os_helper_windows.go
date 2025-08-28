@@ -1,11 +1,11 @@
 //go:build windows
 
-package provisioning
+package environment
 
 import (
 	"golang.org/x/sys/windows"
 )
 
-func getStdinFd() int {
+func GetStdinFd() int {
 	return int(windows.Stdin)
 }
