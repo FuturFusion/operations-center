@@ -26,18 +26,23 @@ func TestSystemCertificatePut(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	ctx := context.Background()
+
+	config.InitTest(t)
+	err := config.UpdateNetwork(ctx, shared.SystemNetworkPut{
+		OperationsCenterAddress: "https://127.0.0.1:17443",
+		RestServerPort:          17443,
+	})
+	require.NoError(t, err)
+
 	d := api.NewDaemon(
 		ctx,
 		api.MockEnv{
 			UnixSocket:   filepath.Join(tmpDir, "unix.socket"),
 			VarDirectory: tmpDir,
 		},
-		&config.Config{
-			RestServerPort: 17443,
-		},
 	)
 
-	err := d.Start(ctx)
+	err = d.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		err = d.Stop(context.Background())
