@@ -1,54 +1,63 @@
 ---
 
-# URL of the server providing updates for incus-os.
-update.source: https://images.linuxcontainers.org/os/
+network:
+  address: "https://127.0.0.1:7443"
+  rest_server_address: ""
+  rest_server_port: 7443
 
-# If set to true, there is no check for updates from `update.source`
-# right after start of operations-centerd.
-# This is mainly used for development.
-update.source_skip_first_update: false
+security:
+  # Array of SHA256 certificate fingerprints that belong to trusted TLS clients.
+  trusted_tls_client_cert_fingerprints: []
 
-# Certificate used to verify the signature of updates provided
-# by `update.source`.
-update.signature_verification_root_ca: |
-  -----BEGIN CERTIFICATE-----
-  MIIBxTCCAWugAwIBAgIUKFh7jSFs4OIymJR60kMDizaaUu0wCgYIKoZIzj0EAwMw
-  ODEbMBkGA1UEAwwSSW5jdXMgT1MgLSBSb290IEUxMRkwFwYDVQQKDBBMaW51eCBD
-  b250YWluZXJzMB4XDTI1MDYyNjA4MTA1NFoXDTQ1MDYyMTA4MTA1NFowODEbMBkG
-  A1UEAwwSSW5jdXMgT1MgLSBSb290IEUxMRkwFwYDVQQKDBBMaW51eCBDb250YWlu
-  ZXJzMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEkuL+o9TxVlcmn7rQjSQUPtVW
-  YhISgnMOWIMbg4sh0hWh5LJeH7mPA41I80TAR84O+rcnj/AtFG+O2dZgTK47UaNT
-  MFEwHQYDVR0OBBYEFERR7s37UYWIfjdauwuftLTUULcaMB8GA1UdIwQYMBaAFERR
-  7s37UYWIfjdauwuftLTUULcaMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwMD
-  SAAwRQIhAId625vznH0/C9E/gLLRz5S95x3mZmqIHOQBFHRf2mLyAiB2kMK4Idcn
-  dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
-  -----END CERTIFICATE-----
+  # OIDCconfiguration.
+  oidc:
+    issuer: ""
+    client_id: ""
+    scopes: ""
+    audience: ""
+    claim: ""
 
-# Filter expression for updates using https://expr-lang.org/ on struct
-# provisioning.Update.
-# If a filter is defined, the filter needs to evaluate to true for the update
-# being fetched by Operations Center.
-# Empty filter expression does not filter at all.
-update.filter_expression: "'stable' in Channels"
+  # OpenFGA configuration
+  openfga:
+    api_token: ""
+    api_url: ""
+    store.id: ""
 
-# Filter expression for update files using https://expr-lang.org/ on struct
-# provisioning.UpdateFile.
-# If a filter is defined, the filter needs to evaluate to true for the file
-# being fetched by Operations Center.
-# Empty filter expression does not filter at all.
-update.file_filter_expression: "'x86_64' == string(Architecture)"
+updates:
+  # URL of the server providing updates for incus-os.
+  source: https://images.linuxcontainers.org/os/
 
-# Array of SHA256 certificate fingerprints that belong to trusted TLS clients.
-trusted_tls_client_cert_fingerprints: []
+  # If set to true, there is no check for updates from `updates.source`
+  # right after start of operations-centerd.
+  # This is mainly used for development.
+  source_skip_first_update: false
 
-# OIDCconfiguration.
-oidc.issuer: ""
-oidc.client.id: ""
-oidc.scopes: ""
-oidc.audience: ""
-oidc.claim: ""
+  # Certificate used to verify the signature of updates provided
+  # by `updates.source`.
+  signature_verification_root_ca: |
+    -----BEGIN CERTIFICATE-----
+    MIIBxTCCAWugAwIBAgIUKFh7jSFs4OIymJR60kMDizaaUu0wCgYIKoZIzj0EAwMw
+    ODEbMBkGA1UEAwwSSW5jdXMgT1MgLSBSb290IEUxMRkwFwYDVQQKDBBMaW51eCBD
+    b250YWluZXJzMB4XDTI1MDYyNjA4MTA1NFoXDTQ1MDYyMTA4MTA1NFowODEbMBkG
+    A1UEAwwSSW5jdXMgT1MgLSBSb290IEUxMRkwFwYDVQQKDBBMaW51eCBDb250YWlu
+    ZXJzMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEkuL+o9TxVlcmn7rQjSQUPtVW
+    YhISgnMOWIMbg4sh0hWh5LJeH7mPA41I80TAR84O+rcnj/AtFG+O2dZgTK47UaNT
+    MFEwHQYDVR0OBBYEFERR7s37UYWIfjdauwuftLTUULcaMB8GA1UdIwQYMBaAFERR
+    7s37UYWIfjdauwuftLTUULcaMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwMD
+    SAAwRQIhAId625vznH0/C9E/gLLRz5S95x3mZmqIHOQBFHRf2mLyAiB2kMK4Idcn
+    dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
+    -----END CERTIFICATE-----
 
-# OpenFGA configuration
-openfga.api.token: ""
-openfga.api.url: ""
-openfga.store.id: ""
+  # Filter expression for updates using https://expr-lang.org/ on struct
+  # provisioning.Update.
+  # If a filter is defined, the filter needs to evaluate to true for the update
+  # being fetched by Operations Center.
+  # Empty filter expression does not filter at all.
+  filter_expression: '"stable" in Channels'
+
+  # Filter expression for update files using https://expr-lang.org/ on struct
+  # provisioning.UpdateFile.
+  # If a filter is defined, the filter needs to evaluate to true for the file
+  # being fetched by Operations Center.
+  # Empty filter expression does not filter at all.
+  file_filter_expression: '"x86_64" == string(Architecture)'
