@@ -83,6 +83,12 @@ func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
 
 	app.AddCommand(inventoryCmd.Command())
 
+	systemCmd := cmds.CmdSystem{
+		OCClient: globalCmd.ocClient,
+	}
+
+	app.AddCommand(systemCmd.Command())
+
 	return app.Execute()
 }
 
