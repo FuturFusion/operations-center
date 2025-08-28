@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
@@ -27,7 +28,7 @@ import (
 	authzchain "github.com/FuturFusion/operations-center/internal/authz/chain"
 	oidcAuthorizer "github.com/FuturFusion/operations-center/internal/authz/oidc"
 	authzopenfga "github.com/FuturFusion/operations-center/internal/authz/openfga"
-	authztlz "github.com/FuturFusion/operations-center/internal/authz/tls"
+	authztls "github.com/FuturFusion/operations-center/internal/authz/tls"
 	"github.com/FuturFusion/operations-center/internal/authz/unixsocket"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -66,22 +67,40 @@ type environment interface {
 type Daemon struct {
 	env environment
 
-	config            *config.Config
+	// Global mutex for any changes to the daemon config including authenticator
+	// oidcVerifier, authorizer and the likes.
+	configReloadMu *sync.Mutex
+
 	clientCertificate string
 	clientKey         string
+
+	authenticator     *authn.Authenticator
+	oidcVerifier      *authnoidc.Verifier
+	authorizer        authz.Authorizer
+	signatureVerifier signature.Verifier
+
+	server   *http.Server
+	listener *listener.FancyTLSListener
+
+	serverCertificateUpdate signals.Signal[tls.Certificate]
+
+	// FIXME: move server cert (as incusTLS.CertInfo) also to daemon level?
+	// serverCertLock sync.Mutex
+	// serverCert     *incusTLS.CertInfo
+	serverCertificate tls.Certificate
 
 	shutdownFuncs []func(context.Context) error
 	errgroup      *errgroup.Group
 }
 
-func NewDaemon(ctx context.Context, env environment, cfg *config.Config) *Daemon {
-	clientCertFilename := filepath.Join(env.VarDir(), cfg.ClientCertificateFilename)
+func NewDaemon(ctx context.Context, env environment) *Daemon {
+	clientCertFilename := filepath.Join(env.VarDir(), config.ClientCertificateFilename)
 	clientCert, err := os.ReadFile(clientCertFilename)
 	if err != nil {
 		slog.WarnContext(ctx, "failed to read client certificate", slog.String("file", clientCertFilename), logger.Err(err))
 	}
 
-	clientKeyFilename := filepath.Join(env.VarDir(), cfg.ClientKeyFilename)
+	clientKeyFilename := filepath.Join(env.VarDir(), config.ClientKeyFilename)
 	clientKey, err := os.ReadFile(clientKeyFilename)
 	if err != nil {
 		slog.WarnContext(ctx, "failed to read client key", slog.String("file", clientKeyFilename), logger.Err(err))
@@ -89,7 +108,7 @@ func NewDaemon(ctx context.Context, env environment, cfg *config.Config) *Daemon
 
 	d := &Daemon{
 		env:               env,
-		config:            cfg,
+		configReloadMu:    &sync.Mutex{},
 		clientCertificate: string(clientCert),
 		clientKey:         string(clientKey),
 	}
@@ -136,60 +155,30 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return fmt.Errorf("Failed to read server key from %q: %w", keyFile, err)
 	}
 
-	serverCertificate, err := tls.X509KeyPair(serverCertificatePEM, serverKeyPEM)
+	d.serverCertificate, err = tls.X509KeyPair(serverCertificatePEM, serverKeyPEM)
 	if err != nil {
 		return fmt.Errorf("Failed to validate server certificate key pair: %w", err)
 	}
 
-	serverCertificateUpdate := signals.NewSync[tls.Certificate]()
+	d.serverCertificateUpdate = signals.NewSync[tls.Certificate]()
 
-	// UnixSocket authenticator is always available.
-	authers := []authn.Auther{
-		authnunixsocket.UnixSocket{},
+	err = d.securityConfigReload(ctx, config.GetSecurity())
+	if err != nil {
+		return err
 	}
 
-	// Setup OIDC authentication.
-	var oidcVerifier *authnoidc.Verifier
-	if d.config.OidcIssuer != "" && d.config.OidcClientID != "" {
-		oidcVerifier, err = authnoidc.NewVerifier(context.TODO(), d.config.OidcIssuer, d.config.OidcClientID, d.config.OidcScope, d.config.OidcAudience, d.config.OidcClaim)
+	config.SecurityUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemSecurity) {
+		err := d.securityConfigReload(ctx, cfg)
 		if err != nil {
-			return err
+			slog.ErrorContext(ctx, "failed to reload security config", logger.Err(err))
 		}
+	})
 
-		authers = append(authers, authnoidc.New(oidcVerifier))
-	}
+	d.updatesConfigReload(ctx, config.GetUpdates())
 
-	// Setup client cert fingerprint authentication.
-	if len(d.config.TrustedTLSClientCertFingerprints) > 0 {
-		authers = append(authers, authntls.New(d.config.TrustedTLSClientCertFingerprints))
-	}
-
-	// Create authenticator
-	authenticator := authn.New(authers)
-
-	authorizers := []authz.Authorizer{
-		unixsocket.New(),
-		authztlz.New(ctx, d.config.TrustedTLSClientCertFingerprints),
-	}
-
-	if d.config.OpenfgaAPIURL != "" && d.config.OpenfgaAPIToken != "" && d.config.OpenfgaStoreID != "" {
-		openfgaAuthorizer, err := authzopenfga.New(ctx, d.config.OpenfgaAPIURL, d.config.OpenfgaAPIToken, d.config.OpenfgaStoreID)
-		if err != nil {
-			// TODO: could also be a warning
-			return err
-		}
-
-		authorizers = append(authorizers, openfgaAuthorizer)
-		d.shutdownFuncs = append(d.shutdownFuncs, openfgaAuthorizer.Shutdown)
-	}
-
-	// If OIDC is configured and OpenFGA is explicitly not configured, grant
-	// unrestricted access to all authenticated OIDC users.
-	if d.config.OidcIssuer != "" && d.config.OidcClientID != "" && d.config.OpenfgaAPIURL == "" && d.config.OpenfgaAPIToken == "" && d.config.OpenfgaStoreID == "" {
-		authorizers = append(authorizers, oidcAuthorizer.New())
-	}
-
-	authorizer := authzchain.New(authorizers...)
+	config.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemUpdates) {
+		d.updatesConfigReload(ctx, cfg)
+	})
 
 	serverClientProvider := serverMiddleware.NewServerClientWithSlog(
 		inventoryIncusAdapter.New(
@@ -199,17 +188,14 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.Default(),
 	)
 
-	// Setup Services
-	verifier := signature.NewVerifier([]byte(d.config.UpdateSignatureVerificationRootCA))
-
 	systemSvc := systemServiceMiddleware.NewSystemServiceWithSlog(
-		system.NewSystemService(d.env, serverCertificateUpdate),
+		system.NewSystemService(d.env, d.serverCertificateUpdate),
 		slog.Default(),
 	)
 
 	repoUpdateFiles, err := localfs.New(
 		filepath.Join(d.env.VarDir(), "updates"),
-		verifier,
+		d.signatureVerifier,
 	)
 	if err != nil {
 		return err
@@ -217,44 +203,56 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	updateServiceOptions := []provisioning.UpdateServiceOption{
 		provisioning.UpdateServiceWithLatestLimit(3),
-		provisioning.UpdateServiceWithFilterExpression(d.config.UpdateFilterExpression),
-		provisioning.UpdateServiceWithFileFilterExpression(d.config.UpdateFileFilterExpression),
+		provisioning.UpdateServiceWithFilterExpression(config.GetUpdates().FilterExpression),
+		provisioning.UpdateServiceWithFileFilterExpression(config.GetUpdates().FileFilterExpression),
 	}
 
-	updateSvc := provisioningServiceMiddleware.NewUpdateServiceWithSlog(
-		provisioning.NewUpdateService(
-			provisioningRepoMiddleware.NewUpdateRepoWithSlog(
-				provisioningSqlite.NewUpdate(dbWithTransaction),
-				slog.Default(),
-				provisioningRepoMiddleware.UpdateRepoWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						return errors.Is(err, domain.ErrNotFound)
-					},
-				),
+	updateServer := updateserver.New(
+		config.GetUpdates().Source,
+		d.signatureVerifier,
+	)
+	config.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemUpdates) {
+		updateServer.UpdateSource(ctx, cfg.Source)
+	})
+
+	updateSvcBase := provisioning.NewUpdateService(
+		provisioningRepoMiddleware.NewUpdateRepoWithSlog(
+			provisioningSqlite.NewUpdate(dbWithTransaction),
+			slog.Default(),
+			provisioningRepoMiddleware.UpdateRepoWithSlogWithInformativeErrFunc(
+				func(err error) bool {
+					return errors.Is(err, domain.ErrNotFound)
+				},
 			),
-			provisioningRepoMiddleware.NewUpdateFilesRepoWithSlog(
-				repoUpdateFiles,
-				slog.Default(),
-			),
-			provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
-				updateserver.New(
-					d.config.UpdatesSource,
-					verifier,
-				),
-				slog.Default(),
-			),
-			updateServiceOptions...,
 		),
+		provisioningRepoMiddleware.NewUpdateFilesRepoWithSlog(
+			repoUpdateFiles,
+			slog.Default(),
+		),
+		provisioningAdapterMiddleware.NewUpdateSourcePortWithSlog(
+			updateServer,
+			slog.Default(),
+		),
+		updateServiceOptions...,
+	)
+	config.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemUpdates) {
+		updateSvcBase.UpdateConfig(ctx, cfg.FilterExpression, cfg.FileFilterExpression)
+	})
+
+	updateSvc := provisioningServiceMiddleware.NewUpdateServiceWithSlog(
+		updateSvcBase,
 		slog.Default(),
 	)
 
 	imageFlasher := flasher.New(
-		d.config.OperationsCenterAddress,
-		serverCertificate,
+		config.GetNetwork().OperationsCenterAddress,
+		d.serverCertificate,
 	)
-
-	serverCertificateUpdate.AddListener(func(_ context.Context, cert tls.Certificate) {
+	d.serverCertificateUpdate.AddListener(func(_ context.Context, cert tls.Certificate) {
 		imageFlasher.UpdateCertificate(cert)
+	})
+	config.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemNetwork) {
+		imageFlasher.UpdateServerURL(cfg.OperationsCenterAddress)
 	})
 
 	tokenSvc := provisioningServiceMiddleware.NewTokenServiceWithSlog(
@@ -333,12 +331,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	const osRouterPrefix = "/os"
 	osRouter := router.SubGroup(osRouterPrefix).AddMiddlewares(
-		authenticator.Middleware,
+		d.authenticator.Middleware,
 	)
-	registerOSProxy(osRouter, osRouterPrefix, authorizer)
+	registerOSProxy(osRouter, osRouterPrefix, d.authorizer)
 
-	if oidcVerifier != nil {
-		registerOIDCHandlers(router, oidcVerifier)
+	if d.oidcVerifier != nil {
+		registerOIDCHandlers(router, d.oidcVerifier)
 	}
 
 	isNoAuthenticationRequired := func(r *http.Request) bool {
@@ -364,7 +362,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	api10router := router.SubGroup("/1.0").AddMiddlewares(
 		// Authentication middleware is skipped if isNoAuthenticationRequired applies.
 		unless(
-			authenticator.Middleware,
+			d.authenticator.Middleware,
 			isNoAuthenticationRequired,
 		),
 	)
@@ -373,23 +371,23 @@ func (d *Daemon) Start(ctx context.Context) error {
 	provisioningRouter := api10router.SubGroup("/provisioning")
 
 	provisioningTokenRouter := provisioningRouter.SubGroup("/tokens")
-	registerProvisioningTokenHandler(provisioningTokenRouter, authorizer, tokenSvc)
+	registerProvisioningTokenHandler(provisioningTokenRouter, d.authorizer, tokenSvc)
 
 	provisioningClusterRouter := provisioningRouter.SubGroup("/clusters")
-	registerProvisioningClusterHandler(provisioningClusterRouter, authorizer, clusterSvcWrapped)
+	registerProvisioningClusterHandler(provisioningClusterRouter, d.authorizer, clusterSvcWrapped)
 
 	provisioningServerRouter := provisioningRouter.SubGroup("/servers")
-	registerProvisioningServerHandler(provisioningServerRouter, authorizer, serverSvc, d.clientCertificate)
+	registerProvisioningServerHandler(provisioningServerRouter, d.authorizer, serverSvc, d.clientCertificate)
 
 	provisioningUpdateRouter := provisioningRouter.SubGroup("/updates")
-	registerUpdateHandler(provisioningUpdateRouter, authorizer, updateSvc)
+	registerUpdateHandler(provisioningUpdateRouter, d.authorizer, updateSvc)
 
 	systemRouter := api10router.SubGroup("/system")
-	registerSystemHandler(systemRouter, authorizer, systemSvc)
+	registerSystemHandler(systemRouter, d.authorizer, systemSvc)
 
 	inventoryRouter := api10router.SubGroup("/inventory")
 
-	inventorySyncers := registerInventoryRoutes(dbWithTransaction, clusterSvcWrapped, serverClientProvider, authorizer, inventoryRouter)
+	inventorySyncers := registerInventoryRoutes(dbWithTransaction, clusterSvcWrapped, serverClientProvider, d.authorizer, inventoryRouter)
 
 	clusterSvc.SetInventorySyncers(inventorySyncers)
 
@@ -397,23 +395,23 @@ func (d *Daemon) Start(ctx context.Context) error {
 	errorLogger.SetOutput(httpErrorLogger{})
 
 	// Setup web server
-	server := &http.Server{
+	d.server = &http.Server{
 		Handler: logger.RequestIDMiddleware(
 			logger.AccessLogMiddleware(
 				serveMux,
 			),
 		),
 		IdleTimeout: 30 * time.Second,
-		Addr:        fmt.Sprintf("%s:%d", d.config.RestServerAddr, d.config.RestServerPort),
+		Addr:        fmt.Sprintf("%s:%d", config.GetNetwork().RestServerAddress, config.GetNetwork().RestServerPort),
 		ErrorLog:    errorLogger,
 	}
 
-	d.shutdownFuncs = append(d.shutdownFuncs, server.Shutdown)
+	d.shutdownFuncs = append(d.shutdownFuncs, d.server.Shutdown)
 
 	group, errgroupCtx := errgroup.WithContext(context.Background())
 	d.errgroup = group
 
-	group.Go(func() error {
+	d.errgroup.Go(func() error {
 		// TODO: if the socket file already exists, make a connection attempt. If
 		// successful, another instance of operations-centerd is already running.
 		// If not successful, it is save to delete the socket file.
@@ -431,7 +429,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 		slog.InfoContext(ctx, "Start unix socket listener", slog.Any("addr", unixListener.Addr()))
 
-		err = server.Serve(unixListener)
+		err = d.server.Serve(unixListener)
 		if errors.Is(err, http.ErrServerClosed) {
 			// Ignore error from graceful shutdown.
 			return nil
@@ -440,27 +438,16 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	})
 
-	group.Go(func() error {
-		slog.InfoContext(ctx, "Start https listener", slog.Any("addr", server.Addr))
-
-		tcpListener, err := net.Listen("tcp", server.Addr)
-		if err != nil {
-			return err
-		}
-
-		fancyListener := listener.NewFancyTLSListener(tcpListener, serverCertificate)
-
-		serverCertificateUpdate.AddListener(func(_ context.Context, cert tls.Certificate) {
-			fancyListener.Config(cert)
-		})
-
-		err = server.Serve(fancyListener)
-		if errors.Is(err, http.ErrServerClosed) {
-			// Ignore error from graceful shutdown.
-			return nil
-		}
-
+	err = d.networkConfigReload(ctx, config.GetNetwork())
+	if err != nil {
 		return err
+	}
+
+	config.NetworkUpdateSignal.AddListener(func(ctx context.Context, sn api.SystemNetwork) {
+		err := d.networkConfigReload(ctx, sn)
+		if err != nil {
+			slog.ErrorContext(ctx, "Failed to reload network config", logger.Err(err))
+		}
 	})
 
 	// Start background task to refresh updates from the sources.
@@ -475,11 +462,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	var updateSourceOptions []task.EveryOption
-	if d.config.UpdatesSourcePollSkipFirst {
+	if config.GetUpdates().SourcePollSkipFirst {
 		updateSourceOptions = append(updateSourceOptions, task.SkipFirst)
 	}
 
-	updateSourceTaskStop, _ := task.Start(ctx, refreshUpdatesFromSourcesTask, task.Every(d.config.UpdatesSourcePollInterval, updateSourceOptions...))
+	updateSourceTaskStop, _ := task.Start(ctx, refreshUpdatesFromSourcesTask, task.Every(config.UpdatesSourcePollInterval, updateSourceOptions...))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return updateSourceTaskStop(deadlineFrom(ctx, 60*time.Second))
 	})
@@ -495,7 +482,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 	}
 
-	pollPendingServersTaskStop, _ := task.Start(ctx, pollPendingServersTask, task.Every(d.config.PendingServerPollInterval))
+	pollPendingServersTaskStop, _ := task.Start(ctx, pollPendingServersTask, task.Every(config.PendingServerPollInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return pollPendingServersTaskStop(deadlineFrom(ctx, 1*time.Second))
 	})
@@ -505,7 +492,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.InfoContext(ctx, "Connectivity test for ready servers triggered")
 
 		// Within the first connectivityInterval of the hour, we also update the configuration.
-		updateConfiguration := time.Since(time.Now().Truncate(time.Hour)) <= d.config.ConnectivityCheckInterval
+		updateConfiguration := time.Since(time.Now().Truncate(time.Hour)) <= config.ConnectivityCheckInterval
 		err := serverSvc.PollServers(ctx, api.ServerStatusReady, updateConfiguration)
 		if err != nil {
 			slog.ErrorContext(ctx, "Connectivity test for some servers failed", logger.Err(err))
@@ -514,7 +501,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 	}
 
-	pollReadyServersTaskStop, _ := task.Start(ctx, pollReadyServersTask, task.Every(d.config.ConnectivityCheckInterval))
+	pollReadyServersTaskStop, _ := task.Start(ctx, pollReadyServersTask, task.Every(config.ConnectivityCheckInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return pollReadyServersTaskStop(deadlineFrom(ctx, 1*time.Second))
 	})
@@ -530,7 +517,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 	}
 
-	refreshInventoryTaskStop, _ := task.Start(ctx, refreshInventoryTask, task.Every(d.config.InventoryUpdateInterval))
+	refreshInventoryTaskStop, _ := task.Start(ctx, refreshInventoryTask, task.Every(config.InventoryUpdateInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return refreshInventoryTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
@@ -563,6 +550,140 @@ func (d *Daemon) Stop(ctx context.Context) error {
 	}
 
 	return errors.Join(errs...)
+}
+
+func (d *Daemon) networkConfigReload(ctx context.Context, cfg api.SystemNetwork) error {
+	errCh := make(chan error)
+	d.errgroup.Go(func() error {
+		d.configReloadMu.Lock()
+		oldListener := d.listener
+		d.configReloadMu.Unlock()
+
+		if oldListener != nil {
+			slog.InfoContext(ctx, "Stopping existing https listener", slog.Any("addr", oldListener.Addr().String()))
+			err := oldListener.Close()
+			if err != nil {
+				errCh <- err
+				return err
+			}
+		}
+
+		d.serverCertificateUpdate.RemoveListener("fancyListener")
+
+		newAddr := fmt.Sprintf("%s:%d", cfg.RestServerAddress, cfg.RestServerPort)
+		d.configReloadMu.Lock()
+		d.server.Addr = newAddr
+		d.configReloadMu.Unlock()
+
+		slog.InfoContext(ctx, "Start https listener", slog.Any("addr", newAddr))
+		tcpListener, err := net.Listen("tcp", newAddr)
+		if err != nil {
+			errCh <- err
+			return err
+		}
+
+		d.configReloadMu.Lock()
+		d.listener = listener.NewFancyTLSListener(tcpListener, d.serverCertificate)
+		d.configReloadMu.Unlock()
+
+		d.serverCertificateUpdate.AddListener(func(_ context.Context, cert tls.Certificate) {
+			d.configReloadMu.Lock()
+			defer d.configReloadMu.Unlock()
+
+			d.serverCertificate = cert
+			d.listener.Config(cert)
+		}, "fancyListener")
+
+		// Unblock the channel here before we block for the server.
+		errCh <- nil
+
+		if d.server != nil {
+			err = d.server.Serve(d.listener)
+			if errors.Is(err, http.ErrServerClosed) {
+				// Ignore error from graceful shutdown.
+				return nil
+			}
+
+			return err
+		}
+
+		return nil
+	})
+
+	return <-errCh
+}
+
+func (d *Daemon) securityConfigReload(ctx context.Context, cfg api.SystemSecurity) error {
+	d.configReloadMu.Lock()
+	defer d.configReloadMu.Unlock()
+
+	var errs []error
+
+	// UnixSocket authenticator is always available.
+	authers := []authn.Auther{
+		authnunixsocket.UnixSocket{},
+	}
+
+	// Setup OIDC authentication.
+	if cfg.OIDC.Issuer != "" && cfg.OIDC.ClientID != "" {
+		var err error
+		newOIDCVerifier, err := authnoidc.NewVerifier(context.TODO(), cfg.OIDC.Issuer, cfg.OIDC.ClientID, cfg.OIDC.Scope, cfg.OIDC.Audience, cfg.OIDC.Claim)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			if d.oidcVerifier == nil {
+				d.oidcVerifier = &authnoidc.Verifier{}
+			}
+
+			*d.oidcVerifier = *newOIDCVerifier
+
+			authers = append(authers, authnoidc.New(newOIDCVerifier))
+		}
+	}
+
+	// Setup client cert fingerprint authentication.
+	if len(cfg.TrustedTLSClientCertFingerprints) > 0 {
+		authers = append(authers, authntls.New(cfg.TrustedTLSClientCertFingerprints))
+	}
+
+	// Create authenticator
+	if d.authenticator == nil {
+		d.authenticator = &authn.Authenticator{}
+	}
+
+	*d.authenticator = authn.New(authers)
+
+	authorizers := []authz.Authorizer{
+		unixsocket.New(),
+		authztls.New(ctx, cfg.TrustedTLSClientCertFingerprints),
+	}
+
+	if cfg.OpenFGA.APIURL != "" && cfg.OpenFGA.APIToken != "" && cfg.OpenFGA.StoreID != "" {
+		openfgaAuthorizer, err := authzopenfga.New(ctx, cfg.OpenFGA.APIURL, cfg.OpenFGA.APIToken, cfg.OpenFGA.StoreID)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			authorizers = append(authorizers, openfgaAuthorizer)
+		}
+	}
+
+	// If OIDC is configured and OpenFGA is explicitly not configured, grant
+	// unrestricted access to all authenticated OIDC users.
+	if cfg.OIDC.Issuer != "" && cfg.OIDC.ClientID != "" && cfg.OpenFGA.APIURL == "" && cfg.OpenFGA.APIToken == "" && cfg.OpenFGA.StoreID == "" {
+		authorizers = append(authorizers, oidcAuthorizer.New())
+	}
+
+	d.authorizer = authzchain.New(authorizers...)
+
+	return errors.Join(errs...)
+}
+
+func (d *Daemon) updatesConfigReload(_ context.Context, cfg api.SystemUpdates) {
+	d.configReloadMu.Lock()
+	defer d.configReloadMu.Unlock()
+
+	// Setup Services
+	d.signatureVerifier = signature.NewVerifier([]byte(cfg.SignatureVerificationRootCA))
 }
 
 type httpErrorLogger struct{}
