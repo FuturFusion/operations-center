@@ -113,13 +113,6 @@ func (f FGA) CheckPermission(ctx context.Context, details *authz.RequestDetails,
 	return nil
 }
 
-func (f FGA) Start() {
-}
-
-func (f FGA) Shutdown(ctx context.Context) error {
-	return nil
-}
-
 // sendTuples directly sends the write/deletion tuples to OpenFGA.
 func (f *FGA) sendTuples(ctx context.Context, writes []client.ClientTupleKey, deletions []client.ClientTupleKeyWithoutCondition) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
