@@ -75,7 +75,7 @@ func TestSystemCertificatePut(t *testing.T) {
 	certPEM, keyPEM, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 
-	systemCertificatePut := shared.SystemCertificatePut{
+	systemCertificatePost := shared.SystemCertificatePost{
 		Certificate: string(certPEM),
 		Key:         string(keyPEM),
 	}
@@ -83,10 +83,10 @@ func TestSystemCertificatePut(t *testing.T) {
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	require.NoError(t, err)
 
-	requestBody, err := json.Marshal(systemCertificatePut)
+	requestBody, err := json.Marshal(systemCertificatePost)
 	require.NoError(t, err)
 
-	req, err := http.NewRequest(http.MethodPut, "http://unix/1.0/system/certificate", bytes.NewBuffer(requestBody))
+	req, err := http.NewRequest(http.MethodPost, "http://unix/1.0/system/certificate", bytes.NewBuffer(requestBody))
 
 	resp2, err := socketClient.Do(req)
 	require.NoError(t, err)
