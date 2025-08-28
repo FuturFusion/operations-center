@@ -20,10 +20,10 @@ func registerSystemHandler(router Router, authorizer authz.Authorizer, service s
 		service: service,
 	}
 
-	router.HandleFunc("PUT /certificate", response.With(handler.certificatePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /certificate", response.With(handler.certificatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
-// swagger:operation PUT /1.0/system/certificate system system_certificate_put
+// swagger:operation POST /1.0/system/certificate system system_certificate_post
 //
 //	Update the system's certificate and key
 //
@@ -36,11 +36,11 @@ func registerSystemHandler(router Router, authorizer authz.Authorizer, service s
 //	  - application/json
 //	parameters:
 //	  - in: body
-//	    name: system_certificate_put
+//	    name: system_certificate_post
 //	    description: System certificate definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/SystemCertificatePut"
+//	      $ref: "#/definitions/SystemCertificatePost"
 //	responses:
 //	  "200":
 //	    description: Empty response
@@ -66,8 +66,8 @@ func registerSystemHandler(router Router, authorizer authz.Authorizer, service s
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (s *systemHandler) certificatePut(r *http.Request) response.Response {
-	var request api.SystemCertificatePut
+func (s *systemHandler) certificatePost(r *http.Request) response.Response {
+	var request api.SystemCertificatePost
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {

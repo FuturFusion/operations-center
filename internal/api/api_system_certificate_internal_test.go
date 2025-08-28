@@ -72,7 +72,7 @@ func Test_systemHandler_certificatePut(t *testing.T) {
 			})
 
 			// Execute http request
-			req, err := http.NewRequest(http.MethodPut, server.URL+"/certificate", bytes.NewBufferString(tc.requestBody))
+			req, err := http.NewRequest(http.MethodPost, server.URL+"/certificate", bytes.NewBufferString(tc.requestBody))
 			require.NoError(t, err)
 
 			client := &http.Client{}
