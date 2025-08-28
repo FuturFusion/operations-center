@@ -12,8 +12,8 @@ type Authenticator struct {
 	authers []Auther
 }
 
-func New(authers []Auther) *Authenticator {
-	return &Authenticator{
+func New(authers []Auther) Authenticator {
+	return Authenticator{
 		authers: authers,
 	}
 }

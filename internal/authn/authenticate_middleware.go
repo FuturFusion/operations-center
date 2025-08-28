@@ -13,7 +13,7 @@ import (
 // a request by probing all provided authers in sequence.
 // When successful, the authenticated username and the protocol of the
 // authentication is stored in the request context.
-func (a Authenticator) Middleware(next http.HandlerFunc) http.HandlerFunc {
+func (a *Authenticator) Middleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var username, protocol string
 		var trusted bool
