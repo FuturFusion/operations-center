@@ -72,6 +72,8 @@ func loadConfig() error {
 	contents, err := os.ReadFile(filename)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			globalConfigInstance = cfg
+
 			return nil
 		}
 
