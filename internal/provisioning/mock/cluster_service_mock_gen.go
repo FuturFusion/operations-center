@@ -58,6 +58,9 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			ResyncInventoryByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the ResyncInventoryByName method")
 //			},
+//			SetInventorySyncersFunc: func(inventorySyncers []provisioning.InventorySyncer)  {
+//				panic("mock out the SetInventorySyncers method")
+//			},
 //			UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
 //				panic("mock out the Update method")
 //			},
@@ -106,6 +109,9 @@ type ClusterServiceMock struct {
 
 	// ResyncInventoryByNameFunc mocks the ResyncInventoryByName method.
 	ResyncInventoryByNameFunc func(ctx context.Context, name string) error
+
+	// SetInventorySyncersFunc mocks the SetInventorySyncers method.
+	SetInventorySyncersFunc func(inventorySyncers []provisioning.InventorySyncer)
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, cluster provisioning.Cluster) error
@@ -195,6 +201,11 @@ type ClusterServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// SetInventorySyncers holds details about calls to the SetInventorySyncers method.
+		SetInventorySyncers []struct {
+			// InventorySyncers is the inventorySyncers argument value.
+			InventorySyncers []provisioning.InventorySyncer
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -226,6 +237,7 @@ type ClusterServiceMock struct {
 	lockRename                             sync.RWMutex
 	lockResyncInventory                    sync.RWMutex
 	lockResyncInventoryByName              sync.RWMutex
+	lockSetInventorySyncers                sync.RWMutex
 	lockUpdate                             sync.RWMutex
 	lockUpdateCertificate                  sync.RWMutex
 }
@@ -651,6 +663,38 @@ func (mock *ClusterServiceMock) ResyncInventoryByNameCalls() []struct {
 	mock.lockResyncInventoryByName.RLock()
 	calls = mock.calls.ResyncInventoryByName
 	mock.lockResyncInventoryByName.RUnlock()
+	return calls
+}
+
+// SetInventorySyncers calls SetInventorySyncersFunc.
+func (mock *ClusterServiceMock) SetInventorySyncers(inventorySyncers []provisioning.InventorySyncer) {
+	if mock.SetInventorySyncersFunc == nil {
+		panic("ClusterServiceMock.SetInventorySyncersFunc: method is nil but ClusterService.SetInventorySyncers was just called")
+	}
+	callInfo := struct {
+		InventorySyncers []provisioning.InventorySyncer
+	}{
+		InventorySyncers: inventorySyncers,
+	}
+	mock.lockSetInventorySyncers.Lock()
+	mock.calls.SetInventorySyncers = append(mock.calls.SetInventorySyncers, callInfo)
+	mock.lockSetInventorySyncers.Unlock()
+	mock.SetInventorySyncersFunc(inventorySyncers)
+}
+
+// SetInventorySyncersCalls gets all the calls that were made to SetInventorySyncers.
+// Check the length with:
+//
+//	len(mockedClusterService.SetInventorySyncersCalls())
+func (mock *ClusterServiceMock) SetInventorySyncersCalls() []struct {
+	InventorySyncers []provisioning.InventorySyncer
+} {
+	var calls []struct {
+		InventorySyncers []provisioning.InventorySyncer
+	}
+	mock.lockSetInventorySyncers.RLock()
+	calls = mock.calls.SetInventorySyncers
+	mock.lockSetInventorySyncers.RUnlock()
 	return calls
 }
 
