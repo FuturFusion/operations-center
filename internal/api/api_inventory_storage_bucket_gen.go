@@ -20,7 +20,7 @@ type storageBucketHandler struct {
 	service inventory.StorageBucketService
 }
 
-func registerInventoryStorageBucketHandler(router Router, authorizer authz.Authorizer, service inventory.StorageBucketService) {
+func registerInventoryStorageBucketHandler(router Router, authorizer *authz.Authorizer, service inventory.StorageBucketService) {
 	handler := &storageBucketHandler{
 		service: service,
 	}

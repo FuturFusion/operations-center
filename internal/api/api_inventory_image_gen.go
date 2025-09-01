@@ -20,7 +20,7 @@ type imageHandler struct {
 	service inventory.ImageService
 }
 
-func registerInventoryImageHandler(router Router, authorizer authz.Authorizer, service inventory.ImageService) {
+func registerInventoryImageHandler(router Router, authorizer *authz.Authorizer, service inventory.ImageService) {
 	handler := &imageHandler{
 		service: service,
 	}

@@ -20,7 +20,7 @@ type networkHandler struct {
 	service inventory.NetworkService
 }
 
-func registerInventoryNetworkHandler(router Router, authorizer authz.Authorizer, service inventory.NetworkService) {
+func registerInventoryNetworkHandler(router Router, authorizer *authz.Authorizer, service inventory.NetworkService) {
 	handler := &networkHandler{
 		service: service,
 	}

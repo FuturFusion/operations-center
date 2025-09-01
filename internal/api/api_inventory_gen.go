@@ -16,7 +16,7 @@ import (
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 )
 
-func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverClient inventory.ServerClient, authorizer authz.Authorizer, inventoryRouter Router) []provisioning.InventorySyncer {
+func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverClient inventory.ServerClient, authorizer *authz.Authorizer, inventoryRouter Router) []provisioning.InventorySyncer {
 	// Service
 	inventoryInventoryAggregateSvc := inventoryServiceMiddleware.NewInventoryAggregateServiceWithSlog(
 		inventory.NewInventoryAggregateService(

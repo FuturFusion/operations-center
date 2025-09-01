@@ -15,7 +15,7 @@ type systemHandler struct {
 	service system.SystemService
 }
 
-func registerSystemHandler(router Router, authorizer authz.Authorizer, service system.SystemService) {
+func registerSystemHandler(router Router, authorizer *authz.Authorizer, service system.SystemService) {
 	handler := &systemHandler{
 		service: service,
 	}

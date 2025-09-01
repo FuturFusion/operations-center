@@ -18,7 +18,7 @@ type clusterHandler struct {
 	service provisioning.ClusterService
 }
 
-func registerProvisioningClusterHandler(router Router, authorizer authz.Authorizer, service provisioning.ClusterService) {
+func registerProvisioningClusterHandler(router Router, authorizer *authz.Authorizer, service provisioning.ClusterService) {
 	handler := &clusterHandler{
 		service: service,
 	}

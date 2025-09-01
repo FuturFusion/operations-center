@@ -18,7 +18,7 @@ type {{ .Name | camelcase }}Handler struct {
 	service inventory.{{ .Name | pascalcase }}Service
 }
 
-func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer authz.Authorizer, service inventory.{{ .Name | pascalcase }}Service) {
+func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer *authz.Authorizer, service inventory.{{ .Name | pascalcase }}Service) {
 	handler := &{{ .Name | camelcase }}Handler{
 		service: service,
 	}

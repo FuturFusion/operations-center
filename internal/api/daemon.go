@@ -48,7 +48,6 @@ import (
 	provisioningRepoMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/repo/middleware"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
-	"github.com/FuturFusion/operations-center/internal/signature"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/internal/system"
 	systemServiceMiddleware "github.com/FuturFusion/operations-center/internal/system/middleware"
@@ -74,10 +73,9 @@ type Daemon struct {
 	clientCertificate string
 	clientKey         string
 
-	authenticator     *authn.Authenticator
-	oidcVerifier      *authnoidc.Verifier
-	authorizer        authz.Authorizer
-	signatureVerifier signature.Verifier
+	authenticator *authn.Authenticator
+	oidcVerifier  *authnoidc.Verifier
+	authorizer    *authz.Authorizer
 
 	server   *http.Server
 	listener *listener.FancyTLSListener
@@ -174,12 +172,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 	})
 
-	d.updatesConfigReload(ctx, config.GetUpdates())
-
-	config.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemUpdates) {
-		d.updatesConfigReload(ctx, cfg)
-	})
-
+	// Setup Services
 	serverClientProvider := serverMiddleware.NewServerClientWithSlog(
 		inventoryIncusAdapter.New(
 			d.clientCertificate,
@@ -195,11 +188,15 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	repoUpdateFiles, err := localfs.New(
 		filepath.Join(d.env.VarDir(), "updates"),
-		d.signatureVerifier,
+		config.GetUpdates().SignatureVerificationRootCA,
 	)
 	if err != nil {
 		return err
 	}
+
+	config.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemUpdates) {
+		repoUpdateFiles.UpdateConfig(ctx, cfg.SignatureVerificationRootCA)
+	})
 
 	updateServiceOptions := []provisioning.UpdateServiceOption{
 		provisioning.UpdateServiceWithLatestLimit(3),
@@ -209,10 +206,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	updateServer := updateserver.New(
 		config.GetUpdates().Source,
-		d.signatureVerifier,
+		config.GetUpdates().SignatureVerificationRootCA,
 	)
 	config.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemUpdates) {
-		updateServer.UpdateSource(ctx, cfg.Source)
+		updateServer.UpdateConfig(ctx, cfg.Source, cfg.SignatureVerificationRootCA)
 	})
 
 	updateSvcBase := provisioning.NewUpdateService(
@@ -537,7 +534,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 }
 
 func (d *Daemon) Stop(ctx context.Context) error {
-	errs := make([]error, len(d.shutdownFuncs)+1)
+	errs := make([]error, 0, len(d.shutdownFuncs)+1)
 
 	for _, shutdown := range d.shutdownFuncs {
 		err := shutdown(ctx)
@@ -601,6 +598,12 @@ func (d *Daemon) networkConfigReload(ctx context.Context, cfg api.SystemNetwork)
 			err = d.server.Serve(d.listener)
 			if errors.Is(err, http.ErrServerClosed) {
 				// Ignore error from graceful shutdown.
+				return nil
+			}
+
+			if errors.Is(err, net.ErrClosed) {
+				// Ignore error of used closed connection, it is likely caused after a
+				// change of the network configuration.
 				return nil
 			}
 
@@ -673,17 +676,14 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg api.SystemSecurit
 		authorizers = append(authorizers, oidcAuthorizer.New())
 	}
 
-	d.authorizer = authzchain.New(authorizers...)
+	if d.authorizer == nil {
+		var authorizer authz.Authorizer = authzchain.New()
+		d.authorizer = &authorizer
+	}
+
+	*d.authorizer = authzchain.New(authorizers...)
 
 	return errors.Join(errs...)
-}
-
-func (d *Daemon) updatesConfigReload(_ context.Context, cfg api.SystemUpdates) {
-	d.configReloadMu.Lock()
-	defer d.configReloadMu.Unlock()
-
-	// Setup Services
-	d.signatureVerifier = signature.NewVerifier([]byte(cfg.SignatureVerificationRootCA))
 }
 
 type httpErrorLogger struct{}
