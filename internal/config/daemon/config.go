@@ -214,14 +214,17 @@ func saveToDisk(cfg config) error {
 }
 
 func validate(cfg config) error {
-	// System configuration
-	if cfg.Network.OperationsCenterAddress == "" {
-		return fmt.Errorf(`Invalid config, "network.address" property can not be empty`)
+	// Network configuration
+	if (cfg.Network.RestServerPort > 0 && cfg.Network.OperationsCenterAddress == "") ||
+		(cfg.Network.RestServerPort <= 0 && cfg.Network.OperationsCenterAddress != "") {
+		return fmt.Errorf(`Invalid config, "network.address" and "network.rest_server_port" either both are set or both are unset`)
 	}
 
-	_, err := url.Parse(cfg.Network.OperationsCenterAddress)
-	if err != nil {
-		return fmt.Errorf(`Invalid config, "network.address" property is expected to be a valid URL: %w`, err)
+	if cfg.Network.OperationsCenterAddress != "" {
+		_, err := url.Parse(cfg.Network.OperationsCenterAddress)
+		if err != nil {
+			return fmt.Errorf(`Invalid config, "network.address" property is expected to be a valid URL: %w`, err)
+		}
 	}
 
 	// Updates configuration

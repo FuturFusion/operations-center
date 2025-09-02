@@ -20,7 +20,6 @@ func InitTest(t *testing.T) {
 	err := yaml.Unmarshal(defaultConfig, &cfg)
 	require.NoError(t, err)
 
-	cfg.Network.OperationsCenterAddress = "https://127.0.0.1:443"
 	cfg.Updates.SourcePollSkipFirst = true
 
 	globalConfigInstance = cfg
