@@ -406,7 +406,7 @@ func (s updateService) Refresh(ctx context.Context) error {
 
 func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates, error) {
 	if s.updateFilterExpression != "" {
-		filterExpression, err := expr.Compile(s.updateFilterExpression, []expr.Option{expr.Env(Update{})}...)
+		filterExpression, err := expr.Compile(s.updateFilterExpression, expr.Env(Update{}))
 		if err != nil {
 			return nil, fmt.Errorf("Failed to compile filter expression: %w", err)
 		}
@@ -439,7 +439,7 @@ func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates
 
 func (s updateService) filterUpdateFileByFilterExpression(updates Updates) (Updates, error) {
 	if len(s.updateFileFilterExpression) > 0 {
-		fileFilterExpression, err := expr.Compile(s.updateFileFilterExpression, []expr.Option{expr.Env(UpdateFile{})}...)
+		fileFilterExpression, err := expr.Compile(s.updateFileFilterExpression, expr.Env(UpdateFile{}))
 		if err != nil {
 			return nil, fmt.Errorf("Failed to compile file filter expression: %w", err)
 		}
