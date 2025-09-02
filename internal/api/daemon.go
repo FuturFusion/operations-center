@@ -692,6 +692,17 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg api.SystemNetwork) er
 
 		d.serverCertificateUpdate.RemoveListener("fancyListener")
 
+		if cfg.RestServerPort <= 0 {
+			d.configReloadMu.Lock()
+			d.listener = nil
+			d.configReloadMu.Unlock()
+
+			// Unblock the channel here, since we do not start a server.
+			errCh <- nil
+
+			return nil
+		}
+
 		newAddr := fmt.Sprintf("%s:%d", cfg.RestServerAddress, cfg.RestServerPort)
 		d.configReloadMu.Lock()
 		d.server.Addr = newAddr

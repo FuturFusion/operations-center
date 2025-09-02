@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -15,7 +16,6 @@ import (
 
 	restapi "github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
-	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestSystemConfigUpdate(t *testing.T) {
@@ -42,48 +42,17 @@ func TestSystemConfigUpdate(t *testing.T) {
 
 	certFingerprint := incustls.CertFingerprint(cert.Leaf)
 
+	// Setup OIDC mock service.
 	oidcProvider, accessTokens := setupMockOIDC(t)
 
+	// Start OpenFGA container.
 	openFGAEndpoint, openFGAStoreID := setupOpenFGA(ctx, t)
 
+	// Setup daemon with empty (default) configuration for actual tests.
 	config.InitTest(t)
-	err = config.UpdateNetwork(ctx, api.SystemNetworkPut{
-		OperationsCenterAddress: "https://127.0.0.1:17443",
-		RestServerPort:          17443,
-	})
-	require.NoError(t, err)
-	err = config.UpdateSecurity(ctx, api.SystemSecurityPut{
-		TrustedTLSClientCertFingerprints: []string{certFingerprint},
-		OpenFGA: api.SystemSecurityOpenFGA{
-			APIURL:   openFGAEndpoint,
-			APIToken: "dummy",
-			StoreID:  openFGAStoreID,
-		},
-	})
 	require.NoError(t, err)
 
 	d := restapi.NewDaemon(
-		ctx,
-		restapi.MockEnv{
-			UnixSocket:   filepath.Join(tmpDir, "unix.socket"),
-			VarDirectory: tmpDir,
-		},
-	)
-
-	err = d.Start(ctx)
-	require.NoError(t, err)
-	err = d.Stop(context.Background())
-	require.NoError(t, err)
-	setupOpenFGATuples(t, openFGAEndpoint, openFGAStoreID)
-
-	config.InitTest(t)
-	err = config.UpdateNetwork(ctx, api.SystemNetworkPut{
-		OperationsCenterAddress: "https://127.0.0.1:17443",
-		RestServerPort:          17443,
-	})
-	require.NoError(t, err)
-
-	d = restapi.NewDaemon(
 		ctx,
 		restapi.MockEnv{
 			UnixSocket:   filepath.Join(tmpDir, "unix.socket"),
@@ -97,7 +66,8 @@ func TestSystemConfigUpdate(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	httpClient := &http.Client{
+	// Prepare clients for TCP and unix socket.
+	tcpClient := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
@@ -105,7 +75,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 		},
 	}
 
-	unixSocketClient := &http.Client{
+	socketClient := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
 				return net.Dial("unix", filepath.Join(tmpDir, "unix.socket"))
@@ -113,78 +83,89 @@ func TestSystemConfigUpdate(t *testing.T) {
 		},
 	}
 
-	// 1. Expect forbidden over http without trusted credentials.
-	req, err := http.NewRequest(http.MethodGet, "https://localhost:17443/1.0", http.NoBody)
-	resp, err := httpClient.Do(req)
-	require.NoError(t, err)
-	_ = resp.Body.Close()
-	require.Equal(t, http.StatusForbidden, resp.StatusCode)
+	port := 17443
+	openFGAInitialized := false
+	for i := range 4 {
+		t.Log(`1. Expect error over http with no rest port defined`)
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0", port), http.NoBody)
+		require.NoError(t, err)
+		resp, err := tcpClient.Do(req)
+		require.Error(t, err)
+		if resp != nil {
+			// Make linter happy.
+			_ = resp.Body.Close()
+		}
 
-	// 2. Update network configuration, listen on port 17444.
-	req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/network", bytes.NewBufferString(`{
+		t.Log(`2. Update network configuration, listen on port 17443`)
+		req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/network", bytes.NewBufferString(fmt.Sprintf(`{
   "address": "https://127.0.0.1:17443",
   "rest_server_address": "127.0.0.1",
-  "rest_server_port": 17444
+  "rest_server_port": %d
 }
-`))
-	req.Header.Add("Content-Type", "application/json")
-	resp, err = unixSocketClient.Do(req)
-	require.NoError(t, err)
-	_ = resp.Body.Close()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+`, port)))
+		require.NoError(t, err)
+		req.Header.Add("Content-Type", "application/json")
+		resp, err = socketClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	// Still expect forbidden, but now on port 17444.
-	req, err = http.NewRequest(http.MethodGet, "https://localhost:17444/1.0", http.NoBody)
-	resp, err = httpClient.Do(req)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-	require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		// Expect forbidden over http without trusted credentials.
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0", port), http.NoBody)
+		require.NoError(t, err)
+		resp, err = tcpClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusForbidden, resp.StatusCode)
 
-	// 3. Update trusted TLS client certificates.
-	req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/security", bytes.NewBufferString(`{
+		t.Log(`3. Update trusted TLS client certificates`)
+		req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/security", bytes.NewBufferString(`{
   "trusted_tls_client_cert_fingerprints": [ "`+certFingerprint+`" ]
 }
 `))
-	req.Header.Add("Content-Type", "application/json")
-	resp, err = unixSocketClient.Do(req)
-	require.NoError(t, err)
-	_ = resp.Body.Close()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.NoError(t, err)
+		req.Header.Add("Content-Type", "application/json")
+		resp, err = socketClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	// Expect successful call with client certificate.
-	httpClient = &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				Certificates:       []tls.Certificate{cert},
-				InsecureSkipVerify: true,
+		// Expect successful call with client certificate.
+		tcpClient = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					Certificates:       []tls.Certificate{cert},
+					InsecureSkipVerify: true,
+				},
 			},
-		},
-	}
+		}
 
-	req, err = http.NewRequest(http.MethodGet, "https://localhost:17444/1.0", http.NoBody)
-	resp, err = httpClient.Do(req)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0", port), http.NoBody)
+		require.NoError(t, err)
+		resp, err = tcpClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	// 4. Expect forbidden with admin without OIDC configuration.
-	httpClient = &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
+		t.Log(`4. Expect forbidden with user "admin" without OIDC configuration`)
+		tcpClient = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
 			},
-		},
-	}
+		}
 
-	req, err = http.NewRequest(http.MethodGet, "https://localhost:17444/1.0", http.NoBody)
-	req.Header.Add("Authorization", "Bearer "+accessTokens[admin])
-	resp, err = httpClient.Do(req)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-	require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0", port), http.NoBody)
+		require.NoError(t, err)
+		req.Header.Add("Authorization", "Bearer "+accessTokens[admin])
+		resp, err = tcpClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusForbidden, resp.StatusCode)
 
-	// 5. Add OIDC configuration.
-	req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/security", bytes.NewBufferString(`{
+		t.Log(`5. Add OIDC configuration`)
+		req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/security", bytes.NewBufferString(`{
   "oidc": {
     "issuer": "`+oidcProvider.Issuer()+`",
     "client_id": "`+oidcProvider.ClientID+`",
@@ -192,68 +173,33 @@ func TestSystemConfigUpdate(t *testing.T) {
   }
 }
 `))
-	req.Header.Add("Content-Type", "application/json")
-	resp, err = unixSocketClient.Do(req)
-	require.NoError(t, err)
-	_ = resp.Body.Close()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.NoError(t, err)
+		req.Header.Add("Content-Type", "application/json")
+		resp, err = socketClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	// Expect successful call with admin and OIDC configuration set.
-	httpClient = &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
+		// Expect successful call with user "admin" and OIDC configuration set.
+		tcpClient = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
 			},
-		},
-	}
+		}
 
-	req, err = http.NewRequest(http.MethodGet, "https://localhost:17444/1.0", http.NoBody)
-	req.Header.Add("Authorization", "Bearer "+accessTokens[admin])
-	resp, err = httpClient.Do(req)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0", port), http.NoBody)
+		require.NoError(t, err)
+		req.Header.Add("Authorization", "Bearer "+accessTokens[admin])
+		resp, err = tcpClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	// 6. Add OpenFGA configuration.
-	// Add it using viewer, which works now, since no authorization is happening.
-	req, err = http.NewRequest(http.MethodPut, "https://localhost:17444/1.0/system/security", bytes.NewBufferString(`{
-  "oidc": {
-    "issuer": "`+oidcProvider.Issuer()+`",
-    "client_id": "`+oidcProvider.ClientID+`",
-    "scope": "openid,offline_access,email"
-  },
-  "openfga": {
-    "api_token": "dummy",
-    "api_url": "`+openFGAEndpoint+`",
-    "store_id": "`+openFGAStoreID+`"
-  }
-}
-`))
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Bearer "+accessTokens[viewer])
-	resp, err = httpClient.Do(req)
-	require.NoError(t, err)
-	_ = resp.Body.Close()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	// Expect successful call with viewer if OIDC and OpenFGA configuration set.
-	httpClient = &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}
-
-	req, err = http.NewRequest(http.MethodGet, "https://localhost:17444/1.0", http.NoBody)
-	req.Header.Add("Authorization", "Bearer "+accessTokens[viewer])
-	resp, err = httpClient.Do(req)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	// Expect PUT to fail now, since viewer is not allowed to update security settings.
-	req, err = http.NewRequest(http.MethodPut, "https://localhost:17444/1.0/system/security", bytes.NewBufferString(`{
+		t.Log(`6. Add OpenFGA configuration`)
+		// Add it using user "viewer", which works now, since no authorization is happening.
+		req, err = http.NewRequest(http.MethodPut, fmt.Sprintf("https://localhost:%d/1.0/system/security", port), bytes.NewBufferString(`{
   "oidc": {
     "issuer": "`+oidcProvider.Issuer()+`",
     "client_id": "`+oidcProvider.ClientID+`",
@@ -266,10 +212,85 @@ func TestSystemConfigUpdate(t *testing.T) {
   }
 }
 `))
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Bearer "+accessTokens[viewer])
-	resp, err = httpClient.Do(req)
-	require.NoError(t, err)
-	_ = resp.Body.Close()
-	require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		require.NoError(t, err)
+		req.Header.Add("Content-Type", "application/json")
+		req.Header.Add("Authorization", "Bearer "+accessTokens[viewer])
+		resp, err = tcpClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		_ = resp.Body.Close()
+
+		// With OpenFGA now configured, we need to add the permission tuples to the
+		// store on the first run.
+		if !openFGAInitialized {
+			setupOpenFGATuples(t, openFGAEndpoint, openFGAStoreID)
+			openFGAInitialized = true
+		}
+
+		// Expect successful call with viewer if OIDC and OpenFGA configuration set.
+		tcpClient = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			},
+		}
+
+		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0", port), http.NoBody)
+		require.NoError(t, err)
+		req.Header.Add("Authorization", "Bearer "+accessTokens[viewer])
+		resp, err = tcpClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		// Expect PUT to fail now, since user "viewer" is not allowed to update security settings.
+		req, err = http.NewRequest(http.MethodPut, fmt.Sprintf("https://localhost:%d/1.0/system/security", port), bytes.NewBufferString(`{
+  "oidc": {
+    "issuer": "`+oidcProvider.Issuer()+`",
+    "client_id": "`+oidcProvider.ClientID+`",
+    "scope": "openid,offline_access,email"
+  },
+  "openfga": {
+    "api_token": "dummy",
+    "api_url": "`+openFGAEndpoint+`",
+    "store_id": "`+openFGAStoreID+`"
+  }
+}
+`))
+		require.NoError(t, err)
+		req.Header.Add("Content-Type", "application/json")
+		req.Header.Add("Authorization", "Bearer "+accessTokens[viewer])
+		resp, err = tcpClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+
+		t.Log(`7. Reset security config with user "admin`)
+		req, err = http.NewRequest(http.MethodPut, fmt.Sprintf("https://localhost:%d/1.0/system/security", port), bytes.NewBufferString(`{}`))
+		require.NoError(t, err)
+		req.Header.Add("Content-Type", "application/json")
+		req.Header.Add("Authorization", "Bearer "+accessTokens[admin])
+		resp, err = tcpClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		t.Log(`8. Reset network config over unix socket`)
+		req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/network", bytes.NewBufferString(`{}`))
+		require.NoError(t, err)
+		req.Header.Add("Content-Type", "application/json")
+		resp, err = socketClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		// Switch between port 17443 and 17444 back and forth.
+		if i%2 == 0 {
+			port = 17444
+		} else {
+			port = 17443
+		}
+	}
 }
