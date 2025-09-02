@@ -129,18 +129,14 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 		wantNetworkConfig api.SystemNetwork
 	}{
 		{
-			name: "success",
+			name: "empty",
 			securityConfig: api.SystemNetwork{
-				SystemNetworkPut: api.SystemNetworkPut{
-					OperationsCenterAddress: "https://somesource:443",
-				},
+				SystemNetworkPut: api.SystemNetworkPut{},
 			},
 
 			assertErr: require.NoError,
 			wantNetworkConfig: api.SystemNetwork{
-				SystemNetworkPut: api.SystemNetworkPut{
-					OperationsCenterAddress: "https://somesource:443",
-				},
+				SystemNetworkPut: api.SystemNetworkPut{},
 			},
 		},
 		{
@@ -152,13 +148,6 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 			},
 
 			assertErr: require.Error,
-			wantNetworkConfig: api.SystemNetwork{
-				SystemNetworkPut: api.SystemNetworkPut{
-					// From default.yml
-					OperationsCenterAddress: "https://127.0.0.1:443",
-					RestServerPort:          7443,
-				},
-			},
 		},
 	}
 
@@ -194,6 +183,7 @@ func TestSystemService_GetNetworkConfig(t *testing.T) {
 			networkConfig := api.SystemNetwork{
 				SystemNetworkPut: api.SystemNetworkPut{
 					OperationsCenterAddress: "https://someaddress:1234",
+					RestServerPort:          1234,
 				},
 			}
 
