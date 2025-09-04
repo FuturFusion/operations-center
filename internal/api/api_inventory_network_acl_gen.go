@@ -20,7 +20,7 @@ type networkACLHandler struct {
 	service inventory.NetworkACLService
 }
 
-func registerInventoryNetworkACLHandler(router Router, authorizer authz.Authorizer, service inventory.NetworkACLService) {
+func registerInventoryNetworkACLHandler(router Router, authorizer *authz.Authorizer, service inventory.NetworkACLService) {
 	handler := &networkACLHandler{
 		service: service,
 	}

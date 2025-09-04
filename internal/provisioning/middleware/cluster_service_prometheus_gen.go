@@ -206,6 +206,16 @@ func (_d ClusterServiceWithPrometheus) ResyncInventoryByName(ctx context.Context
 	return _d.base.ResyncInventoryByName(ctx, name)
 }
 
+// SetInventorySyncers implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) SetInventorySyncers(inventorySyncers []provisioning.InventorySyncer) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SetInventorySyncers", result).Observe(time.Since(_since).Seconds())
+	}()
+	_d.base.SetInventorySyncers(inventorySyncers)
+}
+
 // Update implements provisioning.ClusterService.
 func (_d ClusterServiceWithPrometheus) Update(ctx context.Context, cluster provisioning.Cluster) (err error) {
 	_since := time.Now()

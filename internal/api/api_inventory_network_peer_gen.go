@@ -20,7 +20,7 @@ type networkPeerHandler struct {
 	service inventory.NetworkPeerService
 }
 
-func registerInventoryNetworkPeerHandler(router Router, authorizer authz.Authorizer, service inventory.NetworkPeerService) {
+func registerInventoryNetworkPeerHandler(router Router, authorizer *authz.Authorizer, service inventory.NetworkPeerService) {
 	handler := &networkPeerHandler{
 		service: service,
 	}

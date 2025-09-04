@@ -15,7 +15,7 @@ type queryHandler struct {
 	service inventory.InventoryAggregateService
 }
 
-func registerInventoryQueryHandler(router Router, authorizer authz.Authorizer, service inventory.InventoryAggregateService) {
+func registerInventoryQueryHandler(router Router, authorizer *authz.Authorizer, service inventory.InventoryAggregateService) {
 	handler := &queryHandler{
 		service: service,
 	}

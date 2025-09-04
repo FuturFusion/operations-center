@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/authn"
+	"github.com/FuturFusion/operations-center/internal/authz"
 	systemMock "github.com/FuturFusion/operations-center/internal/system/mock"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
@@ -64,7 +65,8 @@ func Test_systemHandler_certificatePut(t *testing.T) {
 				},
 			}
 
-			registerSystemHandler(router, noopAuthorizer{}, systemService)
+			var authorizer authz.Authorizer = noopAuthorizer{}
+			registerSystemHandler(router, &authorizer, systemService)
 
 			server := httptest.NewServer(serveMux)
 			t.Cleanup(func() {
@@ -72,7 +74,7 @@ func Test_systemHandler_certificatePut(t *testing.T) {
 			})
 
 			// Execute http request
-			req, err := http.NewRequest(http.MethodPut, server.URL+"/certificate", bytes.NewBufferString(tc.requestBody))
+			req, err := http.NewRequest(http.MethodPost, server.URL+"/certificate", bytes.NewBufferString(tc.requestBody))
 			require.NoError(t, err)
 
 			client := &http.Client{}

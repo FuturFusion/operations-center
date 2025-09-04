@@ -457,6 +457,23 @@ func (_d ClusterServiceWithSlog) ResyncInventoryByName(ctx context.Context, name
 	return _d._base.ResyncInventoryByName(ctx, name)
 }
 
+// SetInventorySyncers implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) SetInventorySyncers(inventorySyncers []provisioning.InventorySyncer) {
+	ctx := context.Background()
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("inventorySyncers", inventorySyncers),
+		)
+	}
+	log.Debug("=> calling SetInventorySyncers")
+	defer func() {
+		log := _d._log.With()
+		log.Debug("<= method SetInventorySyncers finished")
+	}()
+	_d._base.SetInventorySyncers(inventorySyncers)
+}
+
 // Update implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) Update(ctx context.Context, cluster provisioning.Cluster) (err error) {
 	log := _d._log.With()

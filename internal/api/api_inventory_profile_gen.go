@@ -20,7 +20,7 @@ type profileHandler struct {
 	service inventory.ProfileService
 }
 
-func registerInventoryProfileHandler(router Router, authorizer authz.Authorizer, service inventory.ProfileService) {
+func registerInventoryProfileHandler(router Router, authorizer *authz.Authorizer, service inventory.ProfileService) {
 	handler := &profileHandler{
 		service: service,
 	}

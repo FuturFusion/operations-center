@@ -11,6 +11,7 @@ import (
 	"io"
 	"slices"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -27,6 +28,8 @@ const (
 )
 
 type updateService struct {
+	configUpdateMu *sync.Mutex
+
 	repo                       UpdateRepo
 	filesRepo                  UpdateFilesRepo
 	source                     UpdateSourcePort
@@ -66,6 +69,8 @@ func UpdateServiceWithFileFilterExpression(filesFilterExpression string) UpdateS
 
 func NewUpdateService(repo UpdateRepo, filesRepo UpdateFilesRepo, source UpdateSourcePort, opts ...UpdateServiceOption) updateService {
 	service := updateService{
+		configUpdateMu: &sync.Mutex{},
+
 		repo:               repo,
 		filesRepo:          filesRepo,
 		source:             source,
@@ -401,7 +406,7 @@ func (s updateService) Refresh(ctx context.Context) error {
 
 func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates, error) {
 	if s.updateFilterExpression != "" {
-		filterExpression, err := expr.Compile(s.updateFilterExpression, []expr.Option{expr.Env(Update{})}...)
+		filterExpression, err := expr.Compile(s.updateFilterExpression, expr.Env(Update{}))
 		if err != nil {
 			return nil, fmt.Errorf("Failed to compile filter expression: %w", err)
 		}
@@ -434,7 +439,7 @@ func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates
 
 func (s updateService) filterUpdateFileByFilterExpression(updates Updates) (Updates, error) {
 	if len(s.updateFileFilterExpression) > 0 {
-		fileFilterExpression, err := expr.Compile(s.updateFileFilterExpression, []expr.Option{expr.Env(UpdateFile{})}...)
+		fileFilterExpression, err := expr.Compile(s.updateFileFilterExpression, expr.Env(UpdateFile{}))
 		if err != nil {
 			return nil, fmt.Errorf("Failed to compile file filter expression: %w", err)
 		}
@@ -562,4 +567,12 @@ func (s updateService) isSpaceAvailable(ctx context.Context, downloadUpdates []U
 	}
 
 	return nil
+}
+
+func (s *updateService) UpdateConfig(ctx context.Context, updateFilterExpression string, updateFileFilterExpression string) {
+	s.configUpdateMu.Lock()
+	defer s.configUpdateMu.Unlock()
+
+	s.updateFilterExpression = updateFilterExpression
+	s.updateFileFilterExpression = updateFileFilterExpression
 }

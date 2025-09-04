@@ -19,7 +19,7 @@ type tokenHandler struct {
 	service provisioning.TokenService
 }
 
-func registerProvisioningTokenHandler(router Router, authorizer authz.Authorizer, service provisioning.TokenService) {
+func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorizer, service provisioning.TokenService) {
 	handler := &tokenHandler{
 		service: service,
 	}

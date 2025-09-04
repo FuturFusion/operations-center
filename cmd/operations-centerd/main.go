@@ -8,19 +8,14 @@ import (
 
 	"github.com/spf13/cobra"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/version"
 )
 
-const (
-	applicationName      = "operations-center"
-	binaryName           = "operations-centerd"
-	applicationEnvPrefix = "OPERATIONS_CENTER"
-)
-
 func main() {
-	err := main0(os.Args[1:], os.Stdout, os.Stderr, environment.New(applicationName, applicationEnvPrefix))
+	err := main0(os.Args[1:], os.Stdout, os.Stderr, environment.New(config.ApplicationName, config.ApplicationEnvPrefix))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -28,7 +23,7 @@ func main() {
 }
 
 func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
-	defaultLogFile := filepath.Join(env.LogDir(), applicationName+".log")
+	defaultLogFile := filepath.Join(env.LogDir(), config.ApplicationName+".log")
 
 	// daemon command (main)
 	daemonCmd := cmdDaemon{

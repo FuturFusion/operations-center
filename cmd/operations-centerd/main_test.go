@@ -38,9 +38,21 @@ func TestMain0RunDaemon(t *testing.T) {
 	err = f.Close()
 	require.NoError(t, err)
 
+	// Create minimal config
+	const minimalConfig = `---
+network:
+  address: "https://127.0.0.1:27443"
+  rest_server_port: 27443
+
+updates:
+  source_skip_first_update: true
+`
+	err = os.WriteFile(filepath.Join(tmpDir, "config.yml"), []byte(minimalConfig), 0o600)
+	require.NoError(t, err)
+
 	// Start daemon.
 	go func() {
-		daemonErr = main0([]string{"--verbose", "--server-port", "27443"}, nil, stderrWriter, mockEnv{
+		daemonErr = main0([]string{"--verbose"}, nil, stderrWriter, mockEnv{
 			logDir:      tmpDir,
 			runDir:      tmpDir,
 			varDir:      tmpDir,

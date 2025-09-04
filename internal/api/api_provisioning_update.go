@@ -23,7 +23,7 @@ type updateHandler struct {
 	service provisioning.UpdateService
 }
 
-func registerUpdateHandler(router Router, authorizer authz.Authorizer, service provisioning.UpdateService) {
+func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service provisioning.UpdateService) {
 	handler := &updateHandler{
 		service: service,
 	}

@@ -1625,10 +1625,6 @@ func TestUpdateService_Refresh(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// if tc.name != "error - filesRepo.UsageInformation - invalid total size" {
-			// 	t.SkipNow()
-			// }
-
 			// Setup
 			repo := &repoMock.UpdateRepoMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {

@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 
@@ -25,13 +26,15 @@ import (
 )
 
 type localfs struct {
+	configUpdateMu *sync.Mutex
+
 	storageDir string
 	verifier   signature.Verifier
 }
 
 var _ provisioning.UpdateFilesRepo = localfs{}
 
-func New(storageDir string, verifier signature.Verifier) (localfs, error) {
+func New(storageDir string, signatureVerificationRootCA string) (localfs, error) {
 	err := os.MkdirAll(storageDir, 0o700)
 	if err != nil {
 		return localfs{}, fmt.Errorf("Failed to create directory for local update storage: %w", err)
@@ -39,7 +42,7 @@ func New(storageDir string, verifier signature.Verifier) (localfs, error) {
 
 	return localfs{
 		storageDir: storageDir,
-		verifier:   verifier,
+		verifier:   signature.NewVerifier([]byte(signatureVerificationRootCA)),
 	}, nil
 }
 
@@ -361,4 +364,11 @@ func verifyUpdateFiles(ctx context.Context, destDir string, updateManifest *prov
 	}
 
 	return nil
+}
+
+func (l *localfs) UpdateConfig(_ context.Context, signatureVerificationRootCA string) {
+	l.configUpdateMu.Lock()
+	defer l.configUpdateMu.Unlock()
+
+	l.verifier = signature.NewVerifier([]byte(signatureVerificationRootCA))
 }

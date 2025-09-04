@@ -23,7 +23,7 @@ func TestLocalfs_UsageInformation(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			// tc.setupTmpDir(t, tmpDir)
-			lfs, err := New(tmpDir, nil)
+			lfs, err := New(tmpDir, "")
 			require.NoError(t, err)
 
 			// Run test

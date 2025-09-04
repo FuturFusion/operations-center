@@ -22,7 +22,7 @@ type serverHandler struct {
 	clientCertificate string
 }
 
-func registerProvisioningServerHandler(router Router, authorizer authz.Authorizer, service provisioning.ServerService, clientCertificate string) {
+func registerProvisioningServerHandler(router Router, authorizer *authz.Authorizer, service provisioning.ServerService, clientCertificate string) {
 	handler := &serverHandler{
 		service:           service,
 		clientCertificate: clientCertificate,

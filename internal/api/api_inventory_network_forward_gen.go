@@ -20,7 +20,7 @@ type networkForwardHandler struct {
 	service inventory.NetworkForwardService
 }
 
-func registerInventoryNetworkForwardHandler(router Router, authorizer authz.Authorizer, service inventory.NetworkForwardService) {
+func registerInventoryNetworkForwardHandler(router Router, authorizer *authz.Authorizer, service inventory.NetworkForwardService) {
 	handler := &networkForwardHandler{
 		service: service,
 	}

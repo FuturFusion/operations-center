@@ -20,7 +20,7 @@ type networkZoneHandler struct {
 	service inventory.NetworkZoneService
 }
 
-func registerInventoryNetworkZoneHandler(router Router, authorizer authz.Authorizer, service inventory.NetworkZoneService) {
+func registerInventoryNetworkZoneHandler(router Router, authorizer *authz.Authorizer, service inventory.NetworkZoneService) {
 	handler := &networkZoneHandler{
 		service: service,
 	}

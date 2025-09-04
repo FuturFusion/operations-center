@@ -20,7 +20,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/file"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/internal/signature"
 	"github.com/FuturFusion/operations-center/internal/signature/signaturetest"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -88,7 +87,7 @@ func TestLocalfs_Get(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			lfs, err := New(tmpDir, nil)
+			lfs, err := New(tmpDir, "")
 			require.NoError(t, err)
 
 			// Run test
@@ -173,7 +172,7 @@ func TestLocalfs_Put(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
-			lfs, err := New(tmpDir, nil)
+			lfs, err := New(tmpDir, "")
 			require.NoError(t, err)
 
 			// Run test
@@ -242,7 +241,7 @@ func TestLocalfs_Delete(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			lfs, err := New(tmpDir, nil)
+			lfs, err := New(tmpDir, "")
 			require.NoError(t, err)
 
 			// Run test
@@ -285,7 +284,7 @@ func TestLocalfs_CleanupAll(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
-			lfs, err := New(tmpDir, nil)
+			lfs, err := New(tmpDir, "")
 			require.NoError(t, err)
 
 			// Run test
@@ -534,7 +533,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			tmpDir := t.TempDir()
 			tc.setupTmpDir(t, tmpDir)
 			// TODO: Mock verifier to simulate different error cases
-			lfs, err := New(tmpDir, signature.NewVerifier(caCert))
+			lfs, err := New(tmpDir, string(caCert))
 			require.NoError(t, err)
 
 			// Run test

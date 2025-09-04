@@ -20,7 +20,7 @@ type instanceHandler struct {
 	service inventory.InstanceService
 }
 
-func registerInventoryInstanceHandler(router Router, authorizer authz.Authorizer, service inventory.InstanceService) {
+func registerInventoryInstanceHandler(router Router, authorizer *authz.Authorizer, service inventory.InstanceService) {
 	handler := &instanceHandler{
 		service: service,
 	}

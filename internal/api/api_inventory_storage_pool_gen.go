@@ -20,7 +20,7 @@ type storagePoolHandler struct {
 	service inventory.StoragePoolService
 }
 
-func registerInventoryStoragePoolHandler(router Router, authorizer authz.Authorizer, service inventory.StoragePoolService) {
+func registerInventoryStoragePoolHandler(router Router, authorizer *authz.Authorizer, service inventory.StoragePoolService) {
 	handler := &storagePoolHandler{
 		service: service,
 	}

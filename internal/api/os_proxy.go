@@ -16,7 +16,7 @@ type osProxyHandler struct {
 	prefix string
 }
 
-func registerOSProxy(router Router, prefix string, authorizer authz.Authorizer) {
+func registerOSProxy(router Router, prefix string, authorizer *authz.Authorizer) {
 	handler := &osProxyHandler{
 		prefix: prefix,
 	}

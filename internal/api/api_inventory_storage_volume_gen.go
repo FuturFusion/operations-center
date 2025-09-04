@@ -20,7 +20,7 @@ type storageVolumeHandler struct {
 	service inventory.StorageVolumeService
 }
 
-func registerInventoryStorageVolumeHandler(router Router, authorizer authz.Authorizer, service inventory.StorageVolumeService) {
+func registerInventoryStorageVolumeHandler(router Router, authorizer *authz.Authorizer, service inventory.StorageVolumeService) {
 	handler := &storageVolumeHandler{
 		service: service,
 	}
