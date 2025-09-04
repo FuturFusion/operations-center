@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
 	"gopkg.in/yaml.v3"
 )
 
@@ -49,15 +50,43 @@ func Table(w io.Writer, format string, header []string, data [][]string, raw any
 
 	switch format {
 	case TableFormatTable:
-		table := getBaseTable(w, header, data)
-		table.SetRowLine(true)
-		table.Render()
+		table, err := getBaseTable(w, header, data)
+		if err != nil {
+			return err
+		}
+
+		table.Options(tablewriter.WithRendition(tw.Rendition{
+			Settings: tw.Settings{
+				Separators: tw.Separators{
+					BetweenRows: tw.On,
+				},
+			},
+		}))
+
+		err = table.Render()
+		if err != nil {
+			return err
+		}
+
 	case TableFormatCompact:
-		table := getBaseTable(w, header, data)
-		table.SetColumnSeparator("")
-		table.SetHeaderLine(false)
-		table.SetBorder(false)
-		table.Render()
+		table, err := getBaseTable(w, header, data)
+		if err != nil {
+			return err
+		}
+
+		table.Options(tablewriter.WithRendition(tw.Rendition{
+			Borders: tw.BorderNone,
+			Settings: tw.Settings{
+				Lines:      tw.LinesNone,
+				Separators: tw.SeparatorsNone,
+			},
+		}))
+
+		err = table.Render()
+		if err != nil {
+			return err
+		}
+
 	case TableFormatCSV:
 		w := csv.NewWriter(w)
 		if slices.Contains(options, TableOptionHeader) {
@@ -95,13 +124,23 @@ func Table(w io.Writer, format string, header []string, data [][]string, raw any
 	return nil
 }
 
-func getBaseTable(w io.Writer, header []string, data [][]string) *tablewriter.Table {
-	table := tablewriter.NewWriter(w)
-	table.SetAutoWrapText(false)
-	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetHeader(header)
-	table.AppendBulk(data)
-	return table
+func getBaseTable(w io.Writer, header []string, data [][]string) (*tablewriter.Table, error) {
+	table := tablewriter.NewTable(
+		w,
+		tablewriter.WithRowAlignment(tw.AlignLeft),
+		tablewriter.WithRowAutoWrap(tw.WrapNone),
+		tablewriter.WithHeaderAutoFormat(tw.Off),
+		tablewriter.WithRendition(tw.Rendition{
+			Symbols: tw.NewSymbols(tw.StyleASCII),
+		}),
+	)
+	table.Header(header)
+	err := table.Bulk(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return table, nil
 }
 
 // Column represents a single column in a table.
