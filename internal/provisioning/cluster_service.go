@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net/url"
 	"time"
 
@@ -20,6 +21,7 @@ type clusterService struct {
 	client           ClusterClientPort
 	serverSvc        ServerService
 	inventorySyncers []InventorySyncer
+	provisioner      ClusterProvisioningPort
 
 	now                       func() time.Time
 	createClusterRetries      int
@@ -36,12 +38,20 @@ func ClusterServiceCreateClusterRetryTimeout(timeout time.Duration) ClusterServi
 	}
 }
 
-func NewClusterService(repo ClusterRepo, client ClusterClientPort, serverSvc ServerService, inventorySyncers []InventorySyncer, opts ...ClusterServiceOption) *clusterService {
+func NewClusterService(
+	repo ClusterRepo,
+	client ClusterClientPort,
+	serverSvc ServerService,
+	inventorySyncers []InventorySyncer,
+	provisioner ClusterProvisioningPort,
+	opts ...ClusterServiceOption,
+) *clusterService {
 	clusterSvc := &clusterService{
 		repo:             repo,
 		client:           client,
 		serverSvc:        serverSvc,
 		inventorySyncers: inventorySyncers,
+		provisioner:      provisioner,
 
 		now:                       time.Now,
 		createClusterRetries:      6,
@@ -73,7 +83,7 @@ func (s *clusterService) SetInventorySyncers(inventorySyncers []InventorySyncer)
 //   - Update cluster entry with certificate and mark the cluster as ready.
 //   - Update server entries by linking them with the cluster.
 //
-// Perform post-clustering initialization:
+// Perform post-clustering initialization using provisioner (Terraform):
 //   - Create internal project
 //   - Initialize default storage:
 //     Create local storage pool on each server and finalize it for the cluster.
@@ -262,21 +272,8 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		return newCluster, err
 	}
 
-	// Perform post-clustering initialization.
-
-	// Create an internal project.
-	err = s.client.CreateProject(ctx, clusterEndpoint, "internal", "Internal project to isolate fully managed resources.")
-	if err != nil {
-		return newCluster, err
-	}
-
-	// Initialize default storage.
-	err = s.client.InitializeDefaultStorage(ctx, servers)
-	if err != nil {
-		return newCluster, err
-	}
-
-	// Refresh OS Data.
+	// Refresh OS Data, required for the detection of the network interface for
+	// the internal mesh.
 	for i, server := range servers {
 		osData, err := s.client.GetOSData(ctx, server)
 		if err != nil {
@@ -286,13 +283,39 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		servers[i].OSData = osData
 	}
 
-	// Initialize default networking.
-	err = s.client.InitializeDefaultNetworking(ctx, servers)
+	// Perform post-clustering initialization using provisioner (Terraform).
+	err = s.provisioner.Init(ctx, newCluster.Name, ClusterProvisioningConfig{
+		ClusterEndpoint: clusterEndpoint,
+		Servers:         servers,
+	})
+	if err != nil {
+		return newCluster, err
+	}
+
+	err = s.provisioner.Apply(ctx, newCluster.Name)
 	if err != nil {
 		return newCluster, err
 	}
 
 	return newCluster, nil
+}
+
+func (s clusterService) GetProvisionerConfigurationArchive(ctx context.Context, name string) (_ io.ReadCloser, size int, _ error) {
+	cluster, err := s.repo.GetByName(ctx, name)
+	if err != nil {
+		return nil, 0, fmt.Errorf("Failed to query cluster %q from repo: %w", name, err)
+	}
+
+	if cluster.Status != api.ClusterStatusReady {
+		return nil, 0, fmt.Errorf("Failed to get provisioner configuration archive, cluster is not in ready state")
+	}
+
+	rc, size, err := s.provisioner.GetArchive(ctx, name)
+	if err != nil {
+		return nil, 0, fmt.Errorf("Failed to get provisioner configuration archive: %w", err)
+	}
+
+	return rc, size, nil
 }
 
 func (s clusterService) GetAll(ctx context.Context) (Clusters, error) {

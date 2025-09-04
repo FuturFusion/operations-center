@@ -38,20 +38,6 @@ func NewClusterClientPortWithPrometheus(base provisioning.ClusterClientPort, ins
 	}
 }
 
-// CreateProject implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) CreateProject(ctx context.Context, endpoint provisioning.Endpoint, name string, description string) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "CreateProject", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.CreateProject(ctx, endpoint, name, description)
-}
-
 // EnableCluster implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithPrometheus) EnableCluster(ctx context.Context, server provisioning.Server) (clusterCertificate string, err error) {
 	_since := time.Now()
@@ -120,34 +106,6 @@ func (_d ClusterClientPortWithPrometheus) GetOSData(ctx context.Context, endpoin
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetOSData", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetOSData(ctx, endpoint)
-}
-
-// InitializeDefaultNetworking implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) InitializeDefaultNetworking(ctx context.Context, servers []provisioning.Server) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "InitializeDefaultNetworking", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.InitializeDefaultNetworking(ctx, servers)
-}
-
-// InitializeDefaultStorage implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) InitializeDefaultStorage(ctx context.Context, servers []provisioning.Server) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "InitializeDefaultStorage", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.InitializeDefaultStorage(ctx, servers)
 }
 
 // JoinCluster implements provisioning.ClusterClientPort.

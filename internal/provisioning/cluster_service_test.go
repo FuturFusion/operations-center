@@ -1,7 +1,9 @@
 package provisioning_test
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"testing"
 
 	incustls "github.com/lxc/incus/v6/shared/tls"
@@ -20,28 +22,27 @@ import (
 
 func TestClusterService_Create(t *testing.T) {
 	tests := []struct {
-		name                                 string
-		cluster                              provisioning.Cluster
-		repoExistsByName                     bool
-		repoExistsByNameErr                  error
-		repoCreateErr                        error
-		repoUpdateErr                        error
-		clientPingErr                        error
-		clientEnableOSServiceLVMErr          error
-		clientSetServerConfig                []queue.Item[struct{}]
-		clientEnableClusterCertificate       string
-		clientEnableClusterErr               error
-		clientGetClusterNodeNamesErr         error
-		clientGetClusterJoinToken            string
-		clientGetClusterJoinTokenErr         error
-		clientJoinClusterErr                 error
-		clientCreateProjectErr               error
-		clientInitializeDefaultStorageErr    error
-		clientGetOSData                      api.OSData
-		clientGetOSDataErr                   error
-		clientInitializeDefaultNetworkingErr error
-		serverSvcGetByName                   []queue.Item[*provisioning.Server]
-		serverSvcUpdateErr                   error
+		name                           string
+		cluster                        provisioning.Cluster
+		repoExistsByName               bool
+		repoExistsByNameErr            error
+		repoCreateErr                  error
+		repoUpdateErr                  error
+		clientPingErr                  error
+		clientEnableOSServiceLVMErr    error
+		clientSetServerConfig          []queue.Item[struct{}]
+		clientEnableClusterCertificate string
+		clientEnableClusterErr         error
+		clientGetClusterNodeNamesErr   error
+		clientGetClusterJoinToken      string
+		clientGetClusterJoinTokenErr   error
+		clientJoinClusterErr           error
+		clientGetOSData                api.OSData
+		clientGetOSDataErr             error
+		serverSvcGetByName             []queue.Item[*provisioning.Server]
+		serverSvcUpdateErr             error
+		provisionerApplyErr            error
+		provisionerInitErr             error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -486,80 +487,6 @@ func TestClusterService_Create(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - client.CreateProject",
-			cluster: provisioning.Cluster{
-				Name:        "one",
-				ServerNames: []string{"server1", "server2"},
-			},
-			serverSvcGetByName: []queue.Item[*provisioning.Server]{
-				{
-					Value: &provisioning.Server{
-						Name: "server1",
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name: "server2",
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name: "server1",
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name: "server2",
-					},
-				},
-			},
-			clientSetServerConfig: []queue.Item[struct{}]{
-				{}, // Server 1
-				{}, // Server 2
-			},
-			clientEnableClusterCertificate: "certificate",
-			clientCreateProjectErr:         boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name: "error - client.InitializeDefaultStorage",
-			cluster: provisioning.Cluster{
-				Name:        "one",
-				ServerNames: []string{"server1", "server2"},
-			},
-			serverSvcGetByName: []queue.Item[*provisioning.Server]{
-				{
-					Value: &provisioning.Server{
-						Name: "server1",
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name: "server2",
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name: "server1",
-					},
-				},
-				{
-					Value: &provisioning.Server{
-						Name: "server2",
-					},
-				},
-			},
-			clientSetServerConfig: []queue.Item[struct{}]{
-				{}, // Server 1
-				{}, // Server 2
-			},
-			clientEnableClusterCertificate:    "certificate",
-			clientInitializeDefaultStorageErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
 			name: "error - client.GetOSData",
 			cluster: provisioning.Cluster{
 				Name:        "one",
@@ -597,7 +524,7 @@ func TestClusterService_Create(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - client.InitializeDefaultNetworking",
+			name: "error - provisioner.Init",
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
@@ -628,9 +555,45 @@ func TestClusterService_Create(t *testing.T) {
 				{}, // Server 1
 				{}, // Server 2
 			},
-			clientEnableClusterCertificate:       "certificate",
-			clientGetOSData:                      api.OSData{},
-			clientInitializeDefaultNetworkingErr: boom.Error,
+			clientEnableClusterCertificate: "certificate",
+			provisionerInitErr:             boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - provisioner.Apply",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			provisionerApplyErr:            boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -674,17 +637,8 @@ func TestClusterService_Create(t *testing.T) {
 				JoinClusterFunc: func(ctx context.Context, server provisioning.Server, joinToken string, endpoint provisioning.Endpoint) error {
 					return tc.clientJoinClusterErr
 				},
-				CreateProjectFunc: func(ctx context.Context, endpoint provisioning.Endpoint, name string, description string) error {
-					return tc.clientCreateProjectErr
-				},
-				InitializeDefaultStorageFunc: func(ctx context.Context, servers []provisioning.Server) error {
-					return tc.clientInitializeDefaultStorageErr
-				},
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return tc.clientGetOSData, tc.clientGetOSDataErr
-				},
-				InitializeDefaultNetworkingFunc: func(ctx context.Context, servers []provisioning.Server) error {
-					return tc.clientInitializeDefaultNetworkingErr
 				},
 			}
 
@@ -698,7 +652,16 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, nil,
+			provisioner := &adapterMock.ClusterProvisioningPortMock{
+				InitFunc: func(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
+					return tc.provisionerInitErr
+				},
+				ApplyFunc: func(ctx context.Context, name string) error {
+					return tc.provisionerApplyErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, nil, provisioner,
 				provisioning.ClusterServiceCreateClusterRetryTimeout(0),
 			)
 
@@ -709,6 +672,108 @@ func TestClusterService_Create(t *testing.T) {
 			tc.assertErr(t, err)
 			require.Empty(t, tc.clientSetServerConfig)
 			require.Empty(t, tc.serverSvcGetByName)
+		})
+	}
+}
+
+func TestClusterService_GetProvisionerConfigurationArchive(t *testing.T) {
+	tests := []struct {
+		name                      string
+		repoGetByName             *provisioning.Cluster
+		repoGetByNameErr          error
+		provisionerGetArchiveErr  error
+		provisionerGetArchiveRC   io.ReadCloser
+		provisionerGetArchiveSize int
+
+		assertErr require.ErrorAssertionFunc
+		assert    func(t *testing.T, rc io.ReadCloser, size int)
+	}{
+		{
+			name: "success",
+			repoGetByName: &provisioning.Cluster{
+				Status: api.ClusterStatusReady,
+			},
+			provisionerGetArchiveRC:   io.NopCloser(bytes.NewBufferString(`foobar`)),
+			provisionerGetArchiveSize: 6,
+
+			assertErr: require.NoError,
+			assert: func(t *testing.T, rc io.ReadCloser, size int) {
+				t.Helper()
+
+				body, err := io.ReadAll(rc)
+				require.NoError(t, err)
+				require.Equal(t, []byte(`foobar`), body)
+				require.Equal(t, 6, size)
+			},
+		},
+		{
+			name:             "error - repo.GetByName",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assert: func(t *testing.T, rc io.ReadCloser, size int) {
+				t.Helper()
+
+				require.Nil(t, rc)
+				require.Zero(t, size)
+			},
+		},
+		{
+			name: "error - cluster status not ready",
+			repoGetByName: &provisioning.Cluster{
+				Status: api.ClusterStatusPending,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(t, err, "cluster is not in ready state")
+			},
+			assert: func(t *testing.T, rc io.ReadCloser, size int) {
+				t.Helper()
+
+				require.Nil(t, rc)
+				require.Zero(t, size)
+			},
+		},
+		{
+			name: "error - provisioner.GetArchive",
+			repoGetByName: &provisioning.Cluster{
+				Status: api.ClusterStatusReady,
+			},
+			provisionerGetArchiveErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assert: func(t *testing.T, rc io.ReadCloser, size int) {
+				t.Helper()
+
+				require.Nil(t, rc)
+				require.Zero(t, size)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ClusterRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			provisioner := &adapterMock.ClusterProvisioningPortMock{
+				GetArchiveFunc: func(ctx context.Context, name string) (io.ReadCloser, int, error) {
+					return tc.provisionerGetArchiveRC, tc.provisionerGetArchiveSize, tc.provisionerGetArchiveErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, provisioner)
+
+			// Run test
+			rc, size, err := clusterSvc.GetProvisionerConfigurationArchive(context.Background(), "cluster")
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assert(t, rc, size)
 		})
 	}
 }
@@ -758,7 +823,7 @@ func TestClusterService_GetAll(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
 
 			// Run test
 			clusters, err := clusterSvc.GetAll(context.Background())
@@ -874,7 +939,7 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetAllWithFilter(context.Background(), tc.filter)
@@ -922,7 +987,7 @@ func TestClusterService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
 
 			// Run test
 			clusterNames, err := clusterSvc.GetAllNames(context.Background())
@@ -1022,7 +1087,7 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
 
 			// Run test
 			clusterIDs, err := clusterSvc.GetAllNamesWithFilter(context.Background(), tc.filter)
@@ -1072,7 +1137,7 @@ func TestClusterService_GetByID(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetByName(context.Background(), tc.idArg)
@@ -1130,7 +1195,7 @@ func TestClusterService_GetByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetByName(context.Background(), tc.nameArg)
@@ -1195,7 +1260,7 @@ func TestClusterService_Update(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
 
 			// Run test
 			err := clusterSvc.Update(context.Background(), tc.cluster)
@@ -1262,7 +1327,7 @@ func TestClusterService_Rename(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
 
 			// Run test
 			err := clusterSvc.Rename(context.Background(), tc.oldName, tc.newName)
@@ -1381,7 +1446,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, serverSvc, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, serverSvc, nil, nil)
 
 			// Run test
 			err := clusterSvc.DeleteByName(context.Background(), tc.nameArg)
@@ -1471,7 +1536,7 @@ func TestClusterService_ResyncInventory(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
 			clusterSvc.SetInventorySyncers([]provisioning.InventorySyncer{inventorySyncer})
 
 			// Run test
@@ -1522,7 +1587,7 @@ func TestClusterService_ResyncInventoryByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(nil, nil, nil, nil, nil)
 			clusterSvc.SetInventorySyncers([]provisioning.InventorySyncer{inventorySyncer})
 
 			// Run test
@@ -1640,7 +1705,7 @@ func TestClusterService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, nil)
+			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, nil, nil)
 
 			// Run test
 			err := clusterSvc.UpdateCertificate(context.Background(), "cluster", tc.certificatePEM, tc.keyPEM)
