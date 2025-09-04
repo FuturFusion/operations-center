@@ -1,5 +1,5 @@
 ARG GO_VERSION=1.24
-ARG DEBIAN_VERSION=bookworm
+ARG DEBIAN_VERSION=trixie
 
 # Go development container
 
