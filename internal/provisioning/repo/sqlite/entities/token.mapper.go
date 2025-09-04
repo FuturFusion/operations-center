@@ -11,7 +11,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/google/uuid"
-	"github.com/mattn/go-sqlite3"
 )
 
 var tokenObjects = RegisterStmt(`
@@ -342,11 +341,8 @@ func CreateToken(ctx context.Context, db dbtx, object provisioning.Token) (_ int
 
 	// Execute the statement.
 	result, err := stmt.Exec(args...)
-	var sqliteErr sqlite3.Error
-	if errors.As(err, &sqliteErr) {
-		if sqliteErr.Code == sqlite3.ErrConstraint {
-			return -1, ErrConflict
-		}
+	if err != nil && strings.HasPrefix(err.Error(), "UNIQUE constraint failed:") {
+		return -1, ErrConflict
 	}
 
 	if err != nil {
