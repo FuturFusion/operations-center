@@ -16,13 +16,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/version"
 )
 
-const (
-	applicationName      = "operations-center"
-	applicationEnvPrefix = "OPERATIONS_CENTER"
-)
-
 func main() {
-	err := main0(os.Args[1:], os.Stdout, os.Stderr, environment.New(applicationName, applicationEnvPrefix))
+	err := main0(os.Args[1:], os.Stdout, os.Stderr, environment.New(config.ApplicationName, config.ApplicationEnvPrefix))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -37,7 +32,7 @@ type env interface {
 
 func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
 	app := &cobra.Command{}
-	app.Use = applicationName
+	app.Use = config.ApplicationName
 	app.Short = "Command line client for operations center"
 	app.Long = `Description:
   Command line client for operations center
@@ -87,6 +82,12 @@ func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
 	}
 
 	app.AddCommand(inventoryCmd.Command())
+
+	systemCmd := cmds.CmdSystem{
+		OCClient: globalCmd.ocClient,
+	}
+
+	app.AddCommand(systemCmd.Command())
 
 	return app.Execute()
 }

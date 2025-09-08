@@ -13,8 +13,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/operations-center/internal/api"
+	restapi "github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestStartAndStop(t *testing.T) {
@@ -121,19 +122,25 @@ func TestStartAndStop(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			d := api.NewDaemon(
+
+			config.InitTest(t)
+			err := config.UpdateNetwork(ctx, api.SystemNetworkPut{
+				OperationsCenterAddress: "https://127.0.0.1:17443",
+				RestServerPort:          tc.bindPort,
+				RestServerAddress:       "[::1]",
+			})
+			require.NoError(t, err)
+
+			d := restapi.NewDaemon(
 				ctx,
-				api.MockEnv{
+				restapi.MockEnv{
 					UnixSocket:        tc.unixSocket,
 					VarDirectory:      tmpDir,
 					UsrShareDirectory: tmpDir,
 				},
-				&config.Config{
-					RestServerPort: tc.bindPort,
-				},
 			)
 
-			err := d.Start(ctx)
+			err = d.Start(ctx)
 			tc.assertStartErr(t, err)
 			t.Cleanup(func() {
 				err = d.Stop(context.Background())

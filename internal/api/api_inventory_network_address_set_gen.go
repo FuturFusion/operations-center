@@ -20,7 +20,7 @@ type networkAddressSetHandler struct {
 	service inventory.NetworkAddressSetService
 }
 
-func registerInventoryNetworkAddressSetHandler(router Router, authorizer authz.Authorizer, service inventory.NetworkAddressSetService) {
+func registerInventoryNetworkAddressSetHandler(router Router, authorizer *authz.Authorizer, service inventory.NetworkAddressSetService) {
 	handler := &networkAddressSetHandler{
 		service: service,
 	}

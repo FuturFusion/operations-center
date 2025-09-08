@@ -1,4 +1,4 @@
-package provisioning
+package system
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 
-	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus/v6/shared/termios"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -18,46 +17,87 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-// Configure server system network.
-type cmdServerSystemNetwork struct {
-	ocClient *client.OperationsCenterClient
+type CmdUpdates struct {
+	OCClient *client.OperationsCenterClient
 }
 
-func (c *cmdServerSystemNetwork) Command() *cobra.Command {
+func (c *CmdUpdates) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "network"
-	cmd.Short = "Interact with system network configuration of servers"
+	cmd.Use = "updates"
+	cmd.Short = "Interact with updates config"
 	cmd.Long = `Description:
-  Interact with system network configuration of servers
+  Interact with updates config
 
-  Configure system network of servers.
+  Configure updates config for operations center.
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
 	cmd.Args = cobra.NoArgs
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
-	// Edit
-	serverSystemNetworkEditCmd := cmdServerSystemNetworkEdit{
-		ocClient: c.ocClient,
+	// Show
+	updatesShowCmd := cmdUpdatesShow{
+		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(serverSystemNetworkEditCmd.Command())
+	cmd.AddCommand(updatesShowCmd.Command())
+
+	// Update
+	updatesEditCmd := cmdUpdatesEdit{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updatesEditCmd.Command())
 
 	return cmd
 }
 
-// Edit server system network configuration.
-type cmdServerSystemNetworkEdit struct {
+// Show updates config.
+type cmdUpdatesShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmdServerSystemNetworkEdit) Command() *cobra.Command {
+func (c *cmdUpdatesShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "edit <name>"
-	cmd.Short = "Edit server system network"
+	cmd.Use = "show <uuid>"
+	cmd.Short = "Show updates config"
 	cmd.Long = `Description:
-  Edit server system network
+  Show updates config.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdUpdatesShow) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 0, 0)
+	if exit {
+		return err
+	}
+
+	config, err := c.ocClient.GetSystemUpdatesConfig(cmd.Context())
+	if err != nil {
+		return err
+	}
+
+	enc := yaml.NewEncoder(c.Command().OutOrStdout())
+	enc.SetIndent(2)
+	return enc.Encode(config)
+}
+
+// Edit server system updates configuration.
+type cmdUpdatesEdit struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdUpdatesEdit) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "edit"
+	cmd.Short = "Edit updates configuration"
+	cmd.Long = `Description:
+  Edit updates configuration
 `
 
 	cmd.RunE = c.Run
@@ -66,37 +106,17 @@ func (c *cmdServerSystemNetworkEdit) Command() *cobra.Command {
 }
 
 // helpTemplate returns a sample YAML configuration and guidelines for editing instance configurations.
-func (c *cmdServerSystemNetworkEdit) helpTemplate() string {
-	return `### This is a YAML representation of the configuration.
-### Any line starting with a '# will be ignored.
-###
-### A sample configuration looks like:
-###
-### dns:
-###   hostname: host
-###   domain: local
-###   search_domains:
-###     - local
-###   nameservers:
-###     - 1.1.1.1
-### ntp:
-###   timeservers:
-###     - 0.pool.ntp.org
-### interfaces:
-###   - name: eth0
-###     MTU: 1500
-###     Addresses:
-###       - 192.168.1.2`
+func (c *cmdUpdatesEdit) helpTemplate() string {
+	return `### This is a YAML representation of the updates configuration.
+### Any line starting with a '# will be ignored.`
 }
 
-func (c *cmdServerSystemNetworkEdit) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdUpdatesEdit) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
-	exit, err := validate.Args(cmd, args, 1, 1)
+	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
-
-	name := args[0]
 
 	// If stdin isn't a terminal, read text from it.
 	if !termios.IsTerminal(environment.GetStdinFd()) {
@@ -105,13 +125,13 @@ func (c *cmdServerSystemNetworkEdit) Run(cmd *cobra.Command, args []string) erro
 			return err
 		}
 
-		newdata := api.ServerSystemNetwork{}
+		newdata := api.SystemUpdatesPut{}
 		err = yaml.Unmarshal(contents, &newdata)
 		if err != nil {
 			return err
 		}
 
-		err = c.ocClient.UpdateServerSystemNetwork(cmd.Context(), name, newdata)
+		err = c.ocClient.UpdateSystemUpdatesConfig(cmd.Context(), newdata)
 		if err != nil {
 			return err
 		}
@@ -119,7 +139,7 @@ func (c *cmdServerSystemNetworkEdit) Run(cmd *cobra.Command, args []string) erro
 		return nil
 	}
 
-	networkConfig, err := c.ocClient.GetServerSystemNetwork(cmd.Context(), name)
+	updatesConfig, err := c.ocClient.GetSystemUpdatesConfig(cmd.Context())
 	if err != nil {
 		return err
 	}
@@ -127,7 +147,7 @@ func (c *cmdServerSystemNetworkEdit) Run(cmd *cobra.Command, args []string) erro
 	b := &bytes.Buffer{}
 	encoder := yaml.NewEncoder(b)
 	encoder.SetIndent(2)
-	err = encoder.Encode(networkConfig.Config)
+	err = encoder.Encode(updatesConfig)
 	if err != nil {
 		return err
 	}
@@ -139,12 +159,10 @@ func (c *cmdServerSystemNetworkEdit) Run(cmd *cobra.Command, args []string) erro
 	}
 
 	for {
-		newdata := incusosapi.SystemNetworkConfig{}
+		newdata := api.SystemUpdatesPut{}
 		err = yaml.Unmarshal(content, &newdata)
 		if err == nil {
-			err = c.ocClient.UpdateServerSystemNetwork(cmd.Context(), name, api.ServerSystemNetwork{
-				Config: &newdata,
-			})
+			err = c.ocClient.UpdateSystemUpdatesConfig(cmd.Context(), newdata)
 		}
 
 		// Respawn the editor

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -15,12 +14,10 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
 
-	"github.com/FuturFusion/operations-center/internal/api"
+	restapi "github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/logger"
 )
-
-const defaultRestServerPort = 7443
 
 type env interface {
 	LogDir() string
@@ -32,14 +29,11 @@ type env interface {
 
 type cmdDaemon struct {
 	env env
-
-	flagServerAddr string
-	flagServerPort int
 }
 
 func (c *cmdDaemon) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = binaryName
+	cmd.Use = config.BinaryName
 	cmd.Short = "The operations center daemon"
 	cmd.Long = `Description:
   The operations center daemon
@@ -48,14 +42,11 @@ func (c *cmdDaemon) Command() *cobra.Command {
 `
 	cmd.RunE = c.Run
 
-	cmd.Flags().StringVar(&c.flagServerAddr, "server-addr", "", "Address to bind to")
-	cmd.Flags().IntVar(&c.flagServerPort, "server-port", defaultRestServerPort, "IP port to bind to")
-
 	return cmd
 }
 
 func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
-	if len(args) > 1 || (len(args) == 1 && args[0] != binaryName && args[0] != "") {
+	if len(args) > 1 || (len(args) == 1 && args[0] != config.BinaryName && args[0] != "") {
 		return fmt.Errorf(`Unknown command "%s" for "%s"`, args[0], cmd.CommandPath())
 	}
 
@@ -71,28 +62,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Create run directory %q: %v", c.env.RunDir(), err)
 	}
 
-	operationsCenterAddress := fmt.Sprintf("https://%s:%d", c.flagServerAddr, c.flagServerPort)
-	_, err = url.Parse(operationsCenterAddress)
-	if err != nil {
-		return fmt.Errorf("Operations Center address %q does not parse as url: %w", operationsCenterAddress, err)
-	}
-
-	cfg := &config.Config{
-		OperationsCenterAddress: operationsCenterAddress,
-		RestServerPort:          c.flagServerPort,
-		RestServerAddr:          c.flagServerAddr,
-
-		ClientCertificateFilename: "client.crt",
-		ClientKeyFilename:         "client.key",
-
-		UpdatesSourcePollInterval: 1 * time.Hour,
-
-		ConnectivityCheckInterval: 5 * time.Minute,
-		PendingServerPollInterval: 1 * time.Minute,
-		InventoryUpdateInterval:   1 * time.Hour,
-	}
-
-	err = cfg.LoadConfig(c.env.VarDir())
+	err = config.Init(c.env)
 	if err != nil {
 		return fmt.Errorf("Failed to load config from %q: %w", c.env.VarDir(), err)
 	}
@@ -106,8 +76,8 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	defer stop()
 
 	// Generate client certificate if none are found.
-	clientCertFilename := filepath.Join(c.env.VarDir(), cfg.ClientCertificateFilename)
-	clientKeyFilename := filepath.Join(c.env.VarDir(), cfg.ClientKeyFilename)
+	clientCertFilename := filepath.Join(c.env.VarDir(), config.ClientCertificateFilename)
+	clientKeyFilename := filepath.Join(c.env.VarDir(), config.ClientKeyFilename)
 	if !util.PathExists(clientCertFilename) || !util.PathExists(clientKeyFilename) {
 		slog.InfoContext(cmd.Context(), "No client certificate found, generate client.crt and client.key")
 		err := incustls.FindOrGenCert(clientCertFilename, clientKeyFilename, true, false)
@@ -116,7 +86,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	d := api.NewDaemon(cmd.Context(), c.env, cfg)
+	d := restapi.NewDaemon(cmd.Context(), c.env)
 
 	err = d.Start(cmd.Context())
 	if err != nil {

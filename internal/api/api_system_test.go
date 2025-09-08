@@ -26,18 +26,24 @@ func TestSystemCertificatePut(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	ctx := context.Background()
+
+	config.InitTest(t)
+	err := config.UpdateNetwork(ctx, shared.SystemNetworkPut{
+		OperationsCenterAddress: "https://127.0.0.1:17443",
+		RestServerPort:          17443,
+		RestServerAddress:       "[::1]",
+	})
+	require.NoError(t, err)
+
 	d := api.NewDaemon(
 		ctx,
 		api.MockEnv{
 			UnixSocket:   filepath.Join(tmpDir, "unix.socket"),
 			VarDirectory: tmpDir,
 		},
-		&config.Config{
-			RestServerPort: 17443,
-		},
 	)
 
-	err := d.Start(ctx)
+	err = d.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		err = d.Stop(context.Background())
@@ -75,7 +81,7 @@ func TestSystemCertificatePut(t *testing.T) {
 	certPEM, keyPEM, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 
-	systemCertificatePut := shared.SystemCertificatePut{
+	systemCertificatePost := shared.SystemCertificatePost{
 		Certificate: string(certPEM),
 		Key:         string(keyPEM),
 	}
@@ -83,10 +89,10 @@ func TestSystemCertificatePut(t *testing.T) {
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	require.NoError(t, err)
 
-	requestBody, err := json.Marshal(systemCertificatePut)
+	requestBody, err := json.Marshal(systemCertificatePost)
 	require.NoError(t, err)
 
-	req, err := http.NewRequest(http.MethodPut, "http://unix/1.0/system/certificate", bytes.NewBuffer(requestBody))
+	req, err := http.NewRequest(http.MethodPost, "http://unix/1.0/system/certificate", bytes.NewBuffer(requestBody))
 
 	resp2, err := socketClient.Do(req)
 	require.NoError(t, err)

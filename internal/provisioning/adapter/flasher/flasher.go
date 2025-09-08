@@ -189,3 +189,10 @@ func isSelfSigned(cert tls.Certificate) bool {
 
 	return false
 }
+
+func (f *Flasher) UpdateServerURL(serverURL string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.serverURL = serverURL
+}

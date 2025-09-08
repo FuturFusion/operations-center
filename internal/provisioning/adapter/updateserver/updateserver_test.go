@@ -15,7 +15,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
-	"github.com/FuturFusion/operations-center/internal/signature"
 	"github.com/FuturFusion/operations-center/internal/signature/signaturetest"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -126,7 +125,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 			)
 			defer svr.Close()
 
-			s := updateserver.New(svr.URL, signature.NewVerifier(caCert))
+			s := updateserver.New(svr.URL, string(caCert))
 			updates, err := s.GetLatest(context.Background(), 1)
 			tc.assertErr(t, err)
 
@@ -180,7 +179,7 @@ func TestUpdateServer_GetUpdateFileByFilename(t *testing.T) {
 			)
 			defer svr.Close()
 
-			s := updateserver.New(svr.URL, nil)
+			s := updateserver.New(svr.URL, "")
 			stream, n, err := s.GetUpdateFileByFilenameUnverified(context.Background(), provisioning.Update{
 				URL: "/1",
 			}, "one.txt")

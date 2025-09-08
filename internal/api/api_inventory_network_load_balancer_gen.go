@@ -20,7 +20,7 @@ type networkLoadBalancerHandler struct {
 	service inventory.NetworkLoadBalancerService
 }
 
-func registerInventoryNetworkLoadBalancerHandler(router Router, authorizer authz.Authorizer, service inventory.NetworkLoadBalancerService) {
+func registerInventoryNetworkLoadBalancerHandler(router Router, authorizer *authz.Authorizer, service inventory.NetworkLoadBalancerService) {
 	handler := &networkLoadBalancerHandler{
 		service: service,
 	}

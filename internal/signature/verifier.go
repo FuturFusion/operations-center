@@ -21,7 +21,7 @@ func NewVerifier(rootCAPEM []byte) Verifier {
 		rootCAPEM = []byte(defaultRootCA)
 	}
 
-	return verifier{
+	return &verifier{
 		rootCAPEM: rootCAPEM,
 	}
 }

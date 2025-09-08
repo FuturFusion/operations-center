@@ -20,7 +20,7 @@ type projectHandler struct {
 	service inventory.ProjectService
 }
 
-func registerInventoryProjectHandler(router Router, authorizer authz.Authorizer, service inventory.ProjectService) {
+func registerInventoryProjectHandler(router Router, authorizer *authz.Authorizer, service inventory.ProjectService) {
 	handler := &projectHandler{
 		service: service,
 	}

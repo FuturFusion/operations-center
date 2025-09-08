@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/system"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -37,6 +38,36 @@ func NewSystemServiceWithPrometheus(base system.SystemService, instanceName stri
 	}
 }
 
+// GetNetworkConfig implements system.SystemService.
+func (_d SystemServiceWithPrometheus) GetNetworkConfig(ctx context.Context) (systemNetwork api.SystemNetwork) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetNetworkConfig(ctx)
+}
+
+// GetSecurityConfig implements system.SystemService.
+func (_d SystemServiceWithPrometheus) GetSecurityConfig(ctx context.Context) (systemSecurity api.SystemSecurity) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetSecurityConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetSecurityConfig(ctx)
+}
+
+// GetUpdatesConfig implements system.SystemService.
+func (_d SystemServiceWithPrometheus) GetUpdatesConfig(ctx context.Context) (systemUpdates api.SystemUpdates) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdatesConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetUpdatesConfig(ctx)
+}
+
 // UpdateCertificate implements system.SystemService.
 func (_d SystemServiceWithPrometheus) UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
 	_since := time.Now()
@@ -49,4 +80,46 @@ func (_d SystemServiceWithPrometheus) UpdateCertificate(ctx context.Context, cer
 		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateCertificate", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.UpdateCertificate(ctx, certificatePEM, keyPEM)
+}
+
+// UpdateNetworkConfig implements system.SystemService.
+func (_d SystemServiceWithPrometheus) UpdateNetworkConfig(ctx context.Context, cfg api.SystemNetworkPut) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateNetworkConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateNetworkConfig(ctx, cfg)
+}
+
+// UpdateSecurityConfig implements system.SystemService.
+func (_d SystemServiceWithPrometheus) UpdateSecurityConfig(ctx context.Context, cfg api.SystemSecurityPut) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSecurityConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateSecurityConfig(ctx, cfg)
+}
+
+// UpdateUpdatesConfig implements system.SystemService.
+func (_d SystemServiceWithPrometheus) UpdateUpdatesConfig(ctx context.Context, cfg api.SystemUpdatesPut) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateUpdatesConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateUpdatesConfig(ctx, cfg)
 }

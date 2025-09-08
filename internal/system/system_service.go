@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 
 	"github.com/maniartech/signals"
+
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type environment interface {
@@ -21,7 +24,10 @@ type systemService struct {
 
 var _ SystemService = &systemService{}
 
-func NewSystemService(env environment, serverCertificateUpdate signals.Signal[tls.Certificate]) *systemService {
+func NewSystemService(
+	env environment,
+	serverCertificateUpdate signals.Signal[tls.Certificate],
+) *systemService {
 	return &systemService{
 		env:                     env,
 		serverCertificateUpdate: serverCertificateUpdate,
@@ -47,6 +53,45 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 	}
 
 	s.serverCertificateUpdate.Emit(ctx, serverCertificate)
+
+	return nil
+}
+
+func (s *systemService) GetNetworkConfig(_ context.Context) api.SystemNetwork {
+	return config.GetNetwork()
+}
+
+func (s *systemService) UpdateNetworkConfig(ctx context.Context, newConfig api.SystemNetworkPut) error {
+	err := config.UpdateNetwork(ctx, newConfig)
+	if err != nil {
+		return fmt.Errorf("Failed to update network configuration: %w", err)
+	}
+
+	return nil
+}
+
+func (s *systemService) GetSecurityConfig(_ context.Context) api.SystemSecurity {
+	return config.GetSecurity()
+}
+
+func (s *systemService) UpdateSecurityConfig(ctx context.Context, newConfig api.SystemSecurityPut) error {
+	err := config.UpdateSecurity(ctx, newConfig)
+	if err != nil {
+		return fmt.Errorf("Failed to update security configuration: %w", err)
+	}
+
+	return nil
+}
+
+func (s *systemService) GetUpdatesConfig(_ context.Context) api.SystemUpdates {
+	return config.GetUpdates()
+}
+
+func (s *systemService) UpdateUpdatesConfig(ctx context.Context, newConfig api.SystemUpdatesPut) error {
+	err := config.UpdateUpdates(ctx, newConfig)
+	if err != nil {
+		return fmt.Errorf("Failed to update updates configuration: %w", err)
+	}
 
 	return nil
 }

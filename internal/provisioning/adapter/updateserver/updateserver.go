@@ -9,6 +9,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 
@@ -20,6 +21,8 @@ import (
 var UpdateSourceSpaceUUID = uuid.MustParse(`00000000-0000-0000-0000-000000000002`)
 
 type updateServer struct {
+	configUpdateMu *sync.Mutex
+
 	baseURL  string
 	client   *http.Client
 	verifier signature.Verifier
@@ -27,12 +30,14 @@ type updateServer struct {
 
 var _ provisioning.UpdateSourcePort = &updateServer{}
 
-func New(baseURL string, verifier signature.Verifier) *updateServer {
+func New(baseURL string, signatureVerificationRootCA string) *updateServer {
 	return &updateServer{
+		configUpdateMu: &sync.Mutex{},
+
 		// Normalize URL, remove trailing slash.
 		baseURL:  strings.TrimSuffix(baseURL, "/"),
 		client:   http.DefaultClient,
-		verifier: verifier,
+		verifier: signature.NewVerifier([]byte(signatureVerificationRootCA)),
 	}
 }
 
@@ -145,4 +150,12 @@ func (u updateServer) GetUpdateFileByFilenameUnverified(ctx context.Context, inU
 	}
 
 	return resp.Body, int(resp.ContentLength), nil
+}
+
+func (u *updateServer) UpdateConfig(_ context.Context, baseURL string, signatureVerificationRootCA string) {
+	u.configUpdateMu.Lock()
+	defer u.configUpdateMu.Unlock()
+
+	u.baseURL = baseURL
+	u.verifier = signature.NewVerifier([]byte(signatureVerificationRootCA))
 }
