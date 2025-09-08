@@ -19,8 +19,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/logger"
 )
 
-const defaultRestServerPort = 7443
-
 type env interface {
 	LogDir() string
 	RunDir() string
@@ -31,9 +29,6 @@ type env interface {
 
 type cmdDaemon struct {
 	env env
-
-	flagServerAddr string
-	flagServerPort int
 }
 
 func (c *cmdDaemon) Command() *cobra.Command {
@@ -46,9 +41,6 @@ func (c *cmdDaemon) Command() *cobra.Command {
   This is the operations center daemon command line.
 `
 	cmd.RunE = c.Run
-
-	cmd.Flags().StringVar(&c.flagServerAddr, "server-addr", "", "Address to bind to")
-	cmd.Flags().IntVar(&c.flagServerPort, "server-port", defaultRestServerPort, "IP port to bind to")
 
 	return cmd
 }
