@@ -215,9 +215,13 @@ func saveToDisk(cfg config) error {
 
 func validate(cfg config) error {
 	// Network configuration
-	if (cfg.Network.RestServerPort > 0 && cfg.Network.OperationsCenterAddress == "") ||
-		(cfg.Network.RestServerPort <= 0 && cfg.Network.OperationsCenterAddress != "") {
-		return fmt.Errorf(`Invalid config, "network.address" and "network.rest_server_port" either both are set or both are unset`)
+	if cfg.Network.RestServerPort < 0 {
+		return fmt.Errorf(`Invalid config, "network.rest_server_port" can not be negative`)
+	}
+
+	if (cfg.Network.RestServerAddress != "" && cfg.Network.OperationsCenterAddress == "") ||
+		(cfg.Network.RestServerAddress == "" && cfg.Network.OperationsCenterAddress != "") {
+		return fmt.Errorf(`Invalid config, "network.address" and "network.rest_server_address" either both are set or both are unset`)
 	}
 
 	if cfg.Network.OperationsCenterAddress != "" {

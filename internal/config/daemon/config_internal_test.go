@@ -26,11 +26,11 @@ func Test_validate(t *testing.T) {
 
 		// Network
 		{
-			name: "require network.rest_server_port if network.address is set",
+			name: "require network.rest_server_port to be 0 or positive",
 			cfg: config{
 				Network: api.SystemNetwork{
 					SystemNetworkPut: api.SystemNetworkPut{
-						OperationsCenterAddress: "http://localhost:1234",
+						RestServerPort: -1,
 					},
 				},
 				Updates: defaultUpdates,
@@ -39,11 +39,24 @@ func Test_validate(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
-			name: "require network.address if network.rest_server_port is set",
+			name: "require network.rest_server_address if network.address is set",
 			cfg: config{
 				Network: api.SystemNetwork{
 					SystemNetworkPut: api.SystemNetworkPut{
-						RestServerPort: 1234,
+						OperationsCenterAddress: "http://localhost:7443",
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: require.Error,
+		},
+		{
+			name: "require network.address if network.rest_server_address is set",
+			cfg: config{
+				Network: api.SystemNetwork{
+					SystemNetworkPut: api.SystemNetworkPut{
+						RestServerAddress: "localhost",
 					},
 				},
 				Updates: defaultUpdates,
@@ -56,7 +69,7 @@ func Test_validate(t *testing.T) {
 			cfg: config{
 				Network: api.SystemNetwork{
 					SystemNetworkPut: api.SystemNetworkPut{
-						RestServerPort:          1234,
+						RestServerAddress:       "localhost",
 						OperationsCenterAddress: ":|\\", // invalid,
 					},
 				},

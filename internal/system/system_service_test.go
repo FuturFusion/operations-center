@@ -184,6 +184,7 @@ func TestSystemService_GetNetworkConfig(t *testing.T) {
 				SystemNetworkPut: api.SystemNetworkPut{
 					OperationsCenterAddress: "https://someaddress:1234",
 					RestServerPort:          1234,
+					RestServerAddress:       "[::1]",
 				},
 			}
 

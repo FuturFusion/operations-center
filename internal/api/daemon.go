@@ -179,7 +179,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 			),
 		),
 		IdleTimeout: 30 * time.Second,
-		Addr:        fmt.Sprintf("%s:%d", config.GetNetwork().RestServerAddress, config.GetNetwork().RestServerPort),
 		ErrorLog:    errorLogger,
 	}
 
@@ -692,7 +691,7 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg api.SystemNetwork) er
 
 		d.serverCertificateUpdate.RemoveListener("fancyListener")
 
-		if cfg.RestServerPort <= 0 {
+		if cfg.RestServerAddress == "" {
 			d.configReloadMu.Lock()
 			d.listener = nil
 			d.configReloadMu.Unlock()
@@ -703,7 +702,12 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg api.SystemNetwork) er
 			return nil
 		}
 
-		newAddr := fmt.Sprintf("%s:%d", cfg.RestServerAddress, cfg.RestServerPort)
+		restServerPort := cfg.RestServerPort
+		if restServerPort == 0 {
+			restServerPort = config.DefaultRestServerPort
+		}
+
+		newAddr := fmt.Sprintf("%s:%d", cfg.RestServerAddress, restServerPort)
 		d.configReloadMu.Lock()
 		d.server.Addr = newAddr
 		d.configReloadMu.Unlock()

@@ -18,6 +18,9 @@ const (
 	// Name of the env var prefix used by this application.
 	ApplicationEnvPrefix = "OPERATIONS_CENTER"
 
+	// Default TCP port used for REST.
+	DefaultRestServerPort = 7443
+
 	// Interval in which the update server is polled for new updates.
 	UpdatesSourcePollInterval = 1 * time.Hour
 
