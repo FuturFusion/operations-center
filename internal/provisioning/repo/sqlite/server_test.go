@@ -50,7 +50,7 @@ server B
 		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 			return nil
 		},
-		EnableOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) error {
+		EnableOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config map[string]any) error {
 			return nil
 		},
 		SetServerConfigFunc: func(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) error {

@@ -25,8 +25,8 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			EnableClusterFunc: func(ctx context.Context, server provisioning.Server) (string, error) {
 //				panic("mock out the EnableCluster method")
 //			},
-//			EnableOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) error {
-//				panic("mock out the EnableOSServiceLVM method")
+//			EnableOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config map[string]any) error {
+//				panic("mock out the EnableOSService method")
 //			},
 //			GetClusterJoinTokenFunc: func(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (string, error) {
 //				panic("mock out the GetClusterJoinToken method")
@@ -59,8 +59,8 @@ type ClusterClientPortMock struct {
 	// EnableClusterFunc mocks the EnableCluster method.
 	EnableClusterFunc func(ctx context.Context, server provisioning.Server) (string, error)
 
-	// EnableOSServiceLVMFunc mocks the EnableOSServiceLVM method.
-	EnableOSServiceLVMFunc func(ctx context.Context, server provisioning.Server) error
+	// EnableOSServiceFunc mocks the EnableOSService method.
+	EnableOSServiceFunc func(ctx context.Context, server provisioning.Server, name string, config map[string]any) error
 
 	// GetClusterJoinTokenFunc mocks the GetClusterJoinToken method.
 	GetClusterJoinTokenFunc func(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (string, error)
@@ -92,12 +92,16 @@ type ClusterClientPortMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
-		// EnableOSServiceLVM holds details about calls to the EnableOSServiceLVM method.
-		EnableOSServiceLVM []struct {
+		// EnableOSService holds details about calls to the EnableOSService method.
+		EnableOSService []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Server is the server argument value.
 			Server provisioning.Server
+			// Name is the name argument value.
+			Name string
+			// Config is the config argument value.
+			Config map[string]any
 		}
 		// GetClusterJoinToken holds details about calls to the GetClusterJoinToken method.
 		GetClusterJoinToken []struct {
@@ -162,7 +166,7 @@ type ClusterClientPortMock struct {
 		}
 	}
 	lockEnableCluster            sync.RWMutex
-	lockEnableOSServiceLVM       sync.RWMutex
+	lockEnableOSService          sync.RWMutex
 	lockGetClusterJoinToken      sync.RWMutex
 	lockGetClusterNodeNames      sync.RWMutex
 	lockGetOSData                sync.RWMutex
@@ -208,39 +212,47 @@ func (mock *ClusterClientPortMock) EnableClusterCalls() []struct {
 	return calls
 }
 
-// EnableOSServiceLVM calls EnableOSServiceLVMFunc.
-func (mock *ClusterClientPortMock) EnableOSServiceLVM(ctx context.Context, server provisioning.Server) error {
-	if mock.EnableOSServiceLVMFunc == nil {
-		panic("ClusterClientPortMock.EnableOSServiceLVMFunc: method is nil but ClusterClientPort.EnableOSServiceLVM was just called")
+// EnableOSService calls EnableOSServiceFunc.
+func (mock *ClusterClientPortMock) EnableOSService(ctx context.Context, server provisioning.Server, name string, config map[string]any) error {
+	if mock.EnableOSServiceFunc == nil {
+		panic("ClusterClientPortMock.EnableOSServiceFunc: method is nil but ClusterClientPort.EnableOSService was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
 		Server provisioning.Server
+		Name   string
+		Config map[string]any
 	}{
 		Ctx:    ctx,
 		Server: server,
+		Name:   name,
+		Config: config,
 	}
-	mock.lockEnableOSServiceLVM.Lock()
-	mock.calls.EnableOSServiceLVM = append(mock.calls.EnableOSServiceLVM, callInfo)
-	mock.lockEnableOSServiceLVM.Unlock()
-	return mock.EnableOSServiceLVMFunc(ctx, server)
+	mock.lockEnableOSService.Lock()
+	mock.calls.EnableOSService = append(mock.calls.EnableOSService, callInfo)
+	mock.lockEnableOSService.Unlock()
+	return mock.EnableOSServiceFunc(ctx, server, name, config)
 }
 
-// EnableOSServiceLVMCalls gets all the calls that were made to EnableOSServiceLVM.
+// EnableOSServiceCalls gets all the calls that were made to EnableOSService.
 // Check the length with:
 //
-//	len(mockedClusterClientPort.EnableOSServiceLVMCalls())
-func (mock *ClusterClientPortMock) EnableOSServiceLVMCalls() []struct {
+//	len(mockedClusterClientPort.EnableOSServiceCalls())
+func (mock *ClusterClientPortMock) EnableOSServiceCalls() []struct {
 	Ctx    context.Context
 	Server provisioning.Server
+	Name   string
+	Config map[string]any
 } {
 	var calls []struct {
 		Ctx    context.Context
 		Server provisioning.Server
+		Name   string
+		Config map[string]any
 	}
-	mock.lockEnableOSServiceLVM.RLock()
-	calls = mock.calls.EnableOSServiceLVM
-	mock.lockEnableOSServiceLVM.RUnlock()
+	mock.lockEnableOSService.RLock()
+	calls = mock.calls.EnableOSService
+	mock.lockEnableOSService.RUnlock()
 	return calls
 }
 
