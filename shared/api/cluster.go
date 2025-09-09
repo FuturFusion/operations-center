@@ -4,6 +4,8 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"time"
+
+	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type ClusterStatus string
@@ -101,6 +103,25 @@ type ClusterPost struct {
 	// Names of the servers beloning to the cluster.
 	// Example: [ "server1", "server2" ]
 	ServerNames []string `json:"server_names" yaml:"server_names"`
+
+	// Config contains configuration, which is applied during pre- and post
+	// clustering.
+	Config ClusterConfig `json:"config"`
+}
+
+// ClusterConfig represents the fields available for the configuration of a new cluster running Hypervisor OS.
+//
+// swagger:model
+type ClusterConfig struct {
+	// Services contains the configuration for each service, which should be configured on Hypervisor OS.
+	// Operations Center is simply passing forward the settings to Hypervisor OS.
+	// For details about the configuration settings available refer to the service
+	// API definitions in https://github.com/lxc/incus-os/tree/main/incus-osd/api.
+	Services map[string]any `json:"services" yaml:"services"`
+
+	// StoragePools contains a list of storage pools to be configured as part of
+	// the clustering.
+	StoragePools []incusapi.StoragePoolsPost `json:"storage_pools" yaml:"storage_pools"`
 }
 
 // ClusterCertificatePut represents the certificate and key pair for all cluster members.
