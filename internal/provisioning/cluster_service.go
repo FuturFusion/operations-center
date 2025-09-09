@@ -162,9 +162,35 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 
 	// Push pre-clustering configuration to the servers.
 	for _, server := range servers {
-		err = s.client.EnableOSServiceLVM(ctx, server)
-		if err != nil {
-			return newCluster, fmt.Errorf("Failed to enable OS service LVM on %q: %w", server.Name, err)
+		for service, configAny := range newCluster.Config.Services {
+			config, ok := configAny.(map[string]any)
+			if !ok {
+				return newCluster, fmt.Errorf("Failed to enable OS service %q on %q: config is not an object", service, server.Name)
+			}
+
+			// LVM system_id is controlled by Operations Center and not the user.
+			// system_id is required to be between 1 and 2000. Just using the server.ID
+			// will fail, when we hit values > 2000.
+			if service == "lvm" {
+				enabledAny := config["enabled"]
+				enabled, ok := enabledAny.(bool)
+				if !ok {
+					return newCluster, fmt.Errorf(`Failed to enable OS service "lvm" on %q: "enabled" is not a bool`, server.Name)
+				}
+
+				if enabled {
+					if server.ID > 2000 {
+						return newCluster, fmt.Errorf(`Failed to enable OS service "lvm" on %q: can not enable LVM on servers with internal ID > 2000`, server.Name)
+					}
+
+					config["system_id"] = server.ID
+				}
+			}
+
+			err = s.client.EnableOSService(ctx, server, service, config)
+			if err != nil {
+				return newCluster, fmt.Errorf("Failed to enable OS service %q on %q: %w", service, server.Name, err)
+			}
 		}
 
 		// Ignore error, connection URL has been parsed by incus client already.
