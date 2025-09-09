@@ -139,11 +139,13 @@ func (c client) EnableOSServiceLVM(ctx context.Context, server provisioning.Serv
 	}
 
 	serviceLVMConfig := map[string]any{
-		"enabled":   true,
-		"system_id": server.ID,
+		"config": map[string]any{
+			"enabled":   true,
+			"system_id": server.ID,
+		},
 	}
 
-	_, _, err = client.RawQuery(http.MethodGet, "/os/1.0/services/lvm", serviceLVMConfig, "")
+	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/services/lvm", serviceLVMConfig, "")
 	if err != nil {
 		return fmt.Errorf("Enable OS service LVM on %q failed: %w", server.ConnectionURL, err)
 	}
