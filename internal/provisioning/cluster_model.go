@@ -16,8 +16,9 @@ type Cluster struct {
 	ConnectionURL string
 	Certificate   string
 	Status        api.ClusterStatus
-	ServerNames   []string  `db:"ignore"`
-	LastUpdated   time.Time `db:"update_timestamp"`
+	ServerNames   []string          `db:"ignore"`
+	Config        api.ClusterConfig `db:"ignore"`
+	LastUpdated   time.Time         `db:"update_timestamp"`
 }
 
 const nameProhibitedCharacters = `\/:*?"<>|`
@@ -94,4 +95,5 @@ func (c ClusterEndpoint) GetEndpoints() iter.Seq[Endpoint] {
 type ClusterProvisioningConfig struct {
 	ClusterEndpoint ClusterEndpoint
 	Servers         []Server
+	Config          api.ClusterConfig
 }
