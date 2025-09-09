@@ -29,7 +29,7 @@ func TestClusterService_Create(t *testing.T) {
 		repoCreateErr                  error
 		repoUpdateErr                  error
 		clientPingErr                  error
-		clientEnableOSServiceLVMErr    error
+		clientEnableOSServiceErr       error
 		clientSetServerConfig          []queue.Item[struct{}]
 		clientEnableClusterCertificate string
 		clientEnableClusterErr         error
@@ -51,6 +51,13 @@ func TestClusterService_Create(t *testing.T) {
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
+				Config: api.ClusterConfig{
+					Services: map[string]any{
+						"lvm": map[string]any{
+							"enabled": true,
+						},
+					},
+				},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
@@ -196,10 +203,15 @@ func TestClusterService_Create(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - client.EnableOSServiceLVM",
+			name: "error - invalid os service config",
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
+				Config: api.ClusterConfig{
+					Services: map[string]any{
+						"lvm": []string{}, // invalid, not a map[string]any
+					},
+				},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
@@ -213,7 +225,98 @@ func TestClusterService_Create(t *testing.T) {
 					},
 				},
 			},
-			clientEnableOSServiceLVMErr: boom.Error,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Failed to enable OS service "lvm" on "server1": config is not an object`)
+			},
+		},
+		{
+			name: "error - lvm enabled not bool",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+				Config: api.ClusterConfig{
+					Services: map[string]any{
+						"lvm": map[string]any{
+							"enabled": "", // invalid, not bool
+						},
+					},
+				},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Failed to enable OS service "lvm" on "server1": "enabled" is not a bool`)
+			},
+		},
+		{
+			name: "error - invalid os service config",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+				Config: api.ClusterConfig{
+					Services: map[string]any{
+						"lvm": map[string]any{
+							"enabled": true,
+						},
+					},
+				},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						ID:   2001, // invalid, server ID must not be > 2000 for LVM system_id.
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Failed to enable OS service "lvm" on "server1": can not enable LVM on servers with internal ID > 2000`)
+			},
+		},
+		{
+			name: "error - client.EnableOSService",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerNames: []string{"server1", "server2"},
+				Config: api.ClusterConfig{
+					Services: map[string]any{
+						"lvm": map[string]any{
+							"enabled": true,
+						},
+					},
+				},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+					},
+				},
+			},
+			clientEnableOSServiceErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -618,8 +721,8 @@ func TestClusterService_Create(t *testing.T) {
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return tc.clientPingErr
 				},
-				EnableOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) error {
-					return tc.clientEnableOSServiceLVMErr
+				EnableOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config map[string]any) error {
+					return tc.clientEnableOSServiceErr
 				},
 				SetServerConfigFunc: func(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) error {
 					_, err := queue.Pop(t, &tc.clientSetServerConfig)
