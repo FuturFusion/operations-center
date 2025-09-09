@@ -41,8 +41,9 @@ func New(storageDir string, signatureVerificationRootCA string) (localfs, error)
 	}
 
 	return localfs{
-		storageDir: storageDir,
-		verifier:   signature.NewVerifier([]byte(signatureVerificationRootCA)),
+		configUpdateMu: &sync.Mutex{},
+		storageDir:     storageDir,
+		verifier:       signature.NewVerifier([]byte(signatureVerificationRootCA)),
 	}, nil
 }
 
