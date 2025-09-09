@@ -622,7 +622,7 @@ func TestClientServer(t *testing.T) {
 		{
 			name: "EnableOSServiceLVM",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
-				return nil, client.EnableOSServiceLVM(ctx, target)
+				return nil, client.EnableOSService(ctx, target, "lvm", map[string]any{"enabled": true})
 			},
 			testCases: []methodTestCase{
 				{
