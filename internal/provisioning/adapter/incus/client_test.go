@@ -639,7 +639,7 @@ func TestClientServer(t *testing.T) {
 					},
 
 					assertErr: require.NoError,
-					wantPaths: []string{"GET /os/1.0/services/lvm"},
+					wantPaths: []string{"PUT /os/1.0/services/lvm"},
 				},
 				{
 					name: "error - unexpected http status code",
@@ -652,7 +652,7 @@ func TestClientServer(t *testing.T) {
 					},
 
 					assertErr: require.Error,
-					wantPaths: []string{"GET /os/1.0/services/lvm"},
+					wantPaths: []string{"PUT /os/1.0/services/lvm"},
 				},
 			},
 		},
