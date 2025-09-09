@@ -287,6 +287,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	err = s.provisioner.Init(ctx, newCluster.Name, ClusterProvisioningConfig{
 		ClusterEndpoint: clusterEndpoint,
 		Servers:         servers,
+		Config:          newCluster.Config,
 	})
 	if err != nil {
 		return newCluster, err
