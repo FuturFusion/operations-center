@@ -253,6 +253,7 @@ func TestTerraform_GetArchive(t *testing.T) {
 				"resources_project_internal.tf": false,
 				"resources_server.tf":           false,
 				"resources_storage.tf":          false,
+				"resources_storage_pools.tf":    false,
 				"terraform.tfstate":             false,
 			}
 

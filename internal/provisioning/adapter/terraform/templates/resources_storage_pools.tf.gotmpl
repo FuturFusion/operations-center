@@ -1,0 +1,23 @@
+{{ range .StoragePools -}}
+resource "incus_storage_pool" "{{ .Name }}_per_node" {
+  for_each = local.members
+
+  name   = "{{ .Name }}"
+  driver = "{{ .Driver }}"
+  target = each.key
+
+  config = {
+    "lvm.vg_name" = "{{ index .Config "lvm.vg_name" }}"
+    "source"      = "{{ index .Config "source" }}"
+  }
+}
+
+resource "incus_storage_pool" "{{ .Name }}" {
+  name        = "{{ .Name }}"
+  driver      = "{{ .Driver }}"
+  description = "{{ .Description }}"
+
+  depends_on = [incus_storage_pool.{{ .Name }}_per_node]
+}
+
+{{ end -}}

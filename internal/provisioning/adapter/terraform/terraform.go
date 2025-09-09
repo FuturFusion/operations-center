@@ -117,6 +117,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 					"ClusterAddress":       clusterAddress.Hostname(),
 					"ClusterPort":          clusterAddress.Port(),
 					"MeshTunnelInterfaces": meshTunnelInterfaces,
+					"StoragePools":         config.Config.StoragePools,
 				},
 				)
 				if err != nil {
