@@ -211,6 +211,7 @@ func (c *clusterHandler) clustersPost(r *http.Request) response.Response {
 		Name:          cluster.Name,
 		ConnectionURL: cluster.ConnectionURL,
 		ServerNames:   cluster.ServerNames,
+		Config:        cluster.Config,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating cluster: %w", err))
