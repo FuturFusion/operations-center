@@ -52,8 +52,8 @@ func (_d ClusterClientPortWithPrometheus) EnableCluster(ctx context.Context, ser
 	return _d.base.EnableCluster(ctx, server)
 }
 
-// EnableOSServiceLVM implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithPrometheus) EnableOSServiceLVM(ctx context.Context, server provisioning.Server) (err error) {
+// EnableOSService implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) EnableOSService(ctx context.Context, server provisioning.Server, name string, config map[string]any) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -61,9 +61,9 @@ func (_d ClusterClientPortWithPrometheus) EnableOSServiceLVM(ctx context.Context
 			result = "error"
 		}
 
-		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "EnableOSServiceLVM", result).Observe(time.Since(_since).Seconds())
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "EnableOSService", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.EnableOSServiceLVM(ctx, server)
+	return _d.base.EnableOSService(ctx, server, name, config)
 }
 
 // GetClusterJoinToken implements provisioning.ClusterClientPort.
