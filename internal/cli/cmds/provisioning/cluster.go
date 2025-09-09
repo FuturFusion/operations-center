@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
@@ -94,6 +95,7 @@ type cmdClusterAdd struct {
 	ocClient *client.OperationsCenterClient
 
 	serverNames []string
+	configFile  string
 }
 
 func (c *cmdClusterAdd) Command() *cobra.Command {
@@ -112,6 +114,8 @@ func (c *cmdClusterAdd) Command() *cobra.Command {
 	cmd.Flags().StringSliceVarP(&c.serverNames, flagServerNames, "s", nil, "Server names of the cluster members")
 	_ = cmd.MarkFlagRequired(flagServerNames)
 
+	cmd.Flags().StringVarP(&c.configFile, "config", "c", "", "Cluster bootstrap config")
+
 	return cmd
 }
 
@@ -125,12 +129,27 @@ func (c *cmdClusterAdd) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 	connectionURL := args[1]
 
+	config := api.ClusterConfig{}
+
+	if c.configFile != "" {
+		body, err := os.ReadFile(c.configFile)
+		if err != nil {
+			return err
+		}
+
+		err = yaml.Unmarshal(body, &config)
+		if err != nil {
+			return err
+		}
+	}
+
 	err = c.ocClient.CreateCluster(cmd.Context(), api.ClusterPost{
 		Cluster: api.Cluster{
 			Name:          name,
 			ConnectionURL: connectionURL,
 		},
 		ServerNames: c.serverNames,
+		Config:      config,
 	})
 	if err != nil {
 		return err
