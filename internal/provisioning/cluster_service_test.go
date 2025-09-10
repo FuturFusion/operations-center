@@ -759,7 +759,7 @@ func TestClusterService_Create(t *testing.T) {
 				InitFunc: func(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
 					return tc.provisionerInitErr
 				},
-				ApplyFunc: func(ctx context.Context, name string) error {
+				ApplyFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
 					return tc.provisionerApplyErr
 				},
 			}

@@ -319,7 +319,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		return newCluster, err
 	}
 
-	err = s.provisioner.Apply(ctx, newCluster.Name)
+	err = s.provisioner.Apply(ctx, newCluster)
 	if err != nil {
 		return newCluster, err
 	}
