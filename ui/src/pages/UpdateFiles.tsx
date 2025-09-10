@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
+import { BsHash } from "react-icons/bs";
 import { fetchUpdateFiles } from "api/update";
 import DataTable from "components/DataTable.tsx";
 import { bytesToHumanReadable } from "util/util";
@@ -24,14 +25,7 @@ const UpdateFiles = () => {
     return <div>Error while loading files: {error.message}</div>;
   }
 
-  const headers = [
-    "Filename",
-    "Size",
-    "Sha256",
-    "Component",
-    "Type",
-    "Architecture",
-  ];
+  const headers = ["Filename", "Size", "Component", "Type", "Architecture", ""];
 
   const rows = files.map((item) => {
     return [
@@ -44,10 +38,6 @@ const UpdateFiles = () => {
         sortKey: item.size,
       },
       {
-        content: item.sha256,
-        sortKey: item.sha256,
-      },
-      {
         content: item.component,
         sortKey: item.component,
       },
@@ -58,6 +48,10 @@ const UpdateFiles = () => {
       {
         content: item.architecture,
         sortKey: item.architecture,
+      },
+      {
+        content: <BsHash title={item.sha256} style={{ cursor: "pointer" }} />,
+        sortKey: item.sha256,
       },
     ];
   });
