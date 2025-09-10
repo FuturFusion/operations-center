@@ -136,7 +136,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// authorizers on the daemon.
 	err = d.securityConfigReload(ctx, config.GetSecurity())
 	if err != nil {
-		return err
+		slog.ErrorContext(ctx, "failed to load security config", logger.Err(err))
 	}
 
 	// On update of the security configuration, perform reload of the security
