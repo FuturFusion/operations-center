@@ -5,12 +5,14 @@ import { Server, ServerFormValues } from "types/server";
 
 interface Props {
   server?: Server;
+  systemNetwork?: object;
   onSubmit: (values: ServerFormValues) => void;
 }
 
-const ServerForm: FC<Props> = ({ server, onSubmit }) => {
+const ServerForm: FC<Props> = ({ server, systemNetwork, onSubmit }) => {
   const formikInitialValues = {
     name: server?.name || "",
+    network_configuration: JSON.stringify(systemNetwork, null, 2),
   };
 
   const formik = useFormik({
@@ -38,6 +40,18 @@ const ServerForm: FC<Props> = ({ server, onSubmit }) => {
             <Form.Control.Feedback type="invalid">
               {formik.errors.name}
             </Form.Control.Feedback>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="network_configuration">
+            <Form.Label>Network configuration</Form.Label>
+            <Form.Control
+              type="text"
+              name="network_configuration"
+              as="textarea"
+              rows={10}
+              value={formik.values.network_configuration}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
           </Form.Group>
         </Form>
       </div>
