@@ -22,7 +22,7 @@ var _ provisioning.ClusterProvisioningPort = &ClusterProvisioningPortMock{}
 //
 //		// make and configure a mocked provisioning.ClusterProvisioningPort
 //		mockedClusterProvisioningPort := &ClusterProvisioningPortMock{
-//			ApplyFunc: func(ctx context.Context, name string) error {
+//			ApplyFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
 //				panic("mock out the Apply method")
 //			},
 //			GetArchiveFunc: func(ctx context.Context, name string) (io.ReadCloser, int, error) {
@@ -39,7 +39,7 @@ var _ provisioning.ClusterProvisioningPort = &ClusterProvisioningPortMock{}
 //	}
 type ClusterProvisioningPortMock struct {
 	// ApplyFunc mocks the Apply method.
-	ApplyFunc func(ctx context.Context, name string) error
+	ApplyFunc func(ctx context.Context, cluster provisioning.Cluster) error
 
 	// GetArchiveFunc mocks the GetArchive method.
 	GetArchiveFunc func(ctx context.Context, name string) (io.ReadCloser, int, error)
@@ -53,8 +53,8 @@ type ClusterProvisioningPortMock struct {
 		Apply []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Name is the name argument value.
-			Name string
+			// Cluster is the cluster argument value.
+			Cluster provisioning.Cluster
 		}
 		// GetArchive holds details about calls to the GetArchive method.
 		GetArchive []struct {
@@ -79,21 +79,21 @@ type ClusterProvisioningPortMock struct {
 }
 
 // Apply calls ApplyFunc.
-func (mock *ClusterProvisioningPortMock) Apply(ctx context.Context, name string) error {
+func (mock *ClusterProvisioningPortMock) Apply(ctx context.Context, cluster provisioning.Cluster) error {
 	if mock.ApplyFunc == nil {
 		panic("ClusterProvisioningPortMock.ApplyFunc: method is nil but ClusterProvisioningPort.Apply was just called")
 	}
 	callInfo := struct {
-		Ctx  context.Context
-		Name string
+		Ctx     context.Context
+		Cluster provisioning.Cluster
 	}{
-		Ctx:  ctx,
-		Name: name,
+		Ctx:     ctx,
+		Cluster: cluster,
 	}
 	mock.lockApply.Lock()
 	mock.calls.Apply = append(mock.calls.Apply, callInfo)
 	mock.lockApply.Unlock()
-	return mock.ApplyFunc(ctx, name)
+	return mock.ApplyFunc(ctx, cluster)
 }
 
 // ApplyCalls gets all the calls that were made to Apply.
@@ -101,12 +101,12 @@ func (mock *ClusterProvisioningPortMock) Apply(ctx context.Context, name string)
 //
 //	len(mockedClusterProvisioningPort.ApplyCalls())
 func (mock *ClusterProvisioningPortMock) ApplyCalls() []struct {
-	Ctx  context.Context
-	Name string
+	Ctx     context.Context
+	Cluster provisioning.Cluster
 } {
 	var calls []struct {
-		Ctx  context.Context
-		Name string
+		Ctx     context.Context
+		Cluster provisioning.Cluster
 	}
 	mock.lockApply.RLock()
 	calls = mock.calls.Apply
