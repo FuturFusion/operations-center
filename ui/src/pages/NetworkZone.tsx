@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchNetworkZones } from "api/network_zone";
 import DataTable from "components/DataTable";
+import ProjectIncusLink from "components/ProjectIncusLink";
+import { formatDate } from "util/date";
 
 const NetworkZone = () => {
   const {
@@ -20,7 +22,7 @@ const NetworkZone = () => {
     return <div>Error while loading network zones: {error.message}</div>;
   }
 
-  const headers = ["Name", "Cluster", "Project name", "Last updated"];
+  const headers = ["Name", "Cluster", "Project", "Last updated"];
   const rows = zones.map((item) => {
     return [
       {
@@ -32,11 +34,16 @@ const NetworkZone = () => {
         sortKey: item.cluster,
       },
       {
-        content: item.project_name,
+        content: (
+          <ProjectIncusLink
+            cluster={item.cluster}
+            project={item.project_name}
+          />
+        ),
         sortKey: item.project_name,
       },
       {
-        content: item.last_updated,
+        content: formatDate(item.last_updated),
         sortKey: item.last_updated,
       },
     ];

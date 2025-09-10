@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchNetworkIntegrations } from "api/network_integration";
 import DataTable from "components/DataTable";
+import { formatDate } from "util/date";
 
 const NetworkIntegration = () => {
   const {
@@ -32,7 +33,7 @@ const NetworkIntegration = () => {
         sortKey: item.cluster,
       },
       {
-        content: item.last_updated,
+        content: formatDate(item.last_updated),
         sortKey: item.last_updated,
       },
     ];

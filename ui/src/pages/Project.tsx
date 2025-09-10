@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchProjects } from "api/project";
 import DataTable from "components/DataTable";
+import ProjectIncusLink from "components/ProjectIncusLink";
+import { formatDate } from "util/date";
 
 const Project = () => {
   const {
@@ -24,7 +26,9 @@ const Project = () => {
   const rows = projects.map((item) => {
     return [
       {
-        content: item.name,
+        content: (
+          <ProjectIncusLink cluster={item.cluster} project={item.name} />
+        ),
         sortKey: item.name,
       },
       {
@@ -32,7 +36,7 @@ const Project = () => {
         sortKey: item.cluster,
       },
       {
-        content: item.last_updated,
+        content: formatDate(item.last_updated),
         sortKey: item.last_updated,
       },
     ];
