@@ -5,6 +5,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -215,8 +216,11 @@ func saveToDisk(cfg config) error {
 
 func validate(cfg config) error {
 	// Network configuration
-	if cfg.Network.RestServerPort < 0 {
-		return fmt.Errorf(`Invalid config, "network.rest_server_port" can not be negative`)
+	if cfg.Network.RestServerAddress != "" {
+		_, _, err := net.SplitHostPort(cfg.Network.RestServerAddress)
+		if err != nil {
+			return fmt.Errorf(`Invalid config, "network.rest_server_address" is not a valid address: %w`, err)
+		}
 	}
 
 	if (cfg.Network.RestServerAddress != "" && cfg.Network.OperationsCenterAddress == "") ||

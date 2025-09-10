@@ -29,11 +29,8 @@ type SystemNetworkPut struct {
 	// Address of Operations Center which is used by managed servers to connect.
 	OperationsCenterAddress string `json:"address" yaml:"address"`
 
-	// Address to bind the REST API to.
+	// Address and port to bind the REST API to.
 	RestServerAddress string `json:"rest_server_address" yaml:"rest_server_address"`
-
-	// IP Port to bind the REST API to.
-	RestServerPort int `json:"rest_server_port" yaml:"rest_server_port"`
 }
 
 // SystemSecurity represents the system's security configuration.
