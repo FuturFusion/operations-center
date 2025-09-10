@@ -366,7 +366,10 @@ func NewVerifier(ctx context.Context, issuer string, clientid string, scope stri
 	}
 
 	verifier := &Verifier{issuer: issuer, clientID: clientid, scopes: scopes, audience: audience, cookieKey: cookieKey, claim: claim}
-	verifier.accessTokenVerifier, _ = getAccessTokenVerifier(ctx, issuer)
+	verifier.accessTokenVerifier, err = getAccessTokenVerifier(ctx, issuer)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to initialize OIDC verifier: %w", err)
+	}
 
 	return verifier, nil
 }
