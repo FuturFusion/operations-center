@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Nav, Navbar, Collapse, Container } from "react-bootstrap";
 import { Link } from "react-router";
+import { AiOutlineCluster } from "react-icons/ai";
 import { GoServer } from "react-icons/go";
 import { IoChevronDownOutline, IoChevronForward } from "react-icons/io5";
 import {
@@ -209,6 +210,13 @@ const Sidebar = () => {
                       </Nav>
                     </div>
                   </Collapse>
+                </Nav.Item>
+                <Nav.Item>
+                  <li>
+                    <Nav.Link as={Link} to="/ui/provisioning/clusters">
+                      <AiOutlineCluster /> Clusters
+                    </Nav.Link>
+                  </li>
                 </Nav.Item>
                 <Nav.Item>
                   <li>

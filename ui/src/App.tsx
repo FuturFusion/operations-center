@@ -18,6 +18,7 @@ import StoragePool from "pages/StoragePool";
 import StorageVolume from "pages/StorageVolume";
 import Profile from "pages/Profile";
 import Project from "pages/Project";
+import Cluster from "pages/Cluster";
 import Server from "pages/Server";
 import ServerDetail from "pages/ServerDetail";
 import Token from "pages/Token";
@@ -91,6 +92,7 @@ function App() {
             />
             <Route path="/ui/inventory/profiles" element={<Profile />} />
             <Route path="/ui/inventory/projects" element={<Project />} />
+            <Route path="/ui/provisioning/clusters" element={<Cluster />} />
             <Route path="/ui/provisioning/servers" element={<Server />} />
             <Route
               path="/ui/provisioning/servers/:name"
