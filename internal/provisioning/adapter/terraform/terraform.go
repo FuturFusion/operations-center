@@ -14,6 +14,10 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclwrite"
+	"github.com/zclconf/go-cty/cty"
+
 	"github.com/FuturFusion/operations-center/internal/file"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
@@ -28,6 +32,8 @@ type terraform struct {
 	terraformInitFunc  func(ctx context.Context, configDir string) error
 	terraformApplyFunc func(ctx context.Context, configDir string) error
 }
+
+var _ provisioning.ClusterProvisioningPort = &terraform{}
 
 type Option func(*terraform)
 
@@ -152,8 +158,8 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 	return nil
 }
 
-func (t terraform) Apply(ctx context.Context, name string) error {
-	configDir := filepath.Join(t.storageDir, name)
+func (t terraform) Apply(ctx context.Context, cluster provisioning.Cluster) error {
+	configDir := filepath.Join(t.storageDir, cluster.Name)
 	if !file.PathExists(configDir) {
 		return fmt.Errorf("Initialized Terraform config not found")
 	}
@@ -161,6 +167,42 @@ func (t terraform) Apply(ctx context.Context, name string) error {
 	err := t.terraformApplyFunc(ctx, configDir)
 	if err != nil {
 		return fmt.Errorf("Failed to apply Terraform configuration: %w", err)
+	}
+
+	err = terraformConfigPostProcessing(configDir, cluster)
+	if err != nil {
+		return fmt.Errorf("Failed to post process terraform configuration: %w", err)
+	}
+
+	return nil
+}
+
+// terraformConfigPostProcessing updates the Terraform configuration after
+// successful initial apply for future external use.
+func terraformConfigPostProcessing(path string, cluster provisioning.Cluster) error {
+	// Update "remote" for incus provider to match the cluster's connection URL.
+	providerTf := filepath.Join(path, "providers.tf")
+	src, err := os.ReadFile(providerTf)
+	if err != nil {
+		return err
+	}
+
+	f, diags := hclwrite.ParseConfig(src, "providers.tf", hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return errors.Join(diags.Errs()...)
+	}
+
+	clusterURL, err := url.Parse(cluster.ConnectionURL)
+	if err != nil {
+		return err
+	}
+
+	f.Body().FirstMatchingBlock("provider", []string{"incus"}).Body().FirstMatchingBlock("remote", []string{}).Body().SetAttributeValue("address", cty.StringVal(clusterURL.Hostname()))
+	f.Body().FirstMatchingBlock("provider", []string{"incus"}).Body().FirstMatchingBlock("remote", []string{}).Body().SetAttributeValue("port", cty.StringVal(clusterURL.Port()))
+
+	err = os.WriteFile(providerTf, f.Bytes(), 0o600)
+	if err != nil {
+		return err
 	}
 
 	return nil
