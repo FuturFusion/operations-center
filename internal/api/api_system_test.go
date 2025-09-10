@@ -30,8 +30,7 @@ func TestSystemCertificatePut(t *testing.T) {
 	config.InitTest(t)
 	err := config.UpdateNetwork(ctx, shared.SystemNetworkPut{
 		OperationsCenterAddress: "https://127.0.0.1:17443",
-		RestServerPort:          17443,
-		RestServerAddress:       "[::1]",
+		RestServerAddress:       "[::1]:17443",
 	})
 	require.NoError(t, err)
 

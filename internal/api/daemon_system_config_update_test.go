@@ -99,8 +99,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 		t.Log(`2. Update network configuration, listen on port 17443`)
 		req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/network", bytes.NewBufferString(fmt.Sprintf(`{
   "address": "https://127.0.0.1:17443",
-  "rest_server_address": "[::1]",
-  "rest_server_port": %d
+  "rest_server_address": "[::1]:%d"
 }
 `, port)))
 		require.NoError(t, err)

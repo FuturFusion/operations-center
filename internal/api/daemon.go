@@ -702,12 +702,20 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg api.SystemNetwork) er
 			return nil
 		}
 
-		restServerPort := cfg.RestServerPort
-		if restServerPort == 0 {
-			restServerPort = config.DefaultRestServerPort
+		newAddr := cfg.RestServerAddress
+		_, port, err := net.SplitHostPort(cfg.RestServerAddress)
+		if err != nil {
+			return err
 		}
 
-		newAddr := fmt.Sprintf("%s:%d", cfg.RestServerAddress, restServerPort)
+		if port == "" {
+			newAddr += config.DefaultRestServerPort
+		}
+
+		if port == "0" {
+			newAddr = newAddr[:len(newAddr)-1] + config.DefaultRestServerPort
+		}
+
 		d.configReloadMu.Lock()
 		d.server.Addr = newAddr
 		d.configReloadMu.Unlock()

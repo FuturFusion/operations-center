@@ -126,8 +126,7 @@ func TestStartAndStop(t *testing.T) {
 			config.InitTest(t)
 			err := config.UpdateNetwork(ctx, api.SystemNetworkPut{
 				OperationsCenterAddress: "https://127.0.0.1:17443",
-				RestServerPort:          tc.bindPort,
-				RestServerAddress:       "[::1]",
+				RestServerAddress:       fmt.Sprintf(":%d", tc.bindPort),
 			})
 			require.NoError(t, err)
 
