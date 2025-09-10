@@ -85,7 +85,7 @@ type Cluster struct {
 	// Status contains the status the cluster is currently in from the point of view of Operations Center.
 	// Possible values for status are: pending, ready
 	// Example: pending
-	Status ClusterStatus
+	Status ClusterStatus `json:"status" yaml:"status"`
 
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
