@@ -11,11 +11,11 @@ const DownloadImageForm: FC<Props> = ({ formik }) => {
   return (
     <div>
       <Form noValidate>
-        <Form.Group className="mb-3" controlId="type">
+        <Form.Group className="mb-4" controlId="type">
           <Form.Label>Image type</Form.Label>
           <Form.Check
             type="radio"
-            label="iso"
+            label="ISO (for use with virtual CD-ROM drives)"
             name="type"
             value="iso"
             checked={formik.values.type == "iso"}
@@ -23,14 +23,14 @@ const DownloadImageForm: FC<Props> = ({ formik }) => {
           />
           <Form.Check
             type="radio"
-            label="raw"
+            label="USB (for use with virtual or physical USB sticks)"
             name="type"
             value="raw"
             checked={formik.values.type == "raw"}
             onChange={formik.handleChange}
           />
         </Form.Group>
-        <Form.Group className="mb-3">
+        <Form.Group className="mb-4">
           <Form.Label>Installation target</Form.Label>
           <Form.Check
             type="checkbox"
@@ -47,6 +47,7 @@ const DownloadImageForm: FC<Props> = ({ formik }) => {
             checked={formik.values.install.force_reboot}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
+            className="mb-3"
           />
           <Form.Label>
             Drive identifier (as seen in /dev/disk/by-id), can be a partial
@@ -62,7 +63,7 @@ const DownloadImageForm: FC<Props> = ({ formik }) => {
             onBlur={formik.handleBlur}
           />
         </Form.Group>
-        <Form.Group className="mb-3" controlId="network">
+        <Form.Group className="mb-4" controlId="network">
           <Form.Label>Network configuration</Form.Label>
           <Form.Control
             type="text"
