@@ -90,7 +90,7 @@ func TestTerraform_Init(t *testing.T) {
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_profile_default.tf"))
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_project_internal.tf"))
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_server.tf"))
-			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_storage.tf"))
+			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_storage_pool_local.tf"))
 			fileContains(t, filepath.Join(tmpDir, tc.clusterName, "providers.tf"),
 				`"127.0.0.1"`,
 				`"8443"`,
@@ -245,16 +245,16 @@ func TestTerraform_GetArchive(t *testing.T) {
 			require.NoError(t, err)
 
 			expectedFilesFound := map[string]bool{
-				"data_cluster.tf":               false,
-				"providers.tf":                  false,
-				"resources_network_locals.tf":   false,
-				"resources_network.tf":          false,
-				"resources_profile_default.tf":  false,
-				"resources_project_internal.tf": false,
-				"resources_server.tf":           false,
-				"resources_storage.tf":          false,
-				"resources_storage_pools.tf":    false,
-				"terraform.tfstate":             false,
+				"data_cluster.tf":                 false,
+				"providers.tf":                    false,
+				"resources_network_locals.tf":     false,
+				"resources_network.tf":            false,
+				"resources_profile_default.tf":    false,
+				"resources_project_internal.tf":   false,
+				"resources_server.tf":             false,
+				"resources_storage_pool_local.tf": false,
+				"resources_storage_pools.tf":      false,
+				"terraform.tfstate":               false,
 			}
 
 			for _, file := range zr.File {
