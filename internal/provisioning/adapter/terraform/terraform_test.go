@@ -114,23 +114,48 @@ func fileContains(t *testing.T, filename string, contains ...string) {
 }
 
 func TestTerraform_Apply(t *testing.T) {
-	tests := []struct {
-		name              string
-		setup             func(t *testing.T, configDir string)
-		terraformApplyErr error
+	noopAssertPostProcessedFiles := func(*testing.T, string, string) {}
 
-		assertErr require.ErrorAssertionFunc
+	tests := []struct {
+		name                 string
+		clusterConnectionURL string
+		setup                func(t *testing.T, configDir string)
+		terraformApplyErr    error
+
+		assertErr                require.ErrorAssertionFunc
+		assertPostProcessedFiles func(t *testing.T, dir string, clusterName string)
 	}{
 		{
-			name: "success",
+			name:                 "success",
+			clusterConnectionURL: "https://localhost:8443",
 			setup: func(t *testing.T, configDir string) {
 				t.Helper()
 
 				err := os.MkdirAll(configDir, 0o700)
 				require.NoError(t, err)
+
+				err = os.WriteFile(filepath.Join(configDir, "providers.tf"), []byte(`provider "incus" {
+  remote {
+    name    = "mycluster"
+    default = true
+    scheme  = "https"
+    address = "some-host"
+    port    = "1234"
+  }
+}`), 0o600)
+				require.NoError(t, err)
 			},
 
 			assertErr: require.NoError,
+			assertPostProcessedFiles: func(t *testing.T, dir, clusterName string) {
+				t.Helper()
+
+				fileContains(t, filepath.Join(dir, clusterName, "providers.tf"),
+					`"localhost"`,
+					`"8443"`,
+					`"https"`,
+				)
+			},
 		},
 		{
 			name: "error - config directory not initialized",
@@ -139,11 +164,11 @@ func TestTerraform_Apply(t *testing.T) {
 
 				// config directory not created.
 			},
-			terraformApplyErr: boom.Error,
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Initialized Terraform config not found")
 			},
+			assertPostProcessedFiles: noopAssertPostProcessedFiles,
 		},
 		{
 			name: "error - terraform apply",
@@ -155,7 +180,59 @@ func TestTerraform_Apply(t *testing.T) {
 			},
 			terraformApplyErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:                boom.ErrorIs,
+			assertPostProcessedFiles: noopAssertPostProcessedFiles,
+		},
+		{
+			name: "error - providers.tf not found",
+			setup: func(t *testing.T, configDir string) {
+				t.Helper()
+
+				err := os.MkdirAll(configDir, 0o700)
+				require.NoError(t, err)
+			},
+
+			assertErr:                require.Error,
+			assertPostProcessedFiles: noopAssertPostProcessedFiles,
+		},
+		{
+			name: "error - providers.tf invalid Terraform config",
+			setup: func(t *testing.T, configDir string) {
+				t.Helper()
+
+				err := os.MkdirAll(configDir, 0o700)
+				require.NoError(t, err)
+
+				err = os.WriteFile(filepath.Join(configDir, "providers.tf"), []byte(`provider "incus" {`), 0o600) // invalid Terraform configuration.
+				require.NoError(t, err)
+			},
+
+			assertErr:                require.Error,
+			assertPostProcessedFiles: noopAssertPostProcessedFiles,
+		},
+		{
+			name:                 "error - invalid cluster.connectionURL",
+			clusterConnectionURL: ":|\\", // invalid
+			setup: func(t *testing.T, configDir string) {
+				t.Helper()
+
+				err := os.MkdirAll(configDir, 0o700)
+				require.NoError(t, err)
+
+				err = os.WriteFile(filepath.Join(configDir, "providers.tf"), []byte(`provider "incus" {
+  remote {
+    name    = "mycluster"
+    default = true
+    scheme  = "https"
+    address = "some-host"
+    port    = "1234"
+  }
+}`), 0o600)
+				require.NoError(t, err)
+			},
+
+			assertErr:                require.Error,
+			assertPostProcessedFiles: noopAssertPostProcessedFiles,
 		},
 	}
 
@@ -172,10 +249,16 @@ func TestTerraform_Apply(t *testing.T) {
 			require.NoError(t, err)
 
 			// Run tests
-			err = tf.Apply(t.Context(), clusterName)
+			cluster := provisioning.Cluster{
+				Name:          clusterName,
+				ConnectionURL: tc.clusterConnectionURL,
+			}
+
+			err = tf.Apply(t.Context(), cluster)
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertPostProcessedFiles(t, tmpDir, clusterName)
 		})
 	}
 }
