@@ -77,7 +77,7 @@ server B
 		InitFunc: func(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
 			return nil
 		},
-		ApplyFunc: func(ctx context.Context, name string) error {
+		ApplyFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
 			return nil
 		},
 	}
