@@ -2,12 +2,12 @@ import { useState } from "react";
 import { Nav, Navbar, Collapse, Container } from "react-bootstrap";
 import { Link } from "react-router";
 import { GoServer } from "react-icons/go";
+import { IoChevronDownOutline, IoChevronForward } from "react-icons/io5";
 import {
   MdLogin,
   MdLogout,
   MdOutlineInventory2,
   MdOutlineToken,
-  MdSettings,
   MdOutlineSystemUpdateAlt,
 } from "react-icons/md";
 import {
@@ -43,6 +43,14 @@ const Sidebar = () => {
     setOpenSubmenu(updated);
   };
 
+  const menuFoldIcon = (menuKey: string, level: number) => {
+    if (openSubmenu[level] === menuKey) {
+      return <IoChevronDownOutline />;
+    }
+
+    return <IoChevronForward />;
+  };
+
   return (
     <>
       {/* Sidebar Navbar */}
@@ -59,7 +67,8 @@ const Sidebar = () => {
                 <Nav.Item>
                   <li>
                     <Nav.Link onClick={() => toggleSubmenu("inventory", 0)}>
-                      <MdOutlineInventory2 /> Inventory
+                      <MdOutlineInventory2 /> Inventory{" "}
+                      {menuFoldIcon("inventory", 0)}
                     </Nav.Link>
                   </li>
                   <Collapse in={openSubmenu[0] === "inventory"}>
@@ -81,6 +90,7 @@ const Sidebar = () => {
                               onClick={() => toggleSubmenu("networking", 1)}
                             >
                               <RiOrganizationChart /> Networking
+                              {menuFoldIcon("networking", 1)}
                             </Nav.Link>
                           </li>
                           <Collapse in={openSubmenu[1] === "networking"}>
@@ -152,6 +162,7 @@ const Sidebar = () => {
                               onClick={() => toggleSubmenu("storage", 1)}
                             >
                               <RiDatabase2Line /> Storage
+                              {menuFoldIcon("storage", 1)}
                             </Nav.Link>
                           </li>
                           <Collapse in={openSubmenu[1] === "storage"}>
@@ -201,31 +212,24 @@ const Sidebar = () => {
                 </Nav.Item>
                 <Nav.Item>
                   <li>
-                    <Nav.Link onClick={() => toggleSubmenu("provisioning", 0)}>
-                      <MdSettings /> Provisioning
+                    <Nav.Link as={Link} to="/ui/provisioning/servers">
+                      <GoServer /> Servers
                     </Nav.Link>
                   </li>
-                  <Collapse in={openSubmenu[0] === "provisioning"}>
-                    <div>
-                      <Nav className="flex-column ms-2">
-                        <li>
-                          <Nav.Link as={Link} to="/ui/provisioning/servers">
-                            <GoServer /> Servers
-                          </Nav.Link>
-                        </li>
-                        <li>
-                          <Nav.Link as={Link} to="/ui/provisioning/tokens">
-                            <MdOutlineToken /> Tokens
-                          </Nav.Link>
-                        </li>
-                        <li>
-                          <Nav.Link as={Link} to="/ui/provisioning/updates">
-                            <MdOutlineSystemUpdateAlt /> Updates
-                          </Nav.Link>
-                        </li>
-                      </Nav>
-                    </div>
-                  </Collapse>
+                </Nav.Item>
+                <Nav.Item>
+                  <li>
+                    <Nav.Link as={Link} to="/ui/provisioning/tokens">
+                      <MdOutlineToken /> Tokens
+                    </Nav.Link>
+                  </li>
+                </Nav.Item>
+                <Nav.Item>
+                  <li>
+                    <Nav.Link as={Link} to="/ui/provisioning/updates">
+                      <MdOutlineSystemUpdateAlt /> Updates
+                    </Nav.Link>
+                  </li>
                 </Nav.Item>
               </>
             )}
