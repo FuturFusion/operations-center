@@ -146,7 +146,7 @@ func (c client) EnableOSService(ctx context.Context, server provisioning.Server,
 
 	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/services/"+nameSanitized, serviceConfig, "")
 	if err != nil {
-		return fmt.Errorf("Enable OS service LVM on %q failed: %w", server.ConnectionURL, err)
+		return fmt.Errorf("Enable OS service %q on %q failed: %w", nameSanitized, server.ConnectionURL, err)
 	}
 
 	return nil

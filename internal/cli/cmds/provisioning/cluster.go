@@ -94,8 +94,10 @@ func (c *CmdCluster) Command() *cobra.Command {
 type cmdClusterAdd struct {
 	ocClient *client.OperationsCenterClient
 
-	serverNames []string
-	configFile  string
+	serverNames           []string
+	serverType            string
+	servicesConfigFile    string
+	applicationConfigFile string
 }
 
 func (c *cmdClusterAdd) Command() *cobra.Command {
@@ -114,7 +116,9 @@ func (c *cmdClusterAdd) Command() *cobra.Command {
 	cmd.Flags().StringSliceVarP(&c.serverNames, flagServerNames, "s", nil, "Server names of the cluster members")
 	_ = cmd.MarkFlagRequired(flagServerNames)
 
-	cmd.Flags().StringVarP(&c.configFile, "config", "c", "", "Cluster bootstrap config")
+	cmd.Flags().StringVarP(&c.serverType, "server-type", "t", "incus", "Type of servers, that should be clustered, supported values are (incus, migration-manager, operations-center)")
+	cmd.Flags().StringVarP(&c.servicesConfigFile, "services-config", "c", "", "Services config applied on the cluster nodes during pre clustering")
+	cmd.Flags().StringVarP(&c.applicationConfigFile, "application-seed-config", "a", "", "Application seed configuration applied on the cluster during post clustering")
 
 	return cmd
 }
@@ -129,15 +133,35 @@ func (c *cmdClusterAdd) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 	connectionURL := args[1]
 
-	config := api.ClusterConfig{}
+	var serverType api.ServerType
+	err = serverType.UnmarshalText([]byte(c.serverType))
+	if err != nil {
+		return err
+	}
 
-	if c.configFile != "" {
-		body, err := os.ReadFile(c.configFile)
+	servicesConfig := map[string]any{}
+
+	if c.servicesConfigFile != "" {
+		body, err := os.ReadFile(c.servicesConfigFile)
 		if err != nil {
 			return err
 		}
 
-		err = yaml.Unmarshal(body, &config)
+		err = yaml.Unmarshal(body, &servicesConfig)
+		if err != nil {
+			return err
+		}
+	}
+
+	applicationConfig := map[string]any{}
+
+	if c.applicationConfigFile != "" {
+		body, err := os.ReadFile(c.applicationConfigFile)
+		if err != nil {
+			return err
+		}
+
+		err = yaml.Unmarshal(body, &applicationConfig)
 		if err != nil {
 			return err
 		}
@@ -148,8 +172,10 @@ func (c *cmdClusterAdd) Run(cmd *cobra.Command, args []string) error {
 			Name:          name,
 			ConnectionURL: connectionURL,
 		},
-		ServerNames: c.serverNames,
-		Config:      config,
+		ServerNames:           c.serverNames,
+		ServerType:            serverType,
+		ServicesConfig:        servicesConfig,
+		ApplicationSeedConfig: applicationConfig,
 	})
 	if err != nil {
 		return err
