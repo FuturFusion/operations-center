@@ -97,7 +97,7 @@ func (s *clusterService) SetInventorySyncers(inventorySyncers []InventorySyncer)
 //     Update the default profile in the default project to use incusbr0 for networking.
 //     Update the default profile in the internal project to use internal-mesh for networking.
 func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster, error) {
-	err := newCluster.Validate()
+	err := newCluster.ValidateCreate()
 	if err != nil {
 		return Cluster{}, err
 	}
@@ -148,6 +148,13 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		return newCluster, err
 	}
 
+	// Verify, that all the servers that are clustered have the expected server type.
+	for _, server := range servers {
+		if server.Type != newCluster.ServerType {
+			return newCluster, fmt.Errorf("Server %q has type %q but %q was expected", server.Name, server.Type, newCluster.ServerType)
+		}
+	}
+
 	// Perform pre-clustering and clustering API calls.
 
 	// Check, that all the listed servers are online.
@@ -162,7 +169,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 
 	// Push pre-clustering configuration to the servers.
 	for _, server := range servers {
-		for service, configAny := range newCluster.Config.Services {
+		for service, configAny := range newCluster.ServicesConfig {
 			config, ok := configAny.(map[string]any)
 			if !ok {
 				return newCluster, fmt.Errorf("Failed to enable OS service %q on %q: config is not an object", service, server.Name)
@@ -311,9 +318,9 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 
 	// Perform post-clustering initialization using provisioner (Terraform).
 	err = s.provisioner.Init(ctx, newCluster.Name, ClusterProvisioningConfig{
-		ClusterEndpoint: clusterEndpoint,
-		Servers:         servers,
-		Config:          newCluster.Config,
+		ClusterEndpoint:       clusterEndpoint,
+		Servers:               servers,
+		ApplicationSeedConfig: newCluster.ApplicationSeedConfig,
 	})
 	if err != nil {
 		return newCluster, err
