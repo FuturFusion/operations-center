@@ -1,4 +1,12 @@
-{{ range .StoragePools -}}
+{{- range .IncusPreseed.StoragePools }}
+
+{{- $keyMaxLen := 0 }}
+{{- range $key, $value := .Config }}
+  {{- if gt (len $key) $keyMaxLen }}
+    {{- $keyMaxLen = len $key }}
+  {{- end }}
+{{- end -}}
+
 resource "incus_storage_pool" "{{ .Name }}_per_node" {
   for_each = local.members
 
@@ -7,8 +15,9 @@ resource "incus_storage_pool" "{{ .Name }}_per_node" {
   target = each.key
 
   config = {
-    {{ range $key, $value := .Config -}}
-    "{{ $key }}" = "{{ $value }}"
+    {{- range $key, $value := .Config }}
+    {{- $indent := repeat (int (sub $keyMaxLen (len $key))) " " }}
+    "{{ $key }}"{{ $indent }} = "{{ $value }}"
     {{- end }}
   }
 
@@ -27,5 +36,4 @@ resource "incus_storage_pool" "{{ .Name }}" {
 
   depends_on = [incus_storage_pool.{{ .Name }}_per_node]
 }
-
 {{ end -}}
