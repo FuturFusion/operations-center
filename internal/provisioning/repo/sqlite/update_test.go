@@ -133,6 +133,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 
 	// Should get back updatedA changed.
 	dbUpdateA, err = update.GetByUUID(ctx, updateA.UUID)
+	updateA.LastUpdated = dbUpdateA.LastUpdated
 	require.NoError(t, err)
 	require.Equal(t, updateA, *dbUpdateA)
 
