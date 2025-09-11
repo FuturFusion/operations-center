@@ -525,6 +525,39 @@ func TestClientServer(t *testing.T) {
 						// GET /os/1.0/system/network
 						{
 							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/network"},
+					assertResult: noResult,
+				},
+				{
+					name: "error - network data invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/network
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/network"},
+					assertResult: noResult,
+				},
+				{
+					name: "error - security data unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/network
+						{
+							Value: response{
 								statusCode: http.StatusOK,
 								responseBody: []byte(`{
   "metadata": {
@@ -551,7 +584,7 @@ func TestClientServer(t *testing.T) {
 					assertResult: noResult,
 				},
 				{
-					name: "error - network data invalid JSON",
+					name: "error - security data invalid JSON",
 					response: []queue.Item[response]{
 						// GET /os/1.0/system/network
 						{
