@@ -432,6 +432,7 @@ func (s serverService) pollServer(ctx context.Context, server Server, updateServ
 
 	var hardwareData api.HardwareData
 	var osData api.OSData
+	var serverType api.ServerType
 	if updateServerConfiguration {
 		hardwareData, err = s.client.GetResources(ctx, server)
 		if err != nil {
@@ -442,6 +443,10 @@ func (s serverService) pollServer(ctx context.Context, server Server, updateServ
 		if err != nil {
 			return fmt.Errorf("Failed to get os data from server %q: %w", server.Name, err)
 		}
+
+		// For now, we ignore the error and we are fine to persist type "unknown",
+		// if we are not able to determine the server type.
+		serverType, _ = s.client.GetServerType(ctx, server)
 	}
 
 	// Perform the update of the server in a transaction in order to respect
@@ -459,6 +464,7 @@ func (s serverService) pollServer(ctx context.Context, server Server, updateServ
 			server.Status = api.ServerStatusReady
 			server.HardwareData = hardwareData
 			server.OSData = osData
+			server.Type = serverType
 		}
 
 		return s.repo.Update(ctx, *server)
