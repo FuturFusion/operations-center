@@ -208,10 +208,12 @@ func (c *clusterHandler) clustersPost(r *http.Request) response.Response {
 	}
 
 	_, err = c.service.Create(r.Context(), provisioning.Cluster{
-		Name:          cluster.Name,
-		ConnectionURL: cluster.ConnectionURL,
-		ServerNames:   cluster.ServerNames,
-		Config:        cluster.Config,
+		Name:                  cluster.Name,
+		ConnectionURL:         cluster.ConnectionURL,
+		ServerNames:           cluster.ServerNames,
+		ServerType:            cluster.ServerType,
+		ServicesConfig:        cluster.ServicesConfig,
+		ApplicationSeedConfig: cluster.ApplicationSeedConfig,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating cluster: %w", err))
@@ -331,10 +333,9 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	err = c.service.Update(ctx, provisioning.Cluster{
-		Name:          cluster.Name,
-		ConnectionURL: cluster.ConnectionURL,
-	})
+	currentCluster.ConnectionURL = cluster.ConnectionURL
+
+	err = c.service.Update(ctx, *currentCluster)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating cluster %q: %w", name, err))
 	}
