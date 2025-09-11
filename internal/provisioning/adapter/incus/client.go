@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incus "github.com/lxc/incus/v6/client"
@@ -116,6 +117,44 @@ func (c client) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (
 		Network:  network,
 		Security: security,
 	}, nil
+}
+
+func (c client) GetServerType(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
+	client, err := c.getClient(ctx, endpoint)
+	if err != nil {
+		return api.ServerTypeUnknown, err
+	}
+
+	const endpointPath = "/os/1.0/applications"
+
+	resp, _, err := client.RawQuery(http.MethodGet, endpointPath, http.NoBody, "")
+	if err != nil {
+		return api.ServerTypeUnknown, fmt.Errorf("Get applications from %q failed: %w", endpoint.GetConnectionURL(), err)
+	}
+
+	var applications []string
+	err = json.Unmarshal(resp.Metadata, &applications)
+	if err != nil {
+		return api.ServerTypeUnknown, fmt.Errorf("Unexpected response metadata while fetching applications from %q: %w", endpoint.GetConnectionURL(), err)
+	}
+
+	for _, applicationPath := range applications {
+		application := strings.TrimLeft(strings.TrimPrefix(applicationPath, endpointPath), "/")
+
+		var serverType api.ServerType
+		err := serverType.UnmarshalText([]byte(application))
+		if err != nil {
+			continue
+		}
+
+		if serverType == api.ServerTypeUnknown {
+			continue
+		}
+
+		return serverType, nil
+	}
+
+	return api.ServerTypeUnknown, fmt.Errorf("Server did not return any known server type defining application (%v)", applications)
 }
 
 func (c client) UpdateNetworkConfig(ctx context.Context, server provisioning.Server) error {
