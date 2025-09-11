@@ -7,11 +7,11 @@ package api
 type SystemCertificatePost struct {
 	// The new certificate (X509 PEM encoded) for the system (server certificate).
 	// Example: X509 PEM certificate
-	Certificate string `json:"certificate"`
+	Certificate string `json:"certificate" yaml:"certificate"`
 
 	// The new certificate key (X509 PEM encoded) for the system (server key).
 	// Example: X509 PEM certificate key
-	Key string `json:"key"`
+	Key string `json:"key" yaml:"key"`
 }
 
 // SystemNetwork represents the system's network configuration.
@@ -103,7 +103,7 @@ type SystemUpdatesPut struct {
 	// the updates from the configured source is skipped. This is mainly useful
 	// for development and since it only affects the first execution after the
 	// start of the daemon, this setting is not available thought the JSON API.
-	SourcePollSkipFirst bool `json:"-" yaml:"source_skip_first_update"`
+	SourcePollSkipFirst bool `json:"source_skip_first_update" yaml:"source_skip_first_update"`
 
 	// Root CA certificate used to verify the signature of index.sjson.
 	// Example: -----BEGIN CERTIFICATE-----\nMII...\n-----END CERTIFICATE-----
