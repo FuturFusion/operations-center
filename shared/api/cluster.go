@@ -4,8 +4,6 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"time"
-
-	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type ClusterStatus string
@@ -104,24 +102,19 @@ type ClusterPost struct {
 	// Example: [ "server1", "server2" ]
 	ServerNames []string `json:"server_names" yaml:"server_names"`
 
-	// Config contains configuration, which is applied during pre- and post
-	// clustering.
-	Config ClusterConfig `json:"config"`
-}
+	// ServerType is the expected type of servers to be clustered.
+	// Clustering will fail, if not all the servers are of the same type.
+	ServerType ServerType `json:"server_type" yaml:"server_type"`
 
-// ClusterConfig represents the fields available for the configuration of a new cluster running Hypervisor OS.
-//
-// swagger:model
-type ClusterConfig struct {
-	// Services contains the configuration for each service, which should be configured on Hypervisor OS.
+	// ServicesConfig contains the configuration for each service, which should be configured on Hypervisor OS.
 	// Operations Center is simply passing forward the settings to Hypervisor OS.
 	// For details about the configuration settings available refer to the service
 	// API definitions in https://github.com/lxc/incus-os/tree/main/incus-osd/api.
-	Services map[string]any `json:"services" yaml:"services"`
+	ServicesConfig map[string]any `json:"services_config" yaml:"services_config"`
 
-	// StoragePools contains a list of storage pools to be configured as part of
-	// the clustering.
-	StoragePools []incusapi.StoragePoolsPost `json:"storage_pools" yaml:"storage_pools"`
+	// ApplicationSeedConfig contains the seed configuration for the application, which is
+	// applied during post clustering. This configuration is application specific.
+	ApplicationSeedConfig map[string]any `json:"application_seed_config" yaml:"application_seed_config"`
 }
 
 // ClusterCertificatePut represents the certificate and key pair for all cluster members.
