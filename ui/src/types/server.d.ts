@@ -20,4 +20,5 @@ export interface Server {
 
 export interface ServerFormValues {
   name: string;
+  network_configuration: string;
 }

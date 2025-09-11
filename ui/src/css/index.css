@@ -38,3 +38,8 @@ body {
   word-break: break-word;
   overflow-wrap: break-word;
 }
+
+.hide-field-switch {
+  font-size: 12px;
+  cursor: pointer;
+}

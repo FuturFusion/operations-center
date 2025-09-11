@@ -1,10 +1,41 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
+import { IoChevronDownOutline, IoChevronUpOutline } from "react-icons/io5";
 import { fetchServer } from "api/server";
 import { formatDate } from "util/date";
 
+type FieldState = {
+  hw: boolean;
+  os: boolean;
+};
+
 const ServerOverview = () => {
   const { name } = useParams();
+  const [isVisible, setIsVisible] = useState<FieldState>({
+    hw: false,
+    os: false,
+  });
+
+  const toogleData = (field: keyof FieldState) => {
+    setIsVisible({ ...isVisible, [field]: !isVisible[field] });
+  };
+
+  const hideFieldSwitch = (field: keyof FieldState) => {
+    return (
+      <span onClick={() => toogleData(field)} className="hide-field-switch">
+        {isVisible[field] ? (
+          <>
+            <IoChevronDownOutline /> Hide
+          </>
+        ) : (
+          <>
+            <IoChevronUpOutline /> Show
+          </>
+        )}
+      </span>
+    );
+  };
 
   const {
     data: server = null,
@@ -67,17 +98,25 @@ const ServerOverview = () => {
       </div>
       {server?.hardware_data && (
         <div className="row">
-          <div className="col-2 detail-table-header">Hardware data</div>
+          <div className="col-2 detail-table-header">
+            Hardware data {hideFieldSwitch("hw")}
+          </div>
           <div className="col-10 detail-table-cell">
-            <pre>{JSON.stringify(server?.hardware_data, null, 2)}</pre>
+            {isVisible["hw"] && (
+              <pre>{JSON.stringify(server?.hardware_data, null, 2)}</pre>
+            )}
           </div>
         </div>
       )}
       {server?.os_data && (
         <div className="row">
-          <div className="col-2 detail-table-header">OS data</div>
+          <div className="col-2 detail-table-header">
+            OS data {hideFieldSwitch("os")}
+          </div>
           <div className="col-10 detail-table-cell">
-            <pre>{JSON.stringify(server?.os_data, null, 2)}</pre>
+            {isVisible["os"] && (
+              <pre>{JSON.stringify(server?.os_data, null, 2)}</pre>
+            )}
           </div>
         </div>
       )}
