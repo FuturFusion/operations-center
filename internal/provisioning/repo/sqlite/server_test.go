@@ -35,7 +35,7 @@ server A
 
 	serverB := provisioning.Server{
 		Name:          "two",
-		Type:          api.ServerTypeMigrationManager,
+		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://two/",
 		Certificate: `-----BEGIN CERTIFICATE-----
 server B
@@ -183,6 +183,7 @@ server B
 	_, err = clusterSvc.Create(ctx, provisioning.Cluster{
 		Name:        "one",
 		ServerNames: []string{"two-new"},
+		ServerType:  api.ServerTypeIncus,
 	})
 	require.NoError(t, err)
 
