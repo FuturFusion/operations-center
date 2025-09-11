@@ -617,10 +617,68 @@ func TestClientServer(t *testing.T) {
 					wantPaths:    []string{"GET /os/1.0/system/network", "GET /os/1.0/system/security"},
 					assertResult: noResult,
 				},
+			},
+		},
+		{
+			name: "GetServerType",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetServerType(ctx, target)
+			},
+			testCases: []methodTestCase{
 				{
-					name: "error - security data unexpected http status code",
+					name: "success",
 					response: []queue.Item[response]{
-						// GET /os/1.0/system/network
+						// GET /os/1.0/applications
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": [
+    "/os/1.0/applications/incus"
+  ]
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /os/1.0/applications"},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						require.Equal(t, api.ServerTypeIncus, res)
+					},
+				},
+				{
+					name: "success - multiple applications",
+					response: []queue.Item[response]{
+						// GET /os/1.0/applications
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": [
+    "/os/1.0/applications/other-application",
+    "/os/1.0/applications/incus",
+    "/os/1.0/applications/more-application"
+  ]
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /os/1.0/applications"},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						require.Equal(t, api.ServerTypeIncus, res)
+					},
+				},
+				{
+					name: "error - network data unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /os/1.0/applications
 						{
 							Value: response{
 								statusCode: http.StatusInternalServerError,
@@ -629,25 +687,65 @@ func TestClientServer(t *testing.T) {
 					},
 
 					assertErr:    require.Error,
-					wantPaths:    []string{"GET /os/1.0/system/network"},
+					wantPaths:    []string{"GET /os/1.0/applications"},
 					assertResult: noResult,
 				},
 				{
-					name: "error - security data invalid JSON",
+					name: "error - network data invalid JSON",
 					response: []queue.Item[response]{
-						// GET /os/1.0/system/network
+						// GET /os/1.0/applications
 						{
 							Value: response{
 								statusCode: http.StatusOK,
 								responseBody: []byte(`{
-  "metadata": []
-}`), // array for metadata is invalid.
+  "metadata": {}
+}`), // object for metadata is invalid.
 							},
 						},
 					},
 
 					assertErr:    require.Error,
-					wantPaths:    []string{"GET /os/1.0/system/network"},
+					wantPaths:    []string{"GET /os/1.0/applications"},
+					assertResult: noResult,
+				},
+				{
+					name: "invalid application",
+					response: []queue.Item[response]{
+						// GET /os/1.0/applications
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": [
+    "/os/1.0/applications/invalid"
+  ]
+}`), // invalid application
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/applications"},
+					assertResult: noResult,
+				},
+				{
+					name: "invalid application (empty)",
+					response: []queue.Item[response]{
+						// GET /os/1.0/applications
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": [
+    "/os/1.0/applications/"
+  ]
+}`), // invalid application (empty)
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/applications"},
 					assertResult: noResult,
 				},
 			},
