@@ -8,9 +8,9 @@ network:
 
   # Address to bind the REST server to. If empty, the REST server is disabled.
   # Use ":" to bind to all unicast and anycast addresses (IPv4 and IPv6).
-  # Use "[::]" to bind to all IPv6 addresses and "0.0.0.0" to bind to all IPv4
-  # addresses.
-  # If the port is omitted or 0, the default port 7443 is used.
+  # Use "::" or "[::]" to bind to all IPv6 addresses and "0.0.0.0" to bind to
+  # all IPv4 addresses.
+  # If the port is omitted, the default port 7443 is used.
   rest_server_address: ""
 
 security:

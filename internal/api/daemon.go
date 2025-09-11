@@ -702,26 +702,12 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg api.SystemNetwork) er
 			return nil
 		}
 
-		newAddr := cfg.RestServerAddress
-		_, port, err := net.SplitHostPort(cfg.RestServerAddress)
-		if err != nil {
-			return err
-		}
-
-		if port == "" {
-			newAddr += config.DefaultRestServerPort
-		}
-
-		if port == "0" {
-			newAddr = newAddr[:len(newAddr)-1] + config.DefaultRestServerPort
-		}
-
 		d.configReloadMu.Lock()
-		d.server.Addr = newAddr
+		d.server.Addr = cfg.RestServerAddress
 		d.configReloadMu.Unlock()
 
-		slog.InfoContext(ctx, "Start https listener", slog.Any("addr", newAddr))
-		tcpListener, err := net.Listen("tcp", newAddr)
+		slog.InfoContext(ctx, "Start https listener", slog.Any("addr", cfg.RestServerAddress))
+		tcpListener, err := net.Listen("tcp", cfg.RestServerAddress)
 		if err != nil {
 			errCh <- err
 			return err
