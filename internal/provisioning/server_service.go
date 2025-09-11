@@ -432,6 +432,7 @@ func (s serverService) pollServer(ctx context.Context, server Server, updateServ
 
 	var hardwareData api.HardwareData
 	var osData api.OSData
+	var serverType api.ServerType
 	if updateServerConfiguration {
 		hardwareData, err = s.client.GetResources(ctx, server)
 		if err != nil {
@@ -441,6 +442,11 @@ func (s serverService) pollServer(ctx context.Context, server Server, updateServ
 		osData, err = s.client.GetOSData(ctx, server)
 		if err != nil {
 			return fmt.Errorf("Failed to get os data from server %q: %w", server.Name, err)
+		}
+
+		serverType, err = s.client.GetServerType(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get server type from server %q: %w", server.Name, err)
 		}
 	}
 
@@ -459,6 +465,7 @@ func (s serverService) pollServer(ctx context.Context, server Server, updateServ
 			server.Status = api.ServerStatusReady
 			server.HardwareData = hardwareData
 			server.OSData = osData
+			server.Type = serverType
 		}
 
 		return s.repo.Update(ctx, *server)
