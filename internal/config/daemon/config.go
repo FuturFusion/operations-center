@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/expr-lang/expr"
@@ -91,6 +93,11 @@ func loadConfig() error {
 		return fmt.Errorf("Failed to unmarshal config %q: %w", filename, err)
 	}
 
+	cfg.Network.SystemNetworkPut, err = NetworkSetDefaults(cfg.Network.SystemNetworkPut)
+	if err != nil {
+		return fmt.Errorf("Invalid network config: %w", err)
+	}
+
 	err = validate(cfg)
 	if err != nil {
 		return fmt.Errorf("Invalid config: %w", err)
@@ -112,10 +119,15 @@ func UpdateNetwork(ctx context.Context, cfg api.SystemNetworkPut) error {
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
-	newCfg := globalConfigInstance
-	newCfg.Network.SystemNetworkPut = cfg
+	var err error
 
-	err := validateAndSave(newCfg)
+	newCfg := globalConfigInstance
+	newCfg.Network.SystemNetworkPut, err = NetworkSetDefaults(cfg)
+	if err != nil {
+		return err
+	}
+
+	err = validateAndSave(newCfg)
 	if err != nil {
 		return err
 	}
@@ -125,6 +137,52 @@ func UpdateNetwork(ctx context.Context, cfg api.SystemNetworkPut) error {
 	})
 
 	return nil
+}
+
+func NetworkSetDefaults(cfg api.SystemNetworkPut) (api.SystemNetworkPut, error) {
+	newCfg := cfg
+	parseIP := func(addr string) (net.IP, error) {
+		if strings.HasPrefix(addr, "[") && strings.HasSuffix(addr, "]") && len(addr) > 2 {
+			addr = addr[1 : len(addr)-1]
+		}
+
+		ip := net.ParseIP(addr)
+		if ip == nil {
+			return nil, fmt.Errorf("%q is not a valid IP address", addr)
+		}
+
+		return ip, nil
+	}
+
+	if cfg.RestServerAddress != "" {
+		host, port, err := net.SplitHostPort(cfg.RestServerAddress)
+		if err != nil {
+			ip, err := parseIP(cfg.RestServerAddress)
+			if err != nil {
+				return api.SystemNetworkPut{}, err
+			}
+
+			newCfg.RestServerAddress = net.JoinHostPort(ip.String(), DefaultRestServerPort)
+			return newCfg, nil
+		}
+
+		if host == "" {
+			host = "::"
+		}
+
+		_, err = parseIP(host)
+		if err != nil {
+			return api.SystemNetworkPut{}, err
+		}
+
+		if port == "" {
+			port = DefaultRestServerPort
+		}
+
+		newCfg.RestServerAddress = net.JoinHostPort(host, port)
+	}
+
+	return newCfg, nil
 }
 
 func GetSecurity() api.SystemSecurity {
@@ -218,9 +276,27 @@ func saveToDisk(cfg config) error {
 func validate(cfg config) error {
 	// Network configuration
 	if cfg.Network.RestServerAddress != "" {
-		_, _, err := net.SplitHostPort(cfg.Network.RestServerAddress)
+		host, portStr, err := net.SplitHostPort(cfg.Network.RestServerAddress)
 		if err != nil {
-			return fmt.Errorf(`Invalid config, "network.rest_server_address" is not a valid address: %w`, err)
+			return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" is not a valid address: %v`, err)
+		}
+
+		if host != "" {
+			ip := net.ParseIP(host)
+			if ip == nil {
+				return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" does not contain a valid ip`)
+			}
+		}
+
+		if portStr != "" {
+			port, err := strconv.ParseInt(portStr, 10, 64)
+			if err != nil {
+				return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" does not contain a valid port`)
+			}
+
+			if port < 1 || port > 0xffff {
+				return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" port out of range (%d - %d)`, 1, 0xffff)
+			}
 		}
 	}
 
