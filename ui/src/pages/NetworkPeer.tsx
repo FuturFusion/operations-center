@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchNetworkPeers } from "api/network_peer";
 import DataTable from "components/DataTable";
+import { formatDate } from "util/date";
 
 const NetworkPeer = () => {
   const {
@@ -36,7 +37,7 @@ const NetworkPeer = () => {
         sortKey: item.parent_name,
       },
       {
-        content: item.last_updated,
+        content: formatDate(item.last_updated),
         sortKey: item.last_updated,
       },
     ];

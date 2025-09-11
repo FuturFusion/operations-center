@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchNetworkLoadBalancers } from "api/network_load_balancer";
 import DataTable from "components/DataTable";
+import { formatDate } from "util/date";
 
 const NetworkLoadBalancer = () => {
   const {
@@ -38,7 +39,7 @@ const NetworkLoadBalancer = () => {
         sortKey: item.parent_name,
       },
       {
-        content: item.last_updated,
+        content: formatDate(item.last_updated),
         sortKey: item.last_updated,
       },
     ];

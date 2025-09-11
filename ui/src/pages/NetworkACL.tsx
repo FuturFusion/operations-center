@@ -1,6 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchNetworkACLs } from "api/network_acl";
 import DataTable from "components/DataTable";
+import ObjectIncusLink from "components/ObjectIncusLink";
+import ProjectIncusLink from "components/ProjectIncusLink";
+import { formatDate } from "util/date";
 
 const NetworkACL = () => {
   const {
@@ -20,11 +23,17 @@ const NetworkACL = () => {
     return <div>Error while loading network ACLs: {error.message}</div>;
   }
 
-  const headers = ["Name", "Cluster", "Project name", "Last updated"];
+  const headers = ["Name", "Cluster", "Project", "Last updated"];
   const rows = acls.map((item) => {
     return [
       {
-        content: item.name,
+        content: (
+          <ObjectIncusLink
+            cluster={item.cluster}
+            objectName={item.name}
+            incusPath={`/ui/project/${item.project_name}/network-acl/${item.name}`}
+          />
+        ),
         sortKey: item.name,
       },
       {
@@ -32,11 +41,16 @@ const NetworkACL = () => {
         sortKey: item.cluster,
       },
       {
-        content: item.project_name,
+        content: (
+          <ProjectIncusLink
+            cluster={item.cluster}
+            project={item.project_name}
+          />
+        ),
         sortKey: item.project_name,
       },
       {
-        content: item.last_updated,
+        content: formatDate(item.last_updated),
         sortKey: item.last_updated,
       },
     ];

@@ -1,6 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchStorageVolumes } from "api/storage_volume";
 import DataTable from "components/DataTable";
+import ObjectIncusLink from "components/ObjectIncusLink";
+import ProjectIncusLink from "components/ProjectIncusLink";
+import { formatDate } from "util/date";
 
 const StorageVolume = () => {
   const {
@@ -24,14 +27,20 @@ const StorageVolume = () => {
     "Name",
     "Cluster",
     "Server",
-    "Project name",
+    "Project",
     "Parent name",
     "Last updated",
   ];
   const rows = volumes.map((item) => {
     return [
       {
-        content: item.name,
+        content: (
+          <ObjectIncusLink
+            cluster={item.cluster}
+            objectName={item.name}
+            incusPath={`/ui/project/${item.project_name}/storage/pool/${item.parent_name}/volumes/custom/${item.name}`}
+          />
+        ),
         sortKey: item.name,
       },
       {
@@ -43,7 +52,12 @@ const StorageVolume = () => {
         sortKey: item.server,
       },
       {
-        content: item.project_name,
+        content: (
+          <ProjectIncusLink
+            cluster={item.cluster}
+            project={item.project_name}
+          />
+        ),
         sortKey: item.project_name,
       },
       {
@@ -51,7 +65,7 @@ const StorageVolume = () => {
         sortKey: item.parent_name,
       },
       {
-        content: item.last_updated,
+        content: formatDate(item.last_updated),
         sortKey: item.last_updated,
       },
     ];

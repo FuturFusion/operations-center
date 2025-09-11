@@ -1,6 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchInstances } from "api/instance";
 import DataTable from "components/DataTable";
+import ObjectIncusLink from "components/ObjectIncusLink";
+import ProjectIncusLink from "components/ProjectIncusLink";
+import { formatDate } from "util/date";
 
 const Instance = () => {
   const {
@@ -20,11 +23,17 @@ const Instance = () => {
     return <div>Error while loading instances: {error.message}</div>;
   }
 
-  const headers = ["Name", "Cluster", "Server", "Project name", "Last updated"];
+  const headers = ["Name", "Cluster", "Server", "Project", "Last updated"];
   const rows = instances.map((item) => {
     return [
       {
-        content: item.name,
+        content: (
+          <ObjectIncusLink
+            cluster={item.cluster}
+            objectName={item.name}
+            incusPath={`/ui/project/${item.project_name}/instance/${item.name}`}
+          />
+        ),
         sortKey: item.name,
       },
       {
@@ -36,11 +45,16 @@ const Instance = () => {
         sortKey: item.server,
       },
       {
-        content: item.project_name,
+        content: (
+          <ProjectIncusLink
+            cluster={item.cluster}
+            project={item.project_name}
+          />
+        ),
         sortKey: item.project_name,
       },
       {
-        content: item.last_updated,
+        content: formatDate(item.last_updated),
         sortKey: item.last_updated,
       },
     ];

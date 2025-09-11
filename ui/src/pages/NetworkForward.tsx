@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchNetworkForwards } from "api/network_forward";
 import DataTable from "components/DataTable";
+import ObjectIncusLink from "components/ObjectIncusLink";
+import { formatDate } from "util/date";
 
 const NetworkForward = () => {
   const {
@@ -24,7 +26,13 @@ const NetworkForward = () => {
   const rows = network_forwards.map((item) => {
     return [
       {
-        content: item.name,
+        content: (
+          <ObjectIncusLink
+            cluster={item.cluster}
+            objectName={item.name}
+            incusPath={`/ui/project/default/network/${item.parent_name}/forwards`}
+          />
+        ),
         sortKey: item.name,
       },
       {
@@ -36,7 +44,7 @@ const NetworkForward = () => {
         sortKey: item.parent_name,
       },
       {
-        content: item.last_updated,
+        content: formatDate(item.last_updated),
         sortKey: item.last_updated,
       },
     ];
