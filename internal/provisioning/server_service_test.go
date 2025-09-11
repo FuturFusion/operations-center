@@ -135,6 +135,9 @@ one
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
 				},
+				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
+					return api.ServerTypeIncus, nil
+				},
 			}
 
 			tokenSvc := &svcMock.TokenServiceMock{
@@ -1355,6 +1358,9 @@ func TestServerService_PollPendingServers(t *testing.T) {
 				},
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, tc.clientGetOSDataErr
+				},
+				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
+					return api.ServerTypeIncus, nil
 				},
 			}
 
