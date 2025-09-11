@@ -15,6 +15,7 @@ import (
 	"github.com/maniartech/signals"
 	"gopkg.in/yaml.v3"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -225,13 +226,13 @@ func validate(cfg config) error {
 
 	if (cfg.Network.RestServerAddress != "" && cfg.Network.OperationsCenterAddress == "") ||
 		(cfg.Network.RestServerAddress == "" && cfg.Network.OperationsCenterAddress != "") {
-		return fmt.Errorf(`Invalid config, "network.address" and "network.rest_server_address" either both are set or both are unset`)
+		return domain.NewValidationErrf(`Invalid config, "network.address" and "network.rest_server_address" either both are set or both are unset`)
 	}
 
 	if cfg.Network.OperationsCenterAddress != "" {
 		_, err := url.Parse(cfg.Network.OperationsCenterAddress)
 		if err != nil {
-			return fmt.Errorf(`Invalid config, "network.address" property is expected to be a valid URL: %w`, err)
+			return domain.NewValidationErrf(`Invalid config, "network.address" property is expected to be a valid URL: %v`, err)
 		}
 	}
 
@@ -239,30 +240,30 @@ func validate(cfg config) error {
 	if cfg.Updates.Source != "" {
 		_, err := url.Parse(cfg.Updates.Source)
 		if err != nil {
-			return fmt.Errorf(`Invalid config, "updates.source" property is expected to be a valid URL: %w`, err)
+			return domain.NewValidationErrf(`Invalid config, "updates.source" property is expected to be a valid URL: %v`, err)
 		}
 	}
 
 	if cfg.Updates.SignatureVerificationRootCA == "" {
-		return fmt.Errorf(`Invalid config, "updates.signature_verification_root_ca" can not be empty`)
+		return domain.NewValidationErrf(`Invalid config, "updates.signature_verification_root_ca" can not be empty`)
 	}
 
 	pemBlock, _ := pem.Decode([]byte(cfg.Updates.SignatureVerificationRootCA))
 	if pemBlock == nil {
-		return fmt.Errorf(`Invalid config, pem decode for "updates.signature_verification_root_ca" failed`)
+		return domain.NewValidationErrf(`Invalid config, pem decode for "updates.signature_verification_root_ca" failed`)
 	}
 
 	if cfg.Updates.FilterExpression != "" {
 		_, err := expr.Compile(cfg.Updates.FilterExpression, expr.Env(provisioning.Update{}))
 		if err != nil {
-			return fmt.Errorf(`Invalid config, failed to compile filter expression: %v`, err)
+			return domain.NewValidationErrf(`Invalid config, failed to compile filter expression: %v`, err)
 		}
 	}
 
 	if cfg.Updates.FileFilterExpression != "" {
 		_, err := expr.Compile(cfg.Updates.FileFilterExpression, expr.Env(provisioning.UpdateFile{}))
 		if err != nil {
-			return fmt.Errorf(`Invalid config, failed to compile file filter expression: %v`, err)
+			return domain.NewValidationErrf(`Invalid config, failed to compile file filter expression: %v`, err)
 		}
 	}
 
@@ -270,14 +271,14 @@ func validate(cfg config) error {
 	if cfg.Security.OIDC.Issuer != "" {
 		_, err := url.Parse(cfg.Security.OIDC.Issuer)
 		if err != nil {
-			return fmt.Errorf(`Invalid config, "security.oidc.issuer" property is expected to be a valid URL: %w`, err)
+			return domain.NewValidationErrf(`Invalid config, "security.oidc.issuer" property is expected to be a valid URL: %v`, err)
 		}
 	}
 
 	if cfg.Security.OpenFGA.APIURL != "" {
 		_, err := url.Parse(cfg.Security.OpenFGA.APIURL)
 		if err != nil {
-			return fmt.Errorf(`Invalid config, "security.openfga.api_url" property is expected to be a valid URL: %w`, err)
+			return domain.NewValidationErrf(`Invalid config, "security.openfga.api_url" property is expected to be a valid URL: %v`, err)
 		}
 	}
 
