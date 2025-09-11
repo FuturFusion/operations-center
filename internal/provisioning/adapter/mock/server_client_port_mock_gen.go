@@ -28,6 +28,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
 //				panic("mock out the GetResources method")
 //			},
+//			GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
+//				panic("mock out the GetServerType method")
+//			},
 //			PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 //				panic("mock out the Ping method")
 //			},
@@ -46,6 +49,9 @@ type ServerClientPortMock struct {
 
 	// GetResourcesFunc mocks the GetResources method.
 	GetResourcesFunc func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error)
+
+	// GetServerTypeFunc mocks the GetServerType method.
+	GetServerTypeFunc func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error)
 
 	// PingFunc mocks the Ping method.
 	PingFunc func(ctx context.Context, endpoint provisioning.Endpoint) error
@@ -69,6 +75,13 @@ type ServerClientPortMock struct {
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
 		}
+		// GetServerType holds details about calls to the GetServerType method.
+		GetServerType []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
+		}
 		// Ping holds details about calls to the Ping method.
 		Ping []struct {
 			// Ctx is the ctx argument value.
@@ -86,6 +99,7 @@ type ServerClientPortMock struct {
 	}
 	lockGetOSData           sync.RWMutex
 	lockGetResources        sync.RWMutex
+	lockGetServerType       sync.RWMutex
 	lockPing                sync.RWMutex
 	lockUpdateNetworkConfig sync.RWMutex
 }
@@ -159,6 +173,42 @@ func (mock *ServerClientPortMock) GetResourcesCalls() []struct {
 	mock.lockGetResources.RLock()
 	calls = mock.calls.GetResources
 	mock.lockGetResources.RUnlock()
+	return calls
+}
+
+// GetServerType calls GetServerTypeFunc.
+func (mock *ServerClientPortMock) GetServerType(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
+	if mock.GetServerTypeFunc == nil {
+		panic("ServerClientPortMock.GetServerTypeFunc: method is nil but ServerClientPort.GetServerType was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
+	}{
+		Ctx:      ctx,
+		Endpoint: endpoint,
+	}
+	mock.lockGetServerType.Lock()
+	mock.calls.GetServerType = append(mock.calls.GetServerType, callInfo)
+	mock.lockGetServerType.Unlock()
+	return mock.GetServerTypeFunc(ctx, endpoint)
+}
+
+// GetServerTypeCalls gets all the calls that were made to GetServerType.
+// Check the length with:
+//
+//	len(mockedServerClientPort.GetServerTypeCalls())
+func (mock *ServerClientPortMock) GetServerTypeCalls() []struct {
+	Ctx      context.Context
+	Endpoint provisioning.Endpoint
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
+	}
+	mock.lockGetServerType.RLock()
+	calls = mock.calls.GetServerType
+	mock.lockGetServerType.RUnlock()
 	return calls
 }
 
