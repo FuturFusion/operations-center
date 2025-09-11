@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"flag"
 	"io"
 	"os"
 	"path/filepath"
@@ -11,12 +12,16 @@ import (
 
 	"github.com/dsnet/golib/memfile"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 )
+
+// Run "go test github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform/ -update-goldenfiles" to update the golden files automatically.
+var updateGoldenfiles = flag.Bool("update-goldenfiles", false, "golden files are updated, if this flag is provided")
 
 func TestTerraform_Init(t *testing.T) {
 	tests := []struct {
@@ -51,6 +56,20 @@ func TestTerraform_Init(t *testing.T) {
 			}))
 			require.NoError(t, err)
 
+			const applicationConfig = `---
+storage_pools:
+  - name: shared
+    driver: lvmcluster
+    description: Shared storage pool (lvmcluster)
+    config:
+      lvm.vg_name: vg0
+      source: /dev/sda
+`
+
+			applicationSeedConfig := map[string]any{}
+			err = yaml.Unmarshal([]byte(applicationConfig), &applicationSeedConfig)
+			require.NoError(t, err)
+
 			// Run tests
 			err = tf.Init(t.Context(), tc.clusterName, provisioning.ClusterProvisioningConfig{
 				Servers: []provisioning.Server{
@@ -64,6 +83,8 @@ func TestTerraform_Init(t *testing.T) {
 						ClusterCertificate: ptr.To("cluster certificate"),
 					},
 				},
+
+				ApplicationSeedConfig: applicationSeedConfig,
 			})
 
 			// Assert
@@ -77,12 +98,10 @@ func TestTerraform_Init(t *testing.T) {
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_project_internal.tf"))
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_server.tf"))
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_storage_pool_local.tf"))
-			fileContains(t, filepath.Join(tmpDir, tc.clusterName, "providers.tf"),
-				`"127.0.0.1"`,
-				`"8443"`,
-				`"https"`,
-			)
-			fileContains(t, filepath.Join(tmpDir, tc.clusterName, "resources_network_locals.tf"), `"enp5s0"`)
+
+			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "providers.tf")
+			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_network_locals.tf")
+			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_storage_pools.tf")
 		})
 	}
 }
@@ -97,6 +116,28 @@ func fileContains(t *testing.T, filename string, contains ...string) {
 	for _, contain := range contains {
 		require.Contains(t, string(body), contain)
 	}
+}
+
+func fileMatch(t *testing.T, path string, name string) {
+	t.Helper()
+
+	filename := filepath.Join(path, name)
+
+	require.FileExists(t, filename)
+
+	body, err := os.ReadFile(filename)
+	require.NoError(t, err)
+
+	goldenFilename := filepath.Join("./testdata", name)
+	if *updateGoldenfiles {
+		err := os.WriteFile(goldenFilename, body, 0o600)
+		require.NoError(t, err)
+	}
+
+	want, err := os.ReadFile(goldenFilename)
+	require.NoError(t, err)
+
+	require.Equal(t, want, body)
 }
 
 func TestTerraform_Apply(t *testing.T) {
