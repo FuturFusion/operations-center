@@ -11,13 +11,16 @@ import (
 )
 
 type Cluster struct {
-	ID            int64
-	Name          string `db:"primary=yes"`
-	ConnectionURL string
-	Certificate   string
-	Status        api.ClusterStatus
-	ServerNames   []string  `db:"ignore"`
-	LastUpdated   time.Time `db:"update_timestamp"`
+	ID                    int64
+	Name                  string `db:"primary=yes"`
+	ConnectionURL         string
+	Certificate           string
+	Status                api.ClusterStatus
+	ServerNames           []string       `db:"ignore"`
+	ServerType            api.ServerType `db:"ignore"`
+	ServicesConfig        map[string]any `db:"ignore"`
+	ApplicationSeedConfig map[string]any `db:"ignore"`
+	LastUpdated           time.Time      `db:"update_timestamp"`
 }
 
 const nameProhibitedCharacters = `\/:*?"<>|`
@@ -31,13 +34,26 @@ func (c Cluster) Validate() error {
 		return domain.NewValidationErrf("Invalid cluster, name can not contain any of %q", nameProhibitedCharacters)
 	}
 
+	_, err := url.Parse(c.ConnectionURL)
+	if err != nil {
+		return domain.NewValidationErrf("Invalid cluster, connection URL is not valid: %v", err)
+	}
+
+	return nil
+}
+
+func (c Cluster) ValidateCreate() error {
+	err := c.Validate()
+	if err != nil {
+		return err
+	}
+
 	if len(c.ServerNames) == 0 {
 		return domain.NewValidationErrf("Invalid cluster, list of server names can not be empty")
 	}
 
-	_, err := url.Parse(c.ConnectionURL)
-	if err != nil {
-		return domain.NewValidationErrf("Invalid cluster, connection URL is not valid: %v", err)
+	if c.ServerType == api.ServerTypeUnknown || c.ServerType == "" {
+		return domain.NewValidationErrf("Invalid cluster definition, server type can not be %q", c.ServerType)
 	}
 
 	return nil
@@ -94,4 +110,6 @@ func (c ClusterEndpoint) GetEndpoints() iter.Seq[Endpoint] {
 type ClusterProvisioningConfig struct {
 	ClusterEndpoint ClusterEndpoint
 	Servers         []Server
+
+	ApplicationSeedConfig map[string]any
 }

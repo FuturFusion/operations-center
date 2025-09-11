@@ -12,8 +12,8 @@ resource "incus_storage_pool" "local_per_node" {
 
 resource "incus_storage_pool" "local" {
   name        = "local"
-  description = "Local storage pool (on system drive)"
   driver      = "zfs"
+  description = "Local storage pool (on system drive)"
 
   depends_on = [incus_storage_pool.local_per_node]
 }

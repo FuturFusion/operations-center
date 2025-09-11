@@ -43,12 +43,12 @@ func NewClusterProvisioningPortWithSlog(base provisioning.ClusterProvisioningPor
 }
 
 // Apply implements provisioning.ClusterProvisioningPort.
-func (_d ClusterProvisioningPortWithSlog) Apply(ctx context.Context, name string) (err error) {
+func (_d ClusterProvisioningPortWithSlog) Apply(ctx context.Context, cluster provisioning.Cluster) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("name", name),
+			slog.Any("cluster", cluster),
 		)
 	}
 	log.Debug("=> calling Apply")
@@ -73,7 +73,7 @@ func (_d ClusterProvisioningPortWithSlog) Apply(ctx context.Context, name string
 			log.Debug("<= method Apply finished")
 		}
 	}()
-	return _d._base.Apply(ctx, name)
+	return _d._base.Apply(ctx, cluster)
 }
 
 // GetArchive implements provisioning.ClusterProvisioningPort.

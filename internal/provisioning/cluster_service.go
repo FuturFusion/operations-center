@@ -97,7 +97,7 @@ func (s *clusterService) SetInventorySyncers(inventorySyncers []InventorySyncer)
 //     Update the default profile in the default project to use incusbr0 for networking.
 //     Update the default profile in the internal project to use internal-mesh for networking.
 func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster, error) {
-	err := newCluster.Validate()
+	err := newCluster.ValidateCreate()
 	if err != nil {
 		return Cluster{}, err
 	}
@@ -148,6 +148,13 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		return newCluster, err
 	}
 
+	// Verify, that all the servers that are clustered have the expected server type.
+	for _, server := range servers {
+		if server.Type != newCluster.ServerType {
+			return newCluster, fmt.Errorf("Server %q has type %q but %q was expected", server.Name, server.Type, newCluster.ServerType)
+		}
+	}
+
 	// Perform pre-clustering and clustering API calls.
 
 	// Check, that all the listed servers are online.
@@ -162,9 +169,35 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 
 	// Push pre-clustering configuration to the servers.
 	for _, server := range servers {
-		err = s.client.EnableOSServiceLVM(ctx, server)
-		if err != nil {
-			return newCluster, fmt.Errorf("Failed to enable OS service LVM on %q: %w", server.Name, err)
+		for service, configAny := range newCluster.ServicesConfig {
+			config, ok := configAny.(map[string]any)
+			if !ok {
+				return newCluster, fmt.Errorf("Failed to enable OS service %q on %q: config is not an object", service, server.Name)
+			}
+
+			// LVM system_id is controlled by Operations Center and not the user.
+			// system_id is required to be between 1 and 2000. Just using the server.ID
+			// will fail, when we hit values > 2000.
+			if service == "lvm" {
+				enabledAny := config["enabled"]
+				enabled, ok := enabledAny.(bool)
+				if !ok {
+					return newCluster, fmt.Errorf(`Failed to enable OS service "lvm" on %q: "enabled" is not a bool`, server.Name)
+				}
+
+				if enabled {
+					if server.ID > 2000 {
+						return newCluster, fmt.Errorf(`Failed to enable OS service "lvm" on %q: can not enable LVM on servers with internal ID > 2000`, server.Name)
+					}
+
+					config["system_id"] = server.ID
+				}
+			}
+
+			err = s.client.EnableOSService(ctx, server, service, config)
+			if err != nil {
+				return newCluster, fmt.Errorf("Failed to enable OS service %q on %q: %w", service, server.Name, err)
+			}
 		}
 
 		// Ignore error, connection URL has been parsed by incus client already.
@@ -285,14 +318,15 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 
 	// Perform post-clustering initialization using provisioner (Terraform).
 	err = s.provisioner.Init(ctx, newCluster.Name, ClusterProvisioningConfig{
-		ClusterEndpoint: clusterEndpoint,
-		Servers:         servers,
+		ClusterEndpoint:       clusterEndpoint,
+		Servers:               servers,
+		ApplicationSeedConfig: newCluster.ApplicationSeedConfig,
 	})
 	if err != nil {
 		return newCluster, err
 	}
 
-	err = s.provisioner.Apply(ctx, newCluster.Name)
+	err = s.provisioner.Apply(ctx, newCluster)
 	if err != nil {
 		return newCluster, err
 	}

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +14,12 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"github.com/Masterminds/sprig/v3"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclwrite"
+	incusapi "github.com/lxc/incus/v6/shared/api"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/FuturFusion/operations-center/internal/file"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -28,6 +35,8 @@ type terraform struct {
 	terraformInitFunc  func(ctx context.Context, configDir string) error
 	terraformApplyFunc func(ctx context.Context, configDir string) error
 }
+
+var _ provisioning.ClusterProvisioningPort = &terraform{}
 
 type Option func(*terraform)
 
@@ -53,11 +62,16 @@ func New(storageDir string, clientCertDir string, opts ...Option) (terraform, er
 }
 
 func (t terraform) Init(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
+	incusPreseed, err := incusPreseed(config.ApplicationSeedConfig)
+	if err != nil {
+		return fmt.Errorf("Application seed config is not valid: %w", err)
+	}
+
 	// Since we override the INCUS_CONF directory with the operations center var dir,
 	// we need to store the server certificates in the "servercerts" folder
 	// as expected by Incus.
 	servercertsDir := filepath.Join(t.clientCertDir, "servercerts")
-	err := os.MkdirAll(servercertsDir, 0o700)
+	err = os.MkdirAll(servercertsDir, 0o700)
 	if err != nil {
 		return fmt.Errorf("Failed to create directory %q: %w", servercertsDir, err)
 	}
@@ -74,7 +88,8 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 		return fmt.Errorf("Failed to create directory target terraform configuration directory for cluster %q: %w", name, err)
 	}
 
-	tmpl, err := template.ParseFS(templatesFS, "templates/*")
+	tmpl := template.New("").Funcs(sprig.FuncMap())
+	tmpl, err = tmpl.ParseFS(templatesFS, "templates/*")
 	if err != nil {
 		return fmt.Errorf("Failed to parse terraform configuration templates: %w", err)
 	}
@@ -117,6 +132,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 					"ClusterAddress":       clusterAddress.Hostname(),
 					"ClusterPort":          clusterAddress.Port(),
 					"MeshTunnelInterfaces": meshTunnelInterfaces,
+					"IncusPreseed":         incusPreseed,
 				},
 				)
 				if err != nil {
@@ -151,8 +167,23 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 	return nil
 }
 
-func (t terraform) Apply(ctx context.Context, name string) error {
-	configDir := filepath.Join(t.storageDir, name)
+func incusPreseed(config map[string]any) (incusapi.InitLocalPreseed, error) {
+	body, err := json.Marshal(config)
+	if err != nil {
+		return incusapi.InitLocalPreseed{}, err
+	}
+
+	var preseed incusapi.InitLocalPreseed
+	err = json.Unmarshal(body, &preseed)
+	if err != nil {
+		return incusapi.InitLocalPreseed{}, err
+	}
+
+	return preseed, nil
+}
+
+func (t terraform) Apply(ctx context.Context, cluster provisioning.Cluster) error {
+	configDir := filepath.Join(t.storageDir, cluster.Name)
 	if !file.PathExists(configDir) {
 		return fmt.Errorf("Initialized Terraform config not found")
 	}
@@ -160,6 +191,42 @@ func (t terraform) Apply(ctx context.Context, name string) error {
 	err := t.terraformApplyFunc(ctx, configDir)
 	if err != nil {
 		return fmt.Errorf("Failed to apply Terraform configuration: %w", err)
+	}
+
+	err = terraformConfigPostProcessing(configDir, cluster)
+	if err != nil {
+		return fmt.Errorf("Failed to post process terraform configuration: %w", err)
+	}
+
+	return nil
+}
+
+// terraformConfigPostProcessing updates the Terraform configuration after
+// successful initial apply for future external use.
+func terraformConfigPostProcessing(path string, cluster provisioning.Cluster) error {
+	// Update "remote" for incus provider to match the cluster's connection URL.
+	providerTf := filepath.Join(path, "providers.tf")
+	src, err := os.ReadFile(providerTf)
+	if err != nil {
+		return err
+	}
+
+	f, diags := hclwrite.ParseConfig(src, "providers.tf", hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return errors.Join(diags.Errs()...)
+	}
+
+	clusterURL, err := url.Parse(cluster.ConnectionURL)
+	if err != nil {
+		return err
+	}
+
+	f.Body().FirstMatchingBlock("provider", []string{"incus"}).Body().FirstMatchingBlock("remote", []string{}).Body().SetAttributeValue("address", cty.StringVal(clusterURL.Hostname()))
+	f.Body().FirstMatchingBlock("provider", []string{"incus"}).Body().FirstMatchingBlock("remote", []string{}).Body().SetAttributeValue("port", cty.StringVal(clusterURL.Port()))
+
+	err = os.WriteFile(providerTf, f.Bytes(), 0o600)
+	if err != nil {
+		return err
 	}
 
 	return nil
