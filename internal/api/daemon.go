@@ -583,7 +583,7 @@ func (d *Daemon) setupBackgroundTasks(
 	}
 
 	var updateSourceOptions []task.EveryOption
-	if config.GetUpdates().SourcePollSkipFirst {
+	if config.SourcePollSkipFirst() {
 		updateSourceOptions = append(updateSourceOptions, task.SkipFirst)
 	}
 

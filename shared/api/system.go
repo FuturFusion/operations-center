@@ -99,12 +99,6 @@ type SystemUpdatesPut struct {
 	// Source is the URL of the origin, the updates should be fetched from.
 	Source string `json:"source" yaml:"source"`
 
-	// If SourcePollSkipFirst is true, the first execution of the task to update
-	// the updates from the configured source is skipped. This is mainly useful
-	// for development and since it only affects the first execution after the
-	// start of the daemon, this setting is not available thought the JSON API.
-	SourcePollSkipFirst bool `json:"source_skip_first_update" yaml:"source_skip_first_update"`
-
 	// Root CA certificate used to verify the signature of index.sjson.
 	// Example: -----BEGIN CERTIFICATE-----\nMII...\n-----END CERTIFICATE-----
 	SignatureVerificationRootCA string `json:"signature_verification_root_ca" yaml:"signature_verification_root_ca"`
