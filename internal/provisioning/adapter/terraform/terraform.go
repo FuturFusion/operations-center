@@ -109,7 +109,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 			case ".gotmpl":
 				meshTunnelInterfaces := make(map[string]string, len(config.Servers))
 				for _, server := range config.Servers {
-					meshTunnelInterfaces[server.Name] = detectClusteringInterface(server.OSData.Network)
+					meshTunnelInterfaces[server.Name] = detectClusterInterface(server.OSData.Network)
 				}
 
 				err = tmpl.ExecuteTemplate(targetFile, templateFile.Name(), map[string]any{

@@ -10,12 +10,14 @@ import (
 	"testing"
 
 	"github.com/dsnet/golib/memfile"
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestTerraform_Init(t *testing.T) {
@@ -56,6 +58,18 @@ func TestTerraform_Init(t *testing.T) {
 				Servers: []provisioning.Server{
 					{
 						Name: "server-1",
+						OSData: api.OSData{
+							Network: incusosapi.SystemNetwork{
+								State: incusosapi.SystemNetworkState{
+									Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
+										"enp5s0": {
+											Roles:     []string{"cluster"},
+											Addresses: []string{"1.2.3.4"},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				ClusterEndpoint: provisioning.ClusterEndpoint{

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_detectInterface(t *testing.T) {
+func Test_detectClusterInterface(t *testing.T) {
 	tests := []struct {
 		name    string
 		network incusosapi.SystemNetwork
@@ -17,7 +17,7 @@ func Test_detectInterface(t *testing.T) {
 		{
 			name: "default - empty system network state",
 
-			wantNic: "enp5s0",
+			wantNic: "",
 		},
 		{
 			name: "interface with clustering role and IP address",
@@ -26,10 +26,10 @@ func Test_detectInterface(t *testing.T) {
 					Interfaces: map[string]incusosapi.SystemNetworkInterfaceState{
 						"eth0": {
 							Addresses: []string{"192.168.1.2"},
-							Roles:     []string{"clustering"},
+							Roles:     []string{"cluster"},
 						},
 						"eth1": {
-							Roles: []string{"clustering"},
+							Roles: []string{"cluster"},
 						},
 						"eth2": {
 							Addresses: []string{"192.168.1.2"},
@@ -44,7 +44,7 @@ func Test_detectInterface(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			nic := detectClusteringInterface(tc.network)
+			nic := detectClusterInterface(tc.network)
 
 			require.Equal(t, tc.wantNic, nic)
 		})
