@@ -23,5 +23,8 @@ resource "incus_storage_pool" "shared" {
   driver      = "lvmcluster"
   description = "Shared storage pool (lvmcluster)"
 
+  config = {
+  }
+
   depends_on = [incus_storage_pool.shared_per_node]
 }

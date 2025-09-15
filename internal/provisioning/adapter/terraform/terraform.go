@@ -89,6 +89,9 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 	}
 
 	tmpl := template.New("").Funcs(sprig.FuncMap())
+	tmpl = tmpl.Funcs(template.FuncMap{
+		"isNodeSpecificStorageConfig": isNodeSpecificStorageConfig,
+	})
 	tmpl, err = tmpl.ParseFS(templatesFS, "templates/*")
 	if err != nil {
 		return fmt.Errorf("Failed to parse terraform configuration templates: %w", err)
