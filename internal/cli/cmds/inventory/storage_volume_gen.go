@@ -66,7 +66,7 @@ type cmdStorageVolumeList struct {
 	flagFormat  string
 }
 
-const storageVolumeDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
+const storageVolumeDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .ParentName }},{{ .Name }},{{ .Type }},{{ .LastUpdated }}`
 
 var storageVolumeColumnSorters = map[string]sort.ColumnSorter{
 	"Cluster": {
@@ -82,6 +82,9 @@ var storageVolumeColumnSorters = map[string]sort.ColumnSorter{
 		Less: sort.NaturalLess,
 	},
 	"Name": {
+		Less: sort.NaturalLess,
+	},
+	"Type": {
 		Less: sort.NaturalLess,
 	},
 }
@@ -232,6 +235,7 @@ func (c *cmdStorageVolumeShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Project Name: %s\n", storageVolume.ProjectName)
 	fmt.Printf("Storage Pool Name: %s\n", storageVolume.StoragePoolName)
 	fmt.Printf("Name: %s\n", storageVolume.Name)
+	fmt.Printf("Type: %s\n", storageVolume.Type)
 	fmt.Printf("Last Updated: %s\n", storageVolume.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 
