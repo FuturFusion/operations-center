@@ -111,12 +111,12 @@ storage_pools:
 
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "data_cluster.tf"))
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_network.tf"))
-			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_profile_default.tf"))
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_project_internal.tf"))
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_storage_pool_local.tf"))
 
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "providers.tf")
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_network_locals.tf")
+			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_profiles.tf")
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_server.tf")
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_storage_pools.tf")
 		})
@@ -376,7 +376,7 @@ func TestTerraform_GetArchive(t *testing.T) {
 				"providers.tf":                    false,
 				"resources_network_locals.tf":     false,
 				"resources_network.tf":            false,
-				"resources_profile_default.tf":    false,
+				"resources_profiles.tf":           false,
 				"resources_project_internal.tf":   false,
 				"resources_server.tf":             false,
 				"resources_storage_pool_local.tf": false,

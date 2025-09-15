@@ -188,6 +188,109 @@ func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed,
 		return incusapi.InitLocalPreseed{}, err
 	}
 
+	// Set default configuration values for default profiles of the default and
+	// the internal projects, if these profiles exist in the preseed.
+	var hasDefaultProjectDefaultProfile bool
+	var hasInternalProjectDefaultProfile bool
+	for i := range preseed.Profiles {
+		switch {
+		case preseed.Profiles[i].Project == "" && preseed.Profiles[i].Name != "default":
+			if preseed.Profiles[i].Devices == nil {
+				preseed.Profiles[i].Devices = map[string]map[string]string{}
+			}
+
+			_, ok := preseed.Profiles[i].Devices["root"]
+			if !ok {
+				preseed.Profiles[i].Devices["root"] = map[string]string{
+					"type": "disk",
+					"path": "/",
+					"pool": "local",
+				}
+			}
+
+			_, ok = preseed.Profiles[i].Devices["eth0"]
+			if !ok {
+				preseed.Profiles[i].Devices["eth0"] = map[string]string{
+					"type":    "nic",
+					"network": "incusbr0",
+				}
+			}
+
+			hasDefaultProjectDefaultProfile = true
+
+		case preseed.Profiles[i].Project == "internal" && preseed.Profiles[i].Name == "default":
+			if preseed.Profiles[i].Devices == nil {
+				preseed.Profiles[i].Devices = map[string]map[string]string{}
+			}
+
+			_, ok := preseed.Profiles[i].Devices["root"]
+			if !ok {
+				preseed.Profiles[i].Devices["root"] = map[string]string{
+					"type": "disk",
+					"path": "/",
+					"pool": "local",
+				}
+			}
+
+			_, ok = preseed.Profiles[i].Devices["eth0"]
+			if !ok {
+				preseed.Profiles[i].Devices["eth0"] = map[string]string{
+					"type":    "nic",
+					"network": "meshbr0",
+				}
+			}
+
+			hasInternalProjectDefaultProfile = true
+		}
+	}
+
+	// Add default profile for the default project, if it is not defined in the
+	// preseed.
+	if !hasDefaultProjectDefaultProfile {
+		preseed.Profiles = append(preseed.Profiles, incusapi.InitProfileProjectPost{
+			ProfilesPost: incusapi.ProfilesPost{
+				Name: "default",
+				ProfilePut: incusapi.ProfilePut{
+					Devices: map[string]map[string]string{
+						"root": {
+							"type": "disk",
+							"path": "/",
+							"pool": "local",
+						},
+						"eth0": {
+							"type":    "nic",
+							"network": "incusbr0",
+						},
+					},
+				},
+			},
+		})
+	}
+
+	// Add default profile for the internal project, if it is not defined in the
+	// preseed.
+	if !hasInternalProjectDefaultProfile {
+		preseed.Profiles = append(preseed.Profiles, incusapi.InitProfileProjectPost{
+			ProfilesPost: incusapi.ProfilesPost{
+				Name: "default",
+				ProfilePut: incusapi.ProfilePut{
+					Devices: map[string]map[string]string{
+						"root": {
+							"type": "disk",
+							"path": "/",
+							"pool": "local",
+						},
+						"eth0": {
+							"type":    "nic",
+							"network": "meshbr0",
+						},
+					},
+				},
+			},
+			Project: "internal",
+		})
+	}
+
 	return preseed, nil
 }
 
