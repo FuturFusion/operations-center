@@ -26,18 +26,84 @@ func Test_validate(t *testing.T) {
 
 		// Network
 		{
-			name: "require network.rest_server_address to be valid",
+			name: "require network.rest_server_address to be valid - multiple single colons",
 			cfg: config{
 				Network: api.SystemNetwork{
 					SystemNetworkPut: api.SystemNetworkPut{
-						RestServerAddress:       "127.0.0.1:0:7443", // invalid address
+						RestServerAddress:       "127.0.0.1:0:7443", // invalid multiple single colons
 						OperationsCenterAddress: "http://localhost:7443",
 					},
 				},
 				Updates: defaultUpdates,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid config, "network.rest_server_address" is not a valid address:`)
+			},
+		},
+		{
+			name: "require network.rest_server_address to be valid - not an ip",
+			cfg: config{
+				Network: api.SystemNetwork{
+					SystemNetworkPut: api.SystemNetworkPut{
+						RestServerAddress:       "localhost:7443", // invalid not an ip
+						OperationsCenterAddress: "http://localhost:7443",
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid config, "network.rest_server_address" does not contain a valid ip`)
+			},
+		},
+		{
+			name: "require network.rest_server_address to be valid - invalid port",
+			cfg: config{
+				Network: api.SystemNetwork{
+					SystemNetworkPut: api.SystemNetworkPut{
+						RestServerAddress:       "127.0.0.1:abc", // invalid port
+						OperationsCenterAddress: "http://localhost:7443",
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid config, "network.rest_server_address" does not contain a valid port`)
+			},
+		},
+		{
+			name: "require network.rest_server_address to be valid - port out of range",
+			cfg: config{
+				Network: api.SystemNetwork{
+					SystemNetworkPut: api.SystemNetworkPut{
+						RestServerAddress:       "127.0.0.1:0", // invalid port out of range
+						OperationsCenterAddress: "http://localhost:7443",
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid config, "network.rest_server_address" port out of range (1 - 65535)`)
+			},
+		},
+		{
+			name: "require network.rest_server_address to be valid - port out of range",
+			cfg: config{
+				Network: api.SystemNetwork{
+					SystemNetworkPut: api.SystemNetworkPut{
+						RestServerAddress:       "127.0.0.1:70000", // invalid port out of range
+						OperationsCenterAddress: "http://localhost:7443",
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid config, "network.rest_server_address" port out of range (1 - 65535)`)
+			},
 		},
 		{
 			name: "require network.rest_server_address if network.address is set",
@@ -50,34 +116,40 @@ func Test_validate(t *testing.T) {
 				Updates: defaultUpdates,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid config, "network.address" and "network.rest_server_address" either both are set or both are unset`)
+			},
 		},
 		{
 			name: "require network.address if network.rest_server_address is set",
 			cfg: config{
 				Network: api.SystemNetwork{
 					SystemNetworkPut: api.SystemNetworkPut{
-						RestServerAddress: "localhost:7443",
+						RestServerAddress: "127.0.0.1:7443",
 					},
 				},
 				Updates: defaultUpdates,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid config, "network.address" and "network.rest_server_address" either both are set or both are unset`)
+			},
 		},
 		{
 			name: "invalid network.address",
 			cfg: config{
 				Network: api.SystemNetwork{
 					SystemNetworkPut: api.SystemNetworkPut{
-						RestServerAddress:       "localhost:7443",
+						RestServerAddress:       "127.0.0.1:7443",
 						OperationsCenterAddress: ":|\\", // invalid,
 					},
 				},
 				Updates: defaultUpdates,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid config, "network.address" property is expected to be a valid URL:`)
+			},
 		},
 
 		// Updates
