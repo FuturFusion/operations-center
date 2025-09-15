@@ -193,6 +193,7 @@ func (i *storageVolumeHandler) storageVolumesGet(r *http.Request) response.Respo
 				ProjectName:     storageVolume.ProjectName,
 				StoragePoolName: storageVolume.StoragePoolName,
 				Name:            storageVolume.Name,
+				Type:            storageVolume.Type,
 				Object:          storageVolume.Object,
 				LastUpdated:     storageVolume.LastUpdated,
 			})
@@ -268,6 +269,7 @@ func (i *storageVolumeHandler) storageVolumeGet(r *http.Request) response.Respon
 			ProjectName:     storageVolume.ProjectName,
 			StoragePoolName: storageVolume.StoragePoolName,
 			Name:            storageVolume.Name,
+			Type:            storageVolume.Type,
 			Object:          storageVolume.Object,
 			LastUpdated:     storageVolume.LastUpdated,
 		},

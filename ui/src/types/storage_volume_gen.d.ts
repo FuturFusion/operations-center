@@ -7,6 +7,7 @@ export interface StorageVolume {
   project_name: string;
   parent_name: string;
   name: string;
+  type: string;
   object: string;
   last_updated: string;
 }
