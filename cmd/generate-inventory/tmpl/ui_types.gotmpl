@@ -11,6 +11,9 @@ export interface {{ .Name | pascalcase }} {
   parent_name: string;
 {{- end }}
   name: string;
+{{- range .ExtraAttributes }}
+  {{ .Name }}: string;
+{{- end }}
   object: string;
   last_updated: string;
 }

@@ -89,6 +89,9 @@ The basic idea is:
 {{- $defaultColumns = append $defaultColumns "ParentName" -}}
 {{- end }}
 {{- $defaultColumns = append $defaultColumns "Name" -}}
+{{- range .ExtraAttributes }}
+	{{- $defaultColumns = append $defaultColumns (.Name | pascalcase) -}}
+{{- end }}
 const {{ .Name | camelcase }}DefaultColumns = `{{- range $item := $defaultColumns -}} {{- "{{" }} .{{ $item }} {{ "}}" -}}, {{- end -}}{{- "{{ .LastUpdated }}" -}}`
 
 var {{ .Name | camelcase }}ColumnSorters = map[string]sort.ColumnSorter{
@@ -113,6 +116,11 @@ var {{ .Name | camelcase }}ColumnSorters = map[string]sort.ColumnSorter{
 	"Name": {
 		Less: sort.NaturalLess,
 	},
+{{- range .ExtraAttributes }}
+	"{{ .Name | pascalcase }}": {
+		Less: sort.NaturalLess,
+	},
+{{- end }}
 }
 
 func (c *cmd{{ .Name | pascalcase }}List) Command() *cobra.Command {
@@ -275,6 +283,9 @@ func (c *cmd{{ .Name | pascalcase }}Show) Run(cmd *cobra.Command, args []string)
 	fmt.Printf("{{ .ParentName | titlecase }} Name: %s\n", {{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name)
 {{- end }}
 	fmt.Printf("Name: %s\n", {{ .Name | camelcase }}.Name)
+	{{- range .ExtraAttributes }}
+		fmt.Printf("{{ .Name | titlecase }}: %s\n", {{ $.Name | camelcase }}.{{ .Name | pascalcase }})
+	{{- end }}
 	fmt.Printf("Last Updated: %s\n", {{ .Name | camelcase }}.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", objectJSON)
 

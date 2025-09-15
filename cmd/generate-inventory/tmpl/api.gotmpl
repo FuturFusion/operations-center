@@ -209,6 +209,9 @@ func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *htt
 					{{ .ParentName | pascalcase }}Name: {{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name,
 		{{- end }}
 					Name:        {{ .Name | camelcase }}.Name,
+					{{- range .ExtraAttributes }}
+						{{ .Name | pascalcase }}: {{ $.Name | camelcase }}.{{ .Name | pascalcase }},
+					{{- end }}
 					Object:      {{ .Name | camelcase }}.Object,
 					LastUpdated: {{ .Name | camelcase }}.LastUpdated,
 			})
@@ -290,6 +293,9 @@ func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}Get(r *http.Requ
 			{{ .ParentName | pascalcase }}Name: {{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name,
 {{- end }}
 			Name:        {{ .Name | camelcase }}.Name,
+			{{- range .ExtraAttributes }}
+				{{ .Name | pascalcase }}: {{ $.Name | camelcase }}.{{ .Name | pascalcase }},
+			{{- end }}
 			Object:      {{ .Name | camelcase }}.Object,
 			LastUpdated: {{ .Name | camelcase }}.LastUpdated,
 		},
