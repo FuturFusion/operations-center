@@ -62,7 +62,7 @@ func New(storageDir string, clientCertDir string, opts ...Option) (terraform, er
 }
 
 func (t terraform) Init(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
-	incusPreseed, err := incusPreseed(config.ApplicationSeedConfig)
+	incusPreseed, err := incusPreseedWithDefaults(config.ApplicationSeedConfig)
 	if err != nil {
 		return fmt.Errorf("Application seed config is not valid: %w", err)
 	}
@@ -90,6 +90,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 
 	tmpl := template.New("").Funcs(sprig.FuncMap())
 	tmpl = tmpl.Funcs(template.FuncMap{
+		"isNodeSpecificConfig":        isNodeSpecificConfig,
 		"isNodeSpecificStorageConfig": isNodeSpecificStorageConfig,
 	})
 	tmpl, err = tmpl.ParseFS(templatesFS, "templates/*")
@@ -170,13 +171,18 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 	return nil
 }
 
-func incusPreseed(config map[string]any) (incusapi.InitLocalPreseed, error) {
+func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed, error) {
 	body, err := json.Marshal(config)
 	if err != nil {
 		return incusapi.InitLocalPreseed{}, err
 	}
 
-	var preseed incusapi.InitLocalPreseed
+	preseed := incusapi.InitLocalPreseed{
+		ServerPut: incusapi.ServerPut{
+			Config: map[string]string{},
+		},
+	}
+
 	err = json.Unmarshal(body, &preseed)
 	if err != nil {
 		return incusapi.InitLocalPreseed{}, err

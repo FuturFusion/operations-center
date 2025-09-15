@@ -59,6 +59,9 @@ func TestTerraform_Init(t *testing.T) {
 			require.NoError(t, err)
 
 			const applicationConfig = `---
+config:
+  user.ui.sso_only: "true"
+  storage.images_volume: shared
 storage_pools:
   - name: shared
     driver: lvmcluster
@@ -110,11 +113,11 @@ storage_pools:
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_network.tf"))
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_profile_default.tf"))
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_project_internal.tf"))
-			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_server.tf"))
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_storage_pool_local.tf"))
 
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "providers.tf")
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_network_locals.tf")
+			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_server.tf")
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_storage_pools.tf")
 		})
 	}
