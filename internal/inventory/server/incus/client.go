@@ -2,6 +2,8 @@ package incus
 
 import (
 	"context"
+	"net/http"
+	"net/url"
 
 	incus "github.com/lxc/incus/v6/client"
 
@@ -26,6 +28,11 @@ func (s serverClient) getClient(ctx context.Context, endpoint provisioning.Endpo
 		TLSClientCert: s.clientCert,
 		TLSClientKey:  s.clientKey,
 		TLSServerCert: endpoint.GetCertificate(),
+
+		// Bypass system proxy for communication to Incus OS servers.
+		Proxy: func(r *http.Request) (*url.URL, error) {
+			return nil, nil
+		},
 	})
 }
 
