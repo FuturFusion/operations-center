@@ -571,6 +571,10 @@ func (d *Daemon) setupBackgroundTasks(
 	serverSvc provisioning.ServerService,
 	clusterSvc provisioning.ClusterService,
 ) {
+	if config.IsBackgroundTasksDisabled() {
+		return
+	}
+
 	// Start background task to refresh updates from the sources.
 	refreshUpdatesFromSourcesTask := func(ctx context.Context) {
 		slog.InfoContext(ctx, "Refresh updates triggered")
