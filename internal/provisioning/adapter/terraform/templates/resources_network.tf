@@ -10,7 +10,9 @@ resource "incus_network" "incusbr0" {
   name        = "incusbr0"
   description = "Local network bridge (NAT)"
 
-  depends_on = [incus_network.incusbr0_per_node]
+  depends_on = [
+    incus_network.incusbr0_per_node
+  ]
 }
 
 // Generate random values for the meshbr0 IPv6 subnet.
@@ -50,5 +52,7 @@ resource "incus_network" "meshbr0" {
     "tunnel.mesh.protocol" = "vxlan"
   }
 
-  depends_on = [incus_network.meshbr0_per_node]
+  depends_on = [
+    incus_network.meshbr0_per_node
+  ]
 }
