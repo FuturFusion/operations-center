@@ -25,11 +25,10 @@ resource "incus_server" "this_per_node" {
   }
 
   depends_on = [
-    incus_storage_volume.backups_per_node,
-    incus_storage_volume.images_per_node,
-    {{- range .IncusPreseed.StoragePools }}
-    incus_storage_pool.{{ .Name }},
-    {{- end }}
+    null_resource.post_projects,
+    null_resource.post_networks,
+    null_resource.post_storage_pools,
+    null_resource.post_storage_volumes,
   ]
 
   target = each.key

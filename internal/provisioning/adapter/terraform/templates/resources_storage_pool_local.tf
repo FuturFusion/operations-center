@@ -1,23 +1,3 @@
-resource "incus_storage_pool" "local_per_node" {
-  for_each = local.members
-
-  name   = "local"
-  driver = "zfs"
-  target = each.key
-
-  config = {
-    source = "local/incus"
-  }
-}
-
-resource "incus_storage_pool" "local" {
-  name        = "local"
-  driver      = "zfs"
-  description = "Local storage pool (on system drive)"
-
-  depends_on = [incus_storage_pool.local_per_node]
-}
-
 resource "incus_storage_volume" "backups_per_node" {
   for_each = local.members
 

@@ -52,6 +52,16 @@ resource "incus_storage_pool" "{{ .Name }}" {
     {{- end }}
   }
 
-  depends_on = [incus_storage_pool.{{ .Name }}_per_node]
+  depends_on = [
+    incus_storage_pool.{{ .Name }}_per_node
+  ]
 }
+
 {{ end -}}
+resource "null_resource" "post_storage_pools" {
+  depends_on = [
+{{- range .IncusPreseed.StoragePools }}
+    incus_storage_pool.{{ .Name }},
+{{- end }}
+  ]
+}
