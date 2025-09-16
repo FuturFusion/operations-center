@@ -11,6 +11,16 @@ export interface TokenFormValues {
   uses_remaining: number;
 }
 
+type ImageType = "iso" | "raw";
+
+export interface ApplicationFormValues {
+  name: string;
+}
+
+export interface ApplicationsFormValues {
+  applications: ApplicationFormValues[];
+}
+
 export interface InstallTargetFormValues {
   id: string;
 }
@@ -21,9 +31,13 @@ export interface InstallFormValues {
   target: InstallTargetFormValues;
 }
 
-export interface DownloadImageFormValues {
-  applications: string[];
-  type: string;
+export interface SeedsFormValues {
+  applications: ApplicationsFormValues;
   install: InstallFormValues;
   network: string;
+}
+
+export interface DownloadImageFormValues {
+  type: ImageType;
+  seeds: SeedsFormValues;
 }

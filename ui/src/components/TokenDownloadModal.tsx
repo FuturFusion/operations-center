@@ -24,16 +24,18 @@ const TokenDownloadModal: FC<Props> = ({
 }) => {
   const { notify } = useNotification();
   const formikInitialValues: DownloadImageFormValues = {
-    applications: ["incus"],
     type: "iso",
-    install: {
-      force_install: true,
-      force_reboot: false,
-      target: {
-        id: "",
+    seeds: {
+      applications: { applications: [{ name: "incus" }] },
+      install: {
+        force_install: true,
+        force_reboot: false,
+        target: {
+          id: "",
+        },
       },
+      network: "",
     },
-    network: "",
   };
 
   const formik = useFormik({
@@ -41,14 +43,17 @@ const TokenDownloadModal: FC<Props> = ({
     onSubmit: (values: DownloadImageFormValues, { resetForm }) => {
       let parsedNetwork = {};
       try {
-        parsedNetwork = YAML.parse(values.network);
+        parsedNetwork = YAML.parse(values.seeds.network);
       } catch (error) {
         notify.error(`Error during network parsing: ${error}`);
         return;
       }
 
       handleClose();
-      download({ ...values, network: parsedNetwork });
+      download({
+        ...values,
+        seeds: { ...values.seeds, network: parsedNetwork },
+      });
       resetForm();
     },
   });

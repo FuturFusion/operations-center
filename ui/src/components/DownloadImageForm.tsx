@@ -35,16 +35,16 @@ const DownloadImageForm: FC<Props> = ({ formik }) => {
           <Form.Check
             type="checkbox"
             label="Wipe the target drive"
-            name="install.force_install"
-            checked={formik.values.install.force_install}
+            name="seeds.install.force_install"
+            checked={formik.values.seeds.install.force_install}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
           />
           <Form.Check
             type="checkbox"
             label="Automatically reboot after installation"
-            name="install.force_reboot"
-            checked={formik.values.install.force_reboot}
+            name="seeds.install.force_reboot"
+            checked={formik.values.seeds.install.force_reboot}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
             className="mb-3"
@@ -56,9 +56,9 @@ const DownloadImageForm: FC<Props> = ({ formik }) => {
           </Form.Label>
           <Form.Control
             type="text"
-            name="install.target.id"
+            name="seeds.install.target.id"
             placeholder="nvme-eui.123456789"
-            value={formik.values.install.target.id}
+            value={formik.values.seeds.install.target.id}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
           />
@@ -69,8 +69,8 @@ const DownloadImageForm: FC<Props> = ({ formik }) => {
             type="text"
             as="textarea"
             rows={6}
-            name="network"
-            value={formik.values.network}
+            name="seeds.network"
+            value={formik.values.seeds.network}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
           />
