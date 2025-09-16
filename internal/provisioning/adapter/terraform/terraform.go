@@ -188,6 +188,78 @@ func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed,
 		return incusapi.InitLocalPreseed{}, err
 	}
 
+	// Default values for server configuration.
+	_, ok := preseed.Config["storage.backups_volume"]
+	if !ok {
+		preseed.Config["storage.backups_volume"] = "local/backups"
+	}
+
+	_, ok = preseed.Config["storage.images_volume"]
+	if !ok {
+		preseed.Config["storage.images_volume"] = "local/images"
+	}
+
+	// Set default configuration for local storage pool, if the local storage pool
+	// exists in the preseed.
+	var hasLocalStoragePool bool
+	for i := range preseed.StoragePools {
+		switch preseed.StoragePools[i].Name {
+		case "local":
+			if preseed.StoragePools[i].Description == "" {
+				preseed.StoragePools[i].Description = "Local storage pool (on system drive)"
+			}
+
+			if preseed.StoragePools[i].Config == nil {
+				preseed.StoragePools[i].Config = map[string]string{}
+			}
+
+			_, ok := preseed.StoragePools[i].Config["source"]
+			if !ok {
+				preseed.StoragePools[i].Config["source"] = "local/incus"
+			}
+
+			hasLocalStoragePool = true
+		}
+	}
+
+	// Add local storage pool, if it is not defined in the preseed.
+	if !hasLocalStoragePool {
+		preseed.StoragePools = append(preseed.StoragePools, incusapi.StoragePoolsPost{
+			Name:   "local",
+			Driver: "zfs",
+			StoragePoolPut: incusapi.StoragePoolPut{
+				Config: map[string]string{
+					"source": "local/incus",
+				},
+				Description: "Local storage pool (on system drive)",
+			},
+		})
+	}
+
+	// Set default configuration for the internal project, if the default project
+	// exists in the preseed.
+	var hasInternalProject bool
+	for i := range preseed.Projects {
+		switch preseed.Projects[i].Name {
+		case "internal":
+			if preseed.Projects[i].Description == "" {
+				preseed.Projects[i].Description = "Internal project to isolate fully managed resources."
+			}
+
+			hasInternalProject = true
+		}
+	}
+
+	// Add internal project, if it is not defined in the preseed.
+	if !hasInternalProject {
+		preseed.Projects = append(preseed.Projects, incusapi.ProjectsPost{
+			Name: "internal",
+			ProjectPut: incusapi.ProjectPut{
+				Description: "Internal project to isolate fully managed resources.",
+			},
+		})
+	}
+
 	// Set default configuration values for default profiles of the default and
 	// the internal projects, if these profiles exist in the preseed.
 	var hasDefaultProjectDefaultProfile bool
