@@ -1,0 +1,54 @@
+{{- range .IncusPreseed.StorageVolumes }}
+
+{{- $configKeyMaxLen := 0 }}
+{{- range $key, $value := .Config }}
+  {{- if gt (len $key) $configKeyMaxLen }}
+    {{- $configKeyMaxLen = len $key }}
+  {{- end }}
+{{- end }}
+
+{{- $projectPrefix := "" }}
+{{- if ne .Project "" }}
+{{- $projectPrefix = printf "%s_" .Project }}
+{{- end -}}
+resource "incus_storage_volume" "{{ $projectPrefix }}{{ .Name }}" {
+  for_each = local.members
+
+  name         = "{{ .Name }}"
+  description  = "{{ .Description }}"
+{{- if not ( or (eq .Type "ceph") (eq .Type "cephfs") (eq .Type "lvmcluster") (eq .Type "linstor") (eq .Type "truenas") ) }}
+  target       = each.key
+{{- end }}
+  pool         = "{{ .Pool }}"
+  type         = "{{ .Type }}"
+  content_type = "{{ .ContentType }}"
+{{- if ne .Project "" }}
+
+  project = "{{ .Project }}"
+{{- end }}
+
+  config = {
+    {{- range $key, $value := .Config }}
+      {{- $indent := repeat (int (sub $configKeyMaxLen (len $key))) " " }}
+    "{{ $key }}"{{ $indent }} = "{{ $value }}",
+    {{- end }}
+  }
+
+  depends_on = [
+    null_resource.post_storage_pools,
+    null_resource.post_projects,
+  ]
+}
+
+{{ end -}}
+resource "null_resource" "post_storage_volumes" {
+  depends_on = [
+{{- range .IncusPreseed.StorageVolumes }}
+  {{- $projectPrefix := "" }}
+  {{- if ne .Project "" }}
+    {{- $projectPrefix = printf "%s_" .Project }}
+  {{- end }}
+    incus_storage_volume.{{ $projectPrefix }}{{ .Name }},
+{{- end }}
+  ]
+}

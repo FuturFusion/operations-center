@@ -298,6 +298,60 @@ func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed,
 		})
 	}
 
+	// Set default configuration for the backups and images storage volumes on
+	// the local storage pool, if they exist in the preseed.
+	var hasLocalBackupsStorageVolume bool
+	var hasLocalImagesStorageVolume bool
+	for i := range preseed.StorageVolumes {
+		switch {
+		case preseed.StorageVolumes[i].Pool == "local" && preseed.StorageVolumes[i].Name == "backups":
+			if preseed.StorageVolumes[i].Description == "" {
+				preseed.StorageVolumes[i].Description = "Volume holding system backups"
+			}
+
+			hasLocalBackupsStorageVolume = true
+
+		case preseed.StorageVolumes[i].Pool == "local" && preseed.StorageVolumes[i].Name == "images":
+			if preseed.StorageVolumes[i].Description == "" {
+				preseed.StorageVolumes[i].Description = "Volume holding system images"
+			}
+
+			hasLocalImagesStorageVolume = true
+		}
+	}
+
+	// Add backups storage volume on the local storage pool if it is not defined
+	// in the preseed.
+	if !hasLocalBackupsStorageVolume {
+		preseed.StorageVolumes = append(preseed.StorageVolumes, incusapi.InitStorageVolumesProjectPost{
+			Pool: "local",
+			StorageVolumesPost: incusapi.StorageVolumesPost{
+				Name:        "backups",
+				Type:        "custom",
+				ContentType: "filesystem",
+				StorageVolumePut: incusapi.StorageVolumePut{
+					Description: "Volume holding system backups",
+				},
+			},
+		})
+	}
+
+	// Add images storage volume on the local storage pool if it is not defined
+	// in the preseed.
+	if !hasLocalImagesStorageVolume {
+		preseed.StorageVolumes = append(preseed.StorageVolumes, incusapi.InitStorageVolumesProjectPost{
+			Pool: "local",
+			StorageVolumesPost: incusapi.StorageVolumesPost{
+				Name:        "images",
+				Type:        "custom",
+				ContentType: "filesystem",
+				StorageVolumePut: incusapi.StorageVolumePut{
+					Description: "Volume holding system images",
+				},
+			},
+		})
+	}
+
 	// Set default configuration values for default profiles of the default and
 	// the internal projects, if these profiles exist in the preseed.
 	var hasDefaultProjectDefaultProfile bool
