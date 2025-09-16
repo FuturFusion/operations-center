@@ -110,11 +110,10 @@ storage_pools:
 			fileContains(t, filepath.Join(tmpDir, "servercerts", tc.clusterName+".crt"), "cluster certificate")
 
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "data_cluster.tf"))
-			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_network.tf"))
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_storage_pool_local.tf"))
 
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "providers.tf")
-			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_network_locals.tf")
+			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_networks.tf")
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_profiles.tf")
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_projects.tf")
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_server.tf")
@@ -374,8 +373,7 @@ func TestTerraform_GetArchive(t *testing.T) {
 			expectedFilesFound := map[string]bool{
 				"data_cluster.tf":                 false,
 				"providers.tf":                    false,
-				"resources_network_locals.tf":     false,
-				"resources_network.tf":            false,
+				"resources_networks.tf":           false,
 				"resources_profiles.tf":           false,
 				"resources_projects.tf":           false,
 				"resources_server.tf":             false,

@@ -5,12 +5,12 @@
   {{- if gt (len $key) $configKeyMaxLen }}
     {{- $configKeyMaxLen = len $key }}
   {{- end }}
-{{- end -}}
+{{- end }}
 
 {{- $projectPrefix := "" }}
 {{- if ne .Project "" }}
 {{- $projectPrefix = printf "%s_" .Project }}
-{{- end }}
+{{- end -}}
 resource "incus_profile" "{{ $projectPrefix }}{{ .Name }}" {
   name        = "{{ .Name }}"
   description = "{{ .Description }}"
@@ -49,12 +49,9 @@ resource "incus_profile" "{{ $projectPrefix }}{{ .Name }}" {
   {{- end }}
 
   depends_on = [
-    // TODO: Should go after all networks
-    // TODO: Should go after all projects
-
-    incus_network.incusbr0,
-    incus_network.meshbr0,
-    incus_project.internal,
+    null_resource.post_storage_pools,
+    null_resource.post_projects,
+    null_resource.post_networks,
   ]
 }
 

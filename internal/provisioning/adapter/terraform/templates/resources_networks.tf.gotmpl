@@ -1,0 +1,136 @@
+{{- range .IncusPreseed.Networks }}
+
+{{- $nodeSpecificKeyMaxLen := 0 }}
+{{- $globalKeyMaxLen := 0 }}
+{{- range $key, $value := .Config }}
+  {{- if isNodeSpecificNetworkConfig $key }}
+    {{- if gt (len $key) $nodeSpecificKeyMaxLen }}
+      {{- $nodeSpecificKeyMaxLen = len $key }}
+    {{- end }}
+  {{- else }}
+    {{- if gt (len $key) $globalKeyMaxLen }}
+      {{- $globalKeyMaxLen = len $key }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+{{- $projectPrefix := "" }}
+{{- if ne .Project "" }}
+{{- $projectPrefix = printf "%s_" .Project }}
+{{- end -}}
+resource "incus_network" "{{ $projectPrefix }}{{ .Name }}_per_node" {
+  for_each = local.members
+
+  name   = "{{ .Name }}"
+  target = each.key
+  type   = "{{ .Type }}"
+{{- if ne .Project "" }}
+
+  project = "{{ .Project }}"
+{{- end }}
+
+  config = {
+    {{- range $key, $value := .Config }}
+      {{- if isNodeSpecificNetworkConfig $key }}
+        {{- $indent := repeat (int (sub $nodeSpecificKeyMaxLen (len $key))) " " }}
+    "{{ $key }}"{{ $indent }} = "{{ $value }}"
+      {{- end }}
+    {{- end }}
+  }
+
+  depends_on = [
+    null_resource.post_projects,
+  ]
+}
+
+resource "incus_network" "{{ $projectPrefix }}{{ .Name }}" {
+  name        = "{{ .Name }}"
+  description = "{{ .Description }}"
+{{- if ne .Project "" }}
+
+  project = "{{ .Project }}"
+{{- end }}
+
+  config = {
+    {{- range $key, $value := .Config }}
+      {{- if not (isNodeSpecificNetworkConfig $key) }}
+        {{- $indent := repeat (int (sub $globalKeyMaxLen (len $key))) " " }}
+    "{{ $key }}"{{ $indent }} = "{{ $value }}"
+      {{- end }}
+    {{- end }}
+  }
+
+  depends_on = [
+    null_resource.post_projects,
+    incus_network.{{ $projectPrefix }}{{ .Name }}_per_node
+  ]
+}
+
+{{ end -}}
+locals {
+  meshTunnelInterfaces = {
+    {{- range $serverName, $interfaceName := .MeshTunnelInterfaces }}
+    "{{ $serverName }}" = "{{ $interfaceName }}"
+    {{- end }}
+  }
+}
+
+// Generate random values for the meshbr0 IPv6 subnet.
+resource "random_integer" "meshbr0-subnet-segment-2" {
+  min = 0
+  max = 65535
+}
+resource "random_integer" "meshbr0-subnet-segment-3" {
+  min = 0
+  max = 65535
+}
+resource "random_integer" "meshbr0-subnet-segment-4" {
+  min = 0
+  max = 65535
+}
+
+resource "incus_network" "meshbr0_per_node" {
+  for_each = local.members
+
+  name   = "meshbr0"
+  target = each.key
+  type   = "bridge"
+
+  config = {
+    "tunnel.mesh.interface" = local.meshTunnelInterfaces[each.key]
+  }
+
+  depends_on = [
+    null_resource.post_projects,
+  ]
+}
+
+resource "incus_network" "meshbr0" {
+  name        = "meshbr0"
+  description = "Internal mesh network bridge"
+
+  config = {
+    "ipv4.address"         = "none"
+    "ipv6.address"         = format("fd42:%x:%x:%x::/64", random_integer.meshbr0-subnet-segment-2.result, random_integer.meshbr0-subnet-segment-3.result, random_integer.meshbr0-subnet-segment-4.result)
+    "tunnel.mesh.id"       = "1000"
+    "tunnel.mesh.protocol" = "vxlan"
+  }
+
+  depends_on = [
+    null_resource.post_projects,
+    incus_network.meshbr0_per_node,
+  ]
+}
+
+resource "null_resource" "post_networks" {
+  depends_on = [
+{{- range .IncusPreseed.Networks }}
+{{- $projectPrefix := "" }}
+{{- if ne .Project "" }}
+{{- $projectPrefix = printf "%s_" .Project }}
+{{- end }}
+    incus_network.{{ $projectPrefix }}{{ .Name }},
+{{- end }}
+    incus_network.meshbr0,
+  ]
+}

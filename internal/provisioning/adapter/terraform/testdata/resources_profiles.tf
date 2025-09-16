@@ -1,4 +1,3 @@
-
 resource "incus_profile" "default" {
   name        = "default"
   description = ""
@@ -24,15 +23,11 @@ resource "incus_profile" "default" {
   }
 
   depends_on = [
-    // TODO: Should go after all networks
-    // TODO: Should go after all projects
-
-    incus_network.incusbr0,
-    incus_network.meshbr0,
-    incus_project.internal,
+    null_resource.post_storage_pools,
+    null_resource.post_projects,
+    null_resource.post_networks,
   ]
 }
-
 
 resource "incus_profile" "internal_default" {
   name        = "default"
@@ -61,12 +56,9 @@ resource "incus_profile" "internal_default" {
   }
 
   depends_on = [
-    // TODO: Should go after all networks
-    // TODO: Should go after all projects
-
-    incus_network.incusbr0,
-    incus_network.meshbr0,
-    incus_project.internal,
+    null_resource.post_storage_pools,
+    null_resource.post_projects,
+    null_resource.post_networks,
   ]
 }
 

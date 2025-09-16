@@ -40,3 +40,16 @@ var nodeSpecificStorageConfig = []string{
 func isNodeSpecificStorageConfig(name string) bool {
 	return slices.Contains(nodeSpecificStorageConfig, name)
 }
+
+// nodeSpecificNetworkConfig lists all static network config keys which are node-specific.
+// This is copied from https://github.com/lxc/incus/blob/e4b571a470ca8c9d9e21245664eed1149139d2bb/internal/server/db/networks.go#L889-L895
+var nodeSpecificNetworkConfig = []string{
+	"bgp.ipv4.nexthop",
+	"bgp.ipv6.nexthop",
+	"bridge.external_interfaces",
+	"parent",
+}
+
+func isNodeSpecificNetworkConfig(name string) bool {
+	return slices.Contains(nodeSpecificNetworkConfig, name)
+}

@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"text/template"
 
@@ -92,6 +93,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 	tmpl = tmpl.Funcs(template.FuncMap{
 		"isNodeSpecificConfig":        isNodeSpecificConfig,
 		"isNodeSpecificStorageConfig": isNodeSpecificStorageConfig,
+		"isNodeSpecificNetworkConfig": isNodeSpecificNetworkConfig,
 	})
 	tmpl, err = tmpl.ParseFS(templatesFS, "templates/*")
 	if err != nil {
@@ -256,6 +258,42 @@ func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed,
 			Name: "internal",
 			ProjectPut: incusapi.ProjectPut{
 				Description: "Internal project to isolate fully managed resources.",
+			},
+		})
+	}
+
+	// Set default configuration for the incusbr0 network, if the incusbr0 network
+	// exists in the preseed.
+	var hasIncusbr0Network bool
+	for i := range preseed.Networks {
+		switch preseed.Networks[i].Name {
+		case "incusbr0":
+			if preseed.Networks[i].Description == "" {
+				preseed.Networks[i].Description = "Local network bridge (NAT)"
+			}
+
+			hasIncusbr0Network = true
+		}
+	}
+
+	// Network meshbr0 is reserved and can not be overwritten with the seed config.
+	// Ensure, it is not present in the preseed.
+	for i := range preseed.Networks {
+		if preseed.Networks[i].Name == "meshbr0" {
+			preseed.Networks = slices.Delete(preseed.Networks, i, i+1)
+			break
+		}
+	}
+
+	// Add incusbr0 network, if it is not defined in the preseed.
+	if !hasIncusbr0Network {
+		preseed.Networks = append(preseed.Networks, incusapi.InitNetworksProjectPost{
+			NetworksPost: incusapi.NetworksPost{
+				Name: "incusbr0",
+				Type: "bridge",
+				NetworkPut: incusapi.NetworkPut{
+					Description: "Local network bridge (NAT)",
+				},
 			},
 		})
 	}

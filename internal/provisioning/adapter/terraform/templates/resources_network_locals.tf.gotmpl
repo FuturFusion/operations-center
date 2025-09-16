@@ -1,7 +1,0 @@
-locals {
-  meshTunnelInterfaces = {
-    {{- range $serverName, $interfaceName := .MeshTunnelInterfaces }}
-    "{{ $serverName }}" = "{{ $interfaceName }}"
-    {{- end }}
-  }
-}
