@@ -419,8 +419,7 @@ func (t *tokenHandler) tokenImagePost(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	rc, err := t.service.GetPreSeedImage(r.Context(), UUID, provisioning.TokenSeedConfig{
-		ImageType:    tokenImagePost.Type,
+	rc, err := t.service.GetPreSeedImage(r.Context(), UUID, tokenImagePost.Type, provisioning.TokenSeeds{
 		Applications: tokenImagePost.Seeds.Applications,
 		Network:      tokenImagePost.Seeds.Network,
 		Install:      tokenImagePost.Seeds.Install,

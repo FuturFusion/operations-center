@@ -60,6 +60,11 @@ func (i ImageType) String() string {
 	return string(i)
 }
 
+func (i ImageType) IsValid() bool {
+	_, ok := imageTypes[i]
+	return ok
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (i ImageType) MarshalText() ([]byte, error) {
 	return []byte(i), nil
