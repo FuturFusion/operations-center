@@ -1,0 +1,54 @@
+{{- $nodeSpecificKeyMaxLen := 0 }}
+{{- $globalKeyMaxLen := 0 }}
+{{- range $key, $value := .IncusPreseed.Config }}
+  {{- if isNodeSpecificConfig $key }}
+    {{- if gt (len $key) $nodeSpecificKeyMaxLen }}
+      {{- $nodeSpecificKeyMaxLen = len $key }}
+    {{- end }}
+  {{- else }}
+    {{- if gt (len $key) $globalKeyMaxLen }}
+      {{- $globalKeyMaxLen = len $key }}
+    {{- end }}
+  {{- end }}
+{{- end -}}
+
+resource "incus_server" "this_per_node" {
+  for_each = local.members
+
+  config = {
+    {{- range $key, $value := .IncusPreseed.Config }}
+      {{- if isNodeSpecificConfig $key }}
+        {{- $indent := repeat (int (sub $nodeSpecificKeyMaxLen (len $key))) " " }}
+    "{{ $key }}"{{ $indent }} = "{{ $value }}"
+      {{- end }}
+    {{- end }}
+  }
+
+  depends_on = [
+    null_resource.post_projects,
+    null_resource.post_networks,
+    null_resource.post_storage_pools,
+    null_resource.post_storage_volumes,
+  ]
+
+  target = each.key
+}
+
+resource "incus_server" "this" {
+  config = {
+    {{- range $key, $value := .IncusPreseed.Config }}
+      {{- if not (isNodeSpecificConfig $key) }}
+        {{- $indent := repeat (int (sub $globalKeyMaxLen (len $key))) " " }}
+    "{{ $key }}"{{ $indent }} = "{{ $value }}"
+      {{- end }}
+    {{- end }}
+  }
+
+  depends_on = [
+    null_resource.post_projects,
+    null_resource.post_networks,
+    null_resource.post_storage_pools,
+    null_resource.post_storage_volumes,
+    incus_server.this_per_node,
+  ]
+}

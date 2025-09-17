@@ -101,6 +101,20 @@ type ClusterPost struct {
 	// Names of the servers beloning to the cluster.
 	// Example: [ "server1", "server2" ]
 	ServerNames []string `json:"server_names" yaml:"server_names"`
+
+	// ServerType is the expected type of servers to be clustered.
+	// Clustering will fail, if not all the servers are of the same type.
+	ServerType ServerType `json:"server_type" yaml:"server_type"`
+
+	// ServicesConfig contains the configuration for each service, which should be configured on Hypervisor OS.
+	// Operations Center is simply passing forward the settings to Hypervisor OS.
+	// For details about the configuration settings available refer to the service
+	// API definitions in https://github.com/lxc/incus-os/tree/main/incus-osd/api.
+	ServicesConfig map[string]any `json:"services_config" yaml:"services_config"`
+
+	// ApplicationSeedConfig contains the seed configuration for the application, which is
+	// applied during post clustering. This configuration is application specific.
+	ApplicationSeedConfig map[string]any `json:"application_seed_config" yaml:"application_seed_config"`
 }
 
 // ClusterCertificatePut represents the certificate and key pair for all cluster members.

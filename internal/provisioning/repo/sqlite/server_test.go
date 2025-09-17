@@ -35,7 +35,7 @@ server A
 
 	serverB := provisioning.Server{
 		Name:          "two",
-		Type:          api.ServerTypeMigrationManager,
+		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://two/",
 		Certificate: `-----BEGIN CERTIFICATE-----
 server B
@@ -50,7 +50,7 @@ server B
 		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 			return nil
 		},
-		EnableOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) error {
+		EnableOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config map[string]any) error {
 			return nil
 		},
 		SetServerConfigFunc: func(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) error {
@@ -77,7 +77,7 @@ server B
 		InitFunc: func(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
 			return nil
 		},
-		ApplyFunc: func(ctx context.Context, name string) error {
+		ApplyFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
 			return nil
 		},
 	}
@@ -183,6 +183,7 @@ server B
 	_, err = clusterSvc.Create(ctx, provisioning.Cluster{
 		Name:        "one",
 		ServerNames: []string{"two-new"},
+		ServerType:  api.ServerTypeIncus,
 	})
 	require.NoError(t, err)
 

@@ -29,7 +29,7 @@ func TestClusterService_Create(t *testing.T) {
 		repoCreateErr                  error
 		repoUpdateErr                  error
 		clientPingErr                  error
-		clientEnableOSServiceLVMErr    error
+		clientEnableOSServiceErr       error
 		clientSetServerConfig          []queue.Item[struct{}]
 		clientEnableClusterCertificate string
 		clientEnableClusterErr         error
@@ -51,26 +51,36 @@ func TestClusterService_Create(t *testing.T) {
 			cluster: provisioning.Cluster{
 				Name:        "one",
 				ServerNames: []string{"server1", "server2"},
+				ServerType:  api.ServerTypeIncus,
+				ServicesConfig: map[string]any{
+					"lvm": map[string]any{
+						"enabled": true,
+					},
+				},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 			},
@@ -87,6 +97,7 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - validation",
 			cluster: provisioning.Cluster{
 				Name:        "", // invalid
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 
@@ -99,6 +110,7 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - repo.ExistsByName cluster already exists",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			repoExistsByName: true, // cluster with the same name already exists
@@ -111,6 +123,7 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - repo.ExistsByName",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			repoExistsByNameErr: boom.Error,
@@ -121,6 +134,7 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - serverSvc.GetByName",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
@@ -135,6 +149,7 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - server already part of cluster",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
@@ -142,6 +157,7 @@ func TestClusterService_Create(t *testing.T) {
 					Value: &provisioning.Server{
 						Cluster: ptr.To("cluster-foo"), // already part of cluster.
 						Name:    "server1",
+						Type:    api.ServerTypeIncus,
 					},
 				},
 			},
@@ -154,17 +170,20 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - repo.Create",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 			},
@@ -174,20 +193,49 @@ func TestClusterService_Create(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - client.Ping",
+			name: "error - server has wrong type",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeMigrationManager, // wrong type, incus expected.
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Server "server1" has type "migration-manager" but "incus" was expected`)
+			},
+		},
+		{
+			name: "error - client.Ping",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+						Type: api.ServerTypeIncus,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 			},
@@ -196,24 +244,125 @@ func TestClusterService_Create(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - client.EnableOSServiceLVM",
+			name: "error - invalid os service config",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
+				ServicesConfig: map[string]any{
+					"lvm": []string{}, // invalid, not a map[string]any
+
+				},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 			},
-			clientEnableOSServiceLVMErr: boom.Error,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Failed to enable OS service "lvm" on "server1": config is not an object`)
+			},
+		},
+		{
+			name: "error - lvm enabled not bool",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+				ServicesConfig: map[string]any{
+					"lvm": map[string]any{
+						"enabled": "", // invalid, not bool
+					},
+				},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+						Type: api.ServerTypeIncus,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+						Type: api.ServerTypeIncus,
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Failed to enable OS service "lvm" on "server1": "enabled" is not a bool`)
+			},
+		},
+		{
+			name: "error - invalid os service config",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+				ServicesConfig: map[string]any{
+					"lvm": map[string]any{
+						"enabled": true,
+					},
+				},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						ID:   2001, // invalid, server ID must not be > 2000 for LVM system_id.
+						Name: "server1",
+						Type: api.ServerTypeIncus,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+						Type: api.ServerTypeIncus,
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Failed to enable OS service "lvm" on "server1": can not enable LVM on servers with internal ID > 2000`)
+			},
+		},
+		{
+			name: "error - client.EnableOSService",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+				ServicesConfig: map[string]any{
+					"lvm": map[string]any{
+						"enabled": true,
+					},
+				},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+						Type: api.ServerTypeIncus,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+						Type: api.ServerTypeIncus,
+					},
+				},
+			},
+			clientEnableOSServiceErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -221,17 +370,20 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - client.SetServerConfig",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 			},
@@ -248,17 +400,20 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - client.EnableCluster",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 			},
@@ -274,17 +429,20 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - client.GetClusterNodeNames",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 			},
@@ -301,17 +459,20 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - client.GetClusterJoinToken",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 			},
@@ -328,17 +489,20 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - client.JoinCluster",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 			},
@@ -355,17 +519,20 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - serverSvc.GetByName - 2nd transaction",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
@@ -383,23 +550,27 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - server already part of cluster - 2nd transaction",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Cluster: ptr.To("cluster-foo"), // added to a cluster since the first check.
 						Name:    "server1",
+						Type:    api.ServerTypeIncus,
 					},
 				},
 			},
@@ -416,27 +587,32 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - repo.Update",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 			},
@@ -453,27 +629,32 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - serverSvc.Update",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 			},
@@ -490,27 +671,32 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - client.GetOSData",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 			},
@@ -527,27 +713,32 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - provisioner.Init",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 			},
@@ -564,27 +755,32 @@ func TestClusterService_Create(t *testing.T) {
 			name: "error - provisioner.Apply",
 			cluster: provisioning.Cluster{
 				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
 				ServerNames: []string{"server1", "server2"},
 			},
 			serverSvcGetByName: []queue.Item[*provisioning.Server]{
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server1",
+						Type: api.ServerTypeIncus,
 					},
 				},
 				{
 					Value: &provisioning.Server{
 						Name: "server2",
+						Type: api.ServerTypeIncus,
 					},
 				},
 			},
@@ -618,8 +814,8 @@ func TestClusterService_Create(t *testing.T) {
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 					return tc.clientPingErr
 				},
-				EnableOSServiceLVMFunc: func(ctx context.Context, server provisioning.Server) error {
-					return tc.clientEnableOSServiceLVMErr
+				EnableOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config map[string]any) error {
+					return tc.clientEnableOSServiceErr
 				},
 				SetServerConfigFunc: func(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) error {
 					_, err := queue.Pop(t, &tc.clientSetServerConfig)
@@ -656,7 +852,7 @@ func TestClusterService_Create(t *testing.T) {
 				InitFunc: func(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
 					return tc.provisionerInitErr
 				},
-				ApplyFunc: func(ctx context.Context, name string) error {
+				ApplyFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
 					return tc.provisionerApplyErr
 				},
 			}
@@ -1219,7 +1415,6 @@ func TestClusterService_Update(t *testing.T) {
 			name: "success",
 			cluster: provisioning.Cluster{
 				Name:          "one",
-				ServerNames:   []string{"server1", "server3"},
 				ConnectionURL: "http://one/",
 			},
 
@@ -1229,8 +1424,7 @@ func TestClusterService_Update(t *testing.T) {
 			name: "error - validation",
 			cluster: provisioning.Cluster{
 				Name:          "one",
-				ServerNames:   nil, // invalid
-				ConnectionURL: "http://one/",
+				ConnectionURL: ":|\\", // invalid
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {

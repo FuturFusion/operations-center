@@ -1,0 +1,67 @@
+{{- range .IncusPreseed.StoragePools }}
+
+{{- $nodeSpecificKeyMaxLen := 0 }}
+{{- $globalKeyMaxLen := 0 }}
+{{- range $key, $value := .Config }}
+  {{- if isNodeSpecificStorageConfig $key }}
+    {{- if gt (len $key) $nodeSpecificKeyMaxLen }}
+      {{- $nodeSpecificKeyMaxLen = len $key }}
+    {{- end }}
+  {{- else }}
+    {{- if gt (len $key) $globalKeyMaxLen }}
+      {{- $globalKeyMaxLen = len $key }}
+    {{- end }}
+  {{- end }}
+{{- end -}}
+
+resource "incus_storage_pool" "{{ .Name }}_per_node" {
+  for_each = local.members
+
+  name   = "{{ .Name }}"
+  driver = "{{ .Driver }}"
+  target = each.key
+
+  config = {
+    {{- range $key, $value := .Config }}
+      {{- if isNodeSpecificStorageConfig $key }}
+        {{- $indent := repeat (int (sub $nodeSpecificKeyMaxLen (len $key))) " " }}
+    "{{ $key }}"{{ $indent }} = "{{ $value }}"
+      {{- end }}
+    {{- end }}
+  }
+
+  lifecycle {
+    ignore_changes = [
+      # Incus changes the source behind the scenes so we ignore these changes.
+      config["source"],
+    ]
+  }
+}
+
+resource "incus_storage_pool" "{{ .Name }}" {
+  name        = "{{ .Name }}"
+  driver      = "{{ .Driver }}"
+  description = "{{ .Description }}"
+
+  config = {
+    {{- range $key, $value := .Config }}
+      {{- if not (isNodeSpecificStorageConfig $key) }}
+        {{- $indent := repeat (int (sub $globalKeyMaxLen (len $key))) " " }}
+    "{{ $key }}"{{ $indent }} = "{{ $value }}"
+      {{- end }}
+    {{- end }}
+  }
+
+  depends_on = [
+    incus_storage_pool.{{ .Name }}_per_node
+  ]
+}
+
+{{ end -}}
+resource "null_resource" "post_storage_pools" {
+  depends_on = [
+{{- range .IncusPreseed.StoragePools }}
+    incus_storage_pool.{{ .Name }},
+{{- end }}
+  ]
+}

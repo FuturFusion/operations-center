@@ -4,13 +4,32 @@ resource "incus_network" "incusbr0_per_node" {
   name   = "incusbr0"
   target = each.key
   type   = "bridge"
+
+  config = {
+  }
+
+  depends_on = [
+    null_resource.post_projects,
+  ]
 }
 
 resource "incus_network" "incusbr0" {
   name        = "incusbr0"
   description = "Local network bridge (NAT)"
 
-  depends_on = [incus_network.incusbr0_per_node]
+  config = {
+  }
+
+  depends_on = [
+    null_resource.post_projects,
+    incus_network.incusbr0_per_node
+  ]
+}
+
+locals {
+  meshTunnelInterfaces = {
+    "server-1" = "enp5s0"
+  }
 }
 
 // Generate random values for the meshbr0 IPv6 subnet.
@@ -37,6 +56,10 @@ resource "incus_network" "meshbr0_per_node" {
   config = {
     "tunnel.mesh.interface" = local.meshTunnelInterfaces[each.key]
   }
+
+  depends_on = [
+    null_resource.post_projects,
+  ]
 }
 
 resource "incus_network" "meshbr0" {
@@ -50,5 +73,15 @@ resource "incus_network" "meshbr0" {
     "tunnel.mesh.protocol" = "vxlan"
   }
 
-  depends_on = [incus_network.meshbr0_per_node]
+  depends_on = [
+    null_resource.post_projects,
+    incus_network.meshbr0_per_node,
+  ]
+}
+
+resource "null_resource" "post_networks" {
+  depends_on = [
+    incus_network.incusbr0,
+    incus_network.meshbr0,
+  ]
 }

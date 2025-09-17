@@ -1,0 +1,29 @@
+{{- range .IncusPreseed.Projects }}
+
+{{- $configKeyMaxLen := 0 }}
+{{- range $key, $value := .Config }}
+  {{- if gt (len $key) $configKeyMaxLen }}
+    {{- $configKeyMaxLen = len $key }}
+  {{- end }}
+{{- end -}}
+
+resource "incus_project" "{{ .Name }}" {
+  name        = "{{ .Name }}"
+  description = "{{ .Description }}"
+
+  config = {
+    {{- range $key, $value := .Config }}
+      {{- $indent := repeat (int (sub $configKeyMaxLen (len $key))) " " }}
+    "{{ $key }}"{{ $indent }} = "{{ $value }}",
+    {{- end }}
+  }
+}
+
+{{ end -}}
+resource "null_resource" "post_projects" {
+  depends_on = [
+{{- range .IncusPreseed.Projects }}
+    incus_project.{{ .Name }},
+{{- end }}
+  ]
+}

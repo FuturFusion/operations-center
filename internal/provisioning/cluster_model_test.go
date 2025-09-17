@@ -8,9 +8,10 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func TestCluster_Validate(t *testing.T) {
+func TestCluster_ValidateCreate(t *testing.T) {
 	tests := []struct {
 		name    string
 		cluster provisioning.Cluster
@@ -23,6 +24,7 @@ func TestCluster_Validate(t *testing.T) {
 				Name:          "one",
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
+				ServerType:    api.ServerTypeIncus,
 			},
 
 			assertErr: require.NoError,
@@ -33,6 +35,7 @@ func TestCluster_Validate(t *testing.T) {
 				Name:          "", // invalid
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
+				ServerType:    api.ServerTypeIncus,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -46,6 +49,7 @@ func TestCluster_Validate(t *testing.T) {
 				Name:          "foo/bar", // "/" is prohibited
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: "http://one/",
+				ServerType:    api.ServerTypeIncus,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -59,6 +63,7 @@ func TestCluster_Validate(t *testing.T) {
 				Name:          "one",
 				ServerNames:   nil, // invalid
 				ConnectionURL: "http://one/",
+				ServerType:    api.ServerTypeIncus,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -72,6 +77,21 @@ func TestCluster_Validate(t *testing.T) {
 				Name:          "one",
 				ServerNames:   []string{"server1", "server2"},
 				ConnectionURL: ":|\\", // invalid
+				ServerType:    api.ServerTypeIncus,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - connection URL invalid",
+			cluster: provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
+				ServerType:    api.ServerTypeUnknown, // invalid
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -83,7 +103,7 @@ func TestCluster_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.cluster.Validate()
+			err := tc.cluster.ValidateCreate()
 
 			tc.assertErr(t, err)
 		})

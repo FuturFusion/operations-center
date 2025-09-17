@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"flag"
 	"io"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"github.com/dsnet/golib/memfile"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
@@ -19,6 +21,9 @@ import (
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
+
+// Run "go test github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform/ -update-goldenfiles" to update the golden files automatically.
+var updateGoldenfiles = flag.Bool("update-goldenfiles", false, "golden files are updated, if this flag is provided")
 
 func TestTerraform_Init(t *testing.T) {
 	tests := []struct {
@@ -53,6 +58,23 @@ func TestTerraform_Init(t *testing.T) {
 			}))
 			require.NoError(t, err)
 
+			const applicationConfig = `---
+config:
+  user.ui.sso_only: "true"
+  storage.images_volume: shared
+storage_pools:
+  - name: shared
+    driver: lvmcluster
+    description: Shared storage pool (lvmcluster)
+    config:
+      lvm.vg_name: vg0
+      source: /dev/sda
+`
+
+			applicationSeedConfig := map[string]any{}
+			err = yaml.Unmarshal([]byte(applicationConfig), &applicationSeedConfig)
+			require.NoError(t, err)
+
 			// Run tests
 			err = tf.Init(t.Context(), tc.clusterName, provisioning.ClusterProvisioningConfig{
 				Servers: []provisioning.Server{
@@ -78,6 +100,8 @@ func TestTerraform_Init(t *testing.T) {
 						ClusterCertificate: ptr.To("cluster certificate"),
 					},
 				},
+
+				ApplicationSeedConfig: applicationSeedConfig,
 			})
 
 			// Assert
@@ -86,17 +110,14 @@ func TestTerraform_Init(t *testing.T) {
 			fileContains(t, filepath.Join(tmpDir, "servercerts", tc.clusterName+".crt"), "cluster certificate")
 
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "data_cluster.tf"))
-			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_network.tf"))
-			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_profile_default.tf"))
-			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_project_internal.tf"))
-			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_server.tf"))
-			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "resources_storage.tf"))
-			fileContains(t, filepath.Join(tmpDir, tc.clusterName, "providers.tf"),
-				`"127.0.0.1"`,
-				`"8443"`,
-				`"https"`,
-			)
-			fileContains(t, filepath.Join(tmpDir, tc.clusterName, "resources_network_locals.tf"), `"enp5s0"`)
+
+			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "providers.tf")
+			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_networks.tf")
+			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_profiles.tf")
+			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_projects.tf")
+			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_server.tf")
+			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_storage_pools.tf")
+			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_storage_volumes.tf")
 		})
 	}
 }
@@ -113,24 +134,71 @@ func fileContains(t *testing.T, filename string, contains ...string) {
 	}
 }
 
-func TestTerraform_Apply(t *testing.T) {
-	tests := []struct {
-		name              string
-		setup             func(t *testing.T, configDir string)
-		terraformApplyErr error
+func fileMatch(t *testing.T, path string, name string) {
+	t.Helper()
 
-		assertErr require.ErrorAssertionFunc
+	filename := filepath.Join(path, name)
+
+	require.FileExists(t, filename)
+
+	body, err := os.ReadFile(filename)
+	require.NoError(t, err)
+
+	goldenFilename := filepath.Join("./testdata", name)
+	if *updateGoldenfiles {
+		err := os.WriteFile(goldenFilename, body, 0o600)
+		require.NoError(t, err)
+	}
+
+	want, err := os.ReadFile(goldenFilename)
+	require.NoError(t, err)
+
+	require.Equal(t, string(want), string(body))
+}
+
+func TestTerraform_Apply(t *testing.T) {
+	noopAssertPostProcessedFiles := func(*testing.T, string, string) {}
+
+	tests := []struct {
+		name                 string
+		clusterConnectionURL string
+		setup                func(t *testing.T, configDir string)
+		terraformApplyErr    error
+
+		assertErr                require.ErrorAssertionFunc
+		assertPostProcessedFiles func(t *testing.T, dir string, clusterName string)
 	}{
 		{
-			name: "success",
+			name:                 "success",
+			clusterConnectionURL: "https://localhost:8443",
 			setup: func(t *testing.T, configDir string) {
 				t.Helper()
 
 				err := os.MkdirAll(configDir, 0o700)
 				require.NoError(t, err)
+
+				err = os.WriteFile(filepath.Join(configDir, "providers.tf"), []byte(`provider "incus" {
+  remote {
+    name    = "mycluster"
+    default = true
+    scheme  = "https"
+    address = "some-host"
+    port    = "1234"
+  }
+}`), 0o600)
+				require.NoError(t, err)
 			},
 
 			assertErr: require.NoError,
+			assertPostProcessedFiles: func(t *testing.T, dir, clusterName string) {
+				t.Helper()
+
+				fileContains(t, filepath.Join(dir, clusterName, "providers.tf"),
+					`"localhost"`,
+					`"8443"`,
+					`"https"`,
+				)
+			},
 		},
 		{
 			name: "error - config directory not initialized",
@@ -139,11 +207,11 @@ func TestTerraform_Apply(t *testing.T) {
 
 				// config directory not created.
 			},
-			terraformApplyErr: boom.Error,
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Initialized Terraform config not found")
 			},
+			assertPostProcessedFiles: noopAssertPostProcessedFiles,
 		},
 		{
 			name: "error - terraform apply",
@@ -155,7 +223,59 @@ func TestTerraform_Apply(t *testing.T) {
 			},
 			terraformApplyErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:                boom.ErrorIs,
+			assertPostProcessedFiles: noopAssertPostProcessedFiles,
+		},
+		{
+			name: "error - providers.tf not found",
+			setup: func(t *testing.T, configDir string) {
+				t.Helper()
+
+				err := os.MkdirAll(configDir, 0o700)
+				require.NoError(t, err)
+			},
+
+			assertErr:                require.Error,
+			assertPostProcessedFiles: noopAssertPostProcessedFiles,
+		},
+		{
+			name: "error - providers.tf invalid Terraform config",
+			setup: func(t *testing.T, configDir string) {
+				t.Helper()
+
+				err := os.MkdirAll(configDir, 0o700)
+				require.NoError(t, err)
+
+				err = os.WriteFile(filepath.Join(configDir, "providers.tf"), []byte(`provider "incus" {`), 0o600) // invalid Terraform configuration.
+				require.NoError(t, err)
+			},
+
+			assertErr:                require.Error,
+			assertPostProcessedFiles: noopAssertPostProcessedFiles,
+		},
+		{
+			name:                 "error - invalid cluster.connectionURL",
+			clusterConnectionURL: ":|\\", // invalid
+			setup: func(t *testing.T, configDir string) {
+				t.Helper()
+
+				err := os.MkdirAll(configDir, 0o700)
+				require.NoError(t, err)
+
+				err = os.WriteFile(filepath.Join(configDir, "providers.tf"), []byte(`provider "incus" {
+  remote {
+    name    = "mycluster"
+    default = true
+    scheme  = "https"
+    address = "some-host"
+    port    = "1234"
+  }
+}`), 0o600)
+				require.NoError(t, err)
+			},
+
+			assertErr:                require.Error,
+			assertPostProcessedFiles: noopAssertPostProcessedFiles,
 		},
 	}
 
@@ -172,10 +292,16 @@ func TestTerraform_Apply(t *testing.T) {
 			require.NoError(t, err)
 
 			// Run tests
-			err = tf.Apply(t.Context(), clusterName)
+			cluster := provisioning.Cluster{
+				Name:          clusterName,
+				ConnectionURL: tc.clusterConnectionURL,
+			}
+
+			err = tf.Apply(t.Context(), cluster)
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertPostProcessedFiles(t, tmpDir, clusterName)
 		})
 	}
 }
@@ -245,15 +371,15 @@ func TestTerraform_GetArchive(t *testing.T) {
 			require.NoError(t, err)
 
 			expectedFilesFound := map[string]bool{
-				"data_cluster.tf":               false,
-				"providers.tf":                  false,
-				"resources_network_locals.tf":   false,
-				"resources_network.tf":          false,
-				"resources_profile_default.tf":  false,
-				"resources_project_internal.tf": false,
-				"resources_server.tf":           false,
-				"resources_storage.tf":          false,
-				"terraform.tfstate":             false,
+				"data_cluster.tf":              false,
+				"providers.tf":                 false,
+				"resources_networks.tf":        false,
+				"resources_profiles.tf":        false,
+				"resources_projects.tf":        false,
+				"resources_server.tf":          false,
+				"resources_storage_pools.tf":   false,
+				"resources_storage_volumes.tf": false,
+				"terraform.tfstate":            false,
 			}
 
 			for _, file := range zr.File {

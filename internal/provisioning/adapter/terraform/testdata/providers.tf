@@ -30,11 +30,11 @@ provider "incus" {
   accept_remote_certificate = true
 
   remote {
-    name    = "{{ .ClusterName }}"
+    name    = "foobar"
     default = true
     scheme  = "https"
-    address = "{{ .ClusterAddress }}"
-    port    = "{{ .ClusterPort }}"
+    address = "127.0.0.1"
+    port    = "8443"
   }
 }
 

@@ -132,20 +132,21 @@ func (c client) UpdateNetworkConfig(ctx context.Context, server provisioning.Ser
 	return nil
 }
 
-func (c client) EnableOSServiceLVM(ctx context.Context, server provisioning.Server) error {
+func (c client) EnableOSService(ctx context.Context, server provisioning.Server, name string, config map[string]any) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
 		return err
 	}
 
-	serviceLVMConfig := map[string]any{
-		"enabled":   true,
-		"system_id": server.ID,
+	nameSanitized := url.PathEscape(name)
+
+	serviceConfig := map[string]any{
+		"config": config,
 	}
 
-	_, _, err = client.RawQuery(http.MethodGet, "/os/1.0/services/lvm", serviceLVMConfig, "")
+	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/services/"+nameSanitized, serviceConfig, "")
 	if err != nil {
-		return fmt.Errorf("Enable OS service LVM on %q failed: %w", server.ConnectionURL, err)
+		return fmt.Errorf("Enable OS service %q on %q failed: %w", nameSanitized, server.ConnectionURL, err)
 	}
 
 	return nil

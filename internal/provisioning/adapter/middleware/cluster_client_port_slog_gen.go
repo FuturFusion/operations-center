@@ -77,16 +77,18 @@ func (_d ClusterClientPortWithSlog) EnableCluster(ctx context.Context, server pr
 	return _d._base.EnableCluster(ctx, server)
 }
 
-// EnableOSServiceLVM implements provisioning.ClusterClientPort.
-func (_d ClusterClientPortWithSlog) EnableOSServiceLVM(ctx context.Context, server provisioning.Server) (err error) {
+// EnableOSService implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) EnableOSService(ctx context.Context, server provisioning.Server, name string, config map[string]any) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("server", server),
+			slog.String("name", name),
+			slog.Any("config", config),
 		)
 	}
-	log.Debug("=> calling EnableOSServiceLVM")
+	log.Debug("=> calling EnableOSService")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -100,15 +102,15 @@ func (_d ClusterClientPortWithSlog) EnableOSServiceLVM(ctx context.Context, serv
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method EnableOSServiceLVM returned an informative error")
+				log.Debug("<= method EnableOSService returned an informative error")
 			} else {
-				log.Error("<= method EnableOSServiceLVM returned an error")
+				log.Error("<= method EnableOSService returned an error")
 			}
 		} else {
-			log.Debug("<= method EnableOSServiceLVM finished")
+			log.Debug("<= method EnableOSService finished")
 		}
 	}()
-	return _d._base.EnableOSServiceLVM(ctx, server)
+	return _d._base.EnableOSService(ctx, server, name, config)
 }
 
 // GetClusterJoinToken implements provisioning.ClusterClientPort.

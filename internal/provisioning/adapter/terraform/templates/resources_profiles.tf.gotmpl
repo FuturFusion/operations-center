@@ -1,0 +1,69 @@
+{{- range .IncusPreseed.Profiles }}
+
+{{- $configKeyMaxLen := 0 }}
+{{- range $key, $value := .Config }}
+  {{- if gt (len $key) $configKeyMaxLen }}
+    {{- $configKeyMaxLen = len $key }}
+  {{- end }}
+{{- end }}
+
+{{- $projectPrefix := "" }}
+{{- if ne .Project "" }}
+{{- $projectPrefix = printf "%s_" .Project }}
+{{- end -}}
+resource "incus_profile" "{{ $projectPrefix }}{{ .Name }}" {
+  name        = "{{ .Name }}"
+  description = "{{ .Description }}"
+{{- if ne .Project "" }}
+
+  project = "{{ .Project }}"
+{{- end }}
+
+  config = {
+    {{- range $key, $value := .Config }}
+      {{- $indent := repeat (int (sub $configKeyMaxLen (len $key))) " " }}
+    "{{ $key }}"{{ $indent }} = "{{ $value }}",
+    {{- end }}
+  }
+
+  {{- range $name, $properties := .Devices }}
+
+  {{- $deviceConfigKeyMaxLen := 0 }}
+  {{- range $key, $value := $properties }}
+    {{- if gt (len $key) $deviceConfigKeyMaxLen }}
+      {{- $deviceConfigKeyMaxLen = len $key }}
+    {{- end }}
+  {{- end }}
+
+  device {
+    name = "{{ $name }}"
+    type = "{{ $properties.type }}"
+    properties = {
+      {{- range $key, $value := $properties }}
+        {{- if eq $key "type" }}{{ continue }}{{- end }}
+        {{- $indent := repeat (int (sub $deviceConfigKeyMaxLen (len $key))) " " }}
+      "{{ $key }}"{{ $indent }} = "{{ $value }}"
+      {{- end }}
+    }
+  }
+  {{- end }}
+
+  depends_on = [
+    null_resource.post_storage_pools,
+    null_resource.post_projects,
+    null_resource.post_networks,
+  ]
+}
+
+{{ end -}}
+resource "null_resource" "post_profiles" {
+  depends_on = [
+{{- range .IncusPreseed.Profiles }}
+  {{- $projectPrefix := "" }}
+  {{- if ne .Project "" }}
+    {{- $projectPrefix = printf "%s_" .Project }}
+  {{- end }}
+    incus_profile.{{ $projectPrefix }}{{ .Name }},
+{{- end }}
+  ]
+}

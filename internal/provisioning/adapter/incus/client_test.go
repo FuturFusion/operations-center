@@ -622,7 +622,7 @@ func TestClientServer(t *testing.T) {
 		{
 			name: "EnableOSServiceLVM",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
-				return nil, client.EnableOSServiceLVM(ctx, target)
+				return nil, client.EnableOSService(ctx, target, "lvm", map[string]any{"enabled": true})
 			},
 			testCases: []methodTestCase{
 				{
@@ -639,7 +639,7 @@ func TestClientServer(t *testing.T) {
 					},
 
 					assertErr: require.NoError,
-					wantPaths: []string{"GET /os/1.0/services/lvm"},
+					wantPaths: []string{"PUT /os/1.0/services/lvm"},
 				},
 				{
 					name: "error - unexpected http status code",
@@ -652,7 +652,7 @@ func TestClientServer(t *testing.T) {
 					},
 
 					assertErr: require.Error,
-					wantPaths: []string{"GET /os/1.0/services/lvm"},
+					wantPaths: []string{"PUT /os/1.0/services/lvm"},
 				},
 			},
 		},
