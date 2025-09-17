@@ -48,3 +48,11 @@ func (t token) Update(ctx context.Context, in provisioning.Token) error {
 func (t token) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return entities.DeleteToken(ctx, transaction.GetDBTX(ctx, t.db), id)
 }
+
+func (t token) CreateTokenSeed(ctx context.Context, in provisioning.TokenSeed) (int64, error) {
+	return entities.CreateTokenSeed(ctx, transaction.GetDBTX(ctx, t.db), in)
+}
+
+func (t token) GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+	return entities.GetTokenSeed(ctx, transaction.GetDBTX(ctx, t.db), id, name)
+}

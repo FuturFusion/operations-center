@@ -213,7 +213,7 @@ func (c *cmdNetworkForwardShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Network Name: %s\n", networkForward.NetworkName)
 	fmt.Printf("Name: %s\n", networkForward.Name)
 	fmt.Printf("Last Updated: %s\n", networkForward.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Object:\n%s\n", objectJSON)
+	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 
 	return nil
 }

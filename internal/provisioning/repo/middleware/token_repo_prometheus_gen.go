@@ -52,6 +52,20 @@ func (_d TokenRepoWithPrometheus) Create(ctx context.Context, token provisioning
 	return _d.base.Create(ctx, token)
 }
 
+// CreateTokenSeed implements provisioning.TokenRepo.
+func (_d TokenRepoWithPrometheus) CreateTokenSeed(ctx context.Context, seedConfig provisioning.TokenSeed) (n int64, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "CreateTokenSeed", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.CreateTokenSeed(ctx, seedConfig)
+}
+
 // DeleteByUUID implements provisioning.TokenRepo.
 func (_d TokenRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
@@ -106,6 +120,20 @@ func (_d TokenRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (
 		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetByUUID(ctx, id)
+}
+
+// GetTokenSeedByName implements provisioning.TokenRepo.
+func (_d TokenRepoWithPrometheus) GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (tokenSeed *provisioning.TokenSeed, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetTokenSeedByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetTokenSeedByName(ctx, id, name)
 }
 
 // Update implements provisioning.TokenRepo.

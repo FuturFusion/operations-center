@@ -60,6 +60,11 @@ func (i ImageType) String() string {
 	return string(i)
 }
 
+func (i ImageType) IsValid() bool {
+	_, ok := imageTypes[i]
+	return ok
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (i ImageType) MarshalText() ([]byte, error) {
 	return []byte(i), nil
@@ -117,4 +122,65 @@ type TokenImagePostSeeds struct {
 
 	// Install represents the install configuration (install.yaml) to be included in the pre-seeded image.
 	Install map[string]any `json:"install" yaml:"install"`
+}
+
+// TokenImagesPost defines a named token seed configuration, for which a
+// pre-seeded ISO or raw image can be fetched later.
+//
+// Operations Center just passes through the provided configuration for
+// application.yaml, install.yaml and network.yaml as is without any validation
+// of the provided configuration besides of ensuring it to be valid yaml.
+//
+// swagger:model
+type TokenImagesPost struct {
+	// Name contains the name of the token seed configuration.
+	// Example: MyConfig
+	Name string `json:"name" yaml:"name"`
+
+	TokenImagesPut
+}
+
+// TokenImagesPut defines the updateable part of a named token seed
+// configuration, for which a pre-seeded ISO or raw image can be fetched later.
+//
+// Operations Center just passes through the provided configuration for
+// application.yaml, install.yaml and network.yaml as is without any validation
+// of the provided configuration besides of ensuring it to be valid yaml.
+//
+// swagger:model
+type TokenImagesPut struct {
+	// Description contains the description of the token seed configuration.
+	// Example: Configuration for lab servers.
+	Description string `json:"description" yaml:"description"`
+
+	// Public defines, if images generated based on the given token seed
+	// configuration can be retrieved without authentication. If public is set to
+	// `true`, no authentication is necessary, otherwise authentication is
+	// required.
+	// Example: true
+	Public bool `json:"public" yaml:"public"`
+
+	// Seeds represents the seed configuration for e.g. application.yaml,
+	// install.yaml and network.yaml.
+	Seeds TokenImagePostSeeds `json:"seeds" yaml:"seeds"`
+}
+
+// TokenImages defines a named token seed configuration, for which a
+// pre-seeded ISO or raw image can be fetched later.
+//
+// Operations Center just passes through the provided configuration for
+// application.yaml, install.yaml and network.yaml as is without any validation
+// of the provided configuration besides of ensuring it to be valid yaml.
+//
+// swagger:model
+type TokenImages struct {
+	TokenImagesPost
+
+	// UUID of the token.
+	// Example: b32d0079-c48b-4957-b1cb-bef54125c861
+	Token uuid.UUID
+
+	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
+	// Example: 2024-11-12T16:15:00Z
+	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
 }

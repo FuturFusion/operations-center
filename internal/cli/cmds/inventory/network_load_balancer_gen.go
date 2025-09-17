@@ -213,7 +213,7 @@ func (c *cmdNetworkLoadBalancerShow) Run(cmd *cobra.Command, args []string) erro
 	fmt.Printf("Network Name: %s\n", networkLoadBalancer.NetworkName)
 	fmt.Printf("Name: %s\n", networkLoadBalancer.Name)
 	fmt.Printf("Last Updated: %s\n", networkLoadBalancer.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Object:\n%s\n", objectJSON)
+	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 
 	return nil
 }

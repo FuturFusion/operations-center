@@ -14,22 +14,41 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
 func TestTokenDatabaseActions(t *testing.T) {
 	tokenA := provisioning.Token{
-		UUID:          uuid.MustParse(`8dae5ba3-2ad9-48a5-a7c4-188efb36fbb6`),
+		UUID:          uuidgen.FromPattern(t, "1"),
 		UsesRemaining: 1,
 		ExpireAt:      time.Now().Add(1 * time.Minute).UTC().Truncate(0), // Truncate to remove the monotonic clock.
 		Description:   "token A",
 	}
 
 	tokenB := provisioning.Token{
-		UUID:          uuid.MustParse(`e74417e0-e6d8-465a-b7bc-86d99a45ba49`),
+		UUID:          uuidgen.FromPattern(t, "2"),
 		UsesRemaining: 10,
 		ExpireAt:      time.Now().Add(10 * time.Minute).UTC().Truncate(0), // Truncate to remove the monotonic clock.
 		Description:   "token B",
+	}
+
+	tokenBSeed := provisioning.TokenSeed{
+		Token:       tokenB.UUID,
+		Name:        "config B",
+		Description: "seed config B",
+		Public:      true,
+		Seeds: provisioning.TokenImageSeeds{
+			Applications: map[string]any{
+				"applications": true,
+			},
+			Network: map[string]any{
+				"network": true,
+			},
+			Install: map[string]any{
+				"install": true,
+			},
+		},
 	}
 
 	ctx := context.Background()
@@ -68,8 +87,8 @@ func TestTokenDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, tokenIDs, 2)
 	require.ElementsMatch(t, []uuid.UUID{
-		uuid.MustParse("8dae5ba3-2ad9-48a5-a7c4-188efb36fbb6"),
-		uuid.MustParse("e74417e0-e6d8-465a-b7bc-86d99a45ba49"),
+		uuidgen.FromPattern(t, "1"),
+		uuidgen.FromPattern(t, "2"),
 	}, tokenIDs)
 
 	// Should get back tokenA unchanged.
@@ -93,7 +112,7 @@ func TestTokenDatabaseActions(t *testing.T) {
 	_, err = token.GetByUUID(ctx, tokenA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
-	// Should have two tokens remaining.
+	// Should have one token remaining.
 	tokens, err = token.GetAll(ctx)
 	require.NoError(t, err)
 	require.Len(t, tokens, 1)
@@ -105,4 +124,15 @@ func TestTokenDatabaseActions(t *testing.T) {
 	// Can't update a token that doesn't exist.
 	err = token.Update(ctx, tokenA)
 	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Create TokenSeedConfig
+	_, err = token.CreateTokenSeed(ctx, tokenBSeed)
+	require.NoError(t, err)
+
+	// Should get back tokenBSeedConfig unchanged.
+	dbTokenBSeedConfig, err := token.GetTokenSeedByName(ctx, tokenB.UUID, "config B")
+	require.NoError(t, err)
+	tokenBSeed.ID = dbTokenBSeedConfig.ID
+	tokenBSeed.LastUpdated = dbTokenBSeedConfig.LastUpdated
+	require.Equal(t, tokenBSeed, *dbTokenBSeedConfig)
 }

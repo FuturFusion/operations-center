@@ -30,6 +30,9 @@ func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorize
 	router.HandleFunc("PUT /{uuid}", response.With(handler.tokenPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{uuid}", response.With(handler.tokenDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{uuid}/image", response.With(handler.tokenImagePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("POST /{uuid}/images", response.With(handler.tokenImagesPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
+	router.HandleFunc("GET /{uuid}/images/{name}", response.With(handler.tokenImagesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	// FIXME: add update and delete for tokenImages
 }
 
 // swagger:operation GET /1.0/provisioning/tokens tokens tokens_get
@@ -387,6 +390,7 @@ func (t *tokenHandler) tokenDelete(r *http.Request) response.Response {
 //	consumes:
 //	  - application/json
 //	produces:
+//	  - application/json
 //	  - application/octet-stream
 //	  - application/gzip
 //	parameters:
@@ -419,8 +423,7 @@ func (t *tokenHandler) tokenImagePost(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	rc, err := t.service.GetPreSeedImage(r.Context(), UUID, provisioning.TokenSeedConfig{
-		ImageType:    tokenImagePost.Type,
+	rc, err := t.service.GetPreSeedImage(r.Context(), UUID, tokenImagePost.Type, provisioning.TokenImageSeeds{
 		Applications: tokenImagePost.Seeds.Applications,
 		Network:      tokenImagePost.Seeds.Network,
 		Install:      tokenImagePost.Seeds.Install,
@@ -430,4 +433,171 @@ func (t *tokenHandler) tokenImagePost(r *http.Request) response.Response {
 	}
 
 	return response.ReadCloserResponse(r, rc, true, fmt.Sprintf("pre-seed-%s%s", UUID.String(), tokenImagePost.Type.FileExt()), -1, nil)
+}
+
+// swagger:operation POST /1.0/provisioning/tokens/{uuid}/images tokens token_images_post
+//
+//	Add a token seed configuration
+//
+//	Add a token seed configuration for later IncusOS ISO or raw image generation.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: tokenImagesPost
+//	    description: Token seed configuration record.
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/TokenImagesPost"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (t *tokenHandler) tokenImagesPost(r *http.Request) response.Response {
+	UUIDString := r.PathValue("uuid")
+
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	var tokenImagesPost api.TokenImagesPost
+	err = json.NewDecoder(r.Body).Decode(&tokenImagesPost)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	seedConfig, err := t.service.CreateTokenSeed(r.Context(), provisioning.TokenSeed{
+		Token:       UUID,
+		Name:        tokenImagesPost.Name,
+		Description: tokenImagesPost.Description,
+		Public:      tokenImagesPost.Public,
+		Seeds: provisioning.TokenImageSeeds{
+			Applications: tokenImagesPost.Seeds.Applications,
+			Network:      tokenImagesPost.Seeds.Network,
+			Install:      tokenImagesPost.Seeds.Install,
+		},
+	})
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/tokens/"+UUID.String()+"/images/"+seedConfig.Name)
+}
+
+// swagger:operation GET /1.0/provisioning/tokens/{uuid}/images/{name} tokens token_images_get
+//
+//	Get token seed config
+//
+//	Get token seed config. This can be the literal config as JSON or it can be
+//	the generated pre-seeded IncusOS ISO or raw image file, if the `type`
+//	query parameter is provided.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	  - application/octet-stream
+//	  - application/gzip
+//	parameters:
+//	  - in: query
+//	    name: type
+//	    description: |-
+//	      Type of the generated file, "iso" or "raw".
+//	      If omitted, the token seed configuration is returned as JSON.
+//	responses:
+//	  "200":
+//	    description: Token seed config
+//	    content:
+//	      application/json:
+//	        description: Token seed config as JSON
+//	        schema:
+//	          type: object
+//	          description: Sync response
+//	          properties:
+//	            type:
+//	              type: string
+//	              description: Response type
+//	              example: sync
+//	            status:
+//	              type: string
+//	              description: Status description
+//	              example: Success
+//	            status_code:
+//	              type: integer
+//	              description: Status code
+//	              example: 200
+//	            metadata:
+//	              $ref: "#/definitions/TokenImages"
+//	      application/octet-stream:
+//	        description: Raw file data
+//	      application/gzip:
+//	        description: Raw file data
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (t *tokenHandler) tokenImagesGet(r *http.Request) response.Response {
+	UUIDString := r.PathValue("uuid")
+
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	name := r.PathValue("name")
+
+	typeArg := r.URL.Query().Get("type")
+
+	if typeArg == "" {
+		seedConfig, err := t.service.GetTokenSeedByName(r.Context(), UUID, name)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		return response.SyncResponseETag(
+			true,
+			api.TokenImages{
+				Token: seedConfig.Token,
+				TokenImagesPost: api.TokenImagesPost{
+					Name: seedConfig.Name,
+					TokenImagesPut: api.TokenImagesPut{
+						Description: seedConfig.Description,
+						Public:      seedConfig.Public,
+						Seeds: api.TokenImagePostSeeds{
+							Applications: seedConfig.Seeds.Applications,
+							Network:      seedConfig.Seeds.Network,
+							Install:      seedConfig.Seeds.Install,
+						},
+					},
+				},
+				LastUpdated: seedConfig.LastUpdated,
+			},
+			seedConfig,
+		)
+	}
+
+	imageType := api.ImageType(typeArg)
+	if !imageType.IsValid() {
+		return response.BadRequest(fmt.Errorf("type %q is not valid", typeArg))
+	}
+
+	rc, err := t.service.GetTokenImageFromTokenSeed(r.Context(), UUID, name, imageType)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.ReadCloserResponse(r, rc, true, fmt.Sprintf("pre-seed-%s%s", name, imageType.FileExt()), -1, nil)
 }
