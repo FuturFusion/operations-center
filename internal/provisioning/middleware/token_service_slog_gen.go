@@ -10,6 +10,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
 )
 
@@ -250,12 +251,13 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 }
 
 // GetPreSeedImage implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (readCloser io.ReadCloser, err error) {
+func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seedConfig provisioning.TokenSeeds) (readCloser io.ReadCloser, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
+			slog.Any("imageType", imageType),
 			slog.Any("seedConfig", seedConfig),
 		)
 	}
@@ -282,7 +284,7 @@ func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID
 			log.DebugContext(ctx, "<= method GetPreSeedImage finished")
 		}
 	}()
-	return _d._base.GetPreSeedImage(ctx, id, seedConfig)
+	return _d._base.GetPreSeedImage(ctx, id, imageType, seedConfig)
 }
 
 // Update implements provisioning.TokenService.
