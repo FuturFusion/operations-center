@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -124,7 +125,7 @@ func (_d TokenServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID
 }
 
 // GetPreSeedImage implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) GetPreSeedImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (readCloser io.ReadCloser, err error) {
+func (_d TokenServiceWithPrometheus) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seedConfig provisioning.TokenSeeds) (readCloser io.ReadCloser, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -134,7 +135,7 @@ func (_d TokenServiceWithPrometheus) GetPreSeedImage(ctx context.Context, id uui
 
 		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetPreSeedImage", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetPreSeedImage(ctx, id, seedConfig)
+	return _d.base.GetPreSeedImage(ctx, id, imageType, seedConfig)
 }
 
 // Update implements provisioning.TokenService.
