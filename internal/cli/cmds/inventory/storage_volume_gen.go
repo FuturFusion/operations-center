@@ -237,7 +237,7 @@ func (c *cmdStorageVolumeShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Name: %s\n", storageVolume.Name)
 	fmt.Printf("Type: %s\n", storageVolume.Type)
 	fmt.Printf("Last Updated: %s\n", storageVolume.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Object:\n%s\n", objectJSON)
+	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 
 	return nil
 }

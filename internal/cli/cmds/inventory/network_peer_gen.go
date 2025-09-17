@@ -213,7 +213,7 @@ func (c *cmdNetworkPeerShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Network Name: %s\n", networkPeer.NetworkName)
 	fmt.Printf("Name: %s\n", networkPeer.Name)
 	fmt.Printf("Last Updated: %s\n", networkPeer.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Object:\n%s\n", objectJSON)
+	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 
 	return nil
 }
