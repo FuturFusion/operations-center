@@ -9,7 +9,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type tokenService struct {
@@ -110,10 +112,9 @@ func (s tokenService) Consume(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
-func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, seedConfig TokenSeedConfig) (_ io.ReadCloser, err error) {
-	err = seedConfig.Validate()
-	if err != nil {
-		return nil, fmt.Errorf("Validate seed config: %w", err)
+func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seeds TokenSeeds) (_ io.ReadCloser, err error) {
+	if !imageType.IsValid() {
+		return nil, domain.NewValidationErrf("Invalid image type in token seed configuration")
 	}
 
 	_, err = s.repo.GetByUUID(ctx, id)
@@ -142,7 +143,7 @@ func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, seedCon
 	var filename string
 	for _, file := range updateFiles {
 		// TODO: filter for the correct architecture.
-		if file.Type == seedConfig.ImageType.UpdateFileType() {
+		if file.Type == imageType.UpdateFileType() {
 			filename = file.Filename
 			break
 		}
@@ -162,7 +163,7 @@ func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, seedCon
 		return nil, fmt.Errorf("Latest update %q is not a file", filename)
 	}
 
-	rc, err := s.flasher.GenerateSeededImage(ctx, id, seedConfig, file)
+	rc, err := s.flasher.GenerateSeededImage(ctx, id, seeds, file)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to generate seeded image: %w", err)
 	}
