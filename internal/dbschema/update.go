@@ -38,6 +38,27 @@ var updates = map[int]update{
 	9:  updateFromV8,
 	10: updateFromV9,
 	11: updateFromV10,
+	12: updateFromV11,
+}
+
+func updateFromV11(ctx context.Context, tx *sql.Tx) error {
+	// v11..v12 add table token_seed_config
+	stmt := `
+CREATE TABLE tokens_seeds (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  token_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  public BOOLEAN NOT NULL,
+  seeds TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (token_id, name),
+  FOREIGN KEY (token_id) REFERENCES tokens(id) ON DELETE CASCADE,
+  CHECK (name <> '')
+);
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV10(ctx context.Context, tx *sql.Tx) error {
