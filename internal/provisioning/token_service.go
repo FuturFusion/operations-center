@@ -112,7 +112,7 @@ func (s tokenService) Consume(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
-func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seeds TokenSeeds) (_ io.ReadCloser, err error) {
+func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seeds TokenImageSeedConfigs) (_ io.ReadCloser, err error) {
 	if !imageType.IsValid() {
 		return nil, domain.NewValidationErrf("Invalid image type in token seed configuration")
 	}
@@ -122,6 +122,87 @@ func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageTy
 		return nil, fmt.Errorf("Unable to get token %s: %w", id.String(), err)
 	}
 
+	return s.getPreSeedImage(ctx, id, imageType, seeds)
+}
+
+func (s tokenService) CreateTokenSeed(ctx context.Context, tokenSeed TokenSeed) (TokenSeed, error) {
+	err := tokenSeed.Validate()
+	if err != nil {
+		return TokenSeed{}, fmt.Errorf("Validate token seed: %w", err)
+	}
+
+	tokenSeed.ID, err = s.repo.CreateTokenSeed(ctx, tokenSeed)
+	if err != nil {
+		return TokenSeed{}, err
+	}
+
+	return tokenSeed, nil
+}
+
+func (s tokenService) GetTokenSeedAll(ctx context.Context, id uuid.UUID) (TokenSeeds, error) {
+	tokenSeeds, err := s.repo.GetTokenSeedAll(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return tokenSeeds, nil
+}
+
+func (s tokenService) GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) ([]string, error) {
+	return s.repo.GetTokenSeedAllNames(ctx, id)
+}
+
+func (s tokenService) GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (*TokenSeed, error) {
+	tokenSeedConfig, err := s.repo.GetTokenSeedByName(ctx, id, name)
+	if err != nil {
+		return nil, err
+	}
+
+	return tokenSeedConfig, nil
+}
+
+func (s tokenService) UpdateTokenSeed(ctx context.Context, tokenSeed TokenSeed) error {
+	err := tokenSeed.Validate()
+	if err != nil {
+		return fmt.Errorf("Validate token seed: %w", err)
+	}
+
+	err = s.repo.UpdateTokenSeed(ctx, tokenSeed)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s tokenService) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error {
+	err := s.repo.DeleteTokenSeedByName(ctx, id, name)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType) (io.ReadCloser, error) {
+	if !imageType.IsValid() {
+		return nil, domain.NewValidationErrf("Invalid image type in token seed configuration")
+	}
+
+	_, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to find token %s: %w", id.String(), err)
+	}
+
+	tokenSeed, err := s.repo.GetTokenSeedByName(ctx, id, name)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get token seed: %w", err)
+	}
+
+	return s.getPreSeedImage(ctx, id, imageType, tokenSeed.Seeds)
+}
+
+func (s tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seeds TokenImageSeedConfigs) (_ io.ReadCloser, err error) {
 	// TODO: Allow filters?
 	updates, err := s.updateSvc.GetAll(ctx)
 	if err != nil {

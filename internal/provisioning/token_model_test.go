@@ -1,6 +1,7 @@
 package provisioning_test
 
 import (
+	"database/sql/driver"
 	"testing"
 	"time"
 
@@ -57,6 +58,134 @@ func TestToken_Validate(t *testing.T) {
 			err := tc.token.Validate()
 
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestTokenImageSeeds_Value(t *testing.T) {
+	tests := []struct {
+		name string
+
+		tokenImageSeeds provisioning.TokenImageSeedConfigs
+
+		assertErr require.ErrorAssertionFunc
+		wantValue driver.Value
+	}{
+		{
+			name: "success",
+
+			tokenImageSeeds: provisioning.TokenImageSeedConfigs{
+				Applications: map[string]any{
+					"applications": true,
+				},
+				Network: map[string]any{
+					"network": true,
+				},
+				Install: map[string]any{
+					"install": true,
+				},
+			},
+
+			assertErr: require.NoError,
+			wantValue: []byte(`{"applications":{"applications":true},"network":{"network":true},"install":{"install":true}}`),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := tc.tokenImageSeeds.Value()
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantValue, got)
+		})
+	}
+}
+
+func TestTokenImageSeeds_Scan(t *testing.T) {
+	tests := []struct {
+		name string
+
+		value any
+
+		assertErr require.ErrorAssertionFunc
+		want      provisioning.TokenImageSeedConfigs
+	}{
+		{
+			name: "success - []byte",
+
+			value: []byte(`{"applications":{"applications":true},"network":{"network":true},"install":{"install":true}}`),
+
+			assertErr: require.NoError,
+			want: provisioning.TokenImageSeedConfigs{
+				Applications: map[string]any{
+					"applications": true,
+				},
+				Network: map[string]any{
+					"network": true,
+				},
+				Install: map[string]any{
+					"install": true,
+				},
+			},
+		},
+		{
+			name: "success - []byte zero length",
+
+			value: []byte(``),
+
+			assertErr: require.NoError,
+			want:      provisioning.TokenImageSeedConfigs{},
+		},
+		{
+			name: "success - string",
+
+			value: `{"applications":{"applications":true},"network":{"network":true},"install":{"install":true}}`,
+
+			assertErr: require.NoError,
+			want: provisioning.TokenImageSeedConfigs{
+				Applications: map[string]any{
+					"applications": true,
+				},
+				Network: map[string]any{
+					"network": true,
+				},
+				Install: map[string]any{
+					"install": true,
+				},
+			},
+		},
+		{
+			name: "success - string zero length",
+
+			value: ``,
+
+			assertErr: require.NoError,
+			want:      provisioning.TokenImageSeedConfigs{},
+		},
+		{
+			name: "error - nil",
+
+			assertErr: require.Error,
+			want:      provisioning.TokenImageSeedConfigs{},
+		},
+		{
+			name: "error - unsupported type",
+
+			value: 1, // not supported for TokenImageSeeds
+
+			assertErr: require.Error,
+			want:      provisioning.TokenImageSeedConfigs{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tokenImageSeeds := provisioning.TokenImageSeedConfigs{}
+
+			err := tokenImageSeeds.Scan(tc.value)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, tokenImageSeeds)
 		})
 	}
 }
