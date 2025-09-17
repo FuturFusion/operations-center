@@ -112,7 +112,7 @@ func (s tokenService) Consume(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
-func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seeds TokenSeeds) (_ io.ReadCloser, err error) {
+func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seeds TokenImageSeeds) (_ io.ReadCloser, err error) {
 	if !imageType.IsValid() {
 		return nil, domain.NewValidationErrf("Invalid image type in token seed configuration")
 	}
@@ -122,6 +122,48 @@ func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageTy
 		return nil, fmt.Errorf("Unable to get token %s: %w", id.String(), err)
 	}
 
+	return s.getPreSeedImage(ctx, id, imageType, seeds)
+}
+
+func (s tokenService) CreateTokenSeed(ctx context.Context, tokenSeed TokenSeed) (TokenSeed, error) {
+	var err error
+
+	tokenSeed.ID, err = s.repo.CreateTokenSeed(ctx, tokenSeed)
+	if err != nil {
+		return TokenSeed{}, err
+	}
+
+	return tokenSeed, nil
+}
+
+func (s tokenService) GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (*TokenSeed, error) {
+	tokenSeedConfig, err := s.repo.GetTokenSeedByName(ctx, id, name)
+	if err != nil {
+		return nil, err
+	}
+
+	return tokenSeedConfig, nil
+}
+
+func (s tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType) (io.ReadCloser, error) {
+	if !imageType.IsValid() {
+		return nil, domain.NewValidationErrf("Invalid image type in token seed configuration")
+	}
+
+	_, err := s.repo.GetByUUID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to find token %s: %w", id.String(), err)
+	}
+
+	tokenSeed, err := s.repo.GetTokenSeedByName(ctx, id, name)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get token seed: %w", err)
+	}
+
+	return s.getPreSeedImage(ctx, id, imageType, tokenSeed.Seeds)
+}
+
+func (s tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seeds TokenImageSeeds) (_ io.ReadCloser, err error) {
 	// TODO: Allow filters?
 	updates, err := s.updateSvc.GetAll(ctx)
 	if err != nil {

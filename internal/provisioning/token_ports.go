@@ -17,7 +17,10 @@ type TokenService interface {
 	Update(ctx context.Context, token Token) error
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	Consume(ctx context.Context, id uuid.UUID) error
-	GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seedConfig TokenSeeds) (_ io.ReadCloser, _ error)
+	GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seedConfig TokenImageSeeds) (io.ReadCloser, error)
+	CreateTokenSeed(ctx context.Context, tokenSeedConfig TokenSeed) (TokenSeed, error)
+	GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (*TokenSeed, error)
+	GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType) (io.ReadCloser, error)
 }
 
 type TokenRepo interface {
@@ -27,8 +30,10 @@ type TokenRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Token, error)
 	Update(ctx context.Context, token Token) error
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
+	CreateTokenSeed(ctx context.Context, seedConfig TokenSeed) (int64, error)
+	GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (*TokenSeed, error)
 }
 
 type FlasherPort interface {
-	GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig TokenSeeds, rc io.ReadCloser) (_ io.ReadCloser, _ error)
+	GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig TokenImageSeeds, rc io.ReadCloser) (io.ReadCloser, error)
 }
