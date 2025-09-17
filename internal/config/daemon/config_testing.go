@@ -20,8 +20,6 @@ func InitTest(t *testing.T) {
 	err := yaml.Unmarshal(defaultConfig, &cfg)
 	require.NoError(t, err)
 
-	cfg.Updates.SourcePollSkipFirst = true
-
 	globalConfigInstance = cfg
 }
 
