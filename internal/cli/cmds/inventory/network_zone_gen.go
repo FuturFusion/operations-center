@@ -219,7 +219,7 @@ func (c *cmdNetworkZoneShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Project Name: %s\n", networkZone.ProjectName)
 	fmt.Printf("Name: %s\n", networkZone.Name)
 	fmt.Printf("Last Updated: %s\n", networkZone.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Object:\n%s\n", objectJSON)
+	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 
 	return nil
 }

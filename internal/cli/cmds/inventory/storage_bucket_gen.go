@@ -233,7 +233,7 @@ func (c *cmdStorageBucketShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Storage Pool Name: %s\n", storageBucket.StoragePoolName)
 	fmt.Printf("Name: %s\n", storageBucket.Name)
 	fmt.Printf("Last Updated: %s\n", storageBucket.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Object:\n%s\n", objectJSON)
+	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 
 	return nil
 }

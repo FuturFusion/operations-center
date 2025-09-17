@@ -209,7 +209,7 @@ func (c *cmdNetworkIntegrationShow) Run(cmd *cobra.Command, args []string) error
 	fmt.Printf("Cluster: %s\n", networkIntegration.Cluster)
 	fmt.Printf("Name: %s\n", networkIntegration.Name)
 	fmt.Printf("Last Updated: %s\n", networkIntegration.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Object:\n%s\n", objectJSON)
+	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 
 	return nil
 }
