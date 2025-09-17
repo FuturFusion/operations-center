@@ -68,6 +68,20 @@ func (_d TokenServiceWithPrometheus) Create(ctx context.Context, token provision
 	return _d.base.Create(ctx, token)
 }
 
+// CreateTokenSeed implements provisioning.TokenService.
+func (_d TokenServiceWithPrometheus) CreateTokenSeed(ctx context.Context, tokenSeedConfig provisioning.TokenSeed) (tokenSeed provisioning.TokenSeed, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "CreateTokenSeed", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.CreateTokenSeed(ctx, tokenSeedConfig)
+}
+
 // DeleteByUUID implements provisioning.TokenService.
 func (_d TokenServiceWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
@@ -125,7 +139,7 @@ func (_d TokenServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID
 }
 
 // GetPreSeedImage implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seedConfig provisioning.TokenSeeds) (readCloser io.ReadCloser, err error) {
+func (_d TokenServiceWithPrometheus) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seedConfig provisioning.TokenImageSeeds) (readCloser io.ReadCloser, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -136,6 +150,34 @@ func (_d TokenServiceWithPrometheus) GetPreSeedImage(ctx context.Context, id uui
 		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetPreSeedImage", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetPreSeedImage(ctx, id, imageType, seedConfig)
+}
+
+// GetTokenImageFromTokenSeed implements provisioning.TokenService.
+func (_d TokenServiceWithPrometheus) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType) (readCloser io.ReadCloser, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetTokenImageFromTokenSeed", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetTokenImageFromTokenSeed(ctx, id, name, imageType)
+}
+
+// GetTokenSeedByName implements provisioning.TokenService.
+func (_d TokenServiceWithPrometheus) GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (tokenSeed *provisioning.TokenSeed, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetTokenSeedByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetTokenSeedByName(ctx, id, name)
 }
 
 // Update implements provisioning.TokenService.

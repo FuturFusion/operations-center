@@ -113,6 +113,41 @@ func (_d TokenServiceWithSlog) Create(ctx context.Context, token provisioning.To
 	return _d._base.Create(ctx, token)
 }
 
+// CreateTokenSeed implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) CreateTokenSeed(ctx context.Context, tokenSeedConfig provisioning.TokenSeed) (tokenSeed provisioning.TokenSeed, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("tokenSeedConfig", tokenSeedConfig),
+		)
+	}
+	log.Debug("=> calling CreateTokenSeed")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("tokenSeed", tokenSeed),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method CreateTokenSeed returned an informative error")
+			} else {
+				log.Error("<= method CreateTokenSeed returned an error")
+			}
+		} else {
+			log.Debug("<= method CreateTokenSeed finished")
+		}
+	}()
+	return _d._base.CreateTokenSeed(ctx, tokenSeedConfig)
+}
+
 // DeleteByUUID implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	log := _d._log.With()
@@ -251,7 +286,7 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 }
 
 // GetPreSeedImage implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seedConfig provisioning.TokenSeeds) (readCloser io.ReadCloser, err error) {
+func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seedConfig provisioning.TokenImageSeeds) (readCloser io.ReadCloser, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -285,6 +320,79 @@ func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID
 		}
 	}()
 	return _d._base.GetPreSeedImage(ctx, id, imageType, seedConfig)
+}
+
+// GetTokenImageFromTokenSeed implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType) (readCloser io.ReadCloser, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.String("name", name),
+			slog.Any("imageType", imageType),
+		)
+	}
+	log.Debug("=> calling GetTokenImageFromTokenSeed")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("readCloser", readCloser),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetTokenImageFromTokenSeed returned an informative error")
+			} else {
+				log.Error("<= method GetTokenImageFromTokenSeed returned an error")
+			}
+		} else {
+			log.Debug("<= method GetTokenImageFromTokenSeed finished")
+		}
+	}()
+	return _d._base.GetTokenImageFromTokenSeed(ctx, id, name, imageType)
+}
+
+// GetTokenSeedByName implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (tokenSeed *provisioning.TokenSeed, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.String("name", name),
+		)
+	}
+	log.Debug("=> calling GetTokenSeedByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("tokenSeed", tokenSeed),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.Debug("<= method GetTokenSeedByName returned an informative error")
+			} else {
+				log.Error("<= method GetTokenSeedByName returned an error")
+			}
+		} else {
+			log.Debug("<= method GetTokenSeedByName finished")
+		}
+	}()
+	return _d._base.GetTokenSeedByName(ctx, id, name)
 }
 
 // Update implements provisioning.TokenService.
