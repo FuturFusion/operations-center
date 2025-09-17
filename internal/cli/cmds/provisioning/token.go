@@ -71,6 +71,13 @@ func (c *CmdToken) Command() *cobra.Command {
 
 	cmd.AddCommand(tokenGetImageCmd.Command())
 
+	// Token seed sub-command
+	tokenSeedCmd := cmdTokenSeed{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(tokenSeedCmd.Command())
+
 	return cmd
 }
 
