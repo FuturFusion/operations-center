@@ -52,6 +52,20 @@ func (_d TokenRepoWithPrometheus) Create(ctx context.Context, token provisioning
 	return _d.base.Create(ctx, token)
 }
 
+// CreateTokenSeed implements provisioning.TokenRepo.
+func (_d TokenRepoWithPrometheus) CreateTokenSeed(ctx context.Context, seedConfig provisioning.TokenSeed) (n int64, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "CreateTokenSeed", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.CreateTokenSeed(ctx, seedConfig)
+}
+
 // DeleteByUUID implements provisioning.TokenRepo.
 func (_d TokenRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
@@ -64,6 +78,20 @@ func (_d TokenRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID
 		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.DeleteByUUID(ctx, id)
+}
+
+// DeleteTokenSeedByName implements provisioning.TokenRepo.
+func (_d TokenRepoWithPrometheus) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteTokenSeedByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteTokenSeedByName(ctx, id, name)
 }
 
 // GetAll implements provisioning.TokenRepo.
@@ -108,6 +136,48 @@ func (_d TokenRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) (
 	return _d.base.GetByUUID(ctx, id)
 }
 
+// GetTokenSeedAll implements provisioning.TokenRepo.
+func (_d TokenRepoWithPrometheus) GetTokenSeedAll(ctx context.Context, id uuid.UUID) (tokenSeeds provisioning.TokenSeeds, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetTokenSeedAll", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetTokenSeedAll(ctx, id)
+}
+
+// GetTokenSeedAllNames implements provisioning.TokenRepo.
+func (_d TokenRepoWithPrometheus) GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) (strings []string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetTokenSeedAllNames", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetTokenSeedAllNames(ctx, id)
+}
+
+// GetTokenSeedByName implements provisioning.TokenRepo.
+func (_d TokenRepoWithPrometheus) GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (tokenSeed *provisioning.TokenSeed, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetTokenSeedByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetTokenSeedByName(ctx, id, name)
+}
+
 // Update implements provisioning.TokenRepo.
 func (_d TokenRepoWithPrometheus) Update(ctx context.Context, token provisioning.Token) (err error) {
 	_since := time.Now()
@@ -120,4 +190,18 @@ func (_d TokenRepoWithPrometheus) Update(ctx context.Context, token provisioning
 		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "Update", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Update(ctx, token)
+}
+
+// UpdateTokenSeed implements provisioning.TokenRepo.
+func (_d TokenRepoWithPrometheus) UpdateTokenSeed(ctx context.Context, tokenSeedConfig provisioning.TokenSeed) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		tokenRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateTokenSeed", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateTokenSeed(ctx, tokenSeedConfig)
 }
