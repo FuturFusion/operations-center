@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 var ExpireAtInfinity = time.Date(9999, 12, 31, 23, 59, 59, 999999999, time.UTC)
@@ -36,19 +35,8 @@ func (t Token) Validate() error {
 
 type Tokens []Token
 
-type TokenSeedConfig struct {
-	ImageType    api.ImageType
-	Applications map[string]any
-	Network      map[string]any
-	Install      map[string]any
-}
-
-func (t TokenSeedConfig) Validate() error {
-	var imageType api.ImageType
-	err := imageType.UnmarshalText([]byte(t.ImageType))
-	if t.ImageType == "" || err != nil {
-		return domain.NewValidationErrf("Invalid token seed configuration, validation of image type failed: %v", err)
-	}
-
-	return nil
+type TokenSeeds struct {
+	Applications map[string]any `json:"applications"`
+	Network      map[string]any `json:"network"`
+	Install      map[string]any `json:"install"`
 }

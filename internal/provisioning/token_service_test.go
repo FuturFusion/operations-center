@@ -496,7 +496,8 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 	tests := []struct {
 		name                                  string
 		tokenArg                              uuid.UUID
-		seedConfigArg                         provisioning.TokenSeedConfig
+		imageType                             api.ImageType
+		seedConfigArg                         provisioning.TokenSeeds
 		repoGetByUUIDErr                      error
 		updateSvcGetAllUpdates                provisioning.Updates
 		updateSvcGetAllErr                    error
@@ -509,11 +510,10 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name:     "success",
-			tokenArg: uuidA,
-			seedConfigArg: provisioning.TokenSeedConfig{
-				ImageType: api.ImageTypeISO,
-			},
+			name:          "success",
+			tokenArg:      uuidA,
+			imageType:     api.ImageTypeISO,
+			seedConfigArg: provisioning.TokenSeeds{},
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -536,10 +536,9 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 		},
 
 		{
-			name: "error - seedConfig.Validate",
-			seedConfigArg: provisioning.TokenSeedConfig{
-				ImageType: api.ImageType(`invalid`), // invalid
-			},
+			name:          "error - seedConfig.Validate",
+			imageType:     api.ImageType(`invalid`), // invalid
+			seedConfigArg: provisioning.TokenSeeds{},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
@@ -547,31 +546,28 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			},
 		},
 		{
-			name:     "error - repo.GetByUUID",
-			tokenArg: uuidA,
-			seedConfigArg: provisioning.TokenSeedConfig{
-				ImageType: api.ImageTypeISO,
-			},
+			name:             "error - repo.GetByUUID",
+			tokenArg:         uuidA,
+			imageType:        api.ImageTypeISO,
+			seedConfigArg:    provisioning.TokenSeeds{},
 			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:     "error - updateSvc.GetAll",
-			tokenArg: uuidA,
-			seedConfigArg: provisioning.TokenSeedConfig{
-				ImageType: api.ImageTypeISO,
-			},
+			name:               "error - updateSvc.GetAll",
+			tokenArg:           uuidA,
+			imageType:          api.ImageTypeISO,
+			seedConfigArg:      provisioning.TokenSeeds{},
 			updateSvcGetAllErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:     "error - updateSvc.GetAll - no updates",
-			tokenArg: uuidA,
-			seedConfigArg: provisioning.TokenSeedConfig{
-				ImageType: api.ImageTypeISO,
-			},
+			name:                   "error - updateSvc.GetAll - no updates",
+			tokenArg:               uuidA,
+			imageType:              api.ImageTypeISO,
+			seedConfigArg:          provisioning.TokenSeeds{},
 			updateSvcGetAllUpdates: provisioning.Updates{},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -579,11 +575,10 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			},
 		},
 		{
-			name:     "error - updateSvc.GetUpdateAllFiles",
-			tokenArg: uuidA,
-			seedConfigArg: provisioning.TokenSeedConfig{
-				ImageType: api.ImageTypeISO,
-			},
+			name:          "error - updateSvc.GetUpdateAllFiles",
+			tokenArg:      uuidA,
+			imageType:     api.ImageTypeISO,
+			seedConfigArg: provisioning.TokenSeeds{},
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -594,11 +589,10 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:     "error - updateSvc.GetUpdateAllFiles - no files",
-			tokenArg: uuidA,
-			seedConfigArg: provisioning.TokenSeedConfig{
-				ImageType: api.ImageTypeISO,
-			},
+			name:          "error - updateSvc.GetUpdateAllFiles - no files",
+			tokenArg:      uuidA,
+			imageType:     api.ImageTypeISO,
+			seedConfigArg: provisioning.TokenSeeds{},
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -611,11 +605,10 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			},
 		},
 		{
-			name:     "error - updateSvc.GetUpdateByFilename",
-			tokenArg: uuidA,
-			seedConfigArg: provisioning.TokenSeedConfig{
-				ImageType: api.ImageTypeISO,
-			},
+			name:          "error - updateSvc.GetUpdateByFilename",
+			tokenArg:      uuidA,
+			imageType:     api.ImageTypeISO,
+			seedConfigArg: provisioning.TokenSeeds{},
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -632,11 +625,10 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:     "error - updateSvc.GetUpdateByFilename not *os.File",
-			tokenArg: uuidA,
-			seedConfigArg: provisioning.TokenSeedConfig{
-				ImageType: api.ImageTypeISO,
-			},
+			name:          "error - updateSvc.GetUpdateByFilename not *os.File",
+			tokenArg:      uuidA,
+			imageType:     api.ImageTypeISO,
+			seedConfigArg: provisioning.TokenSeeds{},
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -657,11 +649,10 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			},
 		},
 		{
-			name:     "error - flasher.GenerateSeededImage",
-			tokenArg: uuidA,
-			seedConfigArg: provisioning.TokenSeedConfig{
-				ImageType: api.ImageTypeISO,
-			},
+			name:          "error - flasher.GenerateSeededImage",
+			tokenArg:      uuidA,
+			imageType:     api.ImageTypeISO,
+			seedConfigArg: provisioning.TokenSeeds{},
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -707,7 +698,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			}
 
 			flasherAdapter := &adapterMock.FlasherPortMock{
-				GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (io.ReadCloser, error) {
+				GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeeds, rc io.ReadCloser) (io.ReadCloser, error) {
 					return rc, tc.flasherAdapterGenerateSeededImageErr
 				},
 			}
@@ -715,7 +706,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			tokenSvc := provisioning.NewTokenService(repo, updateSvc, flasherAdapter)
 
 			// Run test
-			rc, err := tokenSvc.GetPreSeedImage(context.Background(), tc.tokenArg, tc.seedConfigArg)
+			rc, err := tokenSvc.GetPreSeedImage(context.Background(), tc.tokenArg, tc.imageType, tc.seedConfigArg)
 
 			// Assert
 			tc.assertErr(t, err)
