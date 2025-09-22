@@ -56,7 +56,7 @@ func Test_systemHandler_certificatePut(t *testing.T) {
 
 			serveMux := http.NewServeMux()
 			router := newRouter(serveMux).AddMiddlewares(
-				authenticator.Middleware,
+				authenticator.Middleware(),
 			)
 
 			systemService := &systemMock.SystemServiceMock{

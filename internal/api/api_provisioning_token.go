@@ -16,14 +16,20 @@ import (
 )
 
 type tokenHandler struct {
-	service provisioning.TokenService
+	service    provisioning.TokenService
+	authorizer *authz.Authorizer
 }
 
 func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorizer, service provisioning.TokenService) {
 	handler := &tokenHandler{
-		service: service,
+		service:    service,
+		authorizer: authorizer,
 	}
 
+	// Authentication and authorization are only required, if the respective token image seed is not public.
+	router.HandleFunc("GET /{uuid}/seeds/{name}", response.With(handler.tokenSeedGet))
+
+	// Normal authentication and authorization rules apply.
 	router.HandleFunc("GET /{$}", response.With(handler.tokensGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("POST /{$}", response.With(handler.tokensPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
 	router.HandleFunc("GET /{uuid}", response.With(handler.tokenGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -698,12 +704,21 @@ func (t *tokenHandler) tokenSeedGet(r *http.Request) response.Response {
 
 	typeArg := r.URL.Query().Get("type")
 
-	if typeArg == "" {
-		seedConfig, err := t.service.GetTokenSeedByName(r.Context(), UUID, name)
-		if err != nil {
-			return response.SmartError(err)
-		}
+	seedConfig, err := t.service.GetTokenSeedByName(r.Context(), UUID, name)
+	if err != nil {
+		return response.SmartError(err)
+	}
 
+	if !seedConfig.Public {
+		// If the requested token seed config is not public, perform regular
+		// authorization logic.
+		resp := checkPermission(t.authorizer, r, authz.ObjectTypeServer, authz.EntitlementCanView)
+		if resp != nil {
+			return resp
+		}
+	}
+
+	if typeArg == "" {
 		return response.SyncResponseETag(
 			true,
 			api.TokenSeed{
