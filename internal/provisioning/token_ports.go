@@ -17,14 +17,14 @@ type TokenService interface {
 	Update(ctx context.Context, token Token) error
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	Consume(ctx context.Context, id uuid.UUID) error
-	GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seedConfig TokenImageSeedConfigs) (io.ReadCloser, error)
+	GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture api.Architecture, seedConfig TokenImageSeedConfigs) (io.ReadCloser, error)
 	CreateTokenSeed(ctx context.Context, tokenSeedConfig TokenSeed) (TokenSeed, error)
 	GetTokenSeedAll(ctx context.Context, id uuid.UUID) (TokenSeeds, error)
 	GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) ([]string, error)
 	GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (*TokenSeed, error)
 	UpdateTokenSeed(ctx context.Context, tokenSeed TokenSeed) error
 	DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error
-	GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType) (io.ReadCloser, error)
+	GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture api.Architecture) (io.ReadCloser, error)
 }
 
 type TokenRepo interface {

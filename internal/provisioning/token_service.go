@@ -112,9 +112,13 @@ func (s tokenService) Consume(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
-func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seeds TokenImageSeedConfigs) (_ io.ReadCloser, err error) {
+func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture api.Architecture, seeds TokenImageSeedConfigs) (_ io.ReadCloser, err error) {
 	if !imageType.IsValid() {
-		return nil, domain.NewValidationErrf("Invalid image type in token seed configuration")
+		return nil, domain.NewValidationErrf("Invalid image type")
+	}
+
+	if !architecture.IsValid() {
+		return nil, domain.NewValidationErrf("Invalid architecture")
 	}
 
 	_, err = s.repo.GetByUUID(ctx, id)
@@ -122,7 +126,7 @@ func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageTy
 		return nil, fmt.Errorf("Unable to get token %s: %w", id.String(), err)
 	}
 
-	return s.getPreSeedImage(ctx, id, imageType, seeds)
+	return s.getPreSeedImage(ctx, id, imageType, architecture, seeds)
 }
 
 func (s tokenService) CreateTokenSeed(ctx context.Context, tokenSeed TokenSeed) (TokenSeed, error) {
@@ -184,9 +188,13 @@ func (s tokenService) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, n
 	return nil
 }
 
-func (s tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType) (io.ReadCloser, error) {
+func (s tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture api.Architecture) (io.ReadCloser, error) {
 	if !imageType.IsValid() {
-		return nil, domain.NewValidationErrf("Invalid image type in token seed configuration")
+		return nil, domain.NewValidationErrf("Invalid image type")
+	}
+
+	if !architecture.IsValid() {
+		return nil, domain.NewValidationErrf("Invalid architecture")
 	}
 
 	_, err := s.repo.GetByUUID(ctx, id)
@@ -199,10 +207,10 @@ func (s tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UU
 		return nil, fmt.Errorf("Failed to get token seed: %w", err)
 	}
 
-	return s.getPreSeedImage(ctx, id, imageType, tokenSeed.Seeds)
+	return s.getPreSeedImage(ctx, id, imageType, architecture, tokenSeed.Seeds)
 }
 
-func (s tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seeds TokenImageSeedConfigs) (_ io.ReadCloser, err error) {
+func (s tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture api.Architecture, seeds TokenImageSeedConfigs) (_ io.ReadCloser, err error) {
 	// TODO: Allow filters?
 	updates, err := s.updateSvc.GetAll(ctx)
 	if err != nil {
@@ -223,15 +231,14 @@ func (s tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageTy
 
 	var filename string
 	for _, file := range updateFiles {
-		// TODO: filter for the correct architecture.
-		if file.Type == imageType.UpdateFileType() {
+		if file.Type == imageType.UpdateFileType() && file.Architecture == architecture {
 			filename = file.Filename
 			break
 		}
 	}
 
 	if filename == "" {
-		return nil, fmt.Errorf("Failed to find image file for latest update %q", latestUpdate.UUID.String())
+		return nil, fmt.Errorf("Failed to find image file of type %q for architecture %q in latest update %q", imageType, architecture, latestUpdate.UUID.String())
 	}
 
 	filereader, _, err := s.updateSvc.GetUpdateFileByFilename(ctx, latestUpdate.UUID, filename)
