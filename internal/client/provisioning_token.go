@@ -148,9 +148,10 @@ func (c OperationsCenterClient) DeleteTokenSeed(ctx context.Context, id string, 
 	return nil
 }
 
-func (c OperationsCenterClient) GetTokenImageFromSeed(ctx context.Context, id string, name string, imageType api.ImageType) (io.ReadCloser, error) {
+func (c OperationsCenterClient) GetTokenImageFromSeed(ctx context.Context, id string, name string, imageType api.ImageType, architecture api.Architecture) (io.ReadCloser, error) {
 	query := url.Values{}
 	query.Add("type", imageType.String())
+	query.Add("architecture", architecture.String())
 
 	resp, err := c.doRequestRawResponse(ctx, http.MethodGet, path.Join("/provisioning/tokens", id, "seeds", name), query, nil)
 	if err != nil {

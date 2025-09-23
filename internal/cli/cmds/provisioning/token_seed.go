@@ -2,6 +2,7 @@ package provisioning
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -413,7 +414,8 @@ func (c *cmdTokenSeedShow) Run(cmd *cobra.Command, args []string) error {
 type cmdTokenSeedGetImage struct {
 	ocClient *client.OperationsCenterClient
 
-	flagImageType string
+	flagImageType    string
+	flagArchitecture string
 }
 
 func (c *cmdTokenSeedGetImage) Command() *cobra.Command {
@@ -427,6 +429,7 @@ func (c *cmdTokenSeedGetImage) Command() *cobra.Command {
 	cmd.RunE = c.Run
 
 	cmd.Flags().StringVar(&c.flagImageType, "type", "iso", "type of image (iso|raw)")
+	cmd.Flags().StringVar(&c.flagArchitecture, "architecture", "x86_64", "CPU architecture for the image (x86_64|aarch64)")
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		imageType := cmd.Flag("type").Value.String()
 		switch imageType {
@@ -435,13 +438,20 @@ func (c *cmdTokenSeedGetImage) Command() *cobra.Command {
 			return fmt.Errorf(`Invalid value for flag "--type": %q`, imageType)
 		}
 
+		architecture := cmd.Flag("architecture").Value.String()
+		switch architecture {
+		case api.Architecture64BitIntelX86.String(), api.Architecture64BitARMV8LittleEndian.String():
+		default:
+			return fmt.Errorf(`Invalid value for flag "--architecture": %q`, architecture)
+		}
+
 		return nil
 	}
 
 	return cmd
 }
 
-func (c *cmdTokenSeedGetImage) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenSeedGetImage) Run(cmd *cobra.Command, args []string) (err error) {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 3, 3)
 	if exit {
@@ -462,14 +472,28 @@ func (c *cmdTokenSeedGetImage) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	var architecture api.Architecture
+	err = architecture.UnmarshalText([]byte(c.flagArchitecture))
+	if err != nil {
+		return err
+	}
+
 	targetFile, err := os.OpenFile(targetFilename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err
 	}
 
-	defer targetFile.Close()
+	defer func() {
+		closeErr := targetFile.Close()
+		var removeErr error
+		if err != nil {
+			removeErr = os.Remove(targetFilename)
+		}
 
-	imageReader, err := c.ocClient.GetTokenImageFromSeed(cmd.Context(), id, name, imageType)
+		err = errors.Join(err, closeErr, removeErr)
+	}()
+
+	imageReader, err := c.ocClient.GetTokenImageFromSeed(cmd.Context(), id, name, imageType, architecture)
 	if err != nil {
 		return err
 	}
