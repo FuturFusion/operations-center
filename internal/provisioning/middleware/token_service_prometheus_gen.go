@@ -237,7 +237,7 @@ func (_d TokenServiceWithPrometheus) Update(ctx context.Context, token provision
 }
 
 // UpdateTokenSeed implements provisioning.TokenService.
-func (_d TokenServiceWithPrometheus) UpdateTokenSeed(ctx context.Context, tokenSeedConfig provisioning.TokenSeed) (err error) {
+func (_d TokenServiceWithPrometheus) UpdateTokenSeed(ctx context.Context, tokenSeed provisioning.TokenSeed) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -247,5 +247,5 @@ func (_d TokenServiceWithPrometheus) UpdateTokenSeed(ctx context.Context, tokenS
 
 		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateTokenSeed", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.UpdateTokenSeed(ctx, tokenSeedConfig)
+	return _d.base.UpdateTokenSeed(ctx, tokenSeed)
 }

@@ -535,12 +535,12 @@ func (_d TokenServiceWithSlog) Update(ctx context.Context, token provisioning.To
 }
 
 // UpdateTokenSeed implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) UpdateTokenSeed(ctx context.Context, tokenSeedConfig provisioning.TokenSeed) (err error) {
+func (_d TokenServiceWithSlog) UpdateTokenSeed(ctx context.Context, tokenSeed provisioning.TokenSeed) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("tokenSeedConfig", tokenSeedConfig),
+			slog.Any("tokenSeed", tokenSeed),
 		)
 	}
 	log.DebugContext(ctx, "=> calling UpdateTokenSeed")
@@ -565,5 +565,5 @@ func (_d TokenServiceWithSlog) UpdateTokenSeed(ctx context.Context, tokenSeedCon
 			log.DebugContext(ctx, "<= method UpdateTokenSeed finished")
 		}
 	}()
-	return _d._base.UpdateTokenSeed(ctx, tokenSeedConfig)
+	return _d._base.UpdateTokenSeed(ctx, tokenSeed)
 }
