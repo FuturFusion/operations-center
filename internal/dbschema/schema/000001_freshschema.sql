@@ -22,7 +22,8 @@ CREATE TABLE clusters (
   status TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (name),
-  UNIQUE (certificate)
+  UNIQUE (certificate),
+  CHECK (name <> '')
 );
 
 CREATE TABLE servers (
@@ -40,7 +41,8 @@ CREATE TABLE servers (
   public_connection_url TEXT NOT NULL DEFAULT '',
   UNIQUE (name),
   UNIQUE (certificate),
-  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE,
+  CHECK (name <> '')
 );
 
 CREATE TABLE updates (
@@ -337,4 +339,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (13, strftime("%s"))
+INSERT INTO schema (version, updated_at) VALUES (14, strftime("%s"))
