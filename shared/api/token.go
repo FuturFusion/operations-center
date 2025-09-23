@@ -93,7 +93,7 @@ func (i ImageType) UpdateFileType() UpdateFileType {
 // image for a given Token.
 //
 // Operations Center just passes through the provided configuration for
-// application.yaml, install.yaml and network.yaml as is without any validation
+// applications.yaml, install.yaml and network.yaml as is without any validation
 // of the provided configuration besides of ensuring it to be valid yaml.
 //
 // swagger:model
@@ -103,13 +103,13 @@ type TokenImagePost struct {
 	// Example: iso
 	Type ImageType `json:"type" yaml:"type"`
 
-	// Seeds represents the seed configuration for e.g. application.yaml,
+	// Seeds represents the seed configuration for e.g. applications.yaml,
 	// install.yaml and network.yaml.
 	Seeds TokenImagePostSeeds `json:"seeds" yaml:"seeds"`
 }
 
 type TokenImagePostSeeds struct {
-	// Applications represents the applications configuration (application.yaml) to be included in the pre-seeded image.
+	// Applications represents the applications configuration (applications.yaml) to be included in the pre-seeded image.
 	Applications map[string]any `json:"applications" yaml:"applications"`
 
 	// Network represents the network configuration (network.yaml) to be included in the pre-seeded image.

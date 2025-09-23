@@ -91,14 +91,14 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedCon
 	return newInjectReader(newParentCloser(gzipReader, file), seedTarballStartPosition, tarball), nil
 }
 
-func createSeedTarball(applicationSeed map[string]any, incusSeed *seed.Incus, installSeed map[string]any, networkSeed map[string]any, providerSeed *seed.Provider) (_ []byte, err error) {
+func createSeedTarball(applicationsSeed map[string]any, incusSeed *seed.Incus, installSeed map[string]any, networkSeed map[string]any, providerSeed *seed.Provider) (_ []byte, err error) {
 	seedData := []struct {
 		filename string
 		data     any
 	}{
 		{
-			filename: "application.yaml",
-			data:     applicationSeed,
+			filename: "applications.yaml",
+			data:     applicationsSeed,
 		},
 		{
 			filename: "incus.yaml",
