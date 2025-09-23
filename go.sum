@@ -416,6 +416,8 @@ github.com/lxc/incus-os/incus-osd v0.0.0-20250828001358-92d9d9482e28 h1:Uj4KYPBl
 github.com/lxc/incus-os/incus-osd v0.0.0-20250828001358-92d9d9482e28/go.mod h1:0tmPnqHi1OwzbLlgKKmFXJjpOy9wAFewWOEJuzDdtng=
 github.com/lxc/incus/v6 v6.16.0 h1:z2cz+STIGvHwHdNQ3P1fuvQZgsjzg0AT3VQALQM/zts=
 github.com/lxc/incus/v6 v6.16.0/go.mod h1:sSAOgIBsUmzoJkyAxyp2L9cgOQ3TPFj7QpHjHhR2NJI=
+github.com/lxc/incus/v6 v6.16.1-0.20250920023458-4b689e28c9f6 h1:UaEbuUG2WiV/WfUthwiUGVyH/keab/3M/0cCPwMg2RY=
+github.com/lxc/incus/v6 v6.16.1-0.20250920023458-4b689e28c9f6/go.mod h1:sSAOgIBsUmzoJkyAxyp2L9cgOQ3TPFj7QpHjHhR2NJI=
 github.com/magiconair/properties v1.8.5/go.mod h1:y3VJvCyxH9uVvJTWEGAELF3aiYNyPKd5NZ3oSwXrF60=
 github.com/magiconair/properties v1.8.10 h1:s31yESBquKXCV9a/ScB3ESkOjUYYv+X0rg8SYxI99mE=
 github.com/magiconair/properties v1.8.10/go.mod h1:Dhd985XPs7jluiymwWYZ0G4Z61jb3vdS329zhj2hYo0=

@@ -195,7 +195,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/lmittmann/tint v1.1.2
 	github.com/lxc/incus-os/incus-osd v0.0.0-20250828001358-92d9d9482e28
-	github.com/lxc/incus/v6 v6.16.0
+	github.com/lxc/incus/v6 v6.16.1-0.20250920023458-4b689e28c9f6
 	github.com/maniartech/signals v1.2.1-0.20250713110343-9566101cf08a
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/oauth2-proxy/mockoidc v0.0.0-20240214162133-caebfff84d25
