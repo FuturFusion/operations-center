@@ -430,7 +430,7 @@ func (t *tokenHandler) tokenImagePost(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	rc, err := t.service.GetPreSeedImage(r.Context(), UUID, tokenImagePost.Type, provisioning.TokenImageSeedConfigs{
+	rc, err := t.service.GetPreSeedImage(r.Context(), UUID, tokenImagePost.Type, tokenImagePost.Architecture, provisioning.TokenImageSeedConfigs{
 		Applications: tokenImagePost.Seeds.Applications,
 		Network:      tokenImagePost.Seeds.Network,
 		Install:      tokenImagePost.Seeds.Install,
@@ -703,6 +703,7 @@ func (t *tokenHandler) tokenSeedGet(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
 	typeArg := r.URL.Query().Get("type")
+	architectureArg := r.URL.Query().Get("architecture")
 
 	seedConfig, err := t.service.GetTokenSeedByName(r.Context(), UUID, name)
 	if err != nil {
@@ -743,10 +744,15 @@ func (t *tokenHandler) tokenSeedGet(r *http.Request) response.Response {
 
 	imageType := api.ImageType(typeArg)
 	if !imageType.IsValid() {
-		return response.BadRequest(fmt.Errorf("type %q is not valid", typeArg))
+		return response.BadRequest(fmt.Errorf("image type %q is not valid", typeArg))
 	}
 
-	rc, err := t.service.GetTokenImageFromTokenSeed(r.Context(), UUID, name, imageType)
+	architecture := api.Architecture(architectureArg)
+	if !architecture.IsValid() {
+		return response.BadRequest(fmt.Errorf("architecture %q is not valid", architectureArg))
+	}
+
+	rc, err := t.service.GetTokenImageFromTokenSeed(r.Context(), UUID, name, imageType, architecture)
 	if err != nil {
 		return response.SmartError(err)
 	}
