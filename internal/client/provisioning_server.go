@@ -58,6 +58,15 @@ func (c OperationsCenterClient) CreateServer(ctx context.Context, server api.Ser
 	return nil
 }
 
+func (c OperationsCenterClient) UpdateServer(ctx context.Context, name string, server api.ServerPut) error {
+	_, err := c.doRequest(ctx, http.MethodPut, path.Join("/provisioning/servers", name), nil, server)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) DeleteServer(ctx context.Context, name string) error {
 	_, err := c.doRequest(ctx, http.MethodDelete, path.Join("/provisioning/servers", name), nil, nil)
 	if err != nil {
@@ -68,7 +77,7 @@ func (c OperationsCenterClient) DeleteServer(ctx context.Context, name string) e
 }
 
 func (c OperationsCenterClient) RenameServer(ctx context.Context, name string, newName string) error {
-	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name), nil, api.Server{
+	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name), nil, api.ServerPost{
 		Name: newName,
 	})
 	if err != nil {
