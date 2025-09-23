@@ -189,16 +189,21 @@ func (s *serverHandler) serversGet(r *http.Request) response.Response {
 		result := make([]api.Server, 0, len(servers))
 		for _, server := range servers {
 			result = append(result, api.Server{
-				Cluster:       ptr.From(server.Cluster),
-				Name:          server.Name,
-				Type:          server.Type,
-				ConnectionURL: server.ConnectionURL,
-				HardwareData:  server.HardwareData,
-				OSData:        server.OSData,
-				VersionData:   server.VersionData,
-				Status:        server.Status,
-				LastUpdated:   server.LastUpdated,
-				LastSeen:      server.LastSeen,
+				ServerPost: api.ServerPost{
+					Name:          server.Name,
+					ConnectionURL: server.ConnectionURL,
+					ServerPut: api.ServerPut{
+						PublicConnectionURL: server.PublicConnectionURL,
+					},
+				},
+				Cluster:      ptr.From(server.Cluster),
+				Type:         server.Type,
+				HardwareData: server.HardwareData,
+				OSData:       server.OSData,
+				VersionData:  server.VersionData,
+				Status:       server.Status,
+				LastUpdated:  server.LastUpdated,
+				LastSeen:     server.LastSeen,
 			})
 		}
 
@@ -278,7 +283,7 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("Invalid token: %v", err))
 	}
 
-	var server api.Server
+	var server api.ServerPost
 
 	// Decode into the new server.
 	err = json.NewDecoder(r.Body).Decode(&server)
@@ -298,9 +303,10 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 	})
 
 	_, err = s.service.Create(r.Context(), token, provisioning.Server{
-		Name:          server.Name,
-		ConnectionURL: server.ConnectionURL,
-		Certificate:   string(certificate),
+		Name:                server.Name,
+		ConnectionURL:       server.ConnectionURL,
+		PublicConnectionURL: server.PublicConnectionURL,
+		Certificate:         string(certificate),
 	})
 	if err != nil {
 		return response.Forbidden(fmt.Errorf("Failed creating server: %w", err))
@@ -358,15 +364,20 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		api.Server{
-			Cluster:       ptr.From(server.Cluster),
-			Name:          server.Name,
-			Type:          server.Type,
-			ConnectionURL: server.ConnectionURL,
-			HardwareData:  server.HardwareData,
-			OSData:        server.OSData,
-			VersionData:   server.VersionData,
-			Status:        server.Status,
-			LastUpdated:   server.LastUpdated,
+			ServerPost: api.ServerPost{
+				Name:          server.Name,
+				ConnectionURL: server.ConnectionURL,
+				ServerPut: api.ServerPut{
+					PublicConnectionURL: server.PublicConnectionURL,
+				},
+			},
+			Cluster:      ptr.From(server.Cluster),
+			Type:         server.Type,
+			HardwareData: server.HardwareData,
+			OSData:       server.OSData,
+			VersionData:  server.VersionData,
+			Status:       server.Status,
+			LastUpdated:  server.LastUpdated,
 		},
 		server,
 	)
@@ -404,7 +415,7 @@ func (s *serverHandler) serverGet(r *http.Request) response.Response {
 func (s *serverHandler) serverPut(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	var server api.Server
+	var server api.ServerPut
 
 	err := json.NewDecoder(r.Body).Decode(&server)
 	if err != nil {
@@ -430,17 +441,9 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	err = s.service.Update(ctx, provisioning.Server{
-		Cluster:       ptr.To(server.Cluster),
-		Name:          server.Name,
-		Type:          server.Type,
-		ConnectionURL: server.ConnectionURL,
-		// TODO: Preservation of Certificate and Hardware Data should be part of service logic and not API handler
-		Certificate:  currentServer.Certificate,
-		HardwareData: currentServer.HardwareData,
-		VersionData:  server.VersionData,
-		Status:       server.Status,
-	})
+	currentServer.PublicConnectionURL = server.PublicConnectionURL
+
+	err = s.service.Update(ctx, *currentServer)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating server %q: %w", name, err))
 	}
