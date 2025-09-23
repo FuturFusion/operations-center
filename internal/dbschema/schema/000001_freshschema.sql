@@ -275,6 +275,18 @@ CREATE TABLE tokens_seeds (
   CHECK (name <> '')
 );
 
+CREATE TABLE cluster_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  service_config_template TEXT NOT NULL,
+  application_config_template TEXT NOT NULL,
+  variables TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (name),
+  CHECK (name <> '')
+);
+
 CREATE VIEW resources AS
     SELECT 'image' AS kind, images.id, clusters.name AS cluster_name, NULL AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
     FROM images
@@ -339,4 +351,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (14, strftime("%s"))
+INSERT INTO schema (version, updated_at) VALUES (15, strftime("%s"))

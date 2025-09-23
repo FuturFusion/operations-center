@@ -41,6 +41,26 @@ var updates = map[int]update{
 	12: updateFromV11,
 	13: updateFromV12,
 	14: updateFromV13,
+	15: updateFromV14,
+}
+
+func updateFromV14(ctx context.Context, tx *sql.Tx) error {
+	// v14..v15 add table cluster_templates
+	stmt := `
+CREATE TABLE cluster_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  service_config_template TEXT NOT NULL,
+  application_config_template TEXT NOT NULL,
+  variables TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (name),
+  CHECK (name <> '')
+);
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV13(ctx context.Context, tx *sql.Tx) error {
