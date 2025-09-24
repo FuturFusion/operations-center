@@ -172,15 +172,19 @@ type Update struct {
 type UpdateFileComponent string
 
 const (
-	UpdateFileComponentOS    UpdateFileComponent = "os"
-	UpdateFileComponentIncus UpdateFileComponent = "incus"
-	UpdateFileComponentDebug UpdateFileComponent = "debug"
+	UpdateFileComponentOS               UpdateFileComponent = "os"
+	UpdateFileComponentIncus            UpdateFileComponent = "incus"
+	UpdateFileComponentMigrationManager UpdateFileComponent = "migration-manager"
+	UpdateFileComponentOperationsCenter UpdateFileComponent = "operations-center"
+	UpdateFileComponentDebug            UpdateFileComponent = "debug"
 )
 
 var updateFileComponents = map[UpdateFileComponent]struct{}{
-	UpdateFileComponentOS:    {},
-	UpdateFileComponentIncus: {},
-	UpdateFileComponentDebug: {},
+	UpdateFileComponentOS:               {},
+	UpdateFileComponentIncus:            {},
+	UpdateFileComponentMigrationManager: {},
+	UpdateFileComponentOperationsCenter: {},
+	UpdateFileComponentDebug:            {},
 }
 
 func (u UpdateFileComponent) String() string {
