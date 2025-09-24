@@ -161,10 +161,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
+	clusterTemplateSvc := d.setupClusterTemplateService(dbWithTransaction)
 	systemSvc := d.setupSystemService()
 
 	// Setup API routes
-	serveMux, inventorySyncers := d.setupAPIRoutes(updateSvc, tokenSvc, serverSvc, clusterSvc, systemSvc, dbWithTransaction)
+	serveMux, inventorySyncers := d.setupAPIRoutes(updateSvc, tokenSvc, serverSvc, clusterSvc, clusterTemplateSvc, systemSvc, dbWithTransaction)
 
 	clusterSvc.SetInventorySyncers(inventorySyncers)
 
@@ -471,6 +472,18 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.Se
 	), nil
 }
 
+func (d *Daemon) setupClusterTemplateService(db dbdriver.DBTX) provisioning.ClusterTemplateService {
+	return provisioningServiceMiddleware.NewClusterTemplateServiceWithSlog(
+		provisioning.NewClusterTemplateService(
+			provisioningRepoMiddleware.NewClusterTemplateRepoWithSlog(
+				provisioningSqlite.NewClusterTemplate(db),
+				slog.Default(),
+			),
+		),
+		slog.Default(),
+	)
+}
+
 func (d *Daemon) setupSystemService() system.SystemService {
 	return systemServiceMiddleware.NewSystemServiceWithSlog(
 		system.NewSystemService(d.env, d.serverCertificateUpdate),
@@ -483,6 +496,7 @@ func (d *Daemon) setupAPIRoutes(
 	tokenSvc provisioning.TokenService,
 	serverSvc provisioning.ServerService,
 	clusterSvc provisioning.ClusterService,
+	clusterTemplateSvc provisioning.ClusterTemplateService,
 	systemSvc system.SystemService,
 	db dbdriver.DBTX,
 ) (*http.ServeMux, []provisioning.InventorySyncer) {
@@ -548,6 +562,9 @@ func (d *Daemon) setupAPIRoutes(
 
 	provisioningClusterRouter := provisioningRouter.SubGroup("/clusters")
 	registerProvisioningClusterHandler(provisioningClusterRouter, d.authorizer, clusterSvc)
+
+	provisioningClusterTemplateRouter := provisioningRouter.SubGroup("/cluster-templates")
+	registerProvisioningClusterTemplateHandler(provisioningClusterTemplateRouter, d.authorizer, clusterTemplateSvc)
 
 	provisioningServerRouter := provisioningRouter.SubGroup("/servers")
 	registerProvisioningServerHandler(provisioningServerRouter, d.authorizer, serverSvc, d.clientCertificate)
