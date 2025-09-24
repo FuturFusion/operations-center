@@ -53,7 +53,7 @@ func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, endp
 			slog.String("projectName", projectName),
 		)
 	}
-	log.Debug("=> calling GetProjectByName")
+	log.DebugContext(ctx, "=> calling GetProjectByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -68,12 +68,12 @@ func (_d ProjectServerClientWithSlog) GetProjectByName(ctx context.Context, endp
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetProjectByName returned an informative error")
+				log.DebugContext(ctx, "<= method GetProjectByName returned an informative error")
 			} else {
-				log.Error("<= method GetProjectByName returned an error")
+				log.ErrorContext(ctx, "<= method GetProjectByName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetProjectByName finished")
+			log.DebugContext(ctx, "<= method GetProjectByName finished")
 		}
 	}()
 	return _d._base.GetProjectByName(ctx, endpoint, projectName)
@@ -88,7 +88,7 @@ func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, endpoint 
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling GetProjects")
+	log.DebugContext(ctx, "=> calling GetProjects")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -103,12 +103,12 @@ func (_d ProjectServerClientWithSlog) GetProjects(ctx context.Context, endpoint 
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetProjects returned an informative error")
+				log.DebugContext(ctx, "<= method GetProjects returned an informative error")
 			} else {
-				log.Error("<= method GetProjects returned an error")
+				log.ErrorContext(ctx, "<= method GetProjects returned an error")
 			}
 		} else {
-			log.Debug("<= method GetProjects finished")
+			log.DebugContext(ctx, "<= method GetProjects finished")
 		}
 	}()
 	return _d._base.GetProjects(ctx, endpoint)

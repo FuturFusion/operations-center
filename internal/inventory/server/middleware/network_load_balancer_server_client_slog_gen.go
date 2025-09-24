@@ -54,7 +54,7 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(c
 			slog.String("networkLoadBalancerName", networkLoadBalancerName),
 		)
 	}
-	log.Debug("=> calling GetNetworkLoadBalancerByName")
+	log.DebugContext(ctx, "=> calling GetNetworkLoadBalancerByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -69,12 +69,12 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancerByName(c
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetNetworkLoadBalancerByName returned an informative error")
+				log.DebugContext(ctx, "<= method GetNetworkLoadBalancerByName returned an informative error")
 			} else {
-				log.Error("<= method GetNetworkLoadBalancerByName returned an error")
+				log.ErrorContext(ctx, "<= method GetNetworkLoadBalancerByName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetNetworkLoadBalancerByName finished")
+			log.DebugContext(ctx, "<= method GetNetworkLoadBalancerByName finished")
 		}
 	}()
 	return _d._base.GetNetworkLoadBalancerByName(ctx, endpoint, networkName, networkLoadBalancerName)
@@ -90,7 +90,7 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx co
 			slog.String("networkName", networkName),
 		)
 	}
-	log.Debug("=> calling GetNetworkLoadBalancers")
+	log.DebugContext(ctx, "=> calling GetNetworkLoadBalancers")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -105,12 +105,12 @@ func (_d NetworkLoadBalancerServerClientWithSlog) GetNetworkLoadBalancers(ctx co
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetNetworkLoadBalancers returned an informative error")
+				log.DebugContext(ctx, "<= method GetNetworkLoadBalancers returned an informative error")
 			} else {
-				log.Error("<= method GetNetworkLoadBalancers returned an error")
+				log.ErrorContext(ctx, "<= method GetNetworkLoadBalancers returned an error")
 			}
 		} else {
-			log.Debug("<= method GetNetworkLoadBalancers finished")
+			log.DebugContext(ctx, "<= method GetNetworkLoadBalancers finished")
 		}
 	}()
 	return _d._base.GetNetworkLoadBalancers(ctx, endpoint, networkName)

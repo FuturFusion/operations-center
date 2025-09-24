@@ -55,7 +55,7 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.C
 			slog.String("storageVolumeType", storageVolumeType),
 		)
 	}
-	log.Debug("=> calling GetStorageVolumeByName")
+	log.DebugContext(ctx, "=> calling GetStorageVolumeByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -70,12 +70,12 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.C
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetStorageVolumeByName returned an informative error")
+				log.DebugContext(ctx, "<= method GetStorageVolumeByName returned an informative error")
 			} else {
-				log.Error("<= method GetStorageVolumeByName returned an error")
+				log.ErrorContext(ctx, "<= method GetStorageVolumeByName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetStorageVolumeByName finished")
+			log.DebugContext(ctx, "<= method GetStorageVolumeByName finished")
 		}
 	}()
 	return _d._base.GetStorageVolumeByName(ctx, endpoint, storagePoolName, storageVolumeName, storageVolumeType)
@@ -91,7 +91,7 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Contex
 			slog.String("storagePoolName", storagePoolName),
 		)
 	}
-	log.Debug("=> calling GetStorageVolumes")
+	log.DebugContext(ctx, "=> calling GetStorageVolumes")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -106,12 +106,12 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Contex
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetStorageVolumes returned an informative error")
+				log.DebugContext(ctx, "<= method GetStorageVolumes returned an informative error")
 			} else {
-				log.Error("<= method GetStorageVolumes returned an error")
+				log.ErrorContext(ctx, "<= method GetStorageVolumes returned an error")
 			}
 		} else {
-			log.Debug("<= method GetStorageVolumes finished")
+			log.DebugContext(ctx, "<= method GetStorageVolumes finished")
 		}
 	}()
 	return _d._base.GetStorageVolumes(ctx, endpoint, storagePoolName)

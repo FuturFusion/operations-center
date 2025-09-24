@@ -50,7 +50,7 @@ func (_d ProvisioningClusterServiceWithSlog) GetAll(ctx context.Context) (cluste
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling GetAll")
+	log.DebugContext(ctx, "=> calling GetAll")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -65,12 +65,12 @@ func (_d ProvisioningClusterServiceWithSlog) GetAll(ctx context.Context) (cluste
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAll returned an informative error")
+				log.DebugContext(ctx, "<= method GetAll returned an informative error")
 			} else {
-				log.Error("<= method GetAll returned an error")
+				log.ErrorContext(ctx, "<= method GetAll returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAll finished")
+			log.DebugContext(ctx, "<= method GetAll finished")
 		}
 	}()
 	return _d._base.GetAll(ctx)
@@ -85,7 +85,7 @@ func (_d ProvisioningClusterServiceWithSlog) GetEndpoint(ctx context.Context, na
 			slog.String("name", name),
 		)
 	}
-	log.Debug("=> calling GetEndpoint")
+	log.DebugContext(ctx, "=> calling GetEndpoint")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -100,12 +100,12 @@ func (_d ProvisioningClusterServiceWithSlog) GetEndpoint(ctx context.Context, na
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetEndpoint returned an informative error")
+				log.DebugContext(ctx, "<= method GetEndpoint returned an informative error")
 			} else {
-				log.Error("<= method GetEndpoint returned an error")
+				log.ErrorContext(ctx, "<= method GetEndpoint returned an error")
 			}
 		} else {
-			log.Debug("<= method GetEndpoint finished")
+			log.DebugContext(ctx, "<= method GetEndpoint finished")
 		}
 	}()
 	return _d._base.GetEndpoint(ctx, name)

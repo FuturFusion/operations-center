@@ -50,7 +50,7 @@ func (_d InventoryAggregateServiceWithSlog) GetAllWithFilter(ctx context.Context
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("=> calling GetAllWithFilter")
+	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -65,12 +65,12 @@ func (_d InventoryAggregateServiceWithSlog) GetAllWithFilter(ctx context.Context
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAllWithFilter returned an informative error")
+				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
 			} else {
-				log.Error("<= method GetAllWithFilter returned an error")
+				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAllWithFilter finished")
+			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllWithFilter(ctx, filter)

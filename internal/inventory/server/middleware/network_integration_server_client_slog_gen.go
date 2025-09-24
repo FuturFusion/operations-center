@@ -53,7 +53,7 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx
 			slog.String("networkIntegrationName", networkIntegrationName),
 		)
 	}
-	log.Debug("=> calling GetNetworkIntegrationByName")
+	log.DebugContext(ctx, "=> calling GetNetworkIntegrationByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -68,12 +68,12 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrationByName(ctx
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetNetworkIntegrationByName returned an informative error")
+				log.DebugContext(ctx, "<= method GetNetworkIntegrationByName returned an informative error")
 			} else {
-				log.Error("<= method GetNetworkIntegrationByName returned an error")
+				log.ErrorContext(ctx, "<= method GetNetworkIntegrationByName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetNetworkIntegrationByName finished")
+			log.DebugContext(ctx, "<= method GetNetworkIntegrationByName finished")
 		}
 	}()
 	return _d._base.GetNetworkIntegrationByName(ctx, endpoint, networkIntegrationName)
@@ -88,7 +88,7 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx cont
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling GetNetworkIntegrations")
+	log.DebugContext(ctx, "=> calling GetNetworkIntegrations")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -103,12 +103,12 @@ func (_d NetworkIntegrationServerClientWithSlog) GetNetworkIntegrations(ctx cont
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetNetworkIntegrations returned an informative error")
+				log.DebugContext(ctx, "<= method GetNetworkIntegrations returned an informative error")
 			} else {
-				log.Error("<= method GetNetworkIntegrations returned an error")
+				log.ErrorContext(ctx, "<= method GetNetworkIntegrations returned an error")
 			}
 		} else {
-			log.Debug("<= method GetNetworkIntegrations finished")
+			log.DebugContext(ctx, "<= method GetNetworkIntegrations finished")
 		}
 	}()
 	return _d._base.GetNetworkIntegrations(ctx, endpoint)

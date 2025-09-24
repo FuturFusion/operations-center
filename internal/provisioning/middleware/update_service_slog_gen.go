@@ -52,7 +52,7 @@ func (_d UpdateServiceWithSlog) CleanupAll(ctx context.Context) (err error) {
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling CleanupAll")
+	log.DebugContext(ctx, "=> calling CleanupAll")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -66,12 +66,12 @@ func (_d UpdateServiceWithSlog) CleanupAll(ctx context.Context) (err error) {
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method CleanupAll returned an informative error")
+				log.DebugContext(ctx, "<= method CleanupAll returned an informative error")
 			} else {
-				log.Error("<= method CleanupAll returned an error")
+				log.ErrorContext(ctx, "<= method CleanupAll returned an error")
 			}
 		} else {
-			log.Debug("<= method CleanupAll finished")
+			log.DebugContext(ctx, "<= method CleanupAll finished")
 		}
 	}()
 	return _d._base.CleanupAll(ctx)
@@ -86,7 +86,7 @@ func (_d UpdateServiceWithSlog) CreateFromArchive(ctx context.Context, tarReader
 			slog.Any("tarReader", tarReader),
 		)
 	}
-	log.Debug("=> calling CreateFromArchive")
+	log.DebugContext(ctx, "=> calling CreateFromArchive")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -101,12 +101,12 @@ func (_d UpdateServiceWithSlog) CreateFromArchive(ctx context.Context, tarReader
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method CreateFromArchive returned an informative error")
+				log.DebugContext(ctx, "<= method CreateFromArchive returned an informative error")
 			} else {
-				log.Error("<= method CreateFromArchive returned an error")
+				log.ErrorContext(ctx, "<= method CreateFromArchive returned an error")
 			}
 		} else {
-			log.Debug("<= method CreateFromArchive finished")
+			log.DebugContext(ctx, "<= method CreateFromArchive finished")
 		}
 	}()
 	return _d._base.CreateFromArchive(ctx, tarReader)
@@ -120,7 +120,7 @@ func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisionin
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling GetAll")
+	log.DebugContext(ctx, "=> calling GetAll")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -135,12 +135,12 @@ func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisionin
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAll returned an informative error")
+				log.DebugContext(ctx, "<= method GetAll returned an informative error")
 			} else {
-				log.Error("<= method GetAll returned an error")
+				log.ErrorContext(ctx, "<= method GetAll returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAll finished")
+			log.DebugContext(ctx, "<= method GetAll finished")
 		}
 	}()
 	return _d._base.GetAll(ctx)
@@ -154,7 +154,7 @@ func (_d UpdateServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.U
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling GetAllUUIDs")
+	log.DebugContext(ctx, "=> calling GetAllUUIDs")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -169,12 +169,12 @@ func (_d UpdateServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.U
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAllUUIDs returned an informative error")
+				log.DebugContext(ctx, "<= method GetAllUUIDs returned an informative error")
 			} else {
-				log.Error("<= method GetAllUUIDs returned an error")
+				log.ErrorContext(ctx, "<= method GetAllUUIDs returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAllUUIDs finished")
+			log.DebugContext(ctx, "<= method GetAllUUIDs finished")
 		}
 	}()
 	return _d._base.GetAllUUIDs(ctx)
@@ -189,7 +189,7 @@ func (_d UpdateServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filte
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("=> calling GetAllUUIDsWithFilter")
+	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -204,12 +204,12 @@ func (_d UpdateServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Context, filte
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+				log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an informative error")
 			} else {
-				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+				log.ErrorContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAllUUIDsWithFilter finished")
+			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllUUIDsWithFilter(ctx, filter)
@@ -224,7 +224,7 @@ func (_d UpdateServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pro
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("=> calling GetAllWithFilter")
+	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -239,12 +239,12 @@ func (_d UpdateServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pro
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAllWithFilter returned an informative error")
+				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
 			} else {
-				log.Error("<= method GetAllWithFilter returned an error")
+				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAllWithFilter finished")
+			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllWithFilter(ctx, filter)
@@ -259,7 +259,7 @@ func (_d UpdateServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (up
 			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling GetByUUID")
+	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -274,12 +274,12 @@ func (_d UpdateServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (up
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetByUUID returned an informative error")
+				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
 			} else {
-				log.Error("<= method GetByUUID returned an error")
+				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
 			}
 		} else {
-			log.Debug("<= method GetByUUID finished")
+			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
 	}()
 	return _d._base.GetByUUID(ctx, id)
@@ -294,7 +294,7 @@ func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, id uuid.U
 			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling GetUpdateAllFiles")
+	log.DebugContext(ctx, "=> calling GetUpdateAllFiles")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -309,12 +309,12 @@ func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, id uuid.U
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetUpdateAllFiles returned an informative error")
+				log.DebugContext(ctx, "<= method GetUpdateAllFiles returned an informative error")
 			} else {
-				log.Error("<= method GetUpdateAllFiles returned an error")
+				log.ErrorContext(ctx, "<= method GetUpdateAllFiles returned an error")
 			}
 		} else {
-			log.Debug("<= method GetUpdateAllFiles finished")
+			log.DebugContext(ctx, "<= method GetUpdateAllFiles finished")
 		}
 	}()
 	return _d._base.GetUpdateAllFiles(ctx, id)
@@ -330,7 +330,7 @@ func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, id 
 			slog.String("filename", filename),
 		)
 	}
-	log.Debug("=> calling GetUpdateFileByFilename")
+	log.DebugContext(ctx, "=> calling GetUpdateFileByFilename")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -346,12 +346,12 @@ func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, id 
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetUpdateFileByFilename returned an informative error")
+				log.DebugContext(ctx, "<= method GetUpdateFileByFilename returned an informative error")
 			} else {
-				log.Error("<= method GetUpdateFileByFilename returned an error")
+				log.ErrorContext(ctx, "<= method GetUpdateFileByFilename returned an error")
 			}
 		} else {
-			log.Debug("<= method GetUpdateFileByFilename finished")
+			log.DebugContext(ctx, "<= method GetUpdateFileByFilename finished")
 		}
 	}()
 	return _d._base.GetUpdateFileByFilename(ctx, id, filename)
@@ -365,7 +365,7 @@ func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) (err error) {
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling Refresh")
+	log.DebugContext(ctx, "=> calling Refresh")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -379,12 +379,12 @@ func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) (err error) {
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Refresh returned an informative error")
+				log.DebugContext(ctx, "<= method Refresh returned an informative error")
 			} else {
-				log.Error("<= method Refresh returned an error")
+				log.ErrorContext(ctx, "<= method Refresh returned an error")
 			}
 		} else {
-			log.Debug("<= method Refresh finished")
+			log.DebugContext(ctx, "<= method Refresh finished")
 		}
 	}()
 	return _d._base.Refresh(ctx)

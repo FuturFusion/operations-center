@@ -51,7 +51,7 @@ func (_d ProvisioningServerServiceWithSlog) GetAllByClusterName(ctx context.Cont
 			slog.String("name", name),
 		)
 	}
-	log.Debug("=> calling GetAllByClusterName")
+	log.DebugContext(ctx, "=> calling GetAllByClusterName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -66,12 +66,12 @@ func (_d ProvisioningServerServiceWithSlog) GetAllByClusterName(ctx context.Cont
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAllByClusterName returned an informative error")
+				log.DebugContext(ctx, "<= method GetAllByClusterName returned an informative error")
 			} else {
-				log.Error("<= method GetAllByClusterName returned an error")
+				log.ErrorContext(ctx, "<= method GetAllByClusterName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAllByClusterName finished")
+			log.DebugContext(ctx, "<= method GetAllByClusterName finished")
 		}
 	}()
 	return _d._base.GetAllByClusterName(ctx, name)

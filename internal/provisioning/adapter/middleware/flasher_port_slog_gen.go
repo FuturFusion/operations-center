@@ -54,7 +54,7 @@ func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, id uuid.U
 			slog.Any("rc", rc),
 		)
 	}
-	log.Debug("=> calling GenerateSeededImage")
+	log.DebugContext(ctx, "=> calling GenerateSeededImage")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -69,12 +69,12 @@ func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, id uuid.U
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GenerateSeededImage returned an informative error")
+				log.DebugContext(ctx, "<= method GenerateSeededImage returned an informative error")
 			} else {
-				log.Error("<= method GenerateSeededImage returned an error")
+				log.ErrorContext(ctx, "<= method GenerateSeededImage returned an error")
 			}
 		} else {
-			log.Debug("<= method GenerateSeededImage finished")
+			log.DebugContext(ctx, "<= method GenerateSeededImage finished")
 		}
 	}()
 	return _d._base.GenerateSeededImage(ctx, id, seedConfig, rc)

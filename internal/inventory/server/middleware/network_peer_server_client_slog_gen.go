@@ -54,7 +54,7 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Conte
 			slog.String("networkPeerName", networkPeerName),
 		)
 	}
-	log.Debug("=> calling GetNetworkPeerByName")
+	log.DebugContext(ctx, "=> calling GetNetworkPeerByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -69,12 +69,12 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeerByName(ctx context.Conte
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetNetworkPeerByName returned an informative error")
+				log.DebugContext(ctx, "<= method GetNetworkPeerByName returned an informative error")
 			} else {
-				log.Error("<= method GetNetworkPeerByName returned an error")
+				log.ErrorContext(ctx, "<= method GetNetworkPeerByName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetNetworkPeerByName finished")
+			log.DebugContext(ctx, "<= method GetNetworkPeerByName finished")
 		}
 	}()
 	return _d._base.GetNetworkPeerByName(ctx, endpoint, networkName, networkPeerName)
@@ -90,7 +90,7 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, e
 			slog.String("networkName", networkName),
 		)
 	}
-	log.Debug("=> calling GetNetworkPeers")
+	log.DebugContext(ctx, "=> calling GetNetworkPeers")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -105,12 +105,12 @@ func (_d NetworkPeerServerClientWithSlog) GetNetworkPeers(ctx context.Context, e
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetNetworkPeers returned an informative error")
+				log.DebugContext(ctx, "<= method GetNetworkPeers returned an informative error")
 			} else {
-				log.Error("<= method GetNetworkPeers returned an error")
+				log.ErrorContext(ctx, "<= method GetNetworkPeers returned an error")
 			}
 		} else {
-			log.Debug("<= method GetNetworkPeers finished")
+			log.DebugContext(ctx, "<= method GetNetworkPeers finished")
 		}
 	}()
 	return _d._base.GetNetworkPeers(ctx, endpoint, networkName)

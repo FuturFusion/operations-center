@@ -54,7 +54,7 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.C
 			slog.String("storageBucketName", storageBucketName),
 		)
 	}
-	log.Debug("=> calling GetStorageBucketByName")
+	log.DebugContext(ctx, "=> calling GetStorageBucketByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -69,12 +69,12 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.C
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetStorageBucketByName returned an informative error")
+				log.DebugContext(ctx, "<= method GetStorageBucketByName returned an informative error")
 			} else {
-				log.Error("<= method GetStorageBucketByName returned an error")
+				log.ErrorContext(ctx, "<= method GetStorageBucketByName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetStorageBucketByName finished")
+			log.DebugContext(ctx, "<= method GetStorageBucketByName finished")
 		}
 	}()
 	return _d._base.GetStorageBucketByName(ctx, endpoint, storagePoolName, storageBucketName)
@@ -90,7 +90,7 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBuckets(ctx context.Contex
 			slog.String("storagePoolName", storagePoolName),
 		)
 	}
-	log.Debug("=> calling GetStorageBuckets")
+	log.DebugContext(ctx, "=> calling GetStorageBuckets")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -105,12 +105,12 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBuckets(ctx context.Contex
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetStorageBuckets returned an informative error")
+				log.DebugContext(ctx, "<= method GetStorageBuckets returned an informative error")
 			} else {
-				log.Error("<= method GetStorageBuckets returned an error")
+				log.ErrorContext(ctx, "<= method GetStorageBuckets returned an error")
 			}
 		} else {
-			log.Debug("<= method GetStorageBuckets finished")
+			log.DebugContext(ctx, "<= method GetStorageBuckets finished")
 		}
 	}()
 	return _d._base.GetStorageBuckets(ctx, endpoint, storagePoolName)

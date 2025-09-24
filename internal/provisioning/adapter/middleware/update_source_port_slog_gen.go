@@ -51,7 +51,7 @@ func (_d UpdateSourcePortWithSlog) GetLatest(ctx context.Context, limit int) (up
 			slog.Int("limit", limit),
 		)
 	}
-	log.Debug("=> calling GetLatest")
+	log.DebugContext(ctx, "=> calling GetLatest")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -66,12 +66,12 @@ func (_d UpdateSourcePortWithSlog) GetLatest(ctx context.Context, limit int) (up
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetLatest returned an informative error")
+				log.DebugContext(ctx, "<= method GetLatest returned an informative error")
 			} else {
-				log.Error("<= method GetLatest returned an error")
+				log.ErrorContext(ctx, "<= method GetLatest returned an error")
 			}
 		} else {
-			log.Debug("<= method GetLatest finished")
+			log.DebugContext(ctx, "<= method GetLatest finished")
 		}
 	}()
 	return _d._base.GetLatest(ctx, limit)
@@ -87,7 +87,7 @@ func (_d UpdateSourcePortWithSlog) GetUpdateFileByFilenameUnverified(ctx context
 			slog.String("filename", filename),
 		)
 	}
-	log.Debug("=> calling GetUpdateFileByFilenameUnverified")
+	log.DebugContext(ctx, "=> calling GetUpdateFileByFilenameUnverified")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -103,12 +103,12 @@ func (_d UpdateSourcePortWithSlog) GetUpdateFileByFilenameUnverified(ctx context
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetUpdateFileByFilenameUnverified returned an informative error")
+				log.DebugContext(ctx, "<= method GetUpdateFileByFilenameUnverified returned an informative error")
 			} else {
-				log.Error("<= method GetUpdateFileByFilenameUnverified returned an error")
+				log.ErrorContext(ctx, "<= method GetUpdateFileByFilenameUnverified returned an error")
 			}
 		} else {
-			log.Debug("<= method GetUpdateFileByFilenameUnverified finished")
+			log.DebugContext(ctx, "<= method GetUpdateFileByFilenameUnverified finished")
 		}
 	}()
 	return _d._base.GetUpdateFileByFilenameUnverified(ctx, update, filename)
