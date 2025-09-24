@@ -23,7 +23,7 @@ var _ provisioning.FlasherPort = &FlasherPortMock{}
 //
 //		// make and configure a mocked provisioning.FlasherPort
 //		mockedFlasherPort := &FlasherPortMock{
-//			GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (io.ReadCloser, error) {
+//			GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
 //				panic("mock out the GenerateSeededImage method")
 //			},
 //		}
@@ -34,7 +34,7 @@ var _ provisioning.FlasherPort = &FlasherPortMock{}
 //	}
 type FlasherPortMock struct {
 	// GenerateSeededImageFunc mocks the GenerateSeededImage method.
-	GenerateSeededImageFunc func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (io.ReadCloser, error)
+	GenerateSeededImageFunc func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -45,7 +45,7 @@ type FlasherPortMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 			// SeedConfig is the seedConfig argument value.
-			SeedConfig provisioning.TokenSeedConfig
+			SeedConfig provisioning.TokenImageSeedConfigs
 			// Rc is the rc argument value.
 			Rc io.ReadCloser
 		}
@@ -54,14 +54,14 @@ type FlasherPortMock struct {
 }
 
 // GenerateSeededImage calls GenerateSeededImageFunc.
-func (mock *FlasherPortMock) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, rc io.ReadCloser) (io.ReadCloser, error) {
+func (mock *FlasherPortMock) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
 	if mock.GenerateSeededImageFunc == nil {
 		panic("FlasherPortMock.GenerateSeededImageFunc: method is nil but FlasherPort.GenerateSeededImage was just called")
 	}
 	callInfo := struct {
 		Ctx        context.Context
 		ID         uuid.UUID
-		SeedConfig provisioning.TokenSeedConfig
+		SeedConfig provisioning.TokenImageSeedConfigs
 		Rc         io.ReadCloser
 	}{
 		Ctx:        ctx,
@@ -82,13 +82,13 @@ func (mock *FlasherPortMock) GenerateSeededImage(ctx context.Context, id uuid.UU
 func (mock *FlasherPortMock) GenerateSeededImageCalls() []struct {
 	Ctx        context.Context
 	ID         uuid.UUID
-	SeedConfig provisioning.TokenSeedConfig
+	SeedConfig provisioning.TokenImageSeedConfigs
 	Rc         io.ReadCloser
 } {
 	var calls []struct {
 		Ctx        context.Context
 		ID         uuid.UUID
-		SeedConfig provisioning.TokenSeedConfig
+		SeedConfig provisioning.TokenImageSeedConfigs
 		Rc         io.ReadCloser
 	}
 	mock.lockGenerateSeededImage.RLock()

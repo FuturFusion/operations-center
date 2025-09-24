@@ -65,7 +65,7 @@ func (c *cmdServerSystemNetworkEdit) Command() *cobra.Command {
 	return cmd
 }
 
-// helpTemplate returns a sample YAML configuration and guidelines for editing instance configurations.
+// helpTemplate returns a sample YAML configuration and guidelines for editing system network configuration.
 func (c *cmdServerSystemNetworkEdit) helpTemplate() string {
 	return `### This is a YAML representation of the configuration.
 ### Any line starting with a '# will be ignored.

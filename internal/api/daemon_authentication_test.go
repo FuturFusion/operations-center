@@ -23,6 +23,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/openfga"
 
 	restapi "github.com/FuturFusion/operations-center/internal/api"
+	"github.com/FuturFusion/operations-center/internal/client"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -627,6 +628,47 @@ func TestAuthentication(t *testing.T) {
 
 			wantStatusCode: http.StatusOK,
 		},
+
+		// GET /1.0/provisioning/tokens/{token}/seeds/public does not need
+		// authentication, since this seed is created with the public flag set to
+		// true during setup.
+		{
+			name: "plain http GET /1.0/provisioning/tokens/{token}/seeds/public",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodGet,
+			resource: "https://localhost:17443/1.0/provisioning/tokens/TOKEN/seeds/public",
+			body:     http.NoBody,
+
+			wantStatusCode: http.StatusOK,
+		},
+		// GET /1.0/provisioning/tokens/{token}/seeds/privat does need
+		// authentication, since this seed is created with the public flag set to
+		// false during setup.
+		{
+			name: "plain http GET /1.0/provisioning/tokens/{token}/seeds/private",
+			client: func() *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: true,
+						},
+					},
+				}
+			},
+			method:   http.MethodGet,
+			resource: "https://localhost:17443/1.0/provisioning/tokens/TOKEN/seeds/private",
+			body:     http.NoBody,
+
+			wantStatusCode: http.StatusForbidden,
+		},
 	}
 
 	config.InitTest(t)
@@ -667,7 +709,7 @@ func TestAuthentication(t *testing.T) {
 
 	setupOpenFGATuples(t, openFGAEndpoint, openFGAStoreID)
 
-	token = setupToken(t, tmpDir)
+	token = setupTokenAndSeeds(t, tmpDir)
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -782,46 +824,43 @@ func setupOpenFGATuples(t *testing.T, endpoint string, storeID string) {
 	}
 }
 
-func setupToken(t *testing.T, varDir string) string {
+func setupTokenAndSeeds(t *testing.T, varDir string) string {
 	t.Helper()
 
-	client := &http.Client{
-		Transport: &http.Transport{
-			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", filepath.Join(varDir, "unix.socket"))
-			},
+	ocClient, err := client.New("http://unix.socket/", client.WithForceLocal(filepath.Join(varDir, "unix.socket")))
+	require.NoError(t, err)
+
+	err = ocClient.CreateToken(t.Context(), api.TokenPut{
+		UsesRemaining: 10,
+		ExpireAt:      time.Now().Add(1 * time.Hour),
+	})
+	require.NoError(t, err)
+
+	tokens, err := ocClient.GetTokens(t.Context())
+	require.NoError(t, err)
+	require.NotZero(t, tokens)
+
+	tokenID := tokens[0].UUID.String()
+
+	err = ocClient.CreateTokenSeed(t.Context(), tokenID, api.TokenSeedPost{
+		Name: "public",
+		TokenSeedPut: api.TokenSeedPut{
+			Description: "public",
+			Public:      true,
+			Seeds:       api.TokenSeedConfigs{},
 		},
-	}
-
-	req, err := http.NewRequest(http.MethodPost, "http://unix.socket/1.0/provisioning/tokens", bytes.NewBufferString(`{
-  "uses_remaining": 10,
-  "expire_at": "2099-12-31T23:59:59Z"
-}`))
+	})
 	require.NoError(t, err)
 
-	resp, err := client.Do(req)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	require.Equal(t, http.StatusCreated, resp.StatusCode)
-
-	req, err = http.NewRequest(http.MethodGet, "http://unix.socket/1.0/provisioning/tokens?recursion=1", http.NoBody)
-	require.NoError(t, err)
-
-	resp, err = client.Do(req)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	token := struct {
-		Metadata []struct {
-			UUID string `json:"uuid"`
-		} `json:"metadata"`
-	}{}
-
-	err = json.NewDecoder(resp.Body).Decode(&token)
+	err = ocClient.CreateTokenSeed(t.Context(), tokenID, api.TokenSeedPost{
+		Name: "private",
+		TokenSeedPut: api.TokenSeedPut{
+			Description: "private",
+			Public:      false,
+			Seeds:       api.TokenSeedConfigs{},
+		},
+	})
 	require.NoError(t, err)
 
-	return token.Metadata[0].UUID
+	return tokenID
 }

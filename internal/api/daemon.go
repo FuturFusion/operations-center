@@ -504,7 +504,7 @@ func (d *Daemon) setupAPIRoutes(
 
 	const osRouterPrefix = "/os"
 	osRouter := router.SubGroup(osRouterPrefix).AddMiddlewares(
-		d.authenticator.Middleware,
+		d.authenticator.Middleware(),
 	)
 	registerOSProxy(osRouter, osRouterPrefix, d.authorizer)
 
@@ -512,32 +512,32 @@ func (d *Daemon) setupAPIRoutes(
 		registerOIDCHandlers(router, d.oidcVerifier)
 	}
 
-	isNoAuthenticationRequired := func(r *http.Request) bool {
+	isAuthenticationRequired := func(r *http.Request) bool {
 		// POST /1.0/provisioning/servers is authenticated using a token.
 		if r.Method == http.MethodPost && r.URL.Path == "/1.0/provisioning/servers" {
-			return true
+			return false
 		}
 
 		// PUT /1.0/provisioning/servers/:self is authenticated using the servers
 		// certificate.
 		if r.Method == http.MethodPut && r.URL.Path == "/1.0/provisioning/servers/:self" {
-			return true
+			return false
 		}
 
 		// GET /1.0/provisioning/updates no authentication required to get updates.
 		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/1.0/provisioning/updates") {
-			return true
+			return false
 		}
 
-		return false
+		if r.Pattern == "GET /1.0/provisioning/tokens/{uuid}/seeds/{name}" {
+			return false
+		}
+
+		return true
 	}
 
 	api10router := router.SubGroup("/1.0").AddMiddlewares(
-		// Authentication middleware is skipped if isNoAuthenticationRequired applies.
-		unless(
-			d.authenticator.Middleware,
-			isNoAuthenticationRequired,
-		),
+		d.authenticator.Middleware(authn.WithIsAuthenticationRequired(isAuthenticationRequired)),
 	)
 	registerAPI10Handler(api10router)
 

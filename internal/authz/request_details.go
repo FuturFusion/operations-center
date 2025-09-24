@@ -25,7 +25,17 @@ func ExtractRequestDetails(r *http.Request) (*RequestDetails, error) {
 		return nil, fmt.Errorf("Request URL is not set")
 	}
 
-	val := r.Context().Value(authn.CtxUsername)
+	val := r.Context().Value(authn.CtxAuthenticated)
+	if val == nil {
+		return nil, fmt.Errorf("Authentication information not present in request context")
+	}
+
+	authenticated, ok := val.(bool)
+	if !ok || !authenticated {
+		return nil, fmt.Errorf("Request is not authenticated")
+	}
+
+	val = r.Context().Value(authn.CtxUsername)
 	if val == nil {
 		return nil, fmt.Errorf("Username not present in request context")
 	}

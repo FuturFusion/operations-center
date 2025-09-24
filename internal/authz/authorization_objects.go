@@ -1,7 +1,9 @@
 package authz
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 )
 
@@ -91,6 +93,16 @@ func NewObject(objectType ObjectType, identifierElements ...string) (Object, err
 	}
 
 	return Object(builder.String()), nil
+}
+
+// ObjectFromRequest returns an object created from the request.
+func ObjectFromRequest(r *http.Request, objectType ObjectType, muxVars ...string) (Object, error) {
+	// Shortcut for server objects which don't require any arguments.
+	if objectType == ObjectTypeServer {
+		return ObjectServer(), nil
+	}
+
+	return "", errors.New("Only ObjectTypeServer is implemented right now")
 }
 
 // ObjectUser represents a user.

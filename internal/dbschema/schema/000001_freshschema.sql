@@ -259,6 +259,19 @@ CREATE TABLE storage_volumes (
   FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
+CREATE TABLE tokens_seeds (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  token_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  public BOOLEAN NOT NULL,
+  seeds TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (token_id, name),
+  FOREIGN KEY (token_id) REFERENCES tokens(id) ON DELETE CASCADE,
+  CHECK (name <> '')
+);
+
 CREATE VIEW resources AS
     SELECT 'image' AS kind, images.id, clusters.name AS cluster_name, NULL AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
     FROM images
@@ -323,4 +336,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (11, strftime("%s"))
+INSERT INTO schema (version, updated_at) VALUES (12, strftime("%s"))

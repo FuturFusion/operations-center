@@ -1,6 +1,7 @@
 package provisioning_test
 
 import (
+	"database/sql/driver"
 	"testing"
 	"time"
 
@@ -8,7 +9,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestToken_Validate(t *testing.T) {
@@ -62,39 +62,130 @@ func TestToken_Validate(t *testing.T) {
 	}
 }
 
-func TestTokenSeedConfig_Validate(t *testing.T) {
+func TestTokenImageSeeds_Value(t *testing.T) {
 	tests := []struct {
-		name            string
-		tokenSeedConfig provisioning.TokenSeedConfig
+		name string
+
+		tokenImageSeeds provisioning.TokenImageSeedConfigs
 
 		assertErr require.ErrorAssertionFunc
+		wantValue driver.Value
 	}{
 		{
-			name: "valid",
-			tokenSeedConfig: provisioning.TokenSeedConfig{
-				ImageType: api.ImageTypeISO,
+			name: "success",
+
+			tokenImageSeeds: provisioning.TokenImageSeedConfigs{
+				Applications: map[string]any{
+					"applications": true,
+				},
+				Network: map[string]any{
+					"network": true,
+				},
+				Install: map[string]any{
+					"install": true,
+				},
 			},
 
 			assertErr: require.NoError,
-		},
-		{
-			name: "valid",
-			tokenSeedConfig: provisioning.TokenSeedConfig{
-				ImageType: api.ImageType(`invalid`),
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
+			wantValue: []byte(`{"applications":{"applications":true},"network":{"network":true},"install":{"install":true}}`),
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.tokenSeedConfig.Validate()
+			got, err := tc.tokenImageSeeds.Value()
 
 			tc.assertErr(t, err)
+			require.Equal(t, tc.wantValue, got)
+		})
+	}
+}
+
+func TestTokenImageSeeds_Scan(t *testing.T) {
+	tests := []struct {
+		name string
+
+		value any
+
+		assertErr require.ErrorAssertionFunc
+		want      provisioning.TokenImageSeedConfigs
+	}{
+		{
+			name: "success - []byte",
+
+			value: []byte(`{"applications":{"applications":true},"network":{"network":true},"install":{"install":true}}`),
+
+			assertErr: require.NoError,
+			want: provisioning.TokenImageSeedConfigs{
+				Applications: map[string]any{
+					"applications": true,
+				},
+				Network: map[string]any{
+					"network": true,
+				},
+				Install: map[string]any{
+					"install": true,
+				},
+			},
+		},
+		{
+			name: "success - []byte zero length",
+
+			value: []byte(``),
+
+			assertErr: require.NoError,
+			want:      provisioning.TokenImageSeedConfigs{},
+		},
+		{
+			name: "success - string",
+
+			value: `{"applications":{"applications":true},"network":{"network":true},"install":{"install":true}}`,
+
+			assertErr: require.NoError,
+			want: provisioning.TokenImageSeedConfigs{
+				Applications: map[string]any{
+					"applications": true,
+				},
+				Network: map[string]any{
+					"network": true,
+				},
+				Install: map[string]any{
+					"install": true,
+				},
+			},
+		},
+		{
+			name: "success - string zero length",
+
+			value: ``,
+
+			assertErr: require.NoError,
+			want:      provisioning.TokenImageSeedConfigs{},
+		},
+		{
+			name: "error - nil",
+
+			assertErr: require.Error,
+			want:      provisioning.TokenImageSeedConfigs{},
+		},
+		{
+			name: "error - unsupported type",
+
+			value: 1, // not supported for TokenImageSeeds
+
+			assertErr: require.Error,
+			want:      provisioning.TokenImageSeedConfigs{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tokenImageSeeds := provisioning.TokenImageSeedConfigs{}
+
+			err := tokenImageSeeds.Scan(tc.value)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, tokenImageSeeds)
 		})
 	}
 }

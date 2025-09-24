@@ -219,7 +219,7 @@ func (c *cmdImageShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Project Name: %s\n", image.ProjectName)
 	fmt.Printf("Name: %s\n", image.Name)
 	fmt.Printf("Last Updated: %s\n", image.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Object:\n%s\n", objectJSON)
+	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 
 	return nil
 }

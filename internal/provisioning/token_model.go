@@ -1,13 +1,15 @@
 package provisioning
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"math"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
-	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 var ExpireAtInfinity = time.Date(9999, 12, 31, 23, 59, 59, 999999999, time.UTC)
@@ -36,19 +38,59 @@ func (t Token) Validate() error {
 
 type Tokens []Token
 
-type TokenSeedConfig struct {
-	ImageType    api.ImageType
-	Applications map[string]any
-	Network      map[string]any
-	Install      map[string]any
+type TokenImageSeedConfigs struct {
+	Applications map[string]any `json:"applications"`
+	Network      map[string]any `json:"network"`
+	Install      map[string]any `json:"install"`
 }
 
-func (t TokenSeedConfig) Validate() error {
-	var imageType api.ImageType
-	err := imageType.UnmarshalText([]byte(t.ImageType))
-	if t.ImageType == "" || err != nil {
-		return domain.NewValidationErrf("Invalid token seed configuration, validation of image type failed: %v", err)
+// Value implements the sql driver.Valuer interface.
+func (t TokenImageSeedConfigs) Value() (driver.Value, error) {
+	return json.Marshal(t)
+}
+
+// Scan implements the sql.Scanner interface.
+func (t *TokenImageSeedConfigs) Scan(value any) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid token seeds")
+	}
+
+	switch v := value.(type) {
+	case string:
+		if len(v) == 0 {
+			*t = TokenImageSeedConfigs{}
+			return nil
+		}
+
+		return json.Unmarshal([]byte(v), t)
+	case []byte:
+		if len(v) == 0 {
+			*t = TokenImageSeedConfigs{}
+			return nil
+		}
+
+		return json.Unmarshal(v, t)
+	default:
+		return fmt.Errorf("type %T is not supported for token seeds", value)
+	}
+}
+
+type TokenSeed struct {
+	ID          int64
+	Token       uuid.UUID `db:"primary=yes&join=tokens.uuid"`
+	Name        string    `db:"primary=yes"`
+	Description string
+	Public      bool
+	Seeds       TokenImageSeedConfigs
+	LastUpdated time.Time `db:"update_timestamp"`
+}
+
+func (t TokenSeed) Validate() error {
+	if t.Name == "" {
+		return domain.NewValidationErrf("Invalid token seed, name can not be empty")
 	}
 
 	return nil
 }
+
+type TokenSeeds []TokenSeed

@@ -229,7 +229,7 @@ func (c *cmdInstanceShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Project Name: %s\n", instance.ProjectName)
 	fmt.Printf("Name: %s\n", instance.Name)
 	fmt.Printf("Last Updated: %s\n", instance.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Object:\n%s\n", objectJSON)
+	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 
 	return nil
 }

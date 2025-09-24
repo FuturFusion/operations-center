@@ -10,6 +10,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
 )
 
@@ -112,6 +113,41 @@ func (_d TokenServiceWithSlog) Create(ctx context.Context, token provisioning.To
 	return _d._base.Create(ctx, token)
 }
 
+// CreateTokenSeed implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) CreateTokenSeed(ctx context.Context, tokenSeedConfig provisioning.TokenSeed) (tokenSeed provisioning.TokenSeed, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("tokenSeedConfig", tokenSeedConfig),
+		)
+	}
+	log.DebugContext(ctx, "=> calling CreateTokenSeed")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("tokenSeed", tokenSeed),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method CreateTokenSeed returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method CreateTokenSeed returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method CreateTokenSeed finished")
+		}
+	}()
+	return _d._base.CreateTokenSeed(ctx, tokenSeedConfig)
+}
+
 // DeleteByUUID implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	log := _d._log.With()
@@ -144,6 +180,41 @@ func (_d TokenServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (
 		}
 	}()
 	return _d._base.DeleteByUUID(ctx, id)
+}
+
+// DeleteTokenSeedByName implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling DeleteTokenSeedByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method DeleteTokenSeedByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method DeleteTokenSeedByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method DeleteTokenSeedByName finished")
+		}
+	}()
+	return _d._base.DeleteTokenSeedByName(ctx, id, name)
 }
 
 // GetAll implements provisioning.TokenService.
@@ -250,12 +321,13 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 }
 
 // GetPreSeedImage implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig) (readCloser io.ReadCloser, err error) {
+func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seedConfig provisioning.TokenImageSeedConfigs) (readCloser io.ReadCloser, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
+			slog.Any("imageType", imageType),
 			slog.Any("seedConfig", seedConfig),
 		)
 	}
@@ -282,7 +354,150 @@ func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID
 			log.DebugContext(ctx, "<= method GetPreSeedImage finished")
 		}
 	}()
-	return _d._base.GetPreSeedImage(ctx, id, seedConfig)
+	return _d._base.GetPreSeedImage(ctx, id, imageType, seedConfig)
+}
+
+// GetTokenImageFromTokenSeed implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType) (readCloser io.ReadCloser, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.String("name", name),
+			slog.Any("imageType", imageType),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetTokenImageFromTokenSeed")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("readCloser", readCloser),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetTokenImageFromTokenSeed returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetTokenImageFromTokenSeed returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetTokenImageFromTokenSeed finished")
+		}
+	}()
+	return _d._base.GetTokenImageFromTokenSeed(ctx, id, name, imageType)
+}
+
+// GetTokenSeedAll implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) GetTokenSeedAll(ctx context.Context, id uuid.UUID) (tokenSeeds provisioning.TokenSeeds, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetTokenSeedAll")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("tokenSeeds", tokenSeeds),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetTokenSeedAll returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetTokenSeedAll returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetTokenSeedAll finished")
+		}
+	}()
+	return _d._base.GetTokenSeedAll(ctx, id)
+}
+
+// GetTokenSeedAllNames implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) (strings []string, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetTokenSeedAllNames")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("strings", strings),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetTokenSeedAllNames returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetTokenSeedAllNames returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetTokenSeedAllNames finished")
+		}
+	}()
+	return _d._base.GetTokenSeedAllNames(ctx, id)
+}
+
+// GetTokenSeedByName implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (tokenSeed *provisioning.TokenSeed, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetTokenSeedByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("tokenSeed", tokenSeed),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetTokenSeedByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetTokenSeedByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetTokenSeedByName finished")
+		}
+	}()
+	return _d._base.GetTokenSeedByName(ctx, id, name)
 }
 
 // Update implements provisioning.TokenService.
@@ -317,4 +532,38 @@ func (_d TokenServiceWithSlog) Update(ctx context.Context, token provisioning.To
 		}
 	}()
 	return _d._base.Update(ctx, token)
+}
+
+// UpdateTokenSeed implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) UpdateTokenSeed(ctx context.Context, tokenSeedConfig provisioning.TokenSeed) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("tokenSeedConfig", tokenSeedConfig),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateTokenSeed")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateTokenSeed returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateTokenSeed returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateTokenSeed finished")
+		}
+	}()
+	return _d._base.UpdateTokenSeed(ctx, tokenSeedConfig)
 }

@@ -25,8 +25,14 @@ var _ provisioning.TokenRepo = &TokenRepoMock{}
 //			CreateFunc: func(ctx context.Context, token provisioning.Token) (int64, error) {
 //				panic("mock out the Create method")
 //			},
+//			CreateTokenSeedFunc: func(ctx context.Context, seedConfig provisioning.TokenSeed) (int64, error) {
+//				panic("mock out the CreateTokenSeed method")
+//			},
 //			DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
 //				panic("mock out the DeleteByUUID method")
+//			},
+//			DeleteTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) error {
+//				panic("mock out the DeleteTokenSeedByName method")
 //			},
 //			GetAllFunc: func(ctx context.Context) (provisioning.Tokens, error) {
 //				panic("mock out the GetAll method")
@@ -37,8 +43,20 @@ var _ provisioning.TokenRepo = &TokenRepoMock{}
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
 //				panic("mock out the GetByUUID method")
 //			},
+//			GetTokenSeedAllFunc: func(ctx context.Context, id uuid.UUID) (provisioning.TokenSeeds, error) {
+//				panic("mock out the GetTokenSeedAll method")
+//			},
+//			GetTokenSeedAllNamesFunc: func(ctx context.Context, id uuid.UUID) ([]string, error) {
+//				panic("mock out the GetTokenSeedAllNames method")
+//			},
+//			GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+//				panic("mock out the GetTokenSeedByName method")
+//			},
 //			UpdateFunc: func(ctx context.Context, token provisioning.Token) error {
 //				panic("mock out the Update method")
+//			},
+//			UpdateTokenSeedFunc: func(ctx context.Context, tokenSeedConfig provisioning.TokenSeed) error {
+//				panic("mock out the UpdateTokenSeed method")
 //			},
 //		}
 //
@@ -50,8 +68,14 @@ type TokenRepoMock struct {
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, token provisioning.Token) (int64, error)
 
+	// CreateTokenSeedFunc mocks the CreateTokenSeed method.
+	CreateTokenSeedFunc func(ctx context.Context, seedConfig provisioning.TokenSeed) (int64, error)
+
 	// DeleteByUUIDFunc mocks the DeleteByUUID method.
 	DeleteByUUIDFunc func(ctx context.Context, id uuid.UUID) error
+
+	// DeleteTokenSeedByNameFunc mocks the DeleteTokenSeedByName method.
+	DeleteTokenSeedByNameFunc func(ctx context.Context, id uuid.UUID, name string) error
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Tokens, error)
@@ -62,8 +86,20 @@ type TokenRepoMock struct {
 	// GetByUUIDFunc mocks the GetByUUID method.
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error)
 
+	// GetTokenSeedAllFunc mocks the GetTokenSeedAll method.
+	GetTokenSeedAllFunc func(ctx context.Context, id uuid.UUID) (provisioning.TokenSeeds, error)
+
+	// GetTokenSeedAllNamesFunc mocks the GetTokenSeedAllNames method.
+	GetTokenSeedAllNamesFunc func(ctx context.Context, id uuid.UUID) ([]string, error)
+
+	// GetTokenSeedByNameFunc mocks the GetTokenSeedByName method.
+	GetTokenSeedByNameFunc func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error)
+
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, token provisioning.Token) error
+
+	// UpdateTokenSeedFunc mocks the UpdateTokenSeed method.
+	UpdateTokenSeedFunc func(ctx context.Context, tokenSeedConfig provisioning.TokenSeed) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -74,12 +110,28 @@ type TokenRepoMock struct {
 			// Token is the token argument value.
 			Token provisioning.Token
 		}
+		// CreateTokenSeed holds details about calls to the CreateTokenSeed method.
+		CreateTokenSeed []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// SeedConfig is the seedConfig argument value.
+			SeedConfig provisioning.TokenSeed
+		}
 		// DeleteByUUID holds details about calls to the DeleteByUUID method.
 		DeleteByUUID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
 			ID uuid.UUID
+		}
+		// DeleteTokenSeedByName holds details about calls to the DeleteTokenSeedByName method.
+		DeleteTokenSeedByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+			// Name is the name argument value.
+			Name string
 		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
@@ -98,6 +150,29 @@ type TokenRepoMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
+		// GetTokenSeedAll holds details about calls to the GetTokenSeedAll method.
+		GetTokenSeedAll []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
+		// GetTokenSeedAllNames holds details about calls to the GetTokenSeedAllNames method.
+		GetTokenSeedAllNames []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
+		// GetTokenSeedByName holds details about calls to the GetTokenSeedByName method.
+		GetTokenSeedByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+			// Name is the name argument value.
+			Name string
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -105,13 +180,26 @@ type TokenRepoMock struct {
 			// Token is the token argument value.
 			Token provisioning.Token
 		}
+		// UpdateTokenSeed holds details about calls to the UpdateTokenSeed method.
+		UpdateTokenSeed []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// TokenSeedConfig is the tokenSeedConfig argument value.
+			TokenSeedConfig provisioning.TokenSeed
+		}
 	}
-	lockCreate       sync.RWMutex
-	lockDeleteByUUID sync.RWMutex
-	lockGetAll       sync.RWMutex
-	lockGetAllUUIDs  sync.RWMutex
-	lockGetByUUID    sync.RWMutex
-	lockUpdate       sync.RWMutex
+	lockCreate                sync.RWMutex
+	lockCreateTokenSeed       sync.RWMutex
+	lockDeleteByUUID          sync.RWMutex
+	lockDeleteTokenSeedByName sync.RWMutex
+	lockGetAll                sync.RWMutex
+	lockGetAllUUIDs           sync.RWMutex
+	lockGetByUUID             sync.RWMutex
+	lockGetTokenSeedAll       sync.RWMutex
+	lockGetTokenSeedAllNames  sync.RWMutex
+	lockGetTokenSeedByName    sync.RWMutex
+	lockUpdate                sync.RWMutex
+	lockUpdateTokenSeed       sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -150,6 +238,42 @@ func (mock *TokenRepoMock) CreateCalls() []struct {
 	return calls
 }
 
+// CreateTokenSeed calls CreateTokenSeedFunc.
+func (mock *TokenRepoMock) CreateTokenSeed(ctx context.Context, seedConfig provisioning.TokenSeed) (int64, error) {
+	if mock.CreateTokenSeedFunc == nil {
+		panic("TokenRepoMock.CreateTokenSeedFunc: method is nil but TokenRepo.CreateTokenSeed was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		SeedConfig provisioning.TokenSeed
+	}{
+		Ctx:        ctx,
+		SeedConfig: seedConfig,
+	}
+	mock.lockCreateTokenSeed.Lock()
+	mock.calls.CreateTokenSeed = append(mock.calls.CreateTokenSeed, callInfo)
+	mock.lockCreateTokenSeed.Unlock()
+	return mock.CreateTokenSeedFunc(ctx, seedConfig)
+}
+
+// CreateTokenSeedCalls gets all the calls that were made to CreateTokenSeed.
+// Check the length with:
+//
+//	len(mockedTokenRepo.CreateTokenSeedCalls())
+func (mock *TokenRepoMock) CreateTokenSeedCalls() []struct {
+	Ctx        context.Context
+	SeedConfig provisioning.TokenSeed
+} {
+	var calls []struct {
+		Ctx        context.Context
+		SeedConfig provisioning.TokenSeed
+	}
+	mock.lockCreateTokenSeed.RLock()
+	calls = mock.calls.CreateTokenSeed
+	mock.lockCreateTokenSeed.RUnlock()
+	return calls
+}
+
 // DeleteByUUID calls DeleteByUUIDFunc.
 func (mock *TokenRepoMock) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	if mock.DeleteByUUIDFunc == nil {
@@ -183,6 +307,46 @@ func (mock *TokenRepoMock) DeleteByUUIDCalls() []struct {
 	mock.lockDeleteByUUID.RLock()
 	calls = mock.calls.DeleteByUUID
 	mock.lockDeleteByUUID.RUnlock()
+	return calls
+}
+
+// DeleteTokenSeedByName calls DeleteTokenSeedByNameFunc.
+func (mock *TokenRepoMock) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error {
+	if mock.DeleteTokenSeedByNameFunc == nil {
+		panic("TokenRepoMock.DeleteTokenSeedByNameFunc: method is nil but TokenRepo.DeleteTokenSeedByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		ID   uuid.UUID
+		Name string
+	}{
+		Ctx:  ctx,
+		ID:   id,
+		Name: name,
+	}
+	mock.lockDeleteTokenSeedByName.Lock()
+	mock.calls.DeleteTokenSeedByName = append(mock.calls.DeleteTokenSeedByName, callInfo)
+	mock.lockDeleteTokenSeedByName.Unlock()
+	return mock.DeleteTokenSeedByNameFunc(ctx, id, name)
+}
+
+// DeleteTokenSeedByNameCalls gets all the calls that were made to DeleteTokenSeedByName.
+// Check the length with:
+//
+//	len(mockedTokenRepo.DeleteTokenSeedByNameCalls())
+func (mock *TokenRepoMock) DeleteTokenSeedByNameCalls() []struct {
+	Ctx  context.Context
+	ID   uuid.UUID
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		ID   uuid.UUID
+		Name string
+	}
+	mock.lockDeleteTokenSeedByName.RLock()
+	calls = mock.calls.DeleteTokenSeedByName
+	mock.lockDeleteTokenSeedByName.RUnlock()
 	return calls
 }
 
@@ -286,6 +450,118 @@ func (mock *TokenRepoMock) GetByUUIDCalls() []struct {
 	return calls
 }
 
+// GetTokenSeedAll calls GetTokenSeedAllFunc.
+func (mock *TokenRepoMock) GetTokenSeedAll(ctx context.Context, id uuid.UUID) (provisioning.TokenSeeds, error) {
+	if mock.GetTokenSeedAllFunc == nil {
+		panic("TokenRepoMock.GetTokenSeedAllFunc: method is nil but TokenRepo.GetTokenSeedAll was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockGetTokenSeedAll.Lock()
+	mock.calls.GetTokenSeedAll = append(mock.calls.GetTokenSeedAll, callInfo)
+	mock.lockGetTokenSeedAll.Unlock()
+	return mock.GetTokenSeedAllFunc(ctx, id)
+}
+
+// GetTokenSeedAllCalls gets all the calls that were made to GetTokenSeedAll.
+// Check the length with:
+//
+//	len(mockedTokenRepo.GetTokenSeedAllCalls())
+func (mock *TokenRepoMock) GetTokenSeedAllCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockGetTokenSeedAll.RLock()
+	calls = mock.calls.GetTokenSeedAll
+	mock.lockGetTokenSeedAll.RUnlock()
+	return calls
+}
+
+// GetTokenSeedAllNames calls GetTokenSeedAllNamesFunc.
+func (mock *TokenRepoMock) GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) ([]string, error) {
+	if mock.GetTokenSeedAllNamesFunc == nil {
+		panic("TokenRepoMock.GetTokenSeedAllNamesFunc: method is nil but TokenRepo.GetTokenSeedAllNames was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockGetTokenSeedAllNames.Lock()
+	mock.calls.GetTokenSeedAllNames = append(mock.calls.GetTokenSeedAllNames, callInfo)
+	mock.lockGetTokenSeedAllNames.Unlock()
+	return mock.GetTokenSeedAllNamesFunc(ctx, id)
+}
+
+// GetTokenSeedAllNamesCalls gets all the calls that were made to GetTokenSeedAllNames.
+// Check the length with:
+//
+//	len(mockedTokenRepo.GetTokenSeedAllNamesCalls())
+func (mock *TokenRepoMock) GetTokenSeedAllNamesCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockGetTokenSeedAllNames.RLock()
+	calls = mock.calls.GetTokenSeedAllNames
+	mock.lockGetTokenSeedAllNames.RUnlock()
+	return calls
+}
+
+// GetTokenSeedByName calls GetTokenSeedByNameFunc.
+func (mock *TokenRepoMock) GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+	if mock.GetTokenSeedByNameFunc == nil {
+		panic("TokenRepoMock.GetTokenSeedByNameFunc: method is nil but TokenRepo.GetTokenSeedByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		ID   uuid.UUID
+		Name string
+	}{
+		Ctx:  ctx,
+		ID:   id,
+		Name: name,
+	}
+	mock.lockGetTokenSeedByName.Lock()
+	mock.calls.GetTokenSeedByName = append(mock.calls.GetTokenSeedByName, callInfo)
+	mock.lockGetTokenSeedByName.Unlock()
+	return mock.GetTokenSeedByNameFunc(ctx, id, name)
+}
+
+// GetTokenSeedByNameCalls gets all the calls that were made to GetTokenSeedByName.
+// Check the length with:
+//
+//	len(mockedTokenRepo.GetTokenSeedByNameCalls())
+func (mock *TokenRepoMock) GetTokenSeedByNameCalls() []struct {
+	Ctx  context.Context
+	ID   uuid.UUID
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		ID   uuid.UUID
+		Name string
+	}
+	mock.lockGetTokenSeedByName.RLock()
+	calls = mock.calls.GetTokenSeedByName
+	mock.lockGetTokenSeedByName.RUnlock()
+	return calls
+}
+
 // Update calls UpdateFunc.
 func (mock *TokenRepoMock) Update(ctx context.Context, token provisioning.Token) error {
 	if mock.UpdateFunc == nil {
@@ -319,5 +595,41 @@ func (mock *TokenRepoMock) UpdateCalls() []struct {
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update
 	mock.lockUpdate.RUnlock()
+	return calls
+}
+
+// UpdateTokenSeed calls UpdateTokenSeedFunc.
+func (mock *TokenRepoMock) UpdateTokenSeed(ctx context.Context, tokenSeedConfig provisioning.TokenSeed) error {
+	if mock.UpdateTokenSeedFunc == nil {
+		panic("TokenRepoMock.UpdateTokenSeedFunc: method is nil but TokenRepo.UpdateTokenSeed was just called")
+	}
+	callInfo := struct {
+		Ctx             context.Context
+		TokenSeedConfig provisioning.TokenSeed
+	}{
+		Ctx:             ctx,
+		TokenSeedConfig: tokenSeedConfig,
+	}
+	mock.lockUpdateTokenSeed.Lock()
+	mock.calls.UpdateTokenSeed = append(mock.calls.UpdateTokenSeed, callInfo)
+	mock.lockUpdateTokenSeed.Unlock()
+	return mock.UpdateTokenSeedFunc(ctx, tokenSeedConfig)
+}
+
+// UpdateTokenSeedCalls gets all the calls that were made to UpdateTokenSeed.
+// Check the length with:
+//
+//	len(mockedTokenRepo.UpdateTokenSeedCalls())
+func (mock *TokenRepoMock) UpdateTokenSeedCalls() []struct {
+	Ctx             context.Context
+	TokenSeedConfig provisioning.TokenSeed
+} {
+	var calls []struct {
+		Ctx             context.Context
+		TokenSeedConfig provisioning.TokenSeed
+	}
+	mock.lockUpdateTokenSeed.RLock()
+	calls = mock.calls.UpdateTokenSeed
+	mock.lockUpdateTokenSeed.RUnlock()
 	return calls
 }

@@ -43,7 +43,7 @@ func New(serverURL string, serverCertificate tls.Certificate) *Flasher {
 	return flasher
 }
 
-func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenSeedConfig, file io.ReadCloser) (_ io.ReadCloser, _ error) {
+func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, file io.ReadCloser) (_ io.ReadCloser, _ error) {
 	f.mu.Lock()
 	serverURL := f.serverURL
 	serverCertificate := f.serverCertificate
