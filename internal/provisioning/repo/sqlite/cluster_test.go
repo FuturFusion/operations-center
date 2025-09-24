@@ -112,7 +112,7 @@ cluster B
 	_, err = cluster.GetByName(ctx, clusterA.Name)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
-	// Should have two clusters remaining.
+	// Should have one clusters remaining.
 	clusters, err = cluster.GetAll(ctx)
 	require.NoError(t, err)
 	require.Len(t, clusters, 1)

@@ -162,7 +162,7 @@ server B
 	_, err = server.GetByName(ctx, serverA.Name)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
-	// Should have two servers remaining.
+	// Should have one servers remaining.
 	servers, err = server.GetAll(ctx)
 	require.NoError(t, err)
 	require.Len(t, servers, 1)
