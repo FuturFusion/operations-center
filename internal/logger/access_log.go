@@ -13,6 +13,7 @@ func AccessLogMiddleware(next http.Handler) http.Handler {
 
 		defer func() {
 			slog.InfoContext(r.Context(), "access log",
+				slog.String("ip", r.RemoteAddr),
 				slog.String("method", r.Method),
 				slog.String("request_uri", r.RequestURI),
 				slog.Int("status_code", rw.statusCode),
