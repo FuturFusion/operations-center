@@ -51,7 +51,7 @@ func (_d UpdateFilesRepoWithSlog) CleanupAll(ctx context.Context) (err error) {
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling CleanupAll")
+	log.DebugContext(ctx, "=> calling CleanupAll")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -65,12 +65,12 @@ func (_d UpdateFilesRepoWithSlog) CleanupAll(ctx context.Context) (err error) {
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method CleanupAll returned an informative error")
+				log.DebugContext(ctx, "<= method CleanupAll returned an informative error")
 			} else {
-				log.Error("<= method CleanupAll returned an error")
+				log.ErrorContext(ctx, "<= method CleanupAll returned an error")
 			}
 		} else {
-			log.Debug("<= method CleanupAll finished")
+			log.DebugContext(ctx, "<= method CleanupAll finished")
 		}
 	}()
 	return _d._base.CleanupAll(ctx)
@@ -85,7 +85,7 @@ func (_d UpdateFilesRepoWithSlog) CreateFromArchive(ctx context.Context, tarRead
 			slog.Any("tarReader", tarReader),
 		)
 	}
-	log.Debug("=> calling CreateFromArchive")
+	log.DebugContext(ctx, "=> calling CreateFromArchive")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -100,12 +100,12 @@ func (_d UpdateFilesRepoWithSlog) CreateFromArchive(ctx context.Context, tarRead
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method CreateFromArchive returned an informative error")
+				log.DebugContext(ctx, "<= method CreateFromArchive returned an informative error")
 			} else {
-				log.Error("<= method CreateFromArchive returned an error")
+				log.ErrorContext(ctx, "<= method CreateFromArchive returned an error")
 			}
 		} else {
-			log.Debug("<= method CreateFromArchive finished")
+			log.DebugContext(ctx, "<= method CreateFromArchive finished")
 		}
 	}()
 	return _d._base.CreateFromArchive(ctx, tarReader)
@@ -120,7 +120,7 @@ func (_d UpdateFilesRepoWithSlog) Delete(ctx context.Context, update provisionin
 			slog.Any("update", update),
 		)
 	}
-	log.Debug("=> calling Delete")
+	log.DebugContext(ctx, "=> calling Delete")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -134,12 +134,12 @@ func (_d UpdateFilesRepoWithSlog) Delete(ctx context.Context, update provisionin
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Delete returned an informative error")
+				log.DebugContext(ctx, "<= method Delete returned an informative error")
 			} else {
-				log.Error("<= method Delete returned an error")
+				log.ErrorContext(ctx, "<= method Delete returned an error")
 			}
 		} else {
-			log.Debug("<= method Delete finished")
+			log.DebugContext(ctx, "<= method Delete finished")
 		}
 	}()
 	return _d._base.Delete(ctx, update)
@@ -155,7 +155,7 @@ func (_d UpdateFilesRepoWithSlog) Get(ctx context.Context, update provisioning.U
 			slog.String("filename", filename),
 		)
 	}
-	log.Debug("=> calling Get")
+	log.DebugContext(ctx, "=> calling Get")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -171,12 +171,12 @@ func (_d UpdateFilesRepoWithSlog) Get(ctx context.Context, update provisioning.U
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Get returned an informative error")
+				log.DebugContext(ctx, "<= method Get returned an informative error")
 			} else {
-				log.Error("<= method Get returned an error")
+				log.ErrorContext(ctx, "<= method Get returned an error")
 			}
 		} else {
-			log.Debug("<= method Get finished")
+			log.DebugContext(ctx, "<= method Get finished")
 		}
 	}()
 	return _d._base.Get(ctx, update, filename)
@@ -193,7 +193,7 @@ func (_d UpdateFilesRepoWithSlog) Put(ctx context.Context, update provisioning.U
 			slog.Any("content", content),
 		)
 	}
-	log.Debug("=> calling Put")
+	log.DebugContext(ctx, "=> calling Put")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -209,12 +209,12 @@ func (_d UpdateFilesRepoWithSlog) Put(ctx context.Context, update provisioning.U
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Put returned an informative error")
+				log.DebugContext(ctx, "<= method Put returned an informative error")
 			} else {
-				log.Error("<= method Put returned an error")
+				log.ErrorContext(ctx, "<= method Put returned an error")
 			}
 		} else {
-			log.Debug("<= method Put finished")
+			log.DebugContext(ctx, "<= method Put finished")
 		}
 	}()
 	return _d._base.Put(ctx, update, filename, content)
@@ -228,7 +228,7 @@ func (_d UpdateFilesRepoWithSlog) UsageInformation(ctx context.Context) (usageIn
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling UsageInformation")
+	log.DebugContext(ctx, "=> calling UsageInformation")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -243,12 +243,12 @@ func (_d UpdateFilesRepoWithSlog) UsageInformation(ctx context.Context) (usageIn
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method UsageInformation returned an informative error")
+				log.DebugContext(ctx, "<= method UsageInformation returned an informative error")
 			} else {
-				log.Error("<= method UsageInformation returned an error")
+				log.ErrorContext(ctx, "<= method UsageInformation returned an error")
 			}
 		} else {
-			log.Debug("<= method UsageInformation finished")
+			log.DebugContext(ctx, "<= method UsageInformation finished")
 		}
 	}()
 	return _d._base.UsageInformation(ctx)

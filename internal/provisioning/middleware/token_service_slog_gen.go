@@ -52,7 +52,7 @@ func (_d TokenServiceWithSlog) Consume(ctx context.Context, id uuid.UUID) (err e
 			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling Consume")
+	log.DebugContext(ctx, "=> calling Consume")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -66,12 +66,12 @@ func (_d TokenServiceWithSlog) Consume(ctx context.Context, id uuid.UUID) (err e
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Consume returned an informative error")
+				log.DebugContext(ctx, "<= method Consume returned an informative error")
 			} else {
-				log.Error("<= method Consume returned an error")
+				log.ErrorContext(ctx, "<= method Consume returned an error")
 			}
 		} else {
-			log.Debug("<= method Consume finished")
+			log.DebugContext(ctx, "<= method Consume finished")
 		}
 	}()
 	return _d._base.Consume(ctx, id)
@@ -86,7 +86,7 @@ func (_d TokenServiceWithSlog) Create(ctx context.Context, token provisioning.To
 			slog.Any("token", token),
 		)
 	}
-	log.Debug("=> calling Create")
+	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -101,12 +101,12 @@ func (_d TokenServiceWithSlog) Create(ctx context.Context, token provisioning.To
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Create returned an informative error")
+				log.DebugContext(ctx, "<= method Create returned an informative error")
 			} else {
-				log.Error("<= method Create returned an error")
+				log.ErrorContext(ctx, "<= method Create returned an error")
 			}
 		} else {
-			log.Debug("<= method Create finished")
+			log.DebugContext(ctx, "<= method Create finished")
 		}
 	}()
 	return _d._base.Create(ctx, token)
@@ -121,7 +121,7 @@ func (_d TokenServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (
 			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling DeleteByUUID")
+	log.DebugContext(ctx, "=> calling DeleteByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -135,12 +135,12 @@ func (_d TokenServiceWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method DeleteByUUID returned an informative error")
+				log.DebugContext(ctx, "<= method DeleteByUUID returned an informative error")
 			} else {
-				log.Error("<= method DeleteByUUID returned an error")
+				log.ErrorContext(ctx, "<= method DeleteByUUID returned an error")
 			}
 		} else {
-			log.Debug("<= method DeleteByUUID finished")
+			log.DebugContext(ctx, "<= method DeleteByUUID finished")
 		}
 	}()
 	return _d._base.DeleteByUUID(ctx, id)
@@ -154,7 +154,7 @@ func (_d TokenServiceWithSlog) GetAll(ctx context.Context) (tokens provisioning.
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling GetAll")
+	log.DebugContext(ctx, "=> calling GetAll")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -169,12 +169,12 @@ func (_d TokenServiceWithSlog) GetAll(ctx context.Context) (tokens provisioning.
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAll returned an informative error")
+				log.DebugContext(ctx, "<= method GetAll returned an informative error")
 			} else {
-				log.Error("<= method GetAll returned an error")
+				log.ErrorContext(ctx, "<= method GetAll returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAll finished")
+			log.DebugContext(ctx, "<= method GetAll finished")
 		}
 	}()
 	return _d._base.GetAll(ctx)
@@ -188,7 +188,7 @@ func (_d TokenServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UU
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling GetAllUUIDs")
+	log.DebugContext(ctx, "=> calling GetAllUUIDs")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -203,12 +203,12 @@ func (_d TokenServiceWithSlog) GetAllUUIDs(ctx context.Context) (uUIDs []uuid.UU
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAllUUIDs returned an informative error")
+				log.DebugContext(ctx, "<= method GetAllUUIDs returned an informative error")
 			} else {
-				log.Error("<= method GetAllUUIDs returned an error")
+				log.ErrorContext(ctx, "<= method GetAllUUIDs returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAllUUIDs finished")
+			log.DebugContext(ctx, "<= method GetAllUUIDs finished")
 		}
 	}()
 	return _d._base.GetAllUUIDs(ctx)
@@ -223,7 +223,7 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling GetByUUID")
+	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -238,12 +238,12 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetByUUID returned an informative error")
+				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
 			} else {
-				log.Error("<= method GetByUUID returned an error")
+				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
 			}
 		} else {
-			log.Debug("<= method GetByUUID finished")
+			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
 	}()
 	return _d._base.GetByUUID(ctx, id)
@@ -259,7 +259,7 @@ func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID
 			slog.Any("seedConfig", seedConfig),
 		)
 	}
-	log.Debug("=> calling GetPreSeedImage")
+	log.DebugContext(ctx, "=> calling GetPreSeedImage")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -274,12 +274,12 @@ func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetPreSeedImage returned an informative error")
+				log.DebugContext(ctx, "<= method GetPreSeedImage returned an informative error")
 			} else {
-				log.Error("<= method GetPreSeedImage returned an error")
+				log.ErrorContext(ctx, "<= method GetPreSeedImage returned an error")
 			}
 		} else {
-			log.Debug("<= method GetPreSeedImage finished")
+			log.DebugContext(ctx, "<= method GetPreSeedImage finished")
 		}
 	}()
 	return _d._base.GetPreSeedImage(ctx, id, seedConfig)
@@ -294,7 +294,7 @@ func (_d TokenServiceWithSlog) Update(ctx context.Context, token provisioning.To
 			slog.Any("token", token),
 		)
 	}
-	log.Debug("=> calling Update")
+	log.DebugContext(ctx, "=> calling Update")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -308,12 +308,12 @@ func (_d TokenServiceWithSlog) Update(ctx context.Context, token provisioning.To
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Update returned an informative error")
+				log.DebugContext(ctx, "<= method Update returned an informative error")
 			} else {
-				log.Error("<= method Update returned an error")
+				log.ErrorContext(ctx, "<= method Update returned an error")
 			}
 		} else {
-			log.Debug("<= method Update finished")
+			log.DebugContext(ctx, "<= method Update finished")
 		}
 	}()
 	return _d._base.Update(ctx, token)

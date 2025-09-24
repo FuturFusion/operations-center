@@ -53,7 +53,7 @@ func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, endp
 			slog.String("networkName", networkName),
 		)
 	}
-	log.Debug("=> calling GetNetworkByName")
+	log.DebugContext(ctx, "=> calling GetNetworkByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -68,12 +68,12 @@ func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, endp
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetNetworkByName returned an informative error")
+				log.DebugContext(ctx, "<= method GetNetworkByName returned an informative error")
 			} else {
-				log.Error("<= method GetNetworkByName returned an error")
+				log.ErrorContext(ctx, "<= method GetNetworkByName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetNetworkByName finished")
+			log.DebugContext(ctx, "<= method GetNetworkByName finished")
 		}
 	}()
 	return _d._base.GetNetworkByName(ctx, endpoint, networkName)
@@ -88,7 +88,7 @@ func (_d NetworkServerClientWithSlog) GetNetworks(ctx context.Context, endpoint 
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling GetNetworks")
+	log.DebugContext(ctx, "=> calling GetNetworks")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -103,12 +103,12 @@ func (_d NetworkServerClientWithSlog) GetNetworks(ctx context.Context, endpoint 
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetNetworks returned an informative error")
+				log.DebugContext(ctx, "<= method GetNetworks returned an informative error")
 			} else {
-				log.Error("<= method GetNetworks returned an error")
+				log.ErrorContext(ctx, "<= method GetNetworks returned an error")
 			}
 		} else {
-			log.Debug("<= method GetNetworks finished")
+			log.DebugContext(ctx, "<= method GetNetworks finished")
 		}
 	}()
 	return _d._base.GetNetworks(ctx, endpoint)

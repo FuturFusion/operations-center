@@ -50,7 +50,7 @@ func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (systemNet
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling GetNetworkConfig")
+	log.DebugContext(ctx, "=> calling GetNetworkConfig")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -59,7 +59,7 @@ func (_d SystemServiceWithSlog) GetNetworkConfig(ctx context.Context) (systemNet
 			)
 		} else {
 		}
-		log.Debug("<= method GetNetworkConfig finished")
+		log.DebugContext(ctx, "<= method GetNetworkConfig finished")
 	}()
 	return _d._base.GetNetworkConfig(ctx)
 }
@@ -72,7 +72,7 @@ func (_d SystemServiceWithSlog) GetSecurityConfig(ctx context.Context) (systemSe
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling GetSecurityConfig")
+	log.DebugContext(ctx, "=> calling GetSecurityConfig")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -81,7 +81,7 @@ func (_d SystemServiceWithSlog) GetSecurityConfig(ctx context.Context) (systemSe
 			)
 		} else {
 		}
-		log.Debug("<= method GetSecurityConfig finished")
+		log.DebugContext(ctx, "<= method GetSecurityConfig finished")
 	}()
 	return _d._base.GetSecurityConfig(ctx)
 }
@@ -94,7 +94,7 @@ func (_d SystemServiceWithSlog) GetUpdatesConfig(ctx context.Context) (systemUpd
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling GetUpdatesConfig")
+	log.DebugContext(ctx, "=> calling GetUpdatesConfig")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -103,7 +103,7 @@ func (_d SystemServiceWithSlog) GetUpdatesConfig(ctx context.Context) (systemUpd
 			)
 		} else {
 		}
-		log.Debug("<= method GetUpdatesConfig finished")
+		log.DebugContext(ctx, "<= method GetUpdatesConfig finished")
 	}()
 	return _d._base.GetUpdatesConfig(ctx)
 }
@@ -118,7 +118,7 @@ func (_d SystemServiceWithSlog) UpdateCertificate(ctx context.Context, certifica
 			slog.String("keyPEM", keyPEM),
 		)
 	}
-	log.Debug("=> calling UpdateCertificate")
+	log.DebugContext(ctx, "=> calling UpdateCertificate")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -132,12 +132,12 @@ func (_d SystemServiceWithSlog) UpdateCertificate(ctx context.Context, certifica
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method UpdateCertificate returned an informative error")
+				log.DebugContext(ctx, "<= method UpdateCertificate returned an informative error")
 			} else {
-				log.Error("<= method UpdateCertificate returned an error")
+				log.ErrorContext(ctx, "<= method UpdateCertificate returned an error")
 			}
 		} else {
-			log.Debug("<= method UpdateCertificate finished")
+			log.DebugContext(ctx, "<= method UpdateCertificate finished")
 		}
 	}()
 	return _d._base.UpdateCertificate(ctx, certificatePEM, keyPEM)
@@ -152,7 +152,7 @@ func (_d SystemServiceWithSlog) UpdateNetworkConfig(ctx context.Context, cfg api
 			slog.Any("cfg", cfg),
 		)
 	}
-	log.Debug("=> calling UpdateNetworkConfig")
+	log.DebugContext(ctx, "=> calling UpdateNetworkConfig")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -166,12 +166,12 @@ func (_d SystemServiceWithSlog) UpdateNetworkConfig(ctx context.Context, cfg api
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method UpdateNetworkConfig returned an informative error")
+				log.DebugContext(ctx, "<= method UpdateNetworkConfig returned an informative error")
 			} else {
-				log.Error("<= method UpdateNetworkConfig returned an error")
+				log.ErrorContext(ctx, "<= method UpdateNetworkConfig returned an error")
 			}
 		} else {
-			log.Debug("<= method UpdateNetworkConfig finished")
+			log.DebugContext(ctx, "<= method UpdateNetworkConfig finished")
 		}
 	}()
 	return _d._base.UpdateNetworkConfig(ctx, cfg)
@@ -186,7 +186,7 @@ func (_d SystemServiceWithSlog) UpdateSecurityConfig(ctx context.Context, cfg ap
 			slog.Any("cfg", cfg),
 		)
 	}
-	log.Debug("=> calling UpdateSecurityConfig")
+	log.DebugContext(ctx, "=> calling UpdateSecurityConfig")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -200,12 +200,12 @@ func (_d SystemServiceWithSlog) UpdateSecurityConfig(ctx context.Context, cfg ap
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method UpdateSecurityConfig returned an informative error")
+				log.DebugContext(ctx, "<= method UpdateSecurityConfig returned an informative error")
 			} else {
-				log.Error("<= method UpdateSecurityConfig returned an error")
+				log.ErrorContext(ctx, "<= method UpdateSecurityConfig returned an error")
 			}
 		} else {
-			log.Debug("<= method UpdateSecurityConfig finished")
+			log.DebugContext(ctx, "<= method UpdateSecurityConfig finished")
 		}
 	}()
 	return _d._base.UpdateSecurityConfig(ctx, cfg)
@@ -220,7 +220,7 @@ func (_d SystemServiceWithSlog) UpdateUpdatesConfig(ctx context.Context, cfg api
 			slog.Any("cfg", cfg),
 		)
 	}
-	log.Debug("=> calling UpdateUpdatesConfig")
+	log.DebugContext(ctx, "=> calling UpdateUpdatesConfig")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -234,12 +234,12 @@ func (_d SystemServiceWithSlog) UpdateUpdatesConfig(ctx context.Context, cfg api
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method UpdateUpdatesConfig returned an informative error")
+				log.DebugContext(ctx, "<= method UpdateUpdatesConfig returned an informative error")
 			} else {
-				log.Error("<= method UpdateUpdatesConfig returned an error")
+				log.ErrorContext(ctx, "<= method UpdateUpdatesConfig returned an error")
 			}
 		} else {
-			log.Debug("<= method UpdateUpdatesConfig finished")
+			log.DebugContext(ctx, "<= method UpdateUpdatesConfig finished")
 		}
 	}()
 	return _d._base.UpdateUpdatesConfig(ctx, cfg)

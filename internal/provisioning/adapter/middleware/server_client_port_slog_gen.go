@@ -51,7 +51,7 @@ func (_d ServerClientPortWithSlog) GetOSData(ctx context.Context, endpoint provi
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling GetOSData")
+	log.DebugContext(ctx, "=> calling GetOSData")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -66,12 +66,12 @@ func (_d ServerClientPortWithSlog) GetOSData(ctx context.Context, endpoint provi
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetOSData returned an informative error")
+				log.DebugContext(ctx, "<= method GetOSData returned an informative error")
 			} else {
-				log.Error("<= method GetOSData returned an error")
+				log.ErrorContext(ctx, "<= method GetOSData returned an error")
 			}
 		} else {
-			log.Debug("<= method GetOSData finished")
+			log.DebugContext(ctx, "<= method GetOSData finished")
 		}
 	}()
 	return _d._base.GetOSData(ctx, endpoint)
@@ -86,7 +86,7 @@ func (_d ServerClientPortWithSlog) GetResources(ctx context.Context, endpoint pr
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling GetResources")
+	log.DebugContext(ctx, "=> calling GetResources")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -101,12 +101,12 @@ func (_d ServerClientPortWithSlog) GetResources(ctx context.Context, endpoint pr
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetResources returned an informative error")
+				log.DebugContext(ctx, "<= method GetResources returned an informative error")
 			} else {
-				log.Error("<= method GetResources returned an error")
+				log.ErrorContext(ctx, "<= method GetResources returned an error")
 			}
 		} else {
-			log.Debug("<= method GetResources finished")
+			log.DebugContext(ctx, "<= method GetResources finished")
 		}
 	}()
 	return _d._base.GetResources(ctx, endpoint)
@@ -121,7 +121,7 @@ func (_d ServerClientPortWithSlog) Ping(ctx context.Context, endpoint provisioni
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling Ping")
+	log.DebugContext(ctx, "=> calling Ping")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -135,12 +135,12 @@ func (_d ServerClientPortWithSlog) Ping(ctx context.Context, endpoint provisioni
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Ping returned an informative error")
+				log.DebugContext(ctx, "<= method Ping returned an informative error")
 			} else {
-				log.Error("<= method Ping returned an error")
+				log.ErrorContext(ctx, "<= method Ping returned an error")
 			}
 		} else {
-			log.Debug("<= method Ping finished")
+			log.DebugContext(ctx, "<= method Ping finished")
 		}
 	}()
 	return _d._base.Ping(ctx, endpoint)
@@ -155,7 +155,7 @@ func (_d ServerClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, serv
 			slog.Any("server", server),
 		)
 	}
-	log.Debug("=> calling UpdateNetworkConfig")
+	log.DebugContext(ctx, "=> calling UpdateNetworkConfig")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -169,12 +169,12 @@ func (_d ServerClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, serv
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method UpdateNetworkConfig returned an informative error")
+				log.DebugContext(ctx, "<= method UpdateNetworkConfig returned an informative error")
 			} else {
-				log.Error("<= method UpdateNetworkConfig returned an error")
+				log.ErrorContext(ctx, "<= method UpdateNetworkConfig returned an error")
 			}
 		} else {
-			log.Debug("<= method UpdateNetworkConfig finished")
+			log.DebugContext(ctx, "<= method UpdateNetworkConfig finished")
 		}
 	}()
 	return _d._base.UpdateNetworkConfig(ctx, server)

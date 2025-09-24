@@ -53,7 +53,7 @@ func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, endpoint
 			slog.String("imageName", imageName),
 		)
 	}
-	log.Debug("=> calling GetImageByName")
+	log.DebugContext(ctx, "=> calling GetImageByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -68,12 +68,12 @@ func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, endpoint
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetImageByName returned an informative error")
+				log.DebugContext(ctx, "<= method GetImageByName returned an informative error")
 			} else {
-				log.Error("<= method GetImageByName returned an error")
+				log.ErrorContext(ctx, "<= method GetImageByName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetImageByName finished")
+			log.DebugContext(ctx, "<= method GetImageByName finished")
 		}
 	}()
 	return _d._base.GetImageByName(ctx, endpoint, imageName)
@@ -88,7 +88,7 @@ func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, endpoint prov
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling GetImages")
+	log.DebugContext(ctx, "=> calling GetImages")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -103,12 +103,12 @@ func (_d ImageServerClientWithSlog) GetImages(ctx context.Context, endpoint prov
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetImages returned an informative error")
+				log.DebugContext(ctx, "<= method GetImages returned an informative error")
 			} else {
-				log.Error("<= method GetImages returned an error")
+				log.ErrorContext(ctx, "<= method GetImages returned an error")
 			}
 		} else {
-			log.Debug("<= method GetImages finished")
+			log.DebugContext(ctx, "<= method GetImages finished")
 		}
 	}()
 	return _d._base.GetImages(ctx, endpoint)

@@ -53,7 +53,7 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSetByName(ctx c
 			slog.String("networkAddressSetName", networkAddressSetName),
 		)
 	}
-	log.Debug("=> calling GetNetworkAddressSetByName")
+	log.DebugContext(ctx, "=> calling GetNetworkAddressSetByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -68,12 +68,12 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSetByName(ctx c
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetNetworkAddressSetByName returned an informative error")
+				log.DebugContext(ctx, "<= method GetNetworkAddressSetByName returned an informative error")
 			} else {
-				log.Error("<= method GetNetworkAddressSetByName returned an error")
+				log.ErrorContext(ctx, "<= method GetNetworkAddressSetByName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetNetworkAddressSetByName finished")
+			log.DebugContext(ctx, "<= method GetNetworkAddressSetByName finished")
 		}
 	}()
 	return _d._base.GetNetworkAddressSetByName(ctx, endpoint, networkAddressSetName)
@@ -88,7 +88,7 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSets(ctx contex
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling GetNetworkAddressSets")
+	log.DebugContext(ctx, "=> calling GetNetworkAddressSets")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -103,12 +103,12 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSets(ctx contex
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetNetworkAddressSets returned an informative error")
+				log.DebugContext(ctx, "<= method GetNetworkAddressSets returned an informative error")
 			} else {
-				log.Error("<= method GetNetworkAddressSets returned an error")
+				log.ErrorContext(ctx, "<= method GetNetworkAddressSets returned an error")
 			}
 		} else {
-			log.Debug("<= method GetNetworkAddressSets finished")
+			log.DebugContext(ctx, "<= method GetNetworkAddressSets finished")
 		}
 	}()
 	return _d._base.GetNetworkAddressSets(ctx, endpoint)
@@ -124,7 +124,7 @@ func (_d NetworkAddressSetServerClientWithSlog) HasExtension(ctx context.Context
 			slog.String("extension", extension),
 		)
 	}
-	log.Debug("=> calling HasExtension")
+	log.DebugContext(ctx, "=> calling HasExtension")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -133,7 +133,7 @@ func (_d NetworkAddressSetServerClientWithSlog) HasExtension(ctx context.Context
 			)
 		} else {
 		}
-		log.Debug("<= method HasExtension finished")
+		log.DebugContext(ctx, "<= method HasExtension finished")
 	}()
 	return _d._base.HasExtension(ctx, endpoint, extension)
 }

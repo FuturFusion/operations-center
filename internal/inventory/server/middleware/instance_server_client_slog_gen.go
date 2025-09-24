@@ -53,7 +53,7 @@ func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, en
 			slog.String("instanceName", instanceName),
 		)
 	}
-	log.Debug("=> calling GetInstanceByName")
+	log.DebugContext(ctx, "=> calling GetInstanceByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -68,12 +68,12 @@ func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, en
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetInstanceByName returned an informative error")
+				log.DebugContext(ctx, "<= method GetInstanceByName returned an informative error")
 			} else {
-				log.Error("<= method GetInstanceByName returned an error")
+				log.ErrorContext(ctx, "<= method GetInstanceByName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetInstanceByName finished")
+			log.DebugContext(ctx, "<= method GetInstanceByName finished")
 		}
 	}()
 	return _d._base.GetInstanceByName(ctx, endpoint, instanceName)
@@ -88,7 +88,7 @@ func (_d InstanceServerClientWithSlog) GetInstances(ctx context.Context, endpoin
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling GetInstances")
+	log.DebugContext(ctx, "=> calling GetInstances")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -103,12 +103,12 @@ func (_d InstanceServerClientWithSlog) GetInstances(ctx context.Context, endpoin
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetInstances returned an informative error")
+				log.DebugContext(ctx, "<= method GetInstances returned an informative error")
 			} else {
-				log.Error("<= method GetInstances returned an error")
+				log.ErrorContext(ctx, "<= method GetInstances returned an error")
 			}
 		} else {
-			log.Debug("<= method GetInstances finished")
+			log.DebugContext(ctx, "<= method GetInstances finished")
 		}
 	}()
 	return _d._base.GetInstances(ctx, endpoint)

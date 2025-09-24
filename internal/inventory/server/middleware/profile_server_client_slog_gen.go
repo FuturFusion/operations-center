@@ -53,7 +53,7 @@ func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, endp
 			slog.String("profileName", profileName),
 		)
 	}
-	log.Debug("=> calling GetProfileByName")
+	log.DebugContext(ctx, "=> calling GetProfileByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -68,12 +68,12 @@ func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, endp
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetProfileByName returned an informative error")
+				log.DebugContext(ctx, "<= method GetProfileByName returned an informative error")
 			} else {
-				log.Error("<= method GetProfileByName returned an error")
+				log.ErrorContext(ctx, "<= method GetProfileByName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetProfileByName finished")
+			log.DebugContext(ctx, "<= method GetProfileByName finished")
 		}
 	}()
 	return _d._base.GetProfileByName(ctx, endpoint, profileName)
@@ -88,7 +88,7 @@ func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, endpoint 
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling GetProfiles")
+	log.DebugContext(ctx, "=> calling GetProfiles")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -103,12 +103,12 @@ func (_d ProfileServerClientWithSlog) GetProfiles(ctx context.Context, endpoint 
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetProfiles returned an informative error")
+				log.DebugContext(ctx, "<= method GetProfiles returned an informative error")
 			} else {
-				log.Error("<= method GetProfiles returned an error")
+				log.ErrorContext(ctx, "<= method GetProfiles returned an error")
 			}
 		} else {
-			log.Debug("<= method GetProfiles finished")
+			log.DebugContext(ctx, "<= method GetProfiles finished")
 		}
 	}()
 	return _d._base.GetProfiles(ctx, endpoint)

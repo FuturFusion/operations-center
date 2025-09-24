@@ -86,7 +86,7 @@ func New{{$decorator}}(base {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}, log *slo
 				)
 			}
 		{{end -}}
-		log.Debug("=> calling {{$method.Name}}")
+		log.DebugContext(ctx, "=> calling {{$method.Name}}")
 		defer func() {
 			log := _d._log.With()
 			{{- if gt ($method.Returns | len) 0}}
@@ -126,15 +126,15 @@ func New{{$decorator}}(base {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}, log *slo
 			{{- if $method.ReturnsError }}
 				if err != nil {
 					if _d._isInformativeErrFunc(err) {
-						log.Debug("<= method {{$method.Name}} returned an informative error" )
+						log.DebugContext(ctx, "<= method {{$method.Name}} returned an informative error" )
 					} else {
-						log.Error("<= method {{$method.Name}} returned an error" )
+						log.ErrorContext(ctx, "<= method {{$method.Name}} returned an error" )
 					}
 				} else {
-					log.Debug("<= method {{$method.Name}} finished")
+					log.DebugContext(ctx, "<= method {{$method.Name}} finished")
 				}
 			{{else}}
-				log.Debug("<= method {{$method.Name}} finished")
+				log.DebugContext(ctx, "<= method {{$method.Name}} finished")
 			{{end -}}
 		}()
 		{{ $method.ReturnStatement }} _d._base.{{ $method.Name }}({{ $method.ArgCallList }})

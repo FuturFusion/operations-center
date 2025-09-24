@@ -53,7 +53,7 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context
 			slog.String("networkACLName", networkACLName),
 		)
 	}
-	log.Debug("=> calling GetNetworkACLByName")
+	log.DebugContext(ctx, "=> calling GetNetworkACLByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -68,12 +68,12 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetNetworkACLByName returned an informative error")
+				log.DebugContext(ctx, "<= method GetNetworkACLByName returned an informative error")
 			} else {
-				log.Error("<= method GetNetworkACLByName returned an error")
+				log.ErrorContext(ctx, "<= method GetNetworkACLByName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetNetworkACLByName finished")
+			log.DebugContext(ctx, "<= method GetNetworkACLByName finished")
 		}
 	}()
 	return _d._base.GetNetworkACLByName(ctx, endpoint, networkACLName)
@@ -88,7 +88,7 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLs(ctx context.Context, end
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling GetNetworkACLs")
+	log.DebugContext(ctx, "=> calling GetNetworkACLs")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -103,12 +103,12 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLs(ctx context.Context, end
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetNetworkACLs returned an informative error")
+				log.DebugContext(ctx, "<= method GetNetworkACLs returned an informative error")
 			} else {
-				log.Error("<= method GetNetworkACLs returned an error")
+				log.ErrorContext(ctx, "<= method GetNetworkACLs returned an error")
 			}
 		} else {
-			log.Debug("<= method GetNetworkACLs finished")
+			log.DebugContext(ctx, "<= method GetNetworkACLs finished")
 		}
 	}()
 	return _d._base.GetNetworkACLs(ctx, endpoint)

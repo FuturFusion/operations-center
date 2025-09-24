@@ -53,7 +53,7 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Conte
 			slog.String("networkZoneName", networkZoneName),
 		)
 	}
-	log.Debug("=> calling GetNetworkZoneByName")
+	log.DebugContext(ctx, "=> calling GetNetworkZoneByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -68,12 +68,12 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZoneByName(ctx context.Conte
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetNetworkZoneByName returned an informative error")
+				log.DebugContext(ctx, "<= method GetNetworkZoneByName returned an informative error")
 			} else {
-				log.Error("<= method GetNetworkZoneByName returned an error")
+				log.ErrorContext(ctx, "<= method GetNetworkZoneByName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetNetworkZoneByName finished")
+			log.DebugContext(ctx, "<= method GetNetworkZoneByName finished")
 		}
 	}()
 	return _d._base.GetNetworkZoneByName(ctx, endpoint, networkZoneName)
@@ -88,7 +88,7 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZones(ctx context.Context, e
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling GetNetworkZones")
+	log.DebugContext(ctx, "=> calling GetNetworkZones")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -103,12 +103,12 @@ func (_d NetworkZoneServerClientWithSlog) GetNetworkZones(ctx context.Context, e
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetNetworkZones returned an informative error")
+				log.DebugContext(ctx, "<= method GetNetworkZones returned an informative error")
 			} else {
-				log.Error("<= method GetNetworkZones returned an error")
+				log.ErrorContext(ctx, "<= method GetNetworkZones returned an error")
 			}
 		} else {
-			log.Debug("<= method GetNetworkZones finished")
+			log.DebugContext(ctx, "<= method GetNetworkZones finished")
 		}
 	}()
 	return _d._base.GetNetworkZones(ctx, endpoint)

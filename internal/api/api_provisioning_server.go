@@ -287,7 +287,7 @@ func (s *serverHandler) serversPost(r *http.Request) response.Response {
 	}
 
 	// Ensure presence of client certificate.
-	if len(r.TLS.PeerCertificates) == 0 {
+	if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
 		return response.BadRequest(fmt.Errorf("No client certificate provided"))
 	}
 

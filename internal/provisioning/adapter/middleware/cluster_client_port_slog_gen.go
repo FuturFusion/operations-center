@@ -51,7 +51,7 @@ func (_d ClusterClientPortWithSlog) EnableCluster(ctx context.Context, server pr
 			slog.Any("server", server),
 		)
 	}
-	log.Debug("=> calling EnableCluster")
+	log.DebugContext(ctx, "=> calling EnableCluster")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -66,12 +66,12 @@ func (_d ClusterClientPortWithSlog) EnableCluster(ctx context.Context, server pr
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method EnableCluster returned an informative error")
+				log.DebugContext(ctx, "<= method EnableCluster returned an informative error")
 			} else {
-				log.Error("<= method EnableCluster returned an error")
+				log.ErrorContext(ctx, "<= method EnableCluster returned an error")
 			}
 		} else {
-			log.Debug("<= method EnableCluster finished")
+			log.DebugContext(ctx, "<= method EnableCluster finished")
 		}
 	}()
 	return _d._base.EnableCluster(ctx, server)
@@ -88,7 +88,7 @@ func (_d ClusterClientPortWithSlog) EnableOSService(ctx context.Context, server 
 			slog.Any("config", config),
 		)
 	}
-	log.Debug("=> calling EnableOSService")
+	log.DebugContext(ctx, "=> calling EnableOSService")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -102,12 +102,12 @@ func (_d ClusterClientPortWithSlog) EnableOSService(ctx context.Context, server 
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method EnableOSService returned an informative error")
+				log.DebugContext(ctx, "<= method EnableOSService returned an informative error")
 			} else {
-				log.Error("<= method EnableOSService returned an error")
+				log.ErrorContext(ctx, "<= method EnableOSService returned an error")
 			}
 		} else {
-			log.Debug("<= method EnableOSService finished")
+			log.DebugContext(ctx, "<= method EnableOSService finished")
 		}
 	}()
 	return _d._base.EnableOSService(ctx, server, name, config)
@@ -123,7 +123,7 @@ func (_d ClusterClientPortWithSlog) GetClusterJoinToken(ctx context.Context, end
 			slog.String("memberName", memberName),
 		)
 	}
-	log.Debug("=> calling GetClusterJoinToken")
+	log.DebugContext(ctx, "=> calling GetClusterJoinToken")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -138,12 +138,12 @@ func (_d ClusterClientPortWithSlog) GetClusterJoinToken(ctx context.Context, end
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetClusterJoinToken returned an informative error")
+				log.DebugContext(ctx, "<= method GetClusterJoinToken returned an informative error")
 			} else {
-				log.Error("<= method GetClusterJoinToken returned an error")
+				log.ErrorContext(ctx, "<= method GetClusterJoinToken returned an error")
 			}
 		} else {
-			log.Debug("<= method GetClusterJoinToken finished")
+			log.DebugContext(ctx, "<= method GetClusterJoinToken finished")
 		}
 	}()
 	return _d._base.GetClusterJoinToken(ctx, endpoint, memberName)
@@ -158,7 +158,7 @@ func (_d ClusterClientPortWithSlog) GetClusterNodeNames(ctx context.Context, end
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling GetClusterNodeNames")
+	log.DebugContext(ctx, "=> calling GetClusterNodeNames")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -173,12 +173,12 @@ func (_d ClusterClientPortWithSlog) GetClusterNodeNames(ctx context.Context, end
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetClusterNodeNames returned an informative error")
+				log.DebugContext(ctx, "<= method GetClusterNodeNames returned an informative error")
 			} else {
-				log.Error("<= method GetClusterNodeNames returned an error")
+				log.ErrorContext(ctx, "<= method GetClusterNodeNames returned an error")
 			}
 		} else {
-			log.Debug("<= method GetClusterNodeNames finished")
+			log.DebugContext(ctx, "<= method GetClusterNodeNames finished")
 		}
 	}()
 	return _d._base.GetClusterNodeNames(ctx, endpoint)
@@ -193,7 +193,7 @@ func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint prov
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling GetOSData")
+	log.DebugContext(ctx, "=> calling GetOSData")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -208,12 +208,12 @@ func (_d ClusterClientPortWithSlog) GetOSData(ctx context.Context, endpoint prov
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetOSData returned an informative error")
+				log.DebugContext(ctx, "<= method GetOSData returned an informative error")
 			} else {
-				log.Error("<= method GetOSData returned an error")
+				log.ErrorContext(ctx, "<= method GetOSData returned an error")
 			}
 		} else {
-			log.Debug("<= method GetOSData finished")
+			log.DebugContext(ctx, "<= method GetOSData finished")
 		}
 	}()
 	return _d._base.GetOSData(ctx, endpoint)
@@ -230,7 +230,7 @@ func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server prov
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling JoinCluster")
+	log.DebugContext(ctx, "=> calling JoinCluster")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -244,12 +244,12 @@ func (_d ClusterClientPortWithSlog) JoinCluster(ctx context.Context, server prov
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method JoinCluster returned an informative error")
+				log.DebugContext(ctx, "<= method JoinCluster returned an informative error")
 			} else {
-				log.Error("<= method JoinCluster returned an error")
+				log.ErrorContext(ctx, "<= method JoinCluster returned an error")
 			}
 		} else {
-			log.Debug("<= method JoinCluster finished")
+			log.DebugContext(ctx, "<= method JoinCluster finished")
 		}
 	}()
 	return _d._base.JoinCluster(ctx, server, joinToken, endpoint)
@@ -264,7 +264,7 @@ func (_d ClusterClientPortWithSlog) Ping(ctx context.Context, endpoint provision
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling Ping")
+	log.DebugContext(ctx, "=> calling Ping")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -278,12 +278,12 @@ func (_d ClusterClientPortWithSlog) Ping(ctx context.Context, endpoint provision
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Ping returned an informative error")
+				log.DebugContext(ctx, "<= method Ping returned an informative error")
 			} else {
-				log.Error("<= method Ping returned an error")
+				log.ErrorContext(ctx, "<= method Ping returned an error")
 			}
 		} else {
-			log.Debug("<= method Ping finished")
+			log.DebugContext(ctx, "<= method Ping finished")
 		}
 	}()
 	return _d._base.Ping(ctx, endpoint)
@@ -299,7 +299,7 @@ func (_d ClusterClientPortWithSlog) SetServerConfig(ctx context.Context, endpoin
 			slog.Any("config", config),
 		)
 	}
-	log.Debug("=> calling SetServerConfig")
+	log.DebugContext(ctx, "=> calling SetServerConfig")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -313,12 +313,12 @@ func (_d ClusterClientPortWithSlog) SetServerConfig(ctx context.Context, endpoin
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method SetServerConfig returned an informative error")
+				log.DebugContext(ctx, "<= method SetServerConfig returned an informative error")
 			} else {
-				log.Error("<= method SetServerConfig returned an error")
+				log.ErrorContext(ctx, "<= method SetServerConfig returned an error")
 			}
 		} else {
-			log.Debug("<= method SetServerConfig finished")
+			log.DebugContext(ctx, "<= method SetServerConfig finished")
 		}
 	}()
 	return _d._base.SetServerConfig(ctx, endpoint, config)
@@ -335,7 +335,7 @@ func (_d ClusterClientPortWithSlog) UpdateClusterCertificate(ctx context.Context
 			slog.String("keyPEM", keyPEM),
 		)
 	}
-	log.Debug("=> calling UpdateClusterCertificate")
+	log.DebugContext(ctx, "=> calling UpdateClusterCertificate")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -349,12 +349,12 @@ func (_d ClusterClientPortWithSlog) UpdateClusterCertificate(ctx context.Context
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method UpdateClusterCertificate returned an informative error")
+				log.DebugContext(ctx, "<= method UpdateClusterCertificate returned an informative error")
 			} else {
-				log.Error("<= method UpdateClusterCertificate returned an error")
+				log.ErrorContext(ctx, "<= method UpdateClusterCertificate returned an error")
 			}
 		} else {
-			log.Debug("<= method UpdateClusterCertificate finished")
+			log.DebugContext(ctx, "<= method UpdateClusterCertificate finished")
 		}
 	}()
 	return _d._base.UpdateClusterCertificate(ctx, endpoint, certificatePEM, keyPEM)

@@ -51,7 +51,7 @@ func (_d StoragePoolRepoWithSlog) Create(ctx context.Context, storagePool invent
 			slog.Any("storagePool", storagePool),
 		)
 	}
-	log.Debug("=> calling Create")
+	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -66,12 +66,12 @@ func (_d StoragePoolRepoWithSlog) Create(ctx context.Context, storagePool invent
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Create returned an informative error")
+				log.DebugContext(ctx, "<= method Create returned an informative error")
 			} else {
-				log.Error("<= method Create returned an error")
+				log.ErrorContext(ctx, "<= method Create returned an error")
 			}
 		} else {
-			log.Debug("<= method Create finished")
+			log.DebugContext(ctx, "<= method Create finished")
 		}
 	}()
 	return _d._base.Create(ctx, storagePool)
@@ -86,7 +86,7 @@ func (_d StoragePoolRepoWithSlog) DeleteByClusterName(ctx context.Context, clust
 			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("=> calling DeleteByClusterName")
+	log.DebugContext(ctx, "=> calling DeleteByClusterName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -100,12 +100,12 @@ func (_d StoragePoolRepoWithSlog) DeleteByClusterName(ctx context.Context, clust
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method DeleteByClusterName returned an informative error")
+				log.DebugContext(ctx, "<= method DeleteByClusterName returned an informative error")
 			} else {
-				log.Error("<= method DeleteByClusterName returned an error")
+				log.ErrorContext(ctx, "<= method DeleteByClusterName returned an error")
 			}
 		} else {
-			log.Debug("<= method DeleteByClusterName finished")
+			log.DebugContext(ctx, "<= method DeleteByClusterName finished")
 		}
 	}()
 	return _d._base.DeleteByClusterName(ctx, cluster)
@@ -120,7 +120,7 @@ func (_d StoragePoolRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID
 			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling DeleteByUUID")
+	log.DebugContext(ctx, "=> calling DeleteByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -134,12 +134,12 @@ func (_d StoragePoolRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method DeleteByUUID returned an informative error")
+				log.DebugContext(ctx, "<= method DeleteByUUID returned an informative error")
 			} else {
-				log.Error("<= method DeleteByUUID returned an error")
+				log.ErrorContext(ctx, "<= method DeleteByUUID returned an error")
 			}
 		} else {
-			log.Debug("<= method DeleteByUUID finished")
+			log.DebugContext(ctx, "<= method DeleteByUUID finished")
 		}
 	}()
 	return _d._base.DeleteByUUID(ctx, id)
@@ -154,7 +154,7 @@ func (_d StoragePoolRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, fil
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("=> calling GetAllUUIDsWithFilter")
+	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -169,12 +169,12 @@ func (_d StoragePoolRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Context, fil
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+				log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an informative error")
 			} else {
-				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+				log.ErrorContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAllUUIDsWithFilter finished")
+			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllUUIDsWithFilter(ctx, filter)
@@ -189,7 +189,7 @@ func (_d StoragePoolRepoWithSlog) GetAllWithFilter(ctx context.Context, filter i
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("=> calling GetAllWithFilter")
+	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -204,12 +204,12 @@ func (_d StoragePoolRepoWithSlog) GetAllWithFilter(ctx context.Context, filter i
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAllWithFilter returned an informative error")
+				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
 			} else {
-				log.Error("<= method GetAllWithFilter returned an error")
+				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAllWithFilter finished")
+			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllWithFilter(ctx, filter)
@@ -224,7 +224,7 @@ func (_d StoragePoolRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (
 			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling GetByUUID")
+	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -239,12 +239,12 @@ func (_d StoragePoolRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetByUUID returned an informative error")
+				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
 			} else {
-				log.Error("<= method GetByUUID returned an error")
+				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
 			}
 		} else {
-			log.Debug("<= method GetByUUID finished")
+			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
 	}()
 	return _d._base.GetByUUID(ctx, id)
@@ -259,7 +259,7 @@ func (_d StoragePoolRepoWithSlog) UpdateByUUID(ctx context.Context, storagePool 
 			slog.Any("storagePool", storagePool),
 		)
 	}
-	log.Debug("=> calling UpdateByUUID")
+	log.DebugContext(ctx, "=> calling UpdateByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -274,12 +274,12 @@ func (_d StoragePoolRepoWithSlog) UpdateByUUID(ctx context.Context, storagePool 
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method UpdateByUUID returned an informative error")
+				log.DebugContext(ctx, "<= method UpdateByUUID returned an informative error")
 			} else {
-				log.Error("<= method UpdateByUUID returned an error")
+				log.ErrorContext(ctx, "<= method UpdateByUUID returned an error")
 			}
 		} else {
-			log.Debug("<= method UpdateByUUID finished")
+			log.DebugContext(ctx, "<= method UpdateByUUID finished")
 		}
 	}()
 	return _d._base.UpdateByUUID(ctx, storagePool)

@@ -51,7 +51,7 @@ func (_d ClusterProvisioningPortWithSlog) Apply(ctx context.Context, cluster pro
 			slog.Any("cluster", cluster),
 		)
 	}
-	log.Debug("=> calling Apply")
+	log.DebugContext(ctx, "=> calling Apply")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -65,12 +65,12 @@ func (_d ClusterProvisioningPortWithSlog) Apply(ctx context.Context, cluster pro
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Apply returned an informative error")
+				log.DebugContext(ctx, "<= method Apply returned an informative error")
 			} else {
-				log.Error("<= method Apply returned an error")
+				log.ErrorContext(ctx, "<= method Apply returned an error")
 			}
 		} else {
-			log.Debug("<= method Apply finished")
+			log.DebugContext(ctx, "<= method Apply finished")
 		}
 	}()
 	return _d._base.Apply(ctx, cluster)
@@ -85,7 +85,7 @@ func (_d ClusterProvisioningPortWithSlog) GetArchive(ctx context.Context, name s
 			slog.String("name", name),
 		)
 	}
-	log.Debug("=> calling GetArchive")
+	log.DebugContext(ctx, "=> calling GetArchive")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -101,12 +101,12 @@ func (_d ClusterProvisioningPortWithSlog) GetArchive(ctx context.Context, name s
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetArchive returned an informative error")
+				log.DebugContext(ctx, "<= method GetArchive returned an informative error")
 			} else {
-				log.Error("<= method GetArchive returned an error")
+				log.ErrorContext(ctx, "<= method GetArchive returned an error")
 			}
 		} else {
-			log.Debug("<= method GetArchive finished")
+			log.DebugContext(ctx, "<= method GetArchive finished")
 		}
 	}()
 	return _d._base.GetArchive(ctx, name)
@@ -122,7 +122,7 @@ func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, name string,
 			slog.Any("config", config),
 		)
 	}
-	log.Debug("=> calling Init")
+	log.DebugContext(ctx, "=> calling Init")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -136,12 +136,12 @@ func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, name string,
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Init returned an informative error")
+				log.DebugContext(ctx, "<= method Init returned an informative error")
 			} else {
-				log.Error("<= method Init returned an error")
+				log.ErrorContext(ctx, "<= method Init returned an error")
 			}
 		} else {
-			log.Debug("<= method Init finished")
+			log.DebugContext(ctx, "<= method Init finished")
 		}
 	}()
 	return _d._base.Init(ctx, name, config)

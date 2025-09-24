@@ -53,7 +53,7 @@ func (_d StoragePoolServerClientWithSlog) GetStoragePoolByName(ctx context.Conte
 			slog.String("storagePoolName", storagePoolName),
 		)
 	}
-	log.Debug("=> calling GetStoragePoolByName")
+	log.DebugContext(ctx, "=> calling GetStoragePoolByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -68,12 +68,12 @@ func (_d StoragePoolServerClientWithSlog) GetStoragePoolByName(ctx context.Conte
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetStoragePoolByName returned an informative error")
+				log.DebugContext(ctx, "<= method GetStoragePoolByName returned an informative error")
 			} else {
-				log.Error("<= method GetStoragePoolByName returned an error")
+				log.ErrorContext(ctx, "<= method GetStoragePoolByName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetStoragePoolByName finished")
+			log.DebugContext(ctx, "<= method GetStoragePoolByName finished")
 		}
 	}()
 	return _d._base.GetStoragePoolByName(ctx, endpoint, storagePoolName)
@@ -88,7 +88,7 @@ func (_d StoragePoolServerClientWithSlog) GetStoragePools(ctx context.Context, e
 			slog.Any("endpoint", endpoint),
 		)
 	}
-	log.Debug("=> calling GetStoragePools")
+	log.DebugContext(ctx, "=> calling GetStoragePools")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -103,12 +103,12 @@ func (_d StoragePoolServerClientWithSlog) GetStoragePools(ctx context.Context, e
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetStoragePools returned an informative error")
+				log.DebugContext(ctx, "<= method GetStoragePools returned an informative error")
 			} else {
-				log.Error("<= method GetStoragePools returned an error")
+				log.ErrorContext(ctx, "<= method GetStoragePools returned an error")
 			}
 		} else {
-			log.Debug("<= method GetStoragePools finished")
+			log.DebugContext(ctx, "<= method GetStoragePools finished")
 		}
 	}()
 	return _d._base.GetStoragePools(ctx, endpoint)

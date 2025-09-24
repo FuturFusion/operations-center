@@ -51,7 +51,7 @@ func (_d NetworkIntegrationRepoWithSlog) Create(ctx context.Context, networkInte
 			slog.Any("networkIntegration", networkIntegration),
 		)
 	}
-	log.Debug("=> calling Create")
+	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -66,12 +66,12 @@ func (_d NetworkIntegrationRepoWithSlog) Create(ctx context.Context, networkInte
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Create returned an informative error")
+				log.DebugContext(ctx, "<= method Create returned an informative error")
 			} else {
-				log.Error("<= method Create returned an error")
+				log.ErrorContext(ctx, "<= method Create returned an error")
 			}
 		} else {
-			log.Debug("<= method Create finished")
+			log.DebugContext(ctx, "<= method Create finished")
 		}
 	}()
 	return _d._base.Create(ctx, networkIntegration)
@@ -86,7 +86,7 @@ func (_d NetworkIntegrationRepoWithSlog) DeleteByClusterName(ctx context.Context
 			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("=> calling DeleteByClusterName")
+	log.DebugContext(ctx, "=> calling DeleteByClusterName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -100,12 +100,12 @@ func (_d NetworkIntegrationRepoWithSlog) DeleteByClusterName(ctx context.Context
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method DeleteByClusterName returned an informative error")
+				log.DebugContext(ctx, "<= method DeleteByClusterName returned an informative error")
 			} else {
-				log.Error("<= method DeleteByClusterName returned an error")
+				log.ErrorContext(ctx, "<= method DeleteByClusterName returned an error")
 			}
 		} else {
-			log.Debug("<= method DeleteByClusterName finished")
+			log.DebugContext(ctx, "<= method DeleteByClusterName finished")
 		}
 	}()
 	return _d._base.DeleteByClusterName(ctx, cluster)
@@ -120,7 +120,7 @@ func (_d NetworkIntegrationRepoWithSlog) DeleteByUUID(ctx context.Context, id uu
 			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling DeleteByUUID")
+	log.DebugContext(ctx, "=> calling DeleteByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -134,12 +134,12 @@ func (_d NetworkIntegrationRepoWithSlog) DeleteByUUID(ctx context.Context, id uu
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method DeleteByUUID returned an informative error")
+				log.DebugContext(ctx, "<= method DeleteByUUID returned an informative error")
 			} else {
-				log.Error("<= method DeleteByUUID returned an error")
+				log.ErrorContext(ctx, "<= method DeleteByUUID returned an error")
 			}
 		} else {
-			log.Debug("<= method DeleteByUUID finished")
+			log.DebugContext(ctx, "<= method DeleteByUUID finished")
 		}
 	}()
 	return _d._base.DeleteByUUID(ctx, id)
@@ -154,7 +154,7 @@ func (_d NetworkIntegrationRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Conte
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("=> calling GetAllUUIDsWithFilter")
+	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -169,12 +169,12 @@ func (_d NetworkIntegrationRepoWithSlog) GetAllUUIDsWithFilter(ctx context.Conte
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+				log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an informative error")
 			} else {
-				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+				log.ErrorContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAllUUIDsWithFilter finished")
+			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllUUIDsWithFilter(ctx, filter)
@@ -189,7 +189,7 @@ func (_d NetworkIntegrationRepoWithSlog) GetAllWithFilter(ctx context.Context, f
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("=> calling GetAllWithFilter")
+	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -204,12 +204,12 @@ func (_d NetworkIntegrationRepoWithSlog) GetAllWithFilter(ctx context.Context, f
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAllWithFilter returned an informative error")
+				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
 			} else {
-				log.Error("<= method GetAllWithFilter returned an error")
+				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAllWithFilter finished")
+			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllWithFilter(ctx, filter)
@@ -224,7 +224,7 @@ func (_d NetworkIntegrationRepoWithSlog) GetByUUID(ctx context.Context, id uuid.
 			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling GetByUUID")
+	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -239,12 +239,12 @@ func (_d NetworkIntegrationRepoWithSlog) GetByUUID(ctx context.Context, id uuid.
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetByUUID returned an informative error")
+				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
 			} else {
-				log.Error("<= method GetByUUID returned an error")
+				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
 			}
 		} else {
-			log.Debug("<= method GetByUUID finished")
+			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
 	}()
 	return _d._base.GetByUUID(ctx, id)
@@ -259,7 +259,7 @@ func (_d NetworkIntegrationRepoWithSlog) UpdateByUUID(ctx context.Context, netwo
 			slog.Any("networkIntegration", networkIntegration),
 		)
 	}
-	log.Debug("=> calling UpdateByUUID")
+	log.DebugContext(ctx, "=> calling UpdateByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -274,12 +274,12 @@ func (_d NetworkIntegrationRepoWithSlog) UpdateByUUID(ctx context.Context, netwo
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method UpdateByUUID returned an informative error")
+				log.DebugContext(ctx, "<= method UpdateByUUID returned an informative error")
 			} else {
-				log.Error("<= method UpdateByUUID returned an error")
+				log.ErrorContext(ctx, "<= method UpdateByUUID returned an error")
 			}
 		} else {
-			log.Debug("<= method UpdateByUUID finished")
+			log.DebugContext(ctx, "<= method UpdateByUUID finished")
 		}
 	}()
 	return _d._base.UpdateByUUID(ctx, networkIntegration)

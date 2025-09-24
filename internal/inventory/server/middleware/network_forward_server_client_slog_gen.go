@@ -54,7 +54,7 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context
 			slog.String("networkForwardName", networkForwardName),
 		)
 	}
-	log.Debug("=> calling GetNetworkForwardByName")
+	log.DebugContext(ctx, "=> calling GetNetworkForwardByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -69,12 +69,12 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwardByName(ctx context
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetNetworkForwardByName returned an informative error")
+				log.DebugContext(ctx, "<= method GetNetworkForwardByName returned an informative error")
 			} else {
-				log.Error("<= method GetNetworkForwardByName returned an error")
+				log.ErrorContext(ctx, "<= method GetNetworkForwardByName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetNetworkForwardByName finished")
+			log.DebugContext(ctx, "<= method GetNetworkForwardByName finished")
 		}
 	}()
 	return _d._base.GetNetworkForwardByName(ctx, endpoint, networkName, networkForwardName)
@@ -90,7 +90,7 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Cont
 			slog.String("networkName", networkName),
 		)
 	}
-	log.Debug("=> calling GetNetworkForwards")
+	log.DebugContext(ctx, "=> calling GetNetworkForwards")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -105,12 +105,12 @@ func (_d NetworkForwardServerClientWithSlog) GetNetworkForwards(ctx context.Cont
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetNetworkForwards returned an informative error")
+				log.DebugContext(ctx, "<= method GetNetworkForwards returned an informative error")
 			} else {
-				log.Error("<= method GetNetworkForwards returned an error")
+				log.ErrorContext(ctx, "<= method GetNetworkForwards returned an error")
 			}
 		} else {
-			log.Debug("<= method GetNetworkForwards finished")
+			log.DebugContext(ctx, "<= method GetNetworkForwards finished")
 		}
 	}()
 	return _d._base.GetNetworkForwards(ctx, endpoint, networkName)

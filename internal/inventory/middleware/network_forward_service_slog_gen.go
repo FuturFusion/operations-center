@@ -51,7 +51,7 @@ func (_d NetworkForwardServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Contex
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("=> calling GetAllUUIDsWithFilter")
+	log.DebugContext(ctx, "=> calling GetAllUUIDsWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -66,12 +66,12 @@ func (_d NetworkForwardServiceWithSlog) GetAllUUIDsWithFilter(ctx context.Contex
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAllUUIDsWithFilter returned an informative error")
+				log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter returned an informative error")
 			} else {
-				log.Error("<= method GetAllUUIDsWithFilter returned an error")
+				log.ErrorContext(ctx, "<= method GetAllUUIDsWithFilter returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAllUUIDsWithFilter finished")
+			log.DebugContext(ctx, "<= method GetAllUUIDsWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllUUIDsWithFilter(ctx, filter)
@@ -86,7 +86,7 @@ func (_d NetworkForwardServiceWithSlog) GetAllWithFilter(ctx context.Context, fi
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("=> calling GetAllWithFilter")
+	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -101,12 +101,12 @@ func (_d NetworkForwardServiceWithSlog) GetAllWithFilter(ctx context.Context, fi
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAllWithFilter returned an informative error")
+				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
 			} else {
-				log.Error("<= method GetAllWithFilter returned an error")
+				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAllWithFilter finished")
+			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllWithFilter(ctx, filter)
@@ -121,7 +121,7 @@ func (_d NetworkForwardServiceWithSlog) GetByUUID(ctx context.Context, id uuid.U
 			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling GetByUUID")
+	log.DebugContext(ctx, "=> calling GetByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -136,12 +136,12 @@ func (_d NetworkForwardServiceWithSlog) GetByUUID(ctx context.Context, id uuid.U
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetByUUID returned an informative error")
+				log.DebugContext(ctx, "<= method GetByUUID returned an informative error")
 			} else {
-				log.Error("<= method GetByUUID returned an error")
+				log.ErrorContext(ctx, "<= method GetByUUID returned an error")
 			}
 		} else {
-			log.Debug("<= method GetByUUID finished")
+			log.DebugContext(ctx, "<= method GetByUUID finished")
 		}
 	}()
 	return _d._base.GetByUUID(ctx, id)
@@ -156,7 +156,7 @@ func (_d NetworkForwardServiceWithSlog) ResyncByUUID(ctx context.Context, id uui
 			slog.Any("id", id),
 		)
 	}
-	log.Debug("=> calling ResyncByUUID")
+	log.DebugContext(ctx, "=> calling ResyncByUUID")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -170,12 +170,12 @@ func (_d NetworkForwardServiceWithSlog) ResyncByUUID(ctx context.Context, id uui
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method ResyncByUUID returned an informative error")
+				log.DebugContext(ctx, "<= method ResyncByUUID returned an informative error")
 			} else {
-				log.Error("<= method ResyncByUUID returned an error")
+				log.ErrorContext(ctx, "<= method ResyncByUUID returned an error")
 			}
 		} else {
-			log.Debug("<= method ResyncByUUID finished")
+			log.DebugContext(ctx, "<= method ResyncByUUID finished")
 		}
 	}()
 	return _d._base.ResyncByUUID(ctx, id)
@@ -190,7 +190,7 @@ func (_d NetworkForwardServiceWithSlog) SyncCluster(ctx context.Context, cluster
 			slog.String("cluster", cluster),
 		)
 	}
-	log.Debug("=> calling SyncCluster")
+	log.DebugContext(ctx, "=> calling SyncCluster")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -204,12 +204,12 @@ func (_d NetworkForwardServiceWithSlog) SyncCluster(ctx context.Context, cluster
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method SyncCluster returned an informative error")
+				log.DebugContext(ctx, "<= method SyncCluster returned an informative error")
 			} else {
-				log.Error("<= method SyncCluster returned an error")
+				log.ErrorContext(ctx, "<= method SyncCluster returned an error")
 			}
 		} else {
-			log.Debug("<= method SyncCluster finished")
+			log.DebugContext(ctx, "<= method SyncCluster finished")
 		}
 	}()
 	return _d._base.SyncCluster(ctx, cluster)

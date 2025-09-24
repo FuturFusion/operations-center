@@ -51,7 +51,7 @@ func (_d ClusterServiceWithSlog) Create(ctx context.Context, cluster provisionin
 			slog.Any("cluster", cluster),
 		)
 	}
-	log.Debug("=> calling Create")
+	log.DebugContext(ctx, "=> calling Create")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -66,12 +66,12 @@ func (_d ClusterServiceWithSlog) Create(ctx context.Context, cluster provisionin
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Create returned an informative error")
+				log.DebugContext(ctx, "<= method Create returned an informative error")
 			} else {
-				log.Error("<= method Create returned an error")
+				log.ErrorContext(ctx, "<= method Create returned an error")
 			}
 		} else {
-			log.Debug("<= method Create finished")
+			log.DebugContext(ctx, "<= method Create finished")
 		}
 	}()
 	return _d._base.Create(ctx, cluster)
@@ -86,7 +86,7 @@ func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string) 
 			slog.String("name", name),
 		)
 	}
-	log.Debug("=> calling DeleteByName")
+	log.DebugContext(ctx, "=> calling DeleteByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -100,12 +100,12 @@ func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string) 
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method DeleteByName returned an informative error")
+				log.DebugContext(ctx, "<= method DeleteByName returned an informative error")
 			} else {
-				log.Error("<= method DeleteByName returned an error")
+				log.ErrorContext(ctx, "<= method DeleteByName returned an error")
 			}
 		} else {
-			log.Debug("<= method DeleteByName finished")
+			log.DebugContext(ctx, "<= method DeleteByName finished")
 		}
 	}()
 	return _d._base.DeleteByName(ctx, name)
@@ -119,7 +119,7 @@ func (_d ClusterServiceWithSlog) GetAll(ctx context.Context) (clusters provision
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling GetAll")
+	log.DebugContext(ctx, "=> calling GetAll")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -134,12 +134,12 @@ func (_d ClusterServiceWithSlog) GetAll(ctx context.Context) (clusters provision
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAll returned an informative error")
+				log.DebugContext(ctx, "<= method GetAll returned an informative error")
 			} else {
-				log.Error("<= method GetAll returned an error")
+				log.ErrorContext(ctx, "<= method GetAll returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAll finished")
+			log.DebugContext(ctx, "<= method GetAll finished")
 		}
 	}()
 	return _d._base.GetAll(ctx)
@@ -153,7 +153,7 @@ func (_d ClusterServiceWithSlog) GetAllNames(ctx context.Context) (strings []str
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling GetAllNames")
+	log.DebugContext(ctx, "=> calling GetAllNames")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -168,12 +168,12 @@ func (_d ClusterServiceWithSlog) GetAllNames(ctx context.Context) (strings []str
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAllNames returned an informative error")
+				log.DebugContext(ctx, "<= method GetAllNames returned an informative error")
 			} else {
-				log.Error("<= method GetAllNames returned an error")
+				log.ErrorContext(ctx, "<= method GetAllNames returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAllNames finished")
+			log.DebugContext(ctx, "<= method GetAllNames finished")
 		}
 	}()
 	return _d._base.GetAllNames(ctx)
@@ -188,7 +188,7 @@ func (_d ClusterServiceWithSlog) GetAllNamesWithFilter(ctx context.Context, filt
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("=> calling GetAllNamesWithFilter")
+	log.DebugContext(ctx, "=> calling GetAllNamesWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -203,12 +203,12 @@ func (_d ClusterServiceWithSlog) GetAllNamesWithFilter(ctx context.Context, filt
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAllNamesWithFilter returned an informative error")
+				log.DebugContext(ctx, "<= method GetAllNamesWithFilter returned an informative error")
 			} else {
-				log.Error("<= method GetAllNamesWithFilter returned an error")
+				log.ErrorContext(ctx, "<= method GetAllNamesWithFilter returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAllNamesWithFilter finished")
+			log.DebugContext(ctx, "<= method GetAllNamesWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllNamesWithFilter(ctx, filter)
@@ -223,7 +223,7 @@ func (_d ClusterServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pr
 			slog.Any("filter", filter),
 		)
 	}
-	log.Debug("=> calling GetAllWithFilter")
+	log.DebugContext(ctx, "=> calling GetAllWithFilter")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -238,12 +238,12 @@ func (_d ClusterServiceWithSlog) GetAllWithFilter(ctx context.Context, filter pr
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetAllWithFilter returned an informative error")
+				log.DebugContext(ctx, "<= method GetAllWithFilter returned an informative error")
 			} else {
-				log.Error("<= method GetAllWithFilter returned an error")
+				log.ErrorContext(ctx, "<= method GetAllWithFilter returned an error")
 			}
 		} else {
-			log.Debug("<= method GetAllWithFilter finished")
+			log.DebugContext(ctx, "<= method GetAllWithFilter finished")
 		}
 	}()
 	return _d._base.GetAllWithFilter(ctx, filter)
@@ -258,7 +258,7 @@ func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cl
 			slog.String("name", name),
 		)
 	}
-	log.Debug("=> calling GetByName")
+	log.DebugContext(ctx, "=> calling GetByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -273,12 +273,12 @@ func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cl
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetByName returned an informative error")
+				log.DebugContext(ctx, "<= method GetByName returned an informative error")
 			} else {
-				log.Error("<= method GetByName returned an error")
+				log.ErrorContext(ctx, "<= method GetByName returned an error")
 			}
 		} else {
-			log.Debug("<= method GetByName finished")
+			log.DebugContext(ctx, "<= method GetByName finished")
 		}
 	}()
 	return _d._base.GetByName(ctx, name)
@@ -293,7 +293,7 @@ func (_d ClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (
 			slog.String("name", name),
 		)
 	}
-	log.Debug("=> calling GetEndpoint")
+	log.DebugContext(ctx, "=> calling GetEndpoint")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -308,12 +308,12 @@ func (_d ClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetEndpoint returned an informative error")
+				log.DebugContext(ctx, "<= method GetEndpoint returned an informative error")
 			} else {
-				log.Error("<= method GetEndpoint returned an error")
+				log.ErrorContext(ctx, "<= method GetEndpoint returned an error")
 			}
 		} else {
-			log.Debug("<= method GetEndpoint finished")
+			log.DebugContext(ctx, "<= method GetEndpoint finished")
 		}
 	}()
 	return _d._base.GetEndpoint(ctx, name)
@@ -328,7 +328,7 @@ func (_d ClusterServiceWithSlog) GetProvisionerConfigurationArchive(ctx context.
 			slog.String("name", name),
 		)
 	}
-	log.Debug("=> calling GetProvisionerConfigurationArchive")
+	log.DebugContext(ctx, "=> calling GetProvisionerConfigurationArchive")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -344,12 +344,12 @@ func (_d ClusterServiceWithSlog) GetProvisionerConfigurationArchive(ctx context.
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method GetProvisionerConfigurationArchive returned an informative error")
+				log.DebugContext(ctx, "<= method GetProvisionerConfigurationArchive returned an informative error")
 			} else {
-				log.Error("<= method GetProvisionerConfigurationArchive returned an error")
+				log.ErrorContext(ctx, "<= method GetProvisionerConfigurationArchive returned an error")
 			}
 		} else {
-			log.Debug("<= method GetProvisionerConfigurationArchive finished")
+			log.DebugContext(ctx, "<= method GetProvisionerConfigurationArchive finished")
 		}
 	}()
 	return _d._base.GetProvisionerConfigurationArchive(ctx, name)
@@ -365,7 +365,7 @@ func (_d ClusterServiceWithSlog) Rename(ctx context.Context, oldName string, new
 			slog.String("newName", newName),
 		)
 	}
-	log.Debug("=> calling Rename")
+	log.DebugContext(ctx, "=> calling Rename")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -379,12 +379,12 @@ func (_d ClusterServiceWithSlog) Rename(ctx context.Context, oldName string, new
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Rename returned an informative error")
+				log.DebugContext(ctx, "<= method Rename returned an informative error")
 			} else {
-				log.Error("<= method Rename returned an error")
+				log.ErrorContext(ctx, "<= method Rename returned an error")
 			}
 		} else {
-			log.Debug("<= method Rename finished")
+			log.DebugContext(ctx, "<= method Rename finished")
 		}
 	}()
 	return _d._base.Rename(ctx, oldName, newName)
@@ -398,7 +398,7 @@ func (_d ClusterServiceWithSlog) ResyncInventory(ctx context.Context) (err error
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.Debug("=> calling ResyncInventory")
+	log.DebugContext(ctx, "=> calling ResyncInventory")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -412,12 +412,12 @@ func (_d ClusterServiceWithSlog) ResyncInventory(ctx context.Context) (err error
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method ResyncInventory returned an informative error")
+				log.DebugContext(ctx, "<= method ResyncInventory returned an informative error")
 			} else {
-				log.Error("<= method ResyncInventory returned an error")
+				log.ErrorContext(ctx, "<= method ResyncInventory returned an error")
 			}
 		} else {
-			log.Debug("<= method ResyncInventory finished")
+			log.DebugContext(ctx, "<= method ResyncInventory finished")
 		}
 	}()
 	return _d._base.ResyncInventory(ctx)
@@ -432,7 +432,7 @@ func (_d ClusterServiceWithSlog) ResyncInventoryByName(ctx context.Context, name
 			slog.String("name", name),
 		)
 	}
-	log.Debug("=> calling ResyncInventoryByName")
+	log.DebugContext(ctx, "=> calling ResyncInventoryByName")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -446,12 +446,12 @@ func (_d ClusterServiceWithSlog) ResyncInventoryByName(ctx context.Context, name
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method ResyncInventoryByName returned an informative error")
+				log.DebugContext(ctx, "<= method ResyncInventoryByName returned an informative error")
 			} else {
-				log.Error("<= method ResyncInventoryByName returned an error")
+				log.ErrorContext(ctx, "<= method ResyncInventoryByName returned an error")
 			}
 		} else {
-			log.Debug("<= method ResyncInventoryByName finished")
+			log.DebugContext(ctx, "<= method ResyncInventoryByName finished")
 		}
 	}()
 	return _d._base.ResyncInventoryByName(ctx, name)
@@ -466,10 +466,10 @@ func (_d ClusterServiceWithSlog) SetInventorySyncers(inventorySyncers []provisio
 			slog.Any("inventorySyncers", inventorySyncers),
 		)
 	}
-	log.Debug("=> calling SetInventorySyncers")
+	log.DebugContext(ctx, "=> calling SetInventorySyncers")
 	defer func() {
 		log := _d._log.With()
-		log.Debug("<= method SetInventorySyncers finished")
+		log.DebugContext(ctx, "<= method SetInventorySyncers finished")
 	}()
 	_d._base.SetInventorySyncers(inventorySyncers)
 }
@@ -483,7 +483,7 @@ func (_d ClusterServiceWithSlog) Update(ctx context.Context, cluster provisionin
 			slog.Any("cluster", cluster),
 		)
 	}
-	log.Debug("=> calling Update")
+	log.DebugContext(ctx, "=> calling Update")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -497,12 +497,12 @@ func (_d ClusterServiceWithSlog) Update(ctx context.Context, cluster provisionin
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method Update returned an informative error")
+				log.DebugContext(ctx, "<= method Update returned an informative error")
 			} else {
-				log.Error("<= method Update returned an error")
+				log.ErrorContext(ctx, "<= method Update returned an error")
 			}
 		} else {
-			log.Debug("<= method Update finished")
+			log.DebugContext(ctx, "<= method Update finished")
 		}
 	}()
 	return _d._base.Update(ctx, cluster)
@@ -519,7 +519,7 @@ func (_d ClusterServiceWithSlog) UpdateCertificate(ctx context.Context, name str
 			slog.String("keyPEM", keyPEM),
 		)
 	}
-	log.Debug("=> calling UpdateCertificate")
+	log.DebugContext(ctx, "=> calling UpdateCertificate")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -533,12 +533,12 @@ func (_d ClusterServiceWithSlog) UpdateCertificate(ctx context.Context, name str
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.Debug("<= method UpdateCertificate returned an informative error")
+				log.DebugContext(ctx, "<= method UpdateCertificate returned an informative error")
 			} else {
-				log.Error("<= method UpdateCertificate returned an error")
+				log.ErrorContext(ctx, "<= method UpdateCertificate returned an error")
 			}
 		} else {
-			log.Debug("<= method UpdateCertificate finished")
+			log.DebugContext(ctx, "<= method UpdateCertificate finished")
 		}
 	}()
 	return _d._base.UpdateCertificate(ctx, name, certificatePEM, keyPEM)
