@@ -127,6 +127,12 @@ func (h contextHandler) Handle(ctx context.Context, r slog.Record) error {
 	return h.Handler.Handle(ctx, r)
 }
 
+// WithAttrs overwirtes the WithAttrs method from the embedded slog.Handler.
+func (h contextHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	h.Handler = h.Handler.WithAttrs(attrs)
+	return h
+}
+
 type contextHandlerKey struct{}
 
 // ContextWithAttr returns a copy of parent in which the attr is added to the list
