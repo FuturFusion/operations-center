@@ -31,6 +31,12 @@ func (c *CmdProvisioning) Command() *cobra.Command {
 
 	cmd.AddCommand(clusterCmd.Command())
 
+	clusterTemplateCmd := provisioning.CmdClusterTemplate{
+		OCClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterTemplateCmd.Command())
+
 	serverCmd := provisioning.CmdServer{
 		OCClient: c.OCClient,
 	}
