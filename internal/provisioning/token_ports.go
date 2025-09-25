@@ -22,7 +22,7 @@ type TokenService interface {
 	GetTokenSeedAll(ctx context.Context, id uuid.UUID) (TokenSeeds, error)
 	GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) ([]string, error)
 	GetTokenSeedByName(ctx context.Context, id uuid.UUID, name string) (*TokenSeed, error)
-	UpdateTokenSeed(ctx context.Context, tokenSeedConfig TokenSeed) error
+	UpdateTokenSeed(ctx context.Context, tokenSeed TokenSeed) error
 	DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, name string) error
 	GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType) (io.ReadCloser, error)
 }

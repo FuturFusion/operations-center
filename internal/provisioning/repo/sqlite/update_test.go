@@ -143,7 +143,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 	_, err = update.GetByUUID(ctx, updateA.UUID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
-	// Should have two updates remaining.
+	// Should have one updates remaining.
 	updates, err = update.GetAll(ctx)
 	require.NoError(t, err)
 	require.Len(t, updates, 1)

@@ -23,7 +23,6 @@ type clusterService struct {
 	inventorySyncers []InventorySyncer
 	provisioner      ClusterProvisioningPort
 
-	now                       func() time.Time
 	createClusterRetries      int
 	createClusterRetryTimeout time.Duration
 }
@@ -53,7 +52,6 @@ func NewClusterService(
 		inventorySyncers: inventorySyncers,
 		provisioner:      provisioner,
 
-		now:                       time.Now,
 		createClusterRetries:      6,
 		createClusterRetryTimeout: 200 * time.Millisecond,
 	}
