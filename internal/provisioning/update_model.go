@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -77,12 +78,12 @@ func (u Updates) Swap(i, j int) {
 }
 
 type UpdateFile struct {
-	Filename     string                  `json:"filename"`
-	Size         int                     `json:"size"`
-	Sha256       string                  `json:"sha256"`
-	Component    api.UpdateFileComponent `json:"component"`
-	Type         api.UpdateFileType      `json:"type"`
-	Architecture api.Architecture        `json:"architecture"`
+	Filename     string                     `json:"filename"`
+	Size         int                        `json:"size"`
+	Sha256       string                     `json:"sha256"`
+	Component    images.UpdateFileComponent `json:"component"`
+	Type         api.UpdateFileType         `json:"type"`
+	Architecture api.Architecture           `json:"architecture"`
 }
 
 type UpdateFilter struct {

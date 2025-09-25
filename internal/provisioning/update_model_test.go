@@ -5,6 +5,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -320,7 +321,7 @@ func TestUpdateFiles_Value(t *testing.T) {
 				{
 					Filename:  "dummy.txt",
 					Size:      5,
-					Component: api.UpdateFileComponentDebug,
+					Component: images.UpdateFileComponentDebug,
 				},
 			},
 

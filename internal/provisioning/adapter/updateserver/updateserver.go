@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/signature"
@@ -93,13 +94,24 @@ func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Up
 		update.Status = api.UpdateStatusUnknown
 		update.UUID = uuidFromUpdateServer(update)
 
-		// Fallback to x84_64 for architecture if not defined.
-		for i := range update.Files {
-			if update.Files[i].Architecture == api.ArchitectureUndefined {
-				update.Files[i].Architecture = api.Architecture64BitIntelX86
+		// Process files from update, same logic as in localfs.readUpdateJSONAndChangelog.
+		files := make(provisioning.UpdateFiles, 0, len(update.Files))
+		for _, file := range update.Files {
+			_, ok := images.UpdateFileComponents[file.Component]
+			if !ok {
+				// Skip unknown file components.
+				continue
 			}
+
+			// Fallback to x84_64 for architecture if not defined.
+			if file.Architecture == api.ArchitectureUndefined {
+				file.Architecture = api.Architecture64BitIntelX86
+			}
+
+			files = append(files, file)
 		}
 
+		update.Files = files
 		updatesList = append(updatesList, update)
 	}
 

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 )
 
 type UpdateSeverity string
@@ -169,66 +170,6 @@ type Update struct {
 	Status UpdateStatus `json:"update_status" yaml:"update_status"`
 }
 
-type UpdateFileComponent string
-
-const (
-	UpdateFileComponentOS               UpdateFileComponent = "os"
-	UpdateFileComponentIncus            UpdateFileComponent = "incus"
-	UpdateFileComponentMigrationManager UpdateFileComponent = "migration-manager"
-	UpdateFileComponentOperationsCenter UpdateFileComponent = "operations-center"
-	UpdateFileComponentDebug            UpdateFileComponent = "debug"
-)
-
-var updateFileComponents = map[UpdateFileComponent]struct{}{
-	UpdateFileComponentOS:               {},
-	UpdateFileComponentIncus:            {},
-	UpdateFileComponentMigrationManager: {},
-	UpdateFileComponentOperationsCenter: {},
-	UpdateFileComponentDebug:            {},
-}
-
-func (u UpdateFileComponent) String() string {
-	return string(u)
-}
-
-// MarshalText implements the encoding.TextMarshaler interface.
-func (u UpdateFileComponent) MarshalText() ([]byte, error) {
-	return []byte(u), nil
-}
-
-// UnmarshalText implements the encoding.TextUnmarshaler interface.
-func (u *UpdateFileComponent) UnmarshalText(text []byte) error {
-	_, ok := updateFileComponents[UpdateFileComponent(text)]
-	if !ok {
-		return fmt.Errorf("%q is not a valid update file component", string(text))
-	}
-
-	*u = UpdateFileComponent(text)
-
-	return nil
-}
-
-// Value implements the sql driver.Valuer interface.
-func (u UpdateFileComponent) Value() (driver.Value, error) {
-	return string(u), nil
-}
-
-// Scan implements the sql.Scanner interface.
-func (u *UpdateFileComponent) Scan(value any) error {
-	if value == nil {
-		return fmt.Errorf("null is not a valid update file component")
-	}
-
-	switch v := value.(type) {
-	case string:
-		return u.UnmarshalText([]byte(v))
-	case []byte:
-		return u.UnmarshalText(v)
-	default:
-		return fmt.Errorf("type %T is not supported for update file component", value)
-	}
-}
-
 type UpdateFileType string
 
 const (
@@ -376,7 +317,7 @@ type UpdateFile struct {
 
 	// Component the file provides. One of: os, incus, debug
 	// Example: os
-	Component UpdateFileComponent `json:"component" yaml:"component"`
+	Component images.UpdateFileComponent `json:"component" yaml:"component"`
 
 	// Type of the file. One of: image-raw, image-iso, image-manifest, update-efi, update-usr, update-usr-verity, update-usr-verity-signature
 	// Example: image-raw
