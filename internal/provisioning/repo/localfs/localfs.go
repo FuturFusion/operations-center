@@ -17,6 +17,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 
 	"github.com/FuturFusion/operations-center/internal/file"
 	"github.com/FuturFusion/operations-center/internal/logger"
@@ -299,6 +300,26 @@ func readUpdateJSONAndChangelog(updateJSONBody []byte, destDir string, extracted
 
 	updateManifest.Origin += originSuffix
 	updateManifest.UUID = uuidFromUpdate(*updateManifest)
+
+	// Process files from manifest, same logic as in updateserver.GetLatest.
+	files := make(provisioning.UpdateFiles, 0, len(updateManifest.Files))
+	for _, fileEntry := range updateManifest.Files {
+		_, ok := images.UpdateFileComponents[fileEntry.Component]
+		if !ok {
+			// Remove and skip unknown file components.
+			delete(extractedFiles, fileEntry.Filename)
+			continue
+		}
+
+		// Fallback to x84_64 for architecture if not defined.
+		if fileEntry.Architecture == api.ArchitectureUndefined {
+			fileEntry.Architecture = api.Architecture64BitIntelX86
+		}
+
+		files = append(files, fileEntry)
+	}
+
+	updateManifest.Files = files
 
 	delete(extractedFiles, "update.sjson")
 	delete(extractedFiles, "update.json")

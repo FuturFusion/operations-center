@@ -338,6 +338,9 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 						Component: images.UpdateFileComponentDebug,
 						Type:      api.UpdateFileTypeImageManifest,
 					},
+					provisioning.UpdateFile{
+						Filename: "file3.txt", // file does not have file component set, will be skipped.
+					},
 				},
 			},
 			setupTmpDir: func(t *testing.T, tmpDir string) {
@@ -358,6 +361,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 				require.Len(t, update.Files, 2)
 				require.Equal(t, images.UpdateFileComponentDebug, update.Files[0].Component)
 				require.Equal(t, api.UpdateFileTypeImageManifest, update.Files[0].Type)
+				require.Len(t, update.Files, 2)
 
 				require.True(t, file.PathExists(filepath.Join(tmpDir, wantUUID, "update.sjson")))
 				require.True(t, file.PathExists(filepath.Join(tmpDir, wantUUID, "changelog.txt")))
