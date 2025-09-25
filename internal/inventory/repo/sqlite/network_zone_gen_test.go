@@ -181,6 +181,14 @@ server-two
 	err = networkZone.DeleteByUUID(ctx, networkZoneA.UUID)
 	require.NoError(t, err)
 
+	// Can't delete an network_zones that doesn't exist.
+	err = networkZone.DeleteByUUID(ctx, networkZoneA.UUID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't add a duplicate network_zones.
+	_, err = networkZone.Create(ctx, networkZoneB)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
 	// Delete network_zones by cluster Name.
 	err = networkZone.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)

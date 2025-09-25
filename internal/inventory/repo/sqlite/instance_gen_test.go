@@ -185,6 +185,14 @@ server-two
 	err = instance.DeleteByUUID(ctx, instanceA.UUID)
 	require.NoError(t, err)
 
+	// Can't delete an instances that doesn't exist.
+	err = instance.DeleteByUUID(ctx, instanceA.UUID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't add a duplicate instances.
+	_, err = instance.Create(ctx, instanceB)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
 	// Delete instances by cluster Name.
 	err = instance.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)

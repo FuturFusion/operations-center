@@ -181,6 +181,14 @@ server-two
 	err = profile.DeleteByUUID(ctx, profileA.UUID)
 	require.NoError(t, err)
 
+	// Can't delete an profiles that doesn't exist.
+	err = profile.DeleteByUUID(ctx, profileA.UUID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't add a duplicate profiles.
+	_, err = profile.Create(ctx, profileB)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
 	// Delete profiles by cluster Name.
 	err = profile.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)

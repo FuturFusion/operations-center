@@ -179,6 +179,14 @@ server-two
 	err = networkLoadBalancer.DeleteByUUID(ctx, networkLoadBalancerA.UUID)
 	require.NoError(t, err)
 
+	// Can't delete an network_load_balancers that doesn't exist.
+	err = networkLoadBalancer.DeleteByUUID(ctx, networkLoadBalancerA.UUID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't add a duplicate network_load_balancers.
+	_, err = networkLoadBalancer.Create(ctx, networkLoadBalancerB)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
 	// Delete network_load_balancers by cluster Name.
 	err = networkLoadBalancer.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)

@@ -189,6 +189,14 @@ server-two
 	err = storageVolume.DeleteByUUID(ctx, storageVolumeA.UUID)
 	require.NoError(t, err)
 
+	// Can't delete an storage_volumes that doesn't exist.
+	err = storageVolume.DeleteByUUID(ctx, storageVolumeA.UUID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't add a duplicate storage_volumes.
+	_, err = storageVolume.Create(ctx, storageVolumeB)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
 	// Delete storage_volumes by cluster Name.
 	err = storageVolume.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)

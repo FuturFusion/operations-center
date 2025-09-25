@@ -181,6 +181,14 @@ server-two
 	err = network.DeleteByUUID(ctx, networkA.UUID)
 	require.NoError(t, err)
 
+	// Can't delete an networks that doesn't exist.
+	err = network.DeleteByUUID(ctx, networkA.UUID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't add a duplicate networks.
+	_, err = network.Create(ctx, networkB)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
 	// Delete networks by cluster Name.
 	err = network.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)

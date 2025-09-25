@@ -177,6 +177,14 @@ server-two
 	err = project.DeleteByUUID(ctx, projectA.UUID)
 	require.NoError(t, err)
 
+	// Can't delete an projects that doesn't exist.
+	err = project.DeleteByUUID(ctx, projectA.UUID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't add a duplicate projects.
+	_, err = project.Create(ctx, projectB)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
 	// Delete projects by cluster Name.
 	err = project.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)

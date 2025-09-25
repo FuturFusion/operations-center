@@ -179,6 +179,14 @@ server-two
 	err = networkPeer.DeleteByUUID(ctx, networkPeerA.UUID)
 	require.NoError(t, err)
 
+	// Can't delete an network_peers that doesn't exist.
+	err = networkPeer.DeleteByUUID(ctx, networkPeerA.UUID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't add a duplicate network_peers.
+	_, err = networkPeer.Create(ctx, networkPeerB)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
 	// Delete network_peers by cluster Name.
 	err = networkPeer.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)

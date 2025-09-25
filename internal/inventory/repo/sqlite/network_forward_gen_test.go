@@ -179,6 +179,14 @@ server-two
 	err = networkForward.DeleteByUUID(ctx, networkForwardA.UUID)
 	require.NoError(t, err)
 
+	// Can't delete an network_forwards that doesn't exist.
+	err = networkForward.DeleteByUUID(ctx, networkForwardA.UUID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't add a duplicate network_forwards.
+	_, err = networkForward.Create(ctx, networkForwardB)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
 	// Delete network_forwards by cluster Name.
 	err = networkForward.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)

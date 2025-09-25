@@ -181,6 +181,14 @@ server-two
 	err = networkACL.DeleteByUUID(ctx, networkACLA.UUID)
 	require.NoError(t, err)
 
+	// Can't delete an network_acls that doesn't exist.
+	err = networkACL.DeleteByUUID(ctx, networkACLA.UUID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't add a duplicate network_acls.
+	_, err = networkACL.Create(ctx, networkACLB)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
 	// Delete network_acls by cluster Name.
 	err = networkACL.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)

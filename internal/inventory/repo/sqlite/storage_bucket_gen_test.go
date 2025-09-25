@@ -187,6 +187,14 @@ server-two
 	err = storageBucket.DeleteByUUID(ctx, storageBucketA.UUID)
 	require.NoError(t, err)
 
+	// Can't delete an storage_buckets that doesn't exist.
+	err = storageBucket.DeleteByUUID(ctx, storageBucketA.UUID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't add a duplicate storage_buckets.
+	_, err = storageBucket.Create(ctx, storageBucketB)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
 	// Delete storage_buckets by cluster Name.
 	err = storageBucket.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
