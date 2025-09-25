@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -34,12 +35,12 @@ func TestUpdateDatabaseActions(t *testing.T) {
 			{
 				Filename:  "debug.raw.gz",
 				Size:      17884312,
-				Component: api.UpdateFileComponentDebug,
+				Component: images.UpdateFileComponentDebug,
 			},
 			{
 				Filename:  "incus.raw.gz",
 				Size:      219898968,
-				Component: api.UpdateFileComponentIncus,
+				Component: images.UpdateFileComponentIncus,
 			},
 		},
 	}
@@ -58,12 +59,12 @@ func TestUpdateDatabaseActions(t *testing.T) {
 			{
 				Filename:  "debug.raw.gz",
 				Size:      17884331,
-				Component: api.UpdateFileComponentDebug,
+				Component: images.UpdateFileComponentDebug,
 			},
 			{
 				Filename:  "incus.raw.gz",
 				Size:      219903825,
-				Component: api.UpdateFileComponentIncus,
+				Component: images.UpdateFileComponentIncus,
 			},
 		},
 	}

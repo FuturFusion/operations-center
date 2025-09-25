@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/file"
@@ -327,14 +328,14 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 						Filename:  "file1.txt",
 						Size:      fileSize(t, "testdata/success/file1.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file1.txt"),
-						Component: api.UpdateFileComponentDebug,
+						Component: images.UpdateFileComponentDebug,
 						Type:      api.UpdateFileTypeImageManifest,
 					},
 					provisioning.UpdateFile{
 						Filename:  "file2.txt",
 						Size:      fileSize(t, "testdata/success/file2.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file2.txt"),
-						Component: api.UpdateFileComponentDebug,
+						Component: images.UpdateFileComponentDebug,
 						Type:      api.UpdateFileTypeImageManifest,
 					},
 				},
@@ -355,7 +356,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 
 				require.Equal(t, wantUUID, update.UUID.String())
 				require.Len(t, update.Files, 2)
-				require.Equal(t, api.UpdateFileComponentDebug, update.Files[0].Component)
+				require.Equal(t, images.UpdateFileComponentDebug, update.Files[0].Component)
 				require.Equal(t, api.UpdateFileTypeImageManifest, update.Files[0].Type)
 
 				require.True(t, file.PathExists(filepath.Join(tmpDir, wantUUID, "update.sjson")))
@@ -398,14 +399,14 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 						Filename:  "file1.txt",
 						Size:      fileSize(t, "testdata/success/file1.txt") - 1, // filesize modified
 						Sha256:    fileSha256(t, "testdata/success/file1.txt"),
-						Component: api.UpdateFileComponentDebug,
+						Component: images.UpdateFileComponentDebug,
 						Type:      api.UpdateFileTypeImageManifest,
 					},
 					provisioning.UpdateFile{
 						Filename:  "file2.txt",
 						Size:      fileSize(t, "testdata/success/file2.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file2.txt"),
-						Component: api.UpdateFileComponentDebug,
+						Component: images.UpdateFileComponentDebug,
 						Type:      api.UpdateFileTypeImageManifest,
 					},
 				},
@@ -432,14 +433,14 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 						Filename:  "file1.txt",
 						Size:      fileSize(t, "testdata/success/file1.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file2.txt"), // invalid sha256, file2 instead of file1
-						Component: api.UpdateFileComponentDebug,
+						Component: images.UpdateFileComponentDebug,
 						Type:      api.UpdateFileTypeImageManifest,
 					},
 					provisioning.UpdateFile{
 						Filename:  "file2.txt",
 						Size:      fileSize(t, "testdata/success/file2.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file2.txt"),
-						Component: api.UpdateFileComponentDebug,
+						Component: images.UpdateFileComponentDebug,
 						Type:      api.UpdateFileTypeImageManifest,
 					},
 				},
@@ -465,21 +466,21 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 						Filename:  "file1.txt",
 						Size:      fileSize(t, "testdata/success/file1.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file1.txt"),
-						Component: api.UpdateFileComponentDebug,
+						Component: images.UpdateFileComponentDebug,
 						Type:      api.UpdateFileTypeImageManifest,
 					},
 					provisioning.UpdateFile{
 						Filename:  "file2.txt",
 						Size:      fileSize(t, "testdata/success/file2.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file2.txt"),
-						Component: api.UpdateFileComponentDebug,
+						Component: images.UpdateFileComponentDebug,
 						Type:      api.UpdateFileTypeImageManifest,
 					},
 					provisioning.UpdateFile{
 						Filename:  "file3.txt", // Additional file in the manifest, missing in the tar.
 						Size:      fileSize(t, "testdata/success/file2.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file2.txt"),
-						Component: api.UpdateFileComponentDebug,
+						Component: images.UpdateFileComponentDebug,
 						Type:      api.UpdateFileTypeImageManifest,
 					},
 				},
@@ -505,7 +506,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 						Filename:  "file1.txt",
 						Size:      fileSize(t, "testdata/success/file1.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file1.txt"),
-						Component: api.UpdateFileComponentDebug,
+						Component: images.UpdateFileComponentDebug,
 						Type:      api.UpdateFileTypeImageManifest,
 					},
 					// file2.txt not in manifest
