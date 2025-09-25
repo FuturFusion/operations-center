@@ -10,8 +10,9 @@ import (
 
 func Test_validate(t *testing.T) {
 	tests := []struct {
-		name string
-		cfg  config
+		name                                    string
+		trustedTLSClientCertFingerprintsUpdated bool
+		cfg                                     config
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -248,11 +249,25 @@ func Test_validate(t *testing.T) {
 
 			assertErr: require.Error,
 		},
+		{
+			name:                                    "empty security.trusted_tls_client_cert_fingerprints",
+			trustedTLSClientCertFingerprintsUpdated: true,
+			cfg: config{
+				Security: api.SystemSecurity{
+					SystemSecurityPut: api.SystemSecurityPut{
+						TrustedTLSClientCertFingerprints: []string{}, // empty
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: require.Error,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := validate(tc.cfg)
+			err := validate(tc.cfg, tc.trustedTLSClientCertFingerprintsUpdated)
 
 			tc.assertErr(t, err)
 		})
