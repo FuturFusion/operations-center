@@ -221,7 +221,8 @@ func TestSystemConfigUpdate(t *testing.T) {
     "api_token": "dummy",
     "api_url": "`+openFGAEndpoint+`",
     "store_id": "`+openFGAStoreID+`"
-  }
+  },
+  "trusted_tls_client_cert_fingerprints": [ "dummy" ]
 }
 `))
 		require.NoError(t, err)
