@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -52,6 +53,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 					Severity:    api.UpdateSeverityNone,
 					PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
 					Status:      api.UpdateStatusUnknown,
+					Files:       provisioning.UpdateFiles{},
 				},
 			},
 		},
@@ -70,6 +72,16 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 						Version:     "2",
 						Severity:    api.UpdateSeverityNone,
 						PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
+						Files: provisioning.UpdateFiles{
+							provisioning.UpdateFile{
+								Filename:  "undefined_architecture.iso",
+								Component: images.UpdateFileComponentIncus,
+							},
+							provisioning.UpdateFile{
+								Filename:     "undefined_file_component.iso", // filtered out, since the file component is unknown.
+								Architecture: api.Architecture64BitIntelX86,
+							},
+						},
 					},
 				},
 			},
@@ -82,6 +94,13 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 					Severity:    api.UpdateSeverityNone,
 					PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
 					Status:      api.UpdateStatusUnknown,
+					Files: provisioning.UpdateFiles{
+						provisioning.UpdateFile{
+							Filename:     "undefined_architecture.iso",
+							Architecture: api.Architecture64BitIntelX86,
+							Component:    images.UpdateFileComponentIncus,
+						},
+					},
 				},
 			},
 		},
