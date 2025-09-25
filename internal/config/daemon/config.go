@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -60,7 +61,7 @@ func Init(vardir varDirer) error {
 		return fmt.Errorf("Failed to initialize global config: %w", err)
 	}
 
-	err = validateAndSave(globalConfigInstance)
+	err = validateAndSave(globalConfigInstance, false)
 	if err != nil {
 		return fmt.Errorf("Failed to persist initialized global config: %w", err)
 	}
@@ -98,7 +99,7 @@ func loadConfig() error {
 		return fmt.Errorf("Invalid network config: %w", err)
 	}
 
-	err = validate(cfg)
+	err = validate(cfg, false)
 	if err != nil {
 		return fmt.Errorf("Invalid config: %w", err)
 	}
@@ -127,7 +128,7 @@ func UpdateNetwork(ctx context.Context, cfg api.SystemNetworkPut) error {
 		return err
 	}
 
-	err = validateAndSave(newCfg)
+	err = validateAndSave(newCfg, false)
 	if err != nil {
 		return err
 	}
@@ -196,10 +197,12 @@ func UpdateSecurity(ctx context.Context, cfg api.SystemSecurityPut) error {
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
+	trustedTLSClientCertFingerprintsUpdated := slices.Equal(globalConfigInstance.Security.TrustedTLSClientCertFingerprints, cfg.TrustedTLSClientCertFingerprints)
+
 	newCfg := globalConfigInstance
 	newCfg.Security.SystemSecurityPut = cfg
 
-	err := validateAndSave(newCfg)
+	err := validateAndSave(newCfg, trustedTLSClientCertFingerprintsUpdated)
 	if err != nil {
 		return err
 	}
@@ -225,7 +228,7 @@ func UpdateUpdates(ctx context.Context, cfg api.SystemUpdatesPut) error {
 	newCfg := globalConfigInstance
 	newCfg.Updates.SystemUpdatesPut = cfg
 
-	err := validateAndSave(newCfg)
+	err := validateAndSave(newCfg, false)
 	if err != nil {
 		return err
 	}
@@ -237,8 +240,8 @@ func UpdateUpdates(ctx context.Context, cfg api.SystemUpdatesPut) error {
 	return nil
 }
 
-func validateAndSave(cfg config) error {
-	err := validate(cfg)
+func validateAndSave(cfg config, trustedTLSClientCertFingerprintsUpdated bool) error {
+	err := validate(cfg, trustedTLSClientCertFingerprintsUpdated)
 	if err != nil {
 		return fmt.Errorf("Failed to validate configuration: %w", err)
 	}
@@ -273,7 +276,7 @@ func saveToDisk(cfg config) error {
 	return nil
 }
 
-func validate(cfg config) error {
+func validate(cfg config, trustedTLSClientCertFingerprintsUpdated bool) error {
 	// Network configuration
 	if cfg.Network.RestServerAddress != "" {
 		host, portStr, err := net.SplitHostPort(cfg.Network.RestServerAddress)
@@ -356,6 +359,11 @@ func validate(cfg config) error {
 		if err != nil {
 			return domain.NewValidationErrf(`Invalid config, "security.openfga.api_url" property is expected to be a valid URL: %v`, err)
 		}
+	}
+
+	// Updating the configuration requires at least one certificate fingerprint to be present in order to have a fallback authentication method.
+	if trustedTLSClientCertFingerprintsUpdated && len(cfg.Security.TrustedTLSClientCertFingerprints) == 0 {
+		return domain.NewValidationErrf(`Invalid config, "security.trusted_tls_client_cert_fingerprints" property can not be empty`)
 	}
 
 	return nil
