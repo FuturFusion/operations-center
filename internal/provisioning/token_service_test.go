@@ -421,6 +421,7 @@ func TestTokenService_Consume(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, "Token exhausted")
 			},
 		},
@@ -436,6 +437,7 @@ func TestTokenService_Consume(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, "Token expired")
 			},
 		},

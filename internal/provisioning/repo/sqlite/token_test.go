@@ -188,4 +188,16 @@ func TestTokenDatabaseActions(t *testing.T) {
 	tokens, err = token.GetAll(ctx)
 	require.NoError(t, err)
 	require.Len(t, tokens, 1)
+
+	// Can't delete a token seed that doesn't exist.
+	err = token.DeleteTokenSeedByName(ctx, tokenBSeed2.Token, tokenBSeed2.Name)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't update a token seed that doesn't exist.
+	err = token.UpdateTokenSeed(ctx, tokenBSeed2)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't create a token that already exists.
+	_, err = token.CreateTokenSeed(ctx, tokenBSeed1)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 }

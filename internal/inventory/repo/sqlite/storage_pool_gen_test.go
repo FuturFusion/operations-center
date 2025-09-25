@@ -177,6 +177,14 @@ server-two
 	err = storagePool.DeleteByUUID(ctx, storagePoolA.UUID)
 	require.NoError(t, err)
 
+	// Can't delete an storage_pools that doesn't exist.
+	err = storagePool.DeleteByUUID(ctx, storagePoolA.UUID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't add a duplicate storage_pools.
+	_, err = storagePool.Create(ctx, storagePoolB)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
 	// Delete storage_pools by cluster Name.
 	err = storagePool.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)

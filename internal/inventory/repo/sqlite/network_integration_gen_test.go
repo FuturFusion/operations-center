@@ -177,6 +177,14 @@ server-two
 	err = networkIntegration.DeleteByUUID(ctx, networkIntegrationA.UUID)
 	require.NoError(t, err)
 
+	// Can't delete an network_integrations that doesn't exist.
+	err = networkIntegration.DeleteByUUID(ctx, networkIntegrationA.UUID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't add a duplicate network_integrations.
+	_, err = networkIntegration.Create(ctx, networkIntegrationB)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
 	// Delete network_integrations by cluster Name.
 	err = networkIntegration.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)

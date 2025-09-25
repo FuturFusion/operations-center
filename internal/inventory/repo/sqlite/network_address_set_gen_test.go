@@ -181,6 +181,14 @@ server-two
 	err = networkAddressSet.DeleteByUUID(ctx, networkAddressSetA.UUID)
 	require.NoError(t, err)
 
+	// Can't delete an network_address_sets that doesn't exist.
+	err = networkAddressSet.DeleteByUUID(ctx, networkAddressSetA.UUID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't add a duplicate network_address_sets.
+	_, err = networkAddressSet.Create(ctx, networkAddressSetB)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
 	// Delete network_address_sets by cluster Name.
 	err = networkAddressSet.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)

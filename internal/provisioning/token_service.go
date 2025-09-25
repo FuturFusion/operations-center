@@ -45,17 +45,17 @@ func (s tokenService) Create(ctx context.Context, newToken Token) (Token, error)
 	var err error
 	newToken.UUID, err = s.randomUUID()
 	if err != nil {
-		return Token{}, err
+		return Token{}, fmt.Errorf("Failed to generate UUID for new token: %w", err)
 	}
 
 	err = newToken.Validate()
 	if err != nil {
-		return Token{}, err
+		return Token{}, fmt.Errorf("Validation failed for new token: %w", err)
 	}
 
 	newToken.ID, err = s.repo.Create(ctx, newToken)
 	if err != nil {
-		return Token{}, err
+		return Token{}, fmt.Errorf("Failed to create token: %w", err)
 	}
 
 	return newToken, nil
@@ -76,7 +76,7 @@ func (s tokenService) GetByUUID(ctx context.Context, id uuid.UUID) (*Token, erro
 func (s tokenService) Update(ctx context.Context, newToken Token) error {
 	err := newToken.Validate()
 	if err != nil {
-		return err
+		return fmt.Errorf("Validation failed for token update: %w", err)
 	}
 
 	return s.repo.Update(ctx, newToken)
@@ -94,11 +94,11 @@ func (s tokenService) Consume(ctx context.Context, id uuid.UUID) error {
 		}
 
 		if token.UsesRemaining < 1 {
-			return fmt.Errorf("Token exhausted")
+			return fmt.Errorf("Token exhausted: %w", domain.ErrOperationNotPermitted)
 		}
 
 		if time.Now().After(token.ExpireAt) {
-			return fmt.Errorf("Token expired")
+			return fmt.Errorf("Token expired: %w", domain.ErrOperationNotPermitted)
 		}
 
 		token.UsesRemaining--
@@ -199,12 +199,12 @@ func (s tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UU
 
 	_, err := s.repo.GetByUUID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to find token %s: %w", id.String(), err)
+		return nil, fmt.Errorf("Failed to get token %q: %w", id.String(), err)
 	}
 
 	tokenSeed, err := s.repo.GetTokenSeedByName(ctx, id, name)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get token seed: %w", err)
+		return nil, fmt.Errorf("Failed to get token seed %q for token %q: %w", name, id.String(), err)
 	}
 
 	return s.getPreSeedImage(ctx, id, imageType, architecture, tokenSeed.Seeds)

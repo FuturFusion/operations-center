@@ -181,6 +181,14 @@ server-two
 	err = image.DeleteByUUID(ctx, imageA.UUID)
 	require.NoError(t, err)
 
+	// Can't delete an images that doesn't exist.
+	err = image.DeleteByUUID(ctx, imageA.UUID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't add a duplicate images.
+	_, err = image.Create(ctx, imageB)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
 	// Delete images by cluster Name.
 	err = image.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)

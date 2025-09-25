@@ -211,6 +211,14 @@ server-two
 	err = {{ .Name | camelcase }}.DeleteByUUID(ctx, {{ .Name | camelcase }}A.UUID)
 	require.NoError(t, err)
 
+  // Can't delete an {{ .PluralName }} that doesn't exist.
+	err = {{ .Name | camelcase }}.DeleteByUUID(ctx, {{ .Name | camelcase }}A.UUID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	// Can't add a duplicate {{ .PluralName }}.
+	_, err = {{ .Name | camelcase }}.Create(ctx, {{ .Name | camelcase }}B)
+	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
 	// Delete {{ .PluralName }} by cluster Name.
 	err = {{ .Name | camelcase }}.DeleteByClusterName(ctx, "two")
 	require.NoError(t, err)
