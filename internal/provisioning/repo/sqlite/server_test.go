@@ -175,7 +175,7 @@ server B
 	err = server.Update(ctx, serverA)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
-	// Can't add a duplicate a server.
+	// Can't add a duplicate server.
 	_, err = server.Create(ctx, serverB)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 

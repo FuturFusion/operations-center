@@ -67,7 +67,7 @@ func TestClusterTemplateDatabaseActions(t *testing.T) {
 
 	clusterTemplate := sqlite.NewClusterTemplate(tx)
 
-	// Add cluster
+	// Add cluster templates
 	_, err = clusterTemplate.Create(ctx, clusterTemplateA)
 	require.NoError(t, err)
 	_, err = clusterTemplate.Create(ctx, clusterTemplateB)
@@ -96,7 +96,7 @@ func TestClusterTemplateDatabaseActions(t *testing.T) {
 	clusterTemplateB.LastUpdated = dbClusterB.LastUpdated
 	require.Equal(t, clusterTemplateB, *dbClusterB)
 
-	// Test updating a cluster.
+	// Test updating a cluster template.
 	clusterTemplateB.Description = "updated"
 	err = clusterTemplate.Update(ctx, clusterTemplateB)
 	require.NoError(t, err)
@@ -109,26 +109,26 @@ func TestClusterTemplateDatabaseActions(t *testing.T) {
 	clusterTemplateB.LastUpdated = dbClusterB.LastUpdated
 	require.Equal(t, clusterTemplateB, *dbClusterB)
 
-	// Delete a cluster.
+	// Delete a cluster template.
 	err = clusterTemplate.DeleteByName(ctx, clusterTemplateA.Name)
 	require.NoError(t, err)
 	_, err = clusterTemplate.GetByName(ctx, clusterTemplateA.Name)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
-	// Should have one clusters remaining.
+	// Should have one cluster templates remaining.
 	clusters, err = clusterTemplate.GetAll(ctx)
 	require.NoError(t, err)
 	require.Len(t, clusters, 1)
 
-	// Can't delete a cluster that doesn't exist.
+	// Can't delete a cluster template that doesn't exist.
 	err = clusterTemplate.DeleteByName(ctx, "three")
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
-	// Can't update a cluster that doesn't exist.
+	// Can't update a cluster template that doesn't exist.
 	err = clusterTemplate.Update(ctx, clusterTemplateA)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
-	// Can't add a duplicate a cluster.
+	// Can't add a duplicate cluster template.
 	_, err = clusterTemplate.Create(ctx, clusterTemplateB)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 }

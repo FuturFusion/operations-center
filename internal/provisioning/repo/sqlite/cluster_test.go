@@ -125,7 +125,7 @@ cluster B
 	err = cluster.Update(ctx, clusterA)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
-	// Can't add a duplicate a cluster.
+	// Can't add a duplicate cluster.
 	_, err = cluster.Create(ctx, clusterB)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 }
