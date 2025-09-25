@@ -489,7 +489,7 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverPutSelf(r *http.Request) response.Response {
 	// Ensure presence of client certificate.
-	if len(r.TLS.PeerCertificates) == 0 {
+	if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
 		return response.Forbidden(fmt.Errorf("No client certificate provided"))
 	}
 
