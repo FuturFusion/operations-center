@@ -7,13 +7,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func InitTest(t *testing.T) {
+func InitTest(t *testing.T, testEnv enver) {
 	t.Helper()
 
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
 	saveFunc = saveInMemory
+
+	env = testEnv
 
 	cfg := config{}
 
