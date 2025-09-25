@@ -108,6 +108,10 @@ type TokenImagePost struct {
 	// Example: iso
 	Type ImageType `json:"type" yaml:"type"`
 
+	// Architecture contains the CPU architecture the image should be generated
+	// for.
+	Architecture Architecture `json:"architecture" yaml:"architecture"`
+
 	// Seeds represents the seed configuration for e.g. applications.yaml,
 	// install.yaml and network.yaml.
 	Seeds TokenSeedConfigs `json:"seeds" yaml:"seeds"`

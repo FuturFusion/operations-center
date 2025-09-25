@@ -315,6 +315,11 @@ func (u Architecture) String() string {
 	return string(u)
 }
 
+func (u Architecture) IsValid() bool {
+	_, ok := architecture[u]
+	return ok
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (u Architecture) MarshalText() ([]byte, error) {
 	return []byte(u), nil

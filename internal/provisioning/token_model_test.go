@@ -62,11 +62,11 @@ func TestToken_Validate(t *testing.T) {
 	}
 }
 
-func TestTokenImageSeeds_Value(t *testing.T) {
+func TestTokenImageSeedConfigs_Value(t *testing.T) {
 	tests := []struct {
 		name string
 
-		tokenImageSeeds provisioning.TokenImageSeedConfigs
+		tokenImageSeedConfigs provisioning.TokenImageSeedConfigs
 
 		assertErr require.ErrorAssertionFunc
 		wantValue driver.Value
@@ -74,7 +74,7 @@ func TestTokenImageSeeds_Value(t *testing.T) {
 		{
 			name: "success",
 
-			tokenImageSeeds: provisioning.TokenImageSeedConfigs{
+			tokenImageSeedConfigs: provisioning.TokenImageSeedConfigs{
 				Applications: map[string]any{
 					"applications": true,
 				},
@@ -93,7 +93,7 @@ func TestTokenImageSeeds_Value(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := tc.tokenImageSeeds.Value()
+			got, err := tc.tokenImageSeedConfigs.Value()
 
 			tc.assertErr(t, err)
 			require.Equal(t, tc.wantValue, got)

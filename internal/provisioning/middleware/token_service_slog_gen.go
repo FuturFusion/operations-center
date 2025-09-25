@@ -321,13 +321,14 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 }
 
 // GetPreSeedImage implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, seedConfig provisioning.TokenImageSeedConfigs) (readCloser io.ReadCloser, err error) {
+func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture api.Architecture, seedConfig provisioning.TokenImageSeedConfigs) (readCloser io.ReadCloser, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
 			slog.Any("imageType", imageType),
+			slog.Any("architecture", architecture),
 			slog.Any("seedConfig", seedConfig),
 		)
 	}
@@ -354,11 +355,11 @@ func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID
 			log.DebugContext(ctx, "<= method GetPreSeedImage finished")
 		}
 	}()
-	return _d._base.GetPreSeedImage(ctx, id, imageType, seedConfig)
+	return _d._base.GetPreSeedImage(ctx, id, imageType, architecture, seedConfig)
 }
 
 // GetTokenImageFromTokenSeed implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType) (readCloser io.ReadCloser, err error) {
+func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture api.Architecture) (readCloser io.ReadCloser, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -366,6 +367,7 @@ func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, i
 			slog.Any("id", id),
 			slog.String("name", name),
 			slog.Any("imageType", imageType),
+			slog.Any("architecture", architecture),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetTokenImageFromTokenSeed")
@@ -391,7 +393,7 @@ func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, i
 			log.DebugContext(ctx, "<= method GetTokenImageFromTokenSeed finished")
 		}
 	}()
-	return _d._base.GetTokenImageFromTokenSeed(ctx, id, name, imageType)
+	return _d._base.GetTokenImageFromTokenSeed(ctx, id, name, imageType, architecture)
 }
 
 // GetTokenSeedAll implements provisioning.TokenService.
