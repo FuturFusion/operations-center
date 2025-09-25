@@ -7,11 +7,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func InitTest(t *testing.T, testEnv enver, saveErr error) {
+func InitTest(t *testing.T, testEnv enver, saveErr error, internalConfig ...InternalConfig) {
 	t.Helper()
 
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
+
+	initInternalConfig()
+	if len(internalConfig) > 0 {
+		globalInternalConfig = internalConfig[0]
+	}
 
 	saveFunc = func(cfg config) error {
 		if saveErr != nil {
