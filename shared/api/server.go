@@ -208,25 +208,46 @@ func (h *OSData) Scan(value any) error {
 	}
 }
 
-// Server defines a server running Hypervisor OS.
+// ServerPost defines a new server running Hypervisor OS.
 //
 // swagger:model
-type Server struct {
-	// The cluster the server is part of.
-	// Example: one
-	Cluster string `json:"cluster" yaml:"cluster"`
+type ServerPost struct {
+	ServerPut `yaml:",inline"`
 
 	// Name or name of the server.
 	// Example: incus.local
 	Name string `json:"name" yaml:"name"`
 
+	// URL, hostname or IP address of the server endpoint used by Operations
+	// Center for its communication.
+	// Example: https://incus.local:6443
+	ConnectionURL string `json:"connection_url" yaml:"connection_url"`
+}
+
+// ServerPut defines the updateable part of a server running Hypervisor OS.
+//
+// swagger:model
+type ServerPut struct {
+	// Public URL, hostname or IP address of the server endpoint for user facing
+	// communication with the server. Only required, if it differs from
+	// connection_url, e.g. because the server is behind a reverse proxy.
+	// Example: https://incus.local:6443
+	PublicConnectionURL string `json:"public_connection_url" yaml:"public_connection_url"`
+}
+
+// Server defines a server running Hypervisor OS.
+//
+// swagger:model
+type Server struct {
+	ServerPost `yaml:",inline"`
+
+	// The cluster the server is part of.
+	// Example: one
+	Cluster string `json:"cluster" yaml:"cluster"`
+
 	// Type defines the type of the server, which is normally one of "incus", "migration-manager", "operations-center".
 	// Example: incus
 	Type ServerType `json:"server_type" yaml:"server_type"`
-
-	// URL, hostname or IP address of the server endpoint.
-	// Example: https://incus.local:6443
-	ConnectionURL string `json:"connection_url" yaml:"connection_url"`
 
 	// HardwareData contains the hardware data of the server, in the same form as presented by Incus in the resource API.
 	HardwareData HardwareData `json:"hardware_data" yaml:"hardware_data"`

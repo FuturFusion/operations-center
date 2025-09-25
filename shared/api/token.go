@@ -11,7 +11,7 @@ import (
 //
 // swagger:model
 type Token struct {
-	TokenPut
+	TokenPut `yaml:",inline"`
 
 	// UUID of the token, which serves as the the token.
 	// Example: b32d0079-c48b-4957-b1cb-bef54125c861

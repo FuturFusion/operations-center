@@ -39,6 +39,16 @@ var updates = map[int]update{
 	10: updateFromV9,
 	11: updateFromV10,
 	12: updateFromV11,
+	13: updateFromV12,
+}
+
+func updateFromV12(ctx context.Context, tx *sql.Tx) error {
+	// v12..v13 add column public_connection_url in servers
+	stmt := `
+ALTER TABLE servers ADD COLUMN public_connection_url TEXT NOT NULL DEFAULT '';
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV11(ctx context.Context, tx *sql.Tx) error {

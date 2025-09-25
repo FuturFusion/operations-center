@@ -1,13 +1,20 @@
 package provisioning
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"os"
 	"time"
 
+	"github.com/lxc/incus/v6/shared/termios"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
+	"github.com/FuturFusion/operations-center/internal/editor"
+	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/render"
@@ -39,6 +46,13 @@ func (c *CmdServer) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(serverListCmd.Command())
+
+	// edit
+	serverEditCmd := cmdServerEdit{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(serverEditCmd.Command())
 
 	// Remove
 	serverRemoveCmd := cmdServerRemove{
@@ -137,16 +151,125 @@ func (c *cmdServerList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Cluster", "Name", "Connection URL", "Type", "Status", "Last Updated", "Last Seen"}
+	header := []string{"Cluster", "Name", "Connection URL", "Public Connection URL", "Type", "Status", "Last Updated", "Last Seen"}
 	data := [][]string{}
 
 	for _, server := range servers {
-		data = append(data, []string{server.Cluster, server.Name, server.ConnectionURL, server.Type.String(), server.Status.String(), server.LastUpdated.Truncate(time.Second).String(), server.LastSeen.Truncate(time.Second).String()})
+		data = append(data, []string{server.Cluster, server.Name, server.ConnectionURL, server.PublicConnectionURL, server.Type.String(), server.Status.String(), server.LastUpdated.Truncate(time.Second).String(), server.LastSeen.Truncate(time.Second).String()})
 	}
 
 	sort.ColumnsNaturally(data)
 
 	return render.Table(cmd.OutOrStdout(), c.flagFormat, header, data, servers)
+}
+
+// Edit servers.
+type cmdServerEdit struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdServerEdit) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "edit <name>"
+	cmd.Short = "Edit server"
+	cmd.Long = `Description:
+  Edit the server
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+// helpTemplate returns a sample YAML configuration and guidelines for editing token seed configurations.
+func (c *cmdServerEdit) helpTemplate() string {
+	return `### This is a YAML representation of the configuration.
+### Any line starting with a '# will be ignored.
+###
+### A sample configuration looks like:
+###
+### public_connection_url: ""
+`
+}
+
+func (c *cmdServerEdit) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	name := args[0]
+
+	// If stdin isn't a terminal, read text from it.
+	if !termios.IsTerminal(environment.GetStdinFd()) {
+		contents, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+
+		newdata := api.ServerPut{}
+		err = yaml.Unmarshal(contents, &newdata)
+		if err != nil {
+			return err
+		}
+
+		err = c.ocClient.UpdateServer(cmd.Context(), name, newdata)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	tokenSeedConfig, err := c.ocClient.GetServer(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	b := &bytes.Buffer{}
+	encoder := yaml.NewEncoder(b)
+	encoder.SetIndent(2)
+	err = encoder.Encode(tokenSeedConfig.ServerPut)
+	if err != nil {
+		return err
+	}
+
+	// Spawn the editor
+	content, err := editor.Spawn("", append([]byte(c.helpTemplate()+"\n\n"), b.Bytes()...))
+	if err != nil {
+		return err
+	}
+
+	for {
+		newdata := api.ServerPut{}
+		err = yaml.Unmarshal(content, &newdata)
+		if err == nil {
+			err = c.ocClient.UpdateServer(cmd.Context(), name, newdata)
+		}
+
+		// Respawn the editor
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Config parsing error: %s\n", err)
+			fmt.Println("Press enter to open the editor again or ctrl+c to abort change")
+
+			_, err := os.Stdin.Read(make([]byte, 1))
+			if err != nil {
+				return err
+			}
+
+			content, err = editor.Spawn("", content)
+			if err != nil {
+				return err
+			}
+
+			continue
+		}
+
+		break
+	}
+
+	return nil
 }
 
 // Remove server.
@@ -263,6 +386,7 @@ func (c *cmdServerShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Cluster: %s\n", server.Cluster)
 	fmt.Printf("Name: %s\n", server.Name)
 	fmt.Printf("Connection URL: %s\n", server.ConnectionURL)
+	fmt.Printf("Public Connection URL: %s\n", server.PublicConnectionURL)
 	fmt.Printf("Type: %s\n", server.Type.String())
 	fmt.Printf("Status: %s\n", server.Status.String())
 	fmt.Printf("Last Updated: %s\n", server.LastUpdated.Truncate(time.Second).String())

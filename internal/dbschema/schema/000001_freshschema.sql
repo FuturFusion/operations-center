@@ -37,6 +37,7 @@ CREATE TABLE servers (
   os_data TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   last_seen DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00',
+  public_connection_url TEXT NOT NULL DEFAULT '',
   UNIQUE (name),
   UNIQUE (certificate),
   FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
@@ -336,4 +337,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (12, strftime("%s"))
+INSERT INTO schema (version, updated_at) VALUES (13, strftime("%s"))
