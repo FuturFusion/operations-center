@@ -112,6 +112,41 @@ func (_d ServerClientPortWithSlog) GetResources(ctx context.Context, endpoint pr
 	return _d._base.GetResources(ctx, endpoint)
 }
 
+// GetServerType implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) GetServerType(ctx context.Context, endpoint provisioning.Endpoint) (serverType api.ServerType, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("endpoint", endpoint),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetServerType")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("serverType", serverType),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetServerType returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetServerType returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetServerType finished")
+		}
+	}()
+	return _d._base.GetServerType(ctx, endpoint)
+}
+
 // Ping implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
 	log := _d._log.With()

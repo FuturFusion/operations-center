@@ -66,6 +66,20 @@ func (_d ServerClientPortWithPrometheus) GetResources(ctx context.Context, endpo
 	return _d.base.GetResources(ctx, endpoint)
 }
 
+// GetServerType implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) GetServerType(ctx context.Context, endpoint provisioning.Endpoint) (serverType api.ServerType, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetServerType", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetServerType(ctx, endpoint)
+}
+
 // Ping implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithPrometheus) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
 	_since := time.Now()
