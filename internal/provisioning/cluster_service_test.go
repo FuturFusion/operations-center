@@ -116,6 +116,7 @@ func TestClusterService_Create(t *testing.T) {
 			repoExistsByName: true, // cluster with the same name already exists
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, `Cluster with name "one" already exists`)
 			},
 		},
@@ -163,6 +164,7 @@ func TestClusterService_Create(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, `Server "server1" is already part of cluster "cluster-foo"`)
 			},
 		},
@@ -215,6 +217,7 @@ func TestClusterService_Create(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, `Server "server1" has type "migration-manager" but "incus" was expected`)
 			},
 		},
@@ -580,6 +583,7 @@ func TestClusterService_Create(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, `Server "server1" was not part of a cluster, but is now part of "cluster-foo"`)
 			},
 		},
@@ -921,6 +925,7 @@ func TestClusterService_GetProvisionerConfigurationArchive(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(t, err, "cluster is not in ready state")
 			},
 			assert: func(t *testing.T, rc io.ReadCloser, size int) {
@@ -1084,8 +1089,12 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 				},
 			},
 
-			assertErr: require.Error,
-			count:     0,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, "Failed to compile filter expression:")
+			},
+			count: 0,
 		},
 		{
 			name: "error - filter expression run",
@@ -1098,8 +1107,12 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 				},
 			},
 
-			assertErr: require.Error,
-			count:     0,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, "Failed to execute filter expression:")
+			},
+			count: 0,
 		},
 		{
 			name: "error - non bool expression",
@@ -1113,6 +1126,8 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
 				require.ErrorContains(tt, err, "does not evaluate to boolean result")
 			},
 			count: 0,
@@ -1236,8 +1251,12 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 				"one",
 			},
 
-			assertErr: require.Error,
-			count:     0,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(tt, err, "Failed to compile filter expression:")
+			},
+			count: 0,
 		},
 		{
 			name: "error - filter expression run",
@@ -1248,8 +1267,12 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 				"one",
 			},
 
-			assertErr: require.Error,
-			count:     0,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(tt, err, "Failed to execute filter expression:")
+			},
+			count: 0,
 		},
 		{
 			name: "error - non bool expression",
@@ -1261,6 +1284,8 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
 				require.ErrorContains(tt, err, "does not evaluate to boolean result")
 			},
 			count: 0,
@@ -1576,7 +1601,8 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Delete for cluster in state "ready" is not allowed`)
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+				require.ErrorContains(tt, err, `Delete for cluster in state "ready":`)
 			},
 		},
 		{
@@ -1585,7 +1611,8 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			repoGetByNameCluster: &provisioning.Cluster{},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "Delete for cluster with invalid state")
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+				require.ErrorContains(tt, err, "Delete for cluster with invalid state:")
 			},
 		},
 		{
@@ -1597,7 +1624,8 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			serverSvcGetAllNamesWithFilterNames: []string{"one"},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, "Failed to delete cluster: Delete for cluster with 1 linked servers is not allowd ([one])")
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+				require.ErrorContains(tt, err, "Delete for cluster with 1 linked servers ([one])")
 			},
 		},
 		{
@@ -1833,7 +1861,11 @@ func TestClusterService_UpdateCertificate(t *testing.T) {
 			certificatePEM: "invalid", // invalid
 			keyPEM:         "invalid", // invalid
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, "Failed to validate key pair:")
+			},
 		},
 		{
 			name:                         "error - serverSvc.GetAllWithFilter",

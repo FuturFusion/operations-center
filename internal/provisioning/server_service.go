@@ -129,7 +129,7 @@ func (s serverService) GetAllWithFilter(ctx context.Context, filter ServerFilter
 	if filter.Expression != nil {
 		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Server{})}...)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
 	}
 
@@ -149,12 +149,12 @@ func (s serverService) GetAllWithFilter(ctx context.Context, filter ServerFilter
 		for _, server := range servers {
 			output, err := expr.Run(filterExpression, server)
 			if err != nil {
-				return nil, err
+				return nil, domain.NewValidationErrf("Failed to execute filter expression: %v", err)
 			}
 
 			result, ok := output.(bool)
 			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+				return nil, domain.NewValidationErrf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
 			}
 
 			if result {
@@ -183,7 +183,7 @@ func (s serverService) GetAllNamesWithFilter(ctx context.Context, filter ServerF
 	if filter.Expression != nil {
 		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
 	}
 
@@ -204,12 +204,12 @@ func (s serverService) GetAllNamesWithFilter(ctx context.Context, filter ServerF
 		for _, serverID := range serverIDs {
 			output, err := expr.Run(filterExpression, Env{serverID})
 			if err != nil {
-				return nil, err
+				return nil, domain.NewValidationErrf("Failed to execute filter expression: %v", err)
 			}
 
 			result, ok := output.(bool)
 			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+				return nil, domain.NewValidationErrf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
 			}
 
 			if result {
@@ -234,7 +234,7 @@ func (s serverService) GetByName(ctx context.Context, name string) (*Server, err
 func (s serverService) Update(ctx context.Context, server Server) error {
 	err := server.Validate()
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to validate server for update: %w", err)
 	}
 
 	return s.repo.Update(ctx, server)
@@ -252,7 +252,7 @@ func (s serverService) UpdateSystemNetwork(ctx context.Context, name string, sys
 
 		server, err = s.GetByName(ctx, name)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to get server %q: %w", name, err)
 		}
 
 		updatedServer, _ = ptr.Clone(server)
@@ -264,7 +264,7 @@ func (s serverService) UpdateSystemNetwork(ctx context.Context, name string, sys
 
 		err = s.Update(ctx, *updatedServer)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to update system network: %w", err)
 		}
 
 		return nil
@@ -296,7 +296,7 @@ func (s serverService) UpdateSystemNetwork(ctx context.Context, name string, sys
 
 	err = s.client.UpdateNetworkConfig(ctx, *updatedServer)
 	// If context is cancelled with cause ErrSelfUpdateNotification, the self update
-	// call has been processed and the operations was therefore successful.
+	// call has been processed and the operations was successful.
 	// Therefore this is not considered an error.
 	if err != nil && !errors.Is(context.Cause(ctx), ErrSelfUpdateNotification) {
 		return err
@@ -324,7 +324,7 @@ func (s serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUp
 				return domain.ErrNotAuthorized
 			}
 
-			return err
+			return fmt.Errorf("Failed to get server by certificate: %w", err)
 		}
 
 		server.ConnectionURL = serverUpdate.ConnectionURL
@@ -333,7 +333,7 @@ func (s serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUp
 
 		err = server.Validate()
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to validate server update: %w", err)
 		}
 
 		return s.repo.Update(ctx, *server)
@@ -402,7 +402,7 @@ func (s serverService) PollServers(ctx context.Context, serverStatus api.ServerS
 		Status: ptr.To(serverStatus),
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to get servers for polling: %w", err)
 	}
 
 	var errs []error

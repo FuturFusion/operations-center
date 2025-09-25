@@ -274,8 +274,12 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 				},
 			},
 
-			assertErr: require.Error,
-			count:     0,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, "Failed to compile filter expression:")
+			},
+			count: 0,
 		},
 		{
 			name: "error - filter expression run",
@@ -288,8 +292,12 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 				},
 			},
 
-			assertErr: require.Error,
-			count:     0,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, "Failed to execute filter expression:")
+			},
+			count: 0,
 		},
 		{
 			name: "error - non bool expression",
@@ -303,6 +311,8 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
 				require.ErrorContains(tt, err, "does not evaluate to boolean result")
 			},
 			count: 0,
@@ -431,8 +441,12 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 				"one",
 			},
 
-			assertErr: require.Error,
-			count:     0,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, "Failed to compile filter expression:")
+			},
+			count: 0,
 		},
 		{
 			name: "error - filter expression run",
@@ -443,8 +457,12 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 				"one",
 			},
 
-			assertErr: require.Error,
-			count:     0,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(t, err, "Failed to execute filter expression:")
+			},
+			count: 0,
 		},
 		{
 			name: "error - non bool expression",
@@ -456,6 +474,8 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
 				require.ErrorContains(tt, err, "does not evaluate to boolean result")
 			},
 			count: 0,

@@ -112,7 +112,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		}
 
 		if exists {
-			return fmt.Errorf("Cluster with name %q already exists", newCluster.Name)
+			return fmt.Errorf("Cluster with name %q already exists: %w", newCluster.Name, domain.ErrOperationNotPermitted)
 		}
 
 		// Validate all listed servers are already known.
@@ -123,7 +123,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 			}
 
 			if server.Cluster != nil {
-				return fmt.Errorf("Server %q is already part of cluster %q", serverName, *server.Cluster)
+				return fmt.Errorf("Server %q is already part of cluster %q: %w", serverName, *server.Cluster, domain.ErrOperationNotPermitted)
 			}
 
 			servers = append(servers, *server)
@@ -149,7 +149,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	// Verify, that all the servers that are clustered have the expected server type.
 	for _, server := range servers {
 		if server.Type != newCluster.ServerType {
-			return newCluster, fmt.Errorf("Server %q has type %q but %q was expected", server.Name, server.Type, newCluster.ServerType)
+			return newCluster, fmt.Errorf("Server %q has type %q but %q was expected: %w", server.Name, server.Type, newCluster.ServerType, domain.ErrOperationNotPermitted)
 		}
 	}
 
@@ -276,7 +276,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 			}
 
 			if server.Cluster != nil {
-				return fmt.Errorf("Server %q was not part of a cluster, but is now part of %q", server.Name, *server.Cluster)
+				return fmt.Errorf("Server %q was not part of a cluster, but is now part of %q: %w", server.Name, *server.Cluster, domain.ErrOperationNotPermitted)
 			}
 		}
 
@@ -339,7 +339,7 @@ func (s clusterService) GetProvisionerConfigurationArchive(ctx context.Context, 
 	}
 
 	if cluster.Status != api.ClusterStatusReady {
-		return nil, 0, fmt.Errorf("Failed to get provisioner configuration archive, cluster is not in ready state")
+		return nil, 0, fmt.Errorf("Failed to get provisioner configuration archive, cluster is not in ready state: %w", domain.ErrOperationNotPermitted)
 	}
 
 	rc, size, err := s.provisioner.GetArchive(ctx, name)
@@ -361,7 +361,7 @@ func (s clusterService) GetAllWithFilter(ctx context.Context, filter ClusterFilt
 	if filter.Expression != nil {
 		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Cluster{})}...)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
 	}
 
@@ -375,12 +375,12 @@ func (s clusterService) GetAllWithFilter(ctx context.Context, filter ClusterFilt
 		for _, cluster := range clusters {
 			output, err := expr.Run(filterExpression, cluster)
 			if err != nil {
-				return nil, err
+				return nil, domain.NewValidationErrf("Failed to execute filter expression: %v", err)
 			}
 
 			result, ok := output.(bool)
 			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+				return nil, domain.NewValidationErrf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
 			}
 
 			if result {
@@ -409,7 +409,7 @@ func (s clusterService) GetAllNamesWithFilter(ctx context.Context, filter Cluste
 	if filter.Expression != nil {
 		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Env{})}...)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
 	}
 
@@ -423,12 +423,12 @@ func (s clusterService) GetAllNamesWithFilter(ctx context.Context, filter Cluste
 		for _, clusterID := range clusterIDs {
 			output, err := expr.Run(filterExpression, Env{clusterID})
 			if err != nil {
-				return nil, err
+				return nil, domain.NewValidationErrf("Failed to execute filter expression: %v", err)
 			}
 
 			result, ok := output.(bool)
 			if !ok {
-				return nil, fmt.Errorf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
+				return nil, domain.NewValidationErrf("Filter expression %q does not evaluate to boolean result: %v", *filter.Expression, output)
 			}
 
 			if result {
@@ -487,9 +487,9 @@ func (s clusterService) DeleteByName(ctx context.Context, name string) error {
 			api.ClusterStatusPending:
 			// delete is fine
 		case api.ClusterStatusReady:
-			return fmt.Errorf("Delete for cluster in state %q is not allowed", cluster.Status.String())
+			return fmt.Errorf("Delete for cluster in state %q: %w", cluster.Status.String(), domain.ErrOperationNotPermitted)
 		default:
-			return fmt.Errorf("Delete for cluster with invalid state")
+			return fmt.Errorf("Delete for cluster with invalid state: %w", domain.ErrOperationNotPermitted)
 		}
 
 		servers, err := s.serverSvc.GetAllNamesWithFilter(ctx, ServerFilter{
@@ -500,7 +500,7 @@ func (s clusterService) DeleteByName(ctx context.Context, name string) error {
 		}
 
 		if len(servers) > 0 {
-			return fmt.Errorf("Delete for cluster with %d linked servers is not allowd (%v)", len(servers), servers)
+			return fmt.Errorf("Delete for cluster with %d linked servers (%v): %w", len(servers), servers, domain.ErrOperationNotPermitted)
 		}
 
 		err = s.repo.DeleteByName(ctx, name)
@@ -557,7 +557,7 @@ func (s clusterService) ResyncInventoryByName(ctx context.Context, name string) 
 func (s clusterService) UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) error {
 	_, err := tls.X509KeyPair([]byte(certificatePEM), []byte(keyPEM))
 	if err != nil {
-		return fmt.Errorf("Failed to validate key pair: %w", err)
+		return domain.NewValidationErrf("Failed to validate key pair: %v", err)
 	}
 
 	endpoint, err := s.GetEndpoint(ctx, name)
