@@ -140,7 +140,7 @@ func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	if c.config.TLSClientCertFile != "" && c.config.TLSClientKeyFile != "" {
-		opts = append(opts, client.WithClientCertificate(c.config.TLSClientCertFile, c.config.TLSClientKeyFile))
+		opts = append(opts, client.WithClientCertificateFiles(c.config.TLSClientCertFile, c.config.TLSClientKeyFile))
 	}
 
 	if c.config.AuthType == config.AuthTypeOIDC {
