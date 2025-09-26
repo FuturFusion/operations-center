@@ -144,7 +144,7 @@ func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	if c.config.AuthType == config.AuthTypeOIDC {
-		opts = append(opts, client.WithOIDCTokensFile(filepath.Join(c.env.VarDir(), "oidc-tokens.json")))
+		opts = append(opts, client.WithOIDCTokensFile(filepath.Join(configDir, "oidc-tokens.json")))
 	}
 
 	*c.ocClient, err = client.New(
