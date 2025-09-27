@@ -45,7 +45,7 @@ func WithForceLocal(unixSocket string) Option {
 	}
 }
 
-func WithClientCertificate(clientCertFile string, clientKeyFile string) Option {
+func WithClientCertificateFiles(clientCertFile string, clientKeyFile string) Option {
 	return func(c *OperationsCenterClient) error {
 		cert, err := tls.LoadX509KeyPair(clientCertFile, clientKeyFile)
 		if err != nil {
@@ -53,6 +53,14 @@ func WithClientCertificate(clientCertFile string, clientKeyFile string) Option {
 		}
 
 		c.tlsClientCert = cert
+
+		return nil
+	}
+}
+
+func WithClientCertificate(clientCert tls.Certificate) Option {
+	return func(c *OperationsCenterClient) error {
+		c.tlsClientCert = clientCert
 
 		return nil
 	}
