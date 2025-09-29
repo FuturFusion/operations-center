@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/lxc/incus/v6/shared/termios"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -439,9 +440,8 @@ func (c *cmdTokenSeedGetImage) Command() *cobra.Command {
 		}
 
 		architecture := cmd.Flag("architecture").Value.String()
-		switch architecture {
-		case api.Architecture64BitIntelX86.String(), api.Architecture64BitARMV8LittleEndian.String():
-		default:
+		_, ok := images.UpdateFileArchitectures[images.UpdateFileArchitecture(architecture)]
+		if !ok {
 			return fmt.Errorf(`Invalid value for flag "--architecture": %q`, architecture)
 		}
 
@@ -472,7 +472,7 @@ func (c *cmdTokenSeedGetImage) Run(cmd *cobra.Command, args []string) (err error
 		return err
 	}
 
-	var architecture api.Architecture
+	var architecture images.UpdateFileArchitecture
 	err = architecture.UnmarshalText([]byte(c.flagArchitecture))
 	if err != nil {
 		return err
