@@ -12,12 +12,22 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/internal/environment/mock"
 )
 
 func TestMain0Version(t *testing.T) {
 	stdoutBuf := bytes.Buffer{}
 
-	err := main0([]string{"--version"}, &stdoutBuf, nil, mockEnv{})
+	tmpDir := t.TempDir()
+
+	env := &mock.EnvironmentMock{
+		LogDirFunc: func() string {
+			return tmpDir
+		},
+	}
+
+	err := main0([]string{"--version"}, &stdoutBuf, nil, env)
 	require.NoError(t, err)
 
 	require.Equal(t, "0.0.1\n", stdoutBuf.String())
@@ -50,15 +60,33 @@ updates:
 	err = os.WriteFile(filepath.Join(tmpDir, "config.yml"), []byte(minimalConfig), 0o600)
 	require.NoError(t, err)
 
+	env := &mock.EnvironmentMock{
+		GetUnixSocketFunc: func() string {
+			return filepath.Join(tmpDir, "unix.socket")
+		},
+		IsIncusOSFunc: func() bool {
+			return false
+		},
+		LogDirFunc: func() string {
+			return tmpDir
+		},
+		RunDirFunc: func() string {
+			return tmpDir
+		},
+		UserConfigDirFunc: func() (string, error) {
+			return tmpDir, nil
+		},
+		UsrShareDirFunc: func() string {
+			return tmpDir
+		},
+		VarDirFunc: func() string {
+			return tmpDir
+		},
+	}
+
 	// Start daemon.
 	go func() {
-		daemonErr = main0([]string{"--verbose"}, nil, stderrWriter, mockEnv{
-			logDir:      tmpDir,
-			runDir:      tmpDir,
-			varDir:      tmpDir,
-			usrShareDir: tmpDir,
-			unixSocket:  filepath.Join(tmpDir, "unix.socket"),
-		})
+		daemonErr = main0([]string{"--verbose"}, nil, stderrWriter, env)
 	}()
 
 	waitFor(t, logs, "Daemon started", 5000*time.Millisecond)
@@ -157,12 +185,31 @@ func TestMain0RunDaemonStartError(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := main0(tc.args, nil, nil, mockEnv{
-				logDir:     tc.logDir,
-				runDir:     tc.runDir,
-				varDir:     tc.varDir,
-				unixSocket: tc.unixSocket,
-			})
+			env := &mock.EnvironmentMock{
+				GetUnixSocketFunc: func() string {
+					return tc.unixSocket
+				},
+				IsIncusOSFunc: func() bool {
+					return false
+				},
+				LogDirFunc: func() string {
+					return tc.logDir
+				},
+				RunDirFunc: func() string {
+					return tc.runDir
+				},
+				UserConfigDirFunc: func() (string, error) {
+					return tmpDir, nil
+				},
+				UsrShareDirFunc: func() string {
+					return tmpDir
+				},
+				VarDirFunc: func() string {
+					return tc.varDir
+				},
+			}
+
+			err := main0(tc.args, nil, nil, env)
 			require.ErrorContains(t, err, tc.wantErrContains)
 		})
 	}
@@ -187,20 +234,6 @@ func waitFor(t *testing.T, in chan string, want string, d time.Duration) {
 		}
 	}
 }
-
-type mockEnv struct {
-	logDir      string
-	runDir      string
-	varDir      string
-	usrShareDir string
-	unixSocket  string
-}
-
-func (e mockEnv) LogDir() string        { return e.logDir }
-func (e mockEnv) RunDir() string        { return e.runDir }
-func (e mockEnv) VarDir() string        { return e.varDir }
-func (e mockEnv) UsrShareDir() string   { return e.usrShareDir }
-func (e mockEnv) GetUnixSocket() string { return e.unixSocket }
 
 type chanWriter struct {
 	c chan string
