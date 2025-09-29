@@ -14,20 +14,22 @@ import (
 
 type osProxyHandler struct {
 	prefix string
+	env    interface{ IsIncusOS() bool }
 }
 
-func registerOSProxy(router Router, prefix string, authorizer *authz.Authorizer) {
+func registerOSProxy(router Router, prefix string, authorizer *authz.Authorizer, env interface{ IsIncusOS() bool }) {
 	handler := &osProxyHandler{
 		prefix: prefix,
+		env:    env,
 	}
 
 	router.HandleFunc("/", response.With(handler.apiOSProxy, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 func (o *osProxyHandler) apiOSProxy(r *http.Request) response.Response {
-	// Check if this is an Incus OS system.
-	if !internalenvironment.IsIncusOS() {
-		return response.BadRequest(errors.New("System isn't running Incus OS"))
+	// Check if this is an IncusOS system.
+	if !o.env.IsIncusOS() {
+		return response.BadRequest(errors.New("System isn't running IncusOS"))
 	}
 
 	// Prepare the proxy.
