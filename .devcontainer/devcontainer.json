@@ -16,6 +16,7 @@
         "casualjim.gotemplate",
         "eamodio.gitlens",
         "opentofu.vscode-opentofu",
+        "jeff-hykin.macro-commander",
       ],
       "settings": {
         "files.insertFinalNewline": true,
