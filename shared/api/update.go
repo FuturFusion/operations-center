@@ -9,66 +9,6 @@ import (
 	"github.com/lxc/incus-os/incus-osd/api/images"
 )
 
-type UpdateSeverity string
-
-const (
-	UpdateSeverityNone     UpdateSeverity = "none"
-	UpdateSeverityLow      UpdateSeverity = "low"
-	UpdateSeverityMedium   UpdateSeverity = "medium"
-	UpdateSeverityHigh     UpdateSeverity = "high"
-	UpdateSeverityCritical UpdateSeverity = "critical"
-)
-
-var updateSeverities = map[UpdateSeverity]struct{}{
-	UpdateSeverityNone:     {},
-	UpdateSeverityLow:      {},
-	UpdateSeverityMedium:   {},
-	UpdateSeverityHigh:     {},
-	UpdateSeverityCritical: {},
-}
-
-func (u UpdateSeverity) String() string {
-	return string(u)
-}
-
-// MarshalText implements the encoding.TextMarshaler interface.
-func (u UpdateSeverity) MarshalText() ([]byte, error) {
-	return []byte(u), nil
-}
-
-// UnmarshalText implements the encoding.TextUnmarshaler interface.
-func (u *UpdateSeverity) UnmarshalText(text []byte) error {
-	_, ok := updateSeverities[UpdateSeverity(text)]
-	if !ok {
-		return fmt.Errorf("%q is not a valid update severity", string(text))
-	}
-
-	*u = UpdateSeverity(text)
-
-	return nil
-}
-
-// Value implements the sql driver.Valuer interface.
-func (u UpdateSeverity) Value() (driver.Value, error) {
-	return string(u), nil
-}
-
-// Scan implements the sql.Scanner interface.
-func (u *UpdateSeverity) Scan(value any) error {
-	if value == nil {
-		return fmt.Errorf("null is not a valid update severity")
-	}
-
-	switch v := value.(type) {
-	case string:
-		return u.UnmarshalText([]byte(v))
-	case []byte:
-		return u.UnmarshalText(v)
-	default:
-		return fmt.Errorf("type %T is not supported for update severity", value)
-	}
-}
-
 type UpdateStatus string
 
 const (
@@ -147,7 +87,7 @@ type Update struct {
 
 	// Severity of the Update. Allowed values: none, low, medium, high, critical
 	// Example: none
-	Severity UpdateSeverity `json:"severity" yaml:"severity"`
+	Severity images.UpdateSeverity `json:"severity" yaml:"severity"`
 
 	// Origin of the Update.
 	// Example: linuxcontainers.org
