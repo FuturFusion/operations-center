@@ -170,74 +170,6 @@ type Update struct {
 	Status UpdateStatus `json:"update_status" yaml:"update_status"`
 }
 
-type UpdateFileType string
-
-const (
-	UpdateFileTypeUndefined                UpdateFileType = ""
-	UpdateFileTypeImageRaw                 UpdateFileType = "image-raw"
-	UpdateFileTypeImageISO                 UpdateFileType = "image-iso"
-	UpdateFileTypeImageManifest            UpdateFileType = "image-manifest"
-	UpdateFileTypeUpdateEFI                UpdateFileType = "update-efi"
-	UpdateFileTypeUpdateUsr                UpdateFileType = "update-usr"
-	UpdateFileTypeUpdateUsrVerity          UpdateFileType = "update-usr-verity"
-	UpdateFileTypeUpdateUsrVeritySignature UpdateFileType = "update-usr-verity-signature"
-	UpdateFileTypeApplication              UpdateFileType = "application"
-)
-
-var updateFileType = map[UpdateFileType]struct{}{
-	UpdateFileTypeUndefined:                {},
-	UpdateFileTypeImageRaw:                 {},
-	UpdateFileTypeImageISO:                 {},
-	UpdateFileTypeImageManifest:            {},
-	UpdateFileTypeUpdateEFI:                {},
-	UpdateFileTypeUpdateUsr:                {},
-	UpdateFileTypeUpdateUsrVerity:          {},
-	UpdateFileTypeUpdateUsrVeritySignature: {},
-	UpdateFileTypeApplication:              {},
-}
-
-func (u UpdateFileType) String() string {
-	return string(u)
-}
-
-// MarshalText implements the encoding.TextMarshaler interface.
-func (u UpdateFileType) MarshalText() ([]byte, error) {
-	return []byte(u), nil
-}
-
-// UnmarshalText implements the encoding.TextUnmarshaler interface.
-func (u *UpdateFileType) UnmarshalText(text []byte) error {
-	_, ok := updateFileType[UpdateFileType(text)]
-	if !ok {
-		return fmt.Errorf("%q is not a valid update file type", string(text))
-	}
-
-	*u = UpdateFileType(text)
-
-	return nil
-}
-
-// Value implements the sql driver.Valuer interface.
-func (u UpdateFileType) Value() (driver.Value, error) {
-	return string(u), nil
-}
-
-// Scan implements the sql.Scanner interface.
-func (u *UpdateFileType) Scan(value any) error {
-	if value == nil {
-		return fmt.Errorf("null is not a valid update file type")
-	}
-
-	switch v := value.(type) {
-	case string:
-		return u.UnmarshalText([]byte(v))
-	case []byte:
-		return u.UnmarshalText(v)
-	default:
-		return fmt.Errorf("type %T is not supported for update file type", value)
-	}
-}
-
 type Architecture string
 
 const (
@@ -321,7 +253,7 @@ type UpdateFile struct {
 
 	// Type of the file. One of: image-raw, image-iso, image-manifest, update-efi, update-usr, update-usr-verity, update-usr-verity-signature
 	// Example: image-raw
-	Type UpdateFileType `json:"type" yaml:"type"`
+	Type images.UpdateFileType `json:"type" yaml:"type"`
 
 	// Architecture of the file. E.g. x86_64, aarch64
 	// Example: x86_64

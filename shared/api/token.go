@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 )
 
 // Token defines a registration token for use during registration.
@@ -44,15 +45,15 @@ const (
 
 var imageTypes = map[ImageType]struct {
 	fileExt        string
-	updateFileType UpdateFileType
+	updateFileType images.UpdateFileType
 }{
 	ImageTypeISO: {
 		fileExt:        ".iso",
-		updateFileType: UpdateFileTypeImageISO,
+		updateFileType: images.UpdateFileTypeImageISO,
 	},
 	ImageTypeRaw: {
 		fileExt:        ".raw",
-		updateFileType: UpdateFileTypeImageRaw,
+		updateFileType: images.UpdateFileTypeImageRaw,
 	},
 }
 
@@ -90,7 +91,7 @@ func (i ImageType) FileExt() string {
 	return imageTypes[i].fileExt
 }
 
-func (i ImageType) UpdateFileType() UpdateFileType {
+func (i ImageType) UpdateFileType() images.UpdateFileType {
 	return imageTypes[i].updateFileType
 }
 
