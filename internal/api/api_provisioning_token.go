@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -747,8 +748,9 @@ func (t *tokenHandler) tokenSeedGet(r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("image type %q is not valid", typeArg))
 	}
 
-	architecture := api.Architecture(architectureArg)
-	if !architecture.IsValid() {
+	architecture := images.UpdateFileArchitecture(architectureArg)
+	_, ok := images.UpdateFileArchitectures[architecture]
+	if !ok {
 		return response.BadRequest(fmt.Errorf("architecture %q is not valid", architectureArg))
 	}
 

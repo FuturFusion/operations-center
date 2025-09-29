@@ -111,7 +111,7 @@ type TokenImagePost struct {
 
 	// Architecture contains the CPU architecture the image should be generated
 	// for.
-	Architecture Architecture `json:"architecture" yaml:"architecture"`
+	Architecture images.UpdateFileArchitecture `json:"architecture" yaml:"architecture"`
 
 	// Seeds represents the seed configuration for e.g. applications.yaml,
 	// install.yaml and network.yaml.
