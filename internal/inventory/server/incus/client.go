@@ -29,7 +29,7 @@ func (s serverClient) getClient(ctx context.Context, endpoint provisioning.Endpo
 		TLSClientKey:  s.clientKey,
 		TLSServerCert: endpoint.GetCertificate(),
 
-		// Bypass system proxy for communication to Incus OS servers.
+		// Bypass system proxy for communication to IncusOS servers.
 		Proxy: func(r *http.Request) (*url.URL, error) {
 			return nil, nil
 		},

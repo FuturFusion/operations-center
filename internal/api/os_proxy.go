@@ -45,7 +45,7 @@ func (o *osProxyHandler) apiOSProxy(r *http.Request) response.Response {
 		},
 	}
 
-	// Allow Incus OS to adjust the returned paths to the prefix used by the proxy.
+	// Allow IncusOS to adjust the returned paths to the prefix used by the proxy.
 	r.Header.Add("X-IncusOS-Proxy", o.prefix)
 
 	// Handle the request.
