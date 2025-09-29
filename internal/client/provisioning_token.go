@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"path"
 
+	"github.com/lxc/incus-os/incus-osd/api/images"
+
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -148,7 +150,7 @@ func (c OperationsCenterClient) DeleteTokenSeed(ctx context.Context, id string, 
 	return nil
 }
 
-func (c OperationsCenterClient) GetTokenImageFromSeed(ctx context.Context, id string, name string, imageType api.ImageType, architecture api.Architecture) (io.ReadCloser, error) {
+func (c OperationsCenterClient) GetTokenImageFromSeed(ctx context.Context, id string, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture) (io.ReadCloser, error) {
 	query := url.Values{}
 	query.Add("type", imageType.String())
 	query.Add("architecture", architecture.String())

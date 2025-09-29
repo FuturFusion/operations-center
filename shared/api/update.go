@@ -9,66 +9,6 @@ import (
 	"github.com/lxc/incus-os/incus-osd/api/images"
 )
 
-type UpdateSeverity string
-
-const (
-	UpdateSeverityNone     UpdateSeverity = "none"
-	UpdateSeverityLow      UpdateSeverity = "low"
-	UpdateSeverityMedium   UpdateSeverity = "medium"
-	UpdateSeverityHigh     UpdateSeverity = "high"
-	UpdateSeverityCritical UpdateSeverity = "critical"
-)
-
-var updateSeverities = map[UpdateSeverity]struct{}{
-	UpdateSeverityNone:     {},
-	UpdateSeverityLow:      {},
-	UpdateSeverityMedium:   {},
-	UpdateSeverityHigh:     {},
-	UpdateSeverityCritical: {},
-}
-
-func (u UpdateSeverity) String() string {
-	return string(u)
-}
-
-// MarshalText implements the encoding.TextMarshaler interface.
-func (u UpdateSeverity) MarshalText() ([]byte, error) {
-	return []byte(u), nil
-}
-
-// UnmarshalText implements the encoding.TextUnmarshaler interface.
-func (u *UpdateSeverity) UnmarshalText(text []byte) error {
-	_, ok := updateSeverities[UpdateSeverity(text)]
-	if !ok {
-		return fmt.Errorf("%q is not a valid update severity", string(text))
-	}
-
-	*u = UpdateSeverity(text)
-
-	return nil
-}
-
-// Value implements the sql driver.Valuer interface.
-func (u UpdateSeverity) Value() (driver.Value, error) {
-	return string(u), nil
-}
-
-// Scan implements the sql.Scanner interface.
-func (u *UpdateSeverity) Scan(value any) error {
-	if value == nil {
-		return fmt.Errorf("null is not a valid update severity")
-	}
-
-	switch v := value.(type) {
-	case string:
-		return u.UnmarshalText([]byte(v))
-	case []byte:
-		return u.UnmarshalText(v)
-	default:
-		return fmt.Errorf("type %T is not supported for update severity", value)
-	}
-}
-
 type UpdateStatus string
 
 const (
@@ -147,7 +87,7 @@ type Update struct {
 
 	// Severity of the Update. Allowed values: none, low, medium, high, critical
 	// Example: none
-	Severity UpdateSeverity `json:"severity" yaml:"severity"`
+	Severity images.UpdateSeverity `json:"severity" yaml:"severity"`
 
 	// Origin of the Update.
 	// Example: linuxcontainers.org
@@ -168,135 +108,6 @@ type Update struct {
 	// Possible values for status are: pending, ready
 	// Example: ready
 	Status UpdateStatus `json:"update_status" yaml:"update_status"`
-}
-
-type UpdateFileType string
-
-const (
-	UpdateFileTypeUndefined                UpdateFileType = ""
-	UpdateFileTypeImageRaw                 UpdateFileType = "image-raw"
-	UpdateFileTypeImageISO                 UpdateFileType = "image-iso"
-	UpdateFileTypeImageManifest            UpdateFileType = "image-manifest"
-	UpdateFileTypeUpdateEFI                UpdateFileType = "update-efi"
-	UpdateFileTypeUpdateUsr                UpdateFileType = "update-usr"
-	UpdateFileTypeUpdateUsrVerity          UpdateFileType = "update-usr-verity"
-	UpdateFileTypeUpdateUsrVeritySignature UpdateFileType = "update-usr-verity-signature"
-	UpdateFileTypeApplication              UpdateFileType = "application"
-)
-
-var updateFileType = map[UpdateFileType]struct{}{
-	UpdateFileTypeUndefined:                {},
-	UpdateFileTypeImageRaw:                 {},
-	UpdateFileTypeImageISO:                 {},
-	UpdateFileTypeImageManifest:            {},
-	UpdateFileTypeUpdateEFI:                {},
-	UpdateFileTypeUpdateUsr:                {},
-	UpdateFileTypeUpdateUsrVerity:          {},
-	UpdateFileTypeUpdateUsrVeritySignature: {},
-	UpdateFileTypeApplication:              {},
-}
-
-func (u UpdateFileType) String() string {
-	return string(u)
-}
-
-// MarshalText implements the encoding.TextMarshaler interface.
-func (u UpdateFileType) MarshalText() ([]byte, error) {
-	return []byte(u), nil
-}
-
-// UnmarshalText implements the encoding.TextUnmarshaler interface.
-func (u *UpdateFileType) UnmarshalText(text []byte) error {
-	_, ok := updateFileType[UpdateFileType(text)]
-	if !ok {
-		return fmt.Errorf("%q is not a valid update file type", string(text))
-	}
-
-	*u = UpdateFileType(text)
-
-	return nil
-}
-
-// Value implements the sql driver.Valuer interface.
-func (u UpdateFileType) Value() (driver.Value, error) {
-	return string(u), nil
-}
-
-// Scan implements the sql.Scanner interface.
-func (u *UpdateFileType) Scan(value any) error {
-	if value == nil {
-		return fmt.Errorf("null is not a valid update file type")
-	}
-
-	switch v := value.(type) {
-	case string:
-		return u.UnmarshalText([]byte(v))
-	case []byte:
-		return u.UnmarshalText(v)
-	default:
-		return fmt.Errorf("type %T is not supported for update file type", value)
-	}
-}
-
-type Architecture string
-
-const (
-	ArchitectureUndefined              Architecture = ""
-	Architecture64BitIntelX86          Architecture = "x86_64"
-	Architecture64BitARMV8LittleEndian Architecture = "aarch64"
-)
-
-var architecture = map[Architecture]struct{}{
-	ArchitectureUndefined:              {},
-	Architecture64BitIntelX86:          {},
-	Architecture64BitARMV8LittleEndian: {},
-}
-
-func (u Architecture) String() string {
-	return string(u)
-}
-
-func (u Architecture) IsValid() bool {
-	_, ok := architecture[u]
-	return ok
-}
-
-// MarshalText implements the encoding.TextMarshaler interface.
-func (u Architecture) MarshalText() ([]byte, error) {
-	return []byte(u), nil
-}
-
-// UnmarshalText implements the encoding.TextUnmarshaler interface.
-func (u *Architecture) UnmarshalText(text []byte) error {
-	_, ok := architecture[Architecture(text)]
-	if !ok {
-		return fmt.Errorf("%q is not a valid update file type", string(text))
-	}
-
-	*u = Architecture(text)
-
-	return nil
-}
-
-// Value implements the sql driver.Valuer interface.
-func (u Architecture) Value() (driver.Value, error) {
-	return string(u), nil
-}
-
-// Scan implements the sql.Scanner interface.
-func (u *Architecture) Scan(value any) error {
-	if value == nil {
-		return fmt.Errorf("null is not a valid architecture")
-	}
-
-	switch v := value.(type) {
-	case string:
-		return u.UnmarshalText([]byte(v))
-	case []byte:
-		return u.UnmarshalText(v)
-	default:
-		return fmt.Errorf("type %T is not supported for architecture", value)
-	}
 }
 
 // UpdateFile defines an update file.
@@ -321,9 +132,9 @@ type UpdateFile struct {
 
 	// Type of the file. One of: image-raw, image-iso, image-manifest, update-efi, update-usr, update-usr-verity, update-usr-verity-signature
 	// Example: image-raw
-	Type UpdateFileType `json:"type" yaml:"type"`
+	Type images.UpdateFileType `json:"type" yaml:"type"`
 
 	// Architecture of the file. E.g. x86_64, aarch64
 	// Example: x86_64
-	Architecture Architecture `json:"architecture" yaml:"architecture"`
+	Architecture images.UpdateFileArchitecture `json:"architecture" yaml:"architecture"`
 }

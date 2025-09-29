@@ -24,7 +24,7 @@ func TestUpdate_Validate(t *testing.T) {
 		{
 			name: "valid",
 			server: provisioning.Update{
-				Severity: api.UpdateSeverityLow,
+				Severity: images.UpdateSeverityLow,
 				Status:   api.UpdateStatusReady,
 			},
 
@@ -57,7 +57,7 @@ func TestUpdate_Validate(t *testing.T) {
 		{
 			name: "error - status empty",
 			server: provisioning.Update{
-				Severity: api.UpdateSeverityLow,
+				Severity: images.UpdateSeverityLow,
 				Status:   "", // empty
 			},
 
@@ -69,7 +69,7 @@ func TestUpdate_Validate(t *testing.T) {
 		{
 			name: "error - status invalid",
 			server: provisioning.Update{
-				Severity: api.UpdateSeverityLow,
+				Severity: images.UpdateSeverityLow,
 				Status:   "invalid", // invalid
 			},
 

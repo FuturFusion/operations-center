@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -38,7 +39,7 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 
 			repoUpdateFilesCreateFromArchiveUpdate: &provisioning.Update{
 				UUID:     uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
-				Severity: api.UpdateSeverityLow,
+				Severity: images.UpdateSeverityLow,
 			},
 
 			assertErr: require.NoError,
@@ -68,7 +69,7 @@ func TestUpdateService_CreateFromArchive(t *testing.T) {
 
 			repoUpdateFilesCreateFromArchiveUpdate: &provisioning.Update{
 				UUID:     uuid.MustParse(`98e0ec84-eb21-4406-a7bf-727610d4d0c4`),
-				Severity: api.UpdateSeverityLow,
+				Severity: images.UpdateSeverityLow,
 			},
 			repoUpsertErr: boom.Error,
 
@@ -747,7 +748,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					UUID:        updateNewUUID,
 					PublishedAt: dateTime2,
 					Status:      api.UpdateStatusUnknown,
-					Severity:    api.UpdateSeverityNone,
+					Severity:    images.UpdateSeverityNone,
 					Channels: provisioning.UpdateChannels{
 						"stable",
 					},
@@ -758,12 +759,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 							// Generate hash: echo -n "dummy" | sha256sum
 							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
 
-							Architecture: api.Architecture64BitIntelX86,
+							Architecture: images.UpdateFileArchitecture64BitX86,
 						},
 						{
 							// This file is filtered because of architecture.
 							Size:         5,
-							Architecture: api.Architecture64BitARMV8LittleEndian,
+							Architecture: images.UpdateFileArchitecture64BitARM,
 						},
 					},
 				},
@@ -771,7 +772,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					UUID:        updateNewUUID,
 					PublishedAt: dateTime3,
 					Status:      api.UpdateStatusUnknown,
-					Severity:    api.UpdateSeverityNone,
+					Severity:    images.UpdateSeverityNone,
 					Channels: provisioning.UpdateChannels{
 						"daily", // This update is filtered based on filter expression
 					},
@@ -1061,7 +1062,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					UUID:        updatePresentUUID,
 					PublishedAt: dateTime2,
 					Status:      api.UpdateStatusUnknown,
-					Severity:    api.UpdateSeverityNone,
+					Severity:    images.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1088,7 +1089,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					UUID:        updatePresentUUID,
 					PublishedAt: dateTime2,
 					Status:      api.UpdateStatusUnknown,
-					Severity:    api.UpdateSeverityNone,
+					Severity:    images.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1117,7 +1118,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					UUID:        updatePresentUUID,
 					PublishedAt: dateTime2,
 					Status:      api.UpdateStatusUnknown,
-					Severity:    api.UpdateSeverityNone,
+					Severity:    images.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1176,7 +1177,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					UUID:        updatePresentUUID,
 					PublishedAt: dateTime2,
 					Status:      api.UpdateStatusUnknown,
-					Severity:    api.UpdateSeverityNone,
+					Severity:    images.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1209,7 +1210,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					UUID:        updatePresentUUID,
 					PublishedAt: dateTime2,
 					Status:      api.UpdateStatusUnknown,
-					Severity:    api.UpdateSeverityNone,
+					Severity:    images.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1250,7 +1251,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					UUID:        updatePresentUUID,
 					PublishedAt: dateTime2,
 					Status:      api.UpdateStatusUnknown,
-					Severity:    api.UpdateSeverityNone,
+					Severity:    images.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1285,7 +1286,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					UUID:        updatePresentUUID,
 					PublishedAt: dateTime2,
 					Status:      api.UpdateStatusUnknown,
-					Severity:    api.UpdateSeverityNone,
+					Severity:    images.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1328,7 +1329,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					UUID:        updatePresentUUID,
 					PublishedAt: dateTime2,
 					Status:      api.UpdateStatusUnknown,
-					Severity:    api.UpdateSeverityNone,
+					Severity:    images.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1388,7 +1389,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					UUID:        updatePresentUUID,
 					PublishedAt: dateTime2,
 					Status:      api.UpdateStatusUnknown,
-					Severity:    api.UpdateSeverityNone,
+					Severity:    images.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1447,7 +1448,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					UUID:        updatePresentUUID,
 					PublishedAt: dateTime2,
 					Status:      api.UpdateStatusUnknown,
-					Severity:    api.UpdateSeverityNone,
+					Severity:    images.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1509,7 +1510,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					UUID:        updatePresentUUID,
 					PublishedAt: dateTime2,
 					Status:      api.UpdateStatusUnknown,
-					Severity:    api.UpdateSeverityNone,
+					Severity:    images.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,
@@ -1571,7 +1572,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					UUID:        updatePresentUUID,
 					PublishedAt: dateTime2,
 					Status:      api.UpdateStatusUnknown,
-					Severity:    api.UpdateSeverityNone,
+					Severity:    images.UpdateSeverityNone,
 					Files: provisioning.UpdateFiles{
 						{
 							Size: 5,

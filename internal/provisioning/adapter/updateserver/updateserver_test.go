@@ -38,7 +38,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 					{
 						Version:     "1",
 						Channels:    []string{"stable", "daily"},
-						Severity:    api.UpdateSeverityNone,
+						Severity:    images.UpdateSeverityNone,
 						PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
 					},
 				},
@@ -50,7 +50,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 					UUID:        uuid.MustParse(`1f82dc0a-0487-5532-a76a-74ed263b2280`),
 					Version:     "1",
 					Channels:    provisioning.UpdateChannels{"daily", "stable"},
-					Severity:    api.UpdateSeverityNone,
+					Severity:    images.UpdateSeverityNone,
 					PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
 					Status:      api.UpdateStatusUnknown,
 					Files:       provisioning.UpdateFiles{},
@@ -65,12 +65,12 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 				Updates: []provisioning.Update{
 					{
 						Version:     "1",
-						Severity:    api.UpdateSeverityNone,
+						Severity:    images.UpdateSeverityNone,
 						PublishedAt: time.Date(2024, 5, 22, 15, 21, 0, 0, time.UTC), // older update, will be filtered out
 					},
 					{
 						Version:     "2",
-						Severity:    api.UpdateSeverityNone,
+						Severity:    images.UpdateSeverityNone,
 						PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
 						Files: provisioning.UpdateFiles{
 							provisioning.UpdateFile{
@@ -79,7 +79,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 							},
 							provisioning.UpdateFile{
 								Filename:     "undefined_file_component.iso", // filtered out, since the file component is unknown.
-								Architecture: api.Architecture64BitIntelX86,
+								Architecture: images.UpdateFileArchitecture64BitX86,
 							},
 						},
 					},
@@ -91,13 +91,13 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 				{
 					UUID:        uuid.MustParse(`25eacea3-d627-5c40-bfe5-52a9ea85e0ea`),
 					Version:     "2",
-					Severity:    api.UpdateSeverityNone,
+					Severity:    images.UpdateSeverityNone,
 					PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),
 					Status:      api.UpdateStatusUnknown,
 					Files: provisioning.UpdateFiles{
 						provisioning.UpdateFile{
 							Filename:     "undefined_architecture.iso",
-							Architecture: api.Architecture64BitIntelX86,
+							Architecture: images.UpdateFileArchitecture64BitX86,
 							Component:    images.UpdateFileComponentIncus,
 						},
 					},

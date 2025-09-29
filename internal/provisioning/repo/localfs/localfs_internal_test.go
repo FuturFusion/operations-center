@@ -23,7 +23,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/signature/signaturetest"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
-	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestLocalfs_Get(t *testing.T) {
@@ -321,7 +320,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 				Origin:      "testdata",
 				Version:     "1",
 				PublishedAt: time.Date(2025, 5, 21, 7, 25, 37, 0, time.UTC),
-				Severity:    api.UpdateSeverityNone,
+				Severity:    images.UpdateSeverityNone,
 				Channels:    []string{"daily"},
 				Files: provisioning.UpdateFiles{
 					provisioning.UpdateFile{
@@ -329,14 +328,14 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 						Size:      fileSize(t, "testdata/success/file1.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file1.txt"),
 						Component: images.UpdateFileComponentDebug,
-						Type:      api.UpdateFileTypeImageManifest,
+						Type:      images.UpdateFileTypeImageManifest,
 					},
 					provisioning.UpdateFile{
 						Filename:  "file2.txt",
 						Size:      fileSize(t, "testdata/success/file2.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file2.txt"),
 						Component: images.UpdateFileComponentDebug,
-						Type:      api.UpdateFileTypeImageManifest,
+						Type:      images.UpdateFileTypeImageManifest,
 					},
 					provisioning.UpdateFile{
 						Filename: "file3.txt", // file does not have file component set, will be skipped.
@@ -360,7 +359,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 				require.Equal(t, wantUUID, update.UUID.String())
 				require.Len(t, update.Files, 2)
 				require.Equal(t, images.UpdateFileComponentDebug, update.Files[0].Component)
-				require.Equal(t, api.UpdateFileTypeImageManifest, update.Files[0].Type)
+				require.Equal(t, images.UpdateFileTypeImageManifest, update.Files[0].Type)
 				require.Len(t, update.Files, 2)
 
 				require.True(t, file.PathExists(filepath.Join(tmpDir, wantUUID, "update.sjson")))
@@ -374,7 +373,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			tarContentFiles: "testdata/success",
 			updateManifest: provisioning.Update{
 				Origin:   "testdata",
-				Severity: api.UpdateSeverityNone,
+				Severity: images.UpdateSeverityNone,
 			},
 			setupTmpDir: func(t *testing.T, tmpDir string) {
 				t.Helper()
@@ -397,21 +396,21 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			name:            "error - file size mismatch",
 			tarContentFiles: "testdata/success",
 			updateManifest: provisioning.Update{
-				Severity: api.UpdateSeverityNone,
+				Severity: images.UpdateSeverityNone,
 				Files: provisioning.UpdateFiles{
 					provisioning.UpdateFile{
 						Filename:  "file1.txt",
 						Size:      fileSize(t, "testdata/success/file1.txt") - 1, // filesize modified
 						Sha256:    fileSha256(t, "testdata/success/file1.txt"),
 						Component: images.UpdateFileComponentDebug,
-						Type:      api.UpdateFileTypeImageManifest,
+						Type:      images.UpdateFileTypeImageManifest,
 					},
 					provisioning.UpdateFile{
 						Filename:  "file2.txt",
 						Size:      fileSize(t, "testdata/success/file2.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file2.txt"),
 						Component: images.UpdateFileComponentDebug,
-						Type:      api.UpdateFileTypeImageManifest,
+						Type:      images.UpdateFileTypeImageManifest,
 					},
 				},
 			},
@@ -431,21 +430,21 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			name:            "error - file sha256 mismatch",
 			tarContentFiles: "testdata/success",
 			updateManifest: provisioning.Update{
-				Severity: api.UpdateSeverityNone,
+				Severity: images.UpdateSeverityNone,
 				Files: provisioning.UpdateFiles{
 					provisioning.UpdateFile{
 						Filename:  "file1.txt",
 						Size:      fileSize(t, "testdata/success/file1.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file2.txt"), // invalid sha256, file2 instead of file1
 						Component: images.UpdateFileComponentDebug,
-						Type:      api.UpdateFileTypeImageManifest,
+						Type:      images.UpdateFileTypeImageManifest,
 					},
 					provisioning.UpdateFile{
 						Filename:  "file2.txt",
 						Size:      fileSize(t, "testdata/success/file2.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file2.txt"),
 						Component: images.UpdateFileComponentDebug,
-						Type:      api.UpdateFileTypeImageManifest,
+						Type:      images.UpdateFileTypeImageManifest,
 					},
 				},
 			},
@@ -464,28 +463,28 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			name:            "error - additional file present in tar",
 			tarContentFiles: "testdata/success",
 			updateManifest: provisioning.Update{
-				Severity: api.UpdateSeverityNone,
+				Severity: images.UpdateSeverityNone,
 				Files: provisioning.UpdateFiles{
 					provisioning.UpdateFile{
 						Filename:  "file1.txt",
 						Size:      fileSize(t, "testdata/success/file1.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file1.txt"),
 						Component: images.UpdateFileComponentDebug,
-						Type:      api.UpdateFileTypeImageManifest,
+						Type:      images.UpdateFileTypeImageManifest,
 					},
 					provisioning.UpdateFile{
 						Filename:  "file2.txt",
 						Size:      fileSize(t, "testdata/success/file2.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file2.txt"),
 						Component: images.UpdateFileComponentDebug,
-						Type:      api.UpdateFileTypeImageManifest,
+						Type:      images.UpdateFileTypeImageManifest,
 					},
 					provisioning.UpdateFile{
 						Filename:  "file3.txt", // Additional file in the manifest, missing in the tar.
 						Size:      fileSize(t, "testdata/success/file2.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file2.txt"),
 						Component: images.UpdateFileComponentDebug,
-						Type:      api.UpdateFileTypeImageManifest,
+						Type:      images.UpdateFileTypeImageManifest,
 					},
 				},
 			},
@@ -504,14 +503,14 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			name:            "error - file missing in tar",
 			tarContentFiles: "testdata/success",
 			updateManifest: provisioning.Update{
-				Severity: api.UpdateSeverityNone,
+				Severity: images.UpdateSeverityNone,
 				Files: provisioning.UpdateFiles{
 					provisioning.UpdateFile{
 						Filename:  "file1.txt",
 						Size:      fileSize(t, "testdata/success/file1.txt"),
 						Sha256:    fileSha256(t, "testdata/success/file1.txt"),
 						Component: images.UpdateFileComponentDebug,
-						Type:      api.UpdateFileTypeImageManifest,
+						Type:      images.UpdateFileTypeImageManifest,
 					},
 					// file2.txt not in manifest
 				},

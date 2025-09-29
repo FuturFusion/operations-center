@@ -25,7 +25,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		UUID:        uuid.MustParse(`e399698d-db42-53f6-97d7-1ad04dac34ba`),
 		Version:     "202505110348",
 		PublishedAt: time.Date(2025, 5, 11, 4, 16, 36, 0, time.UTC),
-		Severity:    api.UpdateSeverityNone,
+		Severity:    images.UpdateSeverityNone,
 		Origin:      "linuxcontainers.org",
 		Channels:    []string{"daily"},
 		Status:      api.UpdateStatusReady,
@@ -49,7 +49,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 		UUID:        uuid.MustParse(`d3a52570-df97-56bc-a849-0d634c945b8c`),
 		Version:     "202505110031",
 		PublishedAt: time.Date(2025, 5, 11, 0, 56, 27, 0, time.UTC),
-		Severity:    api.UpdateSeverityNone,
+		Severity:    images.UpdateSeverityNone,
 		Origin:      "alternative.org",
 		Channels:    []string{"stable", "daily"},
 		Status:      api.UpdateStatusReady,
@@ -128,7 +128,7 @@ func TestUpdateDatabaseActions(t *testing.T) {
 	require.Equal(t, updateA, *dbUpdateA)
 
 	// Upsert existing entry
-	updateA.Severity = api.UpdateSeverityCritical
+	updateA.Severity = images.UpdateSeverityCritical
 	err = update.Upsert(ctx, updateA)
 	require.NoError(t, err)
 

@@ -312,8 +312,9 @@ func readUpdateJSONAndChangelog(updateJSONBody []byte, destDir string, extracted
 		}
 
 		// Fallback to x84_64 for architecture if not defined.
-		if fileEntry.Architecture == api.ArchitectureUndefined {
-			fileEntry.Architecture = api.Architecture64BitIntelX86
+		_, ok = images.UpdateFileArchitectures[fileEntry.Architecture]
+		if !ok || fileEntry.Architecture == images.UpdateFileArchitectureUndefined {
+			fileEntry.Architecture = images.UpdateFileArchitecture64BitX86
 		}
 
 		files = append(files, fileEntry)
