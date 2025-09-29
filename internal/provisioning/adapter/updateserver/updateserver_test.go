@@ -79,7 +79,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 							},
 							provisioning.UpdateFile{
 								Filename:     "undefined_file_component.iso", // filtered out, since the file component is unknown.
-								Architecture: api.Architecture64BitIntelX86,
+								Architecture: images.UpdateFileArchitecture64BitX86,
 							},
 						},
 					},
@@ -97,7 +97,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 					Files: provisioning.UpdateFiles{
 						provisioning.UpdateFile{
 							Filename:     "undefined_architecture.iso",
-							Architecture: api.Architecture64BitIntelX86,
+							Architecture: images.UpdateFileArchitecture64BitX86,
 							Component:    images.UpdateFileComponentIncus,
 						},
 					},

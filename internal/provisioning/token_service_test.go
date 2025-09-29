@@ -501,7 +501,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 		name                                  string
 		tokenArg                              uuid.UUID
 		imageTypeArg                          api.ImageType
-		architectureArg                       api.Architecture
+		architectureArg                       images.UpdateFileArchitecture
 		seedConfigArg                         provisioning.TokenImageSeedConfigs
 		repoGetByUUIDErr                      error
 		updateSvcGetAllUpdates                provisioning.Updates
@@ -518,7 +518,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			name:            "success",
 			tokenArg:        uuidA,
 			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: api.Architecture64BitIntelX86,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:   provisioning.TokenImageSeedConfigs{},
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
@@ -529,7 +529,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 				{
 					Filename:     isoGzFilename,
 					Type:         images.UpdateFileTypeImageISO,
-					Architecture: api.Architecture64BitIntelX86,
+					Architecture: images.UpdateFileArchitecture64BitX86,
 				},
 			},
 			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
@@ -545,7 +545,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 		{
 			name:            "error - invalid image type",
 			imageTypeArg:    api.ImageType(`invalid`), // invalid
-			architectureArg: api.Architecture64BitIntelX86,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:   provisioning.TokenImageSeedConfigs{},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -556,7 +556,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 		{
 			name:            "error - invalid architecture",
 			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: api.Architecture("invalid"), // invalid
+			architectureArg: images.UpdateFileArchitecture("invalid"), // invalid
 			seedConfigArg:   provisioning.TokenImageSeedConfigs{},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -568,7 +568,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			name:             "error - repo.GetByUUID",
 			tokenArg:         uuidA,
 			imageTypeArg:     api.ImageTypeISO,
-			architectureArg:  api.Architecture64BitIntelX86,
+			architectureArg:  images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:    provisioning.TokenImageSeedConfigs{},
 			repoGetByUUIDErr: boom.Error,
 
@@ -578,7 +578,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			name:               "error - updateSvc.GetAll",
 			tokenArg:           uuidA,
 			imageTypeArg:       api.ImageTypeISO,
-			architectureArg:    api.Architecture64BitIntelX86,
+			architectureArg:    images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:      provisioning.TokenImageSeedConfigs{},
 			updateSvcGetAllErr: boom.Error,
 
@@ -588,7 +588,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			name:                   "error - updateSvc.GetAll - no updates",
 			tokenArg:               uuidA,
 			imageTypeArg:           api.ImageTypeISO,
-			architectureArg:        api.Architecture64BitIntelX86,
+			architectureArg:        images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:          provisioning.TokenImageSeedConfigs{},
 			updateSvcGetAllUpdates: provisioning.Updates{},
 
@@ -600,7 +600,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			name:            "error - updateSvc.GetUpdateAllFiles",
 			tokenArg:        uuidA,
 			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: api.Architecture64BitIntelX86,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:   provisioning.TokenImageSeedConfigs{},
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
@@ -615,7 +615,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			name:            "error - updateSvc.GetUpdateAllFiles - no files",
 			tokenArg:        uuidA,
 			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: api.Architecture64BitIntelX86,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:   provisioning.TokenImageSeedConfigs{},
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
@@ -632,7 +632,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			name:            "error - updateSvc.GetUpdateByFilename",
 			tokenArg:        uuidA,
 			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: api.Architecture64BitIntelX86,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:   provisioning.TokenImageSeedConfigs{},
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
@@ -643,7 +643,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 				{
 					Filename:     isoGzFilename,
 					Type:         images.UpdateFileTypeImageISO,
-					Architecture: api.Architecture64BitIntelX86,
+					Architecture: images.UpdateFileArchitecture64BitX86,
 				},
 			},
 			updateSvcGetFileByFilenameErr: boom.Error,
@@ -654,7 +654,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			name:            "error - updateSvc.GetUpdateByFilename not *os.File",
 			tokenArg:        uuidA,
 			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: api.Architecture64BitIntelX86,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:   provisioning.TokenImageSeedConfigs{},
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
@@ -665,7 +665,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 				{
 					Filename:     isoGzFilename,
 					Type:         images.UpdateFileTypeImageISO,
-					Architecture: api.Architecture64BitIntelX86,
+					Architecture: images.UpdateFileArchitecture64BitX86,
 				},
 			},
 			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
@@ -680,7 +680,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			name:            "error - flasher.GenerateSeededImage",
 			tokenArg:        uuidA,
 			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: api.Architecture64BitIntelX86,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:   provisioning.TokenImageSeedConfigs{},
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
@@ -691,7 +691,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 				{
 					Filename:     isoGzFilename,
 					Type:         images.UpdateFileTypeImageISO,
-					Architecture: api.Architecture64BitIntelX86,
+					Architecture: images.UpdateFileArchitecture64BitX86,
 				},
 			},
 			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
@@ -1097,7 +1097,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 	tests := []struct {
 		name                                  string
 		imageTypeArg                          api.ImageType
-		architectureArg                       api.Architecture
+		architectureArg                       images.UpdateFileArchitecture
 		repoGetByUUIDErr                      error
 		repoGetTokenSeedByNameErr             error
 		updateSvcGetAllUpdates                provisioning.Updates
@@ -1113,7 +1113,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		{
 			name:            "success",
 			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: api.Architecture64BitIntelX86,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -1123,7 +1123,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 				{
 					Filename:     isoGzFilename,
 					Type:         images.UpdateFileTypeImageISO,
-					Architecture: api.Architecture64BitIntelX86,
+					Architecture: images.UpdateFileArchitecture64BitX86,
 				},
 			},
 			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
@@ -1139,7 +1139,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		{
 			name:            "error - invalid image type",
 			imageTypeArg:    api.ImageType(`invalid`), // invalid
-			architectureArg: api.Architecture64BitIntelX86,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
@@ -1149,7 +1149,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		{
 			name:            "error - invalid architecture",
 			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: api.Architecture("invalid"), // invalid
+			architectureArg: images.UpdateFileArchitecture("invalid"), // invalid
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr domain.ErrValidation
@@ -1159,7 +1159,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		{
 			name:             "error - repo.GetByUUID",
 			imageTypeArg:     api.ImageTypeISO,
-			architectureArg:  api.Architecture64BitIntelX86,
+			architectureArg:  images.UpdateFileArchitecture64BitX86,
 			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -1167,7 +1167,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		{
 			name:                      "error - repo.GetByUUID",
 			imageTypeArg:              api.ImageTypeISO,
-			architectureArg:           api.Architecture64BitIntelX86,
+			architectureArg:           images.UpdateFileArchitecture64BitX86,
 			repoGetTokenSeedByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -1175,7 +1175,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		{
 			name:               "error - updateSvc.GetAll",
 			imageTypeArg:       api.ImageTypeISO,
-			architectureArg:    api.Architecture64BitIntelX86,
+			architectureArg:    images.UpdateFileArchitecture64BitX86,
 			updateSvcGetAllErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -1183,7 +1183,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		{
 			name:                   "error - updateSvc.GetAll - no updates",
 			imageTypeArg:           api.ImageTypeISO,
-			architectureArg:        api.Architecture64BitIntelX86,
+			architectureArg:        images.UpdateFileArchitecture64BitX86,
 			updateSvcGetAllUpdates: provisioning.Updates{},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -1193,7 +1193,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		{
 			name:            "error - updateSvc.GetUpdateAllFiles",
 			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: api.Architecture64BitIntelX86,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -1206,7 +1206,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		{
 			name:            "error - updateSvc.GetUpdateAllFiles - no files",
 			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: api.Architecture64BitIntelX86,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -1221,7 +1221,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		{
 			name:            "error - updateSvc.GetUpdateByFilename",
 			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: api.Architecture64BitIntelX86,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -1231,7 +1231,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 				{
 					Filename:     isoGzFilename,
 					Type:         images.UpdateFileTypeImageISO,
-					Architecture: api.Architecture64BitIntelX86,
+					Architecture: images.UpdateFileArchitecture64BitX86,
 				},
 			},
 			updateSvcGetFileByFilenameErr: boom.Error,
@@ -1241,7 +1241,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		{
 			name:            "error - updateSvc.GetUpdateByFilename not *os.File",
 			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: api.Architecture64BitIntelX86,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -1251,7 +1251,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 				{
 					Filename:     isoGzFilename,
 					Type:         images.UpdateFileTypeImageISO,
-					Architecture: api.Architecture64BitIntelX86,
+					Architecture: images.UpdateFileArchitecture64BitX86,
 				},
 			},
 			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
@@ -1265,7 +1265,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		{
 			name:            "error - flasher.GenerateSeededImage",
 			imageTypeArg:    api.ImageTypeISO,
-			architectureArg: api.Architecture64BitIntelX86,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
 			updateSvcGetAllUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
@@ -1275,7 +1275,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 				{
 					Filename:     isoGzFilename,
 					Type:         images.UpdateFileTypeImageISO,
-					Architecture: api.Architecture64BitIntelX86,
+					Architecture: images.UpdateFileArchitecture64BitX86,
 				},
 			},
 			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {

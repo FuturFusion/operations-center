@@ -12,6 +12,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 )
 
 // TokenServiceWithSlog implements provisioning.TokenService that is instrumented with slog logger.
@@ -321,7 +322,7 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 }
 
 // GetPreSeedImage implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture api.Architecture, seedConfig provisioning.TokenImageSeedConfigs) (readCloser io.ReadCloser, err error) {
+func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (readCloser io.ReadCloser, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -359,7 +360,7 @@ func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID
 }
 
 // GetTokenImageFromTokenSeed implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture api.Architecture) (readCloser io.ReadCloser, err error) {
+func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture) (readCloser io.ReadCloser, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(

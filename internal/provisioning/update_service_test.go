@@ -759,12 +759,12 @@ func TestUpdateService_Refresh(t *testing.T) {
 							// Generate hash: echo -n "dummy" | sha256sum
 							Sha256: "b5a2c96250612366ea272ffac6d9744aaf4b45aacd96aa7cfcb931ee3b558259",
 
-							Architecture: api.Architecture64BitIntelX86,
+							Architecture: images.UpdateFileArchitecture64BitX86,
 						},
 						{
 							// This file is filtered because of architecture.
 							Size:         5,
-							Architecture: api.Architecture64BitARMV8LittleEndian,
+							Architecture: images.UpdateFileArchitecture64BitARM,
 						},
 					},
 				},

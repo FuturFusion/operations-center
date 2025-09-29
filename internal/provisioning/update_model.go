@@ -77,12 +77,12 @@ func (u Updates) Swap(i, j int) {
 }
 
 type UpdateFile struct {
-	Filename     string                     `json:"filename"`
-	Size         int                        `json:"size"`
-	Sha256       string                     `json:"sha256"`
-	Component    images.UpdateFileComponent `json:"component"`
-	Type         images.UpdateFileType      `json:"type"`
-	Architecture api.Architecture           `json:"architecture"`
+	Filename     string                        `json:"filename"`
+	Size         int                           `json:"size"`
+	Sha256       string                        `json:"sha256"`
+	Component    images.UpdateFileComponent    `json:"component"`
+	Type         images.UpdateFileType         `json:"type"`
+	Architecture images.UpdateFileArchitecture `json:"architecture"`
 }
 
 type UpdateFilter struct {

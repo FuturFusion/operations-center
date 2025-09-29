@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/transaction"
@@ -112,12 +113,13 @@ func (s tokenService) Consume(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
-func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture api.Architecture, seeds TokenImageSeedConfigs) (_ io.ReadCloser, err error) {
+func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seeds TokenImageSeedConfigs) (_ io.ReadCloser, err error) {
 	if !imageType.IsValid() {
 		return nil, domain.NewValidationErrf("Invalid image type")
 	}
 
-	if !architecture.IsValid() {
+	_, ok := images.UpdateFileArchitectures[architecture]
+	if !ok {
 		return nil, domain.NewValidationErrf("Invalid architecture")
 	}
 
@@ -188,12 +190,13 @@ func (s tokenService) DeleteTokenSeedByName(ctx context.Context, id uuid.UUID, n
 	return nil
 }
 
-func (s tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture api.Architecture) (io.ReadCloser, error) {
+func (s tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture) (io.ReadCloser, error) {
 	if !imageType.IsValid() {
 		return nil, domain.NewValidationErrf("Invalid image type")
 	}
 
-	if !architecture.IsValid() {
+	_, ok := images.UpdateFileArchitectures[architecture]
+	if !ok {
 		return nil, domain.NewValidationErrf("Invalid architecture")
 	}
 
@@ -210,7 +213,7 @@ func (s tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UU
 	return s.getPreSeedImage(ctx, id, imageType, architecture, tokenSeed.Seeds)
 }
 
-func (s tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture api.Architecture, seeds TokenImageSeedConfigs) (_ io.ReadCloser, err error) {
+func (s tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seeds TokenImageSeedConfigs) (_ io.ReadCloser, err error) {
 	// TODO: Allow filters?
 	updates, err := s.updateSvc.GetAll(ctx)
 	if err != nil {
