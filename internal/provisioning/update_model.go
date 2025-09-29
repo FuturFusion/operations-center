@@ -19,30 +19,29 @@ import (
 )
 
 type Update struct {
-	ID          string             `json:"-"`
-	UUID        uuid.UUID          `json:"-" db:"primary=yes"`
-	Format      string             `json:"format" db:"ignore"`
-	Origin      string             `json:"origin"`
-	Version     string             `json:"version"`
-	PublishedAt time.Time          `json:"published_at"`
-	Severity    api.UpdateSeverity `json:"severity"`
-	Channels    UpdateChannels     `json:"channels"`
-	Changelog   string             `json:"-"`
-	Files       UpdateFiles        `json:"files"`
-	URL         string             `json:"url"`
-	Status      api.UpdateStatus   `json:"-"`
-	LastUpdated time.Time          `json:"-" db:"update_timestamp"`
+	ID          string                `json:"-"`
+	UUID        uuid.UUID             `json:"-" db:"primary=yes"`
+	Format      string                `json:"format" db:"ignore"`
+	Origin      string                `json:"origin"`
+	Version     string                `json:"version"`
+	PublishedAt time.Time             `json:"published_at"`
+	Severity    images.UpdateSeverity `json:"severity"`
+	Channels    UpdateChannels        `json:"channels"`
+	Changelog   string                `json:"-"`
+	Files       UpdateFiles           `json:"files"`
+	URL         string                `json:"url"`
+	Status      api.UpdateStatus      `json:"-"`
+	LastUpdated time.Time             `json:"-" db:"update_timestamp"`
 }
 
 func (u Update) Validate() error {
-	var updateSeverity api.UpdateSeverity
-	err := updateSeverity.UnmarshalText([]byte(u.Severity))
-	if u.Severity == "" || err != nil {
-		return domain.NewValidationErrf("Invalid update, validation of severity failed: %v", err)
+	_, ok := images.UpdateSeverities[u.Severity]
+	if !ok {
+		return domain.NewValidationErrf("Invalid update, validation of severity failed: %q is not a valid update severity", u.Severity)
 	}
 
 	var updateStatus api.UpdateStatus
-	err = updateStatus.UnmarshalText([]byte(u.Status))
+	err := updateStatus.UnmarshalText([]byte(u.Status))
 	if u.Status == "" || err != nil {
 		return domain.NewValidationErrf("Invalid update, validation of status failed: %v", err)
 	}

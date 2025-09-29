@@ -23,7 +23,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/signature/signaturetest"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
-	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestLocalfs_Get(t *testing.T) {
@@ -321,7 +320,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 				Origin:      "testdata",
 				Version:     "1",
 				PublishedAt: time.Date(2025, 5, 21, 7, 25, 37, 0, time.UTC),
-				Severity:    api.UpdateSeverityNone,
+				Severity:    images.UpdateSeverityNone,
 				Channels:    []string{"daily"},
 				Files: provisioning.UpdateFiles{
 					provisioning.UpdateFile{
@@ -374,7 +373,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			tarContentFiles: "testdata/success",
 			updateManifest: provisioning.Update{
 				Origin:   "testdata",
-				Severity: api.UpdateSeverityNone,
+				Severity: images.UpdateSeverityNone,
 			},
 			setupTmpDir: func(t *testing.T, tmpDir string) {
 				t.Helper()
@@ -397,7 +396,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			name:            "error - file size mismatch",
 			tarContentFiles: "testdata/success",
 			updateManifest: provisioning.Update{
-				Severity: api.UpdateSeverityNone,
+				Severity: images.UpdateSeverityNone,
 				Files: provisioning.UpdateFiles{
 					provisioning.UpdateFile{
 						Filename:  "file1.txt",
@@ -431,7 +430,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			name:            "error - file sha256 mismatch",
 			tarContentFiles: "testdata/success",
 			updateManifest: provisioning.Update{
-				Severity: api.UpdateSeverityNone,
+				Severity: images.UpdateSeverityNone,
 				Files: provisioning.UpdateFiles{
 					provisioning.UpdateFile{
 						Filename:  "file1.txt",
@@ -464,7 +463,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			name:            "error - additional file present in tar",
 			tarContentFiles: "testdata/success",
 			updateManifest: provisioning.Update{
-				Severity: api.UpdateSeverityNone,
+				Severity: images.UpdateSeverityNone,
 				Files: provisioning.UpdateFiles{
 					provisioning.UpdateFile{
 						Filename:  "file1.txt",
@@ -504,7 +503,7 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			name:            "error - file missing in tar",
 			tarContentFiles: "testdata/success",
 			updateManifest: provisioning.Update{
-				Severity: api.UpdateSeverityNone,
+				Severity: images.UpdateSeverityNone,
 				Files: provisioning.UpdateFiles{
 					provisioning.UpdateFile{
 						Filename:  "file1.txt",
