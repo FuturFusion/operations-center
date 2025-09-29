@@ -116,6 +116,6 @@ func (e Environment) pathWithEnvOverride(prefixDir, suffixDir string) string {
 const IncusOSSocket = "/run/incus-os/unix.socket"
 
 // IsIncusOS checks if the host system is running Incus OS.
-func IsIncusOS() bool {
+func (e Environment) IsIncusOS() bool {
 	return file.PathExists("/var/lib/incus-os/")
 }
