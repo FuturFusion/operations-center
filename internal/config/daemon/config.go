@@ -277,6 +277,11 @@ func saveToDisk(cfg config) error {
 
 func validate(cfg config) error {
 	// Network configuration
+	isRestServerAddressChanged := globalConfigInstance.Network.RestServerAddress != cfg.Network.RestServerAddress
+	if env.IsIncusOS() && isRestServerAddressChanged && cfg.Network.RestServerAddress == "" {
+		return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" can not be empty when running on IncusOS`)
+	}
+
 	if cfg.Network.RestServerAddress != "" {
 		host, portStr, err := net.SplitHostPort(cfg.Network.RestServerAddress)
 		if err != nil {

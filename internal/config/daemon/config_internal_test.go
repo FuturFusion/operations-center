@@ -29,6 +29,32 @@ func Test_validate(t *testing.T) {
 
 		// Network
 		{
+			name: "require network.rest_server_address to be not empty on IncusOS",
+			oldCfg: &config{
+				Network: api.SystemNetwork{
+					SystemNetworkPut: api.SystemNetworkPut{
+						RestServerAddress:       "127.0.0.1:7443",
+						OperationsCenterAddress: "http://localhost:7443",
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			cfg: config{
+				Network: api.SystemNetwork{
+					SystemNetworkPut: api.SystemNetworkPut{
+						RestServerAddress:       "", // empty not allowed on IncusOS
+						OperationsCenterAddress: "http://localhost:7443",
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			isIncusOS: true,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid config, "network.rest_server_address" can not be empty when running on IncusOS`)
+			},
+		},
+		{
 			name: "require network.rest_server_address to be valid - multiple single colons",
 			cfg: config{
 				Network: api.SystemNetwork{
