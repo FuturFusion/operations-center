@@ -17,6 +17,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	shared "github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -27,7 +28,22 @@ func TestSystemCertificatePut(t *testing.T) {
 
 	ctx := context.Background()
 
-	config.InitTest(t)
+	env := &mock.EnvironmentMock{
+		IsIncusOSFunc: func() bool {
+			return false
+		},
+		GetUnixSocketFunc: func() string {
+			return filepath.Join(tmpDir, "unix.socket")
+		},
+		VarDirFunc: func() string {
+			return tmpDir
+		},
+		UsrShareDirFunc: func() string {
+			return tmpDir
+		},
+	}
+
+	config.InitTest(t, env)
 	err := config.UpdateNetwork(ctx, shared.SystemNetworkPut{
 		OperationsCenterAddress: "https://127.0.0.1:17443",
 		RestServerAddress:       "[::1]:17443",
@@ -36,10 +52,7 @@ func TestSystemCertificatePut(t *testing.T) {
 
 	d := api.NewDaemon(
 		ctx,
-		api.MockEnv{
-			UnixSocket:   filepath.Join(tmpDir, "unix.socket"),
-			VarDirectory: tmpDir,
-		},
+		env,
 	)
 
 	err = d.Start(ctx)

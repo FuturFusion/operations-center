@@ -16,6 +16,7 @@ import (
 
 	restapi "github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/environment/mock"
 )
 
 func TestSystemConfigUpdate(t *testing.T) {
@@ -48,16 +49,28 @@ func TestSystemConfigUpdate(t *testing.T) {
 	// Start OpenFGA container.
 	openFGAEndpoint, openFGAStoreID := setupOpenFGA(ctx, t)
 
+	env := &mock.EnvironmentMock{
+		IsIncusOSFunc: func() bool {
+			return false
+		},
+		GetUnixSocketFunc: func() string {
+			return filepath.Join(tmpDir, "unix.socket")
+		},
+		VarDirFunc: func() string {
+			return tmpDir
+		},
+		UsrShareDirFunc: func() string {
+			return tmpDir
+		},
+	}
+
 	// Setup daemon with empty (default) configuration for actual tests.
-	config.InitTest(t)
+	config.InitTest(t, env)
 	require.NoError(t, err)
 
 	d := restapi.NewDaemon(
 		ctx,
-		restapi.MockEnv{
-			UnixSocket:   filepath.Join(tmpDir, "unix.socket"),
-			VarDirectory: tmpDir,
-		},
+		env,
 	)
 	err = d.Start(ctx)
 	require.NoError(t, err)
