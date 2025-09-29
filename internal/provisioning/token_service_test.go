@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -527,7 +528,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
 				{
 					Filename:     isoGzFilename,
-					Type:         api.UpdateFileTypeImageISO,
+					Type:         images.UpdateFileTypeImageISO,
 					Architecture: api.Architecture64BitIntelX86,
 				},
 			},
@@ -641,7 +642,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
 				{
 					Filename:     isoGzFilename,
-					Type:         api.UpdateFileTypeImageISO,
+					Type:         images.UpdateFileTypeImageISO,
 					Architecture: api.Architecture64BitIntelX86,
 				},
 			},
@@ -663,7 +664,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
 				{
 					Filename:     isoGzFilename,
-					Type:         api.UpdateFileTypeImageISO,
+					Type:         images.UpdateFileTypeImageISO,
 					Architecture: api.Architecture64BitIntelX86,
 				},
 			},
@@ -689,7 +690,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
 				{
 					Filename:     isoGzFilename,
-					Type:         api.UpdateFileTypeImageISO,
+					Type:         images.UpdateFileTypeImageISO,
 					Architecture: api.Architecture64BitIntelX86,
 				},
 			},
@@ -1121,7 +1122,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
 				{
 					Filename:     isoGzFilename,
-					Type:         api.UpdateFileTypeImageISO,
+					Type:         images.UpdateFileTypeImageISO,
 					Architecture: api.Architecture64BitIntelX86,
 				},
 			},
@@ -1229,7 +1230,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
 				{
 					Filename:     isoGzFilename,
-					Type:         api.UpdateFileTypeImageISO,
+					Type:         images.UpdateFileTypeImageISO,
 					Architecture: api.Architecture64BitIntelX86,
 				},
 			},
@@ -1249,7 +1250,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
 				{
 					Filename:     isoGzFilename,
-					Type:         api.UpdateFileTypeImageISO,
+					Type:         images.UpdateFileTypeImageISO,
 					Architecture: api.Architecture64BitIntelX86,
 				},
 			},
@@ -1273,7 +1274,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
 				{
 					Filename:     isoGzFilename,
-					Type:         api.UpdateFileTypeImageISO,
+					Type:         images.UpdateFileTypeImageISO,
 					Architecture: api.Architecture64BitIntelX86,
 				},
 			},

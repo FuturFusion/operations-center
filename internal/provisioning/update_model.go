@@ -82,7 +82,7 @@ type UpdateFile struct {
 	Size         int                        `json:"size"`
 	Sha256       string                     `json:"sha256"`
 	Component    images.UpdateFileComponent `json:"component"`
-	Type         api.UpdateFileType         `json:"type"`
+	Type         images.UpdateFileType      `json:"type"`
 	Architecture api.Architecture           `json:"architecture"`
 }
 
