@@ -21,11 +21,23 @@ const (
 	applicationConfEnvSuffix   = "_CONF"
 )
 
-// Environment is a high-level facade for accessing operating-system level functionalities.
-type Environment struct {
+type Environment interface {
+	LogDir() string
+	RunDir() string
+	VarDir() string
+	UsrShareDir() string
+	GetUnixSocket() string
+	UserConfigDir() (string, error)
+	IsIncusOS() bool
+}
+
+// environment is a high-level facade for accessing operating-system level functionalities.
+type environment struct {
 	applicationName      string
 	applicationEnvPrefix string
 }
+
+var _ Environment = environment{}
 
 // New returns an Environment initialized with sane default values.
 // The applicationName might be added to directory paths where reasonable.
@@ -34,7 +46,7 @@ type Environment struct {
 // For example with the applicationNameEnvPrefix "APP", the env var
 // APP_DIR is formed.
 func New(applicationName, applicationEnvPrefix string) Environment {
-	return Environment{
+	return environment{
 		applicationName:      applicationName,
 		applicationEnvPrefix: applicationEnvPrefix,
 	}
@@ -42,30 +54,30 @@ func New(applicationName, applicationEnvPrefix string) Environment {
 
 // LogDir returns the path to the log directory of the application (e.g. /var/log/).
 // It respects <APP_PREFIX>_DIR environment variable.
-func (e Environment) LogDir() string {
+func (e environment) LogDir() string {
 	return e.pathWithEnvOverride(logPathDefaultPrefix, logPathSuffix)
 }
 
 // RunDir returns the path to the runtime directory of the application (e.g. /run/<application-name>).
 // It respects <APP_PREFIX>_DIR environment variable.
-func (e Environment) RunDir() string {
+func (e environment) RunDir() string {
 	return e.pathWithEnvOverride(runPathDefaultPrefix, e.applicationName)
 }
 
 // VarDir returns the path to the data directory of the application (e.g. /var/lib/<application-name>).
 // It respects <APP_PREFIX>_DIR environment variable.
-func (e Environment) VarDir() string {
+func (e environment) VarDir() string {
 	return e.pathWithEnvOverride(varPathDefaultPrefix, e.applicationName)
 }
 
 // UsrShareDir returns the path to the static directory of the application (e.g. /usr/share/<application-name>).
 // It respects <APP_PREFIX>_DIR environment variable.
-func (e Environment) UsrShareDir() string {
+func (e environment) UsrShareDir() string {
 	return e.pathWithEnvOverride(usrSharePathDefaultPrefix, e.applicationName)
 }
 
 // GetUnixSocket returns the full file name of the unix socket.
-func (e Environment) GetUnixSocket() string {
+func (e environment) GetUnixSocket() string {
 	path := os.Getenv(e.applicationEnvPrefix + applicationSocketEnvSuffix)
 	if path != "" {
 		return path
@@ -74,7 +86,7 @@ func (e Environment) GetUnixSocket() string {
 	return filepath.Join(e.RunDir(), "unix.socket")
 }
 
-func (e Environment) UserConfigDir() (string, error) {
+func (e environment) UserConfigDir() (string, error) {
 	applicationConfEnvVar := e.applicationEnvPrefix + applicationConfEnvSuffix
 	if os.Getenv(applicationConfEnvVar) != "" {
 		return os.ExpandEnv(os.Getenv(applicationConfEnvVar)), nil
@@ -103,7 +115,7 @@ func (e Environment) UserConfigDir() (string, error) {
 
 // pathWithEnvOverride returns the directory combined from prefixDir and suffixDir
 // where the prefix maybe overridden by a value provided by the prefixDirEnvVar.
-func (e Environment) pathWithEnvOverride(prefixDir, suffixDir string) string {
+func (e environment) pathWithEnvOverride(prefixDir, suffixDir string) string {
 	dirEnvVar := e.applicationEnvPrefix + applicationDirEnvSuffix
 	prefix := prefixDir
 	if os.Getenv(dirEnvVar) != "" {
@@ -115,7 +127,7 @@ func (e Environment) pathWithEnvOverride(prefixDir, suffixDir string) string {
 
 const IncusOSSocket = "/run/incus-os/unix.socket"
 
-// IsIncusOS checks if the host system is running Incus OS.
-func IsIncusOS() bool {
+// IsIncusOS checks if the host system is running IncusOS.
+func (e environment) IsIncusOS() bool {
 	return file.PathExists("/var/lib/incus-os/")
 }

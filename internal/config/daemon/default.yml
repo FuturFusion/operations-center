@@ -2,7 +2,7 @@
 
 network:
   # address is the the URL, where Operations Center is publically reachable.
-  # This is used in the seed configuration for Incus OS instances in order
+  # This is used in the seed configuration for IncusOS instances in order
   # to point them back to Operations Center.
   address: ""
 

@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/internal/system"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -90,8 +91,10 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tmpDir := t.TempDir()
 
-			env := mockEnv{
-				varDir: tmpDir,
+			env := &mock.EnvironmentMock{
+				VarDirFunc: func() string {
+					return tmpDir
+				},
 			}
 
 			tc.setupEnv(t, env.VarDir())
@@ -154,7 +157,13 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			config.InitTest(t)
+			env := &mock.EnvironmentMock{
+				IsIncusOSFunc: func() bool {
+					return false
+				},
+			}
+
+			config.InitTest(t, env)
 			systemSvc := system.NewSystemService(nil, nil)
 
 			// Run test
@@ -187,7 +196,13 @@ func TestSystemService_GetNetworkConfig(t *testing.T) {
 				},
 			}
 
-			config.InitTest(t)
+			env := &mock.EnvironmentMock{
+				IsIncusOSFunc: func() bool {
+					return false
+				},
+			}
+
+			config.InitTest(t, env)
 			err := config.UpdateNetwork(t.Context(), networkConfig.SystemNetworkPut)
 			require.NoError(t, err)
 
@@ -247,7 +262,13 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			config.InitTest(t)
+			env := &mock.EnvironmentMock{
+				IsIncusOSFunc: func() bool {
+					return false
+				},
+			}
+
+			config.InitTest(t, env)
 			systemSvc := system.NewSystemService(nil, nil)
 
 			// Run test
@@ -317,7 +338,13 @@ dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			config.InitTest(t)
+			env := &mock.EnvironmentMock{
+				IsIncusOSFunc: func() bool {
+					return false
+				},
+			}
+
+			config.InitTest(t, env)
 			systemSvc := system.NewSystemService(nil, nil)
 
 			// Run test
@@ -330,9 +357,3 @@ dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 		})
 	}
 }
-
-type mockEnv struct {
-	varDir string
-}
-
-func (e mockEnv) VarDir() string { return e.varDir }

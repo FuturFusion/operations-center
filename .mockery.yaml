@@ -5,7 +5,7 @@ template: matryer
 require-template-schema-exists: false
 force-file-write: true
 include-auto-generated: true
-include-interface-regex: "(.+Repo|.+Port|.*ServerClient|.+Service|InventorySyncer)"
+include-interface-regex: "(.+Repo|.+Port|.*ServerClient|.+Service|InventorySyncer|Environment)"
 exclude-interface-regex: "(Image|Instance|InventoryAggregate|Network|NetworkACL|NetworkAddressSet|NetworkForward|NetworkIntegration|NetworkLoadBalancer|NetworkPeer|NetworkZone|Profile|Project|StorageBucket|StoragePool|StorageVolume)Service"
 dir: >-
   {{- $targetDir := "mock" -}}
@@ -23,6 +23,7 @@ filename: "{{ .InterfaceName | snakecase }}_mock_gen.go"
 structname: "{{ .InterfaceName }}Mock"
 pkgname: mock
 packages:
+  github.com/FuturFusion/operations-center/internal/environment:
   github.com/FuturFusion/operations-center/internal/inventory:
   github.com/FuturFusion/operations-center/internal/provisioning:
   github.com/FuturFusion/operations-center/internal/system:

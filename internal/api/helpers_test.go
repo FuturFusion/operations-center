@@ -18,15 +18,3 @@ type noopAuthorizer struct{}
 func (n noopAuthorizer) CheckPermission(ctx context.Context, details *authz.RequestDetails, object authz.Object, entitlement authz.Entitlement) error {
 	return nil
 }
-
-type MockEnv struct {
-	LogDirectory      string
-	VarDirectory      string
-	UsrShareDirectory string
-	UnixSocket        string
-}
-
-func (e MockEnv) LogDir() string        { return e.LogDirectory }
-func (e MockEnv) VarDir() string        { return e.VarDirectory }
-func (e MockEnv) UsrShareDir() string   { return e.UsrShareDirectory }
-func (e MockEnv) GetUnixSocket() string { return e.UnixSocket }

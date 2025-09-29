@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -152,7 +153,11 @@ func TestUpdateNetwork(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			config.InitTest(t)
+			config.InitTest(t, &mock.EnvironmentMock{
+				IsIncusOSFunc: func() bool {
+					return false
+				},
+			})
 
 			err := config.UpdateNetwork(t.Context(), tc.cfg)
 

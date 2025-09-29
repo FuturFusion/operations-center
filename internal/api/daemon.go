@@ -61,6 +61,7 @@ type environment interface {
 	GetUnixSocket() string
 	VarDir() string
 	UsrShareDir() string
+	IsIncusOS() bool
 }
 
 type Daemon struct {
@@ -520,7 +521,7 @@ func (d *Daemon) setupAPIRoutes(
 	osRouter := router.SubGroup(osRouterPrefix).AddMiddlewares(
 		d.authenticator.Middleware(),
 	)
-	registerOSProxy(osRouter, osRouterPrefix, d.authorizer)
+	registerOSProxy(osRouter, osRouterPrefix, d.authorizer, d.env)
 
 	if d.oidcVerifier != nil {
 		registerOIDCHandlers(router, d.oidcVerifier)

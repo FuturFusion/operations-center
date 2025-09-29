@@ -5,13 +5,16 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func Test_validate(t *testing.T) {
 	tests := []struct {
-		name string
-		cfg  config
+		name      string
+		oldCfg    *config
+		cfg       config
+		isIncusOS bool
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -25,6 +28,32 @@ func Test_validate(t *testing.T) {
 		},
 
 		// Network
+		{
+			name: "require network.rest_server_address to be not empty on IncusOS",
+			oldCfg: &config{
+				Network: api.SystemNetwork{
+					SystemNetworkPut: api.SystemNetworkPut{
+						RestServerAddress:       "127.0.0.1:7443",
+						OperationsCenterAddress: "http://localhost:7443",
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			cfg: config{
+				Network: api.SystemNetwork{
+					SystemNetworkPut: api.SystemNetworkPut{
+						RestServerAddress:       "", // empty not allowed on IncusOS
+						OperationsCenterAddress: "http://localhost:7443",
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			isIncusOS: true,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid config, "network.rest_server_address" can not be empty when running on IncusOS`)
+			},
+		},
 		{
 			name: "require network.rest_server_address to be valid - multiple single colons",
 			cfg: config{
@@ -248,10 +277,73 @@ func Test_validate(t *testing.T) {
 
 			assertErr: require.Error,
 		},
+		{
+			name: "empty security.trusted_tls_client_cert_fingerprints",
+			oldCfg: &config{
+				Security: api.SystemSecurity{
+					SystemSecurityPut: api.SystemSecurityPut{
+						TrustedTLSClientCertFingerprints: []string{"fingerprint"},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			cfg: config{
+				Security: api.SystemSecurity{
+					SystemSecurityPut: api.SystemSecurityPut{
+						TrustedTLSClientCertFingerprints: []string{}, // empty
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			isIncusOS: false,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "empty security.trusted_tls_client_cert_fingerprints on IncusOS",
+			oldCfg: &config{
+				Security: api.SystemSecurity{
+					SystemSecurityPut: api.SystemSecurityPut{
+						TrustedTLSClientCertFingerprints: []string{"fingerprint"},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			cfg: config{
+				Security: api.SystemSecurity{
+					SystemSecurityPut: api.SystemSecurityPut{
+						TrustedTLSClientCertFingerprints: []string{}, // empty
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			isIncusOS: true,
+
+			assertErr: require.Error,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			env := &mock.EnvironmentMock{
+				IsIncusOSFunc: func() bool {
+					return tc.isIncusOS
+				},
+			}
+
+			InitTest(t, env)
+
+			if tc.oldCfg != nil {
+				err := UpdateNetwork(t.Context(), tc.oldCfg.Network.SystemNetworkPut)
+				require.NoError(t, err)
+
+				err = UpdateUpdates(t.Context(), tc.oldCfg.Updates.SystemUpdatesPut)
+				require.NoError(t, err)
+
+				err = UpdateSecurity(t.Context(), tc.oldCfg.Security.SystemSecurityPut)
+				require.NoError(t, err)
+			}
+
 			err := validate(tc.cfg)
 
 			tc.assertErr(t, err)

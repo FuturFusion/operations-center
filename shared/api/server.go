@@ -170,10 +170,10 @@ func (h *HardwareData) Scan(value any) error {
 }
 
 type OSData struct {
-	// Network contains the network data of the server OS, in the same form as presented by Incus OS in the network API.
+	// Network contains the network data of the server OS, in the same form as presented by IncusOS in the network API.
 	Network incusosapi.SystemNetwork `json:"network" yaml:"network"`
 
-	// Security contains the security data of the server OS, in the same form as presented by Incus OS in the security API.
+	// Security contains the security data of the server OS, in the same form as presented by IncusOS in the security API.
 	Security incusosapi.SystemSecurity `json:"security" yaml:"security"`
 }
 
@@ -291,5 +291,5 @@ type ServerRegistrationResponse struct {
 	ClientCertificate string `json:"certificate" yaml:"certificate"`
 }
 
-// ServerSystemNetwork is a type alias to hold the system network configuration from Incus OS.
+// ServerSystemNetwork is a type alias to hold the system network configuration from IncusOS.
 type ServerSystemNetwork = incusosapi.SystemNetwork

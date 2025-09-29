@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -31,8 +32,9 @@ type config struct {
 	Updates api.SystemUpdates `json:"updates" yaml:"updates"`
 }
 
-type varDirer interface {
+type enver interface {
 	VarDir() string
+	IsIncusOS() bool
 }
 
 // Global variables to hold the config singleton.
@@ -42,14 +44,14 @@ var (
 
 	saveFunc = saveToDisk
 
-	env varDirer = environment.New(ApplicationName, ApplicationEnvPrefix)
+	env enver = environment.New(ApplicationName, ApplicationEnvPrefix)
 
 	NetworkUpdateSignal  = signals.NewSync[api.SystemNetwork]()
 	SecurityUpdateSignal = signals.NewSync[api.SystemSecurity]()
 	UpdatesUpdateSignal  = signals.NewSync[api.SystemUpdates]()
 )
 
-func Init(vardir varDirer) error {
+func Init(vardir enver) error {
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
@@ -275,6 +277,11 @@ func saveToDisk(cfg config) error {
 
 func validate(cfg config) error {
 	// Network configuration
+	isRestServerAddressChanged := globalConfigInstance.Network.RestServerAddress != cfg.Network.RestServerAddress
+	if env.IsIncusOS() && isRestServerAddressChanged && cfg.Network.RestServerAddress == "" {
+		return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" can not be empty when running on IncusOS`)
+	}
+
 	if cfg.Network.RestServerAddress != "" {
 		host, portStr, err := net.SplitHostPort(cfg.Network.RestServerAddress)
 		if err != nil {
@@ -356,6 +363,12 @@ func validate(cfg config) error {
 		if err != nil {
 			return domain.NewValidationErrf(`Invalid config, "security.openfga.api_url" property is expected to be a valid URL: %v`, err)
 		}
+	}
+
+	// Updating the configuration requires at least one certificate fingerprint to be present in order to have a fallback authentication method.
+	isTrustedTLSClientCertFingerprintsUpdated := !slices.Equal(globalConfigInstance.Security.TrustedTLSClientCertFingerprints, cfg.Security.TrustedTLSClientCertFingerprints)
+	if env.IsIncusOS() && isTrustedTLSClientCertFingerprintsUpdated && len(cfg.Security.TrustedTLSClientCertFingerprints) == 0 {
+		return domain.NewValidationErrf(`Invalid config, "security.trusted_tls_client_cert_fingerprints" property can not be empty when running on IncusOS`)
 	}
 
 	return nil

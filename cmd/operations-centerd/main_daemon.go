@@ -25,6 +25,7 @@ type env interface {
 	VarDir() string
 	UsrShareDir() string
 	GetUnixSocket() string
+	IsIncusOS() bool
 }
 
 type cmdDaemon struct {

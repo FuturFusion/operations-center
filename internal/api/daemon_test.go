@@ -15,6 +15,7 @@ import (
 
 	restapi "github.com/FuturFusion/operations-center/internal/api"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/environment/mock"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -123,7 +124,22 @@ func TestStartAndStop(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			config.InitTest(t)
+			env := &mock.EnvironmentMock{
+				IsIncusOSFunc: func() bool {
+					return false
+				},
+				GetUnixSocketFunc: func() string {
+					return tc.unixSocket
+				},
+				VarDirFunc: func() string {
+					return tmpDir
+				},
+				UsrShareDirFunc: func() string {
+					return tmpDir
+				},
+			}
+
+			config.InitTest(t, env)
 			err := config.UpdateNetwork(ctx, api.SystemNetworkPut{
 				OperationsCenterAddress: "https://127.0.0.1:17443",
 				RestServerAddress:       fmt.Sprintf(":%d", tc.bindPort),
@@ -132,11 +148,7 @@ func TestStartAndStop(t *testing.T) {
 
 			d := restapi.NewDaemon(
 				ctx,
-				restapi.MockEnv{
-					UnixSocket:        tc.unixSocket,
-					VarDirectory:      tmpDir,
-					UsrShareDirectory: tmpDir,
-				},
+				env,
 			)
 
 			err = d.Start(ctx)
