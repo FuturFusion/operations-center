@@ -2,51 +2,56 @@ import { useState } from "react";
 import { Button } from "react-bootstrap";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router";
-import { deleteToken, fetchToken } from "api/token";
+import { deleteTokenSeed, fetchTokenSeed } from "api/token";
 import ModalWindow from "components/ModalWindow";
 import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
-import TokenOverview from "pages/TokenOverview";
-import TokenConfiguration from "pages/TokenConfiguration";
-import TokenSeeds from "pages/TokenSeeds";
+import TokenSeedOverview from "pages/TokenSeedOverview";
+import TokenSeedConfiguration from "pages/TokenSeedConfiguration";
 
-const TokenDetail = () => {
+const TokenSeedDetail = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const queryClient = useQueryClient();
   const { notify } = useNotification();
   const navigate = useNavigate();
-  const { uuid, activeTab } = useParams<{ uuid: string; activeTab: string }>();
+  const { uuid, name, activeTab } = useParams<{
+    uuid: string;
+    name: string;
+    activeTab: string;
+  }>();
 
   const {
-    data: token = null,
+    data: seed = null,
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["tokens", uuid],
-    queryFn: () => fetchToken(uuid || ""),
+    queryKey: ["tokens", uuid, "seeds", name],
+    queryFn: () => fetchTokenSeed(uuid || "", name || ""),
   });
 
   if (isLoading) {
     return <div>Loading...</div>;
   }
 
-  if (error || !token) {
-    return <div>Error while loading token</div>;
+  if (error || !seed) {
+    return <div>Error while loading token seed</div>;
   }
 
   const handleDelete = () => {
-    deleteToken(uuid || "")
+    deleteTokenSeed(uuid || "", name || "")
       .then((response) => {
         if (response.error_code == 0) {
-          notify.success(`Token ${uuid} deleted`);
-          queryClient.invalidateQueries({ queryKey: ["tokens"] });
-          navigate("/ui/provisioning/tokens");
+          notify.success(`Token seed ${uuid} deleted`);
+          queryClient.invalidateQueries({
+            queryKey: ["tokens", uuid, "seeds"],
+          });
+          navigate(`/ui/provisioning/tokens/${uuid}/seeds`);
           return;
         }
         notify.error(response.error);
       })
       .catch((e) => {
-        notify.error(`Error during token deletion: ${e}`);
+        notify.error(`Error during token seed deletion: ${e}`);
       });
   };
 
@@ -54,17 +59,12 @@ const TokenDetail = () => {
     {
       key: "overview",
       title: "Overview",
-      content: <TokenOverview />,
+      content: <TokenSeedOverview />,
     },
     {
       key: "configuration",
       title: "Configuration",
-      content: <TokenConfiguration />,
-    },
-    {
-      key: "seeds",
-      title: "Seeds",
-      content: <TokenSeeds />,
+      content: <TokenSeedConfiguration />,
     },
   ];
 
@@ -75,7 +75,9 @@ const TokenDetail = () => {
           defaultTab="overview"
           activeTab={activeTab}
           tabs={tabs}
-          onSelect={(key) => navigate(`/ui/provisioning/tokens/${uuid}/${key}`)}
+          onSelect={(key) =>
+            navigate(`/ui/provisioning/tokens/${uuid}/seeds/${name}/${key}`)
+          }
         />
       </div>
       <div className="fixed-footer p-3">
@@ -90,7 +92,7 @@ const TokenDetail = () => {
       <ModalWindow
         show={showDeleteModal}
         handleClose={() => setShowDeleteModal(false)}
-        title="Delete Token?"
+        title="Delete Token Seed?"
         footer={
           <>
             <Button variant="danger" onClick={handleDelete}>
@@ -100,7 +102,7 @@ const TokenDetail = () => {
         }
       >
         <p>
-          Are you sure you want to delete the token "{uuid}"?
+          Are you sure you want to delete the token seed "{name}"?
           <br />
           This action cannot be undone.
         </p>
@@ -109,4 +111,4 @@ const TokenDetail = () => {
   );
 };
 
-export default TokenDetail;
+export default TokenSeedDetail;

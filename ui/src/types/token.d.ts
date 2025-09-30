@@ -1,3 +1,15 @@
+type ImageType = "iso" | "raw";
+
+type Architecture = "" | "x86_64" | "aarch64";
+
+type YamlValue =
+  | string
+  | number
+  | boolean
+  | null
+  | YamlValue[]
+  | { [key: string]: YamlValue };
+
 export interface Token {
   uuid: string;
   description: string;
@@ -10,8 +22,6 @@ export interface TokenFormValues {
   expire_at: string;
   uses_remaining: number;
 }
-
-type ImageType = "iso" | "raw";
 
 export interface ApplicationFormValues {
   name: string;
@@ -40,4 +50,37 @@ export interface SeedsFormValues {
 export interface DownloadImageFormValues {
   type: ImageType;
   seeds: SeedsFormValues;
+}
+
+export interface TokenSeedImageFormValues {
+  type: ImageType;
+  architecture: Architecture;
+}
+
+export interface TokenSeedConfigs {
+  applications: YamlValue;
+  install: YamlValue;
+  network: YamlValue;
+}
+
+export interface TokenSeed {
+  token_uuid?: string;
+  name: string;
+  description: string;
+  public: boolean;
+  seeds: TokenSeedConfigs;
+  last_updated?: string;
+}
+
+export interface TokenSeedConfigsFormValues {
+  applications: string;
+  install: string;
+  network: string;
+}
+
+export interface TokenSeedFormValues {
+  name: string;
+  description: string;
+  public: boolean;
+  seeds: TokenSeedConfigsFormValues;
 }

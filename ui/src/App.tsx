@@ -24,6 +24,8 @@ import ServerDetail from "pages/ServerDetail";
 import Token from "pages/Token";
 import TokenCreate from "pages/TokenCreate";
 import TokenDetail from "pages/TokenDetail";
+import TokenSeedCreate from "pages/TokenSeedCreate";
+import TokenSeedDetail from "pages/TokenSeedDetail";
 import Update from "pages/Update";
 import UpdateDetail from "pages/UpdateDetail";
 
@@ -114,6 +116,18 @@ function App() {
             <Route
               path="/ui/provisioning/tokens/:uuid/:activeTab"
               element={<TokenDetail />}
+            />
+            <Route
+              path="/ui/provisioning/tokens/:uuid/seeds/create"
+              element={<TokenSeedCreate />}
+            />
+            <Route
+              path="/ui/provisioning/tokens/:uuid/seeds/:name"
+              element={<TokenSeedDetail />}
+            />
+            <Route
+              path="/ui/provisioning/tokens/:uuid/seeds/:name/:activeTab"
+              element={<TokenSeedDetail />}
             />
             <Route path="/ui/provisioning/updates" element={<Update />} />
             <Route
