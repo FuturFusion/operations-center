@@ -2,11 +2,11 @@ import { FC } from "react";
 import { Button } from "react-bootstrap";
 import { useFormik } from "formik";
 import { downloadImage } from "api/token";
-import DownloadImageForm from "components/DownloadImageForm";
+import TokenImageForm from "components/TokenImageForm";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { Token } from "types/token";
-import { DownloadImageFormValues } from "types/token";
+import { TokenImageFormValues } from "types/token";
 import YAML from "yaml";
 
 interface Props {
@@ -23,7 +23,8 @@ const TokenDownloadModal: FC<Props> = ({
   handleClose,
 }) => {
   const { notify } = useNotification();
-  const formikInitialValues: DownloadImageFormValues = {
+  const formikInitialValues: TokenImageFormValues = {
+    architecture: "x86_64",
     type: "iso",
     seeds: {
       applications: { applications: [{ name: "incus" }] },
@@ -40,7 +41,7 @@ const TokenDownloadModal: FC<Props> = ({
 
   const formik = useFormik({
     initialValues: formikInitialValues,
-    onSubmit: (values: DownloadImageFormValues, { resetForm }) => {
+    onSubmit: (values: TokenImageFormValues, { resetForm }) => {
       let parsedNetwork = {};
       try {
         parsedNetwork = YAML.parse(values.seeds.network);
@@ -69,7 +70,7 @@ const TokenDownloadModal: FC<Props> = ({
 
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${token.uuid}.${(values as DownloadImageFormValues).type}`;
+      a.download = `${token.uuid}.${(values as TokenImageFormValues).type}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -94,7 +95,7 @@ const TokenDownloadModal: FC<Props> = ({
         </>
       }
     >
-      <DownloadImageForm formik={formik} />
+      <TokenImageForm formik={formik} />
     </ModalWindow>
   );
 };

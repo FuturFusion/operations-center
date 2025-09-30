@@ -1,35 +1,26 @@
 import { FC } from "react";
 import { Form } from "react-bootstrap";
 import { FormikProps } from "formik/dist/types";
-import { DownloadImageFormValues } from "types/token";
+import ArchSelect from "components/ArchSelect";
+import ImageTypeSelect from "components/ImageTypeSelect";
+import { TokenImageFormValues } from "types/token";
 
 interface Props {
-  formik: FormikProps<DownloadImageFormValues>;
+  formik: FormikProps<TokenImageFormValues>;
 }
 
-const DownloadImageForm: FC<Props> = ({ formik }) => {
+const TokenImageForm: FC<Props> = ({ formik }) => {
   return (
     <div>
       <Form noValidate>
-        <Form.Group className="mb-4" controlId="type">
-          <Form.Label>Image type</Form.Label>
-          <Form.Check
-            type="radio"
-            label="ISO (for use with virtual CD-ROM drives)"
-            name="type"
-            value="iso"
-            checked={formik.values.type == "iso"}
-            onChange={formik.handleChange}
-          />
-          <Form.Check
-            type="radio"
-            label="USB (for use with virtual or physical USB sticks)"
-            name="type"
-            value="raw"
-            checked={formik.values.type == "raw"}
-            onChange={formik.handleChange}
-          />
-        </Form.Group>
+        <ImageTypeSelect
+          value={formik.values.type}
+          onChange={(val) => formik.setFieldValue("type", val)}
+        />
+        <ArchSelect
+          value={formik.values.architecture}
+          onChange={(val) => formik.setFieldValue("architecture", val)}
+        />
         <Form.Group className="mb-4">
           <Form.Label>Installation target</Form.Label>
           <Form.Check
@@ -80,4 +71,4 @@ const DownloadImageForm: FC<Props> = ({ formik }) => {
   );
 };
 
-export default DownloadImageForm;
+export default TokenImageForm;

@@ -47,7 +47,8 @@ export interface SeedsFormValues {
   network: string;
 }
 
-export interface DownloadImageFormValues {
+export interface TokenImageFormValues {
+  architecture: Architecture;
   type: ImageType;
   seeds: SeedsFormValues;
 }
