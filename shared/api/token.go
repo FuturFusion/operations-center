@@ -182,7 +182,7 @@ type TokenSeed struct {
 
 	// UUID of the token.
 	// Example: b32d0079-c48b-4957-b1cb-bef54125c861
-	Token uuid.UUID
+	Token uuid.UUID `json:"token_uuid" yaml:"token_uuid"`
 
 	// LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
 	// Example: 2024-11-12T16:15:00Z
