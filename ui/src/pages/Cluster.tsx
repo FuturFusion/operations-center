@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { fetchClusters } from "api/cluster";
+import ClusterActions from "components/ClusterActions";
 import DataTable from "components/DataTable";
 import { formatDate } from "util/date";
 
@@ -22,7 +23,13 @@ const Cluster = () => {
     return <div>Error while loading clusters: {error.message}</div>;
   }
 
-  const headers = ["Name", "Connection URL", "Status", "Last updated"];
+  const headers = [
+    "Name",
+    "Connection URL",
+    "Status",
+    "Last updated",
+    "Actions",
+  ];
   const rows = clusters.map((item) => {
     return [
       {
@@ -48,6 +55,9 @@ const Cluster = () => {
       {
         content: formatDate(item.last_updated || ""),
         sortKey: item.last_updated,
+      },
+      {
+        content: <ClusterActions cluster={item} />,
       },
     ];
   });
