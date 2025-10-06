@@ -59,6 +59,13 @@ func (c *CmdCluster) Command() *cobra.Command {
 
 	cmd.AddCommand(clusterRemoveCmd.Command())
 
+	// Rename
+	clusterRenameCmd := cmdClusterRename{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterRenameCmd.Command())
+
 	// Show
 	clusterShowCmd := cmdClusterShow{
 		ocClient: c.OCClient,
@@ -274,6 +281,48 @@ func (c *cmdClusterRemove) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	err = c.ocClient.DeleteCluster(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Rename cluster.
+type cmdClusterRename struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdClusterRename) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "rename <name> <new-name>"
+	cmd.Short = "Rename a cluster"
+	cmd.Long = `Description:
+  Rename a cluster
+
+  Renames a cluster to a new name.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdClusterRename) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 2, 2)
+	if exit {
+		return err
+	}
+
+	name := args[0]
+	newName := args[1]
+
+	if name == newName {
+		return fmt.Errorf("Rename failed, name and new name are equal")
+	}
+
+	err = c.ocClient.RenameCluster(cmd.Context(), name, newName)
 	if err != nil {
 		return err
 	}
