@@ -74,6 +74,17 @@ func (c OperationsCenterClient) DeleteCluster(ctx context.Context, name string) 
 	return nil
 }
 
+func (c OperationsCenterClient) RenameCluster(ctx context.Context, name string, newName string) error {
+	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name), nil, api.Cluster{
+		Name: newName,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) ResyncCluster(ctx context.Context, name string) error {
 	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, "resync-inventory"), nil, nil)
 	if err != nil {
