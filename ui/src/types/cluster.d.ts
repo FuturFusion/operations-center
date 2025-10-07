@@ -4,3 +4,8 @@ export interface Cluster {
   status: string;
   last_updated: string;
 }
+
+export interface ClusterCertFormValues {
+  cluster_certificate: string;
+  cluster_certificate_key: string;
+}
