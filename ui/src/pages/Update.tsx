@@ -40,7 +40,14 @@ const Update = () => {
     return <div>Error while loading updates: {error.message}</div>;
   }
 
-  const headers = ["Version", "Published at", "Severity", "Origin", "Channel"];
+  const headers = [
+    "Version",
+    "Published at",
+    "Status",
+    "Severity",
+    "Origin",
+    "Channel",
+  ];
   const rows = updates.map((item) => {
     return [
       {
@@ -57,6 +64,10 @@ const Update = () => {
       {
         content: formatDate(item.published_at),
         sortKey: item.published_at,
+      },
+      {
+        content: item.update_status,
+        sortKey: item.update_status,
       },
       {
         content: item.severity,
