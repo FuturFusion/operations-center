@@ -1,13 +1,17 @@
+import { useState } from "react";
 import Button from "react-bootstrap/Button";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
-import { fetchUpdates, refreshUpdates } from "api/update";
+import { cleanupUpdates, fetchUpdates, refreshUpdates } from "api/update";
 import DataTable from "components/DataTable";
+import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { formatDate } from "util/date";
 
 const Update = () => {
+  const [showCleanupModal, setShowCleanupModal] = useState(false);
   const { notify } = useNotification();
+  const queryClient = useQueryClient();
 
   const {
     data: updates = [],
@@ -30,6 +34,22 @@ const Update = () => {
       .catch((e) => {
         notify.error(`Error during refreshing updates: ${e}`);
       });
+  };
+
+  const handleCleanup = () => {
+    cleanupUpdates()
+      .then((response) => {
+        if (response.error_code == 0) {
+          queryClient.invalidateQueries({ queryKey: ["updates"] });
+          notify.success(`Updates cleanup performed successfully`);
+          return;
+        }
+        notify.error(response.error);
+      })
+      .catch((e) => {
+        notify.error(`Error during updates cleanup: ${e}`);
+      });
+    setShowCleanupModal(false);
   };
 
   if (isLoading) {
@@ -91,8 +111,15 @@ const Update = () => {
           <div className="row">
             <div className="col-12">
               <Button
+                variant="danger"
+                className="float-end mx-2"
+                onClick={() => setShowCleanupModal(true)}
+              >
+                Cleanup
+              </Button>
+              <Button
                 variant="success"
-                className="float-end"
+                className="float-end mx-2"
                 onClick={handleRefresh}
               >
                 Refresh
@@ -104,6 +131,24 @@ const Update = () => {
           <DataTable headers={headers} rows={rows} />
         </div>
       </div>
+      <ModalWindow
+        show={showCleanupModal}
+        handleClose={() => setShowCleanupModal(false)}
+        title="Cleanup updates?"
+        footer={
+          <>
+            <Button variant="danger" onClick={handleCleanup}>
+              Cleanup
+            </Button>
+          </>
+        }
+      >
+        <p>
+          Are you sure you want to cleanup updates?
+          <br />
+          This action cannot be undone.
+        </p>
+      </ModalWindow>
     </>
   );
 };

@@ -39,3 +39,14 @@ export const refreshUpdates = (): Promise<APIResponse<null>> => {
       .catch(reject);
   });
 };
+
+export const cleanupUpdates = (): Promise<APIResponse<object>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/updates`, {
+      method: "DELETE",
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
