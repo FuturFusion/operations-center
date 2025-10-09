@@ -376,6 +376,7 @@ func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed,
 			if !ok {
 				preseed.Profiles[i].Devices["eth0"] = map[string]string{
 					"type":    "nic",
+					"name":    "eth0",
 					"network": "incusbr0",
 				}
 			}
@@ -400,6 +401,7 @@ func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed,
 			if !ok {
 				preseed.Profiles[i].Devices["eth0"] = map[string]string{
 					"type":    "nic",
+					"name":    "eth0",
 					"network": "meshbr0",
 				}
 			}
