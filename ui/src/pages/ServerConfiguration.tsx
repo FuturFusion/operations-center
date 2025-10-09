@@ -16,44 +16,40 @@ const ServerConfiguration = () => {
   const navigate = useNavigate();
 
   const onSubmit = (values: ServerFormValues) => {
-    const serverData = { name: values.name };
     const systemNetworkData = {
       network_configuration: values.network_configuration,
     };
 
-    const updateNetworkConfiguration = () => {
-      return updateSystemNetwork(
-        values.name,
-        JSON.stringify(systemNetworkData, null, 2),
-      )
-        .then((response) => {
-          if (response.error_code == 0) {
-            notify.success(`Server ${values.name} updated`);
-            navigate(`/ui/provisioning/servers/${values.name}/configuration`);
-            return;
-          }
-          notify.error(
-            `Error during network configuration update: ${response.error}`,
-          );
-        })
-        .catch((e) => {
-          notify.error(`Error during server update: ${e}`);
-        });
-    };
+    updateSystemNetwork(values.name, JSON.stringify(systemNetworkData, null, 2))
+      .then((response) => {
+        if (response.error_code == 0) {
+          notify.success(`Server ${values.name} updated`);
+          navigate(`/ui/provisioning/servers/${values.name}/configuration`);
+          return;
+        }
+        notify.error(
+          `Error during network configuration update: ${response.error}`,
+        );
+      })
+      .catch((e) => {
+        notify.error(`Error during server update: ${e}`);
+      });
+  };
 
-    if (name !== values.name) {
-      renameServer(name, JSON.stringify(serverData, null, 2))
+  const onRename = (newName: string) => {
+    if (name !== newName) {
+      renameServer(name, JSON.stringify({ name: newName }, null, 2))
         .then((response) => {
           if (response.error_code == 0) {
-            return updateNetworkConfiguration();
+            notify.success(`Server ${newName} renamed`);
+            navigate(`/ui/provisioning/servers/${newName}/configuration`);
+            return;
           }
           notify.error(response.error);
         })
         .catch((e) => {
-          notify.error(`Error during server update: ${e}`);
+          notify.error(`Error during server rename: ${e}`);
         });
-    } else {
-      updateNetworkConfiguration();
     }
   };
 
@@ -87,6 +83,7 @@ const ServerConfiguration = () => {
     <ServerForm
       server={server}
       systemNetwork={systemNetwork}
+      onRename={onRename}
       onSubmit={onSubmit}
     />
   );
