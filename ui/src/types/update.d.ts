@@ -6,6 +6,7 @@ export interface Update {
   origin: string;
   channel: string;
   changelog: string;
+  update_status: string;
 }
 
 export interface UpdateFile {
