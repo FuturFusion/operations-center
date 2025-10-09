@@ -25,3 +25,19 @@ export const updateClusterCert = (
       .catch(reject);
   });
 };
+
+export const downloadTerraformData = (name: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/clusters/${name}/terraform-configuration`)
+      .then(async (response) => {
+        if (!response.ok) {
+          const r = await response.json();
+          throw Error(r.error);
+        }
+
+        return response.blob();
+      })
+      .then((data) => resolve(URL.createObjectURL(data)))
+      .catch(reject);
+  });
+};
