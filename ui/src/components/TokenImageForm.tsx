@@ -54,6 +54,26 @@ const TokenImageForm: FC<Props> = ({ formik }) => {
             onBlur={formik.handleBlur}
           />
         </Form.Group>
+        <Form.Group className="mb-4">
+          <Form.Label>Applications</Form.Label>
+          <Form.Select
+            multiple
+            value={formik.values.seeds.applications.applications.map(
+              (app) => app.name,
+            )}
+            onChange={(e) => {
+              const selected = Array.from(
+                e.target.selectedOptions,
+                (option) => ({ name: option.value }),
+              );
+              formik.setFieldValue("seeds.applications.applications", selected);
+            }}
+          >
+            <option value="incus">Incus</option>
+            <option value="migration-manager">Migration manager</option>
+            <option value="operations-center">Operations center</option>
+          </Form.Select>
+        </Form.Group>
         <Form.Group className="mb-4" controlId="network">
           <Form.Label>Network configuration</Form.Label>
           <Form.Control
