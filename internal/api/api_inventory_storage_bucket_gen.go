@@ -208,7 +208,7 @@ func (i *storageBucketHandler) storageBucketsGet(r *http.Request) response.Respo
 
 	result := make([]string, 0, len(storageBucketUUIDs))
 	for _, id := range storageBucketUUIDs {
-		result = append(result, fmt.Sprintf("/%s/inventory/storage_bucket/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/storage_bucket/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)

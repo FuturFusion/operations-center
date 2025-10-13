@@ -192,7 +192,7 @@ func (i *profileHandler) profilesGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(profileUUIDs))
 	for _, id := range profileUUIDs {
-		result = append(result, fmt.Sprintf("/%s/inventory/profile/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/profile/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)

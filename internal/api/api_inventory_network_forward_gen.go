@@ -178,7 +178,7 @@ func (i *networkForwardHandler) networkForwardsGet(r *http.Request) response.Res
 
 	result := make([]string, 0, len(networkForwardUUIDs))
 	for _, id := range networkForwardUUIDs {
-		result = append(result, fmt.Sprintf("/%s/inventory/network_forward/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/network_forward/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)

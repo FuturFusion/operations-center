@@ -192,7 +192,7 @@ func (i *networkHandler) networksGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(networkUUIDs))
 	for _, id := range networkUUIDs {
-		result = append(result, fmt.Sprintf("/%s/inventory/network/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/network/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)

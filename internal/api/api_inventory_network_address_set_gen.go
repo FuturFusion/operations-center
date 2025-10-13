@@ -192,7 +192,7 @@ func (i *networkAddressSetHandler) networkAddressSetsGet(r *http.Request) respon
 
 	result := make([]string, 0, len(networkAddressSetUUIDs))
 	for _, id := range networkAddressSetUUIDs {
-		result = append(result, fmt.Sprintf("/%s/inventory/network_address_set/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/network_address_set/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)

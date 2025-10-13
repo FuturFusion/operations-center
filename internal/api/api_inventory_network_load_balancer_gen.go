@@ -178,7 +178,7 @@ func (i *networkLoadBalancerHandler) networkLoadBalancersGet(r *http.Request) re
 
 	result := make([]string, 0, len(networkLoadBalancerUUIDs))
 	for _, id := range networkLoadBalancerUUIDs {
-		result = append(result, fmt.Sprintf("/%s/inventory/network_load_balancer/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/network_load_balancer/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)

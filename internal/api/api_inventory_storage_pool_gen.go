@@ -177,7 +177,7 @@ func (i *storagePoolHandler) storagePoolsGet(r *http.Request) response.Response 
 
 	result := make([]string, 0, len(storagePoolUUIDs))
 	for _, id := range storagePoolUUIDs {
-		result = append(result, fmt.Sprintf("/%s/inventory/storage_pool/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/storage_pool/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)
