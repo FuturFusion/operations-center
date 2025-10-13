@@ -29,10 +29,16 @@ type Config struct {
 	Debug      bool `yaml:"-"`
 	ForceLocal bool `yaml:"-"`
 
-	AuthType               AuthType `yaml:"auth_type"`
-	OperationsCenterServer string   `yaml:"operations_center_server"`
-	TLSClientCertFile      string   `yaml:"tls_client_cert_file"`
-	TLSClientKeyFile       string   `yaml:"tls_client_key_file"`
+	DefaultRemote string            `yaml:"default_remote"`
+	Remotes       map[string]Remote `yaml:"remotes"`
+
+	TLSClientCertFile string `yaml:"tls_client_cert_file"`
+	TLSClientKeyFile  string `yaml:"tls_client_key_file"`
+}
+
+type Remote struct {
+	Addr     string   `yaml:"addr"`
+	AuthType AuthType `yaml:"auth_type"`
 }
 
 func (c *Config) LoadConfig(path string) error {
@@ -50,13 +56,31 @@ func (c *Config) LoadConfig(path string) error {
 		return err
 	}
 
-	if c.AuthType == "" {
-		c.AuthType = AuthTypeUntrusted
+	for remote, config := range c.Remotes {
+		if config.AuthType == "" {
+			config.AuthType = AuthTypeUntrusted
+		}
+
+		_, ok := authTypes[config.AuthType]
+		if !ok {
+			return fmt.Errorf("Invalid value for config key auth_type: %v", config.AuthType)
+		}
+
+		c.Remotes[remote] = config
 	}
 
-	_, ok := authTypes[c.AuthType]
-	if !ok {
-		return fmt.Errorf("Invalid value for config key auth_type: %v", c.AuthType)
+	return nil
+}
+
+func (c *Config) SaveConfig(path string) error {
+	body, err := yaml.Marshal(c)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(filepath.Join(path, "config.yml"), body, 0o600)
+	if err != nil {
+		return err
 	}
 
 	return nil
