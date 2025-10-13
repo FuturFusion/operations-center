@@ -504,8 +504,8 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 		architectureArg                       images.UpdateFileArchitecture
 		seedConfigArg                         provisioning.TokenImageSeedConfigs
 		repoGetByUUIDErr                      error
-		updateSvcGetAllUpdates                provisioning.Updates
-		updateSvcGetAllErr                    error
+		updateSvcGetAllWithFilterUpdates      provisioning.Updates
+		updateSvcGetAllWithFilterErr          error
 		updateSvcGetUpdateAllFilesUpdateFiles provisioning.UpdateFiles
 		updateSvcGetUpdateAllFilesErr         error
 		updateSvcGetFileByFilenameReadCloser  io.ReadCloser
@@ -520,7 +520,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:   provisioning.TokenImageSeedConfigs{},
-			updateSvcGetAllUpdates: provisioning.Updates{
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
 				},
@@ -575,22 +575,22 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:               "error - updateSvc.GetAll",
-			tokenArg:           uuidA,
-			imageTypeArg:       api.ImageTypeISO,
-			architectureArg:    images.UpdateFileArchitecture64BitX86,
-			seedConfigArg:      provisioning.TokenImageSeedConfigs{},
-			updateSvcGetAllErr: boom.Error,
+			name:                         "error - updateSvc.GetAll",
+			tokenArg:                     uuidA,
+			imageTypeArg:                 api.ImageTypeISO,
+			architectureArg:              images.UpdateFileArchitecture64BitX86,
+			seedConfigArg:                provisioning.TokenImageSeedConfigs{},
+			updateSvcGetAllWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:                   "error - updateSvc.GetAll - no updates",
-			tokenArg:               uuidA,
-			imageTypeArg:           api.ImageTypeISO,
-			architectureArg:        images.UpdateFileArchitecture64BitX86,
-			seedConfigArg:          provisioning.TokenImageSeedConfigs{},
-			updateSvcGetAllUpdates: provisioning.Updates{},
+			name:                             "error - updateSvc.GetAll - no updates",
+			tokenArg:                         uuidA,
+			imageTypeArg:                     api.ImageTypeISO,
+			architectureArg:                  images.UpdateFileArchitecture64BitX86,
+			seedConfigArg:                    provisioning.TokenImageSeedConfigs{},
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Failed to get updates: No updates found")
@@ -602,7 +602,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:   provisioning.TokenImageSeedConfigs{},
-			updateSvcGetAllUpdates: provisioning.Updates{
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
 				},
@@ -617,7 +617,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:   provisioning.TokenImageSeedConfigs{},
-			updateSvcGetAllUpdates: provisioning.Updates{
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
 				},
@@ -634,7 +634,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:   provisioning.TokenImageSeedConfigs{},
-			updateSvcGetAllUpdates: provisioning.Updates{
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
 				},
@@ -656,7 +656,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:   provisioning.TokenImageSeedConfigs{},
-			updateSvcGetAllUpdates: provisioning.Updates{
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
 				},
@@ -682,7 +682,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
 			seedConfigArg:   provisioning.TokenImageSeedConfigs{},
-			updateSvcGetAllUpdates: provisioning.Updates{
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
 				},
@@ -716,8 +716,8 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			}
 
 			updateSvc := &svcMock.UpdateServiceMock{
-				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
-					return tc.updateSvcGetAllUpdates, tc.updateSvcGetAllErr
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return tc.updateSvcGetAllWithFilterUpdates, tc.updateSvcGetAllWithFilterErr
 				},
 				GetUpdateAllFilesFunc: func(ctx context.Context, id uuid.UUID) (provisioning.UpdateFiles, error) {
 					return tc.updateSvcGetUpdateAllFilesUpdateFiles, tc.updateSvcGetUpdateAllFilesErr
@@ -1100,8 +1100,8 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 		architectureArg                       images.UpdateFileArchitecture
 		repoGetByUUIDErr                      error
 		repoGetTokenSeedByNameErr             error
-		updateSvcGetAllUpdates                provisioning.Updates
-		updateSvcGetAllErr                    error
+		updateSvcGetAllWithFilterUpdates      provisioning.Updates
+		updateSvcGetAllWithFilterErr          error
 		updateSvcGetUpdateAllFilesUpdateFiles provisioning.UpdateFiles
 		updateSvcGetUpdateAllFilesErr         error
 		updateSvcGetFileByFilenameReadCloser  io.ReadCloser
@@ -1114,7 +1114,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			name:            "success",
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
-			updateSvcGetAllUpdates: provisioning.Updates{
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
 				},
@@ -1173,18 +1173,18 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:               "error - updateSvc.GetAll",
-			imageTypeArg:       api.ImageTypeISO,
-			architectureArg:    images.UpdateFileArchitecture64BitX86,
-			updateSvcGetAllErr: boom.Error,
+			name:                         "error - updateSvc.GetAll",
+			imageTypeArg:                 api.ImageTypeISO,
+			architectureArg:              images.UpdateFileArchitecture64BitX86,
+			updateSvcGetAllWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:                   "error - updateSvc.GetAll - no updates",
-			imageTypeArg:           api.ImageTypeISO,
-			architectureArg:        images.UpdateFileArchitecture64BitX86,
-			updateSvcGetAllUpdates: provisioning.Updates{},
+			name:                             "error - updateSvc.GetAll - no updates",
+			imageTypeArg:                     api.ImageTypeISO,
+			architectureArg:                  images.UpdateFileArchitecture64BitX86,
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Failed to get updates: No updates found")
@@ -1194,7 +1194,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			name:            "error - updateSvc.GetUpdateAllFiles",
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
-			updateSvcGetAllUpdates: provisioning.Updates{
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
 				},
@@ -1207,7 +1207,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			name:            "error - updateSvc.GetUpdateAllFiles - no files",
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
-			updateSvcGetAllUpdates: provisioning.Updates{
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
 				},
@@ -1222,7 +1222,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			name:            "error - updateSvc.GetUpdateByFilename",
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
-			updateSvcGetAllUpdates: provisioning.Updates{
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
 				},
@@ -1242,7 +1242,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			name:            "error - updateSvc.GetUpdateByFilename not *os.File",
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
-			updateSvcGetAllUpdates: provisioning.Updates{
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
 				},
@@ -1266,7 +1266,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			name:            "error - flasher.GenerateSeededImage",
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
-			updateSvcGetAllUpdates: provisioning.Updates{
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
 				{
 					UUID: updateUUID,
 				},
@@ -1303,8 +1303,8 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 			}
 
 			updateSvc := &svcMock.UpdateServiceMock{
-				GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
-					return tc.updateSvcGetAllUpdates, tc.updateSvcGetAllErr
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return tc.updateSvcGetAllWithFilterUpdates, tc.updateSvcGetAllWithFilterErr
 				},
 				GetUpdateAllFilesFunc: func(ctx context.Context, id uuid.UUID) (provisioning.UpdateFiles, error) {
 					return tc.updateSvcGetUpdateAllFilesUpdateFiles, tc.updateSvcGetUpdateAllFilesErr
