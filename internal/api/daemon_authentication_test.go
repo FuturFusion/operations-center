@@ -51,6 +51,9 @@ func TestAuthentication(t *testing.T) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 
+	err := os.Setenv("OPERATIONS_CENTER_DISABLE_BACKGROUND_TASKS", "true")
+	require.NoError(t, err)
+
 	// Add dummy server.crt.
 	f, err := os.Create(filepath.Join(tmpDir, "server.crt"))
 	require.NoError(t, err)
