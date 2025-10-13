@@ -78,16 +78,25 @@ func TestTokenImageSeedConfigs_Value(t *testing.T) {
 				Applications: map[string]any{
 					"applications": true,
 				},
-				Network: map[string]any{
-					"network": true,
+				Incus: map[string]any{
+					"incus": true,
 				},
 				Install: map[string]any{
 					"install": true,
 				},
+				MigrationManager: map[string]any{
+					"migration_manager": true,
+				},
+				Network: map[string]any{
+					"network": true,
+				},
+				OperationsCenter: map[string]any{
+					"operations_center": true,
+				},
 			},
 
 			assertErr: require.NoError,
-			wantValue: []byte(`{"applications":{"applications":true},"network":{"network":true},"install":{"install":true}}`),
+			wantValue: []byte(`{"applications":{"applications":true},"incus":{"incus":true},"install":{"install":true},"migration_manager":{"migration_manager":true},"network":{"network":true},"operations_center":{"operations_center":true}}`),
 		},
 	}
 

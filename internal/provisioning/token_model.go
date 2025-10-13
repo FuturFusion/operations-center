@@ -39,9 +39,12 @@ func (t Token) Validate() error {
 type Tokens []Token
 
 type TokenImageSeedConfigs struct {
-	Applications map[string]any `json:"applications"`
-	Network      map[string]any `json:"network"`
-	Install      map[string]any `json:"install"`
+	Applications     map[string]any `json:"applications"`
+	Incus            map[string]any `json:"incus"`
+	Install          map[string]any `json:"install"`
+	MigrationManager map[string]any `json:"migration_manager"`
+	Network          map[string]any `json:"network"`
+	OperationsCenter map[string]any `json:"operations_center"`
 }
 
 // Value implements the sql driver.Valuer interface.
