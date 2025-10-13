@@ -83,6 +83,12 @@ func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
 
 	app.AddCommand(inventoryCmd.Command())
 
+	remoteCmd := cmds.CmdRemote{
+		Env: env,
+	}
+
+	app.AddCommand(remoteCmd.Command())
+
 	systemCmd := cmds.CmdSystem{
 		OCClient: globalCmd.ocClient,
 	}
@@ -123,7 +129,7 @@ func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = os.MkdirAll(configDir, 0o700)
+	err = os.MkdirAll(filepath.Join(configDir, "oidc-tokens"), 0o700)
 	if err != nil {
 		return err
 	}
@@ -135,7 +141,26 @@ func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
 
 	opts := []client.Option{}
 
-	if c.config.ForceLocal || c.config.OperationsCenterServer == "" {
+	// Use local unix socket connection by default.
+	remote := struct {
+		addr     string
+		authType config.AuthType
+	}{
+		addr:     "http://unix.socket",
+		authType: config.AuthTypeUntrusted,
+	}
+
+	if c.config.DefaultRemote != "" {
+		r, ok := c.config.Remotes[c.config.DefaultRemote]
+		if ok {
+			remote.addr = r.Addr
+			remote.authType = r.AuthType
+		} else {
+			cmd.PrintErrf("Warning: configured default remote %q does not exist, fallback to local unix socket\n", c.config.DefaultRemote)
+		}
+	}
+
+	if c.config.ForceLocal || c.config.DefaultRemote == "" {
 		opts = append(opts, client.WithForceLocal(c.env.GetUnixSocket()))
 	}
 
@@ -143,12 +168,12 @@ func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
 		opts = append(opts, client.WithClientCertificate(c.config.TLSClientCertFile, c.config.TLSClientKeyFile))
 	}
 
-	if c.config.AuthType == config.AuthTypeOIDC {
-		opts = append(opts, client.WithOIDCTokensFile(filepath.Join(configDir, "oidc-tokens.json")))
+	if remote.authType == config.AuthTypeOIDC {
+		opts = append(opts, client.WithOIDCTokensFile(filepath.Join(configDir, "oidc-tokens", c.config.DefaultRemote+".json")))
 	}
 
 	*c.ocClient, err = client.New(
-		c.config.OperationsCenterServer,
+		remote.addr,
 		opts...,
 	)
 	if err != nil {
