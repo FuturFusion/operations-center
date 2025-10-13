@@ -227,7 +227,7 @@ func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *htt
 
 	result := make([]string, 0, len({{ .Name | camelcase }}UUIDs))
 	for _, id := range {{ .Name | camelcase }}UUIDs {
-		result = append(result, fmt.Sprintf("/%s/inventory/{{ .Name }}/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/{{ .Name }}/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)
