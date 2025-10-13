@@ -1,0 +1,11 @@
+{{- range .IncusPreseed.Certificates -}}
+resource "incus_certificate" "{{ .Name }}" {
+  name        = "{{ .Name }}"
+  description = "{{ .Description }}"
+  restricted  = {{ .Restricted }}
+  projects    = {{ toJson .Projects }}
+  type        = "{{ .Type }}"
+  certificate = "{{ .Certificate }}"
+}
+
+{{ end -}}

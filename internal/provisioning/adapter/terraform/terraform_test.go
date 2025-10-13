@@ -373,6 +373,7 @@ func TestTerraform_GetArchive(t *testing.T) {
 			expectedFilesFound := map[string]bool{
 				"data_cluster.tf":              false,
 				"providers.tf":                 false,
+				"resources_certificates.tf":    false,
 				"resources_networks.tf":        false,
 				"resources_profiles.tf":        false,
 				"resources_projects.tf":        false,
