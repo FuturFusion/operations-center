@@ -11,6 +11,7 @@ import (
 	"github.com/lxc/incus-os/incus-osd/api/images"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -215,7 +216,9 @@ func (s tokenService) GetTokenImageFromTokenSeed(ctx context.Context, id uuid.UU
 
 func (s tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seeds TokenImageSeedConfigs) (_ io.ReadCloser, err error) {
 	// TODO: Allow filters?
-	updates, err := s.updateSvc.GetAll(ctx)
+	updates, err := s.updateSvc.GetAllWithFilter(ctx, UpdateFilter{
+		Status: ptr.To(api.UpdateStatusReady),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get updates: %w", err)
 	}
