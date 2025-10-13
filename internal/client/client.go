@@ -70,8 +70,10 @@ func WithOIDCTokensFile(oidcTokensFilename string) Option {
 	}
 }
 
-func New(serverPort string, opts ...Option) (OperationsCenterClient, error) {
-	c := OperationsCenterClient{}
+func New(addr string, opts ...Option) (OperationsCenterClient, error) {
+	c := OperationsCenterClient{
+		baseURL: addr,
+	}
 
 	for _, opt := range opts {
 		err := opt(&c)
@@ -105,8 +107,6 @@ func New(serverPort string, opts ...Option) (OperationsCenterClient, error) {
 			Transport: transport,
 		}
 
-		c.baseURL = "http://unix.socket"
-
 		return c, nil
 	}
 
@@ -125,8 +125,6 @@ func New(serverPort string, opts ...Option) (OperationsCenterClient, error) {
 		c.httpClient = oidcClient.NewClient(httpClient, *c.oidcTokensFilename)
 	}
 
-	c.baseURL = fmt.Sprintf("https://%s", serverPort)
-
 	return c, nil
 }
 
@@ -136,7 +134,7 @@ func (c OperationsCenterClient) doRequestRawResponse(ctx context.Context, method
 		return nil, err
 	}
 
-	u, err := url.Parse(fmt.Sprintf("%s%s?%s", c.baseURL, apiEndpoint, query.Encode()))
+	u, err := url.Parse(fmt.Sprintf("%s%s?%s", strings.TrimSuffix(c.baseURL, "/"), apiEndpoint, query.Encode()))
 	if err != nil {
 		return nil, err
 	}
