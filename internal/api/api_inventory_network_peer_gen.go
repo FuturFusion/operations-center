@@ -178,7 +178,7 @@ func (i *networkPeerHandler) networkPeersGet(r *http.Request) response.Response 
 
 	result := make([]string, 0, len(networkPeerUUIDs))
 	for _, id := range networkPeerUUIDs {
-		result = append(result, fmt.Sprintf("/%s/inventory/network_peer/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/network_peer/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)

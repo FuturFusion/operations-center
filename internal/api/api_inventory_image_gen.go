@@ -192,7 +192,7 @@ func (i *imageHandler) imagesGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(imageUUIDs))
 	for _, id := range imageUUIDs {
-		result = append(result, fmt.Sprintf("/%s/inventory/image/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/image/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)

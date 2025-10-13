@@ -192,7 +192,7 @@ func (i *networkZoneHandler) networkZonesGet(r *http.Request) response.Response 
 
 	result := make([]string, 0, len(networkZoneUUIDs))
 	for _, id := range networkZoneUUIDs {
-		result = append(result, fmt.Sprintf("/%s/inventory/network_zone/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/network_zone/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)

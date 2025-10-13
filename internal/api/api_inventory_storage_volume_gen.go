@@ -209,7 +209,7 @@ func (i *storageVolumeHandler) storageVolumesGet(r *http.Request) response.Respo
 
 	result := make([]string, 0, len(storageVolumeUUIDs))
 	for _, id := range storageVolumeUUIDs {
-		result = append(result, fmt.Sprintf("/%s/inventory/storage_volume/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/storage_volume/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)

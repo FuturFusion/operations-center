@@ -177,7 +177,7 @@ func (i *projectHandler) projectsGet(r *http.Request) response.Response {
 
 	result := make([]string, 0, len(projectUUIDs))
 	for _, id := range projectUUIDs {
-		result = append(result, fmt.Sprintf("/%s/inventory/project/%d", api.APIVersion, id))
+		result = append(result, fmt.Sprintf("/%s/inventory/project/%s", api.APIVersion, id.String()))
 	}
 
 	return response.SyncResponse(true, result)
