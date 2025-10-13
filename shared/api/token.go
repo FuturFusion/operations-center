@@ -122,11 +122,17 @@ type TokenSeedConfigs struct {
 	// Applications represents the applications configuration (applications.yaml) to be included in the pre-seeded image.
 	Applications map[string]any `json:"applications" yaml:"applications"`
 
+	// Install represents the install configuration (install.yaml) to be included in the pre-seeded image.
+	Install map[string]any `json:"install" yaml:"install"`
+
+	// MigrationManager represents the seed configuration for migration manager (migration-manager.yaml) to be included in the pre-seeded image.
+	MigrationManager map[string]any `json:"migration_manager" yaml:"migration_manager"`
+
 	// Network represents the network configuration (network.yaml) to be included in the pre-seeded image.
 	Network map[string]any `json:"network" yaml:"network"`
 
-	// Install represents the install configuration (install.yaml) to be included in the pre-seeded image.
-	Install map[string]any `json:"install" yaml:"install"`
+	// OperationsCenter represents the seed configuration for operations center (operations-center.yaml) to be included in the pre-seeded image.
+	OperationsCenter map[string]any `json:"operations_center" yaml:"operations_center"`
 }
 
 // TokenSeedPost defines a named token seed configuration, for which a

@@ -69,14 +69,13 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedCon
 		seedProvider.Config["server_certificate"] = serverCertificate
 	}
 
+	seedConfig.Incus = map[string]any{
+		"apply_defaults": false,
+		"version":        "1",
+	}
+
 	tarball, err := createSeedTarball(
-		seedConfig.Applications,
-		&seed.Incus{
-			ApplyDefaults: false,
-			Version:       "1",
-		},
-		seedConfig.Install,
-		seedConfig.Network,
+		seedConfig,
 		seedProvider,
 	)
 	if err != nil {
@@ -91,26 +90,34 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedCon
 	return newInjectReader(newParentCloser(gzipReader, file), seedTarballStartPosition, tarball), nil
 }
 
-func createSeedTarball(applicationsSeed map[string]any, incusSeed *seed.Incus, installSeed map[string]any, networkSeed map[string]any, providerSeed *seed.Provider) (_ []byte, err error) {
+func createSeedTarball(seedConfig provisioning.TokenImageSeedConfigs, providerSeed *seed.Provider) (_ []byte, err error) {
 	seedData := []struct {
 		filename string
 		data     any
 	}{
 		{
 			filename: "applications.yaml",
-			data:     applicationsSeed,
+			data:     seedConfig.Applications,
 		},
 		{
 			filename: "incus.yaml",
-			data:     incusSeed,
+			data:     seedConfig.Incus,
 		},
 		{
 			filename: "install.yaml",
-			data:     installSeed,
+			data:     seedConfig.Install,
+		},
+		{
+			filename: "migration-manager.yaml",
+			data:     seedConfig.MigrationManager,
 		},
 		{
 			filename: "network.yaml",
-			data:     networkSeed,
+			data:     seedConfig.Network,
+		},
+		{
+			filename: "operations-center.yaml",
+			data:     seedConfig.OperationsCenter,
 		},
 		{
 			filename: "provider.yaml",
