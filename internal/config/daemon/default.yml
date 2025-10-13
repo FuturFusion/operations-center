@@ -35,11 +35,6 @@ updates:
   # URL of the server providing updates for incus-os.
   source: https://images.linuxcontainers.org/os/
 
-  # If set to true, there is no check for updates from `updates.source`
-  # right after start of operations-centerd.
-  # This is mainly used for development.
-  source_skip_first_update: false
-
   # Certificate used to verify the signature of updates provided
   # by `updates.source`.
   signature_verification_root_ca: |
