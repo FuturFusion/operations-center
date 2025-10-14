@@ -57,15 +57,11 @@ const TokenImageForm: FC<Props> = ({ formik }) => {
         <Form.Group className="mb-4">
           <Form.Label>Applications</Form.Label>
           <Form.Select
-            multiple
             value={formik.values.seeds.applications.applications.map(
               (app) => app.name,
             )}
             onChange={(e) => {
-              const selected = Array.from(
-                e.target.selectedOptions,
-                (option) => ({ name: option.value }),
-              );
+              const selected = [{ name: e.target.value }];
               formik.setFieldValue("seeds.applications.applications", selected);
             }}
           >
