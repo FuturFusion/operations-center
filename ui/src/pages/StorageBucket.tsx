@@ -1,27 +1,26 @@
+import { Container } from "react-bootstrap";
+import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchStorageBuckets } from "api/storage_bucket";
-import DataTable from "components/DataTable";
+import ExtendedDataTable from "components/ExtendedDataTable";
+import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
 import ProjectIncusLink from "components/ProjectIncusLink";
 import { formatDate } from "util/date";
 
 const StorageBucket = () => {
+  const [searchParams] = useSearchParams();
+  const filter = searchParams.get("filter");
+
   const {
     data: buckets = [],
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["storage_buckets"],
-    queryFn: fetchStorageBuckets,
+    queryKey: ["storage_buckets", filter],
+    queryFn: () => fetchStorageBuckets(filter || ""),
+    retry: false,
   });
-
-  if (isLoading) {
-    return <div>Loading storage buckets...</div>;
-  }
-
-  if (error) {
-    return <div>Error while loading storage buckets: {error.message}</div>;
-  }
 
   const headers = [
     "Name",
@@ -73,9 +72,17 @@ const StorageBucket = () => {
 
   return (
     <>
+      <Container className="d-flex justify-content-center">
+        <InventorySearchBox />
+      </Container>
       <div className="d-flex flex-column">
         <div className="scroll-container flex-grow-1">
-          <DataTable headers={headers} rows={rows} />
+          <ExtendedDataTable
+            headers={headers}
+            rows={rows}
+            isLoading={isLoading}
+            error={error}
+          />
         </div>
       </div>
     </>

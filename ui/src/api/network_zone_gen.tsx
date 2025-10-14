@@ -3,9 +3,14 @@
 import { NetworkZone } from "types/network_zone";
 import { processResponse } from "util/response";
 
-export const fetchNetworkZones = (): Promise<NetworkZone[]> => {
+export const fetchNetworkZones = (filter: string): Promise<NetworkZone[]> => {
+  let url = "/1.0/inventory/network_zones?recursion=1";
+  if (filter) {
+    url += `&filter=${filter}`;
+  }
+
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/inventory/network_zones?recursion=1`)
+    fetch(url)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);

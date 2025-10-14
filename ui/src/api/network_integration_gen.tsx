@@ -3,9 +3,16 @@
 import { NetworkIntegration } from "types/network_integration";
 import { processResponse } from "util/response";
 
-export const fetchNetworkIntegrations = (): Promise<NetworkIntegration[]> => {
+export const fetchNetworkIntegrations = (
+  filter: string,
+): Promise<NetworkIntegration[]> => {
+  let url = "/1.0/inventory/network_integrations?recursion=1";
+  if (filter) {
+    url += `&filter=${filter}`;
+  }
+
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/inventory/network_integrations?recursion=1`)
+    fetch(url)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);

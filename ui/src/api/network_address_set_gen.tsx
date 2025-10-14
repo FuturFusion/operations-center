@@ -3,9 +3,16 @@
 import { NetworkAddressSet } from "types/network_address_set";
 import { processResponse } from "util/response";
 
-export const fetchNetworkAddressSets = (): Promise<NetworkAddressSet[]> => {
+export const fetchNetworkAddressSets = (
+  filter: string,
+): Promise<NetworkAddressSet[]> => {
+  let url = "/1.0/inventory/network_address_sets?recursion=1";
+  if (filter) {
+    url += `&filter=${filter}`;
+  }
+
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/inventory/network_address_sets?recursion=1`)
+    fetch(url)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);

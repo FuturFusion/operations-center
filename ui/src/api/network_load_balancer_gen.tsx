@@ -3,9 +3,16 @@
 import { NetworkLoadBalancer } from "types/network_load_balancer";
 import { processResponse } from "util/response";
 
-export const fetchNetworkLoadBalancers = (): Promise<NetworkLoadBalancer[]> => {
+export const fetchNetworkLoadBalancers = (
+  filter: string,
+): Promise<NetworkLoadBalancer[]> => {
+  let url = "/1.0/inventory/network_load_balancers?recursion=1";
+  if (filter) {
+    url += `&filter=${filter}`;
+  }
+
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/inventory/network_load_balancers?recursion=1`)
+    fetch(url)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);

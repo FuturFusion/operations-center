@@ -3,9 +3,16 @@
 import { StorageBucket } from "types/storage_bucket";
 import { processResponse } from "util/response";
 
-export const fetchStorageBuckets = (): Promise<StorageBucket[]> => {
+export const fetchStorageBuckets = (
+  filter: string,
+): Promise<StorageBucket[]> => {
+  let url = "/1.0/inventory/storage_buckets?recursion=1";
+  if (filter) {
+    url += `&filter=${filter}`;
+  }
+
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/inventory/storage_buckets?recursion=1`)
+    fetch(url)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);

@@ -1,27 +1,26 @@
+import { Container } from "react-bootstrap";
+import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchImages } from "api/image";
-import DataTable from "components/DataTable";
+import ExtendedDataTable from "components/ExtendedDataTable";
+import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
 import ProjectIncusLink from "components/ProjectIncusLink";
 import { formatDate } from "util/date";
 
 const Image = () => {
+  const [searchParams] = useSearchParams();
+  const filter = searchParams.get("filter");
+
   const {
     data: images = [],
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["images"],
-    queryFn: fetchImages,
+    queryKey: ["images", filter],
+    queryFn: () => fetchImages(filter || ""),
+    retry: false,
   });
-
-  if (isLoading) {
-    return <div>Loading images...</div>;
-  }
-
-  if (error) {
-    return <div>Error while loading images: {error.message}</div>;
-  }
 
   const headers = ["Name", "Cluster", "Project", "Last updated"];
   const rows = images.map((item) => {
@@ -58,9 +57,17 @@ const Image = () => {
 
   return (
     <>
+      <Container className="d-flex justify-content-center">
+        <InventorySearchBox />
+      </Container>
       <div className="d-flex flex-column">
         <div className="scroll-container flex-grow-1">
-          <DataTable headers={headers} rows={rows} />
+          <ExtendedDataTable
+            headers={headers}
+            rows={rows}
+            isLoading={isLoading}
+            error={error}
+          />
         </div>
       </div>
     </>

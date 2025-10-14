@@ -2,7 +2,7 @@ import { FC, ReactNode, useState, useRef } from "react";
 import { Col, Form, Row, Table } from "react-bootstrap";
 import { MdArrowDropDown, MdArrowDropUp } from "react-icons/md";
 
-interface DataTableRow {
+export interface DataTableRow {
   content: ReactNode | string;
   sortKey?: string | number;
   class?: string;

@@ -3,9 +3,16 @@
 import { StorageVolume } from "types/storage_volume";
 import { processResponse } from "util/response";
 
-export const fetchStorageVolumes = (): Promise<StorageVolume[]> => {
+export const fetchStorageVolumes = (
+  filter: string,
+): Promise<StorageVolume[]> => {
+  let url = "/1.0/inventory/storage_volumes?recursion=1";
+  if (filter) {
+    url += `&filter=${filter}`;
+  }
+
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/inventory/storage_volumes?recursion=1`)
+    fetch(url)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
