@@ -27,7 +27,7 @@ const TokenDownloadModal: FC<Props> = ({
     architecture: "x86_64",
     type: "iso",
     seeds: {
-      applications: { applications: [] },
+      applications: { applications: [{ name: "incus" }] },
       install: {
         force_install: true,
         force_reboot: false,
