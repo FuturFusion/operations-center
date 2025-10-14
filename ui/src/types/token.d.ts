@@ -23,14 +23,6 @@ export interface TokenFormValues {
   uses_remaining: number;
 }
 
-export interface ApplicationFormValues {
-  name: string;
-}
-
-export interface ApplicationsFormValues {
-  applications: ApplicationFormValues[];
-}
-
 export interface InstallTargetFormValues {
   id: string;
 }
@@ -42,9 +34,11 @@ export interface InstallFormValues {
 }
 
 export interface SeedsFormValues {
-  applications: ApplicationsFormValues;
+  application: string;
   install: InstallFormValues;
   network: string;
+  migration_manager: string;
+  operations_center: string;
 }
 
 export interface TokenImageFormValues {
@@ -58,10 +52,20 @@ export interface TokenSeedImageFormValues {
   architecture: Architecture;
 }
 
+export interface TokenSeedApplication {
+  name: string;
+}
+
+export interface TokenSeedApplications {
+  applications: TokenSeedApplication[];
+}
+
 export interface TokenSeedConfigs {
-  applications: YamlValue;
+  applications: TokenSeedApplications;
   install: YamlValue;
   network: YamlValue;
+  migration_manager: YamlValue;
+  operations_center: YamlValue;
 }
 
 export interface TokenSeed {
@@ -74,9 +78,11 @@ export interface TokenSeed {
 }
 
 export interface TokenSeedConfigsFormValues {
-  applications: string;
+  application: string;
   install: string;
   network: string;
+  migration_manager: string;
+  operations_center: string;
 }
 
 export interface TokenSeedFormValues {

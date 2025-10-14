@@ -4,6 +4,7 @@ import { FormikProps } from "formik/dist/types";
 import ArchSelect from "components/ArchSelect";
 import ImageTypeSelect from "components/ImageTypeSelect";
 import { TokenImageFormValues } from "types/token";
+import { applicationsOptions } from "util/util";
 
 interface Props {
   formik: FormikProps<TokenImageFormValues>;
@@ -54,22 +55,53 @@ const TokenImageForm: FC<Props> = ({ formik }) => {
             onBlur={formik.handleBlur}
           />
         </Form.Group>
-        <Form.Group className="mb-4">
-          <Form.Label>Applications</Form.Label>
+        <Form.Group className="mb-4" controlId="application">
+          <Form.Label>Application</Form.Label>
           <Form.Select
-            value={formik.values.seeds.applications.applications.map(
-              (app) => app.name,
-            )}
+            value={formik.values.seeds?.application}
             onChange={(e) => {
-              const selected = [{ name: e.target.value }];
-              formik.setFieldValue("seeds.applications.applications", selected);
+              formik.setFieldValue("seeds.application", e.target.value);
             }}
+            isInvalid={!!formik.errors.seeds?.application}
           >
-            <option value="incus">Incus</option>
-            <option value="migration-manager">Migration manager</option>
-            <option value="operations-center">Operations center</option>
+            {Object.entries(applicationsOptions).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
           </Form.Select>
+          <Form.Control.Feedback type="invalid">
+            {formik.errors.seeds?.application}
+          </Form.Control.Feedback>
         </Form.Group>
+        {formik.values.seeds.application === "migration-manager" && (
+          <Form.Group className="mb-4" controlId="migration-manager">
+            <Form.Label>Migration manager seed data</Form.Label>
+            <Form.Control
+              type="text"
+              as="textarea"
+              rows={6}
+              name="seeds.migration_manager"
+              value={formik.values.seeds.migration_manager}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
+          </Form.Group>
+        )}
+        {formik.values.seeds.application === "operations-center" && (
+          <Form.Group className="mb-4" controlId="operations-center">
+            <Form.Label>Operations center seed data</Form.Label>
+            <Form.Control
+              type="text"
+              as="textarea"
+              rows={6}
+              name="seeds.operations_center"
+              value={formik.values.seeds.operations_center}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
+          </Form.Group>
+        )}
         <Form.Group className="mb-4" controlId="network">
           <Form.Label>Network configuration</Form.Label>
           <Form.Control

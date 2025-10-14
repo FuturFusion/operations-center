@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { Button } from "react-bootstrap";
-import { useFormik } from "formik";
+import { FormikErrors, useFormik } from "formik";
 import { downloadImage } from "api/token";
 import TokenImageForm from "components/TokenImageForm";
 import ModalWindow from "components/ModalWindow";
@@ -27,7 +27,9 @@ const TokenDownloadModal: FC<Props> = ({
     architecture: "x86_64",
     type: "iso",
     seeds: {
-      applications: { applications: [{ name: "incus" }] },
+      application: "",
+      migration_manager: "",
+      operations_center: "",
       install: {
         force_install: true,
         force_reboot: false,
@@ -39,21 +41,45 @@ const TokenDownloadModal: FC<Props> = ({
     },
   };
 
+  const validateForm = (
+    values: TokenImageFormValues,
+  ): FormikErrors<TokenImageFormValues> => {
+    const errors: FormikErrors<TokenImageFormValues> = {};
+
+    if (!values.seeds.application) {
+      errors.seeds ??= {};
+      errors.seeds.application = "Application is required";
+    }
+
+    return errors;
+  };
+
   const formik = useFormik({
     initialValues: formikInitialValues,
+    validate: validateForm,
     onSubmit: (values: TokenImageFormValues, { resetForm }) => {
-      let parsedNetwork = {};
+      let parsedNetwork = null;
+      let parsedMigrationManager = null;
+      let parsedOperationsCenter = null;
       try {
         parsedNetwork = YAML.parse(values.seeds.network);
+        parsedMigrationManager = YAML.parse(values.seeds.migration_manager);
+        parsedOperationsCenter = YAML.parse(values.seeds.operations_center);
       } catch (error) {
-        notify.error(`Error during network parsing: ${error}`);
+        notify.error(`Error during YAML parsing: ${error}`);
         return;
       }
 
       handleClose();
       download({
         ...values,
-        seeds: { ...values.seeds, network: parsedNetwork },
+        seeds: {
+          applications: { aplications: [{ name: values.seeds.application }] },
+          install: values.seeds.install,
+          network: parsedNetwork,
+          migration_manager: parsedMigrationManager,
+          operations_center: parsedOperationsCenter,
+        },
       });
       resetForm();
     },
