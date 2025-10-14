@@ -61,7 +61,7 @@ func (a *Authenticator) Middleware(opts ...MiddlewareOption) func(next http.Hand
 
 			if cfg.isAuthenticationRequired(r) && !trusted {
 				slog.WarnContext(ctx, "Rejecting request from untrusted client", slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
-				err = response.Forbidden(nil).Render(w)
+				err = response.Unauthorized(nil).Render(w)
 				if err != nil {
 					slog.WarnContext(ctx, "Render forbidden response failed", logger.Err(err))
 				}

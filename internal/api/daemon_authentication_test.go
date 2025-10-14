@@ -125,7 +125,7 @@ func TestAuthentication(t *testing.T) {
 			wantStatusCode: http.StatusOK,
 		},
 		{
-			name: "plain http GET /1.0 - forbidden",
+			name: "plain http GET /1.0 - unauthorized",
 			client: func() *http.Client {
 				return &http.Client{
 					Transport: &http.Transport{
@@ -139,7 +139,7 @@ func TestAuthentication(t *testing.T) {
 			resource: "https://localhost:17443/1.0",
 			body:     http.NoBody,
 
-			wantStatusCode: http.StatusForbidden,
+			wantStatusCode: http.StatusUnauthorized,
 		},
 		{
 			name: "socket GET /1.0",

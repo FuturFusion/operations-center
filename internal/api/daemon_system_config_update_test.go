@@ -122,13 +122,13 @@ func TestSystemConfigUpdate(t *testing.T) {
 		_ = resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-		// Expect forbidden over http without trusted credentials.
+		// Expect unauthorized over http without trusted credentials.
 		req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("https://localhost:%d/1.0", port), http.NoBody)
 		require.NoError(t, err)
 		resp, err = tcpClient.Do(req)
 		require.NoError(t, err)
 		_ = resp.Body.Close()
-		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
 		t.Log(`3. Update trusted TLS client certificates`)
 		req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/security", bytes.NewBufferString(`{
@@ -159,7 +159,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 		_ = resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
-		t.Log(`4. Expect forbidden with user "admin" without OIDC configuration`)
+		t.Log(`4. Expect unauthorized with user "admin" without OIDC configuration`)
 		tcpClient = &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{
@@ -174,7 +174,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 		resp, err = tcpClient.Do(req)
 		require.NoError(t, err)
 		_ = resp.Body.Close()
-		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
 		t.Log(`5. Add OIDC configuration`)
 		req, err = http.NewRequest(http.MethodPut, "http://unix.socket/1.0/system/security", bytes.NewBufferString(`{
