@@ -3,9 +3,14 @@
 import { NetworkACL } from "types/network_acl";
 import { processResponse } from "util/response";
 
-export const fetchNetworkACLs = (): Promise<NetworkACL[]> => {
+export const fetchNetworkACLs = (filter: string): Promise<NetworkACL[]> => {
+  let url = "/1.0/inventory/network_acls?recursion=1";
+  if (filter) {
+    url += `&filter=${filter}`;
+  }
+
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/inventory/network_acls?recursion=1`)
+    fetch(url)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);

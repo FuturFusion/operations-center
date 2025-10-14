@@ -3,9 +3,14 @@
 import { Profile } from "types/profile";
 import { processResponse } from "util/response";
 
-export const fetchProfiles = (): Promise<Profile[]> => {
+export const fetchProfiles = (filter: string): Promise<Profile[]> => {
+  let url = "/1.0/inventory/profiles?recursion=1";
+  if (filter) {
+    url += `&filter=${filter}`;
+  }
+
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/inventory/profiles?recursion=1`)
+    fetch(url)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);

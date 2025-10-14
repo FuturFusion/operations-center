@@ -3,9 +3,14 @@
 import { Project } from "types/project";
 import { processResponse } from "util/response";
 
-export const fetchProjects = (): Promise<Project[]> => {
+export const fetchProjects = (filter: string): Promise<Project[]> => {
+  let url = "/1.0/inventory/projects?recursion=1";
+  if (filter) {
+    url += `&filter=${filter}`;
+  }
+
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/inventory/projects?recursion=1`)
+    fetch(url)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);

@@ -3,9 +3,14 @@
 import { Network } from "types/network";
 import { processResponse } from "util/response";
 
-export const fetchNetworks = (): Promise<Network[]> => {
+export const fetchNetworks = (filter: string): Promise<Network[]> => {
+  let url = "/1.0/inventory/networks?recursion=1";
+  if (filter) {
+    url += `&filter=${filter}`;
+  }
+
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/inventory/networks?recursion=1`)
+    fetch(url)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);

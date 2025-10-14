@@ -3,9 +3,16 @@
 import { NetworkForward } from "types/network_forward";
 import { processResponse } from "util/response";
 
-export const fetchNetworkForwards = (): Promise<NetworkForward[]> => {
+export const fetchNetworkForwards = (
+  filter: string,
+): Promise<NetworkForward[]> => {
+  let url = "/1.0/inventory/network_forwards?recursion=1";
+  if (filter) {
+    url += `&filter=${filter}`;
+  }
+
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/inventory/network_forwards?recursion=1`)
+    fetch(url)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
