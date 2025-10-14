@@ -1,25 +1,24 @@
+import { Container } from "react-bootstrap";
+import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchNetworkPeers } from "api/network_peer";
-import DataTable from "components/DataTable";
+import ExtendedDataTable from "components/ExtendedDataTable";
+import InventorySearchBox from "components/InventorySearchBox";
 import { formatDate } from "util/date";
 
 const NetworkPeer = () => {
+  const [searchParams] = useSearchParams();
+  const filter = searchParams.get("filter");
+
   const {
     data: peers = [],
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["network_peers"],
-    queryFn: fetchNetworkPeers,
+    queryKey: ["network_peers", filter],
+    queryFn: () => fetchNetworkPeers(filter || ""),
+    retry: false,
   });
-
-  if (isLoading) {
-    return <div>Loading network peers...</div>;
-  }
-
-  if (error) {
-    return <div>Error while loading network peers: {error.message}</div>;
-  }
 
   const headers = ["Name", "Cluster", "Network name", "Last updated"];
   const rows = peers.map((item) => {
@@ -45,9 +44,17 @@ const NetworkPeer = () => {
 
   return (
     <>
+      <Container className="d-flex justify-content-center">
+        <InventorySearchBox />
+      </Container>
       <div className="d-flex flex-column">
         <div className="scroll-container flex-grow-1">
-          <DataTable headers={headers} rows={rows} />
+          <ExtendedDataTable
+            headers={headers}
+            rows={rows}
+            isLoading={isLoading}
+            error={error}
+          />
         </div>
       </div>
     </>

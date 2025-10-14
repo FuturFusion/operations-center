@@ -1,26 +1,25 @@
+import { Container } from "react-bootstrap";
+import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchNetworkForwards } from "api/network_forward";
-import DataTable from "components/DataTable";
+import ExtendedDataTable from "components/ExtendedDataTable";
+import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
 import { formatDate } from "util/date";
 
 const NetworkForward = () => {
+  const [searchParams] = useSearchParams();
+  const filter = searchParams.get("filter");
+
   const {
     data: network_forwards = [],
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["network_forwards"],
-    queryFn: fetchNetworkForwards,
+    queryKey: ["network_forwards", filter],
+    queryFn: () => fetchNetworkForwards(filter || ""),
+    retry: false,
   });
-
-  if (isLoading) {
-    return <div>Loading network forwards...</div>;
-  }
-
-  if (error) {
-    return <div>Error while loading network forwards: {error.message}</div>;
-  }
 
   const headers = ["Name", "Cluster", "Network name", "Last updated"];
   const rows = network_forwards.map((item) => {
@@ -52,9 +51,17 @@ const NetworkForward = () => {
 
   return (
     <>
+      <Container className="d-flex justify-content-center">
+        <InventorySearchBox />
+      </Container>
       <div className="d-flex flex-column">
         <div className="scroll-container flex-grow-1">
-          <DataTable headers={headers} rows={rows} />
+          <ExtendedDataTable
+            headers={headers}
+            rows={rows}
+            isLoading={isLoading}
+            error={error}
+          />
         </div>
       </div>
     </>

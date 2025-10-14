@@ -1,26 +1,25 @@
+import { Container } from "react-bootstrap";
+import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchProjects } from "api/project";
-import DataTable from "components/DataTable";
+import ExtendedDataTable from "components/ExtendedDataTable";
+import InventorySearchBox from "components/InventorySearchBox";
 import ProjectIncusLink from "components/ProjectIncusLink";
 import { formatDate } from "util/date";
 
 const Project = () => {
+  const [searchParams] = useSearchParams();
+  const filter = searchParams.get("filter");
+
   const {
     data: projects = [],
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["projects"],
-    queryFn: fetchProjects,
+    queryKey: ["projects", filter],
+    queryFn: () => fetchProjects(filter || ""),
+    retry: false,
   });
-
-  if (isLoading) {
-    return <div>Loading projects...</div>;
-  }
-
-  if (error) {
-    return <div>Error while loading projects: {error.message}</div>;
-  }
 
   const headers = ["Name", "Cluster", "Last updated"];
   const rows = projects.map((item) => {
@@ -44,9 +43,17 @@ const Project = () => {
 
   return (
     <>
+      <Container className="d-flex justify-content-center">
+        <InventorySearchBox />
+      </Container>
       <div className="d-flex flex-column">
         <div className="scroll-container flex-grow-1">
-          <DataTable headers={headers} rows={rows} />
+          <ExtendedDataTable
+            headers={headers}
+            rows={rows}
+            isLoading={isLoading}
+            error={error}
+          />
         </div>
       </div>
     </>

@@ -1,26 +1,25 @@
+import { Container } from "react-bootstrap";
+import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchStoragePools } from "api/storage_pool";
-import DataTable from "components/DataTable";
+import ExtendedDataTable from "components/ExtendedDataTable";
+import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
 import { formatDate } from "util/date";
 
 const StoragePool = () => {
+  const [searchParams] = useSearchParams();
+  const filter = searchParams.get("filter");
+
   const {
     data: pools = [],
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["storage_pools"],
-    queryFn: fetchStoragePools,
+    queryKey: ["storage_pools", filter],
+    queryFn: () => fetchStoragePools(filter || ""),
+    retry: false,
   });
-
-  if (isLoading) {
-    return <div>Loading storage pools...</div>;
-  }
-
-  if (error) {
-    return <div>Error while loading storage pools: {error.message}</div>;
-  }
 
   const headers = ["Name", "Cluster", "Last updated"];
   const rows = pools.map((item) => {
@@ -48,9 +47,17 @@ const StoragePool = () => {
 
   return (
     <>
+      <Container className="d-flex justify-content-center">
+        <InventorySearchBox />
+      </Container>
       <div className="d-flex flex-column">
         <div className="scroll-container flex-grow-1">
-          <DataTable headers={headers} rows={rows} />
+          <ExtendedDataTable
+            headers={headers}
+            rows={rows}
+            isLoading={isLoading}
+            error={error}
+          />
         </div>
       </div>
     </>
