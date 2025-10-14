@@ -25,6 +25,7 @@ const StorageVolume = () => {
 
   const headers = [
     "Name",
+    "Type",
     "Cluster",
     "Server",
     "Project",
@@ -42,6 +43,10 @@ const StorageVolume = () => {
           />
         ),
         sortKey: item.name,
+      },
+      {
+        content: item.type,
+        sortKey: item.type,
       },
       {
         content: item.cluster,
