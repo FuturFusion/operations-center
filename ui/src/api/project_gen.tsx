@@ -3,7 +3,9 @@
 import { Project } from "types/project";
 import { processResponse } from "util/response";
 
-export const fetchProjects = (filter: string): Promise<Project[]> => {
+export const fetchProjects = (
+  filter: string,
+): Promise<Project[]> => {
   let url = "/1.0/inventory/projects?recursion=1";
   if (filter) {
     url += `&filter=${filter}`;

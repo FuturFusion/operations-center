@@ -3,7 +3,9 @@
 import { NetworkPeer } from "types/network_peer";
 import { processResponse } from "util/response";
 
-export const fetchNetworkPeers = (filter: string): Promise<NetworkPeer[]> => {
+export const fetchNetworkPeers = (
+  filter: string,
+): Promise<NetworkPeer[]> => {
   let url = "/1.0/inventory/network_peers?recursion=1";
   if (filter) {
     url += `&filter=${filter}`;

@@ -3,7 +3,9 @@
 import { Instance } from "types/instance";
 import { processResponse } from "util/response";
 
-export const fetchInstances = (filter: string): Promise<Instance[]> => {
+export const fetchInstances = (
+  filter: string,
+): Promise<Instance[]> => {
   let url = "/1.0/inventory/instances?recursion=1";
   if (filter) {
     url += `&filter=${filter}`;
