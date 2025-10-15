@@ -20,6 +20,9 @@ import Profile from "pages/Profile";
 import Project from "pages/Project";
 import Cluster from "pages/Cluster";
 import ClusterCreate from "pages/ClusterCreate";
+import ClusterTemplate from "pages/ClusterTemplate";
+import ClusterTemplateCreate from "pages/ClusterTemplateCreate";
+import ClusterTemplateDetail from "pages/ClusterTemplateDetail";
 import Server from "pages/Server";
 import ServerDetail from "pages/ServerDetail";
 import Token from "pages/Token";
@@ -103,6 +106,22 @@ function App() {
             <Route
               path="/ui/provisioning/clusters/create/:activeTab"
               element={<ClusterCreate />}
+            />
+            <Route
+              path="/ui/provisioning/cluster-templates"
+              element={<ClusterTemplate />}
+            />
+            <Route
+              path="/ui/provisioning/cluster-templates/create"
+              element={<ClusterTemplateCreate />}
+            />
+            <Route
+              path="/ui/provisioning/cluster-templates/:name"
+              element={<ClusterTemplateDetail />}
+            />
+            <Route
+              path="/ui/provisioning/cluster-templates/:name/:activeTab"
+              element={<ClusterTemplateDetail />}
             />
             <Route path="/ui/provisioning/servers" element={<Server />} />
             <Route
