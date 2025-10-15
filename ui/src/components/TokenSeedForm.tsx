@@ -1,8 +1,9 @@
 import { FC } from "react";
 import { Button, Form } from "react-bootstrap";
-import { useFormik } from "formik";
+import { FormikErrors, useFormik } from "formik";
 import { useNotification } from "context/notificationContext";
 import { TokenSeed, TokenSeedFormValues } from "types/token";
+import { applicationsOptions } from "util/util";
 import YAML from "yaml";
 
 interface Props {
@@ -17,7 +18,9 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
     description: "",
     public: false,
     seeds: {
-      applications: "",
+      application: "",
+      migration_manager: "",
+      operations_center: "",
       install: "",
       network: "",
     },
@@ -29,8 +32,12 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
       description: seed.description,
       public: seed.public,
       seeds: {
-        applications: seed.seeds.applications
-          ? YAML.stringify(seed.seeds.applications)
+        application: seed.seeds.applications?.applications?.[0]?.name || "",
+        migration_manager: seed.seeds.migration_manager
+          ? YAML.stringify(seed.seeds.migration_manager)
+          : "",
+        operations_center: seed.seeds.operations_center
+          ? YAML.stringify(seed.seeds.operations_center)
           : "",
         install: seed.seeds.install ? YAML.stringify(seed.seeds.install) : "",
         network: seed.seeds.network ? YAML.stringify(seed.seeds.network) : "",
@@ -38,17 +45,33 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
     };
   }
 
+  const validateForm = (
+    values: TokenSeedFormValues,
+  ): FormikErrors<TokenSeedFormValues> => {
+    const errors: FormikErrors<TokenSeedFormValues> = {};
+
+    if (!values.seeds.application) {
+      errors.seeds ??= {};
+      errors.seeds.application = "Applications is required";
+    }
+
+    return errors;
+  };
+
   const formik = useFormik({
     initialValues: formikInitialValues,
     enableReinitialize: true,
+    validate: validateForm,
     onSubmit: (values: TokenSeedFormValues) => {
-      let parsedApplications = {};
       let parsedInstall = {};
       let parsedNetwork = {};
+      let parsedMigrationManager = {};
+      let parsedOperationsCenter = {};
       try {
-        parsedApplications = YAML.parse(values.seeds.applications);
         parsedInstall = YAML.parse(values.seeds.install);
         parsedNetwork = YAML.parse(values.seeds.network);
+        parsedMigrationManager = YAML.parse(values.seeds.migration_manager);
+        parsedOperationsCenter = YAML.parse(values.seeds.operations_center);
       } catch (error) {
         notify.error(`Error during yaml parsing: ${error}`);
         return;
@@ -58,9 +81,11 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
         ...values,
         seeds: {
           ...values.seeds,
-          applications: parsedApplications,
+          applications: { applications: [{ name: values.seeds.application }] },
           install: parsedInstall,
           network: parsedNetwork,
+          migration_manager: parsedMigrationManager,
+          operations_center: parsedOperationsCenter,
         },
       };
       onSubmit(tokenSeed);
@@ -116,18 +141,53 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
               <option value="true">Yes</option>
             </Form.Select>
           </Form.Group>
-          <Form.Group className="mb-4" controlId="applications">
-            <Form.Label>Applications</Form.Label>
-            <Form.Control
-              type="text"
-              as="textarea"
-              rows={6}
-              name="seeds.applications"
-              value={formik.values.seeds.applications}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-            />
+          <Form.Group className="mb-4" controlId="application">
+            <Form.Label>Application</Form.Label>
+            <Form.Select
+              value={formik.values.seeds?.application}
+              onChange={(e) => {
+                formik.setFieldValue("seeds.application", e.target.value);
+              }}
+              isInvalid={!!formik.errors.seeds?.application}
+            >
+              {Object.entries(applicationsOptions).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Form.Select>
+            <Form.Control.Feedback type="invalid">
+              {formik.errors.seeds?.application}
+            </Form.Control.Feedback>
           </Form.Group>
+          {formik.values.seeds.application === "migration-manager" && (
+            <Form.Group className="mb-4" controlId="migration-manager">
+              <Form.Label>Migration manager seed data</Form.Label>
+              <Form.Control
+                type="text"
+                as="textarea"
+                rows={6}
+                name="seeds.migration_manager"
+                value={formik.values.seeds.migration_manager}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+              />
+            </Form.Group>
+          )}
+          {formik.values.seeds.application === "operations-center" && (
+            <Form.Group className="mb-4" controlId="operations-center">
+              <Form.Label>Operations center seed data</Form.Label>
+              <Form.Control
+                type="text"
+                as="textarea"
+                rows={6}
+                name="seeds.operations_center"
+                value={formik.values.seeds.operations_center}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+              />
+            </Form.Group>
+          )}
           <Form.Group className="mb-4" controlId="Install">
             <Form.Label>Install</Form.Label>
             <Form.Control

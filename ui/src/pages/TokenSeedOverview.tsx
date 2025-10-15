@@ -49,6 +49,36 @@ const TokenSeedOverview = () => {
           </pre>
         </div>
       </div>
+      {seed?.seeds.applications?.applications?.[0]?.name ===
+        "migration-manager" && (
+        <div className="row">
+          <div className="col-2 detail-table-header">
+            Migration manager seed data
+          </div>
+          <div className="col-10 detail-table-cell">
+            <pre>
+              {seed?.seeds.migration_manager
+                ? YAML.stringify(seed?.seeds.migration_manager, null, 2)
+                : ""}
+            </pre>
+          </div>
+        </div>
+      )}
+      {seed?.seeds.applications?.applications?.[0]?.name ===
+        "operations-center" && (
+        <div className="row">
+          <div className="col-2 detail-table-header">
+            Operations center seed data
+          </div>
+          <div className="col-10 detail-table-cell">
+            <pre>
+              {seed?.seeds.operations_center
+                ? YAML.stringify(seed?.seeds.operations_center, null, 2)
+                : ""}
+            </pre>
+          </div>
+        </div>
+      )}
       <div className="row">
         <div className="col-2 detail-table-header">Install</div>
         <div className="col-10 detail-table-cell">
