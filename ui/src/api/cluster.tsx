@@ -11,6 +11,18 @@ export const fetchClusters = (): Promise<Cluster[]> => {
   });
 };
 
+export const createCluster = (body: string): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/clusters`, {
+      method: "POST",
+      body: body,
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
 export const updateClusterCert = (
   name: string,
   body: string,

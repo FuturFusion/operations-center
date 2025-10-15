@@ -11,9 +11,14 @@ export const fetchSettings = (): Promise<Settings> => {
   });
 };
 
-export const fetchServers = (): Promise<Server[]> => {
+export const fetchServers = (filter: string): Promise<Server[]> => {
+  let url = "/1.0/provisioning/servers?recursion=1";
+  if (filter) {
+    url += `&filter=${filter}`;
+  }
+
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/provisioning/servers?recursion=1`)
+    fetch(url)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
