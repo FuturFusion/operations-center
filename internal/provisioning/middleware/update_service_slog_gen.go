@@ -357,6 +357,39 @@ func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, id 
 	return _d._base.GetUpdateFileByFilename(ctx, id, filename)
 }
 
+// PrunePending implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) PrunePending(ctx context.Context) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling PrunePending")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method PrunePending returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method PrunePending returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method PrunePending finished")
+		}
+	}()
+	return _d._base.PrunePending(ctx)
+}
+
 // Refresh implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) (err error) {
 	log := _d._log.With()
