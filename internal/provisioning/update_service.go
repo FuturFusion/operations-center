@@ -17,6 +17,7 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -133,6 +134,39 @@ func (s updateService) CleanupAll(ctx context.Context) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (s updateService) PrunePending(ctx context.Context) error {
+	var fileRepoErrs []error
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		updates, err := s.repo.GetAllWithFilter(ctx, UpdateFilter{
+			Status: ptr.To(api.UpdateStatusPending),
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to get all pending updates during prune: %w", err)
+		}
+
+		for _, update := range updates {
+			err = s.filesRepo.Delete(ctx, update)
+			if err != nil {
+				fileRepoErrs = append(fileRepoErrs, fmt.Errorf("Failed to remove files of update %q: %w", update.UUID.String(), err))
+			}
+
+			err = s.repo.DeleteByUUID(ctx, update.UUID)
+			if err != nil {
+				return fmt.Errorf("Failed to delete update %v: %w", update.UUID, err)
+			}
+		}
+
+		return nil
+	})
+	err = errors.Join(append([]error{err}, fileRepoErrs...)...)
+	if err != nil {
+		return fmt.Errorf("Failed to prune pending updates: %w", err)
 	}
 
 	return nil

@@ -194,6 +194,127 @@ func TestUpdateService_CleanupAll(t *testing.T) {
 	}
 }
 
+func TestUpdateService_PrunePending(t *testing.T) {
+	tests := []struct {
+		name                    string
+		repoGetAllWithFilter    provisioning.Updates
+		repoGetAllWithFilterErr error
+		filesRepoDelete         []queue.Item[struct{}]
+		repoDeleteByUUID        []queue.Item[struct{}]
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetAllWithFilter: provisioning.Updates{
+				{
+					UUID:   uuid.MustParse("3b9d0f85-67b4-480e-b369-fef25e9d8ccc"),
+					Status: api.UpdateStatusPending,
+				},
+				{
+					UUID:   uuid.MustParse("ce9b4489-cc2e-4726-9103-ea22d07a2110"),
+					Status: api.UpdateStatusPending,
+				},
+			},
+			filesRepoDelete: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+			repoDeleteByUUID: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                    "error - repo.GetAll",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - filesRepo.Delete",
+			repoGetAllWithFilter: provisioning.Updates{
+				{
+					UUID:   uuid.MustParse("3b9d0f85-67b4-480e-b369-fef25e9d8ccc"),
+					Status: api.UpdateStatusPending,
+				},
+				{
+					UUID:   uuid.MustParse("ce9b4489-cc2e-4726-9103-ea22d07a2110"),
+					Status: api.UpdateStatusPending,
+				},
+			},
+			filesRepoDelete: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+				{},
+			},
+			repoDeleteByUUID: []queue.Item[struct{}]{
+				{},
+				{},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.DeleteByID",
+			repoGetAllWithFilter: provisioning.Updates{
+				{
+					UUID:   uuid.MustParse("3b9d0f85-67b4-480e-b369-fef25e9d8ccc"),
+					Status: api.UpdateStatusPending,
+				},
+				{
+					UUID:   uuid.MustParse("ce9b4489-cc2e-4726-9103-ea22d07a2110"),
+					Status: api.UpdateStatusPending,
+				},
+			},
+			filesRepoDelete: []queue.Item[struct{}]{
+				{},
+			},
+			repoDeleteByUUID: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.UpdateRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.UpdateFilter) (provisioning.Updates, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					_, err := queue.Pop(t, &tc.repoDeleteByUUID)
+					return err
+				},
+			}
+
+			repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
+				DeleteFunc: func(ctx context.Context, update provisioning.Update) error {
+					_, err := queue.Pop(t, &tc.filesRepoDelete)
+					return err
+				},
+			}
+
+			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil)
+
+			// Run test
+			err := updateSvc.PrunePending(context.Background())
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Empty(t, tc.repoDeleteByUUID)
+		})
+	}
+}
+
 func TestUpdateService_GetAll(t *testing.T) {
 	tests := []struct {
 		name              string
