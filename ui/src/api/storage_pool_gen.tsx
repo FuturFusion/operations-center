@@ -3,7 +3,9 @@
 import { StoragePool } from "types/storage_pool";
 import { processResponse } from "util/response";
 
-export const fetchStoragePools = (filter: string): Promise<StoragePool[]> => {
+export const fetchStoragePools = (
+  filter: string,
+): Promise<StoragePool[]> => {
   let url = "/1.0/inventory/storage_pools?recursion=1";
   if (filter) {
     url += `&filter=${filter}`;

@@ -3,7 +3,9 @@
 import { Image } from "types/image";
 import { processResponse } from "util/response";
 
-export const fetchImages = (filter: string): Promise<Image[]> => {
+export const fetchImages = (
+  filter: string,
+): Promise<Image[]> => {
   let url = "/1.0/inventory/images?recursion=1";
   if (filter) {
     url += `&filter=${filter}`;

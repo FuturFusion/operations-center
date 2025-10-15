@@ -3,7 +3,9 @@
 import { Network } from "types/network";
 import { processResponse } from "util/response";
 
-export const fetchNetworks = (filter: string): Promise<Network[]> => {
+export const fetchNetworks = (
+  filter: string,
+): Promise<Network[]> => {
   let url = "/1.0/inventory/networks?recursion=1";
   if (filter) {
     url += `&filter=${filter}`;

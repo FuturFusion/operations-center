@@ -3,7 +3,9 @@
 import { Profile } from "types/profile";
 import { processResponse } from "util/response";
 
-export const fetchProfiles = (filter: string): Promise<Profile[]> => {
+export const fetchProfiles = (
+  filter: string,
+): Promise<Profile[]> => {
   let url = "/1.0/inventory/profiles?recursion=1";
   if (filter) {
     url += `&filter=${filter}`;
