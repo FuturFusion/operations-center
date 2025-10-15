@@ -53,11 +53,11 @@ func TestMain0RunDaemon(t *testing.T) {
 network:
   address: "https://127.0.0.1:27443"
   rest_server_address: "[::1]:27443"
-
-updates:
-  source_skip_first_update: true
 `
 	err = os.WriteFile(filepath.Join(tmpDir, "config.yml"), []byte(minimalConfig), 0o600)
+	require.NoError(t, err)
+
+	err = os.Setenv("OPERATIONS_CENTER_DISABLE_BACKGROUND_TASKS", "true")
 	require.NoError(t, err)
 
 	env := &mock.EnvironmentMock{
@@ -129,6 +129,9 @@ func TestMain0RunDaemonStartError(t *testing.T) {
 	err := os.Mkdir(filepath.Join(tmpDir, "invalid"), 0o770)
 	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(tmpDir, "invalid/config.yml"), []byte(`{`), 0o660)
+	require.NoError(t, err)
+
+	err = os.Setenv("OPERATIONS_CENTER_DISABLE_BACKGROUND_TASKS", "true")
 	require.NoError(t, err)
 
 	tests := []struct {

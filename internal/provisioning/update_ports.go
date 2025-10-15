@@ -21,6 +21,7 @@ type UpdateService interface {
 
 	CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uuid.UUID, error)
 	CleanupAll(ctx context.Context) error
+	PrunePending(ctx context.Context) error
 	Refresh(ctx context.Context) error
 }
 

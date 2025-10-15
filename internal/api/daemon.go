@@ -150,7 +150,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	})
 
 	// Setup Services
-	updateSvc, err := d.setupUpdatesService(dbWithTransaction)
+	updateSvc, err := d.setupUpdatesService(ctx, dbWithTransaction)
 	if err != nil {
 		return err
 	}
@@ -330,7 +330,7 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg api.SystemSecurit
 	return errors.Join(errs...)
 }
 
-func (d *Daemon) setupUpdatesService(db dbdriver.DBTX) (provisioning.UpdateService, error) {
+func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (provisioning.UpdateService, error) {
 	repoUpdateFiles, err := localfs.New(
 		filepath.Join(d.env.VarDir(), "updates"),
 		config.GetUpdates().SignatureVerificationRootCA,
@@ -378,6 +378,12 @@ func (d *Daemon) setupUpdatesService(db dbdriver.DBTX) (provisioning.UpdateServi
 		),
 		updateServiceOptions...,
 	)
+
+	err = updateSvcBase.PrunePending(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to prune pending updates", logger.Err(err))
+	}
+
 	config.UpdatesUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemUpdates) {
 		updateSvcBase.UpdateConfig(ctx, cfg.FilterExpression, cfg.FileFilterExpression)
 	})
