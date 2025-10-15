@@ -10,7 +10,7 @@ const Server = () => {
     isLoading,
   } = useQuery({
     queryKey: ["servers"],
-    queryFn: fetchServers,
+    queryFn: () => fetchServers(""),
   });
 
   if (isLoading) {

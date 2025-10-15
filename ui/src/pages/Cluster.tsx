@@ -1,11 +1,14 @@
+import Button from "react-bootstrap/Button";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { fetchClusters } from "api/cluster";
 import ClusterActions from "components/ClusterActions";
 import DataTable from "components/DataTable";
 import { formatDate } from "util/date";
 
 const Cluster = () => {
+  const navigate = useNavigate();
+
   const {
     data: clusters = [],
     error,
@@ -65,6 +68,19 @@ const Cluster = () => {
   return (
     <>
       <div className="d-flex flex-column">
+        <div className="mx-2 mx-md-4">
+          <div className="row">
+            <div className="col-12">
+              <Button
+                variant="success"
+                className="float-end"
+                onClick={() => navigate("/ui/provisioning/clusters/create")}
+              >
+                Create cluster
+              </Button>
+            </div>
+          </div>
+        </div>
         <div className="scroll-container flex-grow-1">
           <DataTable headers={headers} rows={rows} />
         </div>
