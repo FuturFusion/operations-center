@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Nav, Navbar, Collapse, Container } from "react-bootstrap";
 import { Link } from "react-router";
 import { AiOutlineCluster } from "react-icons/ai";
-import { GoServer } from "react-icons/go";
+import { GoProjectTemplate, GoServer } from "react-icons/go";
 import { IoChevronDownOutline, IoChevronForward } from "react-icons/io5";
 import {
   MdLogin,
@@ -215,6 +215,13 @@ const Sidebar = () => {
                   <li>
                     <Nav.Link as={Link} to="/ui/provisioning/clusters">
                       <AiOutlineCluster /> Clusters
+                    </Nav.Link>
+                  </li>
+                </Nav.Item>
+                <Nav.Item>
+                  <li>
+                    <Nav.Link as={Link} to="/ui/provisioning/cluster-templates">
+                      <GoProjectTemplate /> Cluster templates
                     </Nav.Link>
                   </li>
                 </Nav.Item>

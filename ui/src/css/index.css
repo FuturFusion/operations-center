@@ -14,6 +14,10 @@ body {
   padding: 8px 0px;
 }
 
+tr.overview-table-header th {
+  color: #00000090;
+}
+
 .form-container {
   width: 50%;
   padding: 20px;
