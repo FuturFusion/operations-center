@@ -74,7 +74,7 @@ const TokenDownloadModal: FC<Props> = ({
       download({
         ...values,
         seeds: {
-          applications: { aplications: [{ name: values.seeds.application }] },
+          applications: { applications: [{ name: values.seeds.application }] },
           install: values.seeds.install,
           network: parsedNetwork,
           migration_manager: parsedMigrationManager,
