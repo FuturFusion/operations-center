@@ -136,7 +136,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/schollz/progressbar/v3 v3.18.0 // indirect
-	github.com/shirou/gopsutil/v4 v4.25.8 // indirect
+	github.com/shirou/gopsutil/v4 v4.25.9 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
@@ -220,3 +220,5 @@ require (
 	golang.org/x/tools v0.37.0
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+replace github.com/lxc/incus/v6 v6.17.0 => github.com/breml/incus/v6 v6.0.0-20251016125721-eb04746a24a0
