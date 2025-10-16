@@ -5,6 +5,15 @@ export interface Cluster {
   last_updated: string;
 }
 
+export interface ClusterPost {
+  name: string;
+  connection_url: string;
+  server_names: string[];
+  server_type: string;
+  services_config: YamlValue;
+  application_seed_config: YamlValue;
+}
+
 export interface ClusterFormValues {
   name: string;
   connection_url: string;
@@ -12,6 +21,8 @@ export interface ClusterFormValues {
   server_type: string;
   services_config: YamlValue;
   application_seed_config: YamlValue;
+  variables: string;
+  template: string;
 }
 
 export interface ClusterCertFormValues {
