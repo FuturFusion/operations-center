@@ -5,7 +5,9 @@ resource "incus_certificate" "{{ .Name }}" {
   restricted  = {{ .Restricted }}
   projects    = {{ toJson .Projects }}
   type        = "{{ .Type }}"
-  certificate = "{{ .Certificate }}"
+  certificate = <<EOT
+{{ .Certificate }}
+EOT
 }
 
 {{ end -}}
