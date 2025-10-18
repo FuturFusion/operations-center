@@ -1,7 +1,7 @@
 import { FC, useState } from "react";
-import { MdOutlineFileDownload } from "react-icons/md";
+import { MdOutlineFileDownload, MdOutlineSync } from "react-icons/md";
 import { PiCertificate } from "react-icons/pi";
-import { downloadTerraformData } from "api/cluster";
+import { downloadTerraformData, resyncClusterInventory } from "api/cluster";
 import ClusterUpdateCertModal from "components/ClusterUpdateCertModal";
 import { useNotification } from "context/notificationContext";
 import { Cluster } from "types/cluster";
@@ -38,6 +38,20 @@ const ClusterActions: FC<Props> = ({ cluster }) => {
     }
   };
 
+  const onResyncClusterInventory = () => {
+    resyncClusterInventory(cluster.name)
+      .then((response) => {
+        if (response.error_code == 0) {
+          notify.success(`Cluster inventory resync triggered`);
+          return;
+        }
+        notify.error(response.error);
+      })
+      .catch((e) => {
+        notify.error(`Error during cluster inventory sync: ${e}`);
+      });
+  };
+
   return (
     <div>
       <PiCertificate
@@ -54,6 +68,14 @@ const ClusterActions: FC<Props> = ({ cluster }) => {
         style={actionStyle}
         onClick={() => {
           onDownloadTerraformData();
+        }}
+      />
+      <MdOutlineSync
+        size={25}
+        title="Resync cluster inventory"
+        style={actionStyle}
+        onClick={() => {
+          onResyncClusterInventory();
         }}
       />
       <ClusterUpdateCertModal
