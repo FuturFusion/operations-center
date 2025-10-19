@@ -9,6 +9,7 @@ import {
 import ServerForm from "components/ServerForm";
 import { useNotification } from "context/notificationContext";
 import { ServerFormValues } from "types/server";
+import YAML from "yaml";
 
 const ServerConfiguration = () => {
   const { name } = useParams() as { name: string };
@@ -16,11 +17,15 @@ const ServerConfiguration = () => {
   const navigate = useNavigate();
 
   const onSubmit = (values: ServerFormValues) => {
-    const systemNetworkData = {
-      network_configuration: values.network_configuration,
-    };
+    let networkConfig = {};
+    try {
+      networkConfig = YAML.parse(values.network_configuration);
+    } catch (error) {
+      notify.error(`Error during YAML value parsing: ${error}`);
+      return;
+    }
 
-    updateSystemNetwork(values.name, JSON.stringify(systemNetworkData, null, 2))
+    updateSystemNetwork(values.name, JSON.stringify(networkConfig, null, 2))
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Server ${values.name} updated`);

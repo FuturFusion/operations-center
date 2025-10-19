@@ -2,6 +2,7 @@ import { FC } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useFormik } from "formik";
 import { Server, ServerFormValues } from "types/server";
+import YAML from "yaml";
 
 interface Props {
   server?: Server;
@@ -18,7 +19,7 @@ const ServerForm: FC<Props> = ({
 }) => {
   const formikInitialValues = {
     name: server?.name || "",
-    network_configuration: JSON.stringify(systemNetwork, null, 2),
+    network_configuration: YAML.stringify(systemNetwork, null, 2),
   };
 
   const formik = useFormik({
