@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
+
 	oidcClient "github.com/FuturFusion/operations-center/internal/client/oidc"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -45,14 +47,9 @@ func WithForceLocal(unixSocket string) Option {
 	}
 }
 
-func WithClientCertificate(clientCertFile string, clientKeyFile string) Option {
+func WithClientCertificate(certInfo *incusTLS.CertInfo) Option {
 	return func(c *OperationsCenterClient) error {
-		cert, err := tls.LoadX509KeyPair(clientCertFile, clientKeyFile)
-		if err != nil {
-			return err
-		}
-
-		c.tlsClientCert = cert
+		c.tlsClientCert = certInfo.KeyPair()
 
 		return nil
 	}
