@@ -166,8 +166,8 @@ func (_d UpdateServiceWithPrometheus) GetUpdateFileByFilename(ctx context.Contex
 	return _d.base.GetUpdateFileByFilename(ctx, id, filename)
 }
 
-// PrunePending implements provisioning.UpdateService.
-func (_d UpdateServiceWithPrometheus) PrunePending(ctx context.Context) (err error) {
+// Prune implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) Prune(ctx context.Context) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -175,9 +175,9 @@ func (_d UpdateServiceWithPrometheus) PrunePending(ctx context.Context) (err err
 			result = "error"
 		}
 
-		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PrunePending", result).Observe(time.Since(_since).Seconds())
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Prune", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.PrunePending(ctx)
+	return _d.base.Prune(ctx)
 }
 
 // Refresh implements provisioning.UpdateService.
