@@ -379,7 +379,7 @@ func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (pro
 		updateServiceOptions...,
 	)
 
-	err = updateSvcBase.PrunePending(ctx)
+	err = updateSvcBase.Prune(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "Failed to prune pending updates", logger.Err(err))
 	}
