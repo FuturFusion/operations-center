@@ -91,19 +91,31 @@ type OIDCTrustTuple struct {
 
 type ClientOption func(c *OIDCClient)
 
+// WithoutOpenBrowser disables the automated opening of the web browser to perform
+// the user's authentication flow with the OIDC rely party. In this case
+// the client will just print the URL and the code to the console.
+//
+// This is helpful in headless scenarios or in tests.
 func WithoutOpenBrowser() ClientOption {
 	return func(c *OIDCClient) {
 		c.authenticateOpenBrowser = false
 	}
 }
 
+// WithAuthenticateCallback takes a callback function, which is called after
+// the authentication flow has been started and the token has been received.
+// The URL to confirm the token is passed by to the callback function and
+// can be queried in the callback allowing for automation.
+//
+// This is mainly useful in tests, e.g. with mini-oidc, which does not do any
+// authentication and just issues the tokens when the URL is queried.
 func WithAuthenticateCallback(callback func(tokenURL string)) ClientOption {
 	return func(c *OIDCClient) {
 		c.authenticateCallback = callback
 	}
 }
 
-// NewClient constructs a new OidcClient, ensuring the token field is non-nil to prevent panics during authentication.
+// NewClient constructs a new OIDCClient, ensuring the token field is non-nil to prevent panics during authentication.
 func NewClient(httpClient *http.Client, oidcContextFile string, opts ...ClientOption) *OIDCClient {
 	client := &OIDCClient{
 		oidcContext:     loadOIDCContextFromFile(oidcContextFile),
@@ -122,27 +134,27 @@ func NewClient(httpClient *http.Client, oidcContextFile string, opts ...ClientOp
 }
 
 func loadOIDCContextFromFile(oidcContextFile string) OIDCContext {
-	ret := OIDCContext{
+	oidcContext := OIDCContext{
 		Tokens: oidc.Tokens[*oidc.IDTokenClaims]{
 			Token: &oauth2.Token{},
 		},
 	}
 
 	if oidcContextFile == "" {
-		return ret
+		return oidcContext
 	}
 
 	contents, err := os.ReadFile(oidcContextFile)
 	if err != nil {
-		return ret
+		return oidcContext
 	}
 
-	err = json.Unmarshal(contents, &ret)
+	err = json.Unmarshal(contents, &oidcContext)
 	if err != nil {
-		return ret
+		return oidcContext
 	}
 
-	return ret
+	return oidcContext
 }
 
 func saveOIDCContextToFile(oidcContextFile string, oidcContext OIDCContext) error {
@@ -158,7 +170,7 @@ func saveOIDCContextToFile(oidcContextFile string, oidcContext OIDCContext) erro
 	return os.WriteFile(oidcContextFile, contents, 0o600)
 }
 
-// GetAccessToken returns the Access Token from the OidcClient's tokens, or an empty string if no tokens are present.
+// GetAccessToken returns the Access Token from the OIDCClient's tokens, or an empty string if no tokens are present.
 func (o *OIDCClient) GetAccessToken() string {
 	o.oidcContextMu.Lock()
 	defer o.oidcContextMu.Unlock()
@@ -180,16 +192,16 @@ func (o *OIDCClient) GetOIDCTokens() oidc.Tokens[*oidc.IDTokenClaims] {
 
 const earlyRefreshLeeway = 5 * time.Second
 
-// Do function executes an HTTP request using the OidcClient's http client, and manages authorization by refreshing or authenticating as needed.
+// Do function executes an HTTP request using the OIDCClient's http client, and manages authorization by refreshing or authenticating as needed.
 // If the request fails with an HTTP Unauthorized status, it attempts to refresh the access token, or perform an OIDC authentication if refresh fails.
 func (o *OIDCClient) Do(req *http.Request) (*http.Response, error) {
 	o.oidcContextMu.Lock()
 	oidcContext := o.oidcContext
 	o.oidcContextMu.Unlock()
 
-	if oidcContext.Tokens.Token != nil {
+	if oidcContext.Tokens.Token != nil && !oidcContext.Tokens.Expiry.IsZero() {
 		// If we have a set of tokens, early refresh the access token if it is soon to be expired.
-		if !oidcContext.Tokens.Expiry.IsZero() && time.Now().Add(earlyRefreshLeeway).After(oidcContext.Tokens.Expiry) {
+		if time.Now().Add(earlyRefreshLeeway).After(oidcContext.Tokens.Expiry) {
 			err := o.refresh(oidcContext.TrustTuple.Issuer, oidcContext.TrustTuple.ClientID)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: Failed to refresh OIDC access token\n")
@@ -246,6 +258,7 @@ func (o *OIDCClient) Do(req *http.Request) (*http.Response, error) {
 		return resp, nil
 	}
 
+	// We can not refresh, if we don't have the issuer or the client ID.
 	if oidcContext.TrustTuple.Issuer == "" || oidcContext.TrustTuple.ClientID == "" {
 		return resp, nil
 	}
