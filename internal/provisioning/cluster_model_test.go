@@ -99,6 +99,34 @@ func TestCluster_ValidateCreate(t *testing.T) {
 				require.ErrorAs(tt, err, &verr, a...)
 			},
 		},
+		{
+			name: "error - application seed config marshal",
+			cluster: provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
+				ServerType:    api.ServerTypeIncus,
+				ApplicationSeedConfig: map[string]any{
+					"foo": func() {}, // a func can not be marshalled to JSON.
+				},
+			},
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - application seed config unmarshal",
+			cluster: provisioning.Cluster{
+				Name:          "one",
+				ServerNames:   []string{"server1", "server2"},
+				ConnectionURL: "http://one/",
+				ServerType:    api.ServerTypeIncus,
+				ApplicationSeedConfig: map[string]any{
+					"networks": map[string]any{}, // networks are expected to be a slice.
+				},
+			},
+
+			assertErr: require.Error,
+		},
 	}
 
 	for _, tc := range tests {
