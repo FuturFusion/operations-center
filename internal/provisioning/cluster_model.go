@@ -1,10 +1,13 @@
 package provisioning
 
 import (
+	"encoding/json"
 	"iter"
 	"net/url"
 	"strings"
 	"time"
+
+	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -54,6 +57,22 @@ func (c Cluster) ValidateCreate() error {
 
 	if c.ServerType == api.ServerTypeUnknown || c.ServerType == "" {
 		return domain.NewValidationErrf("Invalid cluster definition, server type can not be %q", c.ServerType)
+	}
+
+	body, err := json.Marshal(c.ApplicationSeedConfig)
+	if err != nil {
+		return domain.NewValidationErrf("Invalid cluster definition, failed to marshal application seed config: %v", err)
+	}
+
+	preseed := incusapi.InitLocalPreseed{
+		ServerPut: incusapi.ServerPut{
+			Config: map[string]string{},
+		},
+	}
+
+	err = json.Unmarshal(body, &preseed)
+	if err != nil {
+		return domain.NewValidationErrf("Invalid cluster definition, failed to unmarshal application seed config as Incus local init preseed: %v", err)
 	}
 
 	return nil
