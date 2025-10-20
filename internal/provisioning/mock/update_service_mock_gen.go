@@ -51,8 +51,8 @@ var _ provisioning.UpdateService = &UpdateServiceMock{}
 //			GetUpdateFileByFilenameFunc: func(ctx context.Context, id uuid.UUID, filename string) (io.ReadCloser, int, error) {
 //				panic("mock out the GetUpdateFileByFilename method")
 //			},
-//			PrunePendingFunc: func(ctx context.Context) error {
-//				panic("mock out the PrunePending method")
+//			PruneFunc: func(ctx context.Context) error {
+//				panic("mock out the Prune method")
 //			},
 //			RefreshFunc: func(ctx context.Context) error {
 //				panic("mock out the Refresh method")
@@ -91,8 +91,8 @@ type UpdateServiceMock struct {
 	// GetUpdateFileByFilenameFunc mocks the GetUpdateFileByFilename method.
 	GetUpdateFileByFilenameFunc func(ctx context.Context, id uuid.UUID, filename string) (io.ReadCloser, int, error)
 
-	// PrunePendingFunc mocks the PrunePending method.
-	PrunePendingFunc func(ctx context.Context) error
+	// PruneFunc mocks the Prune method.
+	PruneFunc func(ctx context.Context) error
 
 	// RefreshFunc mocks the Refresh method.
 	RefreshFunc func(ctx context.Context) error
@@ -158,8 +158,8 @@ type UpdateServiceMock struct {
 			// Filename is the filename argument value.
 			Filename string
 		}
-		// PrunePending holds details about calls to the PrunePending method.
-		PrunePending []struct {
+		// Prune holds details about calls to the Prune method.
+		Prune []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
@@ -178,7 +178,7 @@ type UpdateServiceMock struct {
 	lockGetByUUID               sync.RWMutex
 	lockGetUpdateAllFiles       sync.RWMutex
 	lockGetUpdateFileByFilename sync.RWMutex
-	lockPrunePending            sync.RWMutex
+	lockPrune                   sync.RWMutex
 	lockRefresh                 sync.RWMutex
 }
 
@@ -498,35 +498,35 @@ func (mock *UpdateServiceMock) GetUpdateFileByFilenameCalls() []struct {
 	return calls
 }
 
-// PrunePending calls PrunePendingFunc.
-func (mock *UpdateServiceMock) PrunePending(ctx context.Context) error {
-	if mock.PrunePendingFunc == nil {
-		panic("UpdateServiceMock.PrunePendingFunc: method is nil but UpdateService.PrunePending was just called")
+// Prune calls PruneFunc.
+func (mock *UpdateServiceMock) Prune(ctx context.Context) error {
+	if mock.PruneFunc == nil {
+		panic("UpdateServiceMock.PruneFunc: method is nil but UpdateService.Prune was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
 	}{
 		Ctx: ctx,
 	}
-	mock.lockPrunePending.Lock()
-	mock.calls.PrunePending = append(mock.calls.PrunePending, callInfo)
-	mock.lockPrunePending.Unlock()
-	return mock.PrunePendingFunc(ctx)
+	mock.lockPrune.Lock()
+	mock.calls.Prune = append(mock.calls.Prune, callInfo)
+	mock.lockPrune.Unlock()
+	return mock.PruneFunc(ctx)
 }
 
-// PrunePendingCalls gets all the calls that were made to PrunePending.
+// PruneCalls gets all the calls that were made to Prune.
 // Check the length with:
 //
-//	len(mockedUpdateService.PrunePendingCalls())
-func (mock *UpdateServiceMock) PrunePendingCalls() []struct {
+//	len(mockedUpdateService.PruneCalls())
+func (mock *UpdateServiceMock) PruneCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {
 		Ctx context.Context
 	}
-	mock.lockPrunePending.RLock()
-	calls = mock.calls.PrunePending
-	mock.lockPrunePending.RUnlock()
+	mock.lockPrune.RLock()
+	calls = mock.calls.Prune
+	mock.lockPrune.RUnlock()
 	return calls
 }
 

@@ -357,15 +357,15 @@ func (_d UpdateServiceWithSlog) GetUpdateFileByFilename(ctx context.Context, id 
 	return _d._base.GetUpdateFileByFilename(ctx, id, filename)
 }
 
-// PrunePending implements provisioning.UpdateService.
-func (_d UpdateServiceWithSlog) PrunePending(ctx context.Context) (err error) {
+// Prune implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) Prune(ctx context.Context) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 		)
 	}
-	log.DebugContext(ctx, "=> calling PrunePending")
+	log.DebugContext(ctx, "=> calling Prune")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -379,15 +379,15 @@ func (_d UpdateServiceWithSlog) PrunePending(ctx context.Context) (err error) {
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method PrunePending returned an informative error")
+				log.DebugContext(ctx, "<= method Prune returned an informative error")
 			} else {
-				log.ErrorContext(ctx, "<= method PrunePending returned an error")
+				log.ErrorContext(ctx, "<= method Prune returned an error")
 			}
 		} else {
-			log.DebugContext(ctx, "<= method PrunePending finished")
+			log.DebugContext(ctx, "<= method Prune finished")
 		}
 	}()
-	return _d._base.PrunePending(ctx)
+	return _d._base.Prune(ctx)
 }
 
 // Refresh implements provisioning.UpdateService.
