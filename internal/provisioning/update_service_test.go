@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"os"
 	"testing"
 	"time"
 
@@ -194,11 +195,17 @@ func TestUpdateService_CleanupAll(t *testing.T) {
 	}
 }
 
-func TestUpdateService_PrunePending(t *testing.T) {
+func TestUpdateService_Prune(t *testing.T) {
+	type fileDetail struct {
+		rc   io.ReadCloser
+		size int
+	}
+
 	tests := []struct {
 		name                    string
 		repoGetAllWithFilter    provisioning.Updates
 		repoGetAllWithFilterErr error
+		filesRepoGet            []queue.Item[fileDetail]
 		filesRepoDelete         []queue.Item[struct{}]
 		repoDeleteByUUID        []queue.Item[struct{}]
 
@@ -208,12 +215,39 @@ func TestUpdateService_PrunePending(t *testing.T) {
 			name: "success",
 			repoGetAllWithFilter: provisioning.Updates{
 				{
-					UUID:   uuid.MustParse("3b9d0f85-67b4-480e-b369-fef25e9d8ccc"),
+					UUID:   uuidgen.FromPattern(t, "1"),
 					Status: api.UpdateStatusPending,
 				},
-				{
-					UUID:   uuid.MustParse("ce9b4489-cc2e-4726-9103-ea22d07a2110"),
-					Status: api.UpdateStatusPending,
+				{ // This update is kept.
+					UUID:   uuidgen.FromPattern(t, "2"),
+					Status: api.UpdateStatusReady,
+					Files: provisioning.UpdateFiles{
+						{
+							Filename: "somefile.txt",
+							Size:     1,
+						},
+					},
+				},
+				{ // This update is incomplete.
+					UUID:   uuidgen.FromPattern(t, "3"),
+					Status: api.UpdateStatusReady,
+					Files: provisioning.UpdateFiles{
+						{
+							Filename: "missing.txt",
+							Size:     1,
+						},
+					},
+				},
+			},
+			filesRepoGet: []queue.Item[fileDetail]{
+				{ // Update 2, somefile.txt
+					Value: fileDetail{
+						rc:   io.NopCloser(bytes.NewBuffer([]byte(`2`))),
+						size: 1,
+					},
+				},
+				{ // Update 3, missing.txt
+					Err: os.ErrNotExist,
 				},
 			},
 			filesRepoDelete: []queue.Item[struct{}]{
@@ -297,6 +331,10 @@ func TestUpdateService_PrunePending(t *testing.T) {
 			}
 
 			repoUpdateFiles := &repoMock.UpdateFilesRepoMock{
+				GetFunc: func(ctx context.Context, update provisioning.Update, filename string) (io.ReadCloser, int, error) {
+					fileDetails, err := queue.Pop(t, &tc.filesRepoGet)
+					return fileDetails.rc, fileDetails.size, err
+				},
 				DeleteFunc: func(ctx context.Context, update provisioning.Update) error {
 					_, err := queue.Pop(t, &tc.filesRepoDelete)
 					return err
@@ -306,7 +344,7 @@ func TestUpdateService_PrunePending(t *testing.T) {
 			updateSvc := provisioning.NewUpdateService(repo, repoUpdateFiles, nil)
 
 			// Run test
-			err := updateSvc.PrunePending(context.Background())
+			err := updateSvc.Prune(context.Background())
 
 			// Assert
 			tc.assertErr(t, err)

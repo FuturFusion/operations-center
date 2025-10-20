@@ -139,7 +139,17 @@ func (s updateService) CleanupAll(ctx context.Context) error {
 	return nil
 }
 
-func (s updateService) PrunePending(ctx context.Context) error {
+// Prune ensures, that incomplete updates are removed and with this sets a clean
+// stage for a subsequent refresh. Prune is normally only called on startup
+// of the service.
+// Prune removes the following updates:
+//
+//   - Updates, that are in pending state (most likely caused by shutdown of
+//     the service or network interrupts while a refresh operation has been in
+//     process.
+//   - Updates in ready state, where files are missing (most likely caused
+//     by a restore of the application's backuped state by IncusOS.
+func (s updateService) Prune(ctx context.Context) error {
 	var fileRepoErrs []error
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
@@ -151,6 +161,34 @@ func (s updateService) PrunePending(ctx context.Context) error {
 		}
 
 		for _, update := range updates {
+			remove := false
+
+			switch update.Status {
+			case api.UpdateStatusPending:
+				remove = true
+
+			case api.UpdateStatusReady:
+				for _, file := range update.Files {
+					rc, size, err := s.filesRepo.Get(ctx, update, file.Filename)
+					if rc != nil {
+						_ = rc.Close()
+					}
+
+					if err != nil || file.Size != size {
+						// TODO: currently, we only check if the file exist and the file size
+						// matches. We could be extra careful and also check if the hash
+						// is correct, but this would be significantly slower and would
+						// cause startup of the daemon to be significantly slower.
+						remove = true
+						break
+					}
+				}
+			}
+
+			if !remove {
+				continue
+			}
+
 			err = s.filesRepo.Delete(ctx, update)
 			if err != nil {
 				fileRepoErrs = append(fileRepoErrs, fmt.Errorf("Failed to remove files of update %q: %w", update.UUID.String(), err))
