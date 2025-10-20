@@ -129,11 +129,6 @@ func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = os.MkdirAll(filepath.Join(configDir, "oidc-tokens"), 0o700)
-	if err != nil {
-		return err
-	}
-
 	err = c.config.LoadConfig(configDir)
 	if err != nil {
 		return err
@@ -164,9 +159,7 @@ func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
 		opts = append(opts, client.WithForceLocal(c.env.GetUnixSocket()))
 	}
 
-	if c.config.TLSClientCertFile != "" && c.config.TLSClientKeyFile != "" {
-		opts = append(opts, client.WithClientCertificate(c.config.TLSClientCertFile, c.config.TLSClientKeyFile))
-	}
+	opts = append(opts, client.WithClientCertificate(c.config.CertInfo))
 
 	if remote.authType == config.AuthTypeOIDC {
 		opts = append(opts, client.WithOIDCTokensFile(filepath.Join(configDir, "oidc-tokens", c.config.DefaultRemote+".json")))
