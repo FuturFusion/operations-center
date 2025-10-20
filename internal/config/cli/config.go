@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"gopkg.in/yaml.v3"
 )
 
@@ -32,8 +33,7 @@ type Config struct {
 	DefaultRemote string            `yaml:"default_remote"`
 	Remotes       map[string]Remote `yaml:"remotes"`
 
-	TLSClientCertFile string `yaml:"tls_client_cert_file"`
-	TLSClientKeyFile  string `yaml:"tls_client_key_file"`
+	CertInfo *incusTLS.CertInfo `yaml:"-"`
 }
 
 type Remote struct {
@@ -42,6 +42,11 @@ type Remote struct {
 }
 
 func (c *Config) LoadConfig(path string) error {
+	err := os.MkdirAll(filepath.Join(path, "oidc-tokens"), 0o700)
+	if err != nil {
+		return err
+	}
+
 	contents, err := os.ReadFile(filepath.Join(path, "config.yml"))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -54,6 +59,11 @@ func (c *Config) LoadConfig(path string) error {
 	err = yaml.Unmarshal(contents, c)
 	if err != nil {
 		return err
+	}
+
+	c.CertInfo, err = incusTLS.KeyPairAndCA(path, "client", incusTLS.CertClient, false)
+	if err != nil {
+		return fmt.Errorf("Failed to create client certificate: %w", err)
 	}
 
 	for remote, config := range c.Remotes {

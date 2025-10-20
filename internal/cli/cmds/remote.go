@@ -70,9 +70,7 @@ func (c *CmdRemote) Command() *cobra.Command {
 type cmdRemoteAdd struct {
 	env environment
 
-	authType          string
-	tlsClientCertFile string
-	tlsClientKeyFile  string
+	authType string
 }
 
 func (c *cmdRemoteAdd) Command() *cobra.Command {
@@ -86,8 +84,6 @@ func (c *cmdRemoteAdd) Command() *cobra.Command {
 `
 
 	cmd.Flags().StringVar(&c.authType, "auth-type", "tls", "Server authentication type (tls or oidc)")
-	cmd.Flags().StringVar(&c.tlsClientCertFile, "cert", "", "Path to TLS client certificate file in PEM format")
-	cmd.Flags().StringVar(&c.tlsClientKeyFile, "key", "", "Path to TLS client key file in PEM format")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -150,12 +146,6 @@ func (c *cmdRemoteAdd) run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(`Remote with name %q already exists`, name)
 	}
 
-	if config.AuthType(c.authType) == config.AuthTypeTLS &&
-		(cfg.TLSClientCertFile == "" || cfg.TLSClientKeyFile == "") &&
-		(c.tlsClientCertFile == "" || c.tlsClientKeyFile == "") {
-		return fmt.Errorf(`No TLS client certificate or key configured yet, please provide with "--cert" and "--key"`)
-	}
-
 	if config.AuthType(c.authType) == config.AuthTypeOIDC {
 		remoteOCClient, err := client.New(addr, client.WithOIDCTokensFile(filepath.Join(configDir, "oidc-tokens", name+".json")))
 		if err != nil {
@@ -175,11 +165,6 @@ func (c *cmdRemoteAdd) run(cmd *cobra.Command, args []string) error {
 	cfg.Remotes[name] = config.Remote{
 		Addr:     addr,
 		AuthType: config.AuthType(c.authType),
-	}
-
-	if c.tlsClientCertFile != "" && c.tlsClientKeyFile != "" {
-		cfg.TLSClientCertFile = c.tlsClientCertFile
-		cfg.TLSClientKeyFile = c.tlsClientKeyFile
 	}
 
 	err = cfg.SaveConfig(configDir)
