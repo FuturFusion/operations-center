@@ -254,6 +254,8 @@ func (c *cmdClusterList) Run(cmd *cobra.Command, args []string) error {
 // Remove cluster.
 type cmdClusterRemove struct {
 	ocClient *client.OperationsCenterClient
+
+	flagForce bool
 }
 
 func (c *cmdClusterRemove) Command() *cobra.Command {
@@ -268,6 +270,8 @@ func (c *cmdClusterRemove) Command() *cobra.Command {
 
 	cmd.RunE = c.Run
 
+	cmd.Flags().BoolVar(&c.flagForce, "force", false, "remove cluster and server records including all associated inventory information from operations center, does not do any change to the cluster it self")
+
 	return cmd
 }
 
@@ -280,7 +284,11 @@ func (c *cmdClusterRemove) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	err = c.ocClient.DeleteCluster(cmd.Context(), name)
+	if c.flagForce {
+		cmd.Printf(`WARNING: removal of a cluster with "--force" does not do any change to the actual cluster, but the cluster and the server records including all accosiated inventory information is removed from operations center.`)
+	}
+
+	err = c.ocClient.DeleteCluster(cmd.Context(), name, c.flagForce)
 	if err != nil {
 		return err
 	}
