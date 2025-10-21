@@ -8,6 +8,8 @@ import (
 
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"gopkg.in/yaml.v3"
+
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type AuthType string
@@ -26,9 +28,10 @@ var authTypes = map[AuthType]struct{}{
 
 type Config struct {
 	// Config from global flags
-	Verbose    bool `yaml:"-"`
-	Debug      bool `yaml:"-"`
-	ForceLocal bool `yaml:"-"`
+	Verbose    bool   `yaml:"-"`
+	Debug      bool   `yaml:"-"`
+	ForceLocal bool   `yaml:"-"`
+	ConfigDir  string `yaml:"-"`
 
 	DefaultRemote string            `yaml:"default_remote"`
 	Remotes       map[string]Remote `yaml:"remotes"`
@@ -37,8 +40,9 @@ type Config struct {
 }
 
 type Remote struct {
-	Addr     string   `yaml:"addr"`
-	AuthType AuthType `yaml:"auth_type"`
+	Addr       string          `yaml:"addr"`
+	AuthType   AuthType        `yaml:"auth_type"`
+	ServerCert api.Certificate `yaml:"server_cert"`
 }
 
 func (c *Config) LoadConfig(path string) error {
@@ -79,16 +83,18 @@ func (c *Config) LoadConfig(path string) error {
 		c.Remotes[remote] = config
 	}
 
+	c.ConfigDir = path
+
 	return nil
 }
 
-func (c *Config) SaveConfig(path string) error {
+func (c *Config) SaveConfig() error {
 	body, err := yaml.Marshal(c)
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(filepath.Join(path, "config.yml"), body, 0o600)
+	err = os.WriteFile(filepath.Join(c.ConfigDir, "config.yml"), body, 0o600)
 	if err != nil {
 		return err
 	}

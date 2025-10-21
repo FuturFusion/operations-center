@@ -1,16 +1,21 @@
 package cmds
 
 import (
+	"bufio"
+	"context"
 	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
 
+	"github.com/lxc/incus/v6/shared/ask"
+	localtls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
 	config "github.com/FuturFusion/operations-center/internal/config/cli"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/render"
 	"github.com/FuturFusion/operations-center/internal/sort"
 )
@@ -35,9 +40,25 @@ func (c *CmdRemote) Command() *cobra.Command {
 	cmd.Args = cobra.NoArgs
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
+	// Allow this sub-command to function even with pre-run checks failing.
+	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		root := cmd
+		for root.HasParent() {
+			root = root.Parent()
+		}
+
+		err := root.PersistentPreRunE(root, args)
+		if err != nil {
+			cmd.PrintErrf("Warning: %v\n", err.Error())
+		}
+
+		return nil
+	}
+
 	// Add
 	remoteAddCmd := cmdRemoteAdd{
-		env: c.Env,
+		env:   c.Env,
+		asker: ptr.To(ask.NewAsker(bufio.NewReader(cmd.InOrStdin()))),
 	}
 
 	cmd.AddCommand(remoteAddCmd.Command())
@@ -66,9 +87,14 @@ func (c *CmdRemote) Command() *cobra.Command {
 	return cmd
 }
 
+type asker interface {
+	AskBool(question string, defaultAnswer string) (bool, error)
+}
+
 // Add remote.
 type cmdRemoteAdd struct {
-	env environment
+	env   environment
+	asker asker
 
 	authType string
 }
@@ -127,7 +153,10 @@ func (c *cmdRemoteAdd) validateArgsAndFlags(cmd *cobra.Command, args []string) e
 
 func (c *cmdRemoteAdd) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
-	addr := args[1]
+	remote := config.Remote{
+		Addr:     args[1],
+		AuthType: config.AuthType(c.authType),
+	}
 
 	cfg := config.Config{}
 
@@ -146,30 +175,68 @@ func (c *cmdRemoteAdd) run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(`Remote with name %q already exists`, name)
 	}
 
-	if config.AuthType(c.authType) == config.AuthTypeOIDC {
-		remoteOCClient, err := client.New(addr, client.WithOIDCTokensFile(filepath.Join(configDir, "oidc-tokens", name+".json")))
-		if err != nil {
-			return fmt.Errorf(`Failed to create client for new remote: %v`, err)
-		}
-
-		_, err = remoteOCClient.GetClusters(cmd.Context())
-		if err != nil {
-			return fmt.Errorf(`Failed to connect to new remote: %v`, err)
-		}
+	err = c.checkRemoteConnectivity(cmd.Context(), name, &remote, cfg.CertInfo)
+	if err != nil {
+		return err
 	}
 
 	if cfg.Remotes == nil {
 		cfg.Remotes = map[string]config.Remote{}
 	}
 
-	cfg.Remotes[name] = config.Remote{
-		Addr:     addr,
-		AuthType: config.AuthType(c.authType),
-	}
+	cfg.Remotes[name] = remote
 
-	err = cfg.SaveConfig(configDir)
+	err = cfg.SaveConfig()
 	if err != nil {
 		return fmt.Errorf(`Failed to update client config: %v`, err)
+	}
+
+	return nil
+}
+
+func (c *cmdRemoteAdd) checkRemoteConnectivity(ctx context.Context, name string, remote *config.Remote, clientCertInfo *localtls.CertInfo) error {
+	// Setup an operations center client with the newly provided remote configuration.
+	opts := []client.Option{}
+	opts = append(opts, client.WithClientCertificate(clientCertInfo))
+
+	if remote.AuthType == config.AuthTypeOIDC {
+		configDir, err := c.env.UserConfigDir()
+		if err != nil {
+			return err
+		}
+
+		opts = append(opts, client.WithOIDCTokensFile(filepath.Join(configDir, "oidc-tokens", name+".json")))
+	}
+
+	remoteOCClient, err := client.New(remote.Addr, opts...)
+	if err != nil {
+		return fmt.Errorf(`Failed to create client for new remote: %v`, err)
+	}
+
+	// Verify the servers certificate.
+	serverCert, ok, err := remoteOCClient.IsServerTrusted(ctx, remote.ServerCert)
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		// asker to verify fingerprint
+		trustedCert, err := c.asker.AskBool(fmt.Sprintf("Server presented an untrusted TLS certificate with SHA256 fingerprint %s. Is this the correct fingerprint? (yes/no) [default=no]: ", localtls.CertFingerprint(serverCert.Certificate)), "no")
+		if err != nil {
+			return err
+		}
+
+		if !trustedCert {
+			return fmt.Errorf("Aborting due to untrusted server TLS certificate")
+		}
+
+		remote.ServerCert = serverCert
+	}
+
+	// Verify the users credentials (TLS client cert or OIDC).
+	serverInfo, err := remoteOCClient.GetAPIServerInfo(ctx)
+	if err != nil || serverInfo.Auth != string(remote.AuthType) {
+		return fmt.Errorf("Received authentication mismatch: got %q, expected %q. Ensure the server trusts the client fingerprint %q", serverInfo.Auth, remote.AuthType, clientCertInfo.Fingerprint())
 	}
 
 	return nil
@@ -327,7 +394,7 @@ func (c *cmdRemoteRemove) run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err = cfg.SaveConfig(configDir)
+	err = cfg.SaveConfig()
 	if err != nil {
 		return fmt.Errorf(`Failed to update client config: %v`, err)
 	}
@@ -392,7 +459,7 @@ func (c *cmdRemoteSwitch) run(cmd *cobra.Command, args []string) error {
 
 	cfg.DefaultRemote = name
 
-	err = cfg.SaveConfig(configDir)
+	err = cfg.SaveConfig()
 	if err != nil {
 		return fmt.Errorf(`Failed to update client config: %v`, err)
 	}
