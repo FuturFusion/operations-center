@@ -471,9 +471,18 @@ func (s clusterService) Rename(ctx context.Context, oldName string, newName stri
 	return s.repo.Rename(ctx, oldName, newName)
 }
 
-func (s clusterService) DeleteByName(ctx context.Context, name string) error {
+func (s clusterService) DeleteByName(ctx context.Context, name string, force bool) error {
 	if name == "" {
 		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	if force {
+		err := s.repo.DeleteByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to delete cluster: %w", err)
+		}
+
+		return nil
 	}
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {

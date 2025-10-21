@@ -16,7 +16,7 @@ type ClusterService interface {
 	GetByName(ctx context.Context, name string) (*Cluster, error)
 	Update(ctx context.Context, cluster Cluster) error
 	Rename(ctx context.Context, oldName string, newName string) error
-	DeleteByName(ctx context.Context, name string) error
+	DeleteByName(ctx context.Context, name string, force bool) error
 	ResyncInventory(ctx context.Context) error
 	ResyncInventoryByName(ctx context.Context, name string) error
 	UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) error

@@ -1561,6 +1561,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 	tests := []struct {
 		name                                string
 		nameArg                             string
+		force                               bool
 		repoGetByNameCluster                *provisioning.Cluster
 		repoGetByNameErr                    error
 		repoDeleteByNameErr                 error
@@ -1572,6 +1573,16 @@ func TestClusterService_DeleteByName(t *testing.T) {
 		{
 			name:    "success",
 			nameArg: "one",
+			repoGetByNameCluster: &provisioning.Cluster{
+				Status: api.ClusterStatusPending,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "success - force",
+			nameArg: "one",
+			force:   true,
 			repoGetByNameCluster: &provisioning.Cluster{
 				Status: api.ClusterStatusPending,
 			},
@@ -1648,6 +1659,17 @@ func TestClusterService_DeleteByName(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 		},
+		{
+			name:    "error - repo.DeleteByID with force",
+			nameArg: "one",
+			force:   true,
+			repoGetByNameCluster: &provisioning.Cluster{
+				Status: api.ClusterStatusPending,
+			},
+			repoDeleteByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
 	}
 
 	for _, tc := range tests {
@@ -1671,7 +1693,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			clusterSvc := provisioning.NewClusterService(repo, nil, serverSvc, nil, nil)
 
 			// Run test
-			err := clusterSvc.DeleteByName(context.Background(), tc.nameArg)
+			err := clusterSvc.DeleteByName(context.Background(), tc.nameArg, tc.force)
 
 			// Assert
 			tc.assertErr(t, err)
