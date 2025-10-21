@@ -91,30 +91,6 @@ type OIDCTrustTuple struct {
 
 type ClientOption func(c *OIDCClient)
 
-// WithoutOpenBrowser disables the automated opening of the web browser to perform
-// the user's authentication flow with the OIDC rely party. In this case
-// the client will just print the URL and the code to the console.
-//
-// This is helpful in headless scenarios or in tests.
-func WithoutOpenBrowser() ClientOption {
-	return func(c *OIDCClient) {
-		c.authenticateOpenBrowser = false
-	}
-}
-
-// WithAuthenticateCallback takes a callback function, which is called after
-// the authentication flow has been started and the token has been received.
-// The URL to confirm the token is passed by to the callback function and
-// can be queried in the callback allowing for automation.
-//
-// This is mainly useful in tests, e.g. with mini-oidc, which does not do any
-// authentication and just issues the tokens when the URL is queried.
-func WithAuthenticateCallback(callback func(tokenURL string)) ClientOption {
-	return func(c *OIDCClient) {
-		c.authenticateCallback = callback
-	}
-}
-
 // NewClient constructs a new OIDCClient, ensuring the token field is non-nil to prevent panics during authentication.
 func NewClient(httpClient *http.Client, oidcContextFile string, opts ...ClientOption) *OIDCClient {
 	client := &OIDCClient{
@@ -190,7 +166,7 @@ func (o *OIDCClient) GetOIDCTokens() oidc.Tokens[*oidc.IDTokenClaims] {
 	return o.oidcContext.Tokens
 }
 
-const earlyRefreshLeeway = 5 * time.Second
+const earlyRefreshLeeway = 15 * time.Second
 
 // Do function executes an HTTP request using the OIDCClient's http client, and manages authorization by refreshing or authenticating as needed.
 // If the request fails with an HTTP Unauthorized status, it attempts to refresh the access token, or perform an OIDC authentication if refresh fails.

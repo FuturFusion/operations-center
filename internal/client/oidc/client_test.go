@@ -29,13 +29,13 @@ func TestOIDCClient_Do(t *testing.T) {
 	}{
 		{
 			name:                  "success - two requests without refresh",
-			accessTokenExpiration: 10 * time.Second,
+			accessTokenExpiration: 20 * time.Second,
 
 			wantOIDCContextIsChanged: false,
 		},
 		{
 			name:                  "success - two requests with refresh for the second",
-			accessTokenExpiration: 3 * time.Second, // The client tries a refresh, if token validity is < 5 seconds.
+			accessTokenExpiration: 10 * time.Second, // The client tries a refresh, if token validity is < 15 seconds.
 
 			wantOIDCContextIsChanged: true,
 		},
