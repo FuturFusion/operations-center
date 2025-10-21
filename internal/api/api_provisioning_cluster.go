@@ -368,8 +368,9 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clusterDelete(r *http.Request) response.Response {
 	name := r.PathValue("name")
+	force, _ := strconv.ParseBool(r.URL.Query().Get("force"))
 
-	err := c.service.DeleteByName(r.Context(), name)
+	err := c.service.DeleteByName(r.Context(), name, force)
 	if err != nil {
 		return response.SmartError(err)
 	}
