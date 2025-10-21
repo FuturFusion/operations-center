@@ -53,7 +53,7 @@ func (_d ClusterServiceWithPrometheus) Create(ctx context.Context, cluster provi
 }
 
 // DeleteByName implements provisioning.ClusterService.
-func (_d ClusterServiceWithPrometheus) DeleteByName(ctx context.Context, name string) (err error) {
+func (_d ClusterServiceWithPrometheus) DeleteByName(ctx context.Context, name string, force bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,7 +63,7 @@ func (_d ClusterServiceWithPrometheus) DeleteByName(ctx context.Context, name st
 
 		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByName(ctx, name)
+	return _d.base.DeleteByName(ctx, name, force)
 }
 
 // GetAll implements provisioning.ClusterService.

@@ -25,7 +25,7 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			CreateFunc: func(ctx context.Context, cluster provisioning.Cluster) (provisioning.Cluster, error) {
 //				panic("mock out the Create method")
 //			},
-//			DeleteByNameFunc: func(ctx context.Context, name string) error {
+//			DeleteByNameFunc: func(ctx context.Context, name string, force bool) error {
 //				panic("mock out the DeleteByName method")
 //			},
 //			GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
@@ -78,7 +78,7 @@ type ClusterServiceMock struct {
 	CreateFunc func(ctx context.Context, cluster provisioning.Cluster) (provisioning.Cluster, error)
 
 	// DeleteByNameFunc mocks the DeleteByName method.
-	DeleteByNameFunc func(ctx context.Context, name string) error
+	DeleteByNameFunc func(ctx context.Context, name string, force bool) error
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Clusters, error)
@@ -134,6 +134,8 @@ type ClusterServiceMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+			// Force is the force argument value.
+			Force bool
 		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
@@ -279,21 +281,23 @@ func (mock *ClusterServiceMock) CreateCalls() []struct {
 }
 
 // DeleteByName calls DeleteByNameFunc.
-func (mock *ClusterServiceMock) DeleteByName(ctx context.Context, name string) error {
+func (mock *ClusterServiceMock) DeleteByName(ctx context.Context, name string, force bool) error {
 	if mock.DeleteByNameFunc == nil {
 		panic("ClusterServiceMock.DeleteByNameFunc: method is nil but ClusterService.DeleteByName was just called")
 	}
 	callInfo := struct {
-		Ctx  context.Context
-		Name string
+		Ctx   context.Context
+		Name  string
+		Force bool
 	}{
-		Ctx:  ctx,
-		Name: name,
+		Ctx:   ctx,
+		Name:  name,
+		Force: force,
 	}
 	mock.lockDeleteByName.Lock()
 	mock.calls.DeleteByName = append(mock.calls.DeleteByName, callInfo)
 	mock.lockDeleteByName.Unlock()
-	return mock.DeleteByNameFunc(ctx, name)
+	return mock.DeleteByNameFunc(ctx, name, force)
 }
 
 // DeleteByNameCalls gets all the calls that were made to DeleteByName.
@@ -301,12 +305,14 @@ func (mock *ClusterServiceMock) DeleteByName(ctx context.Context, name string) e
 //
 //	len(mockedClusterService.DeleteByNameCalls())
 func (mock *ClusterServiceMock) DeleteByNameCalls() []struct {
-	Ctx  context.Context
-	Name string
+	Ctx   context.Context
+	Name  string
+	Force bool
 } {
 	var calls []struct {
-		Ctx  context.Context
-		Name string
+		Ctx   context.Context
+		Name  string
+		Force bool
 	}
 	mock.lockDeleteByName.RLock()
 	calls = mock.calls.DeleteByName
