@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -60,81 +61,139 @@ var errRefreshAccessToken = fmt.Errorf("Failed refreshing access token")
 
 var oidcScopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, oidc.ScopeEmail}
 
-// OidcClient is a structure encapsulating an HTTP client, OIDC transport, and a token for OpenID Connect (OIDC) operations.
-type OidcClient struct {
+// OIDCClient is a structure encapsulating an HTTP client, OIDC transport, and OIDC context (token, trust tupple) for OpenID Connect (OIDC) operations.
+type OIDCClient struct {
 	httpClient    *http.Client
 	oidcTransport *oidcTransport
-	tokens        *oidc.Tokens[*oidc.IDTokenClaims]
-	tokensFile    string
+
+	oidcContextMu   sync.Mutex
+	oidcContext     OIDCContext
+	oidcContextFile string
+
+	authenticateOpenBrowser bool
+	authenticateCallback    func(tokenURL string)
 }
 
-// NewClient constructs a new OidcClient, ensuring the token field is non-nil to prevent panics during authentication.
-func NewClient(httpClient *http.Client, tokensFile string) *OidcClient {
-	client := OidcClient{
-		tokens:        loadTokensFromFile(tokensFile),
-		tokensFile:    tokensFile,
-		httpClient:    httpClient,
-		oidcTransport: &oidcTransport{},
-	}
-
-	// Ensure client.tokens is never nil otherwise authenticate() will panic.
-	if client.tokens == nil {
-		client.tokens = &oidc.Tokens[*oidc.IDTokenClaims]{}
-	}
-
-	return &client
+// OIDCContext holds the OIDC context information, which is required to
+// authenticate with OIDC and to refresh the OIDC tokens if necessary.
+type OIDCContext struct {
+	TrustTuple OIDCTrustTuple                   `json:"trust_tuple"`
+	Tokens     oidc.Tokens[*oidc.IDTokenClaims] `json:"tokens"`
 }
 
-func loadTokensFromFile(tokensFile string) *oidc.Tokens[*oidc.IDTokenClaims] {
-	if tokensFile == "" {
-		return nil
+// OIDCTrustTuple is the issuer, clientid and the audience shared by the server
+// in order to authenticate (or refresh) with the OIDC relying party.
+type OIDCTrustTuple struct {
+	Issuer   string `json:"issuer"`
+	ClientID string `json:"client_id"`
+	Audience string `json:"audience"`
+}
+
+type ClientOption func(c *OIDCClient)
+
+// NewClient constructs a new OIDCClient, ensuring the token field is non-nil to prevent panics during authentication.
+func NewClient(httpClient *http.Client, oidcContextFile string, opts ...ClientOption) *OIDCClient {
+	client := &OIDCClient{
+		oidcContext:     loadOIDCContextFromFile(oidcContextFile),
+		oidcContextFile: oidcContextFile,
+		httpClient:      httpClient,
+		oidcTransport:   &oidcTransport{},
+
+		authenticateOpenBrowser: true,
 	}
 
-	ret := new(oidc.Tokens[*oidc.IDTokenClaims])
+	for _, opt := range opts {
+		opt(client)
+	}
 
-	contents, err := os.ReadFile(tokensFile)
+	return client
+}
+
+func loadOIDCContextFromFile(oidcContextFile string) OIDCContext {
+	oidcContext := OIDCContext{
+		Tokens: oidc.Tokens[*oidc.IDTokenClaims]{
+			Token: &oauth2.Token{},
+		},
+	}
+
+	if oidcContextFile == "" {
+		return oidcContext
+	}
+
+	contents, err := os.ReadFile(oidcContextFile)
 	if err != nil {
-		return nil
+		return oidcContext
 	}
 
-	err = json.Unmarshal(contents, &ret)
+	err = json.Unmarshal(contents, &oidcContext)
 	if err != nil {
-		return nil
+		return oidcContext
 	}
 
-	return ret
+	return oidcContext
 }
 
-func saveTokensToFile(tokensFile string, tokens *oidc.Tokens[*oidc.IDTokenClaims]) error {
-	if tokensFile == "" {
+func saveOIDCContextToFile(oidcContextFile string, oidcContext OIDCContext) error {
+	if oidcContextFile == "" {
 		return nil
 	}
 
-	contents, err := json.Marshal(tokens)
+	contents, err := json.Marshal(oidcContext)
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(tokensFile, contents, 0o644)
+	return os.WriteFile(oidcContextFile, contents, 0o600)
 }
 
-// GetAccessToken returns the Access Token from the OidcClient's tokens, or an empty string if no tokens are present.
-func (o *OidcClient) GetAccessToken() string {
-	if o.tokens == nil || o.tokens.Token == nil {
+// GetAccessToken returns the Access Token from the OIDCClient's tokens, or an empty string if no tokens are present.
+func (o *OIDCClient) GetAccessToken() string {
+	o.oidcContextMu.Lock()
+	defer o.oidcContextMu.Unlock()
+
+	if o.oidcContext.Tokens.Token == nil {
 		return ""
 	}
 
-	return o.tokens.AccessToken
+	return o.oidcContext.Tokens.AccessToken
 }
 
 // GetOIDCTokens returns the current OIDC tokens, if any.
-func (o *OidcClient) GetOIDCTokens() *oidc.Tokens[*oidc.IDTokenClaims] {
-	return o.tokens
+func (o *OIDCClient) GetOIDCTokens() oidc.Tokens[*oidc.IDTokenClaims] {
+	o.oidcContextMu.Lock()
+	defer o.oidcContextMu.Unlock()
+
+	return o.oidcContext.Tokens
 }
 
-// Do function executes an HTTP request using the OidcClient's http client, and manages authorization by refreshing or authenticating as needed.
+const earlyRefreshLeeway = 15 * time.Second
+
+// Do function executes an HTTP request using the OIDCClient's http client, and manages authorization by refreshing or authenticating as needed.
 // If the request fails with an HTTP Unauthorized status, it attempts to refresh the access token, or perform an OIDC authentication if refresh fails.
-func (o *OidcClient) Do(req *http.Request) (*http.Response, error) {
+func (o *OIDCClient) Do(req *http.Request) (*http.Response, error) {
+	o.oidcContextMu.Lock()
+	oidcContext := o.oidcContext
+	o.oidcContextMu.Unlock()
+
+	if oidcContext.Tokens.Token != nil && !oidcContext.Tokens.Expiry.IsZero() {
+		// If we have a set of tokens, early refresh the access token if it is soon to be expired.
+		if time.Now().Add(earlyRefreshLeeway).After(oidcContext.Tokens.Expiry) {
+			err := o.refresh(oidcContext.TrustTuple.Issuer, oidcContext.TrustTuple.ClientID)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Failed to refresh OIDC access token\n")
+			} else {
+				o.oidcContextMu.Lock()
+				oidcContext = o.oidcContext
+				o.oidcContextMu.Unlock()
+
+				err = saveOIDCContextToFile(o.oidcContextFile, oidcContext)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
 	req.Header.Set("Authorization", "Bearer "+o.GetAccessToken())
 
 	resp, err := o.httpClient.Do(req)
@@ -142,23 +201,48 @@ func (o *OidcClient) Do(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
+	trustTupleChanged := false
+
+	if oidcContext.TrustTuple.Issuer != resp.Header.Get("X-OperationsCenter-OIDC-issuer") && resp.Header.Get("X-OperationsCenter-OIDC-issuer") != "" {
+		oidcContext.TrustTuple.Issuer = resp.Header.Get("X-OperationsCenter-OIDC-issuer")
+		trustTupleChanged = true
+	}
+
+	if oidcContext.TrustTuple.ClientID != resp.Header.Get("X-OperationsCenter-OIDC-clientid") && resp.Header.Get("X-OperationsCenter-OIDC-clientid") != "" {
+		oidcContext.TrustTuple.ClientID = resp.Header.Get("X-OperationsCenter-OIDC-clientid")
+		trustTupleChanged = true
+	}
+
+	if oidcContext.TrustTuple.Audience != resp.Header.Get("X-OperationsCenter-OIDC-audience") && resp.Header.Get("X-OperationsCenter-OIDC-audience") != "" {
+		oidcContext.TrustTuple.Audience = resp.Header.Get("X-OperationsCenter-OIDC-audience")
+		trustTupleChanged = true
+	}
+
+	if trustTupleChanged {
+		o.oidcContextMu.Lock()
+		o.oidcContext = oidcContext
+		o.oidcContextMu.Unlock()
+
+		err = saveOIDCContextToFile(o.oidcContextFile, oidcContext)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Return immediately if the error is not HTTP status unauthorized.
 	if resp.StatusCode != http.StatusUnauthorized {
 		return resp, nil
 	}
 
-	issuer := resp.Header.Get("X-OperationsCenter-OIDC-issuer")
-	clientID := resp.Header.Get("X-OperationsCenter-OIDC-clientid")
-	audience := resp.Header.Get("X-OperationsCenter-OIDC-audience")
-
-	if issuer == "" || clientID == "" {
+	// We can not refresh, if we don't have the issuer or the client ID.
+	if oidcContext.TrustTuple.Issuer == "" || oidcContext.TrustTuple.ClientID == "" {
 		return resp, nil
 	}
 
 	// Refresh the token.
-	err = o.refresh(issuer, clientID)
+	err = o.refresh(oidcContext.TrustTuple.Issuer, oidcContext.TrustTuple.ClientID)
 	if err != nil {
-		err = o.authenticate(issuer, clientID, audience)
+		err = o.authenticate(oidcContext.TrustTuple.Issuer, oidcContext.TrustTuple.ClientID, oidcContext.TrustTuple.Audience)
 		if err != nil {
 			return nil, err
 		}
@@ -170,7 +254,7 @@ func (o *OidcClient) Do(req *http.Request) (*http.Response, error) {
 	}
 
 	// Set the new access token in the header.
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", o.tokens.AccessToken))
+	req.Header.Set("Authorization", "Bearer "+o.GetAccessToken())
 
 	// Reset the request body.
 	if req.GetBody != nil {
@@ -187,7 +271,11 @@ func (o *OidcClient) Do(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	err = saveTokensToFile(o.tokensFile, o.tokens)
+	o.oidcContextMu.Lock()
+	oidcContext = o.oidcContext
+	o.oidcContextMu.Unlock()
+
+	err = saveOIDCContextToFile(o.oidcContextFile, oidcContext)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +285,7 @@ func (o *OidcClient) Do(req *http.Request) (*http.Response, error) {
 
 // getProvider initializes a new OpenID Connect Relying Party for a given issuer and clientID.
 // The function also creates a secure CookieHandler with random encryption and hash keys, and applies a series of configurations on the Relying Party.
-func (o *OidcClient) getProvider(issuer string, clientID string) (rp.RelyingParty, error) {
+func (o *OIDCClient) getProvider(issuer string, clientID string) (rp.RelyingParty, error) {
 	hashKey := make([]byte, 16)
 	encryptKey := make([]byte, 16)
 
@@ -229,8 +317,17 @@ func (o *OidcClient) getProvider(issuer string, clientID string) (rp.RelyingPart
 
 // refresh attempts to refresh the OpenID Connect access token for the client using the refresh token.
 // If no token is present or the refresh token is empty, it returns an error. If successful, it updates the access token and other relevant token fields.
-func (o *OidcClient) refresh(issuer string, clientID string) error {
-	if o.tokens.Token == nil || o.tokens.RefreshToken == "" {
+func (o *OIDCClient) refresh(issuer string, clientID string) error {
+	var refreshToken string
+
+	o.oidcContextMu.Lock()
+	if o.oidcContext.Tokens.Token != nil {
+		refreshToken = o.oidcContext.Tokens.RefreshToken
+	}
+
+	o.oidcContextMu.Unlock()
+
+	if refreshToken == "" {
 		return errRefreshAccessToken
 	}
 
@@ -239,17 +336,20 @@ func (o *OidcClient) refresh(issuer string, clientID string) error {
 		return errRefreshAccessToken
 	}
 
-	oauthTokens, err := rp.RefreshTokens[*oidc.IDTokenClaims](context.TODO(), provider, o.tokens.RefreshToken, "", "")
+	oauthTokens, err := rp.RefreshTokens[*oidc.IDTokenClaims](context.TODO(), provider, refreshToken, "", "")
 	if err != nil {
 		return errRefreshAccessToken
 	}
 
-	o.tokens.AccessToken = oauthTokens.AccessToken
-	o.tokens.TokenType = oauthTokens.TokenType
-	o.tokens.Expiry = oauthTokens.Expiry
+	o.oidcContextMu.Lock()
+	defer o.oidcContextMu.Unlock()
+
+	o.oidcContext.Tokens.AccessToken = oauthTokens.AccessToken
+	o.oidcContext.Tokens.TokenType = oauthTokens.TokenType
+	o.oidcContext.Tokens.Expiry = oauthTokens.Expiry
 
 	if oauthTokens.RefreshToken != "" {
-		o.tokens.RefreshToken = oauthTokens.RefreshToken
+		o.oidcContext.Tokens.RefreshToken = oauthTokens.RefreshToken
 	}
 
 	return nil
@@ -258,7 +358,7 @@ func (o *OidcClient) refresh(issuer string, clientID string) error {
 // authenticate initiates the OpenID Connect device flow authentication process for the client.
 // It presents a user code for the end user to input in the device that has web access and waits for them to complete the authentication,
 // subsequently updating the client's tokens upon successful authentication.
-func (o *OidcClient) authenticate(issuer string, clientID string, audience string) error {
+func (o *OIDCClient) authenticate(issuer string, clientID string, audience string) error {
 	tokenURL, resp, provider, err := o.getTokenURL(issuer, clientID, audience)
 	if err != nil {
 		return err
@@ -267,12 +367,18 @@ func (o *OidcClient) authenticate(issuer string, clientID string, audience strin
 	fmt.Printf("URL: %s\n", tokenURL)
 	fmt.Printf("Code: %s\n\n", resp.UserCode)
 
-	_ = util.OpenBrowser(tokenURL)
+	if o.authenticateOpenBrowser {
+		_ = util.OpenBrowser(tokenURL)
+	}
+
+	if o.authenticateCallback != nil {
+		o.authenticateCallback(tokenURL)
+	}
 
 	return o.WaitForToken(resp, provider)
 }
 
-func (o *OidcClient) FetchNewIncusTokenURL(req *http.Request) (string, *oidc.DeviceAuthorizationResponse, rp.RelyingParty, error) {
+func (o *OIDCClient) FetchNewIncusTokenURL(req *http.Request) (string, *oidc.DeviceAuthorizationResponse, rp.RelyingParty, error) {
 	resp, err := o.httpClient.Do(req)
 	if err != nil {
 		return "", nil, nil, err
@@ -297,7 +403,7 @@ func (o *OidcClient) FetchNewIncusTokenURL(req *http.Request) (string, *oidc.Dev
 	return o.getTokenURL(issuer, clientID, audience)
 }
 
-func (o *OidcClient) getTokenURL(issuer string, clientID string, audience string) (string, *oidc.DeviceAuthorizationResponse, rp.RelyingParty, error) {
+func (o *OIDCClient) getTokenURL(issuer string, clientID string, audience string) (string, *oidc.DeviceAuthorizationResponse, rp.RelyingParty, error) {
 	// Store the old transport and restore it in the end.
 	oldTransport := o.httpClient.Transport
 	o.oidcTransport.audience = audience
@@ -324,7 +430,7 @@ func (o *OidcClient) getTokenURL(issuer string, clientID string, audience string
 	return u.String(), resp, provider, nil
 }
 
-func (o *OidcClient) WaitForToken(resp *oidc.DeviceAuthorizationResponse, provider rp.RelyingParty) error {
+func (o *OIDCClient) WaitForToken(resp *oidc.DeviceAuthorizationResponse, provider rp.RelyingParty) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT)
 	defer stop()
 
@@ -333,17 +439,21 @@ func (o *OidcClient) WaitForToken(resp *oidc.DeviceAuthorizationResponse, provid
 		return err
 	}
 
-	if o.tokens.Token == nil {
-		o.tokens.Token = &oauth2.Token{}
+	o.oidcContextMu.Lock()
+	defer o.oidcContextMu.Unlock()
+
+	if o.oidcContext.Tokens.Token == nil {
+		o.oidcContext.Tokens.Token = &oauth2.Token{}
 	}
 
-	o.tokens.Expiry = time.Now().Add(time.Duration(token.ExpiresIn))
-	o.tokens.IDToken = token.IDToken
-	o.tokens.AccessToken = token.AccessToken
-	o.tokens.TokenType = token.TokenType
+	o.oidcContext.Tokens.Expiry = time.Now().UTC().Add(time.Duration(token.ExpiresIn) * time.Second)
+	o.oidcContext.Tokens.ExpiresIn = int64(token.ExpiresIn)
+	o.oidcContext.Tokens.IDToken = token.IDToken
+	o.oidcContext.Tokens.AccessToken = token.AccessToken
+	o.oidcContext.Tokens.TokenType = token.TokenType
 
 	if token.RefreshToken != "" {
-		o.tokens.RefreshToken = token.RefreshToken
+		o.oidcContext.Tokens.RefreshToken = token.RefreshToken
 	}
 
 	return nil
