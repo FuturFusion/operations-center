@@ -213,3 +213,48 @@ func processResponse(resp *http.Response) (*api.Response, error) {
 
 	return &response, nil
 }
+
+func (c OperationsCenterClient) GetAPIServerInfo(ctx context.Context) (api.ServerUntrusted, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, "", url.Values{}, nil)
+	if err != nil {
+		return api.ServerUntrusted{}, err
+	}
+
+	serverInfo := api.ServerUntrusted{}
+	err = json.Unmarshal(response.Metadata, &serverInfo)
+	if err != nil {
+		return api.ServerUntrusted{}, err
+	}
+
+	return serverInfo, nil
+}
+
+// IsServerTrusted verifies, if the server certificate is trusted. This trust
+// can be established by two different ways:
+//
+//  1. The server has certificate signed by a trusted party, e.g. public CA.
+//  2. The certificate matches the provides certificate, which has been trusted
+//     by the user manually before.
+//
+// If the certificate presented by the server is not trusted, the certificate
+// presented by the server is returned for further processing, e.g. manual
+// verification by the user.
+func (c OperationsCenterClient) IsServerTrusted(ctx context.Context, serverCertificate api.Certificate) (actualServerCertificate api.Certificate, _ bool, _ error) {
+	resp, err := (&http.Client{}).Get(c.baseURL)
+	if err != nil {
+		switch actualErr := err.(*url.Error).Unwrap().(type) {
+		case *tls.CertificateVerificationError:
+			actualServerCertificate = api.Certificate{Certificate: actualErr.UnverifiedCertificates[0]}
+			if serverCertificate.String() != actualServerCertificate.String() {
+				return actualServerCertificate, false, nil
+			}
+
+		default:
+			return api.Certificate{}, false, fmt.Errorf(`Failed to connect: %v`, err)
+		}
+	}
+
+	_ = resp.Body.Close()
+
+	return api.Certificate{}, true, nil
+}

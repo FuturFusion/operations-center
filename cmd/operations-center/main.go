@@ -1,11 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/lxc/incus/v6/shared/ask"
+	"github.com/lxc/incus/v6/shared/termios"
+	localtls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/internal/cli/cmds"
@@ -60,7 +64,7 @@ func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
 		ocClient: &client.OperationsCenterClient{},
 	}
 
-	app.PersistentPreRunE = globalCmd.Run
+	app.PersistentPreRunE = globalCmd.PreRun
 	app.PersistentFlags().BoolVar(&globalCmd.flagVersion, "version", false, "Print version number")
 	app.PersistentFlags().BoolVarP(&globalCmd.flagHelp, "help", "h", false, "Print help")
 	app.PersistentFlags().BoolVarP(&globalCmd.flagLogDebug, "debug", "d", false, "Show all debug messages")
@@ -114,7 +118,7 @@ type cmdGlobal struct {
 	flagForceLocal bool
 }
 
-func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 	err := logger.InitLogger(cmd.ErrOrStderr(), "", c.flagLogVerbose, c.flagLogDebug)
 	if err != nil {
 		return err
@@ -137,19 +141,15 @@ func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
 	opts := []client.Option{}
 
 	// Use local unix socket connection by default.
-	remote := struct {
-		addr     string
-		authType config.AuthType
-	}{
-		addr:     "http://unix.socket",
-		authType: config.AuthTypeUntrusted,
+	remote := config.Remote{
+		Addr:     "http://unix.socket",
+		AuthType: config.AuthTypeUntrusted,
 	}
 
 	if c.config.DefaultRemote != "" {
 		r, ok := c.config.Remotes[c.config.DefaultRemote]
 		if ok {
-			remote.addr = r.Addr
-			remote.authType = r.AuthType
+			remote = r
 		} else {
 			cmd.PrintErrf("Warning: configured default remote %q does not exist, fallback to local unix socket\n", c.config.DefaultRemote)
 		}
@@ -161,16 +161,56 @@ func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
 
 	opts = append(opts, client.WithClientCertificate(c.config.CertInfo))
 
-	if remote.authType == config.AuthTypeOIDC {
+	if remote.AuthType == config.AuthTypeOIDC {
 		opts = append(opts, client.WithOIDCTokensFile(filepath.Join(configDir, "oidc-tokens", c.config.DefaultRemote+".json")))
 	}
 
 	*c.ocClient, err = client.New(
-		remote.addr,
+		remote.Addr,
 		opts...,
 	)
 	if err != nil {
 		return err
+	}
+
+	// Skip verification of remote certificate and authentication if unix socket.
+	if c.config.ForceLocal || c.config.DefaultRemote == "" {
+		return nil
+	}
+
+	serverCert, ok, err := c.ocClient.IsServerTrusted(cmd.Context(), remote.ServerCert)
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		// If we don't have a regular terminal, fail immediately, since we can not
+		// ask the user for manual verification.
+		if !termios.IsTerminal(environment.GetStdinFd()) {
+			return fmt.Errorf("Aborting due to untrusted server TLS certificate")
+		}
+
+		// asker to verify fingerprint
+		asker := ask.NewAsker(bufio.NewReader(cmd.InOrStdin()))
+		trustedCert, err := asker.AskBool(fmt.Sprintf("Server presented an untrusted TLS certificate with SHA256 fingerprint %s. Is this the correct fingerprint? (yes/no) [default=no]: ", localtls.CertFingerprint(serverCert.Certificate)), "no")
+		if err != nil {
+			return err
+		}
+
+		if !trustedCert {
+			return fmt.Errorf("Aborting due to untrusted server TLS certificate")
+		}
+
+		remote.ServerCert = serverCert
+		if c.config.DefaultRemote != "" {
+			c.config.Remotes[c.config.DefaultRemote] = remote
+		}
+
+		// Run SaveConfig to store the server cert in case it changed.
+		err = c.config.SaveConfig()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
