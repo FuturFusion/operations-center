@@ -397,3 +397,45 @@ func TestTerraform_GetArchive(t *testing.T) {
 		})
 	}
 }
+
+func TestTerraform_Cleanup(t *testing.T) {
+	const existingCluster = "existing"
+
+	tests := []struct {
+		name        string
+		clusterName string
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:        "success",
+			clusterName: existingCluster,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:        "success - not existing",
+			clusterName: "not-existing",
+
+			assertErr: require.NoError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			tmpDir := t.TempDir()
+			err := os.Mkdir(filepath.Join(tmpDir, existingCluster), 0o700)
+			require.NoError(t, err)
+
+			tf, err := terraform.New(tmpDir, "")
+			require.NoError(t, err)
+
+			// Run tests
+			err = tf.Cleanup(t.Context(), tc.clusterName)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}

@@ -557,3 +557,17 @@ func (t terraform) GetArchive(ctx context.Context, name string) (_ io.ReadCloser
 
 	return io.NopCloser(buf), buf.Len(), nil
 }
+
+func (t terraform) Cleanup(ctx context.Context, name string) error {
+	configDir := filepath.Join(t.storageDir, name)
+	if !file.PathExists(configDir) {
+		return nil
+	}
+
+	err := os.RemoveAll(configDir)
+	if err != nil {
+		return fmt.Errorf("Failed to remove terraform configuration for cluster %q: %w", name, err)
+	}
+
+	return nil
+}
