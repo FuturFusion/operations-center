@@ -249,12 +249,16 @@ func (c OperationsCenterClient) IsServerTrusted(ctx context.Context, serverCerti
 				return actualServerCertificate, false, nil
 			}
 
+			return api.Certificate{}, true, nil
+
 		default:
 			return api.Certificate{}, false, fmt.Errorf(`Failed to connect: %v`, err)
 		}
 	}
 
-	_ = resp.Body.Close()
+	if resp != nil && resp.Body != nil {
+		_ = resp.Body.Close()
+	}
 
 	return api.Certificate{}, true, nil
 }
