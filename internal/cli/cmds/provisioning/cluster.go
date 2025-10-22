@@ -255,7 +255,7 @@ func (c *cmdClusterList) Run(cmd *cobra.Command, args []string) error {
 type cmdClusterRemove struct {
 	ocClient *client.OperationsCenterClient
 
-	flagForce bool
+	flagDeleteMode string
 }
 
 func (c *cmdClusterRemove) Command() *cobra.Command {
@@ -265,12 +265,17 @@ func (c *cmdClusterRemove) Command() *cobra.Command {
 	cmd.Long = `Description:
   Remove a cluster
 
-  Removes a cluster from the operations center.
+  Removes a cluster from the operations center. This operation supports the
+  following modes, controlled through the --mode flag:
+
+  - normal: cluster record is only removed from operations center if it is in state pending or unknown and there are no servers referencing the cluster.
+  - force: cluster and server records including all associated inventory information is removed from operations center, does not do any change to the cluster it self.
+  - factory-reset: everything from "force" and additionally a factory reset is performed on every server, that is part of the cluster.
 `
 
 	cmd.RunE = c.Run
 
-	cmd.Flags().BoolVar(&c.flagForce, "force", false, "remove cluster and server records including all associated inventory information from operations center, does not do any change to the cluster it self")
+	cmd.Flags().StringVar(&c.flagDeleteMode, "mode", api.ClusterDeleteModeNormal.String(), "delete mode for removal of cluster, supported values: normal, force, factory-reset")
 
 	return cmd
 }
@@ -283,12 +288,17 @@ func (c *cmdClusterRemove) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	name := args[0]
-
-	if c.flagForce {
-		cmd.Printf(`WARNING: removal of a cluster with "--force" does not do any change to the actual cluster, but the cluster and the server records including all accosiated inventory information is removed from operations center.`)
+	deleteMode := api.ClusterDeleteMode(c.flagDeleteMode)
+	_, ok := api.ClusterDeleteModes[deleteMode]
+	if !ok {
+		deleteMode = api.ClusterDeleteModeNormal
 	}
 
-	err = c.ocClient.DeleteCluster(cmd.Context(), name, c.flagForce)
+	if deleteMode == api.ClusterDeleteModeForce {
+		cmd.Println(`WARNING: removal of a cluster with delete mode "force" does not do any change to the actual cluster, but the cluster and the server records including all accosiated inventory information is removed from operations center.`)
+	}
+
+	err = c.ocClient.DeleteCluster(cmd.Context(), name, deleteMode)
 	if err != nil {
 		return err
 	}

@@ -65,11 +65,14 @@ func (c OperationsCenterClient) CreateCluster(ctx context.Context, cluster api.C
 	return nil
 }
 
-func (c OperationsCenterClient) DeleteCluster(ctx context.Context, name string, force bool) error {
-	query := url.Values{}
-	if force {
-		query.Add("force", "1")
+func (c OperationsCenterClient) DeleteCluster(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) error {
+	_, ok := api.ClusterDeleteModes[deleteMode]
+	if !ok {
+		deleteMode = api.ClusterDeleteModeNormal
 	}
+
+	query := url.Values{}
+	query.Add("mode", deleteMode.String())
 
 	_, err := c.doRequest(ctx, http.MethodDelete, path.Join("/provisioning/clusters", name), query, nil)
 	if err != nil {
