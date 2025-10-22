@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -53,7 +54,7 @@ func (_d ClusterServiceWithPrometheus) Create(ctx context.Context, cluster provi
 }
 
 // DeleteByName implements provisioning.ClusterService.
-func (_d ClusterServiceWithPrometheus) DeleteByName(ctx context.Context, name string, force bool) (err error) {
+func (_d ClusterServiceWithPrometheus) DeleteByName(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -63,7 +64,7 @@ func (_d ClusterServiceWithPrometheus) DeleteByName(ctx context.Context, name st
 
 		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByName(ctx, name, force)
+	return _d.base.DeleteByName(ctx, name, deleteMode)
 }
 
 // GetAll implements provisioning.ClusterService.

@@ -203,6 +203,6 @@ server B
 	require.ElementsMatch(t, []string{"two-new"}, serverIDs)
 
 	// Ensure deletion of cluster fails if a linked server is present.
-	err = clusterSvc.DeleteByName(ctx, "one", false)
+	err = clusterSvc.DeleteByName(ctx, "one", api.ClusterDeleteModeNormal)
 	require.Error(t, err)
 }
