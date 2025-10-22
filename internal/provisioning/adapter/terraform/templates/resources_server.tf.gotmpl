@@ -1,26 +1,11 @@
-{{- $nodeSpecificKeyMaxLen := 0 }}
-{{- $globalKeyMaxLen := 0 }}
-{{- range $key, $value := .IncusPreseed.Config }}
-  {{- if isNodeSpecificConfig $key }}
-    {{- if gt (len $key) $nodeSpecificKeyMaxLen }}
-      {{- $nodeSpecificKeyMaxLen = len $key }}
-    {{- end }}
-  {{- else }}
-    {{- if gt (len $key) $globalKeyMaxLen }}
-      {{- $globalKeyMaxLen = len $key }}
-    {{- end }}
-  {{- end }}
-{{- end -}}
-
+{{- $splitConfigs := splitConfig .IncusPreseed.Config "node" -}}
 resource "incus_server" "this_per_node" {
   for_each = local.members
 
   config = {
-    {{- range $key, $value := .IncusPreseed.Config }}
-      {{- if isNodeSpecificConfig $key }}
-        {{- $indent := repeat (int (sub $nodeSpecificKeyMaxLen (len $key))) " " }}
+    {{- range $key, $value := $splitConfigs.Specific }}
+      {{- $indent := repeat (int (sub (maxKeyLength $splitConfigs.Specific) (len $key))) " " }}
     "{{ $key }}"{{ $indent }} = "{{ $value }}"
-      {{- end }}
     {{- end }}
   }
 
@@ -36,11 +21,9 @@ resource "incus_server" "this_per_node" {
 
 resource "incus_server" "this" {
   config = {
-    {{- range $key, $value := .IncusPreseed.Config }}
-      {{- if not (isNodeSpecificConfig $key) }}
-        {{- $indent := repeat (int (sub $globalKeyMaxLen (len $key))) " " }}
+    {{- range $key, $value := $splitConfigs.Global }}
+      {{- $indent := repeat (int (sub (maxKeyLength $splitConfigs.Global) (len $key))) " " }}
     "{{ $key }}"{{ $indent }} = "{{ $value }}"
-      {{- end }}
     {{- end }}
   }
 
@@ -50,5 +33,12 @@ resource "incus_server" "this" {
     null_resource.post_storage_pools,
     null_resource.post_storage_volumes,
     incus_server.this_per_node,
+  ]
+}
+
+resource "null_resource" "post_server" {
+  depends_on = [
+    incus_server.this_per_node,
+    incus_server.this,
   ]
 }

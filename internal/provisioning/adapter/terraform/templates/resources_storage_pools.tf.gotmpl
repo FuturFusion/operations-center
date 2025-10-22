@@ -1,18 +1,6 @@
 {{- range .IncusPreseed.StoragePools }}
 
-{{- $nodeSpecificKeyMaxLen := 0 }}
-{{- $globalKeyMaxLen := 0 }}
-{{- range $key, $value := .Config }}
-  {{- if isNodeSpecificStorageConfig $key }}
-    {{- if gt (len $key) $nodeSpecificKeyMaxLen }}
-      {{- $nodeSpecificKeyMaxLen = len $key }}
-    {{- end }}
-  {{- else }}
-    {{- if gt (len $key) $globalKeyMaxLen }}
-      {{- $globalKeyMaxLen = len $key }}
-    {{- end }}
-  {{- end }}
-{{- end -}}
+{{- $splitConfigs := splitConfig .Config "storage" -}}
 
 resource "incus_storage_pool" "{{ .Name }}_per_node" {
   for_each = local.members
@@ -22,11 +10,9 @@ resource "incus_storage_pool" "{{ .Name }}_per_node" {
   target = each.key
 
   config = {
-    {{- range $key, $value := .Config }}
-      {{- if isNodeSpecificStorageConfig $key }}
-        {{- $indent := repeat (int (sub $nodeSpecificKeyMaxLen (len $key))) " " }}
+    {{- range $key, $value := $splitConfigs.Specific }}
+      {{- $indent := repeat (int (sub (maxKeyLength $splitConfigs.Specific) (len $key))) " " }}
     "{{ $key }}"{{ $indent }} = "{{ $value }}"
-      {{- end }}
     {{- end }}
   }
 
@@ -36,6 +22,8 @@ resource "incus_storage_pool" "{{ .Name }}_per_node" {
       config["source"],
     ]
   }
+
+  depends_on = []
 }
 
 resource "incus_storage_pool" "{{ .Name }}" {
@@ -44,11 +32,9 @@ resource "incus_storage_pool" "{{ .Name }}" {
   description = "{{ .Description }}"
 
   config = {
-    {{- range $key, $value := .Config }}
-      {{- if not (isNodeSpecificStorageConfig $key) }}
-        {{- $indent := repeat (int (sub $globalKeyMaxLen (len $key))) " " }}
+    {{- range $key, $value := $splitConfigs.Global }}
+      {{- $indent := repeat (int (sub (maxKeyLength $splitConfigs.Global) (len $key))) " " }}
     "{{ $key }}"{{ $indent }} = "{{ $value }}"
-      {{- end }}
     {{- end }}
   }
 

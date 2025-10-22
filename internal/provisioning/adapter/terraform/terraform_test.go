@@ -69,6 +69,36 @@ storage_pools:
     config:
       lvm.vg_name: vg0
       source: /dev/sda
+certificates:
+  - name: cert1
+    description: metrics certificate 1
+    type: metrics
+    restricted: true
+    projects:
+      - project1
+      - project2
+    certificate: |-
+      -----BEGIN CERTIFICATE-----
+      MIIB1jCCAVygAwIBAgIQaKBbJqVWID8NqSoMxF/nHzAKBggqhkjOPQQDAzAzMRkw
+      FwYDVQQKExBMaW51eCBDb250YWluZXJzMRYwFAYDVQQDDA1sdWJyQHN1cnZpc3Rh
+      MB4XDTI1MDIxMjE0MTEzMVoXDTM1MDIxMDE0MTEzMVowMzEZMBcGA1UEChMQTGlu
+      dXggQ29udGFpbmVyczEWMBQGA1UEAwwNbHVickBzdXJ2aXN0YTB2MBAGByqGSM49
+      AgEGBSuBBAAiA2IABDXH+i9i6WilQA56Qe4wvTGZL1NGDeGZFCCskJduZietB0bX
+      K30ug6JdxUHGfhg3CL92lTnmtMwJC+Ev+IQFhLGv/Yk/OLP4BB1zdqBgmyA7Mmwq
+      jcrp8B8FTBZ9AQmCe6M1MDMwDgYDVR0PAQH/BAQDAgWgMBMGA1UdJQQMMAoGCCsG
+      AQUFBwMCMAwGA1UdEwEB/wQCMAAwCgYIKoZIzj0EAwMDaAAwZQIxAPmS67jexjgT
+      6PrxAo/fQpK71BwgpsHOCZHM2b3t4lZlDirjN40xNGPeNH+KG95R3wIwexlentZZ
+      0x2N/SJBYGltBnBjH8mm8OTWa1N/MpOAl2K7jRVuSeuWGBDf0/n+M6br
+      -----END CERTIFICATE-----
+cluster_groups:
+  - name: cluster_group1
+    description: cluster group 1
+    config:
+      key: value
+      other_key: other_value
+    members:
+      - server1
+      - server2
 `
 
 			applicationSeedConfig := map[string]any{}
@@ -112,6 +142,8 @@ storage_pools:
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "data_cluster.tf"))
 
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "providers.tf")
+			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_certificates.tf")
+			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_cluster_groups.tf")
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_networks.tf")
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_profiles.tf")
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_projects.tf")
@@ -374,6 +406,7 @@ func TestTerraform_GetArchive(t *testing.T) {
 				"data_cluster.tf":              false,
 				"providers.tf":                 false,
 				"resources_certificates.tf":    false,
+				"resources_cluster_groups.tf":  false,
 				"resources_networks.tf":        false,
 				"resources_profiles.tf":        false,
 				"resources_projects.tf":        false,

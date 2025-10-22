@@ -3,11 +3,24 @@ resource "incus_certificate" "{{ .Name }}" {
   name        = "{{ .Name }}"
   description = "{{ .Description }}"
   restricted  = {{ .Restricted }}
-  projects    = {{ toJson .Projects }}
   type        = "{{ .Type }}"
+
+  projects = {{ trimPrefix "  " (indent 2 (toPrettyJson .Projects) ) }}
+
   certificate = <<EOT
 {{ .Certificate }}
 EOT
+
+  depends_on = []
 }
 
+{{ end -}}
+{{- if .IncusPreseed.Certificates -}}
+resource "null_resource" "post_certificates" {
+  depends_on = [
+{{- range .IncusPreseed.Certificates }}
+    incus_certificate.{{ .Name }},
+{{- end }}
+  ]
+}
 {{ end -}}

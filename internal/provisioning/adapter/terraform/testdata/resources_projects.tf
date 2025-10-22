@@ -4,6 +4,8 @@ resource "incus_project" "internal" {
 
   config = {
   }
+
+  depends_on = []
 }
 
 resource "null_resource" "post_projects" {

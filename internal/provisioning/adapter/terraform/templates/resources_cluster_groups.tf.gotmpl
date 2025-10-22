@@ -1,0 +1,37 @@
+{{- range $item := .IncusPreseed.ClusterGroups -}}
+resource "incus_cluster_group" "{{ .Name }}" {
+  name        = "{{ .Name }}"
+  description = "{{ .Description }}"
+
+  config = {
+    {{- range $key, $value := .Config }}
+      {{- $indent := repeat (int (sub (maxKeyLength $item.Config) (len $key))) " " }}
+    "{{ $key }}"{{ $indent }} = "{{ $value }}",
+    {{- end }}
+  }
+
+  depends_on = []
+}
+{{- $clusterGroupName := .Name }}
+{{- range .Members }}
+
+resource "incus_cluster_group_member" "{{ printf "%s_%s" $clusterGroupName . }}" {
+  cluster_group = incus_cluster_group.{{ $clusterGroupName }}.name
+  member        = {{ . }}
+}
+{{- end }}
+
+{{ end -}}
+{{- if .IncusPreseed.ClusterGroups -}}
+resource "null_resource" "post_cluster_groups" {
+  depends_on = [
+{{- range .IncusPreseed.ClusterGroups }}
+    incus_cluster_group.{{ .Name }},
+{{- $clusterGroupName := .Name }}
+{{- range .Members }}
+    incus_cluster_group_member.{{ printf "%s_%s" $clusterGroupName . }},
+{{- end }}
+{{- end }}
+  ]
+}
+{{ end -}}
