@@ -1,19 +1,11 @@
-{{- range .IncusPreseed.Projects }}
-
-{{- $configKeyMaxLen := 0 }}
-{{- range $key, $value := .Config }}
-  {{- if gt (len $key) $configKeyMaxLen }}
-    {{- $configKeyMaxLen = len $key }}
-  {{- end }}
-{{- end -}}
-
+{{- range $item := .IncusPreseed.Projects -}}
 resource "incus_project" "{{ .Name }}" {
   name        = "{{ .Name }}"
   description = "{{ .Description }}"
 
   config = {
     {{- range $key, $value := .Config }}
-      {{- $indent := repeat (int (sub $configKeyMaxLen (len $key))) " " }}
+      {{- $indent := repeat (int (sub (maxKeyLength $item.Config) (len $key))) " " }}
     "{{ $key }}"{{ $indent }} = "{{ $value }}",
     {{- end }}
   }

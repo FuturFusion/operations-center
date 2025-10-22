@@ -94,6 +94,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 		"isNodeSpecificConfig":        isNodeSpecificConfig,
 		"isNodeSpecificStorageConfig": isNodeSpecificStorageConfig,
 		"isNodeSpecificNetworkConfig": isNodeSpecificNetworkConfig,
+		"maxKeyLength":                maxKeyLength,
 	})
 	tmpl, err = tmpl.ParseFS(templatesFS, "templates/*")
 	if err != nil {
