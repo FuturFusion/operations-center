@@ -69,6 +69,15 @@ storage_pools:
     config:
       lvm.vg_name: vg0
       source: /dev/sda
+cluster_groups:
+  - name: cluster_group1
+    description: cluster group 1
+    config:
+      key: value
+      other_key: other_value
+    members:
+      - server1
+      - server2
 `
 
 			applicationSeedConfig := map[string]any{}
@@ -112,6 +121,7 @@ storage_pools:
 			require.FileExists(t, filepath.Join(tmpDir, tc.clusterName, "data_cluster.tf"))
 
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "providers.tf")
+			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_cluster_groups.tf")
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_networks.tf")
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_profiles.tf")
 			fileMatch(t, filepath.Join(tmpDir, tc.clusterName), "resources_projects.tf")
@@ -374,6 +384,7 @@ func TestTerraform_GetArchive(t *testing.T) {
 				"data_cluster.tf":              false,
 				"providers.tf":                 false,
 				"resources_certificates.tf":    false,
+				"resources_cluster_groups.tf":  false,
 				"resources_networks.tf":        false,
 				"resources_profiles.tf":        false,
 				"resources_projects.tf":        false,
