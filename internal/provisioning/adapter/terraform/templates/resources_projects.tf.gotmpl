@@ -17,6 +17,8 @@ resource "incus_project" "{{ .Name }}" {
     "{{ $key }}"{{ $indent }} = "{{ $value }}",
     {{- end }}
   }
+
+  depends_on = []
 }
 
 {{ end -}}

@@ -36,6 +36,8 @@ resource "incus_storage_pool" "{{ .Name }}_per_node" {
       config["source"],
     ]
   }
+
+  depends_on = []
 }
 
 resource "incus_storage_pool" "{{ .Name }}" {

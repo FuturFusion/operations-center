@@ -29,3 +29,10 @@ resource "incus_server" "this" {
     incus_server.this_per_node,
   ]
 }
+
+resource "null_resource" "post_server" {
+  depends_on = [
+    incus_server.this_per_node,
+    incus_server.this,
+  ]
+}

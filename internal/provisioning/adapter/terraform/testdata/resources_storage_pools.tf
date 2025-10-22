@@ -16,6 +16,8 @@ resource "incus_storage_pool" "shared_per_node" {
       config["source"],
     ]
   }
+
+  depends_on = []
 }
 
 resource "incus_storage_pool" "shared" {
@@ -48,6 +50,8 @@ resource "incus_storage_pool" "local_per_node" {
       config["source"],
     ]
   }
+
+  depends_on = []
 }
 
 resource "incus_storage_pool" "local" {
