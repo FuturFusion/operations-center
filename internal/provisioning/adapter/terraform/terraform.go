@@ -91,10 +91,8 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 
 	tmpl := template.New("").Funcs(sprig.FuncMap())
 	tmpl = tmpl.Funcs(template.FuncMap{
-		"isNodeSpecificConfig":        isNodeSpecificConfig,
-		"isNodeSpecificStorageConfig": isNodeSpecificStorageConfig,
-		"isNodeSpecificNetworkConfig": isNodeSpecificNetworkConfig,
-		"maxKeyLength":                maxKeyLength,
+		"splitConfig":  splitConfig,
+		"maxKeyLength": maxKeyLength,
 	})
 	tmpl, err = tmpl.ParseFS(templatesFS, "templates/*")
 	if err != nil {

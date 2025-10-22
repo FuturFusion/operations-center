@@ -1,18 +1,6 @@
 {{- range .IncusPreseed.Networks }}
 
-{{- $nodeSpecificKeyMaxLen := 0 }}
-{{- $globalKeyMaxLen := 0 }}
-{{- range $key, $value := .Config }}
-  {{- if isNodeSpecificNetworkConfig $key }}
-    {{- if gt (len $key) $nodeSpecificKeyMaxLen }}
-      {{- $nodeSpecificKeyMaxLen = len $key }}
-    {{- end }}
-  {{- else }}
-    {{- if gt (len $key) $globalKeyMaxLen }}
-      {{- $globalKeyMaxLen = len $key }}
-    {{- end }}
-  {{- end }}
-{{- end }}
+{{- $splitConfigs := splitConfig .Config "network" -}}
 
 {{- $projectPrefix := "" }}
 {{- if ne .Project "" }}
@@ -30,11 +18,9 @@ resource "incus_network" "{{ $projectPrefix }}{{ .Name }}_per_node" {
 {{- end }}
 
   config = {
-    {{- range $key, $value := .Config }}
-      {{- if isNodeSpecificNetworkConfig $key }}
-        {{- $indent := repeat (int (sub $nodeSpecificKeyMaxLen (len $key))) " " }}
+    {{- range $key, $value := $splitConfigs.Specific }}
+      {{- $indent := repeat (int (sub (maxKeyLength $splitConfigs.Specific) (len $key))) " " }}
     "{{ $key }}"{{ $indent }} = "{{ $value }}"
-      {{- end }}
     {{- end }}
   }
 
@@ -52,11 +38,9 @@ resource "incus_network" "{{ $projectPrefix }}{{ .Name }}" {
 {{- end }}
 
   config = {
-    {{- range $key, $value := .Config }}
-      {{- if not (isNodeSpecificNetworkConfig $key) }}
-        {{- $indent := repeat (int (sub $globalKeyMaxLen (len $key))) " " }}
+    {{- range $key, $value := $splitConfigs.Global }}
+      {{- $indent := repeat (int (sub (maxKeyLength $splitConfigs.Global) (len $key))) " " }}
     "{{ $key }}"{{ $indent }} = "{{ $value }}"
-      {{- end }}
     {{- end }}
   }
 
