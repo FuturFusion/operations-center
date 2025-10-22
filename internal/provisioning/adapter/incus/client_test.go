@@ -280,6 +280,43 @@ func TestClient_Endpoint(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "FactoryReset",
+			clientCall: func(ctx context.Context, c clientPort, endpoint provisioning.Endpoint) (any, error) {
+				return nil, c.FactoryReset(ctx, endpoint)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {}
+}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"POST /os/1.0/system/:factory-reset"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"POST /os/1.0/system/:factory-reset"},
+				},
+			},
+		},
 	}
 
 	for _, method := range methods {
