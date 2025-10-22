@@ -10,6 +10,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // ClusterServiceWithSlog implements provisioning.ClusterService that is instrumented with slog logger.
@@ -78,12 +79,13 @@ func (_d ClusterServiceWithSlog) Create(ctx context.Context, cluster provisionin
 }
 
 // DeleteByName implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
+func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
+			slog.Any("deleteMode", deleteMode),
 		)
 	}
 	log.DebugContext(ctx, "=> calling DeleteByName")
@@ -108,7 +110,7 @@ func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string) 
 			log.DebugContext(ctx, "<= method DeleteByName finished")
 		}
 	}()
-	return _d._base.DeleteByName(ctx, name)
+	return _d._base.DeleteByName(ctx, name, deleteMode)
 }
 
 // GetAll implements provisioning.ClusterService.

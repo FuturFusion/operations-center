@@ -335,3 +335,17 @@ func (c client) UpdateClusterCertificate(ctx context.Context, endpoint provision
 		ClusterCertificateKey: keyPEM,
 	}, "")
 }
+
+func (c client) FactoryReset(ctx context.Context, endpoint provisioning.Endpoint) error {
+	client, err := c.getClient(ctx, endpoint)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = client.RawQuery(http.MethodPost, "/os/1.0/system/:factory-reset", map[string]any{}, "")
+	if err != nil {
+		return fmt.Errorf("Factory reset on %q failed: %w", endpoint.GetConnectionURL(), err)
+	}
+
+	return nil
+}

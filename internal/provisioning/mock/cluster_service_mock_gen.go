@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // Ensure that ClusterServiceMock does implement provisioning.ClusterService.
@@ -25,7 +26,7 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			CreateFunc: func(ctx context.Context, cluster provisioning.Cluster) (provisioning.Cluster, error) {
 //				panic("mock out the Create method")
 //			},
-//			DeleteByNameFunc: func(ctx context.Context, name string) error {
+//			DeleteByNameFunc: func(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) error {
 //				panic("mock out the DeleteByName method")
 //			},
 //			GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
@@ -78,7 +79,7 @@ type ClusterServiceMock struct {
 	CreateFunc func(ctx context.Context, cluster provisioning.Cluster) (provisioning.Cluster, error)
 
 	// DeleteByNameFunc mocks the DeleteByName method.
-	DeleteByNameFunc func(ctx context.Context, name string) error
+	DeleteByNameFunc func(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) error
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Clusters, error)
@@ -134,6 +135,8 @@ type ClusterServiceMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+			// DeleteMode is the deleteMode argument value.
+			DeleteMode api.ClusterDeleteMode
 		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
@@ -279,21 +282,23 @@ func (mock *ClusterServiceMock) CreateCalls() []struct {
 }
 
 // DeleteByName calls DeleteByNameFunc.
-func (mock *ClusterServiceMock) DeleteByName(ctx context.Context, name string) error {
+func (mock *ClusterServiceMock) DeleteByName(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) error {
 	if mock.DeleteByNameFunc == nil {
 		panic("ClusterServiceMock.DeleteByNameFunc: method is nil but ClusterService.DeleteByName was just called")
 	}
 	callInfo := struct {
-		Ctx  context.Context
-		Name string
+		Ctx        context.Context
+		Name       string
+		DeleteMode api.ClusterDeleteMode
 	}{
-		Ctx:  ctx,
-		Name: name,
+		Ctx:        ctx,
+		Name:       name,
+		DeleteMode: deleteMode,
 	}
 	mock.lockDeleteByName.Lock()
 	mock.calls.DeleteByName = append(mock.calls.DeleteByName, callInfo)
 	mock.lockDeleteByName.Unlock()
-	return mock.DeleteByNameFunc(ctx, name)
+	return mock.DeleteByNameFunc(ctx, name, deleteMode)
 }
 
 // DeleteByNameCalls gets all the calls that were made to DeleteByName.
@@ -301,12 +306,14 @@ func (mock *ClusterServiceMock) DeleteByName(ctx context.Context, name string) e
 //
 //	len(mockedClusterService.DeleteByNameCalls())
 func (mock *ClusterServiceMock) DeleteByNameCalls() []struct {
-	Ctx  context.Context
-	Name string
+	Ctx        context.Context
+	Name       string
+	DeleteMode api.ClusterDeleteMode
 } {
 	var calls []struct {
-		Ctx  context.Context
-		Name string
+		Ctx        context.Context
+		Name       string
+		DeleteMode api.ClusterDeleteMode
 	}
 	mock.lockDeleteByName.RLock()
 	calls = mock.calls.DeleteByName

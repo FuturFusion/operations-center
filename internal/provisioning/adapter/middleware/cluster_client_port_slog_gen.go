@@ -113,6 +113,40 @@ func (_d ClusterClientPortWithSlog) EnableOSService(ctx context.Context, server 
 	return _d._base.EnableOSService(ctx, server, name, config)
 }
 
+// FactoryReset implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) FactoryReset(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("endpoint", endpoint),
+		)
+	}
+	log.DebugContext(ctx, "=> calling FactoryReset")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method FactoryReset returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method FactoryReset returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method FactoryReset finished")
+		}
+	}()
+	return _d._base.FactoryReset(ctx, endpoint)
+}
+
 // GetClusterJoinToken implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithSlog) GetClusterJoinToken(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (joinToken string, err error) {
 	log := _d._log.With()

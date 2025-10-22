@@ -66,6 +66,20 @@ func (_d ClusterClientPortWithPrometheus) EnableOSService(ctx context.Context, s
 	return _d.base.EnableOSService(ctx, server, name, config)
 }
 
+// FactoryReset implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) FactoryReset(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "FactoryReset", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.FactoryReset(ctx, endpoint)
+}
+
 // GetClusterJoinToken implements provisioning.ClusterClientPort.
 func (_d ClusterClientPortWithPrometheus) GetClusterJoinToken(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (joinToken string, err error) {
 	_since := time.Now()

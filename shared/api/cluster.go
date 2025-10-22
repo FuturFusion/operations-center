@@ -67,6 +67,24 @@ func (s *ClusterStatus) Scan(value any) error {
 	}
 }
 
+type ClusterDeleteMode string
+
+const (
+	ClusterDeleteModeNormal       ClusterDeleteMode = "normal"
+	ClusterDeleteModeForce        ClusterDeleteMode = "force"
+	ClusterDeleteModeFactoryReset ClusterDeleteMode = "factory-reset"
+)
+
+var ClusterDeleteModes = map[ClusterDeleteMode]struct{}{
+	ClusterDeleteModeNormal:       {},
+	ClusterDeleteModeForce:        {},
+	ClusterDeleteModeFactoryReset: {},
+}
+
+func (s ClusterDeleteMode) String() string {
+	return string(s)
+}
+
 // Cluster defines a cluster of servers running Hypervisor OS.
 //
 // swagger:model

@@ -12,6 +12,7 @@ import (
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -471,11 +472,49 @@ func (s clusterService) Rename(ctx context.Context, oldName string, newName stri
 	return s.repo.Rename(ctx, oldName, newName)
 }
 
-func (s clusterService) DeleteByName(ctx context.Context, name string) error {
+func (s clusterService) DeleteByName(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) error {
 	if name == "" {
 		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
+	if deleteMode == api.ClusterDeleteModeFactoryReset {
+		servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+			Cluster: ptr.To(name),
+		})
+		if err != nil {
+			return fmt.Errorf("Get cluster servers for factory reset: %w", err)
+		}
+
+		for _, server := range servers {
+			err = s.client.Ping(ctx, server)
+			if err != nil {
+				return fmt.Errorf("Pre factory reset connection test to server %s: %w", server.Name, err)
+			}
+		}
+
+		for _, server := range servers {
+			err = s.client.FactoryReset(ctx, server)
+			if err != nil {
+				return fmt.Errorf("Factory reset on server %s: %w", server.Name, err)
+			}
+		}
+	}
+
+	if deleteMode == api.ClusterDeleteModeForce || deleteMode == api.ClusterDeleteModeFactoryReset {
+		err := s.provisioner.Cleanup(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Cleanup provisioner files: %w", err)
+		}
+
+		err = s.repo.DeleteByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to delete cluster: %w", err)
+		}
+
+		return nil
+	}
+
+	// deleteMode == normal
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		cluster, err := s.repo.GetByName(ctx, name)
 		if err != nil {

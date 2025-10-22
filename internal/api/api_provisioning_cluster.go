@@ -357,6 +357,17 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: mode
+//	    description: |
+//	      Delete mode, one of "normal", "force" or "factory-reset", defaults to "normal".
+//
+//	        - normal: cluster record is only removed from operations center if it is in state pending or unknown and there are no servers referencing the cluster.
+//	        - force: cluster and server records including all associated inventory information is removed from operations center, does not do any change to the cluster it self.
+//	        - factory-reset: everything from "force" and additionally a factory reset is performed on every server, that is part of the cluster.
+//	    type: string
+//	    example: normal
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -368,8 +379,15 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 //	    $ref: "#/responses/InternalServerError"
 func (c *clusterHandler) clusterDelete(r *http.Request) response.Response {
 	name := r.PathValue("name")
+	mode := r.URL.Query().Get("mode")
 
-	err := c.service.DeleteByName(r.Context(), name)
+	deleteMode := api.ClusterDeleteMode(mode)
+	_, ok := api.ClusterDeleteModes[deleteMode]
+	if !ok {
+		deleteMode = api.ClusterDeleteModeNormal
+	}
+
+	err := c.service.DeleteByName(r.Context(), name, deleteMode)
 	if err != nil {
 		return response.SmartError(err)
 	}
