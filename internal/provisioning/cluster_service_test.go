@@ -1561,12 +1561,16 @@ func TestClusterService_DeleteByName(t *testing.T) {
 	tests := []struct {
 		name                                string
 		nameArg                             string
-		force                               bool
+		deleteMode                          api.ClusterDeleteMode
 		repoGetByNameCluster                *provisioning.Cluster
 		repoGetByNameErr                    error
 		repoDeleteByNameErr                 error
 		serverSvcGetAllNamesWithFilterNames []string
 		serverSvcGetAllNamesWithFilterErr   error
+		serverSvcGetAllWithFilter           provisioning.Servers
+		serverSvcGetAllWithFilterErr        error
+		clientPingErr                       error
+		clientFactoryResetErr               error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -1580,11 +1584,15 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:    "success - force",
-			nameArg: "one",
-			force:   true,
+			name:       "success - factory reset",
+			nameArg:    "one",
+			deleteMode: api.ClusterDeleteModeFactoryReset,
 			repoGetByNameCluster: &provisioning.Cluster{
 				Status: api.ClusterStatusPending,
+			},
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+				{},
 			},
 
 			assertErr: require.NoError,
@@ -1596,6 +1604,44 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
 			},
+		},
+		{
+			name:                         "error - serverSvc.GetAllWithFilter",
+			nameArg:                      "one",
+			deleteMode:                   api.ClusterDeleteModeFactoryReset,
+			serverSvcGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:       "error - client.Ping",
+			nameArg:    "one",
+			deleteMode: api.ClusterDeleteModeFactoryReset,
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+			},
+			clientPingErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:       "error - client.FactoryReset",
+			nameArg:    "one",
+			deleteMode: api.ClusterDeleteModeFactoryReset,
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+			},
+			clientFactoryResetErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                "error - repo.DeleteByID with force or factory-reset",
+			nameArg:             "one",
+			deleteMode:          api.ClusterDeleteModeForce,
+			repoDeleteByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name:             "error - repo.GetByName",
@@ -1659,17 +1705,6 @@ func TestClusterService_DeleteByName(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 		},
-		{
-			name:    "error - repo.DeleteByID with force",
-			nameArg: "one",
-			force:   true,
-			repoGetByNameCluster: &provisioning.Cluster{
-				Status: api.ClusterStatusPending,
-			},
-			repoDeleteByNameErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
 	}
 
 	for _, tc := range tests {
@@ -1688,12 +1723,24 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				GetAllNamesWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) ([]string, error) {
 					return tc.serverSvcGetAllNamesWithFilterNames, tc.serverSvcGetAllNamesWithFilterErr
 				},
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.serverSvcGetAllWithFilter, tc.serverSvcGetAllWithFilterErr
+				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, serverSvc, nil, nil)
+			client := &adapterMock.ClusterClientPortMock{
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return tc.clientPingErr
+				},
+				FactoryResetFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return tc.clientFactoryResetErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, nil, nil)
 
 			// Run test
-			err := clusterSvc.DeleteByName(context.Background(), tc.nameArg, tc.force)
+			err := clusterSvc.DeleteByName(context.Background(), tc.nameArg, tc.deleteMode)
 
 			// Assert
 			tc.assertErr(t, err)

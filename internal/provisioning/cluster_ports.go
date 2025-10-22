@@ -16,7 +16,7 @@ type ClusterService interface {
 	GetByName(ctx context.Context, name string) (*Cluster, error)
 	Update(ctx context.Context, cluster Cluster) error
 	Rename(ctx context.Context, oldName string, newName string) error
-	DeleteByName(ctx context.Context, name string, force bool) error
+	DeleteByName(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) error
 	ResyncInventory(ctx context.Context) error
 	ResyncInventoryByName(ctx context.Context, name string) error
 	UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) error
@@ -50,6 +50,7 @@ type ClusterClientPort interface {
 	JoinCluster(ctx context.Context, server Server, joinToken string, endpoint Endpoint) error
 	GetOSData(ctx context.Context, endpoint Endpoint) (api.OSData, error)
 	UpdateClusterCertificate(ctx context.Context, endpoint Endpoint, certificatePEM string, keyPEM string) error
+	FactoryReset(ctx context.Context, endpoint Endpoint) error
 }
 
 type ClusterProvisioningPort interface {
