@@ -1571,6 +1571,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 		serverSvcGetAllWithFilterErr        error
 		clientPingErr                       error
 		clientFactoryResetErr               error
+		provisionerCleanupErr               error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -1632,6 +1633,14 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				{},
 			},
 			clientFactoryResetErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                  "error - provisioner.Cleanup with force or factory-reset",
+			nameArg:               "one",
+			deleteMode:            api.ClusterDeleteModeForce,
+			provisionerCleanupErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -1737,7 +1746,13 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, nil, nil)
+			provisioner := &adapterMock.ClusterProvisioningPortMock{
+				CleanupFunc: func(ctx context.Context, name string) error {
+					return tc.provisionerCleanupErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, nil, provisioner)
 
 			// Run test
 			err := clusterSvc.DeleteByName(context.Background(), tc.nameArg, tc.deleteMode)
