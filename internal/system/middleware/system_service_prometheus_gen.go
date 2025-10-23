@@ -7,16 +7,16 @@ import (
 	"context"
 	"time"
 
-	"github.com/FuturFusion/operations-center/internal/system"
-	"github.com/FuturFusion/operations-center/shared/api"
+	system0 "github.com/FuturFusion/operations-center/internal/system"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-// SystemServiceWithPrometheus implements system.SystemService interface with all methods wrapped
+// SystemServiceWithPrometheus implements system0.SystemService interface with all methods wrapped
 // with Prometheus metrics.
 type SystemServiceWithPrometheus struct {
-	base         system.SystemService
+	base         system0.SystemService
 	instanceName string
 }
 
@@ -30,16 +30,16 @@ var systemServiceDurationSummaryVec = promauto.NewSummaryVec(
 	[]string{"instance_name", "method", "result"},
 )
 
-// NewSystemServiceWithPrometheus returns an instance of the system.SystemService decorated with prometheus summary metric.
-func NewSystemServiceWithPrometheus(base system.SystemService, instanceName string) SystemServiceWithPrometheus {
+// NewSystemServiceWithPrometheus returns an instance of the system0.SystemService decorated with prometheus summary metric.
+func NewSystemServiceWithPrometheus(base system0.SystemService, instanceName string) SystemServiceWithPrometheus {
 	return SystemServiceWithPrometheus{
 		base:         base,
 		instanceName: instanceName,
 	}
 }
 
-// GetNetworkConfig implements system.SystemService.
-func (_d SystemServiceWithPrometheus) GetNetworkConfig(ctx context.Context) (systemNetwork api.SystemNetwork) {
+// GetNetworkConfig implements system0.SystemService.
+func (_d SystemServiceWithPrometheus) GetNetworkConfig(ctx context.Context) (systemNetwork system.SystemNetwork) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -48,8 +48,8 @@ func (_d SystemServiceWithPrometheus) GetNetworkConfig(ctx context.Context) (sys
 	return _d.base.GetNetworkConfig(ctx)
 }
 
-// GetSecurityConfig implements system.SystemService.
-func (_d SystemServiceWithPrometheus) GetSecurityConfig(ctx context.Context) (systemSecurity api.SystemSecurity) {
+// GetSecurityConfig implements system0.SystemService.
+func (_d SystemServiceWithPrometheus) GetSecurityConfig(ctx context.Context) (systemSecurity system.SystemSecurity) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -58,8 +58,8 @@ func (_d SystemServiceWithPrometheus) GetSecurityConfig(ctx context.Context) (sy
 	return _d.base.GetSecurityConfig(ctx)
 }
 
-// GetUpdatesConfig implements system.SystemService.
-func (_d SystemServiceWithPrometheus) GetUpdatesConfig(ctx context.Context) (systemUpdates api.SystemUpdates) {
+// GetUpdatesConfig implements system0.SystemService.
+func (_d SystemServiceWithPrometheus) GetUpdatesConfig(ctx context.Context) (systemUpdates system.SystemUpdates) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -68,7 +68,7 @@ func (_d SystemServiceWithPrometheus) GetUpdatesConfig(ctx context.Context) (sys
 	return _d.base.GetUpdatesConfig(ctx)
 }
 
-// UpdateCertificate implements system.SystemService.
+// UpdateCertificate implements system0.SystemService.
 func (_d SystemServiceWithPrometheus) UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
 	_since := time.Now()
 	defer func() {
@@ -82,8 +82,8 @@ func (_d SystemServiceWithPrometheus) UpdateCertificate(ctx context.Context, cer
 	return _d.base.UpdateCertificate(ctx, certificatePEM, keyPEM)
 }
 
-// UpdateNetworkConfig implements system.SystemService.
-func (_d SystemServiceWithPrometheus) UpdateNetworkConfig(ctx context.Context, cfg api.SystemNetworkPut) (err error) {
+// UpdateNetworkConfig implements system0.SystemService.
+func (_d SystemServiceWithPrometheus) UpdateNetworkConfig(ctx context.Context, cfg system.SystemNetworkPut) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -96,8 +96,8 @@ func (_d SystemServiceWithPrometheus) UpdateNetworkConfig(ctx context.Context, c
 	return _d.base.UpdateNetworkConfig(ctx, cfg)
 }
 
-// UpdateSecurityConfig implements system.SystemService.
-func (_d SystemServiceWithPrometheus) UpdateSecurityConfig(ctx context.Context, cfg api.SystemSecurityPut) (err error) {
+// UpdateSecurityConfig implements system0.SystemService.
+func (_d SystemServiceWithPrometheus) UpdateSecurityConfig(ctx context.Context, cfg system.SystemSecurityPut) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -110,8 +110,8 @@ func (_d SystemServiceWithPrometheus) UpdateSecurityConfig(ctx context.Context, 
 	return _d.base.UpdateSecurityConfig(ctx, cfg)
 }
 
-// UpdateUpdatesConfig implements system.SystemService.
-func (_d SystemServiceWithPrometheus) UpdateUpdatesConfig(ctx context.Context, cfg api.SystemUpdatesPut) (err error) {
+// UpdateUpdatesConfig implements system0.SystemService.
+func (_d SystemServiceWithPrometheus) UpdateUpdatesConfig(ctx context.Context, cfg system.SystemUpdatesPut) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
