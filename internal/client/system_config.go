@@ -5,25 +5,25 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
-func (c OperationsCenterClient) GetSystemNetworkConfig(ctx context.Context) (api.SystemNetwork, error) {
+func (c OperationsCenterClient) GetSystemNetworkConfig(ctx context.Context) (system.SystemNetwork, error) {
 	response, err := c.doRequest(ctx, http.MethodGet, "/system/network", nil, nil)
 	if err != nil {
-		return api.SystemNetwork{}, err
+		return system.SystemNetwork{}, err
 	}
 
-	cfg := api.SystemNetwork{}
+	cfg := system.SystemNetwork{}
 	err = json.Unmarshal(response.Metadata, &cfg)
 	if err != nil {
-		return api.SystemNetwork{}, err
+		return system.SystemNetwork{}, err
 	}
 
 	return cfg, nil
 }
 
-func (c OperationsCenterClient) UpdateSystemNetworkConfig(ctx context.Context, cfg api.SystemNetworkPut) error {
+func (c OperationsCenterClient) UpdateSystemNetworkConfig(ctx context.Context, cfg system.SystemNetworkPut) error {
 	_, err := c.doRequest(ctx, http.MethodPut, "/system/network", nil, cfg)
 	if err != nil {
 		return err
@@ -32,22 +32,22 @@ func (c OperationsCenterClient) UpdateSystemNetworkConfig(ctx context.Context, c
 	return nil
 }
 
-func (c OperationsCenterClient) GetSystemSecurityConfig(ctx context.Context) (api.SystemSecurity, error) {
+func (c OperationsCenterClient) GetSystemSecurityConfig(ctx context.Context) (system.SystemSecurity, error) {
 	response, err := c.doRequest(ctx, http.MethodGet, "/system/security", nil, nil)
 	if err != nil {
-		return api.SystemSecurity{}, err
+		return system.SystemSecurity{}, err
 	}
 
-	cfg := api.SystemSecurity{}
+	cfg := system.SystemSecurity{}
 	err = json.Unmarshal(response.Metadata, &cfg)
 	if err != nil {
-		return api.SystemSecurity{}, err
+		return system.SystemSecurity{}, err
 	}
 
 	return cfg, nil
 }
 
-func (c OperationsCenterClient) UpdateSystemSecurityConfig(ctx context.Context, cfg api.SystemSecurityPut) error {
+func (c OperationsCenterClient) UpdateSystemSecurityConfig(ctx context.Context, cfg system.SystemSecurityPut) error {
 	_, err := c.doRequest(ctx, http.MethodPut, "/system/security", nil, cfg)
 	if err != nil {
 		return err
@@ -56,22 +56,22 @@ func (c OperationsCenterClient) UpdateSystemSecurityConfig(ctx context.Context, 
 	return nil
 }
 
-func (c OperationsCenterClient) GetSystemUpdatesConfig(ctx context.Context) (api.SystemUpdates, error) {
+func (c OperationsCenterClient) GetSystemUpdatesConfig(ctx context.Context) (system.SystemUpdates, error) {
 	response, err := c.doRequest(ctx, http.MethodGet, "/system/updates", nil, nil)
 	if err != nil {
-		return api.SystemUpdates{}, err
+		return system.SystemUpdates{}, err
 	}
 
-	cfg := api.SystemUpdates{}
+	cfg := system.SystemUpdates{}
 	err = json.Unmarshal(response.Metadata, &cfg)
 	if err != nil {
-		return api.SystemUpdates{}, err
+		return system.SystemUpdates{}, err
 	}
 
 	return cfg, nil
 }
 
-func (c OperationsCenterClient) UpdateSystemUpdatesConfig(ctx context.Context, cfg api.SystemUpdatesPut) error {
+func (c OperationsCenterClient) UpdateSystemUpdatesConfig(ctx context.Context, cfg system.SystemUpdatesPut) error {
 	_, err := c.doRequest(ctx, http.MethodPut, "/system/updates", nil, cfg)
 	if err != nil {
 		return err
