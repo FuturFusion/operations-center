@@ -751,6 +751,58 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 	}
 }
 
+func TestTokenService_GetTokenProviderConfig(t *testing.T) {
+	tests := []struct {
+		name                        string
+		flasherGetProviderConfig    *api.TokenProviderConfig
+		flasherGetProviderConfigErr error
+
+		assertErr require.ErrorAssertionFunc
+		want      *api.TokenProviderConfig
+	}{
+		{
+			name: "success",
+			flasherGetProviderConfig: &api.TokenProviderConfig{
+				Version: "1",
+			},
+
+			assertErr: require.NoError,
+			want: &api.TokenProviderConfig{
+				Version: "1",
+			},
+		},
+		{
+			name: "error - flasher.GetProviderConfig",
+			flasherGetProviderConfig: &api.TokenProviderConfig{
+				Version: "1",
+			},
+			flasherGetProviderConfigErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			flasher := &adapterMock.FlasherPortMock{
+				GetProviderConfigFunc: func(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
+					return tc.flasherGetProviderConfig, tc.flasherGetProviderConfigErr
+				},
+			}
+
+			tokenSvc := provisioning.NewTokenService(nil, nil, flasher)
+
+			// Run test
+			got, err := tokenSvc.GetTokenProviderConfig(t.Context(), uuidgen.FromPattern(t, "1"))
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func TestTokenService_CreateTokenSeed(t *testing.T) {
 	tests := []struct {
 		name                   string

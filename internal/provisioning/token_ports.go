@@ -19,6 +19,7 @@ type TokenService interface {
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	Consume(ctx context.Context, id uuid.UUID) error
 	GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig TokenImageSeedConfigs) (io.ReadCloser, error)
+	GetTokenProviderConfig(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error)
 	CreateTokenSeed(ctx context.Context, tokenSeedConfig TokenSeed) (TokenSeed, error)
 	GetTokenSeedAll(ctx context.Context, id uuid.UUID) (TokenSeeds, error)
 	GetTokenSeedAllNames(ctx context.Context, id uuid.UUID) ([]string, error)
@@ -44,5 +45,6 @@ type TokenRepo interface {
 }
 
 type FlasherPort interface {
+	GetProviderConfig(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error)
 	GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error)
 }
