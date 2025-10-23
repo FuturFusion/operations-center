@@ -21,15 +21,15 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 type config struct {
-	Network api.SystemNetwork `json:"network" yaml:"network"`
+	Network system.SystemNetwork `json:"network" yaml:"network"`
 
-	Security api.SystemSecurity `json:"security" yaml:"security"`
+	Security system.SystemSecurity `json:"security" yaml:"security"`
 
-	Updates api.SystemUpdates `json:"updates" yaml:"updates"`
+	Updates system.SystemUpdates `json:"updates" yaml:"updates"`
 }
 
 type enver interface {
@@ -46,9 +46,9 @@ var (
 
 	env enver = environment.New(ApplicationName, ApplicationEnvPrefix)
 
-	NetworkUpdateSignal  = signals.NewSync[api.SystemNetwork]()
-	SecurityUpdateSignal = signals.NewSync[api.SystemSecurity]()
-	UpdatesUpdateSignal  = signals.NewSync[api.SystemUpdates]()
+	NetworkUpdateSignal  = signals.NewSync[system.SystemNetwork]()
+	SecurityUpdateSignal = signals.NewSync[system.SystemSecurity]()
+	UpdatesUpdateSignal  = signals.NewSync[system.SystemUpdates]()
 )
 
 func Init(vardir enver) error {
@@ -110,14 +110,14 @@ func loadConfig() error {
 	return nil
 }
 
-func GetNetwork() api.SystemNetwork {
+func GetNetwork() system.SystemNetwork {
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
 	return globalConfigInstance.Network
 }
 
-func UpdateNetwork(ctx context.Context, cfg api.SystemNetworkPut) error {
+func UpdateNetwork(ctx context.Context, cfg system.SystemNetworkPut) error {
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
@@ -134,14 +134,14 @@ func UpdateNetwork(ctx context.Context, cfg api.SystemNetworkPut) error {
 		return err
 	}
 
-	NetworkUpdateSignal.Emit(ctx, api.SystemNetwork{
+	NetworkUpdateSignal.Emit(ctx, system.SystemNetwork{
 		SystemNetworkPut: cfg,
 	})
 
 	return nil
 }
 
-func NetworkSetDefaults(cfg api.SystemNetworkPut) (api.SystemNetworkPut, error) {
+func NetworkSetDefaults(cfg system.SystemNetworkPut) (system.SystemNetworkPut, error) {
 	newCfg := cfg
 	parseIP := func(addr string) (net.IP, error) {
 		if strings.HasPrefix(addr, "[") && strings.HasSuffix(addr, "]") && len(addr) > 2 {
@@ -161,7 +161,7 @@ func NetworkSetDefaults(cfg api.SystemNetworkPut) (api.SystemNetworkPut, error) 
 		if err != nil {
 			ip, err := parseIP(cfg.RestServerAddress)
 			if err != nil {
-				return api.SystemNetworkPut{}, err
+				return system.SystemNetworkPut{}, err
 			}
 
 			newCfg.RestServerAddress = net.JoinHostPort(ip.String(), DefaultRestServerPort)
@@ -174,7 +174,7 @@ func NetworkSetDefaults(cfg api.SystemNetworkPut) (api.SystemNetworkPut, error) 
 
 		_, err = parseIP(host)
 		if err != nil {
-			return api.SystemNetworkPut{}, err
+			return system.SystemNetworkPut{}, err
 		}
 
 		if port == "" {
@@ -187,14 +187,14 @@ func NetworkSetDefaults(cfg api.SystemNetworkPut) (api.SystemNetworkPut, error) 
 	return newCfg, nil
 }
 
-func GetSecurity() api.SystemSecurity {
+func GetSecurity() system.SystemSecurity {
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
 	return globalConfigInstance.Security
 }
 
-func UpdateSecurity(ctx context.Context, cfg api.SystemSecurityPut) error {
+func UpdateSecurity(ctx context.Context, cfg system.SystemSecurityPut) error {
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
@@ -206,21 +206,21 @@ func UpdateSecurity(ctx context.Context, cfg api.SystemSecurityPut) error {
 		return err
 	}
 
-	SecurityUpdateSignal.Emit(ctx, api.SystemSecurity{
+	SecurityUpdateSignal.Emit(ctx, system.SystemSecurity{
 		SystemSecurityPut: cfg,
 	})
 
 	return nil
 }
 
-func GetUpdates() api.SystemUpdates {
+func GetUpdates() system.SystemUpdates {
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
 	return globalConfigInstance.Updates
 }
 
-func UpdateUpdates(ctx context.Context, cfg api.SystemUpdatesPut) error {
+func UpdateUpdates(ctx context.Context, cfg system.SystemUpdatesPut) error {
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
@@ -232,7 +232,7 @@ func UpdateUpdates(ctx context.Context, cfg api.SystemUpdatesPut) error {
 		return err
 	}
 
-	UpdatesUpdateSignal.Emit(ctx, api.SystemUpdates{
+	UpdatesUpdateSignal.Emit(ctx, system.SystemUpdates{
 		SystemUpdatesPut: cfg,
 	})
 
