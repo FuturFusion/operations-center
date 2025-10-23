@@ -55,6 +55,9 @@ var _ provisioning.TokenService = &TokenServiceMock{}
 //			GetTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture) (io.ReadCloser, error) {
 //				panic("mock out the GetTokenImageFromTokenSeed method")
 //			},
+//			GetTokenProviderConfigFunc: func(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
+//				panic("mock out the GetTokenProviderConfig method")
+//			},
 //			GetTokenSeedAllFunc: func(ctx context.Context, id uuid.UUID) (provisioning.TokenSeeds, error) {
 //				panic("mock out the GetTokenSeedAll method")
 //			},
@@ -106,6 +109,9 @@ type TokenServiceMock struct {
 
 	// GetTokenImageFromTokenSeedFunc mocks the GetTokenImageFromTokenSeed method.
 	GetTokenImageFromTokenSeedFunc func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture) (io.ReadCloser, error)
+
+	// GetTokenProviderConfigFunc mocks the GetTokenProviderConfig method.
+	GetTokenProviderConfigFunc func(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error)
 
 	// GetTokenSeedAllFunc mocks the GetTokenSeedAll method.
 	GetTokenSeedAllFunc func(ctx context.Context, id uuid.UUID) (provisioning.TokenSeeds, error)
@@ -204,6 +210,13 @@ type TokenServiceMock struct {
 			// Architecture is the architecture argument value.
 			Architecture images.UpdateFileArchitecture
 		}
+		// GetTokenProviderConfig holds details about calls to the GetTokenProviderConfig method.
+		GetTokenProviderConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
 		// GetTokenSeedAll holds details about calls to the GetTokenSeedAll method.
 		GetTokenSeedAll []struct {
 			// Ctx is the ctx argument value.
@@ -252,6 +265,7 @@ type TokenServiceMock struct {
 	lockGetByUUID                  sync.RWMutex
 	lockGetPreSeedImage            sync.RWMutex
 	lockGetTokenImageFromTokenSeed sync.RWMutex
+	lockGetTokenProviderConfig     sync.RWMutex
 	lockGetTokenSeedAll            sync.RWMutex
 	lockGetTokenSeedAllNames       sync.RWMutex
 	lockGetTokenSeedByName         sync.RWMutex
@@ -636,6 +650,42 @@ func (mock *TokenServiceMock) GetTokenImageFromTokenSeedCalls() []struct {
 	mock.lockGetTokenImageFromTokenSeed.RLock()
 	calls = mock.calls.GetTokenImageFromTokenSeed
 	mock.lockGetTokenImageFromTokenSeed.RUnlock()
+	return calls
+}
+
+// GetTokenProviderConfig calls GetTokenProviderConfigFunc.
+func (mock *TokenServiceMock) GetTokenProviderConfig(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
+	if mock.GetTokenProviderConfigFunc == nil {
+		panic("TokenServiceMock.GetTokenProviderConfigFunc: method is nil but TokenService.GetTokenProviderConfig was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockGetTokenProviderConfig.Lock()
+	mock.calls.GetTokenProviderConfig = append(mock.calls.GetTokenProviderConfig, callInfo)
+	mock.lockGetTokenProviderConfig.Unlock()
+	return mock.GetTokenProviderConfigFunc(ctx, id)
+}
+
+// GetTokenProviderConfigCalls gets all the calls that were made to GetTokenProviderConfig.
+// Check the length with:
+//
+//	len(mockedTokenService.GetTokenProviderConfigCalls())
+func (mock *TokenServiceMock) GetTokenProviderConfigCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockGetTokenProviderConfig.RLock()
+	calls = mock.calls.GetTokenProviderConfig
+	mock.lockGetTokenProviderConfig.RUnlock()
 	return calls
 }
 

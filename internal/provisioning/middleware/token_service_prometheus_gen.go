@@ -181,6 +181,20 @@ func (_d TokenServiceWithPrometheus) GetTokenImageFromTokenSeed(ctx context.Cont
 	return _d.base.GetTokenImageFromTokenSeed(ctx, id, name, imageType, architecture)
 }
 
+// GetTokenProviderConfig implements provisioning.TokenService.
+func (_d TokenServiceWithPrometheus) GetTokenProviderConfig(ctx context.Context, id uuid.UUID) (tokenProviderConfig *api.TokenProviderConfig, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		tokenServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetTokenProviderConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetTokenProviderConfig(ctx, id)
+}
+
 // GetTokenSeedAll implements provisioning.TokenService.
 func (_d TokenServiceWithPrometheus) GetTokenSeedAll(ctx context.Context, id uuid.UUID) (tokenSeeds provisioning.TokenSeeds, err error) {
 	_since := time.Now()

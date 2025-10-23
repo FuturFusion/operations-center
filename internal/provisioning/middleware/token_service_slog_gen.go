@@ -397,6 +397,41 @@ func (_d TokenServiceWithSlog) GetTokenImageFromTokenSeed(ctx context.Context, i
 	return _d._base.GetTokenImageFromTokenSeed(ctx, id, name, imageType, architecture)
 }
 
+// GetTokenProviderConfig implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) GetTokenProviderConfig(ctx context.Context, id uuid.UUID) (tokenProviderConfig *api.TokenProviderConfig, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetTokenProviderConfig")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("tokenProviderConfig", tokenProviderConfig),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetTokenProviderConfig returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetTokenProviderConfig returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetTokenProviderConfig finished")
+		}
+	}()
+	return _d._base.GetTokenProviderConfig(ctx, id)
+}
+
 // GetTokenSeedAll implements provisioning.TokenService.
 func (_d TokenServiceWithSlog) GetTokenSeedAll(ctx context.Context, id uuid.UUID) (tokenSeeds provisioning.TokenSeeds, err error) {
 	log := _d._log.With()
