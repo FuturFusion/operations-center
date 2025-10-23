@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"net/url"
 	"sync"
 	"testing"
 	"time"
@@ -148,7 +149,7 @@ one
 
 			token := uuid.MustParse("686d2a12-20f9-11f0-82c6-7fff26bab0c4")
 
-			serverSvc := provisioning.NewServerService(repo, client, tokenSvc,
+			serverSvc := provisioning.NewServerService(repo, client, tokenSvc, nil,
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 				provisioning.ServerServiceWithInitialConnectionDelay(0), // Disable delay for initial connection test
 			)
@@ -207,7 +208,7 @@ func TestServerService_GetAll(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil)
 
 			// Run test
 			servers, err := serverSvc.GetAll(context.Background())
@@ -338,7 +339,7 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil)
 
 			// Run test
 			server, err := serverSvc.GetAllWithFilter(context.Background(), tc.filter)
@@ -386,7 +387,7 @@ func TestServerService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil)
 
 			// Run test
 			serverNames, err := serverSvc.GetAllNames(context.Background())
@@ -501,7 +502,7 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil)
 
 			// Run test
 			serverIDs, err := serverSvc.GetAllNamesWithFilter(context.Background(), tc.filter)
@@ -559,7 +560,7 @@ func TestServerService_GetByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil)
 
 			// Run test
 			server, err := serverSvc.GetByName(context.Background(), tc.nameArg)
@@ -644,7 +645,7 @@ one
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			err := serverSvc.Update(context.Background(), tc.server)
@@ -858,7 +859,7 @@ one
 			// have been removed after successful processing.
 			selfUpdateSignal := signals.New[provisioning.Server]()
 
-			serverSvc := provisioning.NewServerService(repo, client, nil,
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil,
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 				provisioning.ServerServiceWithSelfUpdateSignal(selfUpdateSignal),
 			)
@@ -943,7 +944,7 @@ one
 
 			selfUpdateSignal := signals.New[provisioning.Server]()
 
-			serverSvc := provisioning.NewServerService(repo, client, nil,
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil,
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 				provisioning.ServerServiceWithSelfUpdateSignal(selfUpdateSignal),
 			)
@@ -1090,7 +1091,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			err := serverSvc.SelfUpdate(context.Background(), tc.serverSelfUpdate)
@@ -1168,7 +1169,7 @@ func TestServerService_Rename(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
 
 			// Run test
 			err := serverSvc.Rename(context.Background(), tc.oldName, tc.newName)
@@ -1248,7 +1249,7 @@ func TestServerService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil)
 
 			// Run test
 			err := serverSvc.DeleteByName(context.Background(), tc.nameArg)
@@ -1266,12 +1267,15 @@ func TestServerService_PollPendingServers(t *testing.T) {
 		name                        string
 		repoGetAllWithFilterServers provisioning.Servers
 		repoGetAllWithFilterErr     error
-		clientPingErr               error
+		clientPing                  []queue.Item[struct{}]
 		clientGetResourcesErr       error
 		clientGetOSDataErr          error
 		repoGetByNameServer         provisioning.Server
 		repoGetByNameErr            error
 		repoUpdateErr               error
+		clusterSvcGetByName         *provisioning.Cluster
+		clusterSvcGetByNameErr      error
+		clusterSvcUpdateErr         error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -1293,6 +1297,9 @@ func TestServerService_PollPendingServers(t *testing.T) {
 				Name:   "pending",
 				Status: api.ServerStatusPending,
 			},
+			clientPing: []queue.Item[struct{}]{
+				{},
+			},
 
 			assertErr: require.NoError,
 		},
@@ -1310,9 +1317,139 @@ func TestServerService_PollPendingServers(t *testing.T) {
 					Status: api.ServerStatusPending,
 				},
 			},
-			clientPingErr: boom.Error,
+			clientPing: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+			},
 
 			assertErr: require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
+		},
+		{
+			name: "error - client Ping with tls.CertificateVerificationError but server is not part of cluster",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:   "pending",
+					Status: api.ServerStatusPending,
+				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				{
+					Err: &url.Error{
+						Err: &tls.CertificateVerificationError{},
+					},
+				},
+			},
+
+			assertErr: require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
+		},
+		{
+			name: "success - cluster now has publicly valid certificate",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:               "ready",
+					Status:             api.ServerStatusReady,
+					Cluster:            ptr.To("cluster"),
+					ClusterCertificate: ptr.To("certificate"),
+				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				// Simulate failing connection with pinned certificate, because cluster
+				// now has a publicly valid certificate (e.g. ACME).
+				{
+					Err: &url.Error{
+						Err: &tls.CertificateVerificationError{},
+					},
+				},
+				{},
+			},
+			clusterSvcGetByName: &provisioning.Cluster{
+				Name:        "cluster",
+				Certificate: "certificate",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - client Ping with tls.CertificateVerificationError but second ping fails",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:               "ready",
+					Status:             api.ServerStatusReady,
+					Cluster:            ptr.To("cluster"),
+					ClusterCertificate: ptr.To("certificate"),
+				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				// Simulate failing connection with pinned certificate, because cluster
+				// now has a publicly valid certificate (e.g. ACME).
+				{
+					Err: &url.Error{
+						Err: &tls.CertificateVerificationError{},
+					},
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+			clusterSvcGetByName: &provisioning.Cluster{
+				Name:        "cluster",
+				Certificate: "certificate",
+			},
+
+			assertErr: require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
+		},
+		{
+			name: "error - cluster now has publicly valid certificate - clusterSvc.GetByName",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:               "ready",
+					Status:             api.ServerStatusReady,
+					Cluster:            ptr.To("cluster"),
+					ClusterCertificate: ptr.To("certificate"),
+				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				// Simulate failing connection with pinned certificate, because cluster
+				// now has a publicly valid certificate (e.g. ACME).
+				{
+					Err: &url.Error{
+						Err: &tls.CertificateVerificationError{},
+					},
+				},
+				{},
+			},
+			clusterSvcGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - cluster now has publicly valid certificate - clusterSvc.Update",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:               "ready",
+					Status:             api.ServerStatusReady,
+					Cluster:            ptr.To("cluster"),
+					ClusterCertificate: ptr.To("certificate"),
+				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				// Simulate failing connection with pinned certificate, because cluster
+				// now has a publicly valid certificate (e.g. ACME).
+				{
+					Err: &url.Error{
+						Err: &tls.CertificateVerificationError{},
+					},
+				},
+				{},
+			},
+			clusterSvcGetByName: &provisioning.Cluster{
+				Name:        "cluster",
+				Certificate: "certificate",
+			},
+			clusterSvcUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - client GetResources",
@@ -1321,6 +1458,9 @@ func TestServerService_PollPendingServers(t *testing.T) {
 					Name:   "pending",
 					Status: api.ServerStatusPending,
 				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				{},
 			},
 			clientGetResourcesErr: boom.Error,
 
@@ -1334,6 +1474,9 @@ func TestServerService_PollPendingServers(t *testing.T) {
 					Status: api.ServerStatusPending,
 				},
 			},
+			clientPing: []queue.Item[struct{}]{
+				{},
+			},
 			clientGetOSDataErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -1345,6 +1488,9 @@ func TestServerService_PollPendingServers(t *testing.T) {
 					Name:   "pending",
 					Status: api.ServerStatusPending,
 				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				{},
 			},
 			repoGetByNameErr: boom.Error,
 
@@ -1371,7 +1517,8 @@ func TestServerService_PollPendingServers(t *testing.T) {
 
 			client := &adapterMock.ServerClientPortMock{
 				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
-					return tc.clientPingErr
+					_, err := queue.Pop(t, &tc.clientPing)
+					return err
 				},
 				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
 					return api.HardwareData{}, tc.clientGetResourcesErr
@@ -1384,9 +1531,19 @@ func TestServerService_PollPendingServers(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil,
+			clusterSvc := &svcMock.ClusterServiceMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
+					return tc.clusterSvcGetByName, tc.clusterSvcGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
+					return tc.clusterSvcUpdateErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil,
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 			)
+			serverSvc.SetClusterService(clusterSvc)
 
 			// Run test
 			err := serverSvc.PollServers(context.Background(), api.ServerStatusPending, true)
