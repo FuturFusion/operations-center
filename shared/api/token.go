@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus-os/incus-osd/api"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 )
 
@@ -116,6 +117,15 @@ type TokenImagePost struct {
 	// Seeds represents the seed configuration for e.g. applications.yaml,
 	// install.yaml and network.yaml.
 	Seeds TokenSeedConfigs `json:"seeds" yaml:"seeds"`
+}
+
+// TokenProviderConfig defines the provider configuration for a given token.
+//
+// swagger:model
+type TokenProviderConfig struct {
+	api.SystemProviderConfig `yaml:",inline"`
+
+	Version string `json:"version" yaml:"version"`
 }
 
 type TokenSeedConfigs struct {

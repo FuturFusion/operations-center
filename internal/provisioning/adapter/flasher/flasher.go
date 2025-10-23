@@ -19,6 +19,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 const seedTarballStartPosition = 2148532224
@@ -43,7 +44,7 @@ func New(serverURL string, serverCertificate tls.Certificate) *Flasher {
 	return flasher
 }
 
-func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, file io.ReadCloser) (_ io.ReadCloser, _ error) {
+func (f *Flasher) GetProviderConfig(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
 	f.mu.Lock()
 	serverURL := f.serverURL
 	serverCertificate := f.serverCertificate
@@ -53,8 +54,7 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedCon
 		return nil, errors.New(`Unabled to generate seeded image, server URL is not provided. Set "address" in "config.yml".`)
 	}
 
-	// Create seed tarball.
-	seedProvider := &seed.Provider{
+	seedProvider := &api.TokenProviderConfig{
 		SystemProviderConfig: incusosapi.SystemProviderConfig{
 			Name: "operations-center",
 			Config: map[string]string{
@@ -69,9 +69,23 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedCon
 		seedProvider.Config["server_certificate"] = serverCertificate
 	}
 
+	return seedProvider, nil
+}
+
+func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, file io.ReadCloser) (_ io.ReadCloser, _ error) {
+	providerConfig, err := f.GetProviderConfig(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
 	seedConfig.Incus = map[string]any{
 		"apply_defaults": false,
 		"version":        "1",
+	}
+
+	seedProvider := &seed.Provider{
+		SystemProviderConfig: providerConfig.SystemProviderConfig,
+		Version:              providerConfig.Version,
 	}
 
 	tarball, err := createSeedTarball(

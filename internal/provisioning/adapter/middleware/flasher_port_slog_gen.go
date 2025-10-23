@@ -10,6 +10,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
 )
 
@@ -78,4 +79,39 @@ func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, id uuid.U
 		}
 	}()
 	return _d._base.GenerateSeededImage(ctx, id, seedConfig, rc)
+}
+
+// GetProviderConfig implements provisioning.FlasherPort.
+func (_d FlasherPortWithSlog) GetProviderConfig(ctx context.Context, id uuid.UUID) (tokenProviderConfig *api.TokenProviderConfig, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetProviderConfig")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("tokenProviderConfig", tokenProviderConfig),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetProviderConfig returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetProviderConfig returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetProviderConfig finished")
+		}
+	}()
+	return _d._base.GetProviderConfig(ctx, id)
 }

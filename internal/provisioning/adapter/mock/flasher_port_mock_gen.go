@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
 )
 
@@ -26,6 +27,9 @@ var _ provisioning.FlasherPort = &FlasherPortMock{}
 //			GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
 //				panic("mock out the GenerateSeededImage method")
 //			},
+//			GetProviderConfigFunc: func(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
+//				panic("mock out the GetProviderConfig method")
+//			},
 //		}
 //
 //		// use mockedFlasherPort in code that requires provisioning.FlasherPort
@@ -35,6 +39,9 @@ var _ provisioning.FlasherPort = &FlasherPortMock{}
 type FlasherPortMock struct {
 	// GenerateSeededImageFunc mocks the GenerateSeededImage method.
 	GenerateSeededImageFunc func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error)
+
+	// GetProviderConfigFunc mocks the GetProviderConfig method.
+	GetProviderConfigFunc func(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -49,8 +56,16 @@ type FlasherPortMock struct {
 			// Rc is the rc argument value.
 			Rc io.ReadCloser
 		}
+		// GetProviderConfig holds details about calls to the GetProviderConfig method.
+		GetProviderConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
 	}
 	lockGenerateSeededImage sync.RWMutex
+	lockGetProviderConfig   sync.RWMutex
 }
 
 // GenerateSeededImage calls GenerateSeededImageFunc.
@@ -94,5 +109,41 @@ func (mock *FlasherPortMock) GenerateSeededImageCalls() []struct {
 	mock.lockGenerateSeededImage.RLock()
 	calls = mock.calls.GenerateSeededImage
 	mock.lockGenerateSeededImage.RUnlock()
+	return calls
+}
+
+// GetProviderConfig calls GetProviderConfigFunc.
+func (mock *FlasherPortMock) GetProviderConfig(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
+	if mock.GetProviderConfigFunc == nil {
+		panic("FlasherPortMock.GetProviderConfigFunc: method is nil but FlasherPort.GetProviderConfig was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockGetProviderConfig.Lock()
+	mock.calls.GetProviderConfig = append(mock.calls.GetProviderConfig, callInfo)
+	mock.lockGetProviderConfig.Unlock()
+	return mock.GetProviderConfigFunc(ctx, id)
+}
+
+// GetProviderConfigCalls gets all the calls that were made to GetProviderConfig.
+// Check the length with:
+//
+//	len(mockedFlasherPort.GetProviderConfigCalls())
+func (mock *FlasherPortMock) GetProviderConfigCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockGetProviderConfig.RLock()
+	calls = mock.calls.GetProviderConfig
+	mock.lockGetProviderConfig.RUnlock()
 	return calls
 }

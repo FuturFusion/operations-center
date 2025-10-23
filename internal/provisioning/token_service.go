@@ -132,6 +132,15 @@ func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageTy
 	return s.getPreSeedImage(ctx, id, imageType, architecture, seeds)
 }
 
+func (s tokenService) GetTokenProviderConfig(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
+	seedProvider, err := s.flasher.GetProviderConfig(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get provider config for token %q: %w", id.String(), err)
+	}
+
+	return seedProvider, nil
+}
+
 func (s tokenService) CreateTokenSeed(ctx context.Context, tokenSeed TokenSeed) (TokenSeed, error) {
 	err := tokenSeed.Validate()
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -51,4 +52,18 @@ func (_d FlasherPortWithPrometheus) GenerateSeededImage(ctx context.Context, id 
 		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GenerateSeededImage", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GenerateSeededImage(ctx, id, seedConfig, rc)
+}
+
+// GetProviderConfig implements provisioning.FlasherPort.
+func (_d FlasherPortWithPrometheus) GetProviderConfig(ctx context.Context, id uuid.UUID) (tokenProviderConfig *api.TokenProviderConfig, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetProviderConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetProviderConfig(ctx, id)
 }
