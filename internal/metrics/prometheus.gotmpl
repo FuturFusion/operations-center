@@ -15,6 +15,10 @@ package {{ .PkgName }}
 import (
 {{ range .Imports -}}
 	{{ .ImportStatement }}
+
+	{{- if eq .Path $.Registry.SrcPkg.PkgPath  }}
+		{{- $srcPkgQualifier = (printf "%s." .Qualifier) }}
+	{{- end }}
 {{ end -}}
 )
 
@@ -23,10 +27,10 @@ import (
 {{ $decorator := (or .TemplateData.DecoratorName (printf "%sWithPrometheus" $wrapper.Name)) }}
 {{ $metric_name := (or .TemplateData.MetricName (printf "%s_duration_seconds" ($wrapper.Name | snakecase))) }}
 
-// {{ $decorator }} implements {{ $.SrcPkgQualifier }}{{ $wrapper.Name }} interface with all methods wrapped
+// {{ $decorator }} implements {{ $srcPkgQualifier }}{{ $wrapper.Name }} interface with all methods wrapped
 // with Prometheus metrics.
 type {{ $decorator }} struct {
-	base {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}
+	base {{ $srcPkgQualifier }}{{ $wrapper.Name }}
 	instanceName string
 }
 
@@ -40,8 +44,8 @@ var {{ $wrapper.Name | camelcase }}DurationSummaryVec = promauto.NewSummaryVec(
 	[]string{"instance_name", "method", "result"},
 )
 
-// New{{ $decorator }} returns an instance of the {{ $.SrcPkgQualifier }}{{ $wrapper.Name }} decorated with prometheus summary metric.
-func New{{ $decorator }}(base {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}, instanceName string) {{ $decorator }} {
+// New{{ $decorator }} returns an instance of the {{ $srcPkgQualifier }}{{ $wrapper.Name }} decorated with prometheus summary metric.
+func New{{ $decorator }}(base {{ $srcPkgQualifier }}{{ $wrapper.Name }}, instanceName string) {{ $decorator }} {
 	return {{ $decorator }} {
 		base: base,
 		instanceName: instanceName,
@@ -49,7 +53,7 @@ func New{{ $decorator }}(base {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}, instan
 }
 
 {{ range $method := $wrapper.Methods }}
-	// {{ $method.Name }} implements {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}.
+	// {{ $method.Name }} implements {{ $srcPkgQualifier }}{{ $wrapper.Name }}.
 	func (_d {{ $decorator }}) {{.Name}}({{.ArgList}}) ({{.ReturnArgList}}) {
 			_since := time.Now()
 			defer func() {

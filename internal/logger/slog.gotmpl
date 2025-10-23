@@ -14,6 +14,10 @@ package {{ .PkgName }}
 import (
 {{ range .Imports -}}
 	{{ .ImportStatement }}
+
+	{{- if eq .Path $.Registry.SrcPkg.PkgPath  }}
+		{{- $srcPkgQualifier = (printf "%s." .Qualifier) }}
+	{{- end }}
 {{ end -}}
 )
 
@@ -21,10 +25,10 @@ import (
 
 {{ $decorator := (or .TemplateData.DecoratorName (printf "%sWithSlog" $wrapper.Name)) }}
 
-// {{$decorator}} implements {{ $.SrcPkgQualifier }}{{ $wrapper.Name }} that is instrumented with slog logger.
+// {{$decorator}} implements {{ $srcPkgQualifier }}{{ $wrapper.Name }} that is instrumented with slog logger.
 type {{$decorator}} struct {
 	_log  *slog.Logger
-	_base {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}
+	_base {{ $srcPkgQualifier }}{{ $wrapper.Name }}
 	_isInformativeErrFunc func(error) bool
 }
 
@@ -36,8 +40,8 @@ func {{$decorator}}WithInformativeErrFunc(isInformativeErrFunc func(error) bool)
 	}
 }
 
-// New{{$decorator}} instruments an implementation of the {{ $.SrcPkgQualifier }}{{ $wrapper.Name }} with simple logging.
-func New{{$decorator}}(base {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}, log *slog.Logger, opts ...{{$decorator}}Option) {{$decorator}} {
+// New{{$decorator}} instruments an implementation of the {{ $srcPkgQualifier }}{{ $wrapper.Name }} with simple logging.
+func New{{$decorator}}(base {{ $srcPkgQualifier }}{{ $wrapper.Name }}, log *slog.Logger, opts ...{{$decorator}}Option) {{$decorator}} {
 	this := {{$decorator}}{
 		_base: base,
 		_log: log,
@@ -53,7 +57,7 @@ func New{{$decorator}}(base {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}, log *slo
 
 {{ range $method := $wrapper.Methods }}
 
-	// {{$method.Name}} implements {{ $.SrcPkgQualifier }}{{ $wrapper.Name }}.
+	// {{$method.Name}} implements {{ $srcPkgQualifier }}{{ $wrapper.Name }}.
 	func (_d {{$decorator}}) {{.Name}}({{.ArgList}}) ({{.ReturnArgList}}) {
 		{{- if not $method.AcceptsContext }}
 		ctx := context.Background()
