@@ -102,7 +102,7 @@ server B
 	require.NoError(t, err)
 
 	server := sqlite.NewServer(tx)
-	serverSvc := provisioning.NewServerService(server, nil, nil)
+	serverSvc := provisioning.NewServerService(server, nil, nil, nil)
 
 	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), client, serverSvc, nil, terraformProvisioner)
 

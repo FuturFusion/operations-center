@@ -53,6 +53,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			SelfUpdateFunc: func(ctx context.Context, serverUpdate provisioning.ServerSelfUpdate) error {
 //				panic("mock out the SelfUpdate method")
 //			},
+//			SetClusterServiceFunc: func(clusterSvc provisioning.ClusterService)  {
+//				panic("mock out the SetClusterService method")
+//			},
 //			UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the Update method")
 //			},
@@ -95,6 +98,9 @@ type ServerServiceMock struct {
 
 	// SelfUpdateFunc mocks the SelfUpdate method.
 	SelfUpdateFunc func(ctx context.Context, serverUpdate provisioning.ServerSelfUpdate) error
+
+	// SetClusterServiceFunc mocks the SetClusterService method.
+	SetClusterServiceFunc func(clusterSvc provisioning.ClusterService)
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, server provisioning.Server) error
@@ -176,6 +182,11 @@ type ServerServiceMock struct {
 			// ServerUpdate is the serverUpdate argument value.
 			ServerUpdate provisioning.ServerSelfUpdate
 		}
+		// SetClusterService holds details about calls to the SetClusterService method.
+		SetClusterService []struct {
+			// ClusterSvc is the clusterSvc argument value.
+			ClusterSvc provisioning.ClusterService
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -203,6 +214,7 @@ type ServerServiceMock struct {
 	lockPollServers           sync.RWMutex
 	lockRename                sync.RWMutex
 	lockSelfUpdate            sync.RWMutex
+	lockSetClusterService     sync.RWMutex
 	lockUpdate                sync.RWMutex
 	lockUpdateSystemNetwork   sync.RWMutex
 }
@@ -568,6 +580,38 @@ func (mock *ServerServiceMock) SelfUpdateCalls() []struct {
 	mock.lockSelfUpdate.RLock()
 	calls = mock.calls.SelfUpdate
 	mock.lockSelfUpdate.RUnlock()
+	return calls
+}
+
+// SetClusterService calls SetClusterServiceFunc.
+func (mock *ServerServiceMock) SetClusterService(clusterSvc provisioning.ClusterService) {
+	if mock.SetClusterServiceFunc == nil {
+		panic("ServerServiceMock.SetClusterServiceFunc: method is nil but ServerService.SetClusterService was just called")
+	}
+	callInfo := struct {
+		ClusterSvc provisioning.ClusterService
+	}{
+		ClusterSvc: clusterSvc,
+	}
+	mock.lockSetClusterService.Lock()
+	mock.calls.SetClusterService = append(mock.calls.SetClusterService, callInfo)
+	mock.lockSetClusterService.Unlock()
+	mock.SetClusterServiceFunc(clusterSvc)
+}
+
+// SetClusterServiceCalls gets all the calls that were made to SetClusterService.
+// Check the length with:
+//
+//	len(mockedServerService.SetClusterServiceCalls())
+func (mock *ServerServiceMock) SetClusterServiceCalls() []struct {
+	ClusterSvc provisioning.ClusterService
+} {
+	var calls []struct {
+		ClusterSvc provisioning.ClusterService
+	}
+	mock.lockSetClusterService.RLock()
+	calls = mock.calls.SetClusterService
+	mock.lockSetClusterService.RUnlock()
 	return calls
 }
 

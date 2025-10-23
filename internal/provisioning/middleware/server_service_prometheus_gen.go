@@ -179,6 +179,16 @@ func (_d ServerServiceWithPrometheus) SelfUpdate(ctx context.Context, serverUpda
 	return _d.base.SelfUpdate(ctx, serverUpdate)
 }
 
+// SetClusterService implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) SetClusterService(clusterSvc provisioning.ClusterService) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SetClusterService", result).Observe(time.Since(_since).Seconds())
+	}()
+	_d.base.SetClusterService(clusterSvc)
+}
+
 // Update implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) Update(ctx context.Context, server provisioning.Server) (err error) {
 	_since := time.Now()

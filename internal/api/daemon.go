@@ -156,12 +156,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	tokenSvc := d.setupTokenService(dbWithTransaction, updateSvc)
-	serverSvc := d.setupServerService(dbWithTransaction, tokenSvc)
+	serverSvc := d.setupServerService(dbWithTransaction, tokenSvc, nil)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, serverSvc)
 	if err != nil {
 		return err
 	}
 
+	serverSvc.SetClusterService(clusterSvc)
 	clusterTemplateSvc := d.setupClusterTemplateService(dbWithTransaction)
 	systemSvc := d.setupSystemService()
 
@@ -421,7 +422,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 	)
 }
 
-func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.TokenService) provisioning.ServerService {
+func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.TokenService, clusterSvc provisioning.ClusterService) provisioning.ServerService {
 	return provisioningServiceMiddleware.NewServerServiceWithSlog(
 		provisioning.NewServerService(
 			provisioningRepoMiddleware.NewServerRepoWithSlog(
@@ -444,6 +445,7 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 				),
 			),
 			tokenSvc,
+			clusterSvc,
 		),
 		slog.Default(),
 	)
