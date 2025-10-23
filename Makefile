@@ -32,7 +32,29 @@ build-all-packages:
 
 .PHONY: test
 test:
-	$(GO) test ./... -v -cover
+	$(GO) test ./... -v
+
+.PHONY: test
+test-coverage:
+	@rm -rf coverage.out covdata-coverage.out
+	@mkdir -p coverage.out
+	@echo "================= Running Tests with Coverage ================="
+	@go test -cover ./... -coverpkg=github.com/FuturFusion/operations-center/cmd/...,github.com/FuturFusion/operations-center/internal/...,github.com/FuturFusion/operations-center/shared/... -args -test.gocoverdir="$$PWD/coverage.out"
+	@echo "================= Coverage Report ================="
+	@go tool covdata percent -pkg $$(go tool covdata pkglist -i ./coverage.out | grep -vE '(middleware|mock|version)$$' | paste -sd,) -i=./coverage.out -o covdata-coverage.out | sed 's/%//' | sort -k3,3nr -k1,1 | column -t
+	@cat covdata-coverage.out | awk 'BEGIN {cov=0; stat=0;} $$3!="" { cov+=($$3==1?$$2:0); stat+=$$2; } END {printf("Total coverage: %.2f%% of statements\n", (cov/stat)*100);}'
+
+.PHONY: test
+test-coverage-func:
+	@rm -rf coverage.out covdata-coverage-func.out covdata-coverage-func-filtered.out
+	@mkdir -p coverage.out
+	@echo "================= Running Tests with Coverage ================="
+	@go test -cover ./... -coverpkg=github.com/FuturFusion/operations-center/cmd/...,github.com/FuturFusion/operations-center/internal/...,github.com/FuturFusion/operations-center/shared/... -args -test.gocoverdir="$$PWD/coverage.out"
+	@echo "================= Coverage Report ================="
+	@go tool covdata textfmt -pkg $$(go tool covdata pkglist -i ./coverage.out | grep -vE '(middleware|mock|version)$$' | paste -sd,) -i=./coverage.out -o covdata-coverage-func.out
+	@grep -vE '_gen(_test)?\.go' covdata-coverage-func.out > covdata-coverage-func-filtered.out
+	@go tool cover -func covdata-coverage-func-filtered.out | grep -vE '^total' | sed 's/%//' | sort -k3,3nr -k1,1 | column -t
+	@cat covdata-coverage-func-filtered.out | awk 'BEGIN {cov=0; stat=0;} $$3!="" { cov+=($$3==1?$$2:0); stat+=$$2; } END {printf("Total coverage: %.2f%% of statements\n", (cov/stat)*100);}'
 
 .PHONY: static-analysis
 static-analysis: license-check lint tofu-fmt-check
@@ -68,6 +90,7 @@ endif
 
 .PHONY: clean
 clean:
+	rm -rf coverage.out covdata-coverage.out covdata-coverage-func.out covdata-coverage-func-filtered.out
 	rm -rf dist/ bin/
 
 .PHONY: release-snapshot
