@@ -10,7 +10,7 @@ import (
 	"github.com/maniartech/signals"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 type environment interface {
@@ -57,11 +57,11 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 	return nil
 }
 
-func (s *systemService) GetNetworkConfig(_ context.Context) api.SystemNetwork {
+func (s *systemService) GetNetworkConfig(_ context.Context) system.SystemNetwork {
 	return config.GetNetwork()
 }
 
-func (s *systemService) UpdateNetworkConfig(ctx context.Context, newConfig api.SystemNetworkPut) error {
+func (s *systemService) UpdateNetworkConfig(ctx context.Context, newConfig system.SystemNetworkPut) error {
 	err := config.UpdateNetwork(ctx, newConfig)
 	if err != nil {
 		return fmt.Errorf("Failed to update network configuration: %w", err)
@@ -70,11 +70,11 @@ func (s *systemService) UpdateNetworkConfig(ctx context.Context, newConfig api.S
 	return nil
 }
 
-func (s *systemService) GetSecurityConfig(_ context.Context) api.SystemSecurity {
+func (s *systemService) GetSecurityConfig(_ context.Context) system.SystemSecurity {
 	return config.GetSecurity()
 }
 
-func (s *systemService) UpdateSecurityConfig(ctx context.Context, newConfig api.SystemSecurityPut) error {
+func (s *systemService) UpdateSecurityConfig(ctx context.Context, newConfig system.SystemSecurityPut) error {
 	err := config.UpdateSecurity(ctx, newConfig)
 	if err != nil {
 		return fmt.Errorf("Failed to update security configuration: %w", err)
@@ -83,11 +83,11 @@ func (s *systemService) UpdateSecurityConfig(ctx context.Context, newConfig api.
 	return nil
 }
 
-func (s *systemService) GetUpdatesConfig(_ context.Context) api.SystemUpdates {
+func (s *systemService) GetUpdatesConfig(_ context.Context) system.SystemUpdates {
 	return config.GetUpdates()
 }
 
-func (s *systemService) UpdateUpdatesConfig(ctx context.Context, newConfig api.SystemUpdatesPut) error {
+func (s *systemService) UpdateUpdatesConfig(ctx context.Context, newConfig system.SystemUpdatesPut) error {
 	err := config.UpdateUpdates(ctx, newConfig)
 	if err != nil {
 		return fmt.Errorf("Failed to update updates configuration: %w", err)
