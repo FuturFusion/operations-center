@@ -37,6 +37,7 @@ func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorize
 	router.HandleFunc("PUT /{uuid}", response.With(handler.tokenPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{uuid}", response.With(handler.tokenDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{uuid}/image", response.With(handler.tokenImagePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{uuid}/provider-config", response.With(handler.tokenProviderConfigGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{uuid}/seeds", response.With(handler.tokenSeedsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("POST /{uuid}/seeds", response.With(handler.tokenSeedsPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
 	router.HandleFunc("PUT /{uuid}/seeds/{name}", response.With(handler.tokenSeedPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
@@ -443,6 +444,60 @@ func (t *tokenHandler) tokenImagePost(r *http.Request) response.Response {
 	}
 
 	return response.ReadCloserResponse(r, rc, true, fmt.Sprintf("pre-seed-%s%s", UUID.String(), tokenImagePost.Type.FileExt()), -1, nil)
+}
+
+// swagger:operation GET /1.0/provisioning/tokens/{uuid}/provider-config tokens tokens_provider_config_get
+//
+//	Get the provider config for a token
+//
+//	Gets the token specific provider config.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Provider config.
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          $ref: "#/definitions/TokenProviderConfig"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (t *tokenHandler) tokenProviderConfigGet(r *http.Request) response.Response {
+	UUIDString := r.PathValue("uuid")
+
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	providerConfig, err := t.service.GetTokenProviderConfig(r.Context(), UUID)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponseETag(
+		true,
+		providerConfig,
+		providerConfig,
+	)
 }
 
 // swagger:operation POST /1.0/provisioning/tokens/{uuid}/seeds tokens token_seeds_post
