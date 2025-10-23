@@ -14,7 +14,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/client"
 	"github.com/FuturFusion/operations-center/internal/editor"
 	"github.com/FuturFusion/operations-center/internal/environment"
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api/system"
 )
 
 type CmdUpdates struct {
@@ -125,7 +125,7 @@ func (c *cmdUpdatesEdit) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		newdata := api.SystemUpdatesPut{}
+		newdata := system.SystemUpdatesPut{}
 		err = yaml.Unmarshal(contents, &newdata)
 		if err != nil {
 			return err
@@ -159,7 +159,7 @@ func (c *cmdUpdatesEdit) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	for {
-		newdata := api.SystemUpdatesPut{}
+		newdata := system.SystemUpdatesPut{}
 		err = yaml.Unmarshal(content, &newdata)
 		if err == nil {
 			err = c.ocClient.UpdateSystemUpdatesConfig(cmd.Context(), newdata)
