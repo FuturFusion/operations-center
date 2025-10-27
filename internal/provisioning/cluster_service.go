@@ -220,8 +220,9 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	// of the certificate of the bootstrap server.
 	clusterEndpoint := ClusterEndpoint{
 		Server{
-			ConnectionURL:      bootstrapServer.ConnectionURL,
-			ClusterCertificate: &clusterCertificate,
+			ConnectionURL:        bootstrapServer.ConnectionURL,
+			ClusterCertificate:   &clusterCertificate,
+			ClusterConnectionURL: &bootstrapServer.ConnectionURL,
 		},
 	}
 

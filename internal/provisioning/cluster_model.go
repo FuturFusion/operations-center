@@ -2,6 +2,7 @@ package provisioning
 
 import (
 	"encoding/json"
+	"fmt"
 	"iter"
 	"net/url"
 	"strings"
@@ -113,6 +114,14 @@ func (c ClusterEndpoint) GetCertificate() string {
 	}
 
 	return c[0].GetCertificate()
+}
+
+func (c ClusterEndpoint) GetServerName() (string, error) {
+	if len(c) == 0 {
+		return "", fmt.Errorf("Failed to get server name, cluster does not have any servers")
+	}
+
+	return c[0].GetServerName()
 }
 
 func (c ClusterEndpoint) GetEndpoints() iter.Seq[Endpoint] {

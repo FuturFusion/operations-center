@@ -247,15 +247,67 @@ func TestServer_Filter(t *testing.T) {
 }
 
 func TestServer_Getters(t *testing.T) {
-	cluster := provisioning.Server{
-		ConnectionURL: "connection_url",
+	server := provisioning.Server{
+		ConnectionURL: "http://example.com:443/",
 		Certificate:   "cert",
 	}
 
-	require.Equal(t, cluster.Certificate, cluster.GetCertificate())
-	require.Equal(t, cluster.ConnectionURL, cluster.GetConnectionURL())
+	require.Equal(t, server.Certificate, server.GetCertificate())
+	require.Equal(t, server.ConnectionURL, server.GetConnectionURL())
 
-	cluster.ClusterCertificate = ptr.To("cluster cert")
+	// Cluster with not cluster certificate set.
+	server.Cluster = ptr.To("cluster")
+	require.Empty(t, server.GetCertificate())
 
-	require.Equal(t, *cluster.ClusterCertificate, cluster.GetCertificate())
+	// Cluster with cluster certificate set.
+	server.ClusterCertificate = ptr.To("cluster cert")
+	require.Equal(t, *server.ClusterCertificate, server.GetCertificate())
+}
+
+func TestServer_GetServerName(t *testing.T) {
+	tests := []struct {
+		name   string
+		server provisioning.Server
+
+		assertErr  require.ErrorAssertionFunc
+		serverName string
+	}{
+		{
+			name: "success - server",
+			server: provisioning.Server{
+				ConnectionURL: "http://example.com:443/",
+			},
+
+			assertErr:  require.NoError,
+			serverName: "example.com",
+		},
+		{
+			name: "success - cluster",
+			server: provisioning.Server{
+				ConnectionURL:        "http://example.com:443/",
+				ClusterConnectionURL: ptr.To("http://cluster.com:443/"),
+			},
+
+			assertErr:  require.NoError,
+			serverName: "cluster.com",
+		},
+		{
+			name: "error - invalid connection URL",
+			server: provisioning.Server{
+				ConnectionURL: ":|\\", // invalid
+			},
+
+			assertErr:  require.Error,
+			serverName: "",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			serverName, err := tc.server.GetServerName()
+			tc.assertErr(t, err)
+
+			require.Equal(t, tc.serverName, serverName)
+		})
+	}
 }
