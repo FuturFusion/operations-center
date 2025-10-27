@@ -14,14 +14,14 @@ import (
 )
 
 var serverObjects = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   ORDER BY servers.name
 `)
 
 var serverObjectsByName = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   WHERE ( servers.name = ? )
@@ -29,7 +29,7 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
 `)
 
 var serverObjectsByCluster = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   WHERE ( cluster = ? )
@@ -37,7 +37,7 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
 `)
 
 var serverObjectsByClusterAndStatus = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   WHERE ( cluster = ? AND servers.status = ? )
@@ -45,7 +45,7 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
 `)
 
 var serverObjectsByStatus = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   WHERE ( servers.status = ? )
@@ -53,7 +53,7 @@ SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers
 `)
 
 var serverObjectsByCertificate = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   WHERE ( servers.certificate = ? )
@@ -178,7 +178,7 @@ func GetServer(ctx context.Context, db dbtx, name string) (_ *provisioning.Serve
 // serverColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Server entity.
 func serverColumns() string {
-	return "servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen"
+	return "servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen"
 }
 
 // getServers can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -187,7 +187,7 @@ func getServers(ctx context.Context, stmt *sql.Stmt, args ...any) ([]provisionin
 
 	dest := func(scan func(dest ...any) error) error {
 		s := provisioning.Server{}
-		err := scan(&s.ID, &s.Cluster, &s.Name, &s.Type, &s.ConnectionURL, &s.PublicConnectionURL, &s.Certificate, &s.ClusterCertificate, &s.HardwareData, &s.OSData, &s.Status, &s.LastUpdated, &s.LastSeen)
+		err := scan(&s.ID, &s.Cluster, &s.Name, &s.Type, &s.ConnectionURL, &s.PublicConnectionURL, &s.Certificate, &s.ClusterCertificate, &s.ClusterConnectionURL, &s.HardwareData, &s.OSData, &s.Status, &s.LastUpdated, &s.LastSeen)
 		if err != nil {
 			return err
 		}
@@ -211,7 +211,7 @@ func getServersRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]pro
 
 	dest := func(scan func(dest ...any) error) error {
 		s := provisioning.Server{}
-		err := scan(&s.ID, &s.Cluster, &s.Name, &s.Type, &s.ConnectionURL, &s.PublicConnectionURL, &s.Certificate, &s.ClusterCertificate, &s.HardwareData, &s.OSData, &s.Status, &s.LastUpdated, &s.LastSeen)
+		err := scan(&s.ID, &s.Cluster, &s.Name, &s.Type, &s.ConnectionURL, &s.PublicConnectionURL, &s.Certificate, &s.ClusterCertificate, &s.ClusterConnectionURL, &s.HardwareData, &s.OSData, &s.Status, &s.LastUpdated, &s.LastSeen)
 		if err != nil {
 			return err
 		}
