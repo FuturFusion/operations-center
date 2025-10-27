@@ -3,6 +3,7 @@ package provisioning
 import (
 	"crypto/x509"
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"time"
 
@@ -11,20 +12,21 @@ import (
 )
 
 type Server struct {
-	ID                  int64
-	Cluster             *string `db:"leftjoin=clusters.name"`
-	Name                string  `db:"primary=yes"`
-	Type                api.ServerType
-	ConnectionURL       string
-	PublicConnectionURL string
-	Certificate         string
-	ClusterCertificate  *string `db:"omit=create,update&leftjoin=clusters.certificate"`
-	HardwareData        api.HardwareData
-	OSData              api.OSData
-	VersionData         json.RawMessage `db:"ignore"` // FIXME: it is not yet clear, how the structure of the version information will actually look like.
-	Status              api.ServerStatus
-	LastUpdated         time.Time `db:"update_timestamp"`
-	LastSeen            time.Time
+	ID                   int64
+	Cluster              *string `db:"leftjoin=clusters.name"`
+	Name                 string  `db:"primary=yes"`
+	Type                 api.ServerType
+	ConnectionURL        string
+	PublicConnectionURL  string
+	Certificate          string
+	ClusterCertificate   *string `db:"omit=create,update&leftjoin=clusters.certificate"`
+	ClusterConnectionURL *string `db:"omit=create,update&leftjoin=clusters.connection_url"`
+	HardwareData         api.HardwareData
+	OSData               api.OSData
+	VersionData          json.RawMessage `db:"ignore"` // FIXME: it is not yet clear, how the structure of the version information will actually look like.
+	Status               api.ServerStatus
+	LastUpdated          time.Time `db:"update_timestamp"`
+	LastSeen             time.Time
 }
 
 func (s Server) GetConnectionURL() string {
@@ -32,11 +34,29 @@ func (s Server) GetConnectionURL() string {
 }
 
 func (s Server) GetCertificate() string {
-	if s.ClusterCertificate != nil {
-		return *s.ClusterCertificate
+	if s.Cluster != nil {
+		if s.ClusterCertificate != nil {
+			return *s.ClusterCertificate
+		}
+
+		return ""
 	}
 
 	return s.Certificate
+}
+
+func (s Server) GetServerName() (string, error) {
+	targetURL := s.ConnectionURL
+	if s.ClusterConnectionURL != nil {
+		targetURL = *s.ClusterConnectionURL
+	}
+
+	connectionURL, err := url.Parse(targetURL)
+	if err != nil {
+		return "", fmt.Errorf("Failed to get server name from connection URL %q: %w", targetURL, err)
+	}
+
+	return connectionURL.Hostname(), nil
 }
 
 func (s Server) Validate() error {

@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -242,18 +243,20 @@ func (c OperationsCenterClient) GetAPIServerInfo(ctx context.Context) (api.Serve
 func (c OperationsCenterClient) IsServerTrusted(ctx context.Context, serverCertificate api.Certificate) (actualServerCertificate api.Certificate, _ bool, _ error) {
 	resp, err := (&http.Client{}).Get(c.baseURL)
 	if err != nil {
-		switch actualErr := err.(*url.Error).Unwrap().(type) {
-		case *tls.CertificateVerificationError:
-			actualServerCertificate = api.Certificate{Certificate: actualErr.UnverifiedCertificates[0]}
-			if serverCertificate.String() != actualServerCertificate.String() {
-				return actualServerCertificate, false, nil
+		var urlErr *url.Error
+		if errors.As(err, &urlErr) {
+			switch actualErr := urlErr.Unwrap().(type) {
+			case *tls.CertificateVerificationError:
+				actualServerCertificate = api.Certificate{Certificate: actualErr.UnverifiedCertificates[0]}
+				if serverCertificate.String() != actualServerCertificate.String() {
+					return actualServerCertificate, false, nil
+				}
+
+				return api.Certificate{}, true, nil
 			}
-
-			return api.Certificate{}, true, nil
-
-		default:
-			return api.Certificate{}, false, fmt.Errorf(`Failed to connect: %v`, err)
 		}
+
+		return api.Certificate{}, false, fmt.Errorf(`Failed to connect: %v`, err)
 	}
 
 	if resp != nil && resp.Body != nil {

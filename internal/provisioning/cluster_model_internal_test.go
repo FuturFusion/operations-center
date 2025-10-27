@@ -11,12 +11,16 @@ func Test_clusterEndpoint(t *testing.T) {
 		name     string
 		endpoint ClusterEndpoint
 
-		wantConnectionURL string
-		wantCertificate   string
+		wantConnectionURL      string
+		wantCertificate        string
+		assertGetServerNameErr require.ErrorAssertionFunc
+		wantServerName         string
 	}{
 		{
 			name:     "empty",
 			endpoint: ClusterEndpoint{},
+
+			assertGetServerNameErr: require.Error,
 		},
 		{
 			name: "one",
@@ -27,8 +31,10 @@ func Test_clusterEndpoint(t *testing.T) {
 				},
 			},
 
-			wantConnectionURL: "http://one/",
-			wantCertificate:   "cert",
+			wantConnectionURL:      "http://one/",
+			wantCertificate:        "cert",
+			assertGetServerNameErr: require.NoError,
+			wantServerName:         "one",
 		},
 	}
 
@@ -36,9 +42,12 @@ func Test_clusterEndpoint(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			gotCertificate := tc.endpoint.GetCertificate()
 			gotConnectionURL := tc.endpoint.GetConnectionURL()
+			gotServerName, err := tc.endpoint.GetServerName()
+			tc.assertGetServerNameErr(t, err)
 
 			require.Equal(t, tc.wantCertificate, gotCertificate)
 			require.Equal(t, tc.wantConnectionURL, gotConnectionURL)
+			require.Equal(t, tc.wantServerName, gotServerName)
 		})
 	}
 }

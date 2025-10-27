@@ -390,6 +390,23 @@ func (_d ServerServiceWithSlog) SelfUpdate(ctx context.Context, serverUpdate pro
 	return _d._base.SelfUpdate(ctx, serverUpdate)
 }
 
+// SetClusterService implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) SetClusterService(clusterSvc provisioning.ClusterService) {
+	ctx := context.Background()
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("clusterSvc", clusterSvc),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SetClusterService")
+	defer func() {
+		log := _d._log.With()
+		log.DebugContext(ctx, "<= method SetClusterService finished")
+	}()
+	_d._base.SetClusterService(clusterSvc)
+}
+
 // Update implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) Update(ctx context.Context, server provisioning.Server) (err error) {
 	log := _d._log.With()

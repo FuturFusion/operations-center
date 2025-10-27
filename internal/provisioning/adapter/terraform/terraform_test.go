@@ -127,6 +127,7 @@ cluster_groups:
 				ClusterEndpoint: provisioning.ClusterEndpoint{
 					provisioning.Server{
 						ConnectionURL:      "https://127.0.0.1:8443",
+						Cluster:            ptr.To("cluster"),
 						ClusterCertificate: ptr.To("cluster certificate"),
 					},
 				},

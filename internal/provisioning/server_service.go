@@ -2,10 +2,12 @@ package provisioning
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -22,9 +24,10 @@ import (
 )
 
 type serverService struct {
-	repo     ServerRepo
-	client   ServerClientPort
-	tokenSvc TokenService
+	repo       ServerRepo
+	client     ServerClientPort
+	tokenSvc   TokenService
+	clusterSvc ClusterService
 
 	now                    func() time.Time
 	initialConnectionDelay time.Duration
@@ -53,11 +56,12 @@ func ServerServiceWithInitialConnectionDelay(delay time.Duration) ServerServiceO
 	}
 }
 
-func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenService, opts ...ServerServiceOption) serverService {
-	serverSvc := serverService{
-		repo:     repo,
-		client:   client,
-		tokenSvc: tokenSvc,
+func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenService, clusterSvc ClusterService, opts ...ServerServiceOption) *serverService {
+	serverSvc := &serverService{
+		repo:       repo,
+		client:     client,
+		tokenSvc:   tokenSvc,
+		clusterSvc: clusterSvc,
 
 		now:                    time.Now,
 		initialConnectionDelay: 1 * time.Second,
@@ -66,10 +70,14 @@ func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenSe
 	}
 
 	for _, opt := range opts {
-		opt(&serverSvc)
+		opt(serverSvc)
 	}
 
 	return serverSvc
+}
+
+func (s *serverService) SetClusterService(clusterSvc ClusterService) {
+	s.clusterSvc = clusterSvc
 }
 
 func (s serverService) Create(ctx context.Context, token uuid.UUID, newServer Server) (Server, error) {
@@ -423,6 +431,65 @@ func (s serverService) pollServer(ctx context.Context, server Server, updateServ
 	ctxWithTimeout, cancelFunc := context.WithTimeout(ctx, 1*time.Second)
 	err := s.client.Ping(ctxWithTimeout, server)
 	cancelFunc()
+
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		switch urlErr.Unwrap().(type) {
+		case *tls.CertificateVerificationError:
+			// If the servers certificates authority can not be verified it might be,
+			// that the cluster now has a publicly valid certificate.
+			//
+			// This is only the case if:
+			//
+			//  - There is tls.CertificateVerificationError
+			//  - The server is part of a cluster
+			//  - The cluster has a pinned certificate set
+			//
+			// Retry connection with cluster certificate empty to test the cluster's
+			// certificate against the system root certificates.
+			if server.Cluster == nil || server.ClusterCertificate == nil && *server.ClusterCertificate == "" {
+				break
+			}
+
+			server.ClusterCertificate = nil
+
+			// Since we re-try frequently, we only grant a short timeout for the
+			// connection attept.
+			ctxWithTimeout, cancelFunc = context.WithTimeout(ctx, 1*time.Second)
+			retryErr := s.client.Ping(ctxWithTimeout, server)
+			cancelFunc()
+			if retryErr != nil {
+				// Ping without pinned certificate failed, keep the original error.
+				break
+			}
+
+			retryErr = transaction.Do(ctx, func(ctx context.Context) error {
+				cluster, err := s.clusterSvc.GetByName(ctx, *server.Cluster)
+				if err != nil {
+					return fmt.Errorf("Failed to get cluster for server %q: %w", server.Name, err)
+				}
+
+				cluster.Certificate = ""
+
+				err = s.clusterSvc.Update(ctx, *cluster)
+				if err != nil {
+					return fmt.Errorf("Failed to update cluster's certificate for server %q: %w", server.Name, err)
+				}
+
+				return nil
+			})
+			if retryErr != nil {
+				// The clusters certificate has passed validation against system root
+				// certificates but we failed to update the cluster record in the DB.
+				return retryErr
+			}
+
+			// Successfully updated the cluster's certificate, the original error has
+			// been mitigated, so we can clear it.
+			err = nil
+		}
+	}
+
 	if err != nil {
 		// Errors are expected if a system is not (yet) available. Therefore
 		// we ignore the errors.
