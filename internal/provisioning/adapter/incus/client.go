@@ -19,12 +19,25 @@ import (
 type client struct {
 	clientCert string
 	clientKey  string
+	clientCA   string
 }
 
 var (
 	_ provisioning.ServerClientPort  = client{}
 	_ provisioning.ClusterClientPort = client{}
 )
+
+type transportWrapper struct {
+	transport *http.Transport
+}
+
+func (t *transportWrapper) Transport() *http.Transport {
+	return t.transport
+}
+
+func (t *transportWrapper) RoundTrip(req *http.Request) (*http.Response, error) {
+	return t.transport.RoundTrip(req)
+}
 
 func New(clientCert string, clientKey string) client {
 	return client{
@@ -34,11 +47,22 @@ func New(clientCert string, clientKey string) client {
 }
 
 func (c client) getClient(ctx context.Context, endpoint provisioning.Endpoint) (incus.InstanceServer, error) {
+	serverName, err := endpoint.GetServerName()
+	if err != nil {
+		return nil, err
+	}
+
 	args := &incus.ConnectionArgs{
 		TLSClientCert: c.clientCert,
 		TLSClientKey:  c.clientKey,
 		TLSServerCert: endpoint.GetCertificate(),
+		TLSCA:         c.clientCA,
 		SkipGetServer: true,
+		TransportWrapper: func(t *http.Transport) incus.HTTPTransporter {
+			t.TLSClientConfig.ServerName = serverName
+
+			return &transportWrapper{transport: t}
+		},
 
 		// Bypass system proxy for communication to IncusOS servers.
 		Proxy: func(r *http.Request) (*url.URL, error) {
