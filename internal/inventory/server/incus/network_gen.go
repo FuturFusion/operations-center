@@ -26,11 +26,13 @@ func (s serverClient) GetNetworks(ctx context.Context, endpoint provisioning.End
 	return serverNetworks, nil
 }
 
-func (s serverClient) GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (incusapi.Network, error) {
+func (s serverClient) GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (incusapi.Network, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.Network{}, err
 	}
+
+	client = client.UseProject(projectName)
 
 	serverNetwork, _, err := client.GetNetwork(networkName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {

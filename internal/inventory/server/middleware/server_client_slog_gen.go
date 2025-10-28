@@ -44,12 +44,13 @@ func NewServerClientWithSlog(base inventory.ServerClient, log *slog.Logger, opts
 }
 
 // GetImageByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, imageName string) (image api.Image, err error) {
+func (_d ServerClientWithSlog) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (image api.Image, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("imageName", imageName),
 		)
 	}
@@ -76,7 +77,7 @@ func (_d ServerClientWithSlog) GetImageByName(ctx context.Context, endpoint prov
 			log.DebugContext(ctx, "<= method GetImageByName finished")
 		}
 	}()
-	return _d._base.GetImageByName(ctx, endpoint, imageName)
+	return _d._base.GetImageByName(ctx, endpoint, projectName, imageName)
 }
 
 // GetImages implements inventory.ServerClient.
@@ -115,12 +116,13 @@ func (_d ServerClientWithSlog) GetImages(ctx context.Context, endpoint provision
 }
 
 // GetInstanceByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, instanceName string) (instanceFull api.InstanceFull, err error) {
+func (_d ServerClientWithSlog) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, instanceName string) (instanceFull api.InstanceFull, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("instanceName", instanceName),
 		)
 	}
@@ -147,7 +149,7 @@ func (_d ServerClientWithSlog) GetInstanceByName(ctx context.Context, endpoint p
 			log.DebugContext(ctx, "<= method GetInstanceByName finished")
 		}
 	}()
-	return _d._base.GetInstanceByName(ctx, endpoint, instanceName)
+	return _d._base.GetInstanceByName(ctx, endpoint, projectName, instanceName)
 }
 
 // GetInstances implements inventory.ServerClient.
@@ -186,12 +188,13 @@ func (_d ServerClientWithSlog) GetInstances(ctx context.Context, endpoint provis
 }
 
 // GetNetworkACLByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, networkACLName string) (networkACL api.NetworkACL, err error) {
+func (_d ServerClientWithSlog) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkACLName string) (networkACL api.NetworkACL, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkACLName", networkACLName),
 		)
 	}
@@ -218,7 +221,7 @@ func (_d ServerClientWithSlog) GetNetworkACLByName(ctx context.Context, endpoint
 			log.DebugContext(ctx, "<= method GetNetworkACLByName finished")
 		}
 	}()
-	return _d._base.GetNetworkACLByName(ctx, endpoint, networkACLName)
+	return _d._base.GetNetworkACLByName(ctx, endpoint, projectName, networkACLName)
 }
 
 // GetNetworkACLs implements inventory.ServerClient.
@@ -257,12 +260,13 @@ func (_d ServerClientWithSlog) GetNetworkACLs(ctx context.Context, endpoint prov
 }
 
 // GetNetworkAddressSetByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
+func (_d ServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkAddressSetName", networkAddressSetName),
 		)
 	}
@@ -289,7 +293,7 @@ func (_d ServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, e
 			log.DebugContext(ctx, "<= method GetNetworkAddressSetByName finished")
 		}
 	}()
-	return _d._base.GetNetworkAddressSetByName(ctx, endpoint, networkAddressSetName)
+	return _d._base.GetNetworkAddressSetByName(ctx, endpoint, projectName, networkAddressSetName)
 }
 
 // GetNetworkAddressSets implements inventory.ServerClient.
@@ -328,12 +332,13 @@ func (_d ServerClientWithSlog) GetNetworkAddressSets(ctx context.Context, endpoi
 }
 
 // GetNetworkByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (network api.Network, err error) {
+func (_d ServerClientWithSlog) GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (network api.Network, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkName", networkName),
 		)
 	}
@@ -360,7 +365,7 @@ func (_d ServerClientWithSlog) GetNetworkByName(ctx context.Context, endpoint pr
 			log.DebugContext(ctx, "<= method GetNetworkByName finished")
 		}
 	}()
-	return _d._base.GetNetworkByName(ctx, endpoint, networkName)
+	return _d._base.GetNetworkByName(ctx, endpoint, projectName, networkName)
 }
 
 // GetNetworkForwardByName implements inventory.ServerClient.
@@ -654,12 +659,13 @@ func (_d ServerClientWithSlog) GetNetworkPeers(ctx context.Context, endpoint pro
 }
 
 // GetNetworkZoneByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, networkZoneName string) (networkZone api.NetworkZone, err error) {
+func (_d ServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkZoneName string) (networkZone api.NetworkZone, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkZoneName", networkZoneName),
 		)
 	}
@@ -686,7 +692,7 @@ func (_d ServerClientWithSlog) GetNetworkZoneByName(ctx context.Context, endpoin
 			log.DebugContext(ctx, "<= method GetNetworkZoneByName finished")
 		}
 	}()
-	return _d._base.GetNetworkZoneByName(ctx, endpoint, networkZoneName)
+	return _d._base.GetNetworkZoneByName(ctx, endpoint, projectName, networkZoneName)
 }
 
 // GetNetworkZones implements inventory.ServerClient.
@@ -760,12 +766,13 @@ func (_d ServerClientWithSlog) GetNetworks(ctx context.Context, endpoint provisi
 }
 
 // GetProfileByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, profileName string) (profile api.Profile, err error) {
+func (_d ServerClientWithSlog) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, profileName string) (profile api.Profile, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("profileName", profileName),
 		)
 	}
@@ -792,7 +799,7 @@ func (_d ServerClientWithSlog) GetProfileByName(ctx context.Context, endpoint pr
 			log.DebugContext(ctx, "<= method GetProfileByName finished")
 		}
 	}()
-	return _d._base.GetProfileByName(ctx, endpoint, profileName)
+	return _d._base.GetProfileByName(ctx, endpoint, projectName, profileName)
 }
 
 // GetProfiles implements inventory.ServerClient.
@@ -902,12 +909,13 @@ func (_d ServerClientWithSlog) GetProjects(ctx context.Context, endpoint provisi
 }
 
 // GetStorageBucketByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageBucketName string) (storageBucket api.StorageBucket, err error) {
+func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (storageBucket api.StorageBucket, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("storagePoolName", storagePoolName),
 			slog.String("storageBucketName", storageBucketName),
 		)
@@ -935,7 +943,7 @@ func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, endpo
 			log.DebugContext(ctx, "<= method GetStorageBucketByName finished")
 		}
 	}()
-	return _d._base.GetStorageBucketByName(ctx, endpoint, storagePoolName, storageBucketName)
+	return _d._base.GetStorageBucketByName(ctx, endpoint, projectName, storagePoolName, storageBucketName)
 }
 
 // GetStorageBuckets implements inventory.ServerClient.
@@ -1046,12 +1054,13 @@ func (_d ServerClientWithSlog) GetStoragePools(ctx context.Context, endpoint pro
 }
 
 // GetStorageVolumeByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
+func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("storagePoolName", storagePoolName),
 			slog.String("storageVolumeName", storageVolumeName),
 			slog.String("storageVolumeType", storageVolumeType),
@@ -1080,7 +1089,7 @@ func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpo
 			log.DebugContext(ctx, "<= method GetStorageVolumeByName finished")
 		}
 	}()
-	return _d._base.GetStorageVolumeByName(ctx, endpoint, storagePoolName, storageVolumeName, storageVolumeType)
+	return _d._base.GetStorageVolumeByName(ctx, endpoint, projectName, storagePoolName, storageVolumeName, storageVolumeType)
 }
 
 // GetStorageVolumes implements inventory.ServerClient.

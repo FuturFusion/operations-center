@@ -31,5 +31,5 @@ type NetworkACLRepo interface {
 
 type NetworkACLServerClient interface {
 	GetNetworkACLs(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.NetworkACL, error)
-	GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, networkACLName string) (incusapi.NetworkACL, error)
+	GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkACLName string) (incusapi.NetworkACL, error)
 }

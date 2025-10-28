@@ -44,12 +44,13 @@ func NewNetworkServerClientWithSlog(base inventory.NetworkServerClient, log *slo
 }
 
 // GetNetworkByName implements inventory.NetworkServerClient.
-func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (network api.Network, err error) {
+func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (network api.Network, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkName", networkName),
 		)
 	}
@@ -76,7 +77,7 @@ func (_d NetworkServerClientWithSlog) GetNetworkByName(ctx context.Context, endp
 			log.DebugContext(ctx, "<= method GetNetworkByName finished")
 		}
 	}()
-	return _d._base.GetNetworkByName(ctx, endpoint, networkName)
+	return _d._base.GetNetworkByName(ctx, endpoint, projectName, networkName)
 }
 
 // GetNetworks implements inventory.NetworkServerClient.

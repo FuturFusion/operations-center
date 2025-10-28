@@ -44,12 +44,13 @@ func NewProfileServerClientWithSlog(base inventory.ProfileServerClient, log *slo
 }
 
 // GetProfileByName implements inventory.ProfileServerClient.
-func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, profileName string) (profile api.Profile, err error) {
+func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, profileName string) (profile api.Profile, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("profileName", profileName),
 		)
 	}
@@ -76,7 +77,7 @@ func (_d ProfileServerClientWithSlog) GetProfileByName(ctx context.Context, endp
 			log.DebugContext(ctx, "<= method GetProfileByName finished")
 		}
 	}()
-	return _d._base.GetProfileByName(ctx, endpoint, profileName)
+	return _d._base.GetProfileByName(ctx, endpoint, projectName, profileName)
 }
 
 // GetProfiles implements inventory.ProfileServerClient.

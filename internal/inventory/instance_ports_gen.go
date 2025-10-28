@@ -31,5 +31,5 @@ type InstanceRepo interface {
 
 type InstanceServerClient interface {
 	GetInstances(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.InstanceFull, error)
-	GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, instanceName string) (incusapi.InstanceFull, error)
+	GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, instanceName string) (incusapi.InstanceFull, error)
 }

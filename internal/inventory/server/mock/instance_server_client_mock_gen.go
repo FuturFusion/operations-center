@@ -23,7 +23,7 @@ var _ inventory.InstanceServerClient = &InstanceServerClientMock{}
 //
 //		// make and configure a mocked inventory.InstanceServerClient
 //		mockedInstanceServerClient := &InstanceServerClientMock{
-//			GetInstanceByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, instanceName string) (api.InstanceFull, error) {
+//			GetInstanceByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, instanceName string) (api.InstanceFull, error) {
 //				panic("mock out the GetInstanceByName method")
 //			},
 //			GetInstancesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.InstanceFull, error) {
@@ -37,7 +37,7 @@ var _ inventory.InstanceServerClient = &InstanceServerClientMock{}
 //	}
 type InstanceServerClientMock struct {
 	// GetInstanceByNameFunc mocks the GetInstanceByName method.
-	GetInstanceByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, instanceName string) (api.InstanceFull, error)
+	GetInstanceByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, instanceName string) (api.InstanceFull, error)
 
 	// GetInstancesFunc mocks the GetInstances method.
 	GetInstancesFunc func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.InstanceFull, error)
@@ -50,6 +50,8 @@ type InstanceServerClientMock struct {
 			Ctx context.Context
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
+			// ProjectName is the projectName argument value.
+			ProjectName string
 			// InstanceName is the instanceName argument value.
 			InstanceName string
 		}
@@ -66,23 +68,25 @@ type InstanceServerClientMock struct {
 }
 
 // GetInstanceByName calls GetInstanceByNameFunc.
-func (mock *InstanceServerClientMock) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, instanceName string) (api.InstanceFull, error) {
+func (mock *InstanceServerClientMock) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, instanceName string) (api.InstanceFull, error) {
 	if mock.GetInstanceByNameFunc == nil {
 		panic("InstanceServerClientMock.GetInstanceByNameFunc: method is nil but InstanceServerClient.GetInstanceByName was just called")
 	}
 	callInfo := struct {
 		Ctx          context.Context
 		Endpoint     provisioning.Endpoint
+		ProjectName  string
 		InstanceName string
 	}{
 		Ctx:          ctx,
 		Endpoint:     endpoint,
+		ProjectName:  projectName,
 		InstanceName: instanceName,
 	}
 	mock.lockGetInstanceByName.Lock()
 	mock.calls.GetInstanceByName = append(mock.calls.GetInstanceByName, callInfo)
 	mock.lockGetInstanceByName.Unlock()
-	return mock.GetInstanceByNameFunc(ctx, endpoint, instanceName)
+	return mock.GetInstanceByNameFunc(ctx, endpoint, projectName, instanceName)
 }
 
 // GetInstanceByNameCalls gets all the calls that were made to GetInstanceByName.
@@ -92,11 +96,13 @@ func (mock *InstanceServerClientMock) GetInstanceByName(ctx context.Context, end
 func (mock *InstanceServerClientMock) GetInstanceByNameCalls() []struct {
 	Ctx          context.Context
 	Endpoint     provisioning.Endpoint
+	ProjectName  string
 	InstanceName string
 } {
 	var calls []struct {
 		Ctx          context.Context
 		Endpoint     provisioning.Endpoint
+		ProjectName  string
 		InstanceName string
 	}
 	mock.lockGetInstanceByName.RLock()

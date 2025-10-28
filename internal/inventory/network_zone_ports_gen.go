@@ -31,5 +31,5 @@ type NetworkZoneRepo interface {
 
 type NetworkZoneServerClient interface {
 	GetNetworkZones(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.NetworkZone, error)
-	GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, networkZoneName string) (incusapi.NetworkZone, error)
+	GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkZoneName string) (incusapi.NetworkZone, error)
 }

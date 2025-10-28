@@ -44,12 +44,13 @@ func NewInstanceServerClientWithSlog(base inventory.InstanceServerClient, log *s
 }
 
 // GetInstanceByName implements inventory.InstanceServerClient.
-func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, instanceName string) (instanceFull api.InstanceFull, err error) {
+func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, instanceName string) (instanceFull api.InstanceFull, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("instanceName", instanceName),
 		)
 	}
@@ -76,7 +77,7 @@ func (_d InstanceServerClientWithSlog) GetInstanceByName(ctx context.Context, en
 			log.DebugContext(ctx, "<= method GetInstanceByName finished")
 		}
 	}()
-	return _d._base.GetInstanceByName(ctx, endpoint, instanceName)
+	return _d._base.GetInstanceByName(ctx, endpoint, projectName, instanceName)
 }
 
 // GetInstances implements inventory.InstanceServerClient.

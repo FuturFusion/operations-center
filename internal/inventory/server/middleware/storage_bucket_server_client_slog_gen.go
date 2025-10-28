@@ -44,12 +44,13 @@ func NewStorageBucketServerClientWithSlog(base inventory.StorageBucketServerClie
 }
 
 // GetStorageBucketByName implements inventory.StorageBucketServerClient.
-func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageBucketName string) (storageBucket api.StorageBucket, err error) {
+func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (storageBucket api.StorageBucket, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("storagePoolName", storagePoolName),
 			slog.String("storageBucketName", storageBucketName),
 		)
@@ -77,7 +78,7 @@ func (_d StorageBucketServerClientWithSlog) GetStorageBucketByName(ctx context.C
 			log.DebugContext(ctx, "<= method GetStorageBucketByName finished")
 		}
 	}()
-	return _d._base.GetStorageBucketByName(ctx, endpoint, storagePoolName, storageBucketName)
+	return _d._base.GetStorageBucketByName(ctx, endpoint, projectName, storagePoolName, storageBucketName)
 }
 
 // GetStorageBuckets implements inventory.StorageBucketServerClient.

@@ -301,9 +301,10 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByUUIDNetworkAddressSet: inventory.NetworkAddressSet{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -324,9 +325,10 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success - networkAddressSet get by name - not found",
 			repoGetByUUIDNetworkAddressSet: inventory.NetworkAddressSet{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -348,9 +350,10 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - cluster get by ID",
 			repoGetByUUIDNetworkAddressSet: inventory.NetworkAddressSet{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -359,9 +362,10 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - networkAddressSet get by name",
 			repoGetByUUIDNetworkAddressSet: inventory.NetworkAddressSet{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -377,9 +381,10 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - networkAddressSet get by name - not found - delete by uuid",
 			repoGetByUUIDNetworkAddressSet: inventory.NetworkAddressSet{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -396,9 +401,10 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByUUIDNetworkAddressSet: inventory.NetworkAddressSet{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "", // invalid
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "", // invalid
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -422,9 +428,10 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - update by UUID",
 			repoGetByUUIDNetworkAddressSet: inventory.NetworkAddressSet{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -469,8 +476,9 @@ func TestNetworkAddressSetService_ResyncByUUID(t *testing.T) {
 			}
 
 			networkAddressSetClient := &serverMock.NetworkAddressSetServerClientMock{
-				GetNetworkAddressSetByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkAddressSetName string) (incusapi.NetworkAddressSet, error) {
+				GetNetworkAddressSetByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkAddressSetName string) (incusapi.NetworkAddressSet, error) {
 					require.Equal(t, tc.repoGetByUUIDNetworkAddressSet.Name, networkAddressSetName)
+					require.Equal(t, tc.repoGetByUUIDNetworkAddressSet.ProjectName, projectName)
 					return tc.networkAddressSetClientGetNetworkAddressSetByName, tc.networkAddressSetClientGetNetworkAddressSetByNameErr
 				},
 			}

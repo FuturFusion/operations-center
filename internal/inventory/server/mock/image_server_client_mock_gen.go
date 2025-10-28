@@ -23,7 +23,7 @@ var _ inventory.ImageServerClient = &ImageServerClientMock{}
 //
 //		// make and configure a mocked inventory.ImageServerClient
 //		mockedImageServerClient := &ImageServerClientMock{
-//			GetImageByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, imageName string) (api.Image, error) {
+//			GetImageByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (api.Image, error) {
 //				panic("mock out the GetImageByName method")
 //			},
 //			GetImagesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.Image, error) {
@@ -37,7 +37,7 @@ var _ inventory.ImageServerClient = &ImageServerClientMock{}
 //	}
 type ImageServerClientMock struct {
 	// GetImageByNameFunc mocks the GetImageByName method.
-	GetImageByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, imageName string) (api.Image, error)
+	GetImageByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (api.Image, error)
 
 	// GetImagesFunc mocks the GetImages method.
 	GetImagesFunc func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.Image, error)
@@ -50,6 +50,8 @@ type ImageServerClientMock struct {
 			Ctx context.Context
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
+			// ProjectName is the projectName argument value.
+			ProjectName string
 			// ImageName is the imageName argument value.
 			ImageName string
 		}
@@ -66,23 +68,25 @@ type ImageServerClientMock struct {
 }
 
 // GetImageByName calls GetImageByNameFunc.
-func (mock *ImageServerClientMock) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, imageName string) (api.Image, error) {
+func (mock *ImageServerClientMock) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (api.Image, error) {
 	if mock.GetImageByNameFunc == nil {
 		panic("ImageServerClientMock.GetImageByNameFunc: method is nil but ImageServerClient.GetImageByName was just called")
 	}
 	callInfo := struct {
-		Ctx       context.Context
-		Endpoint  provisioning.Endpoint
-		ImageName string
+		Ctx         context.Context
+		Endpoint    provisioning.Endpoint
+		ProjectName string
+		ImageName   string
 	}{
-		Ctx:       ctx,
-		Endpoint:  endpoint,
-		ImageName: imageName,
+		Ctx:         ctx,
+		Endpoint:    endpoint,
+		ProjectName: projectName,
+		ImageName:   imageName,
 	}
 	mock.lockGetImageByName.Lock()
 	mock.calls.GetImageByName = append(mock.calls.GetImageByName, callInfo)
 	mock.lockGetImageByName.Unlock()
-	return mock.GetImageByNameFunc(ctx, endpoint, imageName)
+	return mock.GetImageByNameFunc(ctx, endpoint, projectName, imageName)
 }
 
 // GetImageByNameCalls gets all the calls that were made to GetImageByName.
@@ -90,14 +94,16 @@ func (mock *ImageServerClientMock) GetImageByName(ctx context.Context, endpoint 
 //
 //	len(mockedImageServerClient.GetImageByNameCalls())
 func (mock *ImageServerClientMock) GetImageByNameCalls() []struct {
-	Ctx       context.Context
-	Endpoint  provisioning.Endpoint
-	ImageName string
+	Ctx         context.Context
+	Endpoint    provisioning.Endpoint
+	ProjectName string
+	ImageName   string
 } {
 	var calls []struct {
-		Ctx       context.Context
-		Endpoint  provisioning.Endpoint
-		ImageName string
+		Ctx         context.Context
+		Endpoint    provisioning.Endpoint
+		ProjectName string
+		ImageName   string
 	}
 	mock.lockGetImageByName.RLock()
 	calls = mock.calls.GetImageByName

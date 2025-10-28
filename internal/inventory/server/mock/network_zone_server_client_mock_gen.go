@@ -23,7 +23,7 @@ var _ inventory.NetworkZoneServerClient = &NetworkZoneServerClientMock{}
 //
 //		// make and configure a mocked inventory.NetworkZoneServerClient
 //		mockedNetworkZoneServerClient := &NetworkZoneServerClientMock{
-//			GetNetworkZoneByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkZoneName string) (api.NetworkZone, error) {
+//			GetNetworkZoneByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkZoneName string) (api.NetworkZone, error) {
 //				panic("mock out the GetNetworkZoneByName method")
 //			},
 //			GetNetworkZonesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.NetworkZone, error) {
@@ -37,7 +37,7 @@ var _ inventory.NetworkZoneServerClient = &NetworkZoneServerClientMock{}
 //	}
 type NetworkZoneServerClientMock struct {
 	// GetNetworkZoneByNameFunc mocks the GetNetworkZoneByName method.
-	GetNetworkZoneByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, networkZoneName string) (api.NetworkZone, error)
+	GetNetworkZoneByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkZoneName string) (api.NetworkZone, error)
 
 	// GetNetworkZonesFunc mocks the GetNetworkZones method.
 	GetNetworkZonesFunc func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.NetworkZone, error)
@@ -50,6 +50,8 @@ type NetworkZoneServerClientMock struct {
 			Ctx context.Context
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
+			// ProjectName is the projectName argument value.
+			ProjectName string
 			// NetworkZoneName is the networkZoneName argument value.
 			NetworkZoneName string
 		}
@@ -66,23 +68,25 @@ type NetworkZoneServerClientMock struct {
 }
 
 // GetNetworkZoneByName calls GetNetworkZoneByNameFunc.
-func (mock *NetworkZoneServerClientMock) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, networkZoneName string) (api.NetworkZone, error) {
+func (mock *NetworkZoneServerClientMock) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkZoneName string) (api.NetworkZone, error) {
 	if mock.GetNetworkZoneByNameFunc == nil {
 		panic("NetworkZoneServerClientMock.GetNetworkZoneByNameFunc: method is nil but NetworkZoneServerClient.GetNetworkZoneByName was just called")
 	}
 	callInfo := struct {
 		Ctx             context.Context
 		Endpoint        provisioning.Endpoint
+		ProjectName     string
 		NetworkZoneName string
 	}{
 		Ctx:             ctx,
 		Endpoint:        endpoint,
+		ProjectName:     projectName,
 		NetworkZoneName: networkZoneName,
 	}
 	mock.lockGetNetworkZoneByName.Lock()
 	mock.calls.GetNetworkZoneByName = append(mock.calls.GetNetworkZoneByName, callInfo)
 	mock.lockGetNetworkZoneByName.Unlock()
-	return mock.GetNetworkZoneByNameFunc(ctx, endpoint, networkZoneName)
+	return mock.GetNetworkZoneByNameFunc(ctx, endpoint, projectName, networkZoneName)
 }
 
 // GetNetworkZoneByNameCalls gets all the calls that were made to GetNetworkZoneByName.
@@ -92,11 +96,13 @@ func (mock *NetworkZoneServerClientMock) GetNetworkZoneByName(ctx context.Contex
 func (mock *NetworkZoneServerClientMock) GetNetworkZoneByNameCalls() []struct {
 	Ctx             context.Context
 	Endpoint        provisioning.Endpoint
+	ProjectName     string
 	NetworkZoneName string
 } {
 	var calls []struct {
 		Ctx             context.Context
 		Endpoint        provisioning.Endpoint
+		ProjectName     string
 		NetworkZoneName string
 	}
 	mock.lockGetNetworkZoneByName.RLock()

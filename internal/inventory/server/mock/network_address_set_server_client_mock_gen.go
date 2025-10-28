@@ -23,7 +23,7 @@ var _ inventory.NetworkAddressSetServerClient = &NetworkAddressSetServerClientMo
 //
 //		// make and configure a mocked inventory.NetworkAddressSetServerClient
 //		mockedNetworkAddressSetServerClient := &NetworkAddressSetServerClientMock{
-//			GetNetworkAddressSetByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkAddressSetName string) (api.NetworkAddressSet, error) {
+//			GetNetworkAddressSetByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkAddressSetName string) (api.NetworkAddressSet, error) {
 //				panic("mock out the GetNetworkAddressSetByName method")
 //			},
 //			GetNetworkAddressSetsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.NetworkAddressSet, error) {
@@ -40,7 +40,7 @@ var _ inventory.NetworkAddressSetServerClient = &NetworkAddressSetServerClientMo
 //	}
 type NetworkAddressSetServerClientMock struct {
 	// GetNetworkAddressSetByNameFunc mocks the GetNetworkAddressSetByName method.
-	GetNetworkAddressSetByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, networkAddressSetName string) (api.NetworkAddressSet, error)
+	GetNetworkAddressSetByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkAddressSetName string) (api.NetworkAddressSet, error)
 
 	// GetNetworkAddressSetsFunc mocks the GetNetworkAddressSets method.
 	GetNetworkAddressSetsFunc func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.NetworkAddressSet, error)
@@ -56,6 +56,8 @@ type NetworkAddressSetServerClientMock struct {
 			Ctx context.Context
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
+			// ProjectName is the projectName argument value.
+			ProjectName string
 			// NetworkAddressSetName is the networkAddressSetName argument value.
 			NetworkAddressSetName string
 		}
@@ -82,23 +84,25 @@ type NetworkAddressSetServerClientMock struct {
 }
 
 // GetNetworkAddressSetByName calls GetNetworkAddressSetByNameFunc.
-func (mock *NetworkAddressSetServerClientMock) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, networkAddressSetName string) (api.NetworkAddressSet, error) {
+func (mock *NetworkAddressSetServerClientMock) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkAddressSetName string) (api.NetworkAddressSet, error) {
 	if mock.GetNetworkAddressSetByNameFunc == nil {
 		panic("NetworkAddressSetServerClientMock.GetNetworkAddressSetByNameFunc: method is nil but NetworkAddressSetServerClient.GetNetworkAddressSetByName was just called")
 	}
 	callInfo := struct {
 		Ctx                   context.Context
 		Endpoint              provisioning.Endpoint
+		ProjectName           string
 		NetworkAddressSetName string
 	}{
 		Ctx:                   ctx,
 		Endpoint:              endpoint,
+		ProjectName:           projectName,
 		NetworkAddressSetName: networkAddressSetName,
 	}
 	mock.lockGetNetworkAddressSetByName.Lock()
 	mock.calls.GetNetworkAddressSetByName = append(mock.calls.GetNetworkAddressSetByName, callInfo)
 	mock.lockGetNetworkAddressSetByName.Unlock()
-	return mock.GetNetworkAddressSetByNameFunc(ctx, endpoint, networkAddressSetName)
+	return mock.GetNetworkAddressSetByNameFunc(ctx, endpoint, projectName, networkAddressSetName)
 }
 
 // GetNetworkAddressSetByNameCalls gets all the calls that were made to GetNetworkAddressSetByName.
@@ -108,11 +112,13 @@ func (mock *NetworkAddressSetServerClientMock) GetNetworkAddressSetByName(ctx co
 func (mock *NetworkAddressSetServerClientMock) GetNetworkAddressSetByNameCalls() []struct {
 	Ctx                   context.Context
 	Endpoint              provisioning.Endpoint
+	ProjectName           string
 	NetworkAddressSetName string
 } {
 	var calls []struct {
 		Ctx                   context.Context
 		Endpoint              provisioning.Endpoint
+		ProjectName           string
 		NetworkAddressSetName string
 	}
 	mock.lockGetNetworkAddressSetByName.RLock()

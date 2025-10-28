@@ -26,11 +26,13 @@ func (s serverClient) GetInstances(ctx context.Context, endpoint provisioning.En
 	return serverInstances, nil
 }
 
-func (s serverClient) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, instanceName string) (incusapi.InstanceFull, error) {
+func (s serverClient) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, instanceName string) (incusapi.InstanceFull, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.InstanceFull{}, err
 	}
+
+	client = client.UseProject(projectName)
 
 	serverInstance, _, err := client.GetInstanceFull(instanceName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {

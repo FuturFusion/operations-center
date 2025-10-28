@@ -26,11 +26,13 @@ func (s serverClient) GetNetworkACLs(ctx context.Context, endpoint provisioning.
 	return serverNetworkACLs, nil
 }
 
-func (s serverClient) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, networkACLName string) (incusapi.NetworkACL, error) {
+func (s serverClient) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkACLName string) (incusapi.NetworkACL, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.NetworkACL{}, err
 	}
+
+	client = client.UseProject(projectName)
 
 	serverNetworkACL, _, err := client.GetNetworkACL(networkACLName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
