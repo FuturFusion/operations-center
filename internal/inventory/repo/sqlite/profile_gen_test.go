@@ -148,7 +148,7 @@ server-two
 	require.Equal(t, profileA.Name, dbProfile[0].Name)
 	require.Equal(t, profileB.Name, dbProfile[1].Name)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, project and name.
 	profileUUIDs, err = profile.GetAllUUIDsWithFilter(ctx, inventory.ProfileFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
@@ -158,7 +158,7 @@ server-two
 	require.Len(t, profileUUIDs, 1)
 	require.ElementsMatch(t, []uuid.UUID{profileA.UUID}, profileUUIDs)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, project and name.
 	dbProfile, err = profile.GetAllWithFilter(ctx, inventory.ProfileFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),

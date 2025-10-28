@@ -148,19 +148,21 @@ server-two
 	require.Equal(t, networkPeerA.Name, dbNetworkPeer[0].Name)
 	require.Equal(t, networkPeerB.Name, dbNetworkPeer[1].Name)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, network and name.
 	networkPeerUUIDs, err = networkPeer.GetAllUUIDsWithFilter(ctx, inventory.NetworkPeerFilter{
-		Cluster: ptr.To("one"),
-		Name:    ptr.To("one"),
+		Cluster:     ptr.To("one"),
+		NetworkName: ptr.To("parent one"),
+		Name:        ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkPeerUUIDs, 1)
 	require.ElementsMatch(t, []uuid.UUID{networkPeerA.UUID}, networkPeerUUIDs)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, network and name.
 	dbNetworkPeer, err = networkPeer.GetAllWithFilter(ctx, inventory.NetworkPeerFilter{
-		Cluster: ptr.To("one"),
-		Name:    ptr.To("one"),
+		Cluster:     ptr.To("one"),
+		NetworkName: ptr.To("parent one"),
+		Name:        ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetworkPeer, 1)

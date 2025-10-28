@@ -60,14 +60,19 @@ func (m NetworkPeer) Validate() error {
 type NetworkPeers []NetworkPeer
 
 type NetworkPeerFilter struct {
-	Cluster    *string
-	Name       *string
-	Expression *string
+	Cluster     *string
+	NetworkName *string
+	Name        *string
+	Expression  *string
 }
 
 func (f NetworkPeerFilter) AppendToURLValues(query url.Values) url.Values {
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
+	}
+
+	if f.NetworkName != nil {
+		query.Add("parent", *f.NetworkName)
 	}
 
 	if f.Name != nil {
