@@ -108,6 +108,13 @@ ORDER BY clusters.name, {{ if .ServerIDByLocation -}} servers.name, {{ end -}} {
 	}
 {{ end }}
 
+{{ if .HasParent }}
+	if filter.{{ .ParentName | pascalcase }}Name != nil {
+		whereClause = append(whereClause, ` AND {{ .PluralName }}.{{ .ParentName }}_name = :parent`)
+		args = append(args, sql.Named("parent", filter.{{ .ParentName | pascalcase }}Name))
+	}
+{{ end }}
+
 	if filter.Name != nil {
 		whereClause = append(whereClause, ` AND {{ .PluralName }}.name = :name`)
 		args = append(args, sql.Named("name", filter.Name))
@@ -172,6 +179,13 @@ ORDER BY {{ .PluralName }}.id
 	if filter.Project != nil {
 		whereClause = append(whereClause, ` AND {{ .PluralName }}.project_name = :project`)
 		args = append(args, sql.Named("project", filter.Project))
+	}
+{{ end }}
+
+{{ if .HasParent }}
+	if filter.{{ .ParentName | pascalcase }}Name != nil {
+		whereClause = append(whereClause, ` AND {{ .PluralName }}.{{ .ParentName }}_name = :parent`)
+		args = append(args, sql.Named("parent", filter.{{ .ParentName | pascalcase }}Name))
 	}
 {{ end }}
 

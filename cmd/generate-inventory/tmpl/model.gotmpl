@@ -104,6 +104,9 @@ type {{ .Name | pascalcase }}Filter struct{
 {{- if .HasProject }}
 	Project    *string
 {{- end }}
+{{- if .HasParent }}
+	{{ .ParentName | pascalcase }}Name *string
+{{- end }}
 	Name       *string
 	Expression *string
 }
@@ -122,6 +125,12 @@ func (f {{ .Name | pascalcase }}Filter) AppendToURLValues(query url.Values) url.
 
 	if f.Project != nil {
 		query.Add("project", *f.Project)
+	}
+{{- end }}
+{{- if .HasParent }}
+
+	if f.{{ .ParentName | pascalcase }}Name != nil {
+		query.Add("parent", *f.{{ .ParentName | pascalcase }}Name)
 	}
 {{- end }}
 
