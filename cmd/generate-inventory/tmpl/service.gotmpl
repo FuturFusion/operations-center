@@ -228,6 +228,89 @@ func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uui
 	return nil
 }
 
+func (s {{ .Name | camelcase }}Service) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	if event.ResourceType != "{{ .Name | kebabcase }}" {
+		return nil
+	}
+
+	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, {{ .Name | pascalcase }}Filter{
+		Cluster: &clusterName,
+{{- if .HasProject }}
+		Project: &event.Source.ProjectName,
+{{- end }}
+{{- if .HasParent }}
+		{{ .ParentName | pascalcase }}Name: &event.Source.ParentName,
+{{- end }}
+		Name:    &event.Source.Name,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(UUIDs) == 0 {
+		// This inventory is not found, try to fetch it from source and create it.
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, clusterName)
+		if err != nil {
+			return err
+		}
+
+		retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, endpoint, {{- if .HasProject }}event.Source.ProjectName, {{ end -}}{{- if .HasParent }}event.Source.ParentName, {{ end -}} event.Source.Name {{- range .ExtraAttributes }}, event.Source.{{ .Name | pascalcase }} {{- end}})
+		if err != nil {
+			return err
+		}
+
+		{{ .Name | camelcase }} := {{ .Name | pascalcase }}{
+			Cluster:   clusterName,
+{{- if .ServerIDByLocation }}
+			Server:      retrieved{{ .Name | pascalcase }}.Location,
+{{- end }}
+{{- if .HasProject }}
+			ProjectName: retrieved{{ .Name | pascalcase }}.Project,
+{{- end }}
+{{- if .HasParent }}
+			{{ .ParentName | pascalcase }}Name: event.Source.ParentName,
+{{- end }}
+			Name:        retrieved{{ .Name | pascalcase }}.{{ .ObjectNamePropertyName | pascalcase }},
+{{- range .ExtraAttributes }}
+			{{ .Name | pascalcase }}: retrieved{{ $.Name | pascalcase }}.{{ .Name | pascalcase }},
+{{- end}}
+			Object:      retrieved{{ .Name | pascalcase }},
+			LastUpdated: s.now(),
+		}
+
+		{{ .Name | camelcase }}.DeriveUUID()
+
+		if s.clusterSyncFilterFunc({{ .Name | camelcase }}) {
+			return nil
+		}
+
+		err = {{ .Name | camelcase }}.Validate()
+		if err != nil {
+			return err
+		}
+
+		_, err = s.repo.Create(ctx, {{ .Name | camelcase }})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	var errs []error
+	for _, UUID := range UUIDs {
+		err := s.ResyncByUUID(ctx, UUID)
+		errs = append(errs, err)
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("Failed to resync instance by name: %w", errors.Join(errs...))
+	}
+
+	return nil
+}
+
 func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name string) error {
 	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
 	if err != nil {
@@ -281,7 +364,7 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 				ProjectName: retrieved{{ .Name | pascalcase }}.Project,
 {{- end }}
 {{- if .HasParent }}
-				{{ .ParentName | pascalcase }}Name:  {{ .ParentName | camelcase }}.Name,
+				{{ .ParentName | pascalcase }}Name: {{ .ParentName | camelcase }}.Name,
 {{- end }}
 				Name:        retrieved{{ .Name | pascalcase }}.{{ .ObjectNamePropertyName | pascalcase }},
 {{- range .ExtraAttributes }}
