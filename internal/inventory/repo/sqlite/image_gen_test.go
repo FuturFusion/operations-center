@@ -152,6 +152,7 @@ server-two
 	imageUUIDs, err = image.GetAllUUIDsWithFilter(ctx, inventory.ImageFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, imageUUIDs, 1)
@@ -161,6 +162,7 @@ server-two
 	dbImage, err = image.GetAllWithFilter(ctx, inventory.ImageFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbImage, 1)

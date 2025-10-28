@@ -151,6 +151,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server and project
 	networkForwardUUIDs, err = networkForward.GetAllUUIDsWithFilter(ctx, inventory.NetworkForwardFilter{
 		Cluster: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkForwardUUIDs, 1)
@@ -159,6 +160,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server and project
 	dbNetworkForward, err = networkForward.GetAllWithFilter(ctx, inventory.NetworkForwardFilter{
 		Cluster: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetworkForward, 1)

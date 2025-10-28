@@ -55,12 +55,17 @@ type NetworkIntegrations []NetworkIntegration
 
 type NetworkIntegrationFilter struct {
 	Cluster    *string
+	Name       *string
 	Expression *string
 }
 
 func (f NetworkIntegrationFilter) AppendToURLValues(query url.Values) url.Values {
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
+	}
+
+	if f.Name != nil {
+		query.Add("name", *f.Name)
 	}
 
 	if f.Expression != nil {

@@ -149,6 +149,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server and project
 	networkIntegrationUUIDs, err = networkIntegration.GetAllUUIDsWithFilter(ctx, inventory.NetworkIntegrationFilter{
 		Cluster: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkIntegrationUUIDs, 1)
@@ -157,6 +158,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server and project
 	dbNetworkIntegration, err = networkIntegration.GetAllWithFilter(ctx, inventory.NetworkIntegrationFilter{
 		Cluster: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetworkIntegration, 1)

@@ -61,12 +61,17 @@ type NetworkForwards []NetworkForward
 
 type NetworkForwardFilter struct {
 	Cluster    *string
+	Name       *string
 	Expression *string
 }
 
 func (f NetworkForwardFilter) AppendToURLValues(query url.Values) url.Values {
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
+	}
+
+	if f.Name != nil {
+		query.Add("name", *f.Name)
 	}
 
 	if f.Expression != nil {

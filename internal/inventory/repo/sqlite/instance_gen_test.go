@@ -155,6 +155,7 @@ server-two
 		Cluster: ptr.To("one"),
 		Server:  ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, instanceUUIDs, 1)
@@ -165,6 +166,7 @@ server-two
 		Cluster: ptr.To("one"),
 		Server:  ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbInstance, 1)

@@ -152,6 +152,7 @@ server-two
 	networkACLUUIDs, err = networkACL.GetAllUUIDsWithFilter(ctx, inventory.NetworkACLFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkACLUUIDs, 1)
@@ -161,6 +162,7 @@ server-two
 	dbNetworkACL, err = networkACL.GetAllWithFilter(ctx, inventory.NetworkACLFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetworkACL, 1)

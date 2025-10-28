@@ -149,6 +149,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server and project
 	storagePoolUUIDs, err = storagePool.GetAllUUIDsWithFilter(ctx, inventory.StoragePoolFilter{
 		Cluster: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, storagePoolUUIDs, 1)
@@ -157,6 +158,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server and project
 	dbStoragePool, err = storagePool.GetAllWithFilter(ctx, inventory.StoragePoolFilter{
 		Cluster: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbStoragePool, 1)

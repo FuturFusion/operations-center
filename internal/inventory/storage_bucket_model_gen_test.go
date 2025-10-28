@@ -158,10 +158,11 @@ func TestStorageBucket_Filter(t *testing.T) {
 				Cluster:    ptr.To("cluster"),
 				Server:     ptr.To("server"),
 				Project:    ptr.To("project"),
+				Name:       ptr.To("name"),
 				Expression: ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true&project=project&server=server`,
+			want: `cluster=cluster&filter=true&name=name&project=project&server=server`,
 		},
 	}
 

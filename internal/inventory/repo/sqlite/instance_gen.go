@@ -93,6 +93,11 @@ ORDER BY clusters.name, servers.name, instances.name
 		args = append(args, sql.Named("project", filter.Project))
 	}
 
+	if filter.Name != nil {
+		whereClause = append(whereClause, ` AND instances.name = :name`)
+		args = append(args, sql.Named("name", filter.Name))
+	}
+
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
 	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
@@ -147,6 +152,11 @@ ORDER BY instances.id
 	if filter.Project != nil {
 		whereClause = append(whereClause, ` AND instances.project_name = :project`)
 		args = append(args, sql.Named("project", filter.Project))
+	}
+
+	if filter.Name != nil {
+		whereClause = append(whereClause, ` AND instances.name = :name`)
+		args = append(args, sql.Named("name", filter.Name))
 	}
 
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
