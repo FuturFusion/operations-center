@@ -19,6 +19,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
 
 func TestStoragePoolService_GetAllWithFilter(t *testing.T) {
@@ -471,6 +472,440 @@ func TestStoragePoolService_ResyncByUUID(t *testing.T) {
 
 			// Run test
 			err := storagePoolSvc.ResyncByUUID(context.Background(), uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`))
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestStoragePoolService_ResyncByName(t *testing.T) {
+	tests := []struct {
+		name                                     string
+		argClusterName                           string
+		argLifecycleEvent                        domain.LifecycleEvent
+		repoGetAllUUIDsWithFilterUUIDs           []uuid.UUID
+		repoGetAllUUIDsWithFilterErr             error
+		clusterSvcGetEndpoint                    provisioning.Endpoint
+		clusterSvcGetEndpointErr                 error
+		storagePoolClientGetStoragePoolByName    incusapi.StoragePool
+		storagePoolClientGetStoragePoolByNameErr error
+		serviceOptions                           []inventory.StoragePoolServiceOption
+		repoCreateErr                            error
+		repoGetByUUIDStoragePool                 inventory.StoragePool
+		repoGetByUUIDErr                         error
+		repoDeleteByUUIDErr                      error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success - not responsible",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "invalid",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-pool",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					Name: "storage_pool",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storagePoolClientGetStoragePoolByName: incusapi.StoragePool{
+				Name: "storage_pool",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - delete existing",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-pool",
+				Operation:    domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+					Name: "storage_pool",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - rename",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-pool",
+				Operation:    domain.LifecycleOperationRename,
+				Source: domain.LifecycleSource{
+					Name:    "storage_pool-new",
+					OldName: "storage_pool",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storagePoolClientGetStoragePoolByName: incusapi.StoragePool{
+				Name: "storage_pool-new",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - update of non existing element",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-pool",
+				Operation:    domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+					Name: "storage_pool",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storagePoolClientGetStoragePoolByName: incusapi.StoragePool{
+				Name: "storage_pool filtered", // matches filter
+			},
+			serviceOptions: []inventory.StoragePoolServiceOption{
+				inventory.StoragePoolWithSyncFilter(func(storagePool inventory.StoragePool) bool {
+					return storagePool.Name == "storage_pool filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - update existing",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-pool",
+				Operation:    domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+					Name: "storage_pool",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoGetByUUIDStoragePool: inventory.StoragePool{
+				UUID:    uuidgen.FromPattern(t, "1"),
+				Cluster: "cluster",
+				Name:    "storage_pool",
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storagePoolClientGetStoragePoolByName: incusapi.StoragePool{
+				Name: "storage_pool",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - invalid lifecycle operation",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-pool",
+				Operation:    domain.LifecycleOperation("invalid"), // invalid
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...interface{}) {
+				require.ErrorContains(tt, err, "Invalid lifecycle operation")
+			},
+		},
+		{
+			name:           "error - create - clusterSvc.GetEndpoint",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-pool",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					Name: "storage_pool",
+				},
+			},
+			clusterSvcGetEndpointErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - create - client.GetStoragePoolByName",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-pool",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					Name: "storage_pool",
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storagePoolClientGetStoragePoolByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - create - validate",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-pool",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					Name: "storage_pool",
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storagePoolClientGetStoragePoolByName: incusapi.StoragePool{
+				Name: "", // invalid
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name:           "error - create - repo.Create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-pool",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					Name: "storage_pool",
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storagePoolClientGetStoragePoolByName: incusapi.StoragePool{
+				Name: "storage_pool",
+			},
+			repoCreateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - delete - repo.GetAllUUIDsWithFilter",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-pool",
+				Operation:    domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+					Name: "storage_pool",
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - delete - repo.GetAllUUIDsWithFilter - not found",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-pool",
+				Operation:    domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+					Name: "storage_pool",
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: domain.ErrNotFound,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - delete - DeleteByUUID",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-pool",
+				Operation:    domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+					Name: "storage_pool",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - rename",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-pool",
+				Operation:    domain.LifecycleOperationRename,
+				Source: domain.LifecycleSource{
+					Name:    "storage_pool-new",
+					OldName: "storage_pool",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storagePoolClientGetStoragePoolByName: incusapi.StoragePool{
+				Name: "storage_pool-new",
+			},
+			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - update - repo.GetAllUUIDsWithFilter",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-pool",
+				Operation:    domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+					Name: "storage_pool",
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: boom.Error,
+
+			assertErr: require.Error,
+		},
+		{
+			name:           "error - update - ResyncByUUID",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-pool",
+				Operation:    domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+					Name: "storage_pool",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoGetByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.StoragePoolRepoMock{
+				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.StoragePoolFilter) ([]uuid.UUID, error) {
+					require.Equal(t, tc.argClusterName, *filter.Cluster)
+					require.Contains(t, tc.argLifecycleEvent.Source.Name, *filter.Name)
+					return tc.repoGetAllUUIDsWithFilterUUIDs, tc.repoGetAllUUIDsWithFilterErr
+				},
+				CreateFunc: func(ctx context.Context, storagePool inventory.StoragePool) (inventory.StoragePool, error) {
+					require.Equal(t, tc.argClusterName, storagePool.Cluster)
+					require.Equal(t, tc.argLifecycleEvent.Source.Name, storagePool.Name)
+					return inventory.StoragePool{}, tc.repoCreateErr
+				},
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.StoragePool, error) {
+					return tc.repoGetByUUIDStoragePool, tc.repoGetByUUIDErr
+				},
+				UpdateByUUIDFunc: func(ctx context.Context, storagePool inventory.StoragePool) (inventory.StoragePool, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), storagePool.LastUpdated)
+					return inventory.StoragePool{}, nil
+				},
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					return tc.repoDeleteByUUIDErr
+				},
+			}
+
+			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+					require.Equal(t, tc.argClusterName, name)
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
+				},
+			}
+
+			storagePoolClient := &serverMock.StoragePoolServerClientMock{
+				GetStoragePoolByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (incusapi.StoragePool, error) {
+					clusterName, err := endpoint.GetServerName()
+					require.NoError(t, err)
+					require.Equal(t, tc.argClusterName, clusterName)
+					require.Equal(t, tc.argLifecycleEvent.Source.Name, storagePoolName)
+					return tc.storagePoolClientGetStoragePoolByName, tc.storagePoolClientGetStoragePoolByNameErr
+				},
+			}
+
+			storagePoolSvc := inventory.NewStoragePoolService(repo, clusterSvc, storagePoolClient,
+				append(tc.serviceOptions,
+					inventory.StoragePoolWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
+
+			// Run test
+			err := storagePoolSvc.ResyncByName(context.Background(), tc.argClusterName, tc.argLifecycleEvent)
 
 			// Assert
 			tc.assertErr(t, err)

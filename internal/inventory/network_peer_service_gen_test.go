@@ -19,6 +19,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
 
 func TestNetworkPeerService_GetAllWithFilter(t *testing.T) {
@@ -480,6 +481,459 @@ func TestNetworkPeerService_ResyncByUUID(t *testing.T) {
 
 			// Run test
 			err := networkPeerSvc.ResyncByUUID(context.Background(), uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`))
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestNetworkPeerService_ResyncByName(t *testing.T) {
+	tests := []struct {
+		name                                     string
+		argClusterName                           string
+		argLifecycleEvent                        domain.LifecycleEvent
+		repoGetAllUUIDsWithFilterUUIDs           []uuid.UUID
+		repoGetAllUUIDsWithFilterErr             error
+		clusterSvcGetEndpoint                    provisioning.Endpoint
+		clusterSvcGetEndpointErr                 error
+		networkPeerClientGetNetworkPeerByName    incusapi.NetworkPeer
+		networkPeerClientGetNetworkPeerByNameErr error
+		serviceOptions                           []inventory.NetworkPeerServiceOption
+		repoCreateErr                            error
+		repoGetByUUIDNetworkPeer                 inventory.NetworkPeer
+		repoGetByUUIDErr                         error
+		repoDeleteByUUIDErr                      error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success - not responsible",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "invalid",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_peer",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkPeerClientGetNetworkPeerByName: incusapi.NetworkPeer{
+				Name: "network_peer",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - delete existing",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_peer",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - rename",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperationRename,
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_peer-new",
+					OldName:    "network_peer",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkPeerClientGetNetworkPeerByName: incusapi.NetworkPeer{
+				Name: "network_peer-new",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - update of non existing element",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_peer",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkPeerClientGetNetworkPeerByName: incusapi.NetworkPeer{
+				Name: "network_peer filtered", // matches filter
+			},
+			serviceOptions: []inventory.NetworkPeerServiceOption{
+				inventory.NetworkPeerWithSyncFilter(func(networkPeer inventory.NetworkPeer) bool {
+					return networkPeer.Name == "network_peer filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - update existing",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_peer",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoGetByUUIDNetworkPeer: inventory.NetworkPeer{
+				UUID:        uuidgen.FromPattern(t, "1"),
+				Cluster:     "cluster",
+				Name:        "network_peer",
+				NetworkName: "network",
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkPeerClientGetNetworkPeerByName: incusapi.NetworkPeer{
+				Name: "network_peer",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - invalid lifecycle operation",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperation("invalid"), // invalid
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...interface{}) {
+				require.ErrorContains(tt, err, "Invalid lifecycle operation")
+			},
+		},
+		{
+			name:           "error - create - clusterSvc.GetEndpoint",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_peer",
+				},
+			},
+			clusterSvcGetEndpointErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - create - client.GetNetworkPeerByName",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_peer",
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkPeerClientGetNetworkPeerByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - create - validate",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_peer",
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkPeerClientGetNetworkPeerByName: incusapi.NetworkPeer{
+				Name: "", // invalid
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name:           "error - create - repo.Create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_peer",
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkPeerClientGetNetworkPeerByName: incusapi.NetworkPeer{
+				Name: "network_peer",
+			},
+			repoCreateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - delete - repo.GetAllUUIDsWithFilter",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_peer",
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - delete - repo.GetAllUUIDsWithFilter - not found",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_peer",
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: domain.ErrNotFound,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - delete - DeleteByUUID",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_peer",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - rename",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperationRename,
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_peer-new",
+					OldName:    "network_peer",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkPeerClientGetNetworkPeerByName: incusapi.NetworkPeer{
+				Name: "network_peer-new",
+			},
+			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - update - repo.GetAllUUIDsWithFilter",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_peer",
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: boom.Error,
+
+			assertErr: require.Error,
+		},
+		{
+			name:           "error - update - ResyncByUUID",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-peer",
+				Operation:    domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_peer",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoGetByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.NetworkPeerRepoMock{
+				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkPeerFilter) ([]uuid.UUID, error) {
+					require.Equal(t, tc.argClusterName, *filter.Cluster)
+					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, *filter.NetworkName)
+					require.Contains(t, tc.argLifecycleEvent.Source.Name, *filter.Name)
+					return tc.repoGetAllUUIDsWithFilterUUIDs, tc.repoGetAllUUIDsWithFilterErr
+				},
+				CreateFunc: func(ctx context.Context, networkPeer inventory.NetworkPeer) (inventory.NetworkPeer, error) {
+					require.Equal(t, tc.argClusterName, networkPeer.Cluster)
+					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, networkPeer.NetworkName)
+					require.Equal(t, tc.argLifecycleEvent.Source.Name, networkPeer.Name)
+					return inventory.NetworkPeer{}, tc.repoCreateErr
+				},
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkPeer, error) {
+					return tc.repoGetByUUIDNetworkPeer, tc.repoGetByUUIDErr
+				},
+				UpdateByUUIDFunc: func(ctx context.Context, networkPeer inventory.NetworkPeer) (inventory.NetworkPeer, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkPeer.LastUpdated)
+					return inventory.NetworkPeer{}, nil
+				},
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					return tc.repoDeleteByUUIDErr
+				},
+			}
+
+			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+					require.Equal(t, tc.argClusterName, name)
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
+				},
+			}
+
+			networkPeerClient := &serverMock.NetworkPeerServerClientMock{
+				GetNetworkPeerByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkPeerName string) (incusapi.NetworkPeer, error) {
+					clusterName, err := endpoint.GetServerName()
+					require.NoError(t, err)
+					require.Equal(t, tc.argClusterName, clusterName)
+					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, networkName)
+					require.Equal(t, tc.argLifecycleEvent.Source.Name, networkPeerName)
+					return tc.networkPeerClientGetNetworkPeerByName, tc.networkPeerClientGetNetworkPeerByNameErr
+				},
+			}
+
+			networkPeerSvc := inventory.NewNetworkPeerService(repo, clusterSvc, networkPeerClient, nil,
+				append(tc.serviceOptions,
+					inventory.NetworkPeerWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
+
+			// Run test
+			err := networkPeerSvc.ResyncByName(context.Background(), tc.argClusterName, tc.argLifecycleEvent)
 
 			// Assert
 			tc.assertErr(t, err)

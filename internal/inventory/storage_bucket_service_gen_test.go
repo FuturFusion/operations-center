@@ -19,6 +19,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
 
 func TestStorageBucketService_GetAllWithFilter(t *testing.T) {
@@ -495,6 +496,492 @@ func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 
 			// Run test
 			err := storageBucketSvc.ResyncByUUID(context.Background(), uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`))
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestStorageBucketService_ResyncByName(t *testing.T) {
+	tests := []struct {
+		name                                         string
+		argClusterName                               string
+		argLifecycleEvent                            domain.LifecycleEvent
+		repoGetAllUUIDsWithFilterUUIDs               []uuid.UUID
+		repoGetAllUUIDsWithFilterErr                 error
+		clusterSvcGetEndpoint                        provisioning.Endpoint
+		clusterSvcGetEndpointErr                     error
+		storageBucketClientGetStorageBucketByName    incusapi.StorageBucket
+		storageBucketClientGetStorageBucketByNameErr error
+		serviceOptions                               []inventory.StorageBucketServiceOption
+		repoCreateErr                                error
+		repoGetByUUIDStorageBucket                   inventory.StorageBucket
+		repoGetByUUIDErr                             error
+		repoDeleteByUUIDErr                          error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success - not responsible",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "invalid",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "storage_pool",
+					Name:        "storage_bucket",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
+				Name:     "storage_bucket",
+				Location: "server01",
+				Project:  "project",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - delete existing",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "storage_pool",
+					Name:        "storage_bucket",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - rename",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationRename,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "storage_pool",
+					Name:        "storage_bucket-new",
+					OldName:     "storage_bucket",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
+				Name:     "storage_bucket-new",
+				Location: "server01",
+				Project:  "project",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - update of non existing element",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "storage_pool",
+					Name:        "storage_bucket",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
+				Name:     "storage_bucket filtered", // matches filter
+				Location: "server01",
+				Project:  "project",
+			},
+			serviceOptions: []inventory.StorageBucketServiceOption{
+				inventory.StorageBucketWithSyncFilter(func(storageBucket inventory.StorageBucket) bool {
+					return storageBucket.Name == "storage_bucket filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - update existing",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "storage_pool",
+					Name:        "storage_bucket",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoGetByUUIDStorageBucket: inventory.StorageBucket{
+				UUID:            uuidgen.FromPattern(t, "1"),
+				Cluster:         "cluster",
+				Name:            "storage_bucket",
+				ProjectName:     "project",
+				StoragePoolName: "storage_pool",
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
+				Name:     "storage_bucket",
+				Location: "server01",
+				Project:  "project",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - invalid lifecycle operation",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperation("invalid"), // invalid
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...interface{}) {
+				require.ErrorContains(tt, err, "Invalid lifecycle operation")
+			},
+		},
+		{
+			name:           "error - create - clusterSvc.GetEndpoint",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "storage_pool",
+					Name:        "storage_bucket",
+				},
+			},
+			clusterSvcGetEndpointErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - create - client.GetStorageBucketByName",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "storage_pool",
+					Name:        "storage_bucket",
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storageBucketClientGetStorageBucketByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - create - validate",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "storage_pool",
+					Name:        "storage_bucket",
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
+				Name:     "", // invalid
+				Location: "server01",
+				Project:  "project",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name:           "error - create - repo.Create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "storage_pool",
+					Name:        "storage_bucket",
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
+				Name:     "storage_bucket",
+				Location: "server01",
+				Project:  "project",
+			},
+			repoCreateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - delete - repo.GetAllUUIDsWithFilter",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "storage_pool",
+					Name:        "storage_bucket",
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - delete - repo.GetAllUUIDsWithFilter - not found",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "storage_pool",
+					Name:        "storage_bucket",
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: domain.ErrNotFound,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - delete - DeleteByUUID",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "storage_pool",
+					Name:        "storage_bucket",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - rename",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationRename,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "storage_pool",
+					Name:        "storage_bucket-new",
+					OldName:     "storage_bucket",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
+				Name:     "storage_bucket-new",
+				Location: "server01",
+				Project:  "project",
+			},
+			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - update - repo.GetAllUUIDsWithFilter",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "storage_pool",
+					Name:        "storage_bucket",
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: boom.Error,
+
+			assertErr: require.Error,
+		},
+		{
+			name:           "error - update - ResyncByUUID",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "storage_pool",
+					Name:        "storage_bucket",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoGetByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.StorageBucketRepoMock{
+				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.StorageBucketFilter) ([]uuid.UUID, error) {
+					require.Equal(t, tc.argClusterName, *filter.Cluster)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.Project)
+					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, *filter.StoragePoolName)
+					require.Contains(t, tc.argLifecycleEvent.Source.Name, *filter.Name)
+					return tc.repoGetAllUUIDsWithFilterUUIDs, tc.repoGetAllUUIDsWithFilterErr
+				},
+				CreateFunc: func(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error) {
+					require.Equal(t, tc.argClusterName, storageBucket.Cluster)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, storageBucket.ProjectName)
+					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, storageBucket.StoragePoolName)
+					require.Equal(t, tc.argLifecycleEvent.Source.Name, storageBucket.Name)
+					return inventory.StorageBucket{}, tc.repoCreateErr
+				},
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.StorageBucket, error) {
+					return tc.repoGetByUUIDStorageBucket, tc.repoGetByUUIDErr
+				},
+				UpdateByUUIDFunc: func(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), storageBucket.LastUpdated)
+					return inventory.StorageBucket{}, nil
+				},
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					return tc.repoDeleteByUUIDErr
+				},
+			}
+
+			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+					require.Equal(t, tc.argClusterName, name)
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
+				},
+			}
+
+			storageBucketClient := &serverMock.StorageBucketServerClientMock{
+				GetStorageBucketByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
+					clusterName, err := endpoint.GetServerName()
+					require.NoError(t, err)
+					require.Equal(t, tc.argClusterName, clusterName)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, projectName)
+					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, storagePoolName)
+					require.Equal(t, tc.argLifecycleEvent.Source.Name, storageBucketName)
+					return tc.storageBucketClientGetStorageBucketByName, tc.storageBucketClientGetStorageBucketByNameErr
+				},
+			}
+
+			storageBucketSvc := inventory.NewStorageBucketService(repo, clusterSvc, storageBucketClient, nil,
+				append(tc.serviceOptions,
+					inventory.StorageBucketWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
+
+			// Run test
+			err := storageBucketSvc.ResyncByName(context.Background(), tc.argClusterName, tc.argLifecycleEvent)
 
 			// Assert
 			tc.assertErr(t, err)

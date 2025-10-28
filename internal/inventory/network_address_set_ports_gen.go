@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
@@ -16,6 +17,7 @@ type NetworkAddressSetService interface {
 	GetAllUUIDsWithFilter(ctx context.Context, filter NetworkAddressSetFilter) ([]uuid.UUID, error)
 	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkAddressSet, error)
 	ResyncByUUID(ctx context.Context, id uuid.UUID) error
+	ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error
 	SyncCluster(ctx context.Context, cluster string) error
 }
 

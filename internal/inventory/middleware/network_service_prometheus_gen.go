@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
@@ -78,6 +79,20 @@ func (_d NetworkServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UU
 		networkServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetByUUID(ctx, id)
+}
+
+// ResyncByName implements inventory.NetworkService.
+func (_d NetworkServiceWithPrometheus) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		networkServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "ResyncByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.ResyncByName(ctx, clusterName, event)
 }
 
 // ResyncByUUID implements inventory.NetworkService.

@@ -19,6 +19,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
 
 func TestProjectService_GetAllWithFilter(t *testing.T) {
@@ -471,6 +472,440 @@ func TestProjectService_ResyncByUUID(t *testing.T) {
 
 			// Run test
 			err := projectSvc.ResyncByUUID(context.Background(), uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`))
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestProjectService_ResyncByName(t *testing.T) {
+	tests := []struct {
+		name                             string
+		argClusterName                   string
+		argLifecycleEvent                domain.LifecycleEvent
+		repoGetAllUUIDsWithFilterUUIDs   []uuid.UUID
+		repoGetAllUUIDsWithFilterErr     error
+		clusterSvcGetEndpoint            provisioning.Endpoint
+		clusterSvcGetEndpointErr         error
+		projectClientGetProjectByName    incusapi.Project
+		projectClientGetProjectByNameErr error
+		serviceOptions                   []inventory.ProjectServiceOption
+		repoCreateErr                    error
+		repoGetByUUIDProject             inventory.Project
+		repoGetByUUIDErr                 error
+		repoDeleteByUUIDErr              error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success - not responsible",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "invalid",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					Name: "project",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			projectClientGetProjectByName: incusapi.Project{
+				Name: "project",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - delete existing",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+					Name: "project",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - rename",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperationRename,
+				Source: domain.LifecycleSource{
+					Name:    "project-new",
+					OldName: "project",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			projectClientGetProjectByName: incusapi.Project{
+				Name: "project-new",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - update of non existing element",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+					Name: "project",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			projectClientGetProjectByName: incusapi.Project{
+				Name: "project filtered", // matches filter
+			},
+			serviceOptions: []inventory.ProjectServiceOption{
+				inventory.ProjectWithSyncFilter(func(project inventory.Project) bool {
+					return project.Name == "project filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - update existing",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+					Name: "project",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoGetByUUIDProject: inventory.Project{
+				UUID:    uuidgen.FromPattern(t, "1"),
+				Cluster: "cluster",
+				Name:    "project",
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			projectClientGetProjectByName: incusapi.Project{
+				Name: "project",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - invalid lifecycle operation",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperation("invalid"), // invalid
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...interface{}) {
+				require.ErrorContains(tt, err, "Invalid lifecycle operation")
+			},
+		},
+		{
+			name:           "error - create - clusterSvc.GetEndpoint",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					Name: "project",
+				},
+			},
+			clusterSvcGetEndpointErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - create - client.GetProjectByName",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					Name: "project",
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			projectClientGetProjectByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - create - validate",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					Name: "project",
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			projectClientGetProjectByName: incusapi.Project{
+				Name: "", // invalid
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name:           "error - create - repo.Create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+					Name: "project",
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			projectClientGetProjectByName: incusapi.Project{
+				Name: "project",
+			},
+			repoCreateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - delete - repo.GetAllUUIDsWithFilter",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+					Name: "project",
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - delete - repo.GetAllUUIDsWithFilter - not found",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+					Name: "project",
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: domain.ErrNotFound,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - delete - DeleteByUUID",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+					Name: "project",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - rename",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperationRename,
+				Source: domain.LifecycleSource{
+					Name:    "project-new",
+					OldName: "project",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			projectClientGetProjectByName: incusapi.Project{
+				Name: "project-new",
+			},
+			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - update - repo.GetAllUUIDsWithFilter",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+					Name: "project",
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: boom.Error,
+
+			assertErr: require.Error,
+		},
+		{
+			name:           "error - update - ResyncByUUID",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "project",
+				Operation:    domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+					Name: "project",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoGetByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ProjectRepoMock{
+				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.ProjectFilter) ([]uuid.UUID, error) {
+					require.Equal(t, tc.argClusterName, *filter.Cluster)
+					require.Contains(t, tc.argLifecycleEvent.Source.Name, *filter.Name)
+					return tc.repoGetAllUUIDsWithFilterUUIDs, tc.repoGetAllUUIDsWithFilterErr
+				},
+				CreateFunc: func(ctx context.Context, project inventory.Project) (inventory.Project, error) {
+					require.Equal(t, tc.argClusterName, project.Cluster)
+					require.Equal(t, tc.argLifecycleEvent.Source.Name, project.Name)
+					return inventory.Project{}, tc.repoCreateErr
+				},
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.Project, error) {
+					return tc.repoGetByUUIDProject, tc.repoGetByUUIDErr
+				},
+				UpdateByUUIDFunc: func(ctx context.Context, project inventory.Project) (inventory.Project, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), project.LastUpdated)
+					return inventory.Project{}, nil
+				},
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					return tc.repoDeleteByUUIDErr
+				},
+			}
+
+			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+					require.Equal(t, tc.argClusterName, name)
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
+				},
+			}
+
+			projectClient := &serverMock.ProjectServerClientMock{
+				GetProjectByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string) (incusapi.Project, error) {
+					clusterName, err := endpoint.GetServerName()
+					require.NoError(t, err)
+					require.Equal(t, tc.argClusterName, clusterName)
+					require.Equal(t, tc.argLifecycleEvent.Source.Name, projectName)
+					return tc.projectClientGetProjectByName, tc.projectClientGetProjectByNameErr
+				},
+			}
+
+			projectSvc := inventory.NewProjectService(repo, clusterSvc, projectClient,
+				append(tc.serviceOptions,
+					inventory.ProjectWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
+
+			// Run test
+			err := projectSvc.ResyncByName(context.Background(), tc.argClusterName, tc.argLifecycleEvent)
 
 			// Assert
 			tc.assertErr(t, err)
