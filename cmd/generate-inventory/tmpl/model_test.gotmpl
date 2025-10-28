@@ -200,11 +200,14 @@ func Test{{ .Name | pascalcase }}_Filter(t *testing.T) {
 {{- if .HasProject }}
 				Project:    ptr.To("project"),
 {{- end }}
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: ptr.To("{{ .ParentName }}"),
+{{- end }}
 				Name:       ptr.To("name"),
 				Expression: ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true&name=name{{ if .HasProject }}&project=project{{ end }}{{ if .ServerIDByLocation }}&server=server{{ end }}`,
+			want: `cluster=cluster&filter=true&name=name{{ if .HasParent }}&parent={{ .ParentName }}{{ end }}{{ if .HasProject }}&project=project{{ end }}{{ if .ServerIDByLocation }}&server=server{{ end }}`,
 		},
 	}
 
