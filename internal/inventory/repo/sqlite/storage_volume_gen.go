@@ -95,6 +95,11 @@ ORDER BY clusters.name, servers.name, storage_volumes.name
 		args = append(args, sql.Named("project", filter.Project))
 	}
 
+	if filter.StoragePoolName != nil {
+		whereClause = append(whereClause, ` AND storage_volumes.storage_pool_name = :parent`)
+		args = append(args, sql.Named("parent", filter.StoragePoolName))
+	}
+
 	if filter.Name != nil {
 		whereClause = append(whereClause, ` AND storage_volumes.name = :name`)
 		args = append(args, sql.Named("name", filter.Name))
@@ -154,6 +159,11 @@ ORDER BY storage_volumes.id
 	if filter.Project != nil {
 		whereClause = append(whereClause, ` AND storage_volumes.project_name = :project`)
 		args = append(args, sql.Named("project", filter.Project))
+	}
+
+	if filter.StoragePoolName != nil {
+		whereClause = append(whereClause, ` AND storage_volumes.storage_pool_name = :parent`)
+		args = append(args, sql.Named("parent", filter.StoragePoolName))
 	}
 
 	if filter.Name != nil {

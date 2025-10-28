@@ -148,19 +148,21 @@ server-two
 	require.Equal(t, networkForwardA.Name, dbNetworkForward[0].Name)
 	require.Equal(t, networkForwardB.Name, dbNetworkForward[1].Name)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, network and name.
 	networkForwardUUIDs, err = networkForward.GetAllUUIDsWithFilter(ctx, inventory.NetworkForwardFilter{
-		Cluster: ptr.To("one"),
-		Name:    ptr.To("one"),
+		Cluster:     ptr.To("one"),
+		NetworkName: ptr.To("parent one"),
+		Name:        ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkForwardUUIDs, 1)
 	require.ElementsMatch(t, []uuid.UUID{networkForwardA.UUID}, networkForwardUUIDs)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, network and name.
 	dbNetworkForward, err = networkForward.GetAllWithFilter(ctx, inventory.NetworkForwardFilter{
-		Cluster: ptr.To("one"),
-		Name:    ptr.To("one"),
+		Cluster:     ptr.To("one"),
+		NetworkName: ptr.To("parent one"),
+		Name:        ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetworkForward, 1)

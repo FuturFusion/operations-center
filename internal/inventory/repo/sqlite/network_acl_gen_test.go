@@ -148,7 +148,7 @@ server-two
 	require.Equal(t, networkACLA.Name, dbNetworkACL[0].Name)
 	require.Equal(t, networkACLB.Name, dbNetworkACL[1].Name)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, project and name.
 	networkACLUUIDs, err = networkACL.GetAllUUIDsWithFilter(ctx, inventory.NetworkACLFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
@@ -158,7 +158,7 @@ server-two
 	require.Len(t, networkACLUUIDs, 1)
 	require.ElementsMatch(t, []uuid.UUID{networkACLA.UUID}, networkACLUUIDs)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, project and name.
 	dbNetworkACL, err = networkACL.GetAllWithFilter(ctx, inventory.NetworkACLFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),

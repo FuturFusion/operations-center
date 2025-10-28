@@ -77,6 +77,11 @@ ORDER BY clusters.name, network_forwards.name
 		args = append(args, sql.Named("cluster_name", filter.Cluster))
 	}
 
+	if filter.NetworkName != nil {
+		whereClause = append(whereClause, ` AND network_forwards.network_name = :parent`)
+		args = append(args, sql.Named("parent", filter.NetworkName))
+	}
+
 	if filter.Name != nil {
 		whereClause = append(whereClause, ` AND network_forwards.name = :name`)
 		args = append(args, sql.Named("name", filter.Name))
@@ -125,6 +130,11 @@ ORDER BY network_forwards.id
 	if filter.Cluster != nil {
 		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
 		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	if filter.NetworkName != nil {
+		whereClause = append(whereClause, ` AND network_forwards.network_name = :parent`)
+		args = append(args, sql.Named("parent", filter.NetworkName))
 	}
 
 	if filter.Name != nil {

@@ -146,7 +146,7 @@ server-two
 	require.Equal(t, networkIntegrationA.Name, dbNetworkIntegration[0].Name)
 	require.Equal(t, networkIntegrationB.Name, dbNetworkIntegration[1].Name)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server and name.
 	networkIntegrationUUIDs, err = networkIntegration.GetAllUUIDsWithFilter(ctx, inventory.NetworkIntegrationFilter{
 		Cluster: ptr.To("one"),
 		Name:    ptr.To("one"),
@@ -155,7 +155,7 @@ server-two
 	require.Len(t, networkIntegrationUUIDs, 1)
 	require.ElementsMatch(t, []uuid.UUID{networkIntegrationA.UUID}, networkIntegrationUUIDs)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server and name.
 	dbNetworkIntegration, err = networkIntegration.GetAllWithFilter(ctx, inventory.NetworkIntegrationFilter{
 		Cluster: ptr.To("one"),
 		Name:    ptr.To("one"),

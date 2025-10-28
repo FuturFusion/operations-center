@@ -72,11 +72,12 @@ func (m StorageBucket) Validate() error {
 type StorageBuckets []StorageBucket
 
 type StorageBucketFilter struct {
-	Cluster    *string
-	Server     *string
-	Project    *string
-	Name       *string
-	Expression *string
+	Cluster         *string
+	Server          *string
+	Project         *string
+	StoragePoolName *string
+	Name            *string
+	Expression      *string
 }
 
 func (f StorageBucketFilter) AppendToURLValues(query url.Values) url.Values {
@@ -90,6 +91,10 @@ func (f StorageBucketFilter) AppendToURLValues(query url.Values) url.Values {
 
 	if f.Project != nil {
 		query.Add("project", *f.Project)
+	}
+
+	if f.StoragePoolName != nil {
+		query.Add("parent", *f.StoragePoolName)
 	}
 
 	if f.Name != nil {

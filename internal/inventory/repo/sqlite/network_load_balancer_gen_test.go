@@ -148,19 +148,21 @@ server-two
 	require.Equal(t, networkLoadBalancerA.Name, dbNetworkLoadBalancer[0].Name)
 	require.Equal(t, networkLoadBalancerB.Name, dbNetworkLoadBalancer[1].Name)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, network and name.
 	networkLoadBalancerUUIDs, err = networkLoadBalancer.GetAllUUIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{
-		Cluster: ptr.To("one"),
-		Name:    ptr.To("one"),
+		Cluster:     ptr.To("one"),
+		NetworkName: ptr.To("parent one"),
+		Name:        ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkLoadBalancerUUIDs, 1)
 	require.ElementsMatch(t, []uuid.UUID{networkLoadBalancerA.UUID}, networkLoadBalancerUUIDs)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, network and name.
 	dbNetworkLoadBalancer, err = networkLoadBalancer.GetAllWithFilter(ctx, inventory.NetworkLoadBalancerFilter{
-		Cluster: ptr.To("one"),
-		Name:    ptr.To("one"),
+		Cluster:     ptr.To("one"),
+		NetworkName: ptr.To("parent one"),
+		Name:        ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetworkLoadBalancer, 1)
