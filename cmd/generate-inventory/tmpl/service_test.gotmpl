@@ -17,6 +17,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
 
 func Test{{ .Name | pascalcase }}Service_GetAllWithFilter(t *testing.T) {
@@ -577,6 +578,731 @@ func Test{{ .Name | pascalcase }}Service_ResyncByUUID(t *testing.T) {
 
 			// Run test
 			err := {{ .Name | camelcase }}Svc.ResyncByUUID(context.Background(), uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`))
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
+	tests := []struct {
+		name                                         string
+		argClusterName                               string
+		argLifecycleEvent                            domain.LifecycleEvent
+		repoGetAllUUIDsWithFilterUUIDs               []uuid.UUID
+		repoGetAllUUIDsWithFilterErr                 error
+		clusterSvcGetEndpoint                        provisioning.Endpoint
+		clusterSvcGetEndpointErr                     error
+		{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName    incusapi.{{ .ObjectType | pascalcase }}
+		{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr error
+		serviceOptions                               []inventory.{{ .Name | pascalcase }}ServiceOption
+		repoCreateErr                                error
+		repoGetByUUID{{ .Name | pascalcase }}        inventory.{{ .Name | pascalcase }}
+		repoGetByUUIDErr                             error
+		repoDeleteByUUIDErr                          error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success - not responsible",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "invalid",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+{{- if .HasProject }}
+					ProjectName: "project",
+{{- end }}
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+				{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name }}",
+{{- if .UsesEmbeddedPostType }}
+					},
+{{- end }}
+{{- if .ServerIDByLocation }}
+					Location:  "server01",
+{{- end }}
+{{- if .HasProject }}
+					Project: "project",
+{{- end }}
+{{- if .ObjectEmbedded }}
+				},
+{{- end }}
+			},
+
+			assertErr: require.NoError,
+		},
+    {
+			name:           "success - delete existing",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+{{- if .HasProject }}
+					ProjectName: "project",
+{{- end }}
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - rename",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationRename,
+				Source: domain.LifecycleSource{
+{{- if .HasProject }}
+					ProjectName: "project",
+{{- end }}
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}-new",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+					OldName: "{{ .Name }}",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+				{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name }}-new",
+{{- if .UsesEmbeddedPostType }}
+					},
+{{- end }}
+{{- if .ServerIDByLocation }}
+					Location:  "server01",
+{{- end }}
+{{- if .HasProject }}
+					Project: "project",
+{{- end }}
+{{- if .ObjectEmbedded }}
+				},
+{{- end }}
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - update of non existing element",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+{{- if .HasProject }}
+					ProjectName: "project",
+{{- end }}
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+				{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+			{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name }} filtered", // matches filter
+{{- if .UsesEmbeddedPostType }}
+					},
+{{- end }}
+{{- if .ServerIDByLocation }}
+					Location:  "server01",
+{{- end }}
+{{- if .HasProject }}
+					Project: "project",
+{{- end }}
+{{- if .ObjectEmbedded }}
+				},
+{{- end }}
+			},
+			serviceOptions: []inventory.{{ .Name | pascalcase }}ServiceOption{
+				inventory.{{ .Name | pascalcase }}WithSyncFilter(func({{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) bool {
+					return {{ .Name | camelcase }}.Name == "{{ .Name }} filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - update existing",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+{{- if .HasProject }}
+					ProjectName: "project",
+{{- end }}
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoGetByUUID{{ .Name | pascalcase }}: inventory.{{ .Name | pascalcase }}{
+				UUID:            uuidgen.FromPattern(t, "1"),
+				Cluster:         "cluster",
+				Name:            "{{ .Name }}",
+{{- if .HasProject }}
+				ProjectName:     "project",
+{{- end }}
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: "{{ .ParentName }}",
+{{- end }}
+{{- range .ExtraAttributes }}
+				{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+				{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+			{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name }}",
+{{- if .UsesEmbeddedPostType }}
+					},
+{{- end }}
+{{- if .ServerIDByLocation }}
+					Location:  "server01",
+{{- end }}
+{{- if .HasProject }}
+					Project: "project",
+{{- end }}
+{{- if .ObjectEmbedded }}
+				},
+{{- end }}
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - invalid lifecycle operation",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperation("invalid"), // invalid
+			},
+
+			assertErr: func(tt require.TestingT, err error, i ...interface{}) {
+				require.ErrorContains(tt, err, "Invalid lifecycle operation")
+			},
+		},
+		{
+			name:           "error - create - clusterSvc.GetEndpoint",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+{{- if .HasProject }}
+					ProjectName: "project",
+{{- end }}
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+				},
+			},
+			clusterSvcGetEndpointErr:       boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - create - client.Get{{ .Name | pascalcase }}ByName",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+{{- if .HasProject }}
+					ProjectName: "project",
+{{- end }}
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - create - validate",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+{{- if .HasProject }}
+					ProjectName: "project",
+{{- end }}
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+				{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+			{{ .ObjectNamePropertyName | pascalcase }}: "", // invalid
+{{- if .UsesEmbeddedPostType }}
+					},
+{{- end }}
+{{- if .ServerIDByLocation }}
+					Location:  "server01",
+{{- end }}
+{{- if .HasProject }}
+					Project: "project",
+{{- end }}
+{{- if .ObjectEmbedded }}
+				},
+{{- end }}
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name:           "error - create - repo.Create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationCreate,
+				Source: domain.LifecycleSource{
+{{- if .HasProject }}
+					ProjectName: "project",
+{{- end }}
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+				},
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+				{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+			{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name }}",
+{{- if .UsesEmbeddedPostType }}
+					},
+{{- end }}
+{{- if .ServerIDByLocation }}
+					Location:  "server01",
+{{- end }}
+{{- if .HasProject }}
+					Project: "project",
+{{- end }}
+{{- if .ObjectEmbedded }}
+				},
+{{- end }}
+			},
+			repoCreateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - delete - repo.GetAllUUIDsWithFilter",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+{{- if .HasProject }}
+					ProjectName: "project",
+{{- end }}
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - delete - repo.GetAllUUIDsWithFilter - not found",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+{{- if .HasProject }}
+					ProjectName: "project",
+{{- end }}
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: domain.ErrNotFound,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - delete - DeleteByUUID",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationDelete,
+				Source: domain.LifecycleSource{
+{{- if .HasProject }}
+					ProjectName: "project",
+{{- end }}
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - rename",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationRename,
+				Source: domain.LifecycleSource{
+{{- if .HasProject }}
+					ProjectName: "project",
+{{- end }}
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}-new",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+					OldName: "{{ .Name }}",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+				{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name }}-new",
+{{- if .UsesEmbeddedPostType }}
+					},
+{{- end }}
+{{- if .ServerIDByLocation }}
+					Location:  "server01",
+{{- end }}
+{{- if .HasProject }}
+					Project: "project",
+{{- end }}
+{{- if .ObjectEmbedded }}
+				},
+{{- end }}
+			},
+			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - update - repo.GetAllUUIDsWithFilter",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+{{- if .HasProject }}
+					ProjectName: "project",
+{{- end }}
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: boom.Error,
+
+			assertErr: require.Error,
+		},
+		{
+			name:           "error - update - ResyncByUUID",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationUpdate,
+				Source: domain.LifecycleSource{
+{{- if .HasProject }}
+					ProjectName: "project",
+{{- end }}
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoGetByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
+				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) ([]uuid.UUID, error) {
+					require.Equal(t, tc.argClusterName, *filter.Cluster)
+{{- if .HasProject }}
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.Project)
+{{- end }}
+{{- if .HasParent }}
+					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, *filter.{{ .ParentName | pascalcase }}Name)
+{{- end }}
+					require.Contains(t, tc.argLifecycleEvent.Source.Name, *filter.Name)
+					return tc.repoGetAllUUIDsWithFilterUUIDs, tc.repoGetAllUUIDsWithFilterErr
+				},
+				CreateFunc: func(ctx context.Context, {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
+					require.Equal(t, tc.argClusterName, {{ .Name | camelcase }}.Cluster)
+{{- if .HasProject }}
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, {{ .Name | camelcase }}.ProjectName)
+{{- end }}
+{{- if .HasParent }}
+					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, {{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name)
+{{- end }}
+					require.Equal(t, tc.argLifecycleEvent.Source.Name, {{ .Name | camelcase }}.Name)
+					return inventory.{{ .Name | pascalcase }}{}, tc.repoCreateErr
+				},
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.{{ .Name | pascalcase }}, error) {
+					return tc.repoGetByUUID{{ .Name | pascalcase }}, tc.repoGetByUUIDErr
+				},
+				UpdateByUUIDFunc: func(ctx context.Context, {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), {{ .Name | camelcase }}.LastUpdated)
+					return inventory.{{ .Name | pascalcase }}{}, nil
+				},
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					return tc.repoDeleteByUUIDErr
+				},
+			}
+
+			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+					require.Equal(t, tc.argClusterName, name)
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
+				},
+			}
+
+			{{ .Name | camelcase }}Client := &serverMock.{{ .Name | pascalcase }}ServerClientMock{
+				Get{{ .Name | pascalcase }}ByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, {{ if .HasProject }}projectName string,{{ end }}{{ if .HasParent }} {{ .ParentName | camelcase }}Name string,{{ end }} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }} {{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error) {
+					clusterName, err := endpoint.GetServerName()
+					require.NoError(t, err)
+					require.Equal(t, tc.argClusterName, clusterName)
+{{- if .HasProject }}
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, projectName)
+{{- end }}
+{{- if .HasParent }}
+					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, {{ .ParentName | camelcase }}Name)
+{{- end }}
+					require.Equal(t, tc.argLifecycleEvent.Source.Name, {{ .Name | camelcase }}Name)
+{{- range .ExtraAttributes }}
+					require.Equal(t, tc.argLifecycleEvent.Source.{{ .Name | pascalcase }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }})
+{{- end}}
+					return tc.{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName, tc.{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByNameErr
+				},
+			}
+
+			{{ .Name | camelcase }}Svc := inventory.New{{ .Name | pascalcase }}Service(repo, clusterSvc, {{ .Name | camelcase }}Client,{{ if .HasParent }} nil,{{ end }}
+				append(tc.serviceOptions,
+					inventory.{{ .Name | pascalcase }}WithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
+
+			// Run test
+			err := {{ .Name | camelcase }}Svc.ResyncByName(context.Background(), tc.argClusterName, tc.argLifecycleEvent)
 
 			// Assert
 			tc.assertErr(t, err)
