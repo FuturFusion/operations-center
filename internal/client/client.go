@@ -215,6 +215,14 @@ func processResponse(resp *http.Response) (*api.Response, error) {
 	return &response, nil
 }
 
+func (c OperationsCenterClient) GetBaseAddr() string {
+	return c.baseURL
+}
+
+func (c OperationsCenterClient) DoHTTP(req *http.Request) (*http.Response, error) {
+	return c.httpClient.Do(req)
+}
+
 func (c OperationsCenterClient) GetAPIServerInfo(ctx context.Context) (api.ServerUntrusted, error) {
 	response, err := c.doRequest(ctx, http.MethodGet, "", url.Values{}, nil)
 	if err != nil {

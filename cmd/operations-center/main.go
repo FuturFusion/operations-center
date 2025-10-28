@@ -35,6 +35,8 @@ type env interface {
 }
 
 func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
+	cobra.EnableTraverseRunHooks = true
+
 	app := &cobra.Command{}
 	app.Use = config.ApplicationName
 	app.Short = "Command line client for operations center"
@@ -98,6 +100,12 @@ func main0(args []string, stdout io.Writer, stderr io.Writer, env env) error {
 	}
 
 	app.AddCommand(systemCmd.Command())
+
+	adminCmd := cmds.CmdAdmin{
+		OCClient: globalCmd.ocClient,
+	}
+
+	app.AddCommand(adminCmd.Command())
 
 	return app.Execute()
 }

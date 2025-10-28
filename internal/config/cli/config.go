@@ -51,6 +51,13 @@ func (c *Config) LoadConfig(path string) error {
 		return err
 	}
 
+	c.ConfigDir = path
+
+	c.CertInfo, err = incusTLS.KeyPairAndCA(path, "client", incusTLS.CertClient, false)
+	if err != nil {
+		return fmt.Errorf("Failed to create client certificate: %w", err)
+	}
+
 	contents, err := os.ReadFile(filepath.Join(path, "config.yml"))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -65,11 +72,6 @@ func (c *Config) LoadConfig(path string) error {
 		return err
 	}
 
-	c.CertInfo, err = incusTLS.KeyPairAndCA(path, "client", incusTLS.CertClient, false)
-	if err != nil {
-		return fmt.Errorf("Failed to create client certificate: %w", err)
-	}
-
 	for remote, config := range c.Remotes {
 		if config.AuthType == "" {
 			config.AuthType = AuthTypeUntrusted
@@ -82,8 +84,6 @@ func (c *Config) LoadConfig(path string) error {
 
 		c.Remotes[remote] = config
 	}
-
-	c.ConfigDir = path
 
 	return nil
 }
