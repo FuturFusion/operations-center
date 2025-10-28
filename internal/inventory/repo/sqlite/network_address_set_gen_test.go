@@ -152,6 +152,7 @@ server-two
 	networkAddressSetUUIDs, err = networkAddressSet.GetAllUUIDsWithFilter(ctx, inventory.NetworkAddressSetFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkAddressSetUUIDs, 1)
@@ -161,6 +162,7 @@ server-two
 	dbNetworkAddressSet, err = networkAddressSet.GetAllWithFilter(ctx, inventory.NetworkAddressSetFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetworkAddressSet, 1)

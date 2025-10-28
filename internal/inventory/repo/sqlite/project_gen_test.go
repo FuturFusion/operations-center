@@ -149,6 +149,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server and project
 	projectUUIDs, err = project.GetAllUUIDsWithFilter(ctx, inventory.ProjectFilter{
 		Cluster: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, projectUUIDs, 1)
@@ -157,6 +158,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server and project
 	dbProject, err = project.GetAllWithFilter(ctx, inventory.ProjectFilter{
 		Cluster: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbProject, 1)

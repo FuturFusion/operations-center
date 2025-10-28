@@ -152,6 +152,7 @@ server-two
 	profileUUIDs, err = profile.GetAllUUIDsWithFilter(ctx, inventory.ProfileFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, profileUUIDs, 1)
@@ -161,6 +162,7 @@ server-two
 	dbProfile, err = profile.GetAllWithFilter(ctx, inventory.ProfileFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbProfile, 1)

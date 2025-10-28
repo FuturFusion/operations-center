@@ -159,6 +159,7 @@ server-two
 		Cluster: ptr.To("one"),
 		Server:  ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, storageVolumeUUIDs, 1)
@@ -169,6 +170,7 @@ server-two
 		Cluster: ptr.To("one"),
 		Server:  ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbStorageVolume, 1)

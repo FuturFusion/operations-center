@@ -151,6 +151,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server and project
 	networkPeerUUIDs, err = networkPeer.GetAllUUIDsWithFilter(ctx, inventory.NetworkPeerFilter{
 		Cluster: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkPeerUUIDs, 1)
@@ -159,6 +160,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server and project
 	dbNetworkPeer, err = networkPeer.GetAllWithFilter(ctx, inventory.NetworkPeerFilter{
 		Cluster: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetworkPeer, 1)

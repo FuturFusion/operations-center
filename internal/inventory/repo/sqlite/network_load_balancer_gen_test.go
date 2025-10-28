@@ -151,6 +151,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server and project
 	networkLoadBalancerUUIDs, err = networkLoadBalancer.GetAllUUIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{
 		Cluster: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkLoadBalancerUUIDs, 1)
@@ -159,6 +160,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server and project
 	dbNetworkLoadBalancer, err = networkLoadBalancer.GetAllWithFilter(ctx, inventory.NetworkLoadBalancerFilter{
 		Cluster: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetworkLoadBalancer, 1)

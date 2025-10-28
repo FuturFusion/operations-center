@@ -75,6 +75,7 @@ type StorageBucketFilter struct {
 	Cluster    *string
 	Server     *string
 	Project    *string
+	Name       *string
 	Expression *string
 }
 
@@ -89,6 +90,10 @@ func (f StorageBucketFilter) AppendToURLValues(query url.Values) url.Values {
 
 	if f.Project != nil {
 		query.Add("project", *f.Project)
+	}
+
+	if f.Name != nil {
+		query.Add("name", *f.Name)
 	}
 
 	if f.Expression != nil {

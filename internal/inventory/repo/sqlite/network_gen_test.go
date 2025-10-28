@@ -152,6 +152,7 @@ server-two
 	networkUUIDs, err = network.GetAllUUIDsWithFilter(ctx, inventory.NetworkFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkUUIDs, 1)
@@ -161,6 +162,7 @@ server-two
 	dbNetwork, err = network.GetAllWithFilter(ctx, inventory.NetworkFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetwork, 1)

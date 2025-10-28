@@ -152,6 +152,7 @@ server-two
 	networkZoneUUIDs, err = networkZone.GetAllUUIDsWithFilter(ctx, inventory.NetworkZoneFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkZoneUUIDs, 1)
@@ -161,6 +162,7 @@ server-two
 	dbNetworkZone, err = networkZone.GetAllWithFilter(ctx, inventory.NetworkZoneFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetworkZone, 1)

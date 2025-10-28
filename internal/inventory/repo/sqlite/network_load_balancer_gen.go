@@ -77,6 +77,11 @@ ORDER BY clusters.name, network_load_balancers.name
 		args = append(args, sql.Named("cluster_name", filter.Cluster))
 	}
 
+	if filter.Name != nil {
+		whereClause = append(whereClause, ` AND network_load_balancers.name = :name`)
+		args = append(args, sql.Named("name", filter.Name))
+	}
+
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
 	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
@@ -120,6 +125,11 @@ ORDER BY network_load_balancers.id
 	if filter.Cluster != nil {
 		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
 		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	if filter.Name != nil {
+		whereClause = append(whereClause, ` AND network_load_balancers.name = :name`)
+		args = append(args, sql.Named("name", filter.Name))
 	}
 
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))

@@ -94,6 +94,11 @@ ORDER BY clusters.name, servers.name, storage_buckets.name
 		args = append(args, sql.Named("project", filter.Project))
 	}
 
+	if filter.Name != nil {
+		whereClause = append(whereClause, ` AND storage_buckets.name = :name`)
+		args = append(args, sql.Named("name", filter.Name))
+	}
+
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
 	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
@@ -148,6 +153,11 @@ ORDER BY storage_buckets.id
 	if filter.Project != nil {
 		whereClause = append(whereClause, ` AND storage_buckets.project_name = :project`)
 		args = append(args, sql.Named("project", filter.Project))
+	}
+
+	if filter.Name != nil {
+		whereClause = append(whereClause, ` AND storage_buckets.name = :name`)
+		args = append(args, sql.Named("name", filter.Name))
 	}
 
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
