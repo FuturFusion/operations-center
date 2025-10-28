@@ -305,6 +305,7 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 				UUID:            uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:         "one",
 				Name:            "one",
+				ProjectName:     "project one",
 				StoragePoolName: "storage_pool",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
@@ -328,6 +329,7 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 				UUID:            uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:         "one",
 				Name:            "one",
+				ProjectName:     "project one",
 				StoragePoolName: "storage_pool",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
@@ -353,6 +355,7 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 				UUID:            uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:         "one",
 				Name:            "one",
+				ProjectName:     "project one",
 				StoragePoolName: "storage_pool",
 			},
 			clusterSvcGetEndpointErr: boom.Error,
@@ -365,6 +368,7 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 				UUID:            uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:         "one",
 				Name:            "one",
+				ProjectName:     "project one",
 				StoragePoolName: "storage_pool",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
@@ -384,6 +388,7 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 				UUID:            uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:         "one",
 				Name:            "one",
+				ProjectName:     "project one",
 				StoragePoolName: "storage_pool",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
@@ -404,6 +409,7 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 				UUID:            uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:         "one",
 				Name:            "", // invalid
+				ProjectName:     "project one",
 				StoragePoolName: "storage_pool",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
@@ -430,6 +436,7 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 				UUID:            uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
 				Cluster:         "one",
 				Name:            "one",
+				ProjectName:     "project one",
 				StoragePoolName: "storage_pool",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
@@ -474,8 +481,9 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 			}
 
 			storageVolumeClient := &serverMock.StorageVolumeServerClientMock{
-				GetStorageVolumeByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error) {
+				GetStorageVolumeByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error) {
 					require.Equal(t, tc.repoGetByUUIDStorageVolume.Name, storageVolumeName)
+					require.Equal(t, tc.repoGetByUUIDStorageVolume.ProjectName, projectName)
 					require.Equal(t, "storage_pool", storagePoolName)
 					return tc.storageVolumeClientGetStorageVolumeByName, tc.storageVolumeClientGetStorageVolumeByNameErr
 				},

@@ -156,7 +156,7 @@ func (s networkZoneService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 			return err
 		}
 
-		retrievedNetworkZone, err := s.networkZoneClient.GetNetworkZoneByName(ctx, endpoint, networkZone.Name)
+		retrievedNetworkZone, err := s.networkZoneClient.GetNetworkZoneByName(ctx, endpoint, networkZone.ProjectName, networkZone.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkZone.UUID)
 			if err != nil {

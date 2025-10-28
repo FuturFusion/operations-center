@@ -26,11 +26,13 @@ func (s serverClient) GetProfiles(ctx context.Context, endpoint provisioning.End
 	return serverProfiles, nil
 }
 
-func (s serverClient) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, profileName string) (incusapi.Profile, error) {
+func (s serverClient) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, profileName string) (incusapi.Profile, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.Profile{}, err
 	}
+
+	client = client.UseProject(projectName)
 
 	serverProfile, _, err := client.GetProfile(profileName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {

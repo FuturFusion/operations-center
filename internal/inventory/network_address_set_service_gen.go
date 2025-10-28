@@ -156,7 +156,7 @@ func (s networkAddressSetService) ResyncByUUID(ctx context.Context, id uuid.UUID
 			return err
 		}
 
-		retrievedNetworkAddressSet, err := s.networkAddressSetClient.GetNetworkAddressSetByName(ctx, endpoint, networkAddressSet.Name)
+		retrievedNetworkAddressSet, err := s.networkAddressSetClient.GetNetworkAddressSetByName(ctx, endpoint, networkAddressSet.ProjectName, networkAddressSet.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkAddressSet.UUID)
 			if err != nil {

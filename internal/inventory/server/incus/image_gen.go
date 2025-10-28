@@ -26,11 +26,13 @@ func (s serverClient) GetImages(ctx context.Context, endpoint provisioning.Endpo
 	return serverImages, nil
 }
 
-func (s serverClient) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, imageName string) (incusapi.Image, error) {
+func (s serverClient) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (incusapi.Image, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.Image{}, err
 	}
+
+	client = client.UseProject(projectName)
 
 	serverImage, _, err := client.GetImage(imageName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {

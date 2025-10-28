@@ -32,5 +32,5 @@ type NetworkAddressSetRepo interface {
 type NetworkAddressSetServerClient interface {
 	HasExtension(ctx context.Context, endpoint provisioning.Endpoint, extension string) (exists bool)
 	GetNetworkAddressSets(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.NetworkAddressSet, error)
-	GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, networkAddressSetName string) (incusapi.NetworkAddressSet, error)
+	GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkAddressSetName string) (incusapi.NetworkAddressSet, error)
 }

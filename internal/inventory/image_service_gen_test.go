@@ -301,9 +301,10 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByUUIDImage: inventory.Image{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -322,9 +323,10 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success - image get by name - not found",
 			repoGetByUUIDImage: inventory.Image{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -346,9 +348,10 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - cluster get by ID",
 			repoGetByUUIDImage: inventory.Image{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -357,9 +360,10 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - image get by name",
 			repoGetByUUIDImage: inventory.Image{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -375,9 +379,10 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - image get by name - not found - delete by uuid",
 			repoGetByUUIDImage: inventory.Image{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -394,9 +399,10 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByUUIDImage: inventory.Image{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "", // invalid
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "", // invalid
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -418,9 +424,10 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - update by UUID",
 			repoGetByUUIDImage: inventory.Image{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -463,8 +470,9 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 			}
 
 			imageClient := &serverMock.ImageServerClientMock{
-				GetImageByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, imageName string) (incusapi.Image, error) {
+				GetImageByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (incusapi.Image, error) {
 					require.Equal(t, tc.repoGetByUUIDImage.Name, imageName)
+					require.Equal(t, tc.repoGetByUUIDImage.ProjectName, projectName)
 					return tc.imageClientGetImageByName, tc.imageClientGetImageByNameErr
 				},
 			}

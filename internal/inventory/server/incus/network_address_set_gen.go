@@ -26,11 +26,13 @@ func (s serverClient) GetNetworkAddressSets(ctx context.Context, endpoint provis
 	return serverNetworkAddressSets, nil
 }
 
-func (s serverClient) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, networkAddressSetName string) (incusapi.NetworkAddressSet, error) {
+func (s serverClient) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkAddressSetName string) (incusapi.NetworkAddressSet, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.NetworkAddressSet{}, err
 	}
+
+	client = client.UseProject(projectName)
 
 	serverNetworkAddressSet, _, err := client.GetNetworkAddressSet(networkAddressSetName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {

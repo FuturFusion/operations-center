@@ -23,7 +23,7 @@ var _ inventory.StorageBucketServerClient = &StorageBucketServerClientMock{}
 //
 //		// make and configure a mocked inventory.StorageBucketServerClient
 //		mockedStorageBucketServerClient := &StorageBucketServerClientMock{
-//			GetStorageBucketByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageBucketName string) (api.StorageBucket, error) {
+//			GetStorageBucketByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (api.StorageBucket, error) {
 //				panic("mock out the GetStorageBucketByName method")
 //			},
 //			GetStorageBucketsFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageBucket, error) {
@@ -37,7 +37,7 @@ var _ inventory.StorageBucketServerClient = &StorageBucketServerClientMock{}
 //	}
 type StorageBucketServerClientMock struct {
 	// GetStorageBucketByNameFunc mocks the GetStorageBucketByName method.
-	GetStorageBucketByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageBucketName string) (api.StorageBucket, error)
+	GetStorageBucketByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (api.StorageBucket, error)
 
 	// GetStorageBucketsFunc mocks the GetStorageBuckets method.
 	GetStorageBucketsFunc func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageBucket, error)
@@ -50,6 +50,8 @@ type StorageBucketServerClientMock struct {
 			Ctx context.Context
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
+			// ProjectName is the projectName argument value.
+			ProjectName string
 			// StoragePoolName is the storagePoolName argument value.
 			StoragePoolName string
 			// StorageBucketName is the storageBucketName argument value.
@@ -70,25 +72,27 @@ type StorageBucketServerClientMock struct {
 }
 
 // GetStorageBucketByName calls GetStorageBucketByNameFunc.
-func (mock *StorageBucketServerClientMock) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageBucketName string) (api.StorageBucket, error) {
+func (mock *StorageBucketServerClientMock) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (api.StorageBucket, error) {
 	if mock.GetStorageBucketByNameFunc == nil {
 		panic("StorageBucketServerClientMock.GetStorageBucketByNameFunc: method is nil but StorageBucketServerClient.GetStorageBucketByName was just called")
 	}
 	callInfo := struct {
 		Ctx               context.Context
 		Endpoint          provisioning.Endpoint
+		ProjectName       string
 		StoragePoolName   string
 		StorageBucketName string
 	}{
 		Ctx:               ctx,
 		Endpoint:          endpoint,
+		ProjectName:       projectName,
 		StoragePoolName:   storagePoolName,
 		StorageBucketName: storageBucketName,
 	}
 	mock.lockGetStorageBucketByName.Lock()
 	mock.calls.GetStorageBucketByName = append(mock.calls.GetStorageBucketByName, callInfo)
 	mock.lockGetStorageBucketByName.Unlock()
-	return mock.GetStorageBucketByNameFunc(ctx, endpoint, storagePoolName, storageBucketName)
+	return mock.GetStorageBucketByNameFunc(ctx, endpoint, projectName, storagePoolName, storageBucketName)
 }
 
 // GetStorageBucketByNameCalls gets all the calls that were made to GetStorageBucketByName.
@@ -98,12 +102,14 @@ func (mock *StorageBucketServerClientMock) GetStorageBucketByName(ctx context.Co
 func (mock *StorageBucketServerClientMock) GetStorageBucketByNameCalls() []struct {
 	Ctx               context.Context
 	Endpoint          provisioning.Endpoint
+	ProjectName       string
 	StoragePoolName   string
 	StorageBucketName string
 } {
 	var calls []struct {
 		Ctx               context.Context
 		Endpoint          provisioning.Endpoint
+		ProjectName       string
 		StoragePoolName   string
 		StorageBucketName string
 	}

@@ -23,7 +23,7 @@ var _ inventory.NetworkACLServerClient = &NetworkACLServerClientMock{}
 //
 //		// make and configure a mocked inventory.NetworkACLServerClient
 //		mockedNetworkACLServerClient := &NetworkACLServerClientMock{
-//			GetNetworkACLByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkACLName string) (api.NetworkACL, error) {
+//			GetNetworkACLByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkACLName string) (api.NetworkACL, error) {
 //				panic("mock out the GetNetworkACLByName method")
 //			},
 //			GetNetworkACLsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.NetworkACL, error) {
@@ -37,7 +37,7 @@ var _ inventory.NetworkACLServerClient = &NetworkACLServerClientMock{}
 //	}
 type NetworkACLServerClientMock struct {
 	// GetNetworkACLByNameFunc mocks the GetNetworkACLByName method.
-	GetNetworkACLByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, networkACLName string) (api.NetworkACL, error)
+	GetNetworkACLByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkACLName string) (api.NetworkACL, error)
 
 	// GetNetworkACLsFunc mocks the GetNetworkACLs method.
 	GetNetworkACLsFunc func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.NetworkACL, error)
@@ -50,6 +50,8 @@ type NetworkACLServerClientMock struct {
 			Ctx context.Context
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
+			// ProjectName is the projectName argument value.
+			ProjectName string
 			// NetworkACLName is the networkACLName argument value.
 			NetworkACLName string
 		}
@@ -66,23 +68,25 @@ type NetworkACLServerClientMock struct {
 }
 
 // GetNetworkACLByName calls GetNetworkACLByNameFunc.
-func (mock *NetworkACLServerClientMock) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, networkACLName string) (api.NetworkACL, error) {
+func (mock *NetworkACLServerClientMock) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkACLName string) (api.NetworkACL, error) {
 	if mock.GetNetworkACLByNameFunc == nil {
 		panic("NetworkACLServerClientMock.GetNetworkACLByNameFunc: method is nil but NetworkACLServerClient.GetNetworkACLByName was just called")
 	}
 	callInfo := struct {
 		Ctx            context.Context
 		Endpoint       provisioning.Endpoint
+		ProjectName    string
 		NetworkACLName string
 	}{
 		Ctx:            ctx,
 		Endpoint:       endpoint,
+		ProjectName:    projectName,
 		NetworkACLName: networkACLName,
 	}
 	mock.lockGetNetworkACLByName.Lock()
 	mock.calls.GetNetworkACLByName = append(mock.calls.GetNetworkACLByName, callInfo)
 	mock.lockGetNetworkACLByName.Unlock()
-	return mock.GetNetworkACLByNameFunc(ctx, endpoint, networkACLName)
+	return mock.GetNetworkACLByNameFunc(ctx, endpoint, projectName, networkACLName)
 }
 
 // GetNetworkACLByNameCalls gets all the calls that were made to GetNetworkACLByName.
@@ -92,11 +96,13 @@ func (mock *NetworkACLServerClientMock) GetNetworkACLByName(ctx context.Context,
 func (mock *NetworkACLServerClientMock) GetNetworkACLByNameCalls() []struct {
 	Ctx            context.Context
 	Endpoint       provisioning.Endpoint
+	ProjectName    string
 	NetworkACLName string
 } {
 	var calls []struct {
 		Ctx            context.Context
 		Endpoint       provisioning.Endpoint
+		ProjectName    string
 		NetworkACLName string
 	}
 	mock.lockGetNetworkACLByName.RLock()

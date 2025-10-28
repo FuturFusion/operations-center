@@ -156,7 +156,7 @@ func (s profileService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		retrievedProfile, err := s.profileClient.GetProfileByName(ctx, endpoint, profile.Name)
+		retrievedProfile, err := s.profileClient.GetProfileByName(ctx, endpoint, profile.ProjectName, profile.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, profile.UUID)
 			if err != nil {

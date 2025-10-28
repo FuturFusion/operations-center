@@ -156,7 +156,7 @@ func (s imageService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		retrievedImage, err := s.imageClient.GetImageByName(ctx, endpoint, image.Name)
+		retrievedImage, err := s.imageClient.GetImageByName(ctx, endpoint, image.ProjectName, image.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, image.UUID)
 			if err != nil {

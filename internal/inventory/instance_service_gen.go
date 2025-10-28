@@ -156,7 +156,7 @@ func (s instanceService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		retrievedInstance, err := s.instanceClient.GetInstanceByName(ctx, endpoint, instance.Name)
+		retrievedInstance, err := s.instanceClient.GetInstanceByName(ctx, endpoint, instance.ProjectName, instance.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, instance.UUID)
 			if err != nil {

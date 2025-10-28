@@ -301,9 +301,10 @@ func TestNetworkService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByUUIDNetwork: inventory.Network{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -322,9 +323,10 @@ func TestNetworkService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success - network get by name - not found",
 			repoGetByUUIDNetwork: inventory.Network{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -346,9 +348,10 @@ func TestNetworkService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - cluster get by ID",
 			repoGetByUUIDNetwork: inventory.Network{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -357,9 +360,10 @@ func TestNetworkService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - network get by name",
 			repoGetByUUIDNetwork: inventory.Network{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -375,9 +379,10 @@ func TestNetworkService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - network get by name - not found - delete by uuid",
 			repoGetByUUIDNetwork: inventory.Network{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -394,9 +399,10 @@ func TestNetworkService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByUUIDNetwork: inventory.Network{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "", // invalid
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "", // invalid
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -418,9 +424,10 @@ func TestNetworkService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - update by UUID",
 			repoGetByUUIDNetwork: inventory.Network{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -463,8 +470,9 @@ func TestNetworkService_ResyncByUUID(t *testing.T) {
 			}
 
 			networkClient := &serverMock.NetworkServerClientMock{
-				GetNetworkByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (incusapi.Network, error) {
+				GetNetworkByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (incusapi.Network, error) {
 					require.Equal(t, tc.repoGetByUUIDNetwork.Name, networkName)
+					require.Equal(t, tc.repoGetByUUIDNetwork.ProjectName, projectName)
 					return tc.networkClientGetNetworkByName, tc.networkClientGetNetworkByNameErr
 				},
 			}

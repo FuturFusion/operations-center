@@ -156,7 +156,7 @@ func (s networkACLService) ResyncByUUID(ctx context.Context, id uuid.UUID) error
 			return err
 		}
 
-		retrievedNetworkACL, err := s.networkACLClient.GetNetworkACLByName(ctx, endpoint, networkACL.Name)
+		retrievedNetworkACL, err := s.networkACLClient.GetNetworkACLByName(ctx, endpoint, networkACL.ProjectName, networkACL.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkACL.UUID)
 			if err != nil {

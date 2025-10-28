@@ -170,7 +170,7 @@ func (s storageVolumeService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 			return err
 		}
 
-		retrievedStorageVolume, err := s.storageVolumeClient.GetStorageVolumeByName(ctx, endpoint, storageVolume.StoragePoolName, storageVolume.Name, storageVolume.Type)
+		retrievedStorageVolume, err := s.storageVolumeClient.GetStorageVolumeByName(ctx, endpoint, storageVolume.ProjectName, storageVolume.StoragePoolName, storageVolume.Name, storageVolume.Type)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, storageVolume.UUID)
 			if err != nil {

@@ -301,9 +301,10 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByUUIDNetworkZone: inventory.NetworkZone{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -322,9 +323,10 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success - networkZone get by name - not found",
 			repoGetByUUIDNetworkZone: inventory.NetworkZone{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -346,9 +348,10 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - cluster get by ID",
 			repoGetByUUIDNetworkZone: inventory.NetworkZone{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -357,9 +360,10 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - networkZone get by name",
 			repoGetByUUIDNetworkZone: inventory.NetworkZone{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -375,9 +379,10 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - networkZone get by name - not found - delete by uuid",
 			repoGetByUUIDNetworkZone: inventory.NetworkZone{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -394,9 +399,10 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByUUIDNetworkZone: inventory.NetworkZone{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "", // invalid
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "", // invalid
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -418,9 +424,10 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - update by UUID",
 			repoGetByUUIDNetworkZone: inventory.NetworkZone{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -463,8 +470,9 @@ func TestNetworkZoneService_ResyncByUUID(t *testing.T) {
 			}
 
 			networkZoneClient := &serverMock.NetworkZoneServerClientMock{
-				GetNetworkZoneByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkZoneName string) (incusapi.NetworkZone, error) {
+				GetNetworkZoneByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkZoneName string) (incusapi.NetworkZone, error) {
 					require.Equal(t, tc.repoGetByUUIDNetworkZone.Name, networkZoneName)
+					require.Equal(t, tc.repoGetByUUIDNetworkZone.ProjectName, projectName)
 					return tc.networkZoneClientGetNetworkZoneByName, tc.networkZoneClientGetNetworkZoneByNameErr
 				},
 			}

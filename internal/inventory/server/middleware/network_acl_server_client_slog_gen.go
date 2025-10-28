@@ -44,12 +44,13 @@ func NewNetworkACLServerClientWithSlog(base inventory.NetworkACLServerClient, lo
 }
 
 // GetNetworkACLByName implements inventory.NetworkACLServerClient.
-func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, networkACLName string) (networkACL api.NetworkACL, err error) {
+func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkACLName string) (networkACL api.NetworkACL, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkACLName", networkACLName),
 		)
 	}
@@ -76,7 +77,7 @@ func (_d NetworkACLServerClientWithSlog) GetNetworkACLByName(ctx context.Context
 			log.DebugContext(ctx, "<= method GetNetworkACLByName finished")
 		}
 	}()
-	return _d._base.GetNetworkACLByName(ctx, endpoint, networkACLName)
+	return _d._base.GetNetworkACLByName(ctx, endpoint, projectName, networkACLName)
 }
 
 // GetNetworkACLs implements inventory.NetworkACLServerClient.

@@ -31,5 +31,5 @@ type NetworkRepo interface {
 
 type NetworkServerClient interface {
 	GetNetworks(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.Network, error)
-	GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (incusapi.Network, error)
+	GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (incusapi.Network, error)
 }
