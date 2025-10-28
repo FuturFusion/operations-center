@@ -194,6 +194,73 @@ func (s imageService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+func (s imageService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	if event.ResourceType != "image" {
+		return nil
+	}
+
+	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, ImageFilter{
+		Cluster: &clusterName,
+		Project: &event.Source.ProjectName,
+		Name:    &event.Source.Name,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(UUIDs) == 0 {
+		// This inventory is not found, try to fetch it from source and create it.
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, clusterName)
+		if err != nil {
+			return err
+		}
+
+		retrievedImage, err := s.imageClient.GetImageByName(ctx, endpoint, event.Source.ProjectName, event.Source.Name)
+		if err != nil {
+			return err
+		}
+
+		image := Image{
+			Cluster:     clusterName,
+			ProjectName: retrievedImage.Project,
+			Name:        retrievedImage.Fingerprint,
+			Object:      retrievedImage,
+			LastUpdated: s.now(),
+		}
+
+		image.DeriveUUID()
+
+		if s.clusterSyncFilterFunc(image) {
+			return nil
+		}
+
+		err = image.Validate()
+		if err != nil {
+			return err
+		}
+
+		_, err = s.repo.Create(ctx, image)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	var errs []error
+	for _, UUID := range UUIDs {
+		err := s.ResyncByUUID(ctx, UUID)
+		errs = append(errs, err)
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("Failed to resync instance by name: %w", errors.Join(errs...))
+	}
+
+	return nil
+}
+
 func (s imageService) SyncCluster(ctx context.Context, name string) error {
 	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
 	if err != nil {

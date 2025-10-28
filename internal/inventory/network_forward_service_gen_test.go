@@ -19,6 +19,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
 
 func TestNetworkForwardService_GetAllWithFilter(t *testing.T) {
@@ -480,6 +481,315 @@ func TestNetworkForwardService_ResyncByUUID(t *testing.T) {
 
 			// Run test
 			err := networkForwardSvc.ResyncByUUID(context.Background(), uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`))
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestNetworkForwardService_ResyncByName(t *testing.T) {
+	tests := []struct {
+		name                                           string
+		argClusterName                                 string
+		argLifecycleEvent                              domain.LifecycleEvent
+		repoGetAllUUIDsWithFilterUUIDs                 []uuid.UUID
+		repoGetAllUUIDsWithFilterErr                   error
+		clusterSvcGetEndpoint                          provisioning.Endpoint
+		clusterSvcGetEndpointErr                       error
+		networkForwardClientGetNetworkForwardByName    incusapi.NetworkForward
+		networkForwardClientGetNetworkForwardByNameErr error
+		serviceOptions                                 []inventory.NetworkForwardServiceOption
+		repoCreateErr                                  error
+		repoGetByUUIDNetworkForward                    inventory.NetworkForward
+		repoGetByUUIDErr                               error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success - not responsible",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "invalid",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - not found",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-forward",
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_forward",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkForwardClientGetNetworkForwardByName: incusapi.NetworkForward{
+				ListenAddress: "network_forward",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - not found with sync filter",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-forward",
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_forward",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkForwardClientGetNetworkForwardByName: incusapi.NetworkForward{
+				ListenAddress: "network_forward filtered", // matches filter
+			},
+			serviceOptions: []inventory.NetworkForwardServiceOption{
+				inventory.NetworkForwardWithSyncFilter(func(networkForward inventory.NetworkForward) bool {
+					return networkForward.Name == "network_forward filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - update existing",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-forward",
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_forward",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoGetByUUIDNetworkForward: inventory.NetworkForward{
+				UUID:        uuidgen.FromPattern(t, "1"),
+				Cluster:     "cluster",
+				Name:        "network_forward",
+				NetworkName: "network",
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkForwardClientGetNetworkForwardByName: incusapi.NetworkForward{
+				ListenAddress: "network_forward",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - repo.GetAllUUIDsWithFilter",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-forward",
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_forward",
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: boom.Error,
+
+			assertErr: require.Error,
+		},
+		{
+			name:           "error - not found - clusterSvc.GetEndpoint",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-forward",
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_forward",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpointErr:       boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - not found - client.GetNetworkForwardByName",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-forward",
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_forward",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkForwardClientGetNetworkForwardByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - not found - validate",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-forward",
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_forward",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkForwardClientGetNetworkForwardByName: incusapi.NetworkForward{
+				ListenAddress: "", // invalid
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name:           "error - not found - repo.Create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-forward",
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_forward",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkForwardClientGetNetworkForwardByName: incusapi.NetworkForward{
+				ListenAddress: "network_forward",
+			},
+			repoCreateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - update existing - ResyncByUUID",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-forward",
+				Source: domain.LifecycleSource{
+					ParentName: "network",
+					Name:       "network_forward",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoGetByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.NetworkForwardRepoMock{
+				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkForwardFilter) ([]uuid.UUID, error) {
+					require.Equal(t, tc.argClusterName, *filter.Cluster)
+					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, *filter.NetworkName)
+					require.Equal(t, tc.argLifecycleEvent.Source.Name, *filter.Name)
+					return tc.repoGetAllUUIDsWithFilterUUIDs, tc.repoGetAllUUIDsWithFilterErr
+				},
+				CreateFunc: func(ctx context.Context, networkForward inventory.NetworkForward) (inventory.NetworkForward, error) {
+					require.Equal(t, tc.argClusterName, networkForward.Cluster)
+					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, networkForward.NetworkName)
+					require.Equal(t, tc.argLifecycleEvent.Source.Name, networkForward.Name)
+					return inventory.NetworkForward{}, tc.repoCreateErr
+				},
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.NetworkForward, error) {
+					return tc.repoGetByUUIDNetworkForward, tc.repoGetByUUIDErr
+				},
+				UpdateByUUIDFunc: func(ctx context.Context, networkForward inventory.NetworkForward) (inventory.NetworkForward, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), networkForward.LastUpdated)
+					return inventory.NetworkForward{}, nil
+				},
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					return nil
+				},
+			}
+
+			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+					require.Equal(t, tc.argClusterName, name)
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
+				},
+			}
+
+			networkForwardClient := &serverMock.NetworkForwardServerClientMock{
+				GetNetworkForwardByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string, networkForwardName string) (incusapi.NetworkForward, error) {
+					clusterName, err := endpoint.GetServerName()
+					require.NoError(t, err)
+					require.Equal(t, tc.argClusterName, clusterName)
+					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, networkName)
+					require.Equal(t, tc.argLifecycleEvent.Source.Name, networkForwardName)
+					return tc.networkForwardClientGetNetworkForwardByName, tc.networkForwardClientGetNetworkForwardByNameErr
+				},
+			}
+
+			networkForwardSvc := inventory.NewNetworkForwardService(repo, clusterSvc, networkForwardClient, nil,
+				append(tc.serviceOptions,
+					inventory.NetworkForwardWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
+
+			// Run test
+			err := networkForwardSvc.ResyncByName(context.Background(), tc.argClusterName, tc.argLifecycleEvent)
 
 			// Assert
 			tc.assertErr(t, err)

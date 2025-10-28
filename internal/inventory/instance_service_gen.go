@@ -195,6 +195,74 @@ func (s instanceService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+func (s instanceService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	if event.ResourceType != "instance" {
+		return nil
+	}
+
+	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, InstanceFilter{
+		Cluster: &clusterName,
+		Project: &event.Source.ProjectName,
+		Name:    &event.Source.Name,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(UUIDs) == 0 {
+		// This inventory is not found, try to fetch it from source and create it.
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, clusterName)
+		if err != nil {
+			return err
+		}
+
+		retrievedInstance, err := s.instanceClient.GetInstanceByName(ctx, endpoint, event.Source.ProjectName, event.Source.Name)
+		if err != nil {
+			return err
+		}
+
+		instance := Instance{
+			Cluster:     clusterName,
+			Server:      retrievedInstance.Location,
+			ProjectName: retrievedInstance.Project,
+			Name:        retrievedInstance.Name,
+			Object:      retrievedInstance,
+			LastUpdated: s.now(),
+		}
+
+		instance.DeriveUUID()
+
+		if s.clusterSyncFilterFunc(instance) {
+			return nil
+		}
+
+		err = instance.Validate()
+		if err != nil {
+			return err
+		}
+
+		_, err = s.repo.Create(ctx, instance)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	var errs []error
+	for _, UUID := range UUIDs {
+		err := s.ResyncByUUID(ctx, UUID)
+		errs = append(errs, err)
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("Failed to resync instance by name: %w", errors.Join(errs...))
+	}
+
+	return nil
+}
+
 func (s instanceService) SyncCluster(ctx context.Context, name string) error {
 	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
 	if err != nil {

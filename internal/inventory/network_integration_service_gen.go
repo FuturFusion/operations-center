@@ -193,6 +193,71 @@ func (s networkIntegrationService) ResyncByUUID(ctx context.Context, id uuid.UUI
 	return nil
 }
 
+func (s networkIntegrationService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	if event.ResourceType != "network-integration" {
+		return nil
+	}
+
+	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkIntegrationFilter{
+		Cluster: &clusterName,
+		Name:    &event.Source.Name,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(UUIDs) == 0 {
+		// This inventory is not found, try to fetch it from source and create it.
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, clusterName)
+		if err != nil {
+			return err
+		}
+
+		retrievedNetworkIntegration, err := s.networkIntegrationClient.GetNetworkIntegrationByName(ctx, endpoint, event.Source.Name)
+		if err != nil {
+			return err
+		}
+
+		networkIntegration := NetworkIntegration{
+			Cluster:     clusterName,
+			Name:        retrievedNetworkIntegration.Name,
+			Object:      retrievedNetworkIntegration,
+			LastUpdated: s.now(),
+		}
+
+		networkIntegration.DeriveUUID()
+
+		if s.clusterSyncFilterFunc(networkIntegration) {
+			return nil
+		}
+
+		err = networkIntegration.Validate()
+		if err != nil {
+			return err
+		}
+
+		_, err = s.repo.Create(ctx, networkIntegration)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	var errs []error
+	for _, UUID := range UUIDs {
+		err := s.ResyncByUUID(ctx, UUID)
+		errs = append(errs, err)
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("Failed to resync instance by name: %w", errors.Join(errs...))
+	}
+
+	return nil
+}
+
 func (s networkIntegrationService) SyncCluster(ctx context.Context, name string) error {
 	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
 	if err != nil {
