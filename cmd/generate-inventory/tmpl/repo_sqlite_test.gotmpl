@@ -177,6 +177,7 @@ server-two
 {{- if .HasProject }}
 		Project: ptr.To("one"),
 {{- end }}
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, {{ .Name | camelcase }}UUIDs, 1)
@@ -191,6 +192,7 @@ server-two
 {{- if .HasProject }}
 		Project: ptr.To("one"),
 {{- end }}
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, db{{ .Name | pascalcase }}, 1)
