@@ -857,7 +857,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:             "success - one update, filtered",
 			ctx:              context.Background(),
-			filterExpression: "'stable' in Channels",
+			filterExpression: `"stable" in Channels`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -899,8 +899,8 @@ func TestUpdateService_Refresh(t *testing.T) {
 			// The file, which is downloaded has a valid sha256 checksum, one file is
 			// filtered.
 			ctx:                  context.Background(),
-			filterExpression:     "'stable' in Channels",
-			fileFilterExpression: "'x86_64' == string(Architecture)",
+			filterExpression:     `"stable" in Channels`,
+			fileFilterExpression: `AppliesToArchitecture("x86_64")`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1036,7 +1036,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:             "error - invalid filter expression",
 			ctx:              context.Background(),
-			filterExpression: "%", // invalid expression.
+			filterExpression: `%`, // invalid expression.
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -1093,7 +1093,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:                 "error - invalid file filter expression",
 			ctx:                  context.Background(),
-			fileFilterExpression: "%", // invalid expression.
+			fileFilterExpression: `%`, // invalid expression.
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{

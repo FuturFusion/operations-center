@@ -97,7 +97,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 					Files: provisioning.UpdateFiles{
 						provisioning.UpdateFile{
 							Filename:     "undefined_architecture.iso",
-							Architecture: images.UpdateFileArchitecture64BitX86,
+							Architecture: images.UpdateFileArchitectureUndefined,
 							Component:    images.UpdateFileComponentIncus,
 						},
 					},

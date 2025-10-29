@@ -103,12 +103,6 @@ func (u updateServer) GetLatest(ctx context.Context, limit int) (provisioning.Up
 				continue
 			}
 
-			// Fallback to x84_64 for architecture if not defined.
-			_, ok = images.UpdateFileArchitectures[file.Architecture]
-			if !ok || file.Architecture == images.UpdateFileArchitectureUndefined {
-				file.Architecture = images.UpdateFileArchitecture64BitX86
-			}
-
 			files = append(files, file)
 		}
 

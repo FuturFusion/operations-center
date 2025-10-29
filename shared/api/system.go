@@ -116,6 +116,14 @@ type SystemUpdatesPut struct {
 	// If a filter is defined, the filter needs to evaluate to true for the file
 	// being fetched by Operations Center.
 	// Empty filter expression does not filter at all.
-	// Example: 'x86_64' == string(Architecture)
+	//
+	// For file filter expression, the following helper functions are available:
+	//   - AppliesToArchitecture(arch string) bool
+	//       Returns true if the Architecture field matches the given arch string
+	//       or if the Architecture field is not set.
+	//
+	// Examples:
+	//   AppliesToArchitecture("x86_64")
+	//   Architecture == "x86_64"
 	FileFilterExpression string `json:"file_filter_expression" yaml:"file_filter_expression"`
 }
