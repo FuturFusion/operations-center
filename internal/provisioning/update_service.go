@@ -509,9 +509,33 @@ func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates
 	return updates, nil
 }
 
+type UpdateFileExprEnv struct {
+	Filename     string
+	Size         int
+	Sha256       string
+	Component    string
+	Type         string
+	Architecture string
+}
+
+func (u UpdateFileExprEnv) AppliesToArchitecture(wantArch string) bool {
+	return u.Architecture == wantArch || u.Architecture == ""
+}
+
+func UpdateFileExprEnvFrom(u UpdateFile) UpdateFileExprEnv {
+	return UpdateFileExprEnv{
+		Filename:     u.Filename,
+		Size:         u.Size,
+		Sha256:       u.Sha256,
+		Component:    string(u.Component),
+		Type:         string(u.Type),
+		Architecture: string(u.Architecture),
+	}
+}
+
 func (s updateService) filterUpdateFileByFilterExpression(updates Updates) (Updates, error) {
 	if len(s.updateFileFilterExpression) > 0 {
-		fileFilterExpression, err := expr.Compile(s.updateFileFilterExpression, expr.Env(UpdateFile{}))
+		fileFilterExpression, err := expr.Compile(s.updateFileFilterExpression, expr.Env(UpdateFileExprEnvFrom(UpdateFile{})))
 		if err != nil {
 			return nil, fmt.Errorf("Failed to compile file filter expression: %w", err)
 		}
@@ -519,7 +543,7 @@ func (s updateService) filterUpdateFileByFilterExpression(updates Updates) (Upda
 		for i := range updates {
 			n := 0
 			for j := range updates[i].Files {
-				output, err := expr.Run(fileFilterExpression, updates[i].Files[j])
+				output, err := expr.Run(fileFilterExpression, UpdateFileExprEnvFrom(updates[i].Files[j]))
 				if err != nil {
 					return nil, err
 				}
