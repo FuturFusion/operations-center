@@ -146,8 +146,8 @@ func TestProfileService_GetAllUUIDsWithFilter(t *testing.T) {
 		{
 			name: "success - no filter expression",
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
-				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
-				uuid.MustParse(`56d0823e-5c6d-45ff-ac6d-a9ae61026a4e`),
+				uuidgen.FromPattern(t, "1"),
+				uuidgen.FromPattern(t, "2"),
 			},
 
 			assertErr: require.NoError,
@@ -155,10 +155,10 @@ func TestProfileService_GetAllUUIDsWithFilter(t *testing.T) {
 		},
 		{
 			name:             "success - with filter expression",
-			filterExpression: ptr.To(`UUID == "6c652183-8d93-4c7d-9510-cd2ae54f31fd"`),
+			filterExpression: ptr.To(`UUID == "11111111-1111-1111-1111-111111111111"`),
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
-				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
-				uuid.MustParse(`56d0823e-5c6d-45ff-ac6d-a9ae61026a4e`),
+				uuidgen.FromPattern(t, "1"),
+				uuidgen.FromPattern(t, "2"),
 			},
 
 			assertErr: require.NoError,
@@ -168,7 +168,7 @@ func TestProfileService_GetAllUUIDsWithFilter(t *testing.T) {
 			name:             "error - invalid filter expression",
 			filterExpression: ptr.To(``), // the empty expression is an invalid expression.
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
-				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuidgen.FromPattern(t, "1"),
 			},
 
 			assertErr: require.Error,
@@ -178,7 +178,7 @@ func TestProfileService_GetAllUUIDsWithFilter(t *testing.T) {
 			name:             "error - filter expression run",
 			filterExpression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
-				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuidgen.FromPattern(t, "1"),
 			},
 
 			assertErr: require.Error,
@@ -188,7 +188,7 @@ func TestProfileService_GetAllUUIDsWithFilter(t *testing.T) {
 			name:             "error - non bool expression",
 			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
-				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuidgen.FromPattern(t, "1"),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -241,9 +241,9 @@ func TestProfileService_GetByUUID(t *testing.T) {
 	}{
 		{
 			name:  "success",
-			idArg: uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+			idArg: uuidgen.FromPattern(t, "1"),
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				ProjectName: "one",
 				Name:        "one",
@@ -255,7 +255,7 @@ func TestProfileService_GetByUUID(t *testing.T) {
 		},
 		{
 			name:             "error - repo",
-			idArg:            uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+			idArg:            uuidgen.FromPattern(t, "1"),
 			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -302,7 +302,7 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "one",
 				ProjectName: "project one",
@@ -324,7 +324,7 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success - profile get by name - not found",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "one",
 				ProjectName: "project one",
@@ -349,7 +349,7 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - cluster get by ID",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "one",
 				ProjectName: "project one",
@@ -361,7 +361,7 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - profile get by name",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "one",
 				ProjectName: "project one",
@@ -380,7 +380,7 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - profile get by name - not found - delete by uuid",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "one",
 				ProjectName: "project one",
@@ -400,7 +400,7 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "", // invalid
 				ProjectName: "project one",
@@ -425,7 +425,7 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - update by UUID",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "one",
 				ProjectName: "project one",
@@ -483,7 +483,7 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 			}))
 
 			// Run test
-			err := profileSvc.ResyncByUUID(context.Background(), uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`))
+			err := profileSvc.ResyncByUUID(context.Background(), uuidgen.FromPattern(t, "1"))
 
 			// Assert
 			tc.assertErr(t, err)
