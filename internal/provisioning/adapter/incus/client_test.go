@@ -4,18 +4,22 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/gorilla/websocket"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/incus"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -1282,6 +1286,149 @@ func TestClientServer(t *testing.T) {
 				})
 			}
 		})
+	}
+}
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
+
+func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
+	caPool, certPEM, keyPEM := setupCerts(t)
+
+	tests := []struct {
+		name    string
+		handler func(done chan struct{}) func(http.ResponseWriter, *http.Request)
+
+		assertErrChanErr require.ErrorAssertionFunc
+		wantEvent        domain.LifecycleEvent
+	}{
+		{
+			name: "success one event",
+			handler: func(done chan struct{}) func(w http.ResponseWriter, r *http.Request) {
+				return func(w http.ResponseWriter, r *http.Request) {
+					conn, err := upgrader.Upgrade(w, r, nil)
+					if err != nil {
+						t.Errorf("Failed to upgrade websocket connection: %v", err)
+						return
+					}
+
+					defer conn.Close()
+
+					err = conn.WriteJSON(createLifecycleEvent(t))
+					if err != nil {
+						t.Errorf("Failed to write event: %v", err)
+						return
+					}
+
+					<-done
+				}
+			},
+
+			assertErrChanErr: require.NoError,
+			wantEvent: domain.LifecycleEvent{
+				Action:       domain.LifecycleActionCreate,
+				ResourceType: domain.LifecycleResourceTypeImage,
+				Source: domain.LifecycleSource{
+					Name: "7ca66bd33c15ced9c300c76438e8c7d126ee4d114c66de65c59d04ca2cc818b7",
+					Type: "container",
+				},
+			},
+		},
+		{
+			name: "error - webserver disconnect websocket immediately",
+			handler: func(done chan struct{}) func(w http.ResponseWriter, r *http.Request) {
+				return func(w http.ResponseWriter, r *http.Request) {
+					conn, err := upgrader.Upgrade(w, r, nil)
+					if err != nil {
+						t.Errorf("Failed to upgrade websocket connection: %v", err)
+						return
+					}
+
+					defer conn.Close()
+
+					// End the websocket connection right after it is established.
+				}
+			},
+
+			assertErrChanErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			done := make(chan struct{})
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			server := httptest.NewUnstartedServer(http.HandlerFunc(tc.handler(done)))
+			server.TLS = &tls.Config{
+				NextProtos: []string{"h2", "http/1.1"},
+				ClientAuth: tls.RequireAndVerifyClientCert,
+				ClientCAs:  caPool,
+			}
+
+			server.StartTLS()
+			defer server.Close()
+
+			client := incus.New(certPEM, keyPEM)
+
+			serverCert := pem.EncodeToMemory(&pem.Block{
+				Type:  "CERTIFICATE",
+				Bytes: server.Certificate().Raw,
+			})
+
+			target := provisioning.Server{
+				ConnectionURL: server.URL,
+				Certificate:   string(serverCert),
+			}
+
+			events, errChan, err := client.SubscribeLifecycleEvents(ctx, target)
+			require.NoError(t, err)
+
+			var event domain.LifecycleEvent
+			var errChanErr error
+
+			select {
+			case event = <-events:
+			case errChanErr = <-errChan:
+			case <-t.Context().Done():
+				t.Fatal("Test context cancelled before test ended")
+			case <-time.After(1000 * time.Millisecond):
+				t.Error("Test timeout reached before test ended")
+			}
+
+			close(done)
+
+			// Assert
+			tc.assertErrChanErr(t, errChanErr)
+			require.Equal(t, tc.wantEvent, event)
+		})
+	}
+}
+
+func createLifecycleEvent(t *testing.T) incusapi.Event {
+	t.Helper()
+
+	data, err := json.Marshal(incusapi.EventLifecycle{
+		Action: incusapi.EventLifecycleImageCreated,
+		Source: "/1.0/images/7ca66bd33c15ced9c300c76438e8c7d126ee4d114c66de65c59d04ca2cc818b7",
+		Context: map[string]any{
+			"type": "container",
+		},
+		Requestor: nil,
+		Name:      "",
+		Project:   "",
+	})
+	require.NoError(t, err)
+
+	return incusapi.Event{
+		Type:      incusapi.EventTypeLifecycle,
+		Timestamp: time.Date(2025, 10, 30, 17, 5, 0, 0, time.UTC),
+		Metadata:  json.RawMessage(data),
+		Location:  "none",
+		Project:   "default",
 	}
 }
 

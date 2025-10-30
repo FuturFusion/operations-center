@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -16,9 +17,11 @@ import (
 	"testing"
 	"time"
 
+	incusapi "github.com/lxc/incus/v6/shared/api"
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 )
@@ -176,4 +179,220 @@ func generateCertChain(t *testing.T, domainName string) (caCert []byte, cert []b
 	key = pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: privateKey})
 
 	return caCert, cert, key
+}
+
+func Test_mapIncusEventToLifecycleEvent(t *testing.T) {
+	tests := []struct {
+		name  string
+		event incusapi.Event
+
+		assertErr            require.ErrorAssertionFunc
+		wantIsLifecycleEvent bool
+		wantEvent            domain.LifecycleEvent
+	}{
+		{
+			name: "success - create image",
+			event: func() incusapi.Event {
+				data, err := json.Marshal(incusapi.EventLifecycle{
+					Action: incusapi.EventLifecycleImageCreated,
+					Source: "/1.0/images/7ca66bd33c15ced9c300c76438e8c7d126ee4d114c66de65c59d04ca2cc818b7",
+					Context: map[string]any{
+						"type": "container",
+					},
+					Name:    "",
+					Project: "",
+				})
+				require.NoError(t, err)
+
+				return incusapi.Event{
+					Type:      incusapi.EventTypeLifecycle,
+					Timestamp: time.Date(2025, 10, 30, 17, 5, 0, 0, time.UTC),
+					Metadata:  json.RawMessage(data),
+					Location:  "none",
+					Project:   "default",
+				}
+			}(),
+
+			assertErr:            require.NoError,
+			wantIsLifecycleEvent: true,
+			wantEvent: domain.LifecycleEvent{
+				Action:       domain.LifecycleActionCreate,
+				ResourceType: domain.LifecycleResourceTypeImage,
+				Source: domain.LifecycleSource{
+					Name: "7ca66bd33c15ced9c300c76438e8c7d126ee4d114c66de65c59d04ca2cc818b7",
+					Type: "container",
+				},
+			},
+		},
+		{
+			name: "success - create image",
+			event: func() incusapi.Event {
+				data, err := json.Marshal(incusapi.EventLifecycle{
+					Action:  incusapi.EventLifecycleImageUpdated,
+					Source:  "/1.0/images/7ca66bd33c15ced9c300c76438e8c7d126ee4d114c66de65c59d04ca2cc818b7",
+					Context: nil,
+					Name:    "",
+					Project: "",
+				})
+				require.NoError(t, err)
+
+				return incusapi.Event{
+					Type:      incusapi.EventTypeLifecycle,
+					Timestamp: time.Date(2025, 10, 30, 17, 5, 0, 0, time.UTC),
+					Metadata:  json.RawMessage(data),
+					Location:  "none",
+					Project:   "default",
+				}
+			}(),
+
+			assertErr:            require.NoError,
+			wantIsLifecycleEvent: true,
+			wantEvent: domain.LifecycleEvent{
+				Action:       domain.LifecycleActionUpdate,
+				ResourceType: domain.LifecycleResourceTypeImage,
+				Source: domain.LifecycleSource{
+					Name: "7ca66bd33c15ced9c300c76438e8c7d126ee4d114c66de65c59d04ca2cc818b7",
+				},
+			},
+		},
+		{
+			name: "success - delete storage-volume",
+			event: func() incusapi.Event {
+				data, err := json.Marshal(incusapi.EventLifecycle{
+					Action:  incusapi.EventLifecycleStorageVolumeDeleted,
+					Source:  "/1.0/storage-pools/default/volumes/images/7ca66bd33c15ced9c300c76438e8c7d126ee4d114c66de65c59d04ca2cc818b7",
+					Name:    "",
+					Project: "",
+				})
+				require.NoError(t, err)
+
+				return incusapi.Event{
+					Type:      incusapi.EventTypeLifecycle,
+					Timestamp: time.Date(2025, 10, 30, 17, 5, 0, 0, time.UTC),
+					Metadata:  json.RawMessage(data),
+					Location:  "none",
+					Project:   "default",
+				}
+			}(),
+
+			assertErr:            require.NoError,
+			wantIsLifecycleEvent: true,
+			wantEvent: domain.LifecycleEvent{
+				Action:       domain.LifecycleActionDelete,
+				ResourceType: domain.LifecycleResourceTypeStorageVolume,
+				Source: domain.LifecycleSource{
+					Name:       "7ca66bd33c15ced9c300c76438e8c7d126ee4d114c66de65c59d04ca2cc818b7",
+					ParentType: "storage-pool",
+					ParentName: "default",
+					Type:       "images",
+				},
+			},
+		},
+		{
+			name: "success - not a lifecycle event",
+			event: func() incusapi.Event {
+				return incusapi.Event{
+					Type:      incusapi.EventTypeLogging,
+					Timestamp: time.Date(2025, 10, 30, 17, 5, 0, 0, time.UTC),
+					Metadata:  json.RawMessage(nil),
+					Location:  "none",
+					Project:   "default",
+				}
+			}(),
+
+			assertErr:            require.NoError,
+			wantIsLifecycleEvent: false,
+			wantEvent:            domain.LifecycleEvent{},
+		},
+		{
+			name: "error - invalid lifecycle metadata",
+			event: func() incusapi.Event {
+				return incusapi.Event{
+					Type:      incusapi.EventTypeLifecycle,
+					Timestamp: time.Date(2025, 10, 30, 17, 5, 0, 0, time.UTC),
+					Metadata:  json.RawMessage(`[]`), // array is invalid for event lifecycle metadata.
+					Location:  "none",
+					Project:   "default",
+				}
+			}(),
+
+			assertErr:            require.Error,
+			wantIsLifecycleEvent: false,
+			wantEvent:            domain.LifecycleEvent{},
+		},
+		{
+			name: "error - invalid lifecycle action",
+			event: func() incusapi.Event {
+				data, err := json.Marshal(incusapi.EventLifecycle{
+					Action: "invalid", // invalid event lifecycle action identifier
+				})
+				require.NoError(t, err)
+
+				return incusapi.Event{
+					Type:      incusapi.EventTypeLifecycle,
+					Timestamp: time.Date(2025, 10, 30, 17, 5, 0, 0, time.UTC),
+					Metadata:  json.RawMessage(data),
+					Location:  "none",
+					Project:   "default",
+				}
+			}(),
+
+			assertErr:            require.Error,
+			wantIsLifecycleEvent: false,
+			wantEvent:            domain.LifecycleEvent{},
+		},
+		{
+			name: "success - not relevant resource type",
+			event: func() incusapi.Event {
+				data, err := json.Marshal(incusapi.EventLifecycle{
+					Action: "warning-reset", // not relevant resource type
+				})
+				require.NoError(t, err)
+
+				return incusapi.Event{
+					Type:      incusapi.EventTypeLifecycle,
+					Timestamp: time.Date(2025, 10, 30, 17, 5, 0, 0, time.UTC),
+					Metadata:  json.RawMessage(data),
+					Location:  "none",
+					Project:   "default",
+				}
+			}(),
+
+			assertErr:            require.NoError,
+			wantIsLifecycleEvent: false,
+			wantEvent:            domain.LifecycleEvent{},
+		},
+		{
+			name: "success - not relevant lifecycle action",
+			event: func() incusapi.Event {
+				data, err := json.Marshal(incusapi.EventLifecycle{
+					Action: incusapi.EventLifecycleImageRetrieved, // not relevant lifecycle action
+				})
+				require.NoError(t, err)
+
+				return incusapi.Event{
+					Type:      incusapi.EventTypeLifecycle,
+					Timestamp: time.Date(2025, 10, 30, 17, 5, 0, 0, time.UTC),
+					Metadata:  json.RawMessage(data),
+					Location:  "none",
+					Project:   "default",
+				}
+			}(),
+
+			assertErr:            require.NoError,
+			wantIsLifecycleEvent: false,
+			wantEvent:            domain.LifecycleEvent{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Run test
+			event, isLifecycleEvent, err := mapIncusEventToLifecycleEvent(tc.event)
+
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantIsLifecycleEvent, isLifecycleEvent)
+			require.Equal(t, tc.wantEvent, event)
+		})
+	}
 }
