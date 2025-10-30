@@ -217,6 +217,20 @@ func (_d ClusterServiceWithPrometheus) SetInventorySyncers(inventorySyncers []pr
 	_d.base.SetInventorySyncers(inventorySyncers)
 }
 
+// StartLifecycleEventsMonitor implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) StartLifecycleEventsMonitor(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "StartLifecycleEventsMonitor", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.StartLifecycleEventsMonitor(ctx)
+}
+
 // Update implements provisioning.ClusterService.
 func (_d ClusterServiceWithPrometheus) Update(ctx context.Context, cluster provisioning.Cluster) (err error) {
 	_since := time.Now()
