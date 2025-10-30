@@ -141,3 +141,15 @@ type ClusterProvisioningConfig struct {
 
 	ApplicationSeedConfig map[string]any
 }
+
+type ClusterUpdateMessage struct {
+	Operation ClusterUpdateOperation
+	Name      string
+}
+
+type ClusterUpdateOperation string
+
+const (
+	ClusterUpdateOperationCreate ClusterUpdateOperation = "create"
+	ClusterUpdateOperationDelete ClusterUpdateOperation = "delete"
+)
