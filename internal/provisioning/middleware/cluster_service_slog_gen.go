@@ -476,6 +476,39 @@ func (_d ClusterServiceWithSlog) SetInventorySyncers(inventorySyncers []provisio
 	_d._base.SetInventorySyncers(inventorySyncers)
 }
 
+// StartLifecycleEventsMonitor implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) StartLifecycleEventsMonitor(ctx context.Context) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling StartLifecycleEventsMonitor")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method StartLifecycleEventsMonitor returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method StartLifecycleEventsMonitor returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method StartLifecycleEventsMonitor finished")
+		}
+	}()
+	return _d._base.StartLifecycleEventsMonitor(ctx)
+}
+
 // Update implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) Update(ctx context.Context, cluster provisioning.Cluster) (err error) {
 	log := _d._log.With()

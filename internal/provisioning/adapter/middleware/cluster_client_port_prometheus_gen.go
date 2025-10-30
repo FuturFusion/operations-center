@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
@@ -162,6 +163,20 @@ func (_d ClusterClientPortWithPrometheus) SetServerConfig(ctx context.Context, e
 		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SetServerConfig", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.SetServerConfig(ctx, endpoint, config)
+}
+
+// SubscribeLifecycleEvents implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithPrometheus) SubscribeLifecycleEvents(ctx context.Context, endpoint provisioning.Endpoint) (lifecycleEventCh chan domain.LifecycleEvent, errCh chan error, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "SubscribeLifecycleEvents", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.SubscribeLifecycleEvents(ctx, endpoint)
 }
 
 // UpdateClusterCertificate implements provisioning.ClusterClientPort.
