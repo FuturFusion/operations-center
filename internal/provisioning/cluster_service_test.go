@@ -4,12 +4,16 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	serviceMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
@@ -1901,6 +1905,411 @@ func TestClusterService_ResyncInventoryByName(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
+	doneChannel := func() chan struct{} {
+		t.Helper()
+		return make(chan struct{})
+	}
+
+	doneNonBlocking := func() chan struct{} {
+		t.Helper()
+		ch := make(chan struct{})
+		close(ch)
+		return ch
+	}
+
+	noLogAssert := func(t *testing.T, logBuf *bytes.Buffer) {
+		t.Helper()
+	}
+
+	logContains := func(want string) func(t *testing.T, logBuf *bytes.Buffer) {
+		return func(t *testing.T, logBuf *bytes.Buffer) {
+			t.Helper()
+
+			// Give logs a little bit of time to be processed.
+			for range 5 {
+				if strings.Contains(logBuf.String(), want) {
+					break
+				}
+
+				time.Sleep(10 * time.Millisecond)
+			}
+
+			require.Contains(t, logBuf.String(), want)
+		}
+	}
+
+	tests := []struct {
+		name                           string
+		initDone                       func() chan struct{}
+		repoGetAllClusters             provisioning.Clusters
+		repoGetAllErr                  error
+		serverSvcGetAllWithFilterErr   error
+		clientSubscribeLifecycleEvent  []queue.Item[func(cancel func()) (chan domain.LifecycleEvent, chan error, error)]
+		inventorySyncerResyncByNameErr error
+
+		assertErr           require.ErrorAssertionFunc
+		wantProcessedEvents int
+		assertLog           func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:     "success - one cluster and one event",
+			initDone: doneChannel,
+			repoGetAllClusters: provisioning.Clusters{
+				{
+					Name: "one",
+				},
+			},
+			clientSubscribeLifecycleEvent: []queue.Item[func(cancel func()) (chan domain.LifecycleEvent, chan error, error)]{
+				{
+					Value: func(_ func()) (chan domain.LifecycleEvent, chan error, error) {
+						t.Helper()
+
+						events := make(chan domain.LifecycleEvent, 1)
+						events <- domain.LifecycleEvent{}
+
+						return events, nil, nil
+					},
+				},
+			},
+
+			assertErr:           require.NoError,
+			wantProcessedEvents: 1,
+			assertLog:           noLogAssert,
+		},
+		{
+			name:          "error - GetAll",
+			initDone:      doneNonBlocking,
+			repoGetAllErr: boom.Error,
+
+			assertErr: require.Error,
+			assertLog: noLogAssert,
+		},
+		{
+			name:     "error - GetEndpoint",
+			initDone: doneNonBlocking,
+			repoGetAllClusters: provisioning.Clusters{
+				{
+					Name: "one",
+				},
+			},
+			serverSvcGetAllWithFilterErr: boom.Error,
+
+			assertErr: require.NoError,
+			assertLog: logContains("Failed to start lifecycle monitor"),
+		},
+		{
+			name:     "error - client.SubscribeLifecycleEvents - ctx.Done",
+			initDone: doneChannel,
+			repoGetAllClusters: provisioning.Clusters{
+				{
+					Name: "one",
+				},
+			},
+			clientSubscribeLifecycleEvent: []queue.Item[func(cancel func()) (chan domain.LifecycleEvent, chan error, error)]{
+				{
+					Value: func(_ func()) (chan domain.LifecycleEvent, chan error, error) {
+						return nil, nil, boom.Error
+					},
+				},
+				{
+					Value: func(cancel func()) (chan domain.LifecycleEvent, chan error, error) {
+						cancel()
+
+						return nil, nil, boom.Error
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: logContains("Failed to re-establish event stream"),
+		},
+		{
+			name:     "error - client.SubscribeLifecycleEvents - retry",
+			initDone: doneChannel,
+			repoGetAllClusters: provisioning.Clusters{
+				{
+					Name: "one",
+				},
+			},
+			clientSubscribeLifecycleEvent: []queue.Item[func(cancel func()) (chan domain.LifecycleEvent, chan error, error)]{
+				{
+					Value: func(_ func()) (chan domain.LifecycleEvent, chan error, error) {
+						return nil, nil, boom.Error
+					},
+				},
+				{
+					Value: func(_ func()) (chan domain.LifecycleEvent, chan error, error) {
+						events := make(chan domain.LifecycleEvent, 1)
+						events <- domain.LifecycleEvent{}
+
+						return events, nil, nil
+					},
+				},
+			},
+
+			assertErr:           require.NoError,
+			wantProcessedEvents: 1,
+			assertLog:           logContains("Failed to re-establish event stream"),
+		},
+		{
+			name:     "error - inventorySyncer.ResyncByName",
+			initDone: doneChannel,
+			repoGetAllClusters: provisioning.Clusters{
+				{
+					Name: "one",
+				},
+			},
+			clientSubscribeLifecycleEvent: []queue.Item[func(cancel func()) (chan domain.LifecycleEvent, chan error, error)]{
+				{
+					Value: func(_ func()) (chan domain.LifecycleEvent, chan error, error) {
+						t.Helper()
+
+						events := make(chan domain.LifecycleEvent, 1)
+						events <- domain.LifecycleEvent{}
+
+						return events, nil, nil
+					},
+				},
+			},
+			inventorySyncerResyncByNameErr: boom.Error,
+
+			assertErr:           require.NoError,
+			wantProcessedEvents: 1,
+			assertLog:           logContains("Failed to resync"),
+		},
+		{
+			name:     "error - Lifecycle subscription ended",
+			initDone: doneChannel,
+			repoGetAllClusters: provisioning.Clusters{
+				{
+					Name: "one",
+				},
+			},
+			clientSubscribeLifecycleEvent: []queue.Item[func(cancel func()) (chan domain.LifecycleEvent, chan error, error)]{
+				{
+					Value: func(_ func()) (chan domain.LifecycleEvent, chan error, error) {
+						t.Helper()
+
+						errChan := make(chan error, 1)
+						errChan <- boom.Error
+
+						return nil, errChan, nil
+					},
+				},
+				{
+					Value: func(_ func()) (chan domain.LifecycleEvent, chan error, error) {
+						t.Helper()
+
+						events := make(chan domain.LifecycleEvent, 1)
+						events <- domain.LifecycleEvent{}
+
+						return events, nil, nil
+					},
+				},
+			},
+
+			assertErr:           require.NoError,
+			wantProcessedEvents: 1,
+			assertLog:           logContains("Lifecycle events subscription ended"),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			cancableCtx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			done := tc.initDone()
+
+			repo := &mock.ClusterRepoMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
+					return tc.repoGetAllClusters, tc.repoGetAllErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return provisioning.Servers{}, tc.serverSvcGetAllWithFilterErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				SubscribeLifecycleEventsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (chan domain.LifecycleEvent, chan error, error) {
+					call, _ := queue.PopRetainLast(t, &tc.clientSubscribeLifecycleEvent)
+					return call(cancel)
+				},
+			}
+
+			processedEvents := 0
+			processedEventsMu := sync.Mutex{}
+
+			inventorySyncer := &serviceMock.InventorySyncerMock{
+				ResyncByNameFunc: func(ctx context.Context, clusterName string, sourceDetails domain.LifecycleEvent) error {
+					processedEventsMu.Lock()
+					defer processedEventsMu.Unlock()
+
+					processedEvents++
+
+					if processedEvents == tc.wantProcessedEvents {
+						defer close(done)
+					}
+
+					return tc.inventorySyncerResyncByNameErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, []provisioning.InventorySyncer{inventorySyncer}, nil)
+
+			// Run test
+			err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
+
+			select {
+			case <-done:
+				cancel()
+			case <-cancableCtx.Done():
+			case <-t.Context().Done():
+				t.Fatal("Test context cancelled before test ended")
+			case <-time.After(1000 * time.Millisecond):
+				cancel()
+				t.Error("Test timeout reached before test ended")
+			}
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantProcessedEvents, processedEvents)
+			tc.assertLog(t, logBuf)
+		})
+	}
+}
+
+func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
+	noLogAssert := func(t *testing.T, logBuf string) {
+		t.Helper()
+	}
+
+	logContains := func(want string) func(t *testing.T, logBuf string) {
+		return func(t *testing.T, logBuf string) {
+			t.Helper()
+
+			require.Contains(t, logBuf, want)
+		}
+	}
+
+	tests := []struct {
+		name                         string
+		serverSvcGetAllWithFilterErr error
+		updateMessage                provisioning.ClusterUpdateMessage
+
+		assertLog func(t *testing.T, logBuf string)
+	}{
+		{
+			name: "success register cluster",
+			updateMessage: provisioning.ClusterUpdateMessage{
+				Operation: provisioning.ClusterUpdateOperationCreate,
+				Name:      "new",
+			},
+
+			assertLog: noLogAssert,
+		},
+		{
+			name: "error - startLifecycleEventHandler",
+			updateMessage: provisioning.ClusterUpdateMessage{
+				Operation: provisioning.ClusterUpdateOperationCreate,
+				Name:      "new",
+			},
+			serverSvcGetAllWithFilterErr: boom.Error,
+
+			assertLog: logContains("Failed to start lifecycle monitor"),
+		},
+		{
+			name: "success delete cluster",
+			updateMessage: provisioning.ClusterUpdateMessage{
+				Operation: provisioning.ClusterUpdateOperationDelete,
+				Name:      "existing",
+			},
+
+			assertLog: noLogAssert,
+		},
+		{
+			name: "success delete unknown cluster",
+			updateMessage: provisioning.ClusterUpdateMessage{
+				Operation: provisioning.ClusterUpdateOperationDelete,
+				Name:      "unknown",
+			},
+
+			assertLog: noLogAssert,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			cancableCtx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			repo := &mock.ClusterRepoMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
+					return provisioning.Clusters{
+						{
+							Name: "existing",
+						},
+					}, nil
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return provisioning.Servers{}, tc.serverSvcGetAllWithFilterErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				SubscribeLifecycleEventsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (chan domain.LifecycleEvent, chan error, error) {
+					return nil, nil, nil
+				},
+			}
+
+			inventorySyncer := &serviceMock.InventorySyncerMock{
+				ResyncByNameFunc: func(ctx context.Context, clusterName string, sourceDetails domain.LifecycleEvent) error {
+					return nil
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, []provisioning.InventorySyncer{inventorySyncer}, nil)
+
+			// Run test
+			err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
+
+			clusterSvc.GetClusterUpdateSignal().Emit(cancableCtx, tc.updateMessage)
+
+			cancel()
+
+			select {
+			case <-cancableCtx.Done():
+			case <-t.Context().Done():
+				t.Fatal("Test context cancelled before test ended")
+			case <-time.After(1000 * time.Millisecond):
+				cancel()
+				t.Error("Test timeout reached before test ended")
+			}
+
+			// Assert
+			require.NoError(t, err)
+			tc.assertLog(t, logBuf.String())
 		})
 	}
 }
