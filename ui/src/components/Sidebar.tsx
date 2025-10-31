@@ -8,8 +8,9 @@ import {
   MdLogin,
   MdLogout,
   MdOutlineInventory2,
-  MdOutlineToken,
+  MdOutlineSettings,
   MdOutlineSystemUpdateAlt,
+  MdOutlineToken,
 } from "react-icons/md";
 import {
   RiArticleLine,
@@ -266,6 +267,11 @@ const Sidebar = () => {
             <Nav className="flex-column">
               {isAuthenticated && (
                 <>
+                  <li>
+                    <Nav.Link as={Link} to="/ui/settings">
+                      <MdOutlineSettings /> Settings
+                    </Nav.Link>
+                  </li>
                   <li>
                     <Nav.Link
                       onClick={() => {

@@ -13,6 +13,7 @@ import NetworkIntegration from "pages/NetworkIntegration";
 import NetworkLoadBalancer from "pages/NetworkLoadBalancer";
 import NetworkPeer from "pages/NetworkPeer";
 import NetworkZone from "pages/NetworkZone";
+import Settings from "pages/Settings";
 import StorageBucket from "pages/StorageBucket";
 import StoragePool from "pages/StoragePool";
 import StorageVolume from "pages/StorageVolume";
@@ -132,6 +133,8 @@ function App() {
               path="/ui/provisioning/servers/:name/:activeTab"
               element={<ServerDetail />}
             />
+            <Route path="/ui/settings" element={<Settings />} />
+            <Route path="/ui/settings/:activeTab" element={<Settings />} />
             <Route path="/ui/provisioning/tokens" element={<Token />} />
             <Route
               path="/ui/provisioning/tokens/create"
