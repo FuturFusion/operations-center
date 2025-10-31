@@ -26,11 +26,13 @@ func (s serverClient) GetStorageVolumes(ctx context.Context, endpoint provisioni
 	return serverStorageVolumes, nil
 }
 
-func (s serverClient) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error) {
+func (s serverClient) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.StorageVolume{}, err
 	}
+
+	client = client.UseProject(projectName)
 
 	serverStorageVolume, _, err := client.GetStoragePoolVolume(storagePoolName, storageVolumeType, storageVolumeName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {

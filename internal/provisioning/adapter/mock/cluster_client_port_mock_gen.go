@@ -8,6 +8,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -49,6 +50,9 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			SetServerConfigFunc: func(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) error {
 //				panic("mock out the SetServerConfig method")
 //			},
+//			SubscribeLifecycleEventsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (chan domain.LifecycleEvent, chan error, error) {
+//				panic("mock out the SubscribeLifecycleEvents method")
+//			},
 //			UpdateClusterCertificateFunc: func(ctx context.Context, endpoint provisioning.Endpoint, certificatePEM string, keyPEM string) error {
 //				panic("mock out the UpdateClusterCertificate method")
 //			},
@@ -85,6 +89,9 @@ type ClusterClientPortMock struct {
 
 	// SetServerConfigFunc mocks the SetServerConfig method.
 	SetServerConfigFunc func(ctx context.Context, endpoint provisioning.Endpoint, config map[string]string) error
+
+	// SubscribeLifecycleEventsFunc mocks the SubscribeLifecycleEvents method.
+	SubscribeLifecycleEventsFunc func(ctx context.Context, endpoint provisioning.Endpoint) (chan domain.LifecycleEvent, chan error, error)
 
 	// UpdateClusterCertificateFunc mocks the UpdateClusterCertificate method.
 	UpdateClusterCertificateFunc func(ctx context.Context, endpoint provisioning.Endpoint, certificatePEM string, keyPEM string) error
@@ -166,6 +173,13 @@ type ClusterClientPortMock struct {
 			// Config is the config argument value.
 			Config map[string]string
 		}
+		// SubscribeLifecycleEvents holds details about calls to the SubscribeLifecycleEvents method.
+		SubscribeLifecycleEvents []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
+		}
 		// UpdateClusterCertificate holds details about calls to the UpdateClusterCertificate method.
 		UpdateClusterCertificate []struct {
 			// Ctx is the ctx argument value.
@@ -187,6 +201,7 @@ type ClusterClientPortMock struct {
 	lockJoinCluster              sync.RWMutex
 	lockPing                     sync.RWMutex
 	lockSetServerConfig          sync.RWMutex
+	lockSubscribeLifecycleEvents sync.RWMutex
 	lockUpdateClusterCertificate sync.RWMutex
 }
 
@@ -535,6 +550,42 @@ func (mock *ClusterClientPortMock) SetServerConfigCalls() []struct {
 	mock.lockSetServerConfig.RLock()
 	calls = mock.calls.SetServerConfig
 	mock.lockSetServerConfig.RUnlock()
+	return calls
+}
+
+// SubscribeLifecycleEvents calls SubscribeLifecycleEventsFunc.
+func (mock *ClusterClientPortMock) SubscribeLifecycleEvents(ctx context.Context, endpoint provisioning.Endpoint) (chan domain.LifecycleEvent, chan error, error) {
+	if mock.SubscribeLifecycleEventsFunc == nil {
+		panic("ClusterClientPortMock.SubscribeLifecycleEventsFunc: method is nil but ClusterClientPort.SubscribeLifecycleEvents was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
+	}{
+		Ctx:      ctx,
+		Endpoint: endpoint,
+	}
+	mock.lockSubscribeLifecycleEvents.Lock()
+	mock.calls.SubscribeLifecycleEvents = append(mock.calls.SubscribeLifecycleEvents, callInfo)
+	mock.lockSubscribeLifecycleEvents.Unlock()
+	return mock.SubscribeLifecycleEventsFunc(ctx, endpoint)
+}
+
+// SubscribeLifecycleEventsCalls gets all the calls that were made to SubscribeLifecycleEvents.
+// Check the length with:
+//
+//	len(mockedClusterClientPort.SubscribeLifecycleEventsCalls())
+func (mock *ClusterClientPortMock) SubscribeLifecycleEventsCalls() []struct {
+	Ctx      context.Context
+	Endpoint provisioning.Endpoint
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
+	}
+	mock.lockSubscribeLifecycleEvents.RLock()
+	calls = mock.calls.SubscribeLifecycleEvents
+	mock.lockSubscribeLifecycleEvents.RUnlock()
 	return calls
 }
 

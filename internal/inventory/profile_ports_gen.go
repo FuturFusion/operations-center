@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
@@ -16,6 +17,7 @@ type ProfileService interface {
 	GetAllUUIDsWithFilter(ctx context.Context, filter ProfileFilter) ([]uuid.UUID, error)
 	GetByUUID(ctx context.Context, id uuid.UUID) (Profile, error)
 	ResyncByUUID(ctx context.Context, id uuid.UUID) error
+	ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error
 	SyncCluster(ctx context.Context, cluster string) error
 }
 
@@ -31,5 +33,5 @@ type ProfileRepo interface {
 
 type ProfileServerClient interface {
 	GetProfiles(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.Profile, error)
-	GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, profileName string) (incusapi.Profile, error)
+	GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, profileName string) (incusapi.Profile, error)
 }

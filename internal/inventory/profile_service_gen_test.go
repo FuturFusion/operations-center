@@ -19,6 +19,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
 
 func TestProfileService_GetAllWithFilter(t *testing.T) {
@@ -145,8 +146,8 @@ func TestProfileService_GetAllUUIDsWithFilter(t *testing.T) {
 		{
 			name: "success - no filter expression",
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
-				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
-				uuid.MustParse(`56d0823e-5c6d-45ff-ac6d-a9ae61026a4e`),
+				uuidgen.FromPattern(t, "1"),
+				uuidgen.FromPattern(t, "2"),
 			},
 
 			assertErr: require.NoError,
@@ -154,10 +155,10 @@ func TestProfileService_GetAllUUIDsWithFilter(t *testing.T) {
 		},
 		{
 			name:             "success - with filter expression",
-			filterExpression: ptr.To(`UUID == "6c652183-8d93-4c7d-9510-cd2ae54f31fd"`),
+			filterExpression: ptr.To(`UUID == "11111111-1111-1111-1111-111111111111"`),
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
-				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
-				uuid.MustParse(`56d0823e-5c6d-45ff-ac6d-a9ae61026a4e`),
+				uuidgen.FromPattern(t, "1"),
+				uuidgen.FromPattern(t, "2"),
 			},
 
 			assertErr: require.NoError,
@@ -167,7 +168,7 @@ func TestProfileService_GetAllUUIDsWithFilter(t *testing.T) {
 			name:             "error - invalid filter expression",
 			filterExpression: ptr.To(``), // the empty expression is an invalid expression.
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
-				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuidgen.FromPattern(t, "1"),
 			},
 
 			assertErr: require.Error,
@@ -177,7 +178,7 @@ func TestProfileService_GetAllUUIDsWithFilter(t *testing.T) {
 			name:             "error - filter expression run",
 			filterExpression: ptr.To(`fromBase64("~invalid")`), // invalid, returns runtime error during evauluation of the expression.
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
-				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuidgen.FromPattern(t, "1"),
 			},
 
 			assertErr: require.Error,
@@ -187,7 +188,7 @@ func TestProfileService_GetAllUUIDsWithFilter(t *testing.T) {
 			name:             "error - non bool expression",
 			filterExpression: ptr.To(`"string"`), // invalid, does evaluate to string instead of boolean.
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
-				uuid.MustParse(`6c652183-8d93-4c7d-9510-cd2ae54f31fd`),
+				uuidgen.FromPattern(t, "1"),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -240,9 +241,9 @@ func TestProfileService_GetByUUID(t *testing.T) {
 	}{
 		{
 			name:  "success",
-			idArg: uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+			idArg: uuidgen.FromPattern(t, "1"),
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				ProjectName: "one",
 				Name:        "one",
@@ -254,7 +255,7 @@ func TestProfileService_GetByUUID(t *testing.T) {
 		},
 		{
 			name:             "error - repo",
-			idArg:            uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+			idArg:            uuidgen.FromPattern(t, "1"),
 			repoGetByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -301,9 +302,10 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuidgen.FromPattern(t, "1"),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -322,9 +324,10 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success - profile get by name - not found",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuidgen.FromPattern(t, "1"),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -346,9 +349,10 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - cluster get by ID",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuidgen.FromPattern(t, "1"),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -357,9 +361,10 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - profile get by name",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuidgen.FromPattern(t, "1"),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -375,9 +380,10 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - profile get by name - not found - delete by uuid",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuidgen.FromPattern(t, "1"),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -394,9 +400,10 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "", // invalid
+				UUID:        uuidgen.FromPattern(t, "1"),
+				Cluster:     "one",
+				Name:        "", // invalid
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -418,9 +425,10 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - update by UUID",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuidgen.FromPattern(t, "1"),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -463,8 +471,9 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 			}
 
 			profileClient := &serverMock.ProfileServerClientMock{
-				GetProfileByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, profileName string) (incusapi.Profile, error) {
+				GetProfileByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, profileName string) (incusapi.Profile, error) {
 					require.Equal(t, tc.repoGetByUUIDProfile.Name, profileName)
+					require.Equal(t, tc.repoGetByUUIDProfile.ProjectName, projectName)
 					return tc.profileClientGetProfileByName, tc.profileClientGetProfileByNameErr
 				},
 			}
@@ -474,7 +483,321 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 			}))
 
 			// Run test
-			err := profileSvc.ResyncByUUID(context.Background(), uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`))
+			err := profileSvc.ResyncByUUID(context.Background(), uuidgen.FromPattern(t, "1"))
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestProfileService_ResyncByName(t *testing.T) {
+	tests := []struct {
+		name                             string
+		argClusterName                   string
+		argLifecycleEvent                domain.LifecycleEvent
+		repoGetAllUUIDsWithFilterUUIDs   []uuid.UUID
+		repoGetAllUUIDsWithFilterErr     error
+		clusterSvcGetEndpoint            provisioning.Endpoint
+		clusterSvcGetEndpointErr         error
+		profileClientGetProfileByName    incusapi.Profile
+		profileClientGetProfileByNameErr error
+		serviceOptions                   []inventory.ProfileServiceOption
+		repoCreateErr                    error
+		repoGetByUUIDProfile             inventory.Profile
+		repoGetByUUIDErr                 error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success - not responsible",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "invalid",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - not found",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "profile",
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					Name:        "profile",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			profileClientGetProfileByName: incusapi.Profile{
+				Name:    "profile",
+				Project: "project",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - not found with sync filter",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "profile",
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					Name:        "profile",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			profileClientGetProfileByName: incusapi.Profile{
+				Name:    "profile filtered", // matches filter
+				Project: "project",
+			},
+			serviceOptions: []inventory.ProfileServiceOption{
+				inventory.ProfileWithSyncFilter(func(profile inventory.Profile) bool {
+					return profile.Name == "profile filtered"
+				}),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "success - update existing",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "profile",
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					Name:        "profile",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoGetByUUIDProfile: inventory.Profile{
+				UUID:        uuidgen.FromPattern(t, "1"),
+				Cluster:     "cluster",
+				Name:        "profile",
+				ProjectName: "project",
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			profileClientGetProfileByName: incusapi.Profile{
+				Name:    "profile",
+				Project: "project",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - repo.GetAllUUIDsWithFilter",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "profile",
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					Name:        "profile",
+				},
+			},
+			repoGetAllUUIDsWithFilterErr: boom.Error,
+
+			assertErr: require.Error,
+		},
+		{
+			name:           "error - not found - clusterSvc.GetEndpoint",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "profile",
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					Name:        "profile",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpointErr:       boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - not found - client.GetProfileByName",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "profile",
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					Name:        "profile",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			profileClientGetProfileByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - not found - validate",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "profile",
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					Name:        "profile",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			profileClientGetProfileByName: incusapi.Profile{
+				Name:    "", // invalid
+				Project: "project",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name:           "error - not found - repo.Create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "profile",
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					Name:        "profile",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			profileClientGetProfileByName: incusapi.Profile{
+				Name:    "profile",
+				Project: "project",
+			},
+			repoCreateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - update existing - ResyncByUUID",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "profile",
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					Name:        "profile",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			repoGetByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ProfileRepoMock{
+				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.ProfileFilter) ([]uuid.UUID, error) {
+					require.Equal(t, tc.argClusterName, *filter.Cluster)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.Project)
+					require.Equal(t, tc.argLifecycleEvent.Source.Name, *filter.Name)
+					return tc.repoGetAllUUIDsWithFilterUUIDs, tc.repoGetAllUUIDsWithFilterErr
+				},
+				CreateFunc: func(ctx context.Context, profile inventory.Profile) (inventory.Profile, error) {
+					require.Equal(t, tc.argClusterName, profile.Cluster)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, profile.ProjectName)
+					require.Equal(t, tc.argLifecycleEvent.Source.Name, profile.Name)
+					return inventory.Profile{}, tc.repoCreateErr
+				},
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (inventory.Profile, error) {
+					return tc.repoGetByUUIDProfile, tc.repoGetByUUIDErr
+				},
+				UpdateByUUIDFunc: func(ctx context.Context, profile inventory.Profile) (inventory.Profile, error) {
+					require.Equal(t, time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC), profile.LastUpdated)
+					return inventory.Profile{}, nil
+				},
+				DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+					return nil
+				},
+			}
+
+			clusterSvc := &serviceMock.ProvisioningClusterServiceMock{
+				GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
+					require.Equal(t, tc.argClusterName, name)
+					return tc.clusterSvcGetEndpoint, tc.clusterSvcGetEndpointErr
+				},
+			}
+
+			profileClient := &serverMock.ProfileServerClientMock{
+				GetProfileByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, profileName string) (incusapi.Profile, error) {
+					clusterName, err := endpoint.GetServerName()
+					require.NoError(t, err)
+					require.Equal(t, tc.argClusterName, clusterName)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, projectName)
+					require.Equal(t, tc.argLifecycleEvent.Source.Name, profileName)
+					return tc.profileClientGetProfileByName, tc.profileClientGetProfileByNameErr
+				},
+			}
+
+			profileSvc := inventory.NewProfileService(repo, clusterSvc, profileClient,
+				append(tc.serviceOptions,
+					inventory.ProfileWithNow(func() time.Time {
+						return time.Date(2025, 2, 26, 8, 54, 35, 123, time.UTC)
+					}),
+				)...,
+			)
+
+			// Run test
+			err := profileSvc.ResyncByName(context.Background(), tc.argClusterName, tc.argLifecycleEvent)
 
 			// Assert
 			tc.assertErr(t, err)

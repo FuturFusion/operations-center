@@ -193,6 +193,71 @@ func (s storagePoolService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 	return nil
 }
 
+func (s storagePoolService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	if event.ResourceType != "storage-pool" {
+		return nil
+	}
+
+	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, StoragePoolFilter{
+		Cluster: &clusterName,
+		Name:    &event.Source.Name,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(UUIDs) == 0 {
+		// This inventory is not found, try to fetch it from source and create it.
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, clusterName)
+		if err != nil {
+			return err
+		}
+
+		retrievedStoragePool, err := s.storagePoolClient.GetStoragePoolByName(ctx, endpoint, event.Source.Name)
+		if err != nil {
+			return err
+		}
+
+		storagePool := StoragePool{
+			Cluster:     clusterName,
+			Name:        retrievedStoragePool.Name,
+			Object:      retrievedStoragePool,
+			LastUpdated: s.now(),
+		}
+
+		storagePool.DeriveUUID()
+
+		if s.clusterSyncFilterFunc(storagePool) {
+			return nil
+		}
+
+		err = storagePool.Validate()
+		if err != nil {
+			return err
+		}
+
+		_, err = s.repo.Create(ctx, storagePool)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	var errs []error
+	for _, UUID := range UUIDs {
+		err := s.ResyncByUUID(ctx, UUID)
+		errs = append(errs, err)
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("Failed to resync instance by name: %w", errors.Join(errs...))
+	}
+
+	return nil
+}
+
 func (s storagePoolService) SyncCluster(ctx context.Context, name string) error {
 	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
@@ -16,6 +17,7 @@ type NetworkService interface {
 	GetAllUUIDsWithFilter(ctx context.Context, filter NetworkFilter) ([]uuid.UUID, error)
 	GetByUUID(ctx context.Context, id uuid.UUID) (Network, error)
 	ResyncByUUID(ctx context.Context, id uuid.UUID) error
+	ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error
 	SyncCluster(ctx context.Context, cluster string) error
 }
 
@@ -31,5 +33,5 @@ type NetworkRepo interface {
 
 type NetworkServerClient interface {
 	GetNetworks(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.Network, error)
-	GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (incusapi.Network, error)
+	GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (incusapi.Network, error)
 }

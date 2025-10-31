@@ -23,7 +23,7 @@ var _ inventory.ProfileServerClient = &ProfileServerClientMock{}
 //
 //		// make and configure a mocked inventory.ProfileServerClient
 //		mockedProfileServerClient := &ProfileServerClientMock{
-//			GetProfileByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, profileName string) (api.Profile, error) {
+//			GetProfileByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, profileName string) (api.Profile, error) {
 //				panic("mock out the GetProfileByName method")
 //			},
 //			GetProfilesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.Profile, error) {
@@ -37,7 +37,7 @@ var _ inventory.ProfileServerClient = &ProfileServerClientMock{}
 //	}
 type ProfileServerClientMock struct {
 	// GetProfileByNameFunc mocks the GetProfileByName method.
-	GetProfileByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, profileName string) (api.Profile, error)
+	GetProfileByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, profileName string) (api.Profile, error)
 
 	// GetProfilesFunc mocks the GetProfiles method.
 	GetProfilesFunc func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.Profile, error)
@@ -50,6 +50,8 @@ type ProfileServerClientMock struct {
 			Ctx context.Context
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
+			// ProjectName is the projectName argument value.
+			ProjectName string
 			// ProfileName is the profileName argument value.
 			ProfileName string
 		}
@@ -66,23 +68,25 @@ type ProfileServerClientMock struct {
 }
 
 // GetProfileByName calls GetProfileByNameFunc.
-func (mock *ProfileServerClientMock) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, profileName string) (api.Profile, error) {
+func (mock *ProfileServerClientMock) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, profileName string) (api.Profile, error) {
 	if mock.GetProfileByNameFunc == nil {
 		panic("ProfileServerClientMock.GetProfileByNameFunc: method is nil but ProfileServerClient.GetProfileByName was just called")
 	}
 	callInfo := struct {
 		Ctx         context.Context
 		Endpoint    provisioning.Endpoint
+		ProjectName string
 		ProfileName string
 	}{
 		Ctx:         ctx,
 		Endpoint:    endpoint,
+		ProjectName: projectName,
 		ProfileName: profileName,
 	}
 	mock.lockGetProfileByName.Lock()
 	mock.calls.GetProfileByName = append(mock.calls.GetProfileByName, callInfo)
 	mock.lockGetProfileByName.Unlock()
-	return mock.GetProfileByNameFunc(ctx, endpoint, profileName)
+	return mock.GetProfileByNameFunc(ctx, endpoint, projectName, profileName)
 }
 
 // GetProfileByNameCalls gets all the calls that were made to GetProfileByName.
@@ -92,11 +96,13 @@ func (mock *ProfileServerClientMock) GetProfileByName(ctx context.Context, endpo
 func (mock *ProfileServerClientMock) GetProfileByNameCalls() []struct {
 	Ctx         context.Context
 	Endpoint    provisioning.Endpoint
+	ProjectName string
 	ProfileName string
 } {
 	var calls []struct {
 		Ctx         context.Context
 		Endpoint    provisioning.Endpoint
+		ProjectName string
 		ProfileName string
 	}
 	mock.lockGetProfileByName.RLock()

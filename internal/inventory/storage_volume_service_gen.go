@@ -170,7 +170,7 @@ func (s storageVolumeService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 			return err
 		}
 
-		retrievedStorageVolume, err := s.storageVolumeClient.GetStorageVolumeByName(ctx, endpoint, storageVolume.StoragePoolName, storageVolume.Name, storageVolume.Type)
+		retrievedStorageVolume, err := s.storageVolumeClient.GetStorageVolumeByName(ctx, endpoint, storageVolume.ProjectName, storageVolume.StoragePoolName, storageVolume.Name, storageVolume.Type)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, storageVolume.UUID)
 			if err != nil {
@@ -205,6 +205,77 @@ func (s storageVolumeService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 	})
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (s storageVolumeService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	if event.ResourceType != "storage-volume" {
+		return nil
+	}
+
+	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, StorageVolumeFilter{
+		Cluster:         &clusterName,
+		Project:         &event.Source.ProjectName,
+		StoragePoolName: &event.Source.ParentName,
+		Name:            &event.Source.Name,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(UUIDs) == 0 {
+		// This inventory is not found, try to fetch it from source and create it.
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, clusterName)
+		if err != nil {
+			return err
+		}
+
+		retrievedStorageVolume, err := s.storageVolumeClient.GetStorageVolumeByName(ctx, endpoint, event.Source.ProjectName, event.Source.ParentName, event.Source.Name, event.Source.Type)
+		if err != nil {
+			return err
+		}
+
+		storageVolume := StorageVolume{
+			Cluster:         clusterName,
+			Server:          retrievedStorageVolume.Location,
+			ProjectName:     retrievedStorageVolume.Project,
+			StoragePoolName: event.Source.ParentName,
+			Name:            retrievedStorageVolume.Name,
+			Type:            retrievedStorageVolume.Type,
+			Object:          retrievedStorageVolume,
+			LastUpdated:     s.now(),
+		}
+
+		storageVolume.DeriveUUID()
+
+		if s.clusterSyncFilterFunc(storageVolume) {
+			return nil
+		}
+
+		err = storageVolume.Validate()
+		if err != nil {
+			return err
+		}
+
+		_, err = s.repo.Create(ctx, storageVolume)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	var errs []error
+	for _, UUID := range UUIDs {
+		err := s.ResyncByUUID(ctx, UUID)
+		errs = append(errs, err)
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("Failed to resync instance by name: %w", errors.Join(errs...))
 	}
 
 	return nil

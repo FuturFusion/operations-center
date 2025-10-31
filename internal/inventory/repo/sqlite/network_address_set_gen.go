@@ -82,6 +82,11 @@ ORDER BY clusters.name, network_address_sets.name
 		args = append(args, sql.Named("project", filter.Project))
 	}
 
+	if filter.Name != nil {
+		whereClause = append(whereClause, ` AND network_address_sets.name = :name`)
+		args = append(args, sql.Named("name", filter.Name))
+	}
+
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
 
 	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
@@ -130,6 +135,11 @@ ORDER BY network_address_sets.id
 	if filter.Project != nil {
 		whereClause = append(whereClause, ` AND network_address_sets.project_name = :project`)
 		args = append(args, sql.Named("project", filter.Project))
+	}
+
+	if filter.Name != nil {
+		whereClause = append(whereClause, ` AND network_address_sets.name = :name`)
+		args = append(args, sql.Named("name", filter.Name))
 	}
 
 	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))

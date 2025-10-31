@@ -156,7 +156,7 @@ func (s networkService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		retrievedNetwork, err := s.networkClient.GetNetworkByName(ctx, endpoint, network.Name)
+		retrievedNetwork, err := s.networkClient.GetNetworkByName(ctx, endpoint, network.ProjectName, network.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, network.UUID)
 			if err != nil {
@@ -189,6 +189,73 @@ func (s networkService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (s networkService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	if event.ResourceType != "network" {
+		return nil
+	}
+
+	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkFilter{
+		Cluster: &clusterName,
+		Project: &event.Source.ProjectName,
+		Name:    &event.Source.Name,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(UUIDs) == 0 {
+		// This inventory is not found, try to fetch it from source and create it.
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, clusterName)
+		if err != nil {
+			return err
+		}
+
+		retrievedNetwork, err := s.networkClient.GetNetworkByName(ctx, endpoint, event.Source.ProjectName, event.Source.Name)
+		if err != nil {
+			return err
+		}
+
+		network := Network{
+			Cluster:     clusterName,
+			ProjectName: retrievedNetwork.Project,
+			Name:        retrievedNetwork.Name,
+			Object:      retrievedNetwork,
+			LastUpdated: s.now(),
+		}
+
+		network.DeriveUUID()
+
+		if s.clusterSyncFilterFunc(network) {
+			return nil
+		}
+
+		err = network.Validate()
+		if err != nil {
+			return err
+		}
+
+		_, err = s.repo.Create(ctx, network)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	var errs []error
+	for _, UUID := range UUIDs {
+		err := s.ResyncByUUID(ctx, UUID)
+		errs = append(errs, err)
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("Failed to resync instance by name: %w", errors.Join(errs...))
 	}
 
 	return nil

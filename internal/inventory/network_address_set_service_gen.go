@@ -156,7 +156,7 @@ func (s networkAddressSetService) ResyncByUUID(ctx context.Context, id uuid.UUID
 			return err
 		}
 
-		retrievedNetworkAddressSet, err := s.networkAddressSetClient.GetNetworkAddressSetByName(ctx, endpoint, networkAddressSet.Name)
+		retrievedNetworkAddressSet, err := s.networkAddressSetClient.GetNetworkAddressSetByName(ctx, endpoint, networkAddressSet.ProjectName, networkAddressSet.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkAddressSet.UUID)
 			if err != nil {
@@ -189,6 +189,73 @@ func (s networkAddressSetService) ResyncByUUID(ctx context.Context, id uuid.UUID
 	})
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (s networkAddressSetService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	if event.ResourceType != "network-address-set" {
+		return nil
+	}
+
+	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkAddressSetFilter{
+		Cluster: &clusterName,
+		Project: &event.Source.ProjectName,
+		Name:    &event.Source.Name,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(UUIDs) == 0 {
+		// This inventory is not found, try to fetch it from source and create it.
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, clusterName)
+		if err != nil {
+			return err
+		}
+
+		retrievedNetworkAddressSet, err := s.networkAddressSetClient.GetNetworkAddressSetByName(ctx, endpoint, event.Source.ProjectName, event.Source.Name)
+		if err != nil {
+			return err
+		}
+
+		networkAddressSet := NetworkAddressSet{
+			Cluster:     clusterName,
+			ProjectName: retrievedNetworkAddressSet.Project,
+			Name:        retrievedNetworkAddressSet.Name,
+			Object:      retrievedNetworkAddressSet,
+			LastUpdated: s.now(),
+		}
+
+		networkAddressSet.DeriveUUID()
+
+		if s.clusterSyncFilterFunc(networkAddressSet) {
+			return nil
+		}
+
+		err = networkAddressSet.Validate()
+		if err != nil {
+			return err
+		}
+
+		_, err = s.repo.Create(ctx, networkAddressSet)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	var errs []error
+	for _, UUID := range UUIDs {
+		err := s.ResyncByUUID(ctx, UUID)
+		errs = append(errs, err)
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("Failed to resync instance by name: %w", errors.Join(errs...))
 	}
 
 	return nil

@@ -170,7 +170,7 @@ func (s storageBucketService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 			return err
 		}
 
-		retrievedStorageBucket, err := s.storageBucketClient.GetStorageBucketByName(ctx, endpoint, storageBucket.StoragePoolName, storageBucket.Name)
+		retrievedStorageBucket, err := s.storageBucketClient.GetStorageBucketByName(ctx, endpoint, storageBucket.ProjectName, storageBucket.StoragePoolName, storageBucket.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, storageBucket.UUID)
 			if err != nil {
@@ -204,6 +204,76 @@ func (s storageBucketService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 	})
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (s storageBucketService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	if event.ResourceType != "storage-bucket" {
+		return nil
+	}
+
+	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, StorageBucketFilter{
+		Cluster:         &clusterName,
+		Project:         &event.Source.ProjectName,
+		StoragePoolName: &event.Source.ParentName,
+		Name:            &event.Source.Name,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(UUIDs) == 0 {
+		// This inventory is not found, try to fetch it from source and create it.
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, clusterName)
+		if err != nil {
+			return err
+		}
+
+		retrievedStorageBucket, err := s.storageBucketClient.GetStorageBucketByName(ctx, endpoint, event.Source.ProjectName, event.Source.ParentName, event.Source.Name)
+		if err != nil {
+			return err
+		}
+
+		storageBucket := StorageBucket{
+			Cluster:         clusterName,
+			Server:          retrievedStorageBucket.Location,
+			ProjectName:     retrievedStorageBucket.Project,
+			StoragePoolName: event.Source.ParentName,
+			Name:            retrievedStorageBucket.Name,
+			Object:          retrievedStorageBucket,
+			LastUpdated:     s.now(),
+		}
+
+		storageBucket.DeriveUUID()
+
+		if s.clusterSyncFilterFunc(storageBucket) {
+			return nil
+		}
+
+		err = storageBucket.Validate()
+		if err != nil {
+			return err
+		}
+
+		_, err = s.repo.Create(ctx, storageBucket)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	var errs []error
+	for _, UUID := range UUIDs {
+		err := s.ResyncByUUID(ctx, UUID)
+		errs = append(errs, err)
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("Failed to resync instance by name: %w", errors.Join(errs...))
 	}
 
 	return nil

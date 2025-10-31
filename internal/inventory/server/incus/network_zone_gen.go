@@ -26,11 +26,13 @@ func (s serverClient) GetNetworkZones(ctx context.Context, endpoint provisioning
 	return serverNetworkZones, nil
 }
 
-func (s serverClient) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, networkZoneName string) (incusapi.NetworkZone, error) {
+func (s serverClient) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkZoneName string) (incusapi.NetworkZone, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.NetworkZone{}, err
 	}
+
+	client = client.UseProject(projectName)
 
 	serverNetworkZone, _, err := client.GetNetworkZone(networkZoneName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {

@@ -8,6 +8,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
@@ -21,7 +22,10 @@ var _ provisioning.InventorySyncer = &InventorySyncerMock{}
 //
 //		// make and configure a mocked provisioning.InventorySyncer
 //		mockedInventorySyncer := &InventorySyncerMock{
-//			SyncClusterFunc: func(ctx context.Context, cluster string) error {
+//			ResyncByNameFunc: func(ctx context.Context, clusterName string, sourceDetails domain.LifecycleEvent) error {
+//				panic("mock out the ResyncByName method")
+//			},
+//			SyncClusterFunc: func(ctx context.Context, clusterName string) error {
 //				panic("mock out the SyncCluster method")
 //			},
 //		}
@@ -31,38 +35,91 @@ var _ provisioning.InventorySyncer = &InventorySyncerMock{}
 //
 //	}
 type InventorySyncerMock struct {
+	// ResyncByNameFunc mocks the ResyncByName method.
+	ResyncByNameFunc func(ctx context.Context, clusterName string, sourceDetails domain.LifecycleEvent) error
+
 	// SyncClusterFunc mocks the SyncCluster method.
-	SyncClusterFunc func(ctx context.Context, cluster string) error
+	SyncClusterFunc func(ctx context.Context, clusterName string) error
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// ResyncByName holds details about calls to the ResyncByName method.
+		ResyncByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// SourceDetails is the sourceDetails argument value.
+			SourceDetails domain.LifecycleEvent
+		}
 		// SyncCluster holds details about calls to the SyncCluster method.
 		SyncCluster []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster string
+			// ClusterName is the clusterName argument value.
+			ClusterName string
 		}
 	}
-	lockSyncCluster sync.RWMutex
+	lockResyncByName sync.RWMutex
+	lockSyncCluster  sync.RWMutex
+}
+
+// ResyncByName calls ResyncByNameFunc.
+func (mock *InventorySyncerMock) ResyncByName(ctx context.Context, clusterName string, sourceDetails domain.LifecycleEvent) error {
+	if mock.ResyncByNameFunc == nil {
+		panic("InventorySyncerMock.ResyncByNameFunc: method is nil but InventorySyncer.ResyncByName was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ClusterName   string
+		SourceDetails domain.LifecycleEvent
+	}{
+		Ctx:           ctx,
+		ClusterName:   clusterName,
+		SourceDetails: sourceDetails,
+	}
+	mock.lockResyncByName.Lock()
+	mock.calls.ResyncByName = append(mock.calls.ResyncByName, callInfo)
+	mock.lockResyncByName.Unlock()
+	return mock.ResyncByNameFunc(ctx, clusterName, sourceDetails)
+}
+
+// ResyncByNameCalls gets all the calls that were made to ResyncByName.
+// Check the length with:
+//
+//	len(mockedInventorySyncer.ResyncByNameCalls())
+func (mock *InventorySyncerMock) ResyncByNameCalls() []struct {
+	Ctx           context.Context
+	ClusterName   string
+	SourceDetails domain.LifecycleEvent
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ClusterName   string
+		SourceDetails domain.LifecycleEvent
+	}
+	mock.lockResyncByName.RLock()
+	calls = mock.calls.ResyncByName
+	mock.lockResyncByName.RUnlock()
+	return calls
 }
 
 // SyncCluster calls SyncClusterFunc.
-func (mock *InventorySyncerMock) SyncCluster(ctx context.Context, cluster string) error {
+func (mock *InventorySyncerMock) SyncCluster(ctx context.Context, clusterName string) error {
 	if mock.SyncClusterFunc == nil {
 		panic("InventorySyncerMock.SyncClusterFunc: method is nil but InventorySyncer.SyncCluster was just called")
 	}
 	callInfo := struct {
-		Ctx     context.Context
-		Cluster string
+		Ctx         context.Context
+		ClusterName string
 	}{
-		Ctx:     ctx,
-		Cluster: cluster,
+		Ctx:         ctx,
+		ClusterName: clusterName,
 	}
 	mock.lockSyncCluster.Lock()
 	mock.calls.SyncCluster = append(mock.calls.SyncCluster, callInfo)
 	mock.lockSyncCluster.Unlock()
-	return mock.SyncClusterFunc(ctx, cluster)
+	return mock.SyncClusterFunc(ctx, clusterName)
 }
 
 // SyncClusterCalls gets all the calls that were made to SyncCluster.
@@ -70,12 +127,12 @@ func (mock *InventorySyncerMock) SyncCluster(ctx context.Context, cluster string
 //
 //	len(mockedInventorySyncer.SyncClusterCalls())
 func (mock *InventorySyncerMock) SyncClusterCalls() []struct {
-	Ctx     context.Context
-	Cluster string
+	Ctx         context.Context
+	ClusterName string
 } {
 	var calls []struct {
-		Ctx     context.Context
-		Cluster string
+		Ctx         context.Context
+		ClusterName string
 	}
 	mock.lockSyncCluster.RLock()
 	calls = mock.calls.SyncCluster

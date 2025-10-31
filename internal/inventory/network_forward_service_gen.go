@@ -207,6 +207,73 @@ func (s networkForwardService) ResyncByUUID(ctx context.Context, id uuid.UUID) e
 	return nil
 }
 
+func (s networkForwardService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	if event.ResourceType != "network-forward" {
+		return nil
+	}
+
+	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkForwardFilter{
+		Cluster:     &clusterName,
+		NetworkName: &event.Source.ParentName,
+		Name:        &event.Source.Name,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(UUIDs) == 0 {
+		// This inventory is not found, try to fetch it from source and create it.
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, clusterName)
+		if err != nil {
+			return err
+		}
+
+		retrievedNetworkForward, err := s.networkForwardClient.GetNetworkForwardByName(ctx, endpoint, event.Source.ParentName, event.Source.Name)
+		if err != nil {
+			return err
+		}
+
+		networkForward := NetworkForward{
+			Cluster:     clusterName,
+			NetworkName: event.Source.ParentName,
+			Name:        retrievedNetworkForward.ListenAddress,
+			Object:      retrievedNetworkForward,
+			LastUpdated: s.now(),
+		}
+
+		networkForward.DeriveUUID()
+
+		if s.clusterSyncFilterFunc(networkForward) {
+			return nil
+		}
+
+		err = networkForward.Validate()
+		if err != nil {
+			return err
+		}
+
+		_, err = s.repo.Create(ctx, networkForward)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	var errs []error
+	for _, UUID := range UUIDs {
+		err := s.ResyncByUUID(ctx, UUID)
+		errs = append(errs, err)
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("Failed to resync instance by name: %w", errors.Join(errs...))
+	}
+
+	return nil
+}
+
 func (s networkForwardService) SyncCluster(ctx context.Context, name string) error {
 	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
 	if err != nil {

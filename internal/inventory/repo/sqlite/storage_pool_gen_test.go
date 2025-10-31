@@ -146,17 +146,19 @@ server-two
 	require.Equal(t, storagePoolA.Name, dbStoragePool[0].Name)
 	require.Equal(t, storagePoolB.Name, dbStoragePool[1].Name)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server and name.
 	storagePoolUUIDs, err = storagePool.GetAllUUIDsWithFilter(ctx, inventory.StoragePoolFilter{
 		Cluster: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, storagePoolUUIDs, 1)
 	require.ElementsMatch(t, []uuid.UUID{storagePoolA.UUID}, storagePoolUUIDs)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server and name.
 	dbStoragePool, err = storagePool.GetAllWithFilter(ctx, inventory.StoragePoolFilter{
 		Cluster: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbStoragePool, 1)

@@ -207,6 +207,73 @@ func (s networkPeerService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 	return nil
 }
 
+func (s networkPeerService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	if event.ResourceType != "network-peer" {
+		return nil
+	}
+
+	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkPeerFilter{
+		Cluster:     &clusterName,
+		NetworkName: &event.Source.ParentName,
+		Name:        &event.Source.Name,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(UUIDs) == 0 {
+		// This inventory is not found, try to fetch it from source and create it.
+		endpoint, err := s.clusterSvc.GetEndpoint(ctx, clusterName)
+		if err != nil {
+			return err
+		}
+
+		retrievedNetworkPeer, err := s.networkPeerClient.GetNetworkPeerByName(ctx, endpoint, event.Source.ParentName, event.Source.Name)
+		if err != nil {
+			return err
+		}
+
+		networkPeer := NetworkPeer{
+			Cluster:     clusterName,
+			NetworkName: event.Source.ParentName,
+			Name:        retrievedNetworkPeer.Name,
+			Object:      retrievedNetworkPeer,
+			LastUpdated: s.now(),
+		}
+
+		networkPeer.DeriveUUID()
+
+		if s.clusterSyncFilterFunc(networkPeer) {
+			return nil
+		}
+
+		err = networkPeer.Validate()
+		if err != nil {
+			return err
+		}
+
+		_, err = s.repo.Create(ctx, networkPeer)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	var errs []error
+	for _, UUID := range UUIDs {
+		err := s.ResyncByUUID(ctx, UUID)
+		errs = append(errs, err)
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("Failed to resync instance by name: %w", errors.Join(errs...))
+	}
+
+	return nil
+}
+
 func (s networkPeerService) SyncCluster(ctx context.Context, name string) error {
 	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
 	if err != nil {

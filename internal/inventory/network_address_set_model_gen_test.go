@@ -115,10 +115,11 @@ func TestNetworkAddressSet_Filter(t *testing.T) {
 			filter: inventory.NetworkAddressSetFilter{
 				Cluster:    ptr.To("cluster"),
 				Project:    ptr.To("project"),
+				Name:       ptr.To("name"),
 				Expression: ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true&project=project`,
+			want: `cluster=cluster&filter=true&name=name&project=project`,
 		},
 	}
 

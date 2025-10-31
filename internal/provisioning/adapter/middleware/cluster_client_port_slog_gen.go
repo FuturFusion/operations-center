@@ -7,6 +7,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -356,6 +357,42 @@ func (_d ClusterClientPortWithSlog) SetServerConfig(ctx context.Context, endpoin
 		}
 	}()
 	return _d._base.SetServerConfig(ctx, endpoint, config)
+}
+
+// SubscribeLifecycleEvents implements provisioning.ClusterClientPort.
+func (_d ClusterClientPortWithSlog) SubscribeLifecycleEvents(ctx context.Context, endpoint provisioning.Endpoint) (lifecycleEventCh chan domain.LifecycleEvent, errCh chan error, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("endpoint", endpoint),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SubscribeLifecycleEvents")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("lifecycleEventCh", lifecycleEventCh),
+				slog.Any("errCh", errCh),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method SubscribeLifecycleEvents returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method SubscribeLifecycleEvents returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method SubscribeLifecycleEvents finished")
+		}
+	}()
+	return _d._base.SubscribeLifecycleEvents(ctx, endpoint)
 }
 
 // UpdateClusterCertificate implements provisioning.ClusterClientPort.

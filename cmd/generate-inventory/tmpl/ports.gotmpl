@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
@@ -14,6 +15,7 @@ type {{ .Name | pascalcase }}Service interface {
 	GetAllUUIDsWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) ([]uuid.UUID, error)
 	GetByUUID(ctx context.Context, id uuid.UUID) ({{ .Name | pascalcase }}, error)
 	ResyncByUUID(ctx context.Context, id uuid.UUID) error
+	ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error
 	SyncCluster(ctx context.Context, cluster string) error
 }
 
@@ -32,5 +34,5 @@ type {{ .Name | pascalcase }}ServerClient interface {
 	HasExtension(ctx context.Context, endpoint provisioning.Endpoint, extension string) (exists bool)
 {{- end }}
 	Get{{ .PluralName | pascalcase }}(ctx context.Context, endpoint provisioning.Endpoint {{- if .HasParent }}, {{ .ParentName | camelcase }}Name string {{ end }}) ([]incusapi.{{ .ObjectType | pascalcase }}, error)
-	Get{{ .Name | pascalcase }}ByName(ctx context.Context, endpoint provisioning.Endpoint, {{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }} {{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error)
+	Get{{ .Name | pascalcase }}ByName(ctx context.Context, endpoint provisioning.Endpoint, {{- if .HasProject }}projectName string, {{ end -}}{{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }} {{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error)
 }

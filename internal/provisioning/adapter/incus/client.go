@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -12,6 +13,8 @@ import (
 	incus "github.com/lxc/incus/v6/client"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -372,4 +375,154 @@ func (c client) FactoryReset(ctx context.Context, endpoint provisioning.Endpoint
 	}
 
 	return nil
+}
+
+func (c client) SubscribeLifecycleEvents(ctx context.Context, endpoint provisioning.Endpoint) (chan domain.LifecycleEvent, chan error, error) {
+	client, err := c.getClient(ctx, endpoint)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	listener, err := client.GetEventsAllProjects()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Allow for up to 100 in-flight events to prevent the sender or the websocket
+	// connection from being blocked due to slow processing.
+	lifecycleEvents := make(chan domain.LifecycleEvent, 100)
+	errChan := make(chan error)
+	target, err := listener.AddHandler(nil, func(event incusapi.Event) {
+		lifecycleEvent, ok, err := mapIncusEventToLifecycleEvent(event)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to map incus event to lifecycle event", logger.Err(err))
+			return
+		}
+
+		if !ok {
+			return
+		}
+
+		select {
+		case lifecycleEvents <- lifecycleEvent:
+		case <-ctx.Done():
+			return
+		}
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	go func() {
+		select {
+		// Disconnect, if we are done and the context is cancelled.
+		case <-ctx.Done():
+			err = listener.RemoveHandler(target)
+			if err != nil {
+				slog.WarnContext(ctx, "Failed ro remove handler from event listener", logger.Err(err))
+			}
+
+			listener.Disconnect()
+
+		// Signal, if listener disconnect.
+		case errChan <- listener.Wait():
+			err = listener.RemoveHandler(target)
+			if err != nil {
+				slog.WarnContext(ctx, "Failed ro remove handler from event listener", logger.Err(err))
+			}
+		}
+
+		// Block potential senders, the will be "released" when the context is cancelled.
+		// We can not close the channel here, since already inflight handlers might still
+		// try to send on the channel, if these have been spawned before the handler
+		// has been removed.
+		lifecycleEvents = nil
+		close(errChan)
+	}()
+
+	return lifecycleEvents, errChan, nil
+}
+
+func mapIncusEventToLifecycleEvent(event incusapi.Event) (domain.LifecycleEvent, bool, error) {
+	if event.Type != incusapi.EventTypeLifecycle {
+		return domain.LifecycleEvent{}, false, nil
+	}
+
+	incusLifecycleEvent := incusapi.EventLifecycle{}
+	err := json.Unmarshal(event.Metadata, &incusLifecycleEvent)
+	if err != nil {
+		return domain.LifecycleEvent{}, false, err
+	}
+
+	sep := strings.LastIndex(incusLifecycleEvent.Action, "-")
+	if sep < 1 || sep+1 >= len(incusLifecycleEvent.Action) {
+		return domain.LifecycleEvent{}, false, fmt.Errorf("Incus lifecycle event action %q has invalid format", incusLifecycleEvent.Action)
+	}
+
+	resourceType, action := incusLifecycleEvent.Action[:sep], incusLifecycleEvent.Action[sep+1:]
+
+	lifecycleEventResourceType := domain.LifecycleResourceType(resourceType)
+	_, ok := domain.LifecycleResources[lifecycleEventResourceType]
+	if !ok {
+		// Life cycle resource not relevant, ignore.
+		return domain.LifecycleEvent{}, false, nil
+	}
+
+	var lifecycleEventAction domain.LifecycleAction
+	switch action {
+	case "created":
+		lifecycleEventAction = domain.LifecycleActionCreate
+
+	case "updated", "enabled", "disabled", "added", "removed":
+		lifecycleEventAction = domain.LifecycleActionUpdate
+
+	case "deleted":
+		lifecycleEventAction = domain.LifecycleActionDelete
+
+	default:
+		// Lifecycle action not relevant, ignore.
+		return domain.LifecycleEvent{}, false, nil
+	}
+
+	var lifecycleEventType string
+
+	incusEventContextTypeAny, ok := incusLifecycleEvent.Context["type"]
+	if ok {
+		lifecycleEventType, _ = incusEventContextTypeAny.(string) // nolint:revive // zero value is ok, if the type assertion fails.
+	}
+
+	// Example values of incusLifecycleEvent.Source:
+	//
+	//   /1.0/instances/d1 -> no parent
+	//   /1.0/storage-pools/default/volumes/custom/default_foo -> parent type: storage-pools, parent name: default
+	var lifecycleEventParentType string
+	var lifecycleEventParentName string
+	source := strings.TrimLeft(incusLifecycleEvent.Source, "/")
+	sourceParts := strings.Split(source, "/")
+	if len(sourceParts) > 3 {
+		lifecycleEventParentType, _ = strings.CutSuffix(sourceParts[1], "s") // remove pluralization
+		lifecycleEventParentName = sourceParts[2]
+		sourceParts = sourceParts[2:]
+	}
+
+	name := incusLifecycleEvent.Name
+	if name == "" {
+		name = sourceParts[len(sourceParts)-1]
+	}
+
+	if lifecycleEventResourceType == domain.LifecycleResourceTypeStorageVolume && lifecycleEventType == "" {
+		lifecycleEventType = sourceParts[len(sourceParts)-2]
+	}
+
+	return domain.LifecycleEvent{
+		ResourceType: lifecycleEventResourceType,
+		Action:       lifecycleEventAction,
+		Source: domain.LifecycleSource{
+			ParentType:  lifecycleEventParentType,
+			ParentName:  lifecycleEventParentName,
+			ProjectName: incusLifecycleEvent.Project,
+			Name:        name,
+			Type:        lifecycleEventType,
+		},
+	}, true, nil
 }

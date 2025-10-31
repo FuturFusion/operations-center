@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
@@ -16,6 +17,7 @@ type NetworkACLService interface {
 	GetAllUUIDsWithFilter(ctx context.Context, filter NetworkACLFilter) ([]uuid.UUID, error)
 	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkACL, error)
 	ResyncByUUID(ctx context.Context, id uuid.UUID) error
+	ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error
 	SyncCluster(ctx context.Context, cluster string) error
 }
 
@@ -31,5 +33,5 @@ type NetworkACLRepo interface {
 
 type NetworkACLServerClient interface {
 	GetNetworkACLs(ctx context.Context, endpoint provisioning.Endpoint) ([]incusapi.NetworkACL, error)
-	GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, networkACLName string) (incusapi.NetworkACL, error)
+	GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkACLName string) (incusapi.NetworkACL, error)
 }

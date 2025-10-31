@@ -150,21 +150,23 @@ server-two
 	require.Equal(t, instanceA.Name, dbInstance[0].Name)
 	require.Equal(t, instanceB.Name, dbInstance[1].Name)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, project and name.
 	instanceUUIDs, err = instance.GetAllUUIDsWithFilter(ctx, inventory.InstanceFilter{
 		Cluster: ptr.To("one"),
 		Server:  ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, instanceUUIDs, 1)
 	require.ElementsMatch(t, []uuid.UUID{instanceA.UUID}, instanceUUIDs)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, project and name.
 	dbInstance, err = instance.GetAllWithFilter(ctx, inventory.InstanceFilter{
 		Cluster: ptr.To("one"),
 		Server:  ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbInstance, 1)
