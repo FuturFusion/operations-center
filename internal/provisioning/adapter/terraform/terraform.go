@@ -99,11 +99,6 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 		return fmt.Errorf("Failed to parse terraform configuration templates: %w", err)
 	}
 
-	clusterAddress, err := url.Parse(config.ClusterEndpoint.GetConnectionURL())
-	if err != nil {
-		return fmt.Errorf("Failed to parse cluster endpoint connection URL: %w", err)
-	}
-
 	templateFiles, err := templatesFS.ReadDir("templates")
 	if err != nil {
 		return fmt.Errorf("Failed to read templates directory: %w", err)
@@ -134,8 +129,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 
 				err = tmpl.ExecuteTemplate(targetFile, templateFile.Name(), map[string]any{
 					"ClusterName":          name,
-					"ClusterAddress":       clusterAddress.Hostname(),
-					"ClusterPort":          clusterAddress.Port(),
+					"ClusterAddress":       config.ClusterEndpoint.GetConnectionURL(),
 					"MeshTunnelInterfaces": meshTunnelInterfaces,
 					"IncusPreseed":         incusPreseed,
 				},

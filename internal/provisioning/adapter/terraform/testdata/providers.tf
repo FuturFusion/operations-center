@@ -4,17 +4,17 @@ terraform {
   required_providers {
     incus = {
       source  = "lxc/incus"
-      version = ">=0.5.1"
+      version = "~>1.0.0"
     }
 
     random = {
       source  = "hashicorp/random"
-      version = ">=3.7.2"
+      version = "~>3.7.2"
     }
 
     null = {
       source  = "hashicorp/null"
-      version = ">=3.2.4"
+      version = "~>3.2.4"
     }
   }
 }
@@ -29,12 +29,11 @@ provider "incus" {
   // This can also be set with the INCUS_ACCEPT_SERVER_CERTIFICATE environment variable.
   accept_remote_certificate = true
 
+  default_remote = "foobar"
+
   remote {
     name    = "foobar"
-    default = true
-    scheme  = "https"
-    address = "127.0.0.1"
-    port    = "8443"
+    address = "https://127.0.0.1:8443"
   }
 }
 
