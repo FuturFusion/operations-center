@@ -221,6 +221,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	clusterEndpoint := ClusterEndpoint{
 		Server{
 			ConnectionURL:        bootstrapServer.ConnectionURL,
+			Cluster:              &newCluster.Name,
 			ClusterCertificate:   &clusterCertificate,
 			ClusterConnectionURL: &bootstrapServer.ConnectionURL,
 		},
