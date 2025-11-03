@@ -148,19 +148,21 @@ server-two
 	require.Equal(t, networkZoneA.Name, dbNetworkZone[0].Name)
 	require.Equal(t, networkZoneB.Name, dbNetworkZone[1].Name)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, project and name.
 	networkZoneUUIDs, err = networkZone.GetAllUUIDsWithFilter(ctx, inventory.NetworkZoneFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkZoneUUIDs, 1)
 	require.ElementsMatch(t, []uuid.UUID{networkZoneA.UUID}, networkZoneUUIDs)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, project and name.
 	dbNetworkZone, err = networkZone.GetAllWithFilter(ctx, inventory.NetworkZoneFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetworkZone, 1)

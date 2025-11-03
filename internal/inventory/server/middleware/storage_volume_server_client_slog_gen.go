@@ -44,12 +44,13 @@ func NewStorageVolumeServerClientWithSlog(base inventory.StorageVolumeServerClie
 }
 
 // GetStorageVolumeByName implements inventory.StorageVolumeServerClient.
-func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
+func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("storagePoolName", storagePoolName),
 			slog.String("storageVolumeName", storageVolumeName),
 			slog.String("storageVolumeType", storageVolumeType),
@@ -78,7 +79,7 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.C
 			log.DebugContext(ctx, "<= method GetStorageVolumeByName finished")
 		}
 	}()
-	return _d._base.GetStorageVolumeByName(ctx, endpoint, storagePoolName, storageVolumeName, storageVolumeType)
+	return _d._base.GetStorageVolumeByName(ctx, endpoint, projectName, storagePoolName, storageVolumeName, storageVolumeType)
 }
 
 // GetStorageVolumes implements inventory.StorageVolumeServerClient.

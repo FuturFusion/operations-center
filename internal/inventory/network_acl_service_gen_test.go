@@ -301,9 +301,10 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByUUIDNetworkACL: inventory.NetworkACL{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -324,9 +325,10 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success - networkACL get by name - not found",
 			repoGetByUUIDNetworkACL: inventory.NetworkACL{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -348,9 +350,10 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - cluster get by ID",
 			repoGetByUUIDNetworkACL: inventory.NetworkACL{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -359,9 +362,10 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - networkACL get by name",
 			repoGetByUUIDNetworkACL: inventory.NetworkACL{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -377,9 +381,10 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - networkACL get by name - not found - delete by uuid",
 			repoGetByUUIDNetworkACL: inventory.NetworkACL{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -396,9 +401,10 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByUUIDNetworkACL: inventory.NetworkACL{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "", // invalid
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "", // invalid
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -422,9 +428,10 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - update by UUID",
 			repoGetByUUIDNetworkACL: inventory.NetworkACL{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -469,8 +476,9 @@ func TestNetworkACLService_ResyncByUUID(t *testing.T) {
 			}
 
 			networkACLClient := &serverMock.NetworkACLServerClientMock{
-				GetNetworkACLByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkACLName string) (incusapi.NetworkACL, error) {
+				GetNetworkACLByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkACLName string) (incusapi.NetworkACL, error) {
 					require.Equal(t, tc.repoGetByUUIDNetworkACL.Name, networkACLName)
+					require.Equal(t, tc.repoGetByUUIDNetworkACL.ProjectName, projectName)
 					return tc.networkACLClientGetNetworkACLByName, tc.networkACLClientGetNetworkACLByNameErr
 				},
 			}

@@ -40,7 +40,7 @@ func NewNetworkZoneServerClientWithPrometheus(base inventory.NetworkZoneServerCl
 }
 
 // GetNetworkZoneByName implements inventory.NetworkZoneServerClient.
-func (_d NetworkZoneServerClientWithPrometheus) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, networkZoneName string) (networkZone api.NetworkZone, err error) {
+func (_d NetworkZoneServerClientWithPrometheus) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkZoneName string) (networkZone api.NetworkZone, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,7 +50,7 @@ func (_d NetworkZoneServerClientWithPrometheus) GetNetworkZoneByName(ctx context
 
 		networkZoneServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkZoneByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkZoneByName(ctx, endpoint, networkZoneName)
+	return _d.base.GetNetworkZoneByName(ctx, endpoint, projectName, networkZoneName)
 }
 
 // GetNetworkZones implements inventory.NetworkZoneServerClient.

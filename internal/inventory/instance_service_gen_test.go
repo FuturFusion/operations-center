@@ -301,9 +301,10 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByUUIDInstance: inventory.Instance{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -325,9 +326,10 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success - instance get by name - not found",
 			repoGetByUUIDInstance: inventory.Instance{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -349,9 +351,10 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - cluster get by ID",
 			repoGetByUUIDInstance: inventory.Instance{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -360,9 +363,10 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - instance get by name",
 			repoGetByUUIDInstance: inventory.Instance{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -378,9 +382,10 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - instance get by name - not found - delete by uuid",
 			repoGetByUUIDInstance: inventory.Instance{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -397,9 +402,10 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByUUIDInstance: inventory.Instance{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "", // invalid
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "", // invalid
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -424,9 +430,10 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - update by UUID",
 			repoGetByUUIDInstance: inventory.Instance{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -472,8 +479,9 @@ func TestInstanceService_ResyncByUUID(t *testing.T) {
 			}
 
 			instanceClient := &serverMock.InstanceServerClientMock{
-				GetInstanceByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, instanceName string) (incusapi.InstanceFull, error) {
+				GetInstanceByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, instanceName string) (incusapi.InstanceFull, error) {
 					require.Equal(t, tc.repoGetByUUIDInstance.Name, instanceName)
+					require.Equal(t, tc.repoGetByUUIDInstance.ProjectName, projectName)
 					return tc.instanceClientGetInstanceByName, tc.instanceClientGetInstanceByNameErr
 				},
 			}

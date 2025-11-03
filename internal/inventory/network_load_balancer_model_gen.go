@@ -60,13 +60,23 @@ func (m NetworkLoadBalancer) Validate() error {
 type NetworkLoadBalancers []NetworkLoadBalancer
 
 type NetworkLoadBalancerFilter struct {
-	Cluster    *string
-	Expression *string
+	Cluster     *string
+	NetworkName *string
+	Name        *string
+	Expression  *string
 }
 
 func (f NetworkLoadBalancerFilter) AppendToURLValues(query url.Values) url.Values {
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
+	}
+
+	if f.NetworkName != nil {
+		query.Add("parent", *f.NetworkName)
+	}
+
+	if f.Name != nil {
+		query.Add("name", *f.Name)
 	}
 
 	if f.Expression != nil {

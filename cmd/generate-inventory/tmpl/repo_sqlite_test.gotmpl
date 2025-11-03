@@ -168,7 +168,7 @@ server-two
 	require.Equal(t, {{ .Name | camelcase }}A.Name, db{{ .Name | pascalcase }}[0].Name)
 	require.Equal(t, {{ .Name | camelcase }}B.Name, db{{ .Name | pascalcase }}[1].Name)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server{{ if .HasProject }}, project{{ end }}{{ if .HasParent }}, {{ .ParentName }}{{ end }} and name.
 	{{ .Name | camelcase }}UUIDs, err = {{ .Name | camelcase }}.GetAllUUIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{
 		Cluster: ptr.To("one"),
 {{- if .ServerIDByLocation }}
@@ -177,12 +177,16 @@ server-two
 {{- if .HasProject }}
 		Project: ptr.To("one"),
 {{- end }}
+{{- if .HasParent }}
+		{{ .ParentName | pascalcase }}Name: ptr.To("parent one"),
+{{- end }}
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, {{ .Name | camelcase }}UUIDs, 1)
 	require.ElementsMatch(t, []uuid.UUID{ {{ .Name | camelcase }}A.UUID }, {{ .Name | camelcase }}UUIDs)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server{{ if .HasProject }}, project{{ end }}{{ if .HasParent }}, {{ .ParentName }}{{ end }} and name.
 	db{{ .Name | pascalcase }}, err = {{ .Name | camelcase }}.GetAllWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{
 		Cluster: ptr.To("one"),
 {{- if .ServerIDByLocation }}
@@ -191,6 +195,10 @@ server-two
 {{- if .HasProject }}
 		Project: ptr.To("one"),
 {{- end }}
+{{- if .HasParent }}
+		{{ .ParentName | pascalcase }}Name: ptr.To("parent one"),
+{{- end }}
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, db{{ .Name | pascalcase }}, 1)

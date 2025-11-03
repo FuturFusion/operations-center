@@ -96,10 +96,11 @@ func TestStoragePool_Filter(t *testing.T) {
 			name: "complete filter",
 			filter: inventory.StoragePoolFilter{
 				Cluster:    ptr.To("cluster"),
+				Name:       ptr.To("name"),
 				Expression: ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true`,
+			want: `cluster=cluster&filter=true&name=name`,
 		},
 	}
 

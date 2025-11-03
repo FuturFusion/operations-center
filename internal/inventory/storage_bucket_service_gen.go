@@ -170,7 +170,7 @@ func (s storageBucketService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 			return err
 		}
 
-		retrievedStorageBucket, err := s.storageBucketClient.GetStorageBucketByName(ctx, endpoint, storageBucket.StoragePoolName, storageBucket.Name)
+		retrievedStorageBucket, err := s.storageBucketClient.GetStorageBucketByName(ctx, endpoint, storageBucket.ProjectName, storageBucket.StoragePoolName, storageBucket.Name)
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, storageBucket.UUID)
 			if err != nil {

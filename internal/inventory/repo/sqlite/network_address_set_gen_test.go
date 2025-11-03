@@ -148,19 +148,21 @@ server-two
 	require.Equal(t, networkAddressSetA.Name, dbNetworkAddressSet[0].Name)
 	require.Equal(t, networkAddressSetB.Name, dbNetworkAddressSet[1].Name)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, project and name.
 	networkAddressSetUUIDs, err = networkAddressSet.GetAllUUIDsWithFilter(ctx, inventory.NetworkAddressSetFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkAddressSetUUIDs, 1)
 	require.ElementsMatch(t, []uuid.UUID{networkAddressSetA.UUID}, networkAddressSetUUIDs)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, project and name.
 	dbNetworkAddressSet, err = networkAddressSet.GetAllWithFilter(ctx, inventory.NetworkAddressSetFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetworkAddressSet, 1)

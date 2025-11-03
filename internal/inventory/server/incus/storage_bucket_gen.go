@@ -26,11 +26,13 @@ func (s serverClient) GetStorageBuckets(ctx context.Context, endpoint provisioni
 	return serverStorageBuckets, nil
 }
 
-func (s serverClient) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
+func (s serverClient) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.StorageBucket{}, err
 	}
+
+	client = client.UseProject(projectName)
 
 	serverStorageBucket, _, err := client.GetStoragePoolBucket(storagePoolName, storageBucketName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {

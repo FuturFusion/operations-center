@@ -148,19 +148,21 @@ server-two
 	require.Equal(t, imageA.Name, dbImage[0].Name)
 	require.Equal(t, imageB.Name, dbImage[1].Name)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, project and name.
 	imageUUIDs, err = image.GetAllUUIDsWithFilter(ctx, inventory.ImageFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, imageUUIDs, 1)
 	require.ElementsMatch(t, []uuid.UUID{imageA.UUID}, imageUUIDs)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, project and name.
 	dbImage, err = image.GetAllWithFilter(ctx, inventory.ImageFilter{
 		Cluster: ptr.To("one"),
 		Project: ptr.To("one"),
+		Name:    ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbImage, 1)

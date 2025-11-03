@@ -152,21 +152,25 @@ server-two
 	require.Equal(t, storageBucketA.Name, dbStorageBucket[0].Name)
 	require.Equal(t, storageBucketB.Name, dbStorageBucket[1].Name)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, project, storage_pool and name.
 	storageBucketUUIDs, err = storageBucket.GetAllUUIDsWithFilter(ctx, inventory.StorageBucketFilter{
-		Cluster: ptr.To("one"),
-		Server:  ptr.To("one"),
-		Project: ptr.To("one"),
+		Cluster:         ptr.To("one"),
+		Server:          ptr.To("one"),
+		Project:         ptr.To("one"),
+		StoragePoolName: ptr.To("parent one"),
+		Name:            ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, storageBucketUUIDs, 1)
 	require.ElementsMatch(t, []uuid.UUID{storageBucketA.UUID}, storageBucketUUIDs)
 
-	// Ensure we have one entry with filter for cluster, server and project
+	// Ensure we have one entry with filter for cluster, server, project, storage_pool and name.
 	dbStorageBucket, err = storageBucket.GetAllWithFilter(ctx, inventory.StorageBucketFilter{
-		Cluster: ptr.To("one"),
-		Server:  ptr.To("one"),
-		Project: ptr.To("one"),
+		Cluster:         ptr.To("one"),
+		Server:          ptr.To("one"),
+		Project:         ptr.To("one"),
+		StoragePoolName: ptr.To("parent one"),
+		Name:            ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbStorageBucket, 1)

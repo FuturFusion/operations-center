@@ -40,7 +40,7 @@ func NewServerClientWithPrometheus(base inventory.ServerClient, instanceName str
 }
 
 // GetImageByName implements inventory.ServerClient.
-func (_d ServerClientWithPrometheus) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, imageName string) (image api.Image, err error) {
+func (_d ServerClientWithPrometheus) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (image api.Image, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,7 +50,7 @@ func (_d ServerClientWithPrometheus) GetImageByName(ctx context.Context, endpoin
 
 		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetImageByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetImageByName(ctx, endpoint, imageName)
+	return _d.base.GetImageByName(ctx, endpoint, projectName, imageName)
 }
 
 // GetImages implements inventory.ServerClient.
@@ -68,7 +68,7 @@ func (_d ServerClientWithPrometheus) GetImages(ctx context.Context, endpoint pro
 }
 
 // GetInstanceByName implements inventory.ServerClient.
-func (_d ServerClientWithPrometheus) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, instanceName string) (instanceFull api.InstanceFull, err error) {
+func (_d ServerClientWithPrometheus) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, instanceName string) (instanceFull api.InstanceFull, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -78,7 +78,7 @@ func (_d ServerClientWithPrometheus) GetInstanceByName(ctx context.Context, endp
 
 		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetInstanceByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetInstanceByName(ctx, endpoint, instanceName)
+	return _d.base.GetInstanceByName(ctx, endpoint, projectName, instanceName)
 }
 
 // GetInstances implements inventory.ServerClient.
@@ -96,7 +96,7 @@ func (_d ServerClientWithPrometheus) GetInstances(ctx context.Context, endpoint 
 }
 
 // GetNetworkACLByName implements inventory.ServerClient.
-func (_d ServerClientWithPrometheus) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, networkACLName string) (networkACL api.NetworkACL, err error) {
+func (_d ServerClientWithPrometheus) GetNetworkACLByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkACLName string) (networkACL api.NetworkACL, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -106,7 +106,7 @@ func (_d ServerClientWithPrometheus) GetNetworkACLByName(ctx context.Context, en
 
 		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkACLByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkACLByName(ctx, endpoint, networkACLName)
+	return _d.base.GetNetworkACLByName(ctx, endpoint, projectName, networkACLName)
 }
 
 // GetNetworkACLs implements inventory.ServerClient.
@@ -124,7 +124,7 @@ func (_d ServerClientWithPrometheus) GetNetworkACLs(ctx context.Context, endpoin
 }
 
 // GetNetworkAddressSetByName implements inventory.ServerClient.
-func (_d ServerClientWithPrometheus) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
+func (_d ServerClientWithPrometheus) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -134,7 +134,7 @@ func (_d ServerClientWithPrometheus) GetNetworkAddressSetByName(ctx context.Cont
 
 		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkAddressSetByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkAddressSetByName(ctx, endpoint, networkAddressSetName)
+	return _d.base.GetNetworkAddressSetByName(ctx, endpoint, projectName, networkAddressSetName)
 }
 
 // GetNetworkAddressSets implements inventory.ServerClient.
@@ -152,7 +152,7 @@ func (_d ServerClientWithPrometheus) GetNetworkAddressSets(ctx context.Context, 
 }
 
 // GetNetworkByName implements inventory.ServerClient.
-func (_d ServerClientWithPrometheus) GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (network api.Network, err error) {
+func (_d ServerClientWithPrometheus) GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (network api.Network, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -162,7 +162,7 @@ func (_d ServerClientWithPrometheus) GetNetworkByName(ctx context.Context, endpo
 
 		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkByName(ctx, endpoint, networkName)
+	return _d.base.GetNetworkByName(ctx, endpoint, projectName, networkName)
 }
 
 // GetNetworkForwardByName implements inventory.ServerClient.
@@ -278,7 +278,7 @@ func (_d ServerClientWithPrometheus) GetNetworkPeers(ctx context.Context, endpoi
 }
 
 // GetNetworkZoneByName implements inventory.ServerClient.
-func (_d ServerClientWithPrometheus) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, networkZoneName string) (networkZone api.NetworkZone, err error) {
+func (_d ServerClientWithPrometheus) GetNetworkZoneByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkZoneName string) (networkZone api.NetworkZone, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -288,7 +288,7 @@ func (_d ServerClientWithPrometheus) GetNetworkZoneByName(ctx context.Context, e
 
 		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkZoneByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkZoneByName(ctx, endpoint, networkZoneName)
+	return _d.base.GetNetworkZoneByName(ctx, endpoint, projectName, networkZoneName)
 }
 
 // GetNetworkZones implements inventory.ServerClient.
@@ -320,7 +320,7 @@ func (_d ServerClientWithPrometheus) GetNetworks(ctx context.Context, endpoint p
 }
 
 // GetProfileByName implements inventory.ServerClient.
-func (_d ServerClientWithPrometheus) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, profileName string) (profile api.Profile, err error) {
+func (_d ServerClientWithPrometheus) GetProfileByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, profileName string) (profile api.Profile, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -330,7 +330,7 @@ func (_d ServerClientWithPrometheus) GetProfileByName(ctx context.Context, endpo
 
 		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetProfileByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetProfileByName(ctx, endpoint, profileName)
+	return _d.base.GetProfileByName(ctx, endpoint, projectName, profileName)
 }
 
 // GetProfiles implements inventory.ServerClient.
@@ -376,7 +376,7 @@ func (_d ServerClientWithPrometheus) GetProjects(ctx context.Context, endpoint p
 }
 
 // GetStorageBucketByName implements inventory.ServerClient.
-func (_d ServerClientWithPrometheus) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageBucketName string) (storageBucket api.StorageBucket, err error) {
+func (_d ServerClientWithPrometheus) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (storageBucket api.StorageBucket, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -386,7 +386,7 @@ func (_d ServerClientWithPrometheus) GetStorageBucketByName(ctx context.Context,
 
 		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetStorageBucketByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetStorageBucketByName(ctx, endpoint, storagePoolName, storageBucketName)
+	return _d.base.GetStorageBucketByName(ctx, endpoint, projectName, storagePoolName, storageBucketName)
 }
 
 // GetStorageBuckets implements inventory.ServerClient.
@@ -432,7 +432,7 @@ func (_d ServerClientWithPrometheus) GetStoragePools(ctx context.Context, endpoi
 }
 
 // GetStorageVolumeByName implements inventory.ServerClient.
-func (_d ServerClientWithPrometheus) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
+func (_d ServerClientWithPrometheus) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -442,7 +442,7 @@ func (_d ServerClientWithPrometheus) GetStorageVolumeByName(ctx context.Context,
 
 		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetStorageVolumeByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetStorageVolumeByName(ctx, endpoint, storagePoolName, storageVolumeName, storageVolumeType)
+	return _d.base.GetStorageVolumeByName(ctx, endpoint, projectName, storagePoolName, storageVolumeName, storageVolumeType)
 }
 
 // GetStorageVolumes implements inventory.ServerClient.

@@ -97,13 +97,17 @@ func (m {{ .Name | pascalcase }}) Validate() error {
 type {{ .PluralName | pascalcase }} []{{ .Name | pascalcase }}
 
 type {{ .Name | pascalcase }}Filter struct{
-	Cluster *string
+	Cluster    *string
 {{- if .ServerIDByLocation }}
-	Server  *string
+	Server     *string
 {{- end }}
 {{- if .HasProject }}
-	Project *string
+	Project    *string
 {{- end }}
+{{- if .HasParent }}
+	{{ .ParentName | pascalcase }}Name *string
+{{- end }}
+	Name       *string
 	Expression *string
 }
 
@@ -123,6 +127,16 @@ func (f {{ .Name | pascalcase }}Filter) AppendToURLValues(query url.Values) url.
 		query.Add("project", *f.Project)
 	}
 {{- end }}
+{{- if .HasParent }}
+
+	if f.{{ .ParentName | pascalcase }}Name != nil {
+		query.Add("parent", *f.{{ .ParentName | pascalcase }}Name)
+	}
+{{- end }}
+
+	if f.Name != nil {
+		query.Add("name", *f.Name)
+	}
 
 	if f.Expression != nil {
 		query.Add("filter", *f.Expression)

@@ -155,13 +155,15 @@ func TestStorageBucket_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: inventory.StorageBucketFilter{
-				Cluster:    ptr.To("cluster"),
-				Server:     ptr.To("server"),
-				Project:    ptr.To("project"),
-				Expression: ptr.To("true"),
+				Cluster:         ptr.To("cluster"),
+				Server:          ptr.To("server"),
+				Project:         ptr.To("project"),
+				StoragePoolName: ptr.To("storage_pool"),
+				Name:            ptr.To("name"),
+				Expression:      ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true&project=project&server=server`,
+			want: `cluster=cluster&filter=true&name=name&parent=storage_pool&project=project&server=server`,
 		},
 	}
 

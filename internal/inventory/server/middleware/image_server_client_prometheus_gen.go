@@ -40,7 +40,7 @@ func NewImageServerClientWithPrometheus(base inventory.ImageServerClient, instan
 }
 
 // GetImageByName implements inventory.ImageServerClient.
-func (_d ImageServerClientWithPrometheus) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, imageName string) (image api.Image, err error) {
+func (_d ImageServerClientWithPrometheus) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (image api.Image, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,7 +50,7 @@ func (_d ImageServerClientWithPrometheus) GetImageByName(ctx context.Context, en
 
 		imageServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetImageByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetImageByName(ctx, endpoint, imageName)
+	return _d.base.GetImageByName(ctx, endpoint, projectName, imageName)
 }
 
 // GetImages implements inventory.ImageServerClient.

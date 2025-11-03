@@ -23,7 +23,7 @@ var _ inventory.NetworkServerClient = &NetworkServerClientMock{}
 //
 //		// make and configure a mocked inventory.NetworkServerClient
 //		mockedNetworkServerClient := &NetworkServerClientMock{
-//			GetNetworkByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (api.Network, error) {
+//			GetNetworkByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (api.Network, error) {
 //				panic("mock out the GetNetworkByName method")
 //			},
 //			GetNetworksFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.Network, error) {
@@ -37,7 +37,7 @@ var _ inventory.NetworkServerClient = &NetworkServerClientMock{}
 //	}
 type NetworkServerClientMock struct {
 	// GetNetworkByNameFunc mocks the GetNetworkByName method.
-	GetNetworkByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (api.Network, error)
+	GetNetworkByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (api.Network, error)
 
 	// GetNetworksFunc mocks the GetNetworks method.
 	GetNetworksFunc func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.Network, error)
@@ -50,6 +50,8 @@ type NetworkServerClientMock struct {
 			Ctx context.Context
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
+			// ProjectName is the projectName argument value.
+			ProjectName string
 			// NetworkName is the networkName argument value.
 			NetworkName string
 		}
@@ -66,23 +68,25 @@ type NetworkServerClientMock struct {
 }
 
 // GetNetworkByName calls GetNetworkByNameFunc.
-func (mock *NetworkServerClientMock) GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, networkName string) (api.Network, error) {
+func (mock *NetworkServerClientMock) GetNetworkByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkName string) (api.Network, error) {
 	if mock.GetNetworkByNameFunc == nil {
 		panic("NetworkServerClientMock.GetNetworkByNameFunc: method is nil but NetworkServerClient.GetNetworkByName was just called")
 	}
 	callInfo := struct {
 		Ctx         context.Context
 		Endpoint    provisioning.Endpoint
+		ProjectName string
 		NetworkName string
 	}{
 		Ctx:         ctx,
 		Endpoint:    endpoint,
+		ProjectName: projectName,
 		NetworkName: networkName,
 	}
 	mock.lockGetNetworkByName.Lock()
 	mock.calls.GetNetworkByName = append(mock.calls.GetNetworkByName, callInfo)
 	mock.lockGetNetworkByName.Unlock()
-	return mock.GetNetworkByNameFunc(ctx, endpoint, networkName)
+	return mock.GetNetworkByNameFunc(ctx, endpoint, projectName, networkName)
 }
 
 // GetNetworkByNameCalls gets all the calls that were made to GetNetworkByName.
@@ -92,11 +96,13 @@ func (mock *NetworkServerClientMock) GetNetworkByName(ctx context.Context, endpo
 func (mock *NetworkServerClientMock) GetNetworkByNameCalls() []struct {
 	Ctx         context.Context
 	Endpoint    provisioning.Endpoint
+	ProjectName string
 	NetworkName string
 } {
 	var calls []struct {
 		Ctx         context.Context
 		Endpoint    provisioning.Endpoint
+		ProjectName string
 		NetworkName string
 	}
 	mock.lockGetNetworkByName.RLock()

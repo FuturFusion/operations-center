@@ -44,12 +44,13 @@ func NewImageServerClientWithSlog(base inventory.ImageServerClient, log *slog.Lo
 }
 
 // GetImageByName implements inventory.ImageServerClient.
-func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, imageName string) (image api.Image, err error) {
+func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, imageName string) (image api.Image, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("imageName", imageName),
 		)
 	}
@@ -76,7 +77,7 @@ func (_d ImageServerClientWithSlog) GetImageByName(ctx context.Context, endpoint
 			log.DebugContext(ctx, "<= method GetImageByName finished")
 		}
 	}()
-	return _d._base.GetImageByName(ctx, endpoint, imageName)
+	return _d._base.GetImageByName(ctx, endpoint, projectName, imageName)
 }
 
 // GetImages implements inventory.ImageServerClient.

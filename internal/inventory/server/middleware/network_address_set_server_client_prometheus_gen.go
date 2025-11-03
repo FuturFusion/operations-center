@@ -40,7 +40,7 @@ func NewNetworkAddressSetServerClientWithPrometheus(base inventory.NetworkAddres
 }
 
 // GetNetworkAddressSetByName implements inventory.NetworkAddressSetServerClient.
-func (_d NetworkAddressSetServerClientWithPrometheus) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
+func (_d NetworkAddressSetServerClientWithPrometheus) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,7 +50,7 @@ func (_d NetworkAddressSetServerClientWithPrometheus) GetNetworkAddressSetByName
 
 		networkAddressSetServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetNetworkAddressSetByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetNetworkAddressSetByName(ctx, endpoint, networkAddressSetName)
+	return _d.base.GetNetworkAddressSetByName(ctx, endpoint, projectName, networkAddressSetName)
 }
 
 // GetNetworkAddressSets implements inventory.NetworkAddressSetServerClient.

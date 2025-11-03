@@ -301,9 +301,10 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -322,9 +323,10 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "success - profile get by name - not found",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -346,9 +348,10 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - cluster get by ID",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpointErr: boom.Error,
 
@@ -357,9 +360,10 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - profile get by name",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -375,9 +379,10 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - profile get by name - not found - delete by uuid",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -394,9 +399,10 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - validate",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "", // invalid
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "", // invalid
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -418,9 +424,10 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 		{
 			name: "error - update by UUID",
 			repoGetByUUIDProfile: inventory.Profile{
-				UUID:    uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
-				Cluster: "one",
-				Name:    "one",
+				UUID:        uuid.MustParse(`8df91697-be30-464a-bd26-55d1bbe4b07f`),
+				Cluster:     "one",
+				Name:        "one",
+				ProjectName: "project one",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
 				{
@@ -463,8 +470,9 @@ func TestProfileService_ResyncByUUID(t *testing.T) {
 			}
 
 			profileClient := &serverMock.ProfileServerClientMock{
-				GetProfileByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, profileName string) (incusapi.Profile, error) {
+				GetProfileByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, profileName string) (incusapi.Profile, error) {
 					require.Equal(t, tc.repoGetByUUIDProfile.Name, profileName)
+					require.Equal(t, tc.repoGetByUUIDProfile.ProjectName, projectName)
 					return tc.profileClientGetProfileByName, tc.profileClientGetProfileByNameErr
 				},
 			}

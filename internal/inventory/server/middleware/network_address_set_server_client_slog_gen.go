@@ -44,12 +44,13 @@ func NewNetworkAddressSetServerClientWithSlog(base inventory.NetworkAddressSetSe
 }
 
 // GetNetworkAddressSetByName implements inventory.NetworkAddressSetServerClient.
-func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
+func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSetByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, networkAddressSetName string) (networkAddressSet api.NetworkAddressSet, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("endpoint", endpoint),
+			slog.String("projectName", projectName),
 			slog.String("networkAddressSetName", networkAddressSetName),
 		)
 	}
@@ -76,7 +77,7 @@ func (_d NetworkAddressSetServerClientWithSlog) GetNetworkAddressSetByName(ctx c
 			log.DebugContext(ctx, "<= method GetNetworkAddressSetByName finished")
 		}
 	}()
-	return _d._base.GetNetworkAddressSetByName(ctx, endpoint, networkAddressSetName)
+	return _d._base.GetNetworkAddressSetByName(ctx, endpoint, projectName, networkAddressSetName)
 }
 
 // GetNetworkAddressSets implements inventory.NetworkAddressSetServerClient.

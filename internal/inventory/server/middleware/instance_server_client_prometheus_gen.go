@@ -40,7 +40,7 @@ func NewInstanceServerClientWithPrometheus(base inventory.InstanceServerClient, 
 }
 
 // GetInstanceByName implements inventory.InstanceServerClient.
-func (_d InstanceServerClientWithPrometheus) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, instanceName string) (instanceFull api.InstanceFull, err error) {
+func (_d InstanceServerClientWithPrometheus) GetInstanceByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, instanceName string) (instanceFull api.InstanceFull, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -50,7 +50,7 @@ func (_d InstanceServerClientWithPrometheus) GetInstanceByName(ctx context.Conte
 
 		instanceServerClientDurationSummaryVec.WithLabelValues(_d.instanceName, "GetInstanceByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetInstanceByName(ctx, endpoint, instanceName)
+	return _d.base.GetInstanceByName(ctx, endpoint, projectName, instanceName)
 }
 
 // GetInstances implements inventory.InstanceServerClient.
