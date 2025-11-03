@@ -59,7 +59,9 @@ func (c client) getClient(ctx context.Context, endpoint provisioning.Endpoint) (
 		TLSCA:         c.clientCA,
 		SkipGetServer: true,
 		TransportWrapper: func(t *http.Transport) incus.HTTPTransporter {
-			t.TLSClientConfig.ServerName = serverName
+			if endpoint.GetCertificate() == "" {
+				t.TLSClientConfig.ServerName = serverName
+			}
 
 			return &transportWrapper{transport: t}
 		},
