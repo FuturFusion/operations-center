@@ -599,7 +599,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- end }}
 		{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}        []incusapi.{{ .ObjectType | pascalcase }}
 		{{ .Name | camelcase }}ClientGet{{ .PluralName | pascalcase }}Err     error
-		repoDeleteByClusterNameErr        error
+		repoDeleteWithFilterErr           error
 		repoCreateErr                     error
 		serviceOptions                    []inventory.{{ .Name | pascalcase }}ServiceOption
 
@@ -878,7 +878,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- end }}
 				},
 			},
-			repoDeleteByClusterNameErr: boom.Error,
+			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -982,8 +982,8 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
-				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
-					return tc.repoDeleteByClusterNameErr
+				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) error {
+					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
 					return inventory.{{ .Name | pascalcase }}{}, tc.repoCreateErr

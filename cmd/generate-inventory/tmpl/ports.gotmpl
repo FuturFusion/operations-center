@@ -23,7 +23,7 @@ type {{ .Name | pascalcase }}Repo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) ({{ .Name | pascalcase }}, error)
 	Create(ctx context.Context, {{ .Name | camelcase }} {{ .Name | pascalcase }}) ({{ .Name | pascalcase }}, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
-	DeleteByClusterName(ctx context.Context, cluster string) error
+	DeleteWithFilter(ctx context.Context, filter {{ .Name | pascalcase }}Filter) error
 	UpdateByUUID(ctx context.Context, {{ .Name | camelcase }} {{ .Name | pascalcase }}) ({{ .Name | pascalcase }}, error)
 }
 
