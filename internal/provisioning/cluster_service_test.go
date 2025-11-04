@@ -1847,7 +1847,7 @@ func TestClusterService_ResyncInventory(t *testing.T) {
 			}
 
 			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
-			clusterSvc.SetInventorySyncers([]provisioning.InventorySyncer{inventorySyncer})
+			clusterSvc.SetInventorySyncers(map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer})
 
 			// Run test
 			err := clusterSvc.ResyncInventory(tc.ctx)
@@ -1898,7 +1898,7 @@ func TestClusterService_ResyncInventoryByName(t *testing.T) {
 			}
 
 			clusterSvc := provisioning.NewClusterService(nil, nil, nil, nil, nil)
-			clusterSvc.SetInventorySyncers([]provisioning.InventorySyncer{inventorySyncer})
+			clusterSvc.SetInventorySyncers(map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer})
 
 			// Run test
 			err := clusterSvc.ResyncInventoryByName(context.Background(), tc.nameArg)
@@ -1970,7 +1970,9 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 						t.Helper()
 
 						events := make(chan domain.LifecycleEvent, 1)
-						events <- domain.LifecycleEvent{}
+						events <- domain.LifecycleEvent{
+							ResourceType: domain.ResourceTypeImage,
+						}
 
 						return events, nil, nil
 					},
@@ -2045,7 +2047,9 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 				{
 					Value: func(_ func()) (chan domain.LifecycleEvent, chan error, error) {
 						events := make(chan domain.LifecycleEvent, 1)
-						events <- domain.LifecycleEvent{}
+						events <- domain.LifecycleEvent{
+							ResourceType: domain.ResourceTypeImage,
+						}
 
 						return events, nil, nil
 					},
@@ -2055,6 +2059,38 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 			assertErr:           require.NoError,
 			wantProcessedEvents: 1,
 			assertLog:           logContains("Failed to re-establish event stream"),
+		},
+		{
+			name:     "error - unavailable inventory syncer",
+			initDone: doneChannel,
+			repoGetAllClusters: provisioning.Clusters{
+				{
+					Name: "one",
+				},
+			},
+			clientSubscribeLifecycleEvent: []queue.Item[func(cancel func()) (chan domain.LifecycleEvent, chan error, error)]{
+				{
+					Value: func(_ func()) (chan domain.LifecycleEvent, chan error, error) {
+						t.Helper()
+
+						events := make(chan domain.LifecycleEvent, 2)
+						events <- domain.LifecycleEvent{
+							ResourceType: domain.ResourceType("unavailable"), // unavailable inventory syncer
+						}
+
+						events <- domain.LifecycleEvent{
+							ResourceType: domain.ResourceTypeImage,
+						}
+
+						return events, nil, nil
+					},
+				},
+			},
+			inventorySyncerResyncByNameErr: boom.Error,
+
+			assertErr:           require.NoError,
+			wantProcessedEvents: 1,
+			assertLog:           logContains("No inventory syncer available for the resource type"),
 		},
 		{
 			name:     "error - inventorySyncer.ResyncByName",
@@ -2070,7 +2106,9 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 						t.Helper()
 
 						events := make(chan domain.LifecycleEvent, 1)
-						events <- domain.LifecycleEvent{}
+						events <- domain.LifecycleEvent{
+							ResourceType: domain.ResourceTypeImage,
+						}
 
 						return events, nil, nil
 					},
@@ -2106,7 +2144,9 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 						t.Helper()
 
 						events := make(chan domain.LifecycleEvent, 1)
-						events <- domain.LifecycleEvent{}
+						events <- domain.LifecycleEvent{
+							ResourceType: domain.ResourceTypeImage,
+						}
 
 						return events, nil, nil
 					},
@@ -2168,7 +2208,7 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, []provisioning.InventorySyncer{inventorySyncer}, nil)
+			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, map[domain.ResourceType]provisioning.InventorySyncer{domain.ResourceTypeImage: inventorySyncer}, nil)
 
 			// Run test
 			err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
@@ -2289,7 +2329,7 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, []provisioning.InventorySyncer{inventorySyncer}, nil)
+			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer}, nil)
 
 			// Run test
 			err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)

@@ -24,7 +24,7 @@ type ClusterService interface {
 	UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) error
 	GetEndpoint(ctx context.Context, name string) (Endpoint, error)
 	GetProvisionerConfigurationArchive(ctx context.Context, name string) (_ io.ReadCloser, size int, _ error)
-	SetInventorySyncers(inventorySyncers []InventorySyncer)
+	SetInventorySyncers(inventorySyncers map[domain.ResourceType]InventorySyncer)
 }
 
 type ClusterRepo interface {

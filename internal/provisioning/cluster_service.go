@@ -26,7 +26,7 @@ type clusterService struct {
 	repo             ClusterRepo
 	client           ClusterClientPort
 	serverSvc        ServerService
-	inventorySyncers []InventorySyncer
+	inventorySyncers map[domain.ResourceType]InventorySyncer
 	provisioner      ClusterProvisioningPort
 
 	createClusterRetries      int
@@ -51,7 +51,7 @@ func NewClusterService(
 	repo ClusterRepo,
 	client ClusterClientPort,
 	serverSvc ServerService,
-	inventorySyncers []InventorySyncer,
+	inventorySyncers map[domain.ResourceType]InventorySyncer,
 	provisioner ClusterProvisioningPort,
 	opts ...ClusterServiceOption,
 ) *clusterService {
@@ -77,7 +77,7 @@ func NewClusterService(
 	return clusterSvc
 }
 
-func (s *clusterService) SetInventorySyncers(inventorySyncers []InventorySyncer) {
+func (s *clusterService) SetInventorySyncers(inventorySyncers map[domain.ResourceType]InventorySyncer) {
 	(*s).inventorySyncers = inventorySyncers
 }
 
@@ -613,6 +613,10 @@ func (s clusterService) ResyncInventoryByName(ctx context.Context, name string) 
 		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
+	// We iterate a map, so the order is random. But this should not be an issue
+	// since there are no constraints in the DB between the different resource
+	// types. The data in the DB will become eventually consistent after the
+	// sync is completed.
 	for _, inventorySyncer := range s.inventorySyncers {
 		err := inventorySyncer.SyncCluster(ctx, name)
 		if err != nil {
@@ -712,11 +716,15 @@ func (s clusterService) startLifecycleEventHandler(ctx context.Context, clusterN
 				case event := <-events:
 					slog.InfoContext(ctx, "lifecycle event", slog.String("cluster", clusterName), slog.Any("action", event.Operation), slog.Any("resource_type", event.ResourceType), slog.String("source", event.Source.String()))
 
-					for _, inventorySyncer := range s.inventorySyncers {
-						err := inventorySyncer.ResyncByName(ctx, clusterName, event)
-						if err != nil {
-							slog.WarnContext(ctx, "Failed to resync", slog.String("cluster", clusterName), slog.String("action", string(event.Operation)), slog.Any("resource_type", event.ResourceType), slog.String("source", event.Source.String()), logger.Err(err))
-						}
+					inventorySyncer, ok := s.inventorySyncers[event.ResourceType]
+					if !ok {
+						slog.WarnContext(ctx, "No inventory syncer available for the resource type", slog.String("cluster", clusterName), slog.String("action", string(event.Operation)), slog.Any("resource_type", event.ResourceType), slog.String("source", event.Source.String()))
+						continue
+					}
+
+					err := inventorySyncer.ResyncByName(ctx, clusterName, event)
+					if err != nil {
+						slog.WarnContext(ctx, "Failed to resync", slog.String("cluster", clusterName), slog.String("action", string(event.Operation)), slog.Any("resource_type", event.ResourceType), slog.String("source", event.Source.String()), logger.Err(err))
 					}
 
 				case err := <-errChan:
