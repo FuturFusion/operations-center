@@ -514,7 +514,7 @@ func (d *Daemon) setupAPIRoutes(
 	clusterTemplateSvc provisioning.ClusterTemplateService,
 	systemSvc system.SystemService,
 	db dbdriver.DBTX,
-) (*http.ServeMux, []provisioning.InventorySyncer) {
+) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
 	// or clusters.
 	serverClientProvider := serverMiddleware.NewServerClientWithSlog(
