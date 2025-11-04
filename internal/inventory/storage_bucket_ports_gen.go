@@ -25,7 +25,7 @@ type StorageBucketRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (StorageBucket, error)
 	Create(ctx context.Context, storageBucket StorageBucket) (StorageBucket, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
-	DeleteByClusterName(ctx context.Context, cluster string) error
+	DeleteWithFilter(ctx context.Context, filter StorageBucketFilter) error
 	UpdateByUUID(ctx context.Context, storageBucket StorageBucket) (StorageBucket, error)
 }
 

@@ -192,7 +192,9 @@ server-two
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
 	// Delete profiles by cluster Name.
-	err = profile.DeleteByClusterName(ctx, "two")
+	err = profile.DeleteWithFilter(ctx, inventory.ProfileFilter{
+		Cluster: ptr.To("two"),
+	})
 	require.NoError(t, err)
 
 	_, err = profile.GetByUUID(ctx, profileA.UUID)

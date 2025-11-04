@@ -504,7 +504,7 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 		clusterSvcGetEndpointErr          error
 		networkACLClientGetNetworkACLs    []incusapi.NetworkACL
 		networkACLClientGetNetworkACLsErr error
-		repoDeleteByClusterNameErr        error
+		repoDeleteWithFilterErr           error
 		repoCreateErr                     error
 		serviceOptions                    []inventory.NetworkACLServiceOption
 
@@ -597,7 +597,7 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 					Project: "project one",
 				},
 			},
-			repoDeleteByClusterNameErr: boom.Error,
+			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -651,8 +651,8 @@ func TestNetworkACLService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkACLRepoMock{
-				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
-					return tc.repoDeleteByClusterNameErr
+				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.NetworkACLFilter) error {
+					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, networkACL inventory.NetworkACL) (inventory.NetworkACL, error) {
 					return inventory.NetworkACL{}, tc.repoCreateErr

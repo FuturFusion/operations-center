@@ -52,20 +52,6 @@ func (_d StoragePoolRepoWithPrometheus) Create(ctx context.Context, storagePool 
 	return _d.base.Create(ctx, storagePool)
 }
 
-// DeleteByClusterName implements inventory.StoragePoolRepo.
-func (_d StoragePoolRepoWithPrometheus) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		storagePoolRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterName", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.DeleteByClusterName(ctx, cluster)
-}
-
 // DeleteByUUID implements inventory.StoragePoolRepo.
 func (_d StoragePoolRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
@@ -78,6 +64,20 @@ func (_d StoragePoolRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uui
 		storagePoolRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.DeleteByUUID(ctx, id)
+}
+
+// DeleteWithFilter implements inventory.StoragePoolRepo.
+func (_d StoragePoolRepoWithPrometheus) DeleteWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		storagePoolRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteWithFilter(ctx, filter)
 }
 
 // GetAllUUIDsWithFilter implements inventory.StoragePoolRepo.

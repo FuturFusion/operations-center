@@ -196,7 +196,9 @@ server-two
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
 	// Delete instances by cluster Name.
-	err = instance.DeleteByClusterName(ctx, "two")
+	err = instance.DeleteWithFilter(ctx, inventory.InstanceFilter{
+		Cluster: ptr.To("two"),
+	})
 	require.NoError(t, err)
 
 	_, err = instance.GetByUUID(ctx, instanceA.UUID)

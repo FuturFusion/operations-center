@@ -192,7 +192,9 @@ server-two
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
 	// Delete network_acls by cluster Name.
-	err = networkACL.DeleteByClusterName(ctx, "two")
+	err = networkACL.DeleteWithFilter(ctx, inventory.NetworkACLFilter{
+		Cluster: ptr.To("two"),
+	})
 	require.NoError(t, err)
 
 	_, err = networkACL.GetByUUID(ctx, networkACLA.UUID)

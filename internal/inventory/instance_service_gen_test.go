@@ -507,7 +507,7 @@ func TestInstanceService_SyncAll(t *testing.T) {
 		clusterSvcGetEndpointErr      error
 		instanceClientGetInstances    []incusapi.InstanceFull
 		instanceClientGetInstancesErr error
-		repoDeleteByClusterNameErr    error
+		repoDeleteWithFilterErr       error
 		repoCreateErr                 error
 		serviceOptions                []inventory.InstanceServiceOption
 
@@ -604,7 +604,7 @@ func TestInstanceService_SyncAll(t *testing.T) {
 					},
 				},
 			},
-			repoDeleteByClusterNameErr: boom.Error,
+			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -660,8 +660,8 @@ func TestInstanceService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.InstanceRepoMock{
-				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
-					return tc.repoDeleteByClusterNameErr
+				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.InstanceFilter) error {
+					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, instance inventory.Instance) (inventory.Instance, error) {
 					return inventory.Instance{}, tc.repoCreateErr

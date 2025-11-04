@@ -192,7 +192,9 @@ server-two
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
 	// Delete networks by cluster Name.
-	err = network.DeleteByClusterName(ctx, "two")
+	err = network.DeleteWithFilter(ctx, inventory.NetworkFilter{
+		Cluster: ptr.To("two"),
+	})
 	require.NoError(t, err)
 
 	_, err = network.GetByUUID(ctx, networkA.UUID)

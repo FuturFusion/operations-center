@@ -231,7 +231,9 @@ func (s storageBucketService) SyncCluster(ctx context.Context, name string) erro
 		}
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
-			err = s.repo.DeleteByClusterName(ctx, name)
+			err = s.repo.DeleteWithFilter(ctx, StorageBucketFilter{
+				Cluster: &name,
+			})
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
 			}

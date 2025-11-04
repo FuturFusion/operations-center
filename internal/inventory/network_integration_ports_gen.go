@@ -25,7 +25,7 @@ type NetworkIntegrationRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkIntegration, error)
 	Create(ctx context.Context, networkIntegration NetworkIntegration) (NetworkIntegration, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
-	DeleteByClusterName(ctx context.Context, cluster string) error
+	DeleteWithFilter(ctx context.Context, filter NetworkIntegrationFilter) error
 	UpdateByUUID(ctx context.Context, networkIntegration NetworkIntegration) (NetworkIntegration, error)
 }
 

@@ -202,7 +202,9 @@ server-two
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
 	// Delete storage_volumes by cluster Name.
-	err = storageVolume.DeleteByClusterName(ctx, "two")
+	err = storageVolume.DeleteWithFilter(ctx, inventory.StorageVolumeFilter{
+		Cluster: ptr.To("two"),
+	})
 	require.NoError(t, err)
 
 	_, err = storageVolume.GetByUUID(ctx, storageVolumeA.UUID)

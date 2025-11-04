@@ -192,7 +192,9 @@ server-two
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
 	// Delete images by cluster Name.
-	err = image.DeleteByClusterName(ctx, "two")
+	err = image.DeleteWithFilter(ctx, inventory.ImageFilter{
+		Cluster: ptr.To("two"),
+	})
 	require.NoError(t, err)
 
 	_, err = image.GetByUUID(ctx, imageA.UUID)

@@ -498,7 +498,7 @@ func TestNetworkService_SyncAll(t *testing.T) {
 		clusterSvcGetEndpointErr    error
 		networkClientGetNetworks    []incusapi.Network
 		networkClientGetNetworksErr error
-		repoDeleteByClusterNameErr  error
+		repoDeleteWithFilterErr     error
 		repoCreateErr               error
 		serviceOptions              []inventory.NetworkServiceOption
 
@@ -583,7 +583,7 @@ func TestNetworkService_SyncAll(t *testing.T) {
 					Project: "project one",
 				},
 			},
-			repoDeleteByClusterNameErr: boom.Error,
+			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -633,8 +633,8 @@ func TestNetworkService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkRepoMock{
-				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
-					return tc.repoDeleteByClusterNameErr
+				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.NetworkFilter) error {
+					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, network inventory.Network) (inventory.Network, error) {
 					return inventory.Network{}, tc.repoCreateErr

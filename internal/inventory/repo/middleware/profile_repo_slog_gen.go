@@ -77,40 +77,6 @@ func (_d ProfileRepoWithSlog) Create(ctx context.Context, profile inventory.Prof
 	return _d._base.Create(ctx, profile)
 }
 
-// DeleteByClusterName implements inventory.ProfileRepo.
-func (_d ProfileRepoWithSlog) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.String("cluster", cluster),
-		)
-	}
-	log.DebugContext(ctx, "=> calling DeleteByClusterName")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method DeleteByClusterName returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method DeleteByClusterName returned an error")
-			}
-		} else {
-			log.DebugContext(ctx, "<= method DeleteByClusterName finished")
-		}
-	}()
-	return _d._base.DeleteByClusterName(ctx, cluster)
-}
-
 // DeleteByUUID implements inventory.ProfileRepo.
 func (_d ProfileRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	log := _d._log.With()
@@ -143,6 +109,40 @@ func (_d ProfileRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (e
 		}
 	}()
 	return _d._base.DeleteByUUID(ctx, id)
+}
+
+// DeleteWithFilter implements inventory.ProfileRepo.
+func (_d ProfileRepoWithSlog) DeleteWithFilter(ctx context.Context, filter inventory.ProfileFilter) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("filter", filter),
+		)
+	}
+	log.DebugContext(ctx, "=> calling DeleteWithFilter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method DeleteWithFilter returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method DeleteWithFilter returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method DeleteWithFilter finished")
+		}
+	}()
+	return _d._base.DeleteWithFilter(ctx, filter)
 }
 
 // GetAllUUIDsWithFilter implements inventory.ProfileRepo.

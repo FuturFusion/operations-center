@@ -25,7 +25,7 @@ type ImageRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (Image, error)
 	Create(ctx context.Context, image Image) (Image, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
-	DeleteByClusterName(ctx context.Context, cluster string) error
+	DeleteWithFilter(ctx context.Context, filter ImageFilter) error
 	UpdateByUUID(ctx context.Context, image Image) (Image, error)
 }
 

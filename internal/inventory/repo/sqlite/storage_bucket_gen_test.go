@@ -200,7 +200,9 @@ server-two
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
 	// Delete storage_buckets by cluster Name.
-	err = storageBucket.DeleteByClusterName(ctx, "two")
+	err = storageBucket.DeleteWithFilter(ctx, inventory.StorageBucketFilter{
+		Cluster: ptr.To("two"),
+	})
 	require.NoError(t, err)
 
 	_, err = storageBucket.GetByUUID(ctx, storageBucketA.UUID)

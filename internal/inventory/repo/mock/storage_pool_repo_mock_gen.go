@@ -25,11 +25,11 @@ var _ inventory.StoragePoolRepo = &StoragePoolRepoMock{}
 //			CreateFunc: func(ctx context.Context, storagePool inventory.StoragePool) (inventory.StoragePool, error) {
 //				panic("mock out the Create method")
 //			},
-//			DeleteByClusterNameFunc: func(ctx context.Context, cluster string) error {
-//				panic("mock out the DeleteByClusterName method")
-//			},
 //			DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
 //				panic("mock out the DeleteByUUID method")
+//			},
+//			DeleteWithFilterFunc: func(ctx context.Context, filter inventory.StoragePoolFilter) error {
+//				panic("mock out the DeleteWithFilter method")
 //			},
 //			GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.StoragePoolFilter) ([]uuid.UUID, error) {
 //				panic("mock out the GetAllUUIDsWithFilter method")
@@ -53,11 +53,11 @@ type StoragePoolRepoMock struct {
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, storagePool inventory.StoragePool) (inventory.StoragePool, error)
 
-	// DeleteByClusterNameFunc mocks the DeleteByClusterName method.
-	DeleteByClusterNameFunc func(ctx context.Context, cluster string) error
-
 	// DeleteByUUIDFunc mocks the DeleteByUUID method.
 	DeleteByUUIDFunc func(ctx context.Context, id uuid.UUID) error
+
+	// DeleteWithFilterFunc mocks the DeleteWithFilter method.
+	DeleteWithFilterFunc func(ctx context.Context, filter inventory.StoragePoolFilter) error
 
 	// GetAllUUIDsWithFilterFunc mocks the GetAllUUIDsWithFilter method.
 	GetAllUUIDsWithFilterFunc func(ctx context.Context, filter inventory.StoragePoolFilter) ([]uuid.UUID, error)
@@ -80,19 +80,19 @@ type StoragePoolRepoMock struct {
 			// StoragePool is the storagePool argument value.
 			StoragePool inventory.StoragePool
 		}
-		// DeleteByClusterName holds details about calls to the DeleteByClusterName method.
-		DeleteByClusterName []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster string
-		}
 		// DeleteByUUID holds details about calls to the DeleteByUUID method.
 		DeleteByUUID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
 			ID uuid.UUID
+		}
+		// DeleteWithFilter holds details about calls to the DeleteWithFilter method.
+		DeleteWithFilter []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Filter is the filter argument value.
+			Filter inventory.StoragePoolFilter
 		}
 		// GetAllUUIDsWithFilter holds details about calls to the GetAllUUIDsWithFilter method.
 		GetAllUUIDsWithFilter []struct {
@@ -124,8 +124,8 @@ type StoragePoolRepoMock struct {
 		}
 	}
 	lockCreate                sync.RWMutex
-	lockDeleteByClusterName   sync.RWMutex
 	lockDeleteByUUID          sync.RWMutex
+	lockDeleteWithFilter      sync.RWMutex
 	lockGetAllUUIDsWithFilter sync.RWMutex
 	lockGetAllWithFilter      sync.RWMutex
 	lockGetByUUID             sync.RWMutex
@@ -168,42 +168,6 @@ func (mock *StoragePoolRepoMock) CreateCalls() []struct {
 	return calls
 }
 
-// DeleteByClusterName calls DeleteByClusterNameFunc.
-func (mock *StoragePoolRepoMock) DeleteByClusterName(ctx context.Context, cluster string) error {
-	if mock.DeleteByClusterNameFunc == nil {
-		panic("StoragePoolRepoMock.DeleteByClusterNameFunc: method is nil but StoragePoolRepo.DeleteByClusterName was just called")
-	}
-	callInfo := struct {
-		Ctx     context.Context
-		Cluster string
-	}{
-		Ctx:     ctx,
-		Cluster: cluster,
-	}
-	mock.lockDeleteByClusterName.Lock()
-	mock.calls.DeleteByClusterName = append(mock.calls.DeleteByClusterName, callInfo)
-	mock.lockDeleteByClusterName.Unlock()
-	return mock.DeleteByClusterNameFunc(ctx, cluster)
-}
-
-// DeleteByClusterNameCalls gets all the calls that were made to DeleteByClusterName.
-// Check the length with:
-//
-//	len(mockedStoragePoolRepo.DeleteByClusterNameCalls())
-func (mock *StoragePoolRepoMock) DeleteByClusterNameCalls() []struct {
-	Ctx     context.Context
-	Cluster string
-} {
-	var calls []struct {
-		Ctx     context.Context
-		Cluster string
-	}
-	mock.lockDeleteByClusterName.RLock()
-	calls = mock.calls.DeleteByClusterName
-	mock.lockDeleteByClusterName.RUnlock()
-	return calls
-}
-
 // DeleteByUUID calls DeleteByUUIDFunc.
 func (mock *StoragePoolRepoMock) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	if mock.DeleteByUUIDFunc == nil {
@@ -237,6 +201,42 @@ func (mock *StoragePoolRepoMock) DeleteByUUIDCalls() []struct {
 	mock.lockDeleteByUUID.RLock()
 	calls = mock.calls.DeleteByUUID
 	mock.lockDeleteByUUID.RUnlock()
+	return calls
+}
+
+// DeleteWithFilter calls DeleteWithFilterFunc.
+func (mock *StoragePoolRepoMock) DeleteWithFilter(ctx context.Context, filter inventory.StoragePoolFilter) error {
+	if mock.DeleteWithFilterFunc == nil {
+		panic("StoragePoolRepoMock.DeleteWithFilterFunc: method is nil but StoragePoolRepo.DeleteWithFilter was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Filter inventory.StoragePoolFilter
+	}{
+		Ctx:    ctx,
+		Filter: filter,
+	}
+	mock.lockDeleteWithFilter.Lock()
+	mock.calls.DeleteWithFilter = append(mock.calls.DeleteWithFilter, callInfo)
+	mock.lockDeleteWithFilter.Unlock()
+	return mock.DeleteWithFilterFunc(ctx, filter)
+}
+
+// DeleteWithFilterCalls gets all the calls that were made to DeleteWithFilter.
+// Check the length with:
+//
+//	len(mockedStoragePoolRepo.DeleteWithFilterCalls())
+func (mock *StoragePoolRepoMock) DeleteWithFilterCalls() []struct {
+	Ctx    context.Context
+	Filter inventory.StoragePoolFilter
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Filter inventory.StoragePoolFilter
+	}
+	mock.lockDeleteWithFilter.RLock()
+	calls = mock.calls.DeleteWithFilter
+	mock.lockDeleteWithFilter.RUnlock()
 	return calls
 }
 

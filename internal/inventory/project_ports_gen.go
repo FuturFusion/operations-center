@@ -25,7 +25,7 @@ type ProjectRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (Project, error)
 	Create(ctx context.Context, project Project) (Project, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
-	DeleteByClusterName(ctx context.Context, cluster string) error
+	DeleteWithFilter(ctx context.Context, filter ProjectFilter) error
 	UpdateByUUID(ctx context.Context, project Project) (Project, error)
 }
 

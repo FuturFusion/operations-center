@@ -52,20 +52,6 @@ func (_d NetworkIntegrationRepoWithPrometheus) Create(ctx context.Context, netwo
 	return _d.base.Create(ctx, networkIntegration)
 }
 
-// DeleteByClusterName implements inventory.NetworkIntegrationRepo.
-func (_d NetworkIntegrationRepoWithPrometheus) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		networkIntegrationRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterName", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.DeleteByClusterName(ctx, cluster)
-}
-
 // DeleteByUUID implements inventory.NetworkIntegrationRepo.
 func (_d NetworkIntegrationRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
@@ -78,6 +64,20 @@ func (_d NetworkIntegrationRepoWithPrometheus) DeleteByUUID(ctx context.Context,
 		networkIntegrationRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.DeleteByUUID(ctx, id)
+}
+
+// DeleteWithFilter implements inventory.NetworkIntegrationRepo.
+func (_d NetworkIntegrationRepoWithPrometheus) DeleteWithFilter(ctx context.Context, filter inventory.NetworkIntegrationFilter) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		networkIntegrationRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteWithFilter(ctx, filter)
 }
 
 // GetAllUUIDsWithFilter implements inventory.NetworkIntegrationRepo.

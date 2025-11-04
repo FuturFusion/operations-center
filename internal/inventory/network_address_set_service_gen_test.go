@@ -505,7 +505,7 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 		networkAddressSetClientHasExtension             bool
 		networkAddressSetClientGetNetworkAddressSets    []incusapi.NetworkAddressSet
 		networkAddressSetClientGetNetworkAddressSetsErr error
-		repoDeleteByClusterNameErr                      error
+		repoDeleteWithFilterErr                         error
 		repoCreateErr                                   error
 		serviceOptions                                  []inventory.NetworkAddressSetServiceOption
 
@@ -615,7 +615,7 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 					Project: "project one",
 				},
 			},
-			repoDeleteByClusterNameErr: boom.Error,
+			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -671,8 +671,8 @@ func TestNetworkAddressSetService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkAddressSetRepoMock{
-				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
-					return tc.repoDeleteByClusterNameErr
+				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.NetworkAddressSetFilter) error {
+					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, networkAddressSet inventory.NetworkAddressSet) (inventory.NetworkAddressSet, error) {
 					return inventory.NetworkAddressSet{}, tc.repoCreateErr

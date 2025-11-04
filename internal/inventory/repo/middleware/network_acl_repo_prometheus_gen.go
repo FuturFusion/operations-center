@@ -52,20 +52,6 @@ func (_d NetworkACLRepoWithPrometheus) Create(ctx context.Context, networkACL in
 	return _d.base.Create(ctx, networkACL)
 }
 
-// DeleteByClusterName implements inventory.NetworkACLRepo.
-func (_d NetworkACLRepoWithPrometheus) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		networkACLRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterName", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.DeleteByClusterName(ctx, cluster)
-}
-
 // DeleteByUUID implements inventory.NetworkACLRepo.
 func (_d NetworkACLRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
@@ -78,6 +64,20 @@ func (_d NetworkACLRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid
 		networkACLRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.DeleteByUUID(ctx, id)
+}
+
+// DeleteWithFilter implements inventory.NetworkACLRepo.
+func (_d NetworkACLRepoWithPrometheus) DeleteWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		networkACLRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteWithFilter(ctx, filter)
 }
 
 // GetAllUUIDsWithFilter implements inventory.NetworkACLRepo.

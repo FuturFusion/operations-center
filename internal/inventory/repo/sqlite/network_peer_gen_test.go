@@ -192,7 +192,9 @@ server-two
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
 	// Delete network_peers by cluster Name.
-	err = networkPeer.DeleteByClusterName(ctx, "two")
+	err = networkPeer.DeleteWithFilter(ctx, inventory.NetworkPeerFilter{
+		Cluster: ptr.To("two"),
+	})
 	require.NoError(t, err)
 
 	_, err = networkPeer.GetByUUID(ctx, networkPeerA.UUID)

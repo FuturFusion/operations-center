@@ -188,7 +188,9 @@ server-two
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
 	// Delete network_integrations by cluster Name.
-	err = networkIntegration.DeleteByClusterName(ctx, "two")
+	err = networkIntegration.DeleteWithFilter(ctx, inventory.NetworkIntegrationFilter{
+		Cluster: ptr.To("two"),
+	})
 	require.NoError(t, err)
 
 	_, err = networkIntegration.GetByUUID(ctx, networkIntegrationA.UUID)

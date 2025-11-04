@@ -131,7 +131,7 @@ ORDER BY clusters.name, servers.name, storage_buckets.name
 	return storageBuckets, nil
 }
 
-func (r storageBucket) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) ([]uuid.UUID, error) {
+func (r storageBucket) selectStmtGetAllUUIDWithFilter(filter inventory.StorageBucketFilter) (query string, args []any) {
 	const sqlStmt = `
 SELECT storage_buckets.uuid
 FROM storage_buckets
@@ -143,7 +143,6 @@ ORDER BY storage_buckets.id
 `
 
 	var whereClause []string
-	var args []any
 
 	if filter.Cluster != nil {
 		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
@@ -170,9 +169,13 @@ ORDER BY storage_buckets.id
 		args = append(args, sql.Named("name", filter.Name))
 	}
 
-	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+	return fmt.Sprintf(sqlStmt, strings.Join(whereClause, " ")), args
+}
 
-	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+func (r storageBucket) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) ([]uuid.UUID, error) {
+	sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
+
+	rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
 	if err != nil {
 		return nil, sqlite.MapErr(err)
 	}
@@ -236,14 +239,16 @@ func (r storageBucket) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (r storageBucket) DeleteByClusterName(ctx context.Context, cluster string) error {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id as cluster_id from clusters where name = :cluster_name
-)
-DELETE FROM storage_buckets WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
+func (r storageBucket) DeleteWithFilter(ctx context.Context, filter inventory.StorageBucketFilter) error {
+	filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster_name", cluster))
+	sqlStmt := fmt.Sprintf(`
+WITH _lookup AS (
+%s
+)
+DELETE FROM storage_buckets WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
+
+	result, err := r.db.ExecContext(ctx, sqlStmt, args...)
 	if err != nil {
 		return sqlite.MapErr(err)
 	}

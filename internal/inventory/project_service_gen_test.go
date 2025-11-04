@@ -486,7 +486,7 @@ func TestProjectService_SyncAll(t *testing.T) {
 		clusterSvcGetEndpointErr    error
 		projectClientGetProjects    []incusapi.Project
 		projectClientGetProjectsErr error
-		repoDeleteByClusterNameErr  error
+		repoDeleteWithFilterErr     error
 		repoCreateErr               error
 		serviceOptions              []inventory.ProjectServiceOption
 
@@ -567,7 +567,7 @@ func TestProjectService_SyncAll(t *testing.T) {
 					Name: "project one",
 				},
 			},
-			repoDeleteByClusterNameErr: boom.Error,
+			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -615,8 +615,8 @@ func TestProjectService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ProjectRepoMock{
-				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
-					return tc.repoDeleteByClusterNameErr
+				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.ProjectFilter) error {
+					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, project inventory.Project) (inventory.Project, error) {
 					return inventory.Project{}, tc.repoCreateErr

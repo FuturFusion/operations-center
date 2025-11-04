@@ -206,7 +206,9 @@ func (s networkZoneService) SyncCluster(ctx context.Context, name string) error 
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByClusterName(ctx, name)
+		err = s.repo.DeleteWithFilter(ctx, NetworkZoneFilter{
+			Cluster: &name,
+		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}

@@ -188,7 +188,9 @@ server-two
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
 	// Delete projects by cluster Name.
-	err = project.DeleteByClusterName(ctx, "two")
+	err = project.DeleteWithFilter(ctx, inventory.ProjectFilter{
+		Cluster: ptr.To("two"),
+	})
 	require.NoError(t, err)
 
 	_, err = project.GetByUUID(ctx, projectA.UUID)

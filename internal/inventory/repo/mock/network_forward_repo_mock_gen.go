@@ -25,11 +25,11 @@ var _ inventory.NetworkForwardRepo = &NetworkForwardRepoMock{}
 //			CreateFunc: func(ctx context.Context, networkForward inventory.NetworkForward) (inventory.NetworkForward, error) {
 //				panic("mock out the Create method")
 //			},
-//			DeleteByClusterNameFunc: func(ctx context.Context, cluster string) error {
-//				panic("mock out the DeleteByClusterName method")
-//			},
 //			DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
 //				panic("mock out the DeleteByUUID method")
+//			},
+//			DeleteWithFilterFunc: func(ctx context.Context, filter inventory.NetworkForwardFilter) error {
+//				panic("mock out the DeleteWithFilter method")
 //			},
 //			GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkForwardFilter) ([]uuid.UUID, error) {
 //				panic("mock out the GetAllUUIDsWithFilter method")
@@ -53,11 +53,11 @@ type NetworkForwardRepoMock struct {
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, networkForward inventory.NetworkForward) (inventory.NetworkForward, error)
 
-	// DeleteByClusterNameFunc mocks the DeleteByClusterName method.
-	DeleteByClusterNameFunc func(ctx context.Context, cluster string) error
-
 	// DeleteByUUIDFunc mocks the DeleteByUUID method.
 	DeleteByUUIDFunc func(ctx context.Context, id uuid.UUID) error
+
+	// DeleteWithFilterFunc mocks the DeleteWithFilter method.
+	DeleteWithFilterFunc func(ctx context.Context, filter inventory.NetworkForwardFilter) error
 
 	// GetAllUUIDsWithFilterFunc mocks the GetAllUUIDsWithFilter method.
 	GetAllUUIDsWithFilterFunc func(ctx context.Context, filter inventory.NetworkForwardFilter) ([]uuid.UUID, error)
@@ -80,19 +80,19 @@ type NetworkForwardRepoMock struct {
 			// NetworkForward is the networkForward argument value.
 			NetworkForward inventory.NetworkForward
 		}
-		// DeleteByClusterName holds details about calls to the DeleteByClusterName method.
-		DeleteByClusterName []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Cluster is the cluster argument value.
-			Cluster string
-		}
 		// DeleteByUUID holds details about calls to the DeleteByUUID method.
 		DeleteByUUID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
 			ID uuid.UUID
+		}
+		// DeleteWithFilter holds details about calls to the DeleteWithFilter method.
+		DeleteWithFilter []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Filter is the filter argument value.
+			Filter inventory.NetworkForwardFilter
 		}
 		// GetAllUUIDsWithFilter holds details about calls to the GetAllUUIDsWithFilter method.
 		GetAllUUIDsWithFilter []struct {
@@ -124,8 +124,8 @@ type NetworkForwardRepoMock struct {
 		}
 	}
 	lockCreate                sync.RWMutex
-	lockDeleteByClusterName   sync.RWMutex
 	lockDeleteByUUID          sync.RWMutex
+	lockDeleteWithFilter      sync.RWMutex
 	lockGetAllUUIDsWithFilter sync.RWMutex
 	lockGetAllWithFilter      sync.RWMutex
 	lockGetByUUID             sync.RWMutex
@@ -168,42 +168,6 @@ func (mock *NetworkForwardRepoMock) CreateCalls() []struct {
 	return calls
 }
 
-// DeleteByClusterName calls DeleteByClusterNameFunc.
-func (mock *NetworkForwardRepoMock) DeleteByClusterName(ctx context.Context, cluster string) error {
-	if mock.DeleteByClusterNameFunc == nil {
-		panic("NetworkForwardRepoMock.DeleteByClusterNameFunc: method is nil but NetworkForwardRepo.DeleteByClusterName was just called")
-	}
-	callInfo := struct {
-		Ctx     context.Context
-		Cluster string
-	}{
-		Ctx:     ctx,
-		Cluster: cluster,
-	}
-	mock.lockDeleteByClusterName.Lock()
-	mock.calls.DeleteByClusterName = append(mock.calls.DeleteByClusterName, callInfo)
-	mock.lockDeleteByClusterName.Unlock()
-	return mock.DeleteByClusterNameFunc(ctx, cluster)
-}
-
-// DeleteByClusterNameCalls gets all the calls that were made to DeleteByClusterName.
-// Check the length with:
-//
-//	len(mockedNetworkForwardRepo.DeleteByClusterNameCalls())
-func (mock *NetworkForwardRepoMock) DeleteByClusterNameCalls() []struct {
-	Ctx     context.Context
-	Cluster string
-} {
-	var calls []struct {
-		Ctx     context.Context
-		Cluster string
-	}
-	mock.lockDeleteByClusterName.RLock()
-	calls = mock.calls.DeleteByClusterName
-	mock.lockDeleteByClusterName.RUnlock()
-	return calls
-}
-
 // DeleteByUUID calls DeleteByUUIDFunc.
 func (mock *NetworkForwardRepoMock) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	if mock.DeleteByUUIDFunc == nil {
@@ -237,6 +201,42 @@ func (mock *NetworkForwardRepoMock) DeleteByUUIDCalls() []struct {
 	mock.lockDeleteByUUID.RLock()
 	calls = mock.calls.DeleteByUUID
 	mock.lockDeleteByUUID.RUnlock()
+	return calls
+}
+
+// DeleteWithFilter calls DeleteWithFilterFunc.
+func (mock *NetworkForwardRepoMock) DeleteWithFilter(ctx context.Context, filter inventory.NetworkForwardFilter) error {
+	if mock.DeleteWithFilterFunc == nil {
+		panic("NetworkForwardRepoMock.DeleteWithFilterFunc: method is nil but NetworkForwardRepo.DeleteWithFilter was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Filter inventory.NetworkForwardFilter
+	}{
+		Ctx:    ctx,
+		Filter: filter,
+	}
+	mock.lockDeleteWithFilter.Lock()
+	mock.calls.DeleteWithFilter = append(mock.calls.DeleteWithFilter, callInfo)
+	mock.lockDeleteWithFilter.Unlock()
+	return mock.DeleteWithFilterFunc(ctx, filter)
+}
+
+// DeleteWithFilterCalls gets all the calls that were made to DeleteWithFilter.
+// Check the length with:
+//
+//	len(mockedNetworkForwardRepo.DeleteWithFilterCalls())
+func (mock *NetworkForwardRepoMock) DeleteWithFilterCalls() []struct {
+	Ctx    context.Context
+	Filter inventory.NetworkForwardFilter
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Filter inventory.NetworkForwardFilter
+	}
+	mock.lockDeleteWithFilter.RLock()
+	calls = mock.calls.DeleteWithFilter
+	mock.lockDeleteWithFilter.RUnlock()
 	return calls
 }
 

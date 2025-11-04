@@ -497,7 +497,7 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 		networkClientGetNetworksErr               error
 		networkForwardClientGetNetworkForwards    []incusapi.NetworkForward
 		networkForwardClientGetNetworkForwardsErr error
-		repoDeleteByClusterNameErr                error
+		repoDeleteWithFilterErr                   error
 		repoCreateErr                             error
 		serviceOptions                            []inventory.NetworkForwardServiceOption
 
@@ -641,7 +641,7 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 					ListenAddress: "networkForward one",
 				},
 			},
-			repoDeleteByClusterNameErr: boom.Error,
+			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -699,8 +699,8 @@ func TestNetworkForwardService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkForwardRepoMock{
-				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
-					return tc.repoDeleteByClusterNameErr
+				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.NetworkForwardFilter) error {
+					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, networkForward inventory.NetworkForward) (inventory.NetworkForward, error) {
 					return inventory.NetworkForward{}, tc.repoCreateErr

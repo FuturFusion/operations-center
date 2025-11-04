@@ -497,7 +497,7 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 		networkClientGetNetworksErr         error
 		networkPeerClientGetNetworkPeers    []incusapi.NetworkPeer
 		networkPeerClientGetNetworkPeersErr error
-		repoDeleteByClusterNameErr          error
+		repoDeleteWithFilterErr             error
 		repoCreateErr                       error
 		serviceOptions                      []inventory.NetworkPeerServiceOption
 
@@ -641,7 +641,7 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 					Name: "networkPeer one",
 				},
 			},
-			repoDeleteByClusterNameErr: boom.Error,
+			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -699,8 +699,8 @@ func TestNetworkPeerService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkPeerRepoMock{
-				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
-					return tc.repoDeleteByClusterNameErr
+				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.NetworkPeerFilter) error {
+					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, networkPeer inventory.NetworkPeer) (inventory.NetworkPeer, error) {
 					return inventory.NetworkPeer{}, tc.repoCreateErr

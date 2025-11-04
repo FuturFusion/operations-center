@@ -52,20 +52,6 @@ func (_d ProjectRepoWithPrometheus) Create(ctx context.Context, project inventor
 	return _d.base.Create(ctx, project)
 }
 
-// DeleteByClusterName implements inventory.ProjectRepo.
-func (_d ProjectRepoWithPrometheus) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		projectRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterName", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.DeleteByClusterName(ctx, cluster)
-}
-
 // DeleteByUUID implements inventory.ProjectRepo.
 func (_d ProjectRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
@@ -78,6 +64,20 @@ func (_d ProjectRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UU
 		projectRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.DeleteByUUID(ctx, id)
+}
+
+// DeleteWithFilter implements inventory.ProjectRepo.
+func (_d ProjectRepoWithPrometheus) DeleteWithFilter(ctx context.Context, filter inventory.ProjectFilter) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		projectRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteWithFilter(ctx, filter)
 }
 
 // GetAllUUIDsWithFilter implements inventory.ProjectRepo.

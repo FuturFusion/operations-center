@@ -25,7 +25,7 @@ type NetworkAddressSetRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkAddressSet, error)
 	Create(ctx context.Context, networkAddressSet NetworkAddressSet) (NetworkAddressSet, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
-	DeleteByClusterName(ctx context.Context, cluster string) error
+	DeleteWithFilter(ctx context.Context, filter NetworkAddressSetFilter) error
 	UpdateByUUID(ctx context.Context, networkAddressSet NetworkAddressSet) (NetworkAddressSet, error)
 }
 

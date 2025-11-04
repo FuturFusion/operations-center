@@ -192,7 +192,9 @@ server-two
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
 	// Delete network_zones by cluster Name.
-	err = networkZone.DeleteByClusterName(ctx, "two")
+	err = networkZone.DeleteWithFilter(ctx, inventory.NetworkZoneFilter{
+		Cluster: ptr.To("two"),
+	})
 	require.NoError(t, err)
 
 	_, err = networkZone.GetByUUID(ctx, networkZoneA.UUID)

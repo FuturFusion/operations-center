@@ -25,7 +25,7 @@ type NetworkForwardRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkForward, error)
 	Create(ctx context.Context, networkForward NetworkForward) (NetworkForward, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
-	DeleteByClusterName(ctx context.Context, cluster string) error
+	DeleteWithFilter(ctx context.Context, filter NetworkForwardFilter) error
 	UpdateByUUID(ctx context.Context, networkForward NetworkForward) (NetworkForward, error)
 }
 

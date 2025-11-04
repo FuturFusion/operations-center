@@ -52,20 +52,6 @@ func (_d NetworkZoneRepoWithPrometheus) Create(ctx context.Context, networkZone 
 	return _d.base.Create(ctx, networkZone)
 }
 
-// DeleteByClusterName implements inventory.NetworkZoneRepo.
-func (_d NetworkZoneRepoWithPrometheus) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		networkZoneRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterName", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.DeleteByClusterName(ctx, cluster)
-}
-
 // DeleteByUUID implements inventory.NetworkZoneRepo.
 func (_d NetworkZoneRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
@@ -78,6 +64,20 @@ func (_d NetworkZoneRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uui
 		networkZoneRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.DeleteByUUID(ctx, id)
+}
+
+// DeleteWithFilter implements inventory.NetworkZoneRepo.
+func (_d NetworkZoneRepoWithPrometheus) DeleteWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		networkZoneRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteWithFilter(ctx, filter)
 }
 
 // GetAllUUIDsWithFilter implements inventory.NetworkZoneRepo.
