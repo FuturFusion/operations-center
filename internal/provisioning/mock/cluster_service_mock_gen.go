@@ -9,6 +9,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -59,7 +60,7 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			ResyncInventoryByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the ResyncInventoryByName method")
 //			},
-//			SetInventorySyncersFunc: func(inventorySyncers []provisioning.InventorySyncer)  {
+//			SetInventorySyncersFunc: func(inventorySyncers map[domain.ResourceType]provisioning.InventorySyncer)  {
 //				panic("mock out the SetInventorySyncers method")
 //			},
 //			StartLifecycleEventsMonitorFunc: func(ctx context.Context) error {
@@ -115,7 +116,7 @@ type ClusterServiceMock struct {
 	ResyncInventoryByNameFunc func(ctx context.Context, name string) error
 
 	// SetInventorySyncersFunc mocks the SetInventorySyncers method.
-	SetInventorySyncersFunc func(inventorySyncers []provisioning.InventorySyncer)
+	SetInventorySyncersFunc func(inventorySyncers map[domain.ResourceType]provisioning.InventorySyncer)
 
 	// StartLifecycleEventsMonitorFunc mocks the StartLifecycleEventsMonitor method.
 	StartLifecycleEventsMonitorFunc func(ctx context.Context) error
@@ -213,7 +214,7 @@ type ClusterServiceMock struct {
 		// SetInventorySyncers holds details about calls to the SetInventorySyncers method.
 		SetInventorySyncers []struct {
 			// InventorySyncers is the inventorySyncers argument value.
-			InventorySyncers []provisioning.InventorySyncer
+			InventorySyncers map[domain.ResourceType]provisioning.InventorySyncer
 		}
 		// StartLifecycleEventsMonitor holds details about calls to the StartLifecycleEventsMonitor method.
 		StartLifecycleEventsMonitor []struct {
@@ -686,12 +687,12 @@ func (mock *ClusterServiceMock) ResyncInventoryByNameCalls() []struct {
 }
 
 // SetInventorySyncers calls SetInventorySyncersFunc.
-func (mock *ClusterServiceMock) SetInventorySyncers(inventorySyncers []provisioning.InventorySyncer) {
+func (mock *ClusterServiceMock) SetInventorySyncers(inventorySyncers map[domain.ResourceType]provisioning.InventorySyncer) {
 	if mock.SetInventorySyncersFunc == nil {
 		panic("ClusterServiceMock.SetInventorySyncersFunc: method is nil but ClusterService.SetInventorySyncers was just called")
 	}
 	callInfo := struct {
-		InventorySyncers []provisioning.InventorySyncer
+		InventorySyncers map[domain.ResourceType]provisioning.InventorySyncer
 	}{
 		InventorySyncers: inventorySyncers,
 	}
@@ -706,10 +707,10 @@ func (mock *ClusterServiceMock) SetInventorySyncers(inventorySyncers []provision
 //
 //	len(mockedClusterService.SetInventorySyncersCalls())
 func (mock *ClusterServiceMock) SetInventorySyncersCalls() []struct {
-	InventorySyncers []provisioning.InventorySyncer
+	InventorySyncers map[domain.ResourceType]provisioning.InventorySyncer
 } {
 	var calls []struct {
-		InventorySyncers []provisioning.InventorySyncer
+		InventorySyncers map[domain.ResourceType]provisioning.InventorySyncer
 	}
 	mock.lockSetInventorySyncers.RLock()
 	calls = mock.calls.SetInventorySyncers

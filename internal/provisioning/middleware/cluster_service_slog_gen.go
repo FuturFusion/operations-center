@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -460,7 +461,7 @@ func (_d ClusterServiceWithSlog) ResyncInventoryByName(ctx context.Context, name
 }
 
 // SetInventorySyncers implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) SetInventorySyncers(inventorySyncers []provisioning.InventorySyncer) {
+func (_d ClusterServiceWithSlog) SetInventorySyncers(inventorySyncers map[domain.ResourceType]provisioning.InventorySyncer) {
 	ctx := context.Background()
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {

@@ -8,6 +8,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
@@ -208,7 +209,7 @@ func (_d ClusterServiceWithPrometheus) ResyncInventoryByName(ctx context.Context
 }
 
 // SetInventorySyncers implements provisioning.ClusterService.
-func (_d ClusterServiceWithPrometheus) SetInventorySyncers(inventorySyncers []provisioning.InventorySyncer) {
+func (_d ClusterServiceWithPrometheus) SetInventorySyncers(inventorySyncers map[domain.ResourceType]provisioning.InventorySyncer) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
