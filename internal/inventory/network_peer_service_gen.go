@@ -230,7 +230,8 @@ func (s networkPeerService) SyncCluster(ctx context.Context, name string) error 
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
 			err = s.repo.DeleteWithFilter(ctx, NetworkPeerFilter{
-				Cluster: &name,
+				Cluster:     &name,
+				NetworkName: &network.Name,
 			})
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err

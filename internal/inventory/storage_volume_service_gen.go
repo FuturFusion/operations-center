@@ -233,7 +233,8 @@ func (s storageVolumeService) SyncCluster(ctx context.Context, name string) erro
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
 			err = s.repo.DeleteWithFilter(ctx, StorageVolumeFilter{
-				Cluster: &name,
+				Cluster:         &name,
+				StoragePoolName: &storagePool.Name,
 			})
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err

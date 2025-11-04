@@ -230,7 +230,8 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, name string
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
 			err = s.repo.DeleteWithFilter(ctx, NetworkLoadBalancerFilter{
-				Cluster: &name,
+				Cluster:     &name,
+				NetworkName: &network.Name,
 			})
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
