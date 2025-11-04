@@ -266,7 +266,12 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 {{ end }}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		err = s.repo.DeleteByClusterName(ctx, name)
+		err = s.repo.DeleteWithFilter(ctx, {{ .Name | pascalcase }}Filter{
+			Cluster: &name,
+{{- if .HasParent }}
+			{{ .ParentName | pascalcase }}Name: &{{ .ParentName | camelcase }}.Name,
+{{- end }}
+		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}

@@ -486,7 +486,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 		clusterSvcGetEndpointErr                          error
 		networkIntegrationClientGetNetworkIntegrations    []incusapi.NetworkIntegration
 		networkIntegrationClientGetNetworkIntegrationsErr error
-		repoDeleteByClusterNameErr                        error
+		repoDeleteWithFilterErr                           error
 		repoCreateErr                                     error
 		serviceOptions                                    []inventory.NetworkIntegrationServiceOption
 
@@ -567,7 +567,7 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 					Name: "networkIntegration one",
 				},
 			},
-			repoDeleteByClusterNameErr: boom.Error,
+			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -615,8 +615,8 @@ func TestNetworkIntegrationService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkIntegrationRepoMock{
-				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
-					return tc.repoDeleteByClusterNameErr
+				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.NetworkIntegrationFilter) error {
+					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, networkIntegration inventory.NetworkIntegration) (inventory.NetworkIntegration, error) {
 					return inventory.NetworkIntegration{}, tc.repoCreateErr

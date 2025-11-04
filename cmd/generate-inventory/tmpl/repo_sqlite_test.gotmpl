@@ -228,7 +228,9 @@ server-two
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
 	// Delete {{ .PluralName }} by cluster Name.
-	err = {{ .Name | camelcase }}.DeleteByClusterName(ctx, "two")
+	err = {{ .Name | camelcase }}.DeleteWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{
+		Cluster: ptr.To("two"),
+	})
 	require.NoError(t, err)
 
 	_, err = {{ .Name | camelcase }}.GetByUUID(ctx, {{ .Name | camelcase }}A.UUID)

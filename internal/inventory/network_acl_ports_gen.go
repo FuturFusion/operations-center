@@ -25,7 +25,7 @@ type NetworkACLRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkACL, error)
 	Create(ctx context.Context, networkACL NetworkACL) (NetworkACL, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
-	DeleteByClusterName(ctx context.Context, cluster string) error
+	DeleteWithFilter(ctx context.Context, filter NetworkACLFilter) error
 	UpdateByUUID(ctx context.Context, networkACL NetworkACL) (NetworkACL, error)
 }
 

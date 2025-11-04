@@ -512,7 +512,7 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 		storagePoolClientGetStoragePoolsErr     error
 		storageBucketClientGetStorageBuckets    []incusapi.StorageBucket
 		storageBucketClientGetStorageBucketsErr error
-		repoDeleteByClusterNameErr              error
+		repoDeleteWithFilterErr                 error
 		repoCreateErr                           error
 		serviceOptions                          []inventory.StorageBucketServiceOption
 
@@ -666,7 +666,7 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 					Project:  "project one",
 				},
 			},
-			repoDeleteByClusterNameErr: boom.Error,
+			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -728,8 +728,8 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.StorageBucketRepoMock{
-				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
-					return tc.repoDeleteByClusterNameErr
+				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.StorageBucketFilter) error {
+					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, storageBucket inventory.StorageBucket) (inventory.StorageBucket, error) {
 					return inventory.StorageBucket{}, tc.repoCreateErr

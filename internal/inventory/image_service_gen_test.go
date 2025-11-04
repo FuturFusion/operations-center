@@ -493,14 +493,14 @@ func TestImageService_ResyncByUUID(t *testing.T) {
 func TestImageService_SyncAll(t *testing.T) {
 	// Includes also SyncCluster
 	tests := []struct {
-		name                       string
-		clusterSvcGetEndpoint      provisioning.Endpoint
-		clusterSvcGetEndpointErr   error
-		imageClientGetImages       []incusapi.Image
-		imageClientGetImagesErr    error
-		repoDeleteByClusterNameErr error
-		repoCreateErr              error
-		serviceOptions             []inventory.ImageServiceOption
+		name                     string
+		clusterSvcGetEndpoint    provisioning.Endpoint
+		clusterSvcGetEndpointErr error
+		imageClientGetImages     []incusapi.Image
+		imageClientGetImagesErr  error
+		repoDeleteWithFilterErr  error
+		repoCreateErr            error
+		serviceOptions           []inventory.ImageServiceOption
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -583,7 +583,7 @@ func TestImageService_SyncAll(t *testing.T) {
 					Project:     "project one",
 				},
 			},
-			repoDeleteByClusterNameErr: boom.Error,
+			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -633,8 +633,8 @@ func TestImageService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ImageRepoMock{
-				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
-					return tc.repoDeleteByClusterNameErr
+				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.ImageFilter) error {
+					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, image inventory.Image) (inventory.Image, error) {
 					return inventory.Image{}, tc.repoCreateErr

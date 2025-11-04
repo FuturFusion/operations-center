@@ -52,20 +52,6 @@ func (_d NetworkLoadBalancerRepoWithPrometheus) Create(ctx context.Context, netw
 	return _d.base.Create(ctx, networkLoadBalancer)
 }
 
-// DeleteByClusterName implements inventory.NetworkLoadBalancerRepo.
-func (_d NetworkLoadBalancerRepoWithPrometheus) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		networkLoadBalancerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterName", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.DeleteByClusterName(ctx, cluster)
-}
-
 // DeleteByUUID implements inventory.NetworkLoadBalancerRepo.
 func (_d NetworkLoadBalancerRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
@@ -78,6 +64,20 @@ func (_d NetworkLoadBalancerRepoWithPrometheus) DeleteByUUID(ctx context.Context
 		networkLoadBalancerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.DeleteByUUID(ctx, id)
+}
+
+// DeleteWithFilter implements inventory.NetworkLoadBalancerRepo.
+func (_d NetworkLoadBalancerRepoWithPrometheus) DeleteWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		networkLoadBalancerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteWithFilter(ctx, filter)
 }
 
 // GetAllUUIDsWithFilter implements inventory.NetworkLoadBalancerRepo.

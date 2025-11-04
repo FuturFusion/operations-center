@@ -25,7 +25,7 @@ type NetworkRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (Network, error)
 	Create(ctx context.Context, network Network) (Network, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
-	DeleteByClusterName(ctx context.Context, cluster string) error
+	DeleteWithFilter(ctx context.Context, filter NetworkFilter) error
 	UpdateByUUID(ctx context.Context, network Network) (Network, error)
 }
 

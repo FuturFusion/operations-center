@@ -498,7 +498,7 @@ func TestProfileService_SyncAll(t *testing.T) {
 		clusterSvcGetEndpointErr    error
 		profileClientGetProfiles    []incusapi.Profile
 		profileClientGetProfilesErr error
-		repoDeleteByClusterNameErr  error
+		repoDeleteWithFilterErr     error
 		repoCreateErr               error
 		serviceOptions              []inventory.ProfileServiceOption
 
@@ -583,7 +583,7 @@ func TestProfileService_SyncAll(t *testing.T) {
 					Project: "project one",
 				},
 			},
-			repoDeleteByClusterNameErr: boom.Error,
+			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -633,8 +633,8 @@ func TestProfileService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ProfileRepoMock{
-				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
-					return tc.repoDeleteByClusterNameErr
+				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.ProfileFilter) error {
+					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, profile inventory.Profile) (inventory.Profile, error) {
 					return inventory.Profile{}, tc.repoCreateErr

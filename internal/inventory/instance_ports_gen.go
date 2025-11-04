@@ -25,7 +25,7 @@ type InstanceRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (Instance, error)
 	Create(ctx context.Context, instance Instance) (Instance, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
-	DeleteByClusterName(ctx context.Context, cluster string) error
+	DeleteWithFilter(ctx context.Context, filter InstanceFilter) error
 	UpdateByUUID(ctx context.Context, instance Instance) (Instance, error)
 }
 

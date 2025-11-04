@@ -125,7 +125,7 @@ ORDER BY clusters.name, servers.name, instances.name
 	return instances, nil
 }
 
-func (r instance) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.InstanceFilter) ([]uuid.UUID, error) {
+func (r instance) selectStmtGetAllUUIDWithFilter(filter inventory.InstanceFilter) (query string, args []any) {
 	const sqlStmt = `
 SELECT instances.uuid
 FROM instances
@@ -137,7 +137,6 @@ ORDER BY instances.id
 `
 
 	var whereClause []string
-	var args []any
 
 	if filter.Cluster != nil {
 		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
@@ -159,9 +158,13 @@ ORDER BY instances.id
 		args = append(args, sql.Named("name", filter.Name))
 	}
 
-	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+	return fmt.Sprintf(sqlStmt, strings.Join(whereClause, " ")), args
+}
 
-	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+func (r instance) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.InstanceFilter) ([]uuid.UUID, error) {
+	sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
+
+	rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
 	if err != nil {
 		return nil, sqlite.MapErr(err)
 	}
@@ -225,14 +228,16 @@ func (r instance) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (r instance) DeleteByClusterName(ctx context.Context, cluster string) error {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id as cluster_id from clusters where name = :cluster_name
-)
-DELETE FROM instances WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
+func (r instance) DeleteWithFilter(ctx context.Context, filter inventory.InstanceFilter) error {
+	filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster_name", cluster))
+	sqlStmt := fmt.Sprintf(`
+WITH _lookup AS (
+%s
+)
+DELETE FROM instances WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
+
+	result, err := r.db.ExecContext(ctx, sqlStmt, args...)
 	if err != nil {
 		return sqlite.MapErr(err)
 	}

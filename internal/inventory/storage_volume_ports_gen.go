@@ -25,7 +25,7 @@ type StorageVolumeRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (StorageVolume, error)
 	Create(ctx context.Context, storageVolume StorageVolume) (StorageVolume, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
-	DeleteByClusterName(ctx context.Context, cluster string) error
+	DeleteWithFilter(ctx context.Context, filter StorageVolumeFilter) error
 	UpdateByUUID(ctx context.Context, storageVolume StorageVolume) (StorageVolume, error)
 }
 

@@ -25,7 +25,7 @@ type NetworkZoneRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (NetworkZone, error)
 	Create(ctx context.Context, networkZone NetworkZone) (NetworkZone, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
-	DeleteByClusterName(ctx context.Context, cluster string) error
+	DeleteWithFilter(ctx context.Context, filter NetworkZoneFilter) error
 	UpdateByUUID(ctx context.Context, networkZone NetworkZone) (NetworkZone, error)
 }
 

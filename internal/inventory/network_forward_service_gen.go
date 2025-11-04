@@ -229,7 +229,10 @@ func (s networkForwardService) SyncCluster(ctx context.Context, name string) err
 		}
 
 		err = transaction.Do(ctx, func(ctx context.Context) error {
-			err = s.repo.DeleteByClusterName(ctx, name)
+			err = s.repo.DeleteWithFilter(ctx, NetworkForwardFilter{
+				Cluster:     &name,
+				NetworkName: &network.Name,
+			})
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
 				return err
 			}

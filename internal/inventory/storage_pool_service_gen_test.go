@@ -486,7 +486,7 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 		clusterSvcGetEndpointErr            error
 		storagePoolClientGetStoragePools    []incusapi.StoragePool
 		storagePoolClientGetStoragePoolsErr error
-		repoDeleteByClusterNameErr          error
+		repoDeleteWithFilterErr             error
 		repoCreateErr                       error
 		serviceOptions                      []inventory.StoragePoolServiceOption
 
@@ -567,7 +567,7 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 					Name: "storagePool one",
 				},
 			},
-			repoDeleteByClusterNameErr: boom.Error,
+			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -615,8 +615,8 @@ func TestStoragePoolService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.StoragePoolRepoMock{
-				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
-					return tc.repoDeleteByClusterNameErr
+				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.StoragePoolFilter) error {
+					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, storagePool inventory.StoragePool) (inventory.StoragePool, error) {
 					return inventory.StoragePool{}, tc.repoCreateErr

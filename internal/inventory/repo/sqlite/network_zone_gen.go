@@ -114,7 +114,7 @@ ORDER BY clusters.name, network_zones.name
 	return networkZones, nil
 }
 
-func (r networkZone) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) ([]uuid.UUID, error) {
+func (r networkZone) selectStmtGetAllUUIDWithFilter(filter inventory.NetworkZoneFilter) (query string, args []any) {
 	const sqlStmt = `
 SELECT network_zones.uuid
 FROM network_zones
@@ -125,7 +125,6 @@ ORDER BY network_zones.id
 `
 
 	var whereClause []string
-	var args []any
 
 	if filter.Cluster != nil {
 		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
@@ -142,9 +141,13 @@ ORDER BY network_zones.id
 		args = append(args, sql.Named("name", filter.Name))
 	}
 
-	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+	return fmt.Sprintf(sqlStmt, strings.Join(whereClause, " ")), args
+}
 
-	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+func (r networkZone) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) ([]uuid.UUID, error) {
+	sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
+
+	rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
 	if err != nil {
 		return nil, sqlite.MapErr(err)
 	}
@@ -207,14 +210,16 @@ func (r networkZone) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (r networkZone) DeleteByClusterName(ctx context.Context, cluster string) error {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id as cluster_id from clusters where name = :cluster_name
-)
-DELETE FROM network_zones WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
+func (r networkZone) DeleteWithFilter(ctx context.Context, filter inventory.NetworkZoneFilter) error {
+	filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster_name", cluster))
+	sqlStmt := fmt.Sprintf(`
+WITH _lookup AS (
+%s
+)
+DELETE FROM network_zones WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
+
+	result, err := r.db.ExecContext(ctx, sqlStmt, args...)
 	if err != nil {
 		return sqlite.MapErr(err)
 	}

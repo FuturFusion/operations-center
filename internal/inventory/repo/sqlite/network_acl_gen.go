@@ -114,7 +114,7 @@ ORDER BY clusters.name, network_acls.name
 	return networkACLs, nil
 }
 
-func (r networkACL) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) ([]uuid.UUID, error) {
+func (r networkACL) selectStmtGetAllUUIDWithFilter(filter inventory.NetworkACLFilter) (query string, args []any) {
 	const sqlStmt = `
 SELECT network_acls.uuid
 FROM network_acls
@@ -125,7 +125,6 @@ ORDER BY network_acls.id
 `
 
 	var whereClause []string
-	var args []any
 
 	if filter.Cluster != nil {
 		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
@@ -142,9 +141,13 @@ ORDER BY network_acls.id
 		args = append(args, sql.Named("name", filter.Name))
 	}
 
-	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+	return fmt.Sprintf(sqlStmt, strings.Join(whereClause, " ")), args
+}
 
-	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+func (r networkACL) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) ([]uuid.UUID, error) {
+	sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
+
+	rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
 	if err != nil {
 		return nil, sqlite.MapErr(err)
 	}
@@ -207,14 +210,16 @@ func (r networkACL) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (r networkACL) DeleteByClusterName(ctx context.Context, cluster string) error {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id as cluster_id from clusters where name = :cluster_name
-)
-DELETE FROM network_acls WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
+func (r networkACL) DeleteWithFilter(ctx context.Context, filter inventory.NetworkACLFilter) error {
+	filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster_name", cluster))
+	sqlStmt := fmt.Sprintf(`
+WITH _lookup AS (
+%s
+)
+DELETE FROM network_acls WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
+
+	result, err := r.db.ExecContext(ctx, sqlStmt, args...)
 	if err != nil {
 		return sqlite.MapErr(err)
 	}

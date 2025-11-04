@@ -114,7 +114,7 @@ ORDER BY clusters.name, network_load_balancers.name
 	return networkLoadBalancers, nil
 }
 
-func (r networkLoadBalancer) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) ([]uuid.UUID, error) {
+func (r networkLoadBalancer) selectStmtGetAllUUIDWithFilter(filter inventory.NetworkLoadBalancerFilter) (query string, args []any) {
 	const sqlStmt = `
 SELECT network_load_balancers.uuid
 FROM network_load_balancers
@@ -125,7 +125,6 @@ ORDER BY network_load_balancers.id
 `
 
 	var whereClause []string
-	var args []any
 
 	if filter.Cluster != nil {
 		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
@@ -142,9 +141,13 @@ ORDER BY network_load_balancers.id
 		args = append(args, sql.Named("name", filter.Name))
 	}
 
-	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+	return fmt.Sprintf(sqlStmt, strings.Join(whereClause, " ")), args
+}
 
-	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+func (r networkLoadBalancer) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) ([]uuid.UUID, error) {
+	sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
+
+	rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
 	if err != nil {
 		return nil, sqlite.MapErr(err)
 	}
@@ -207,14 +210,16 @@ func (r networkLoadBalancer) DeleteByUUID(ctx context.Context, id uuid.UUID) err
 	return nil
 }
 
-func (r networkLoadBalancer) DeleteByClusterName(ctx context.Context, cluster string) error {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id as cluster_id from clusters where name = :cluster_name
-)
-DELETE FROM network_load_balancers WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
+func (r networkLoadBalancer) DeleteWithFilter(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) error {
+	filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster_name", cluster))
+	sqlStmt := fmt.Sprintf(`
+WITH _lookup AS (
+%s
+)
+DELETE FROM network_load_balancers WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
+
+	result, err := r.db.ExecContext(ctx, sqlStmt, args...)
 	if err != nil {
 		return sqlite.MapErr(err)
 	}

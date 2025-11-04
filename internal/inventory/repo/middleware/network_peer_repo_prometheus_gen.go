@@ -52,20 +52,6 @@ func (_d NetworkPeerRepoWithPrometheus) Create(ctx context.Context, networkPeer 
 	return _d.base.Create(ctx, networkPeer)
 }
 
-// DeleteByClusterName implements inventory.NetworkPeerRepo.
-func (_d NetworkPeerRepoWithPrometheus) DeleteByClusterName(ctx context.Context, cluster string) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		networkPeerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByClusterName", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.DeleteByClusterName(ctx, cluster)
-}
-
 // DeleteByUUID implements inventory.NetworkPeerRepo.
 func (_d NetworkPeerRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
@@ -78,6 +64,20 @@ func (_d NetworkPeerRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uui
 		networkPeerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.DeleteByUUID(ctx, id)
+}
+
+// DeleteWithFilter implements inventory.NetworkPeerRepo.
+func (_d NetworkPeerRepoWithPrometheus) DeleteWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		networkPeerRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteWithFilter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteWithFilter(ctx, filter)
 }
 
 // GetAllUUIDsWithFilter implements inventory.NetworkPeerRepo.

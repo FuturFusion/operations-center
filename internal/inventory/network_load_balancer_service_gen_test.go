@@ -497,7 +497,7 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		networkClientGetNetworksErr                         error
 		networkLoadBalancerClientGetNetworkLoadBalancers    []incusapi.NetworkLoadBalancer
 		networkLoadBalancerClientGetNetworkLoadBalancersErr error
-		repoDeleteByClusterNameErr                          error
+		repoDeleteWithFilterErr                             error
 		repoCreateErr                                       error
 		serviceOptions                                      []inventory.NetworkLoadBalancerServiceOption
 
@@ -641,7 +641,7 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 					ListenAddress: "networkLoadBalancer one",
 				},
 			},
-			repoDeleteByClusterNameErr: boom.Error,
+			repoDeleteWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -699,8 +699,8 @@ func TestNetworkLoadBalancerService_SyncAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.NetworkLoadBalancerRepoMock{
-				DeleteByClusterNameFunc: func(ctx context.Context, clusterName string) error {
-					return tc.repoDeleteByClusterNameErr
+				DeleteWithFilterFunc: func(ctx context.Context, filter inventory.NetworkLoadBalancerFilter) error {
+					return tc.repoDeleteWithFilterErr
 				},
 				CreateFunc: func(ctx context.Context, networkLoadBalancer inventory.NetworkLoadBalancer) (inventory.NetworkLoadBalancer, error) {
 					return inventory.NetworkLoadBalancer{}, tc.repoCreateErr

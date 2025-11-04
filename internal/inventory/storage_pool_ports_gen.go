@@ -25,7 +25,7 @@ type StoragePoolRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (StoragePool, error)
 	Create(ctx context.Context, storagePool StoragePool) (StoragePool, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
-	DeleteByClusterName(ctx context.Context, cluster string) error
+	DeleteWithFilter(ctx context.Context, filter StoragePoolFilter) error
 	UpdateByUUID(ctx context.Context, storagePool StoragePool) (StoragePool, error)
 }
 

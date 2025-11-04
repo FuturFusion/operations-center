@@ -192,7 +192,9 @@ server-two
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
 	// Delete network_address_sets by cluster Name.
-	err = networkAddressSet.DeleteByClusterName(ctx, "two")
+	err = networkAddressSet.DeleteWithFilter(ctx, inventory.NetworkAddressSetFilter{
+		Cluster: ptr.To("two"),
+	})
 	require.NoError(t, err)
 
 	_, err = networkAddressSet.GetByUUID(ctx, networkAddressSetA.UUID)

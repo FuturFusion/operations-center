@@ -192,7 +192,9 @@ server-two
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
 	// Delete network_forwards by cluster Name.
-	err = networkForward.DeleteByClusterName(ctx, "two")
+	err = networkForward.DeleteWithFilter(ctx, inventory.NetworkForwardFilter{
+		Cluster: ptr.To("two"),
+	})
 	require.NoError(t, err)
 
 	_, err = networkForward.GetByUUID(ctx, networkForwardA.UUID)

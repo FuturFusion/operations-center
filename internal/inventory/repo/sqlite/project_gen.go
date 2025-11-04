@@ -108,7 +108,7 @@ ORDER BY clusters.name, projects.name
 	return projects, nil
 }
 
-func (r project) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ProjectFilter) ([]uuid.UUID, error) {
+func (r project) selectStmtGetAllUUIDWithFilter(filter inventory.ProjectFilter) (query string, args []any) {
 	const sqlStmt = `
 SELECT projects.uuid
 FROM projects
@@ -119,7 +119,6 @@ ORDER BY projects.id
 `
 
 	var whereClause []string
-	var args []any
 
 	if filter.Cluster != nil {
 		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
@@ -131,9 +130,13 @@ ORDER BY projects.id
 		args = append(args, sql.Named("name", filter.Name))
 	}
 
-	sqlStmtComplete := fmt.Sprintf(sqlStmt, strings.Join(whereClause, " "))
+	return fmt.Sprintf(sqlStmt, strings.Join(whereClause, " ")), args
+}
 
-	rows, err := r.db.QueryContext(ctx, sqlStmtComplete, args...)
+func (r project) GetAllUUIDsWithFilter(ctx context.Context, filter inventory.ProjectFilter) ([]uuid.UUID, error) {
+	sqlStmt, args := r.selectStmtGetAllUUIDWithFilter(filter)
+
+	rows, err := r.db.QueryContext(ctx, sqlStmt, args...)
 	if err != nil {
 		return nil, sqlite.MapErr(err)
 	}
@@ -196,14 +199,16 @@ func (r project) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (r project) DeleteByClusterName(ctx context.Context, cluster string) error {
-	const sqlStmt = `
-WITH _lookup AS (
-  SELECT id as cluster_id from clusters where name = :cluster_name
-)
-DELETE FROM projects WHERE cluster_id=(SELECT cluster_id FROM _lookup);`
+func (r project) DeleteWithFilter(ctx context.Context, filter inventory.ProjectFilter) error {
+	filterQuery, args := r.selectStmtGetAllUUIDWithFilter(filter)
 
-	result, err := r.db.ExecContext(ctx, sqlStmt, sql.Named("cluster_name", cluster))
+	sqlStmt := fmt.Sprintf(`
+WITH _lookup AS (
+%s
+)
+DELETE FROM projects WHERE uuid in (SELECT uuid FROM _lookup);`, filterQuery)
+
+	result, err := r.db.ExecContext(ctx, sqlStmt, args...)
 	if err != nil {
 		return sqlite.MapErr(err)
 	}

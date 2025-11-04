@@ -25,7 +25,7 @@ type ProfileRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (Profile, error)
 	Create(ctx context.Context, profile Profile) (Profile, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
-	DeleteByClusterName(ctx context.Context, cluster string) error
+	DeleteWithFilter(ctx context.Context, filter ProfileFilter) error
 	UpdateByUUID(ctx context.Context, profile Profile) (Profile, error)
 }
 

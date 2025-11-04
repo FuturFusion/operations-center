@@ -192,7 +192,9 @@ server-two
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
 
 	// Delete network_load_balancers by cluster Name.
-	err = networkLoadBalancer.DeleteByClusterName(ctx, "two")
+	err = networkLoadBalancer.DeleteWithFilter(ctx, inventory.NetworkLoadBalancerFilter{
+		Cluster: ptr.To("two"),
+	})
 	require.NoError(t, err)
 
 	_, err = networkLoadBalancer.GetByUUID(ctx, networkLoadBalancerA.UUID)
