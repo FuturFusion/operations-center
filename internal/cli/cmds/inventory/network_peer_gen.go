@@ -64,7 +64,7 @@ type cmdNetworkPeerList struct {
 	flagFormat  string
 }
 
-const networkPeerDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
+const networkPeerDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .NetworkName }},{{ .Name }},{{ .LastUpdated }}`
 
 var networkPeerColumnSorters = map[string]sort.ColumnSorter{
 	"Cluster": {

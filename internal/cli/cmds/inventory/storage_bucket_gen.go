@@ -66,7 +66,7 @@ type cmdStorageBucketList struct {
 	flagFormat  string
 }
 
-const storageBucketDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
+const storageBucketDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .StoragePoolName }},{{ .Name }},{{ .LastUpdated }}`
 
 var storageBucketColumnSorters = map[string]sort.ColumnSorter{
 	"Cluster": {

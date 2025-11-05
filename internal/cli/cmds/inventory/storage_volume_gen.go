@@ -66,7 +66,7 @@ type cmdStorageVolumeList struct {
 	flagFormat  string
 }
 
-const storageVolumeDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .ParentName }},{{ .Name }},{{ .Type }},{{ .LastUpdated }}`
+const storageVolumeDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .StoragePoolName }},{{ .Name }},{{ .Type }},{{ .LastUpdated }}`
 
 var storageVolumeColumnSorters = map[string]sort.ColumnSorter{
 	"Cluster": {

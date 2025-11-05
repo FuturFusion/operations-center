@@ -64,7 +64,7 @@ type cmdNetworkLoadBalancerList struct {
 	flagFormat  string
 }
 
-const networkLoadBalancerDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
+const networkLoadBalancerDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .NetworkName }},{{ .Name }},{{ .LastUpdated }}`
 
 var networkLoadBalancerColumnSorters = map[string]sort.ColumnSorter{
 	"Cluster": {

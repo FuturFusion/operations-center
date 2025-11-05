@@ -86,7 +86,7 @@ The basic idea is:
 {{- $defaultColumns = append $defaultColumns "ProjectName" -}}
 {{- end }}
 {{- if .HasParent }}
-{{- $defaultColumns = append $defaultColumns "ParentName" -}}
+{{- $defaultColumns = append $defaultColumns (printf "%sName" (.ParentName | pascalcase)) -}}
 {{- end }}
 {{- $defaultColumns = append $defaultColumns "Name" -}}
 {{- range .ExtraAttributes }}
