@@ -84,7 +84,7 @@ CREATE TABLE instances (
   object TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (uuid),
-  UNIQUE (cluster_id, server_id, project_name, name),
+  UNIQUE (cluster_id, project_name, name),
   FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE,
   FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );

@@ -8,6 +8,7 @@ image:
 instance:
   object-type: InstanceFull
   server-id-by-location: true
+  is-server-id-not-defining: true
   incus-get-all-method: GetInstancesFullAllProjects
   incus-get-method: GetInstanceFull
 

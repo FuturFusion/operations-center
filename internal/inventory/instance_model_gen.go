@@ -27,7 +27,6 @@ type Instance struct {
 func (m *Instance) DeriveUUID() *Instance {
 	identifier := strings.Join([]string{
 		m.Cluster,
-		m.Server,
 		m.ProjectName,
 		m.Name,
 	}, ":")
