@@ -64,7 +64,7 @@ type cmdNetworkForwardList struct {
 	flagFormat  string
 }
 
-const networkForwardDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ParentName }},{{ .Name }},{{ .LastUpdated }}`
+const networkForwardDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .NetworkName }},{{ .Name }},{{ .LastUpdated }}`
 
 var networkForwardColumnSorters = map[string]sort.ColumnSorter{
 	"Cluster": {
