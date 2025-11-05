@@ -38,7 +38,7 @@ type {{ .Name | pascalcase }} struct {
 func (m *{{ .Name | pascalcase }}) DeriveUUID() *{{ .Name | pascalcase }} {
 	identifier := strings.Join([]string{
 		m.Cluster,
-{{- if .ServerIDByLocation }}
+{{- if and .ServerIDByLocation .IsServerIDDefining }}
 		m.Server,
 {{- end }}
 {{- if .HasProject }}

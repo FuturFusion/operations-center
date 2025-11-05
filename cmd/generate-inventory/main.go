@@ -155,6 +155,7 @@ type entityArgs struct {
 	UsesEmbeddedPostType   bool
 	ServerIDByLocation     bool
 	IsServerIDOptional     bool
+	IsServerIDDefining     bool
 	IncusGetAllMethod      string
 	IncusGetMethod         string
 	HasParent              bool
@@ -241,6 +242,7 @@ func main() {
 			UsesEmbeddedPostType:   entity.UsesEmbeddedPostType,
 			ServerIDByLocation:     entity.ServerIDByLocation,
 			IsServerIDOptional:     entity.IsServerIDOptional,
+			IsServerIDDefining:     !entity.IsServerIDNotDefining,
 			IncusGetAllMethod:      entity.IncusGetAllMethod,
 			IncusGetMethod:         entity.IncusGetMethod,
 			HasParent:              entity.ParentName != "",
