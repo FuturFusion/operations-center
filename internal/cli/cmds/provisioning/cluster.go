@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
@@ -101,10 +102,12 @@ func (c *CmdCluster) Command() *cobra.Command {
 type cmdClusterAdd struct {
 	ocClient *client.OperationsCenterClient
 
-	serverNames           []string
-	serverType            string
-	servicesConfigFile    string
-	applicationConfigFile string
+	serverNames                  []string
+	serverType                   string
+	servicesConfigFile           string
+	applicationConfigFile        string
+	clusterTemplate              string
+	clusterTemplateVariablesFile string
 }
 
 func (c *cmdClusterAdd) Command() *cobra.Command {
@@ -117,8 +120,6 @@ func (c *cmdClusterAdd) Command() *cobra.Command {
   Adds a new cluster to the operations center.
 `
 
-	cmd.RunE = c.Run
-
 	const flagServerNames = "server-names"
 	cmd.Flags().StringSliceVarP(&c.serverNames, flagServerNames, "s", nil, "Server names of the cluster members")
 	_ = cmd.MarkFlagRequired(flagServerNames)
@@ -126,22 +127,49 @@ func (c *cmdClusterAdd) Command() *cobra.Command {
 	cmd.Flags().StringVarP(&c.serverType, "server-type", "t", "incus", "Type of servers, that should be clustered, supported values are (incus, migration-manager, operations-center)")
 	cmd.Flags().StringVarP(&c.servicesConfigFile, "services-config", "c", "", "Services config applied on the cluster nodes during pre clustering")
 	cmd.Flags().StringVarP(&c.applicationConfigFile, "application-seed-config", "a", "", "Application seed configuration applied on the cluster during post clustering")
+	cmd.Flags().StringVar(&c.clusterTemplate, "cluster-template", "", "Name of the cluster template to be applied. Mutual exclusive with --services-config and --application-seed-config")
+	cmd.Flags().StringVar(&c.clusterTemplateVariablesFile, "cluster-template-variables", "", "Name of the variables.yaml file containing the values to be applied in the cluster template. Required, if --cluster-template is provided")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.Run
 
 	return cmd
 }
 
-func (c *cmdClusterAdd) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterAdd) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 2, 2)
 	if exit {
 		return err
 	}
 
+	if c.clusterTemplate != "" {
+		if c.servicesConfigFile != "" || c.applicationConfigFile != "" {
+			return fmt.Errorf(`--cluster-template is mutual exclusive with --services-config and --application-seed-config`)
+		}
+
+		if c.clusterTemplateVariablesFile == "" {
+			return fmt.Errorf(`--cluster-template-variables is required with --cluster-template`)
+		}
+	}
+
+	// TODO: maybe we could support in-flight templates, where the user provides
+	// templated service config and application config files, a variables.yaml
+	// and a variables definition. This would allow the user to use cluster
+	// templates without storing them in Operations Center.
+	if (c.servicesConfigFile != "" || c.applicationConfigFile != "") && c.clusterTemplateVariablesFile != "" {
+		return fmt.Errorf(`--cluster-template-variables is incompatible with required with --services-config and --application-seed-config`)
+	}
+
+	return nil
+}
+
+func (c *cmdClusterAdd) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 	connectionURL := args[1]
 
 	var serverType api.ServerType
-	err = serverType.UnmarshalText([]byte(c.serverType))
+	err := serverType.UnmarshalText([]byte(c.serverType))
 	if err != nil {
 		return err
 	}
@@ -174,15 +202,31 @@ func (c *cmdClusterAdd) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	clusterTemplateVariables := incusapi.ConfigMap{}
+
+	if c.clusterTemplateVariablesFile != "" {
+		body, err := os.ReadFile(c.clusterTemplateVariablesFile)
+		if err != nil {
+			return err
+		}
+
+		err = yaml.Unmarshal(body, &clusterTemplateVariables)
+		if err != nil {
+			return err
+		}
+	}
+
 	err = c.ocClient.CreateCluster(cmd.Context(), api.ClusterPost{
 		Cluster: api.Cluster{
 			Name:          name,
 			ConnectionURL: connectionURL,
 		},
-		ServerNames:           c.serverNames,
-		ServerType:            serverType,
-		ServicesConfig:        servicesConfig,
-		ApplicationSeedConfig: applicationConfig,
+		ServerNames:                   c.serverNames,
+		ServerType:                    serverType,
+		ServicesConfig:                servicesConfig,
+		ApplicationSeedConfig:         applicationConfig,
+		ClusterTemplate:               c.clusterTemplate,
+		ClusterTemplateVariableValues: clusterTemplateVariables,
 	})
 	if err != nil {
 		return err
