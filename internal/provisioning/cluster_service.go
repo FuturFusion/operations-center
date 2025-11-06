@@ -47,6 +47,12 @@ func ClusterServiceCreateClusterRetryTimeout(timeout time.Duration) ClusterServi
 	}
 }
 
+func ClusterServiceUpdateSignal(updateSignal signals.Signal[ClusterUpdateMessage]) ClusterServiceOption {
+	return func(s *clusterService) {
+		s.clusterUpdateSignal = updateSignal
+	}
+}
+
 func NewClusterService(
 	repo ClusterRepo,
 	client ClusterClientPort,
@@ -72,10 +78,6 @@ func NewClusterService(
 
 	for _, opt := range opts {
 		opt(clusterSvc)
-	}
-
-	if provisioner != nil {
-		provisioner.RegisterUpdateSignal(clusterSvc.clusterUpdateSignal)
 	}
 
 	return clusterSvc
@@ -536,12 +538,7 @@ func (s clusterService) DeleteByName(ctx context.Context, name string, deleteMod
 	}
 
 	if deleteMode == api.ClusterDeleteModeForce || deleteMode == api.ClusterDeleteModeFactoryReset {
-		err := s.provisioner.Cleanup(ctx, name)
-		if err != nil {
-			return fmt.Errorf("Cleanup provisioner files: %w", err)
-		}
-
-		err = s.repo.DeleteByName(ctx, name)
+		err := s.repo.DeleteByName(ctx, name)
 		if err != nil {
 			return fmt.Errorf("Failed to delete cluster: %w", err)
 		}

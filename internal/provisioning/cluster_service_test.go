@@ -26,6 +26,8 @@ import (
 )
 
 func TestClusterService_Create(t *testing.T) {
+	updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
+
 	tests := []struct {
 		name                           string
 		cluster                        provisioning.Cluster
@@ -49,7 +51,8 @@ func TestClusterService_Create(t *testing.T) {
 		provisionerApplyErr            error
 		provisionerInitErr             error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr     require.ErrorAssertionFunc
+		signalHandler func(t *testing.T, called *bool) func(ctx context.Context, cum provisioning.ClusterUpdateMessage)
 	}{
 		{
 			name: "success",
@@ -96,7 +99,8 @@ func TestClusterService_Create(t *testing.T) {
 			clientEnableClusterCertificate: "certificate",
 			clientGetOSData:                api.OSData{},
 
-			assertErr: require.NoError,
+			assertErr:     require.NoError,
+			signalHandler: requireCallSignalHandler,
 		},
 		{
 			name: "error - validation",
@@ -110,6 +114,7 @@ func TestClusterService_Create(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - repo.ExistsByName cluster already exists",
@@ -124,6 +129,7 @@ func TestClusterService_Create(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, `Cluster with name "one" already exists`)
 			},
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - repo.ExistsByName",
@@ -134,7 +140,8 @@ func TestClusterService_Create(t *testing.T) {
 			},
 			repoExistsByNameErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - serverSvc.GetByName",
@@ -149,7 +156,8 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			},
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - server already part of cluster",
@@ -172,6 +180,7 @@ func TestClusterService_Create(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, `Server "server1" is already part of cluster "cluster-foo"`)
 			},
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - repo.Create",
@@ -197,7 +206,8 @@ func TestClusterService_Create(t *testing.T) {
 			clientEnableClusterCertificate: "certificate",
 			repoCreateErr:                  boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - server has wrong type",
@@ -225,6 +235,7 @@ func TestClusterService_Create(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, `Server "server1" has type "migration-manager" but "incus" was expected`)
 			},
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - client.Ping",
@@ -249,7 +260,8 @@ func TestClusterService_Create(t *testing.T) {
 			},
 			clientPingErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - invalid os service config",
@@ -280,6 +292,7 @@ func TestClusterService_Create(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Failed to enable OS service "lvm" on "server1": config is not an object`)
 			},
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - lvm enabled not bool",
@@ -311,6 +324,7 @@ func TestClusterService_Create(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Failed to enable OS service "lvm" on "server1": "enabled" is not a bool`)
 			},
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - invalid os service config",
@@ -343,6 +357,7 @@ func TestClusterService_Create(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Failed to enable OS service "lvm" on "server1": can not enable LVM on servers with internal ID > 2000`)
 			},
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - client.EnableOSService",
@@ -372,7 +387,8 @@ func TestClusterService_Create(t *testing.T) {
 			},
 			clientEnableOSServiceErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - client.SetServerConfig",
@@ -402,7 +418,8 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			},
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - client.EnableCluster",
@@ -431,7 +448,8 @@ func TestClusterService_Create(t *testing.T) {
 			},
 			clientEnableClusterErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - client.GetClusterNodeNames",
@@ -461,7 +479,8 @@ func TestClusterService_Create(t *testing.T) {
 			clientEnableClusterCertificate: "certificate",
 			clientGetClusterNodeNamesErr:   boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - client.GetClusterJoinToken",
@@ -491,7 +510,8 @@ func TestClusterService_Create(t *testing.T) {
 			clientEnableClusterCertificate: "certificate",
 			clientGetClusterJoinTokenErr:   boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - client.JoinCluster",
@@ -521,7 +541,8 @@ func TestClusterService_Create(t *testing.T) {
 			clientEnableClusterCertificate: "certificate",
 			clientJoinClusterErr:           boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - serverSvc.GetByName - 2nd transaction",
@@ -552,7 +573,8 @@ func TestClusterService_Create(t *testing.T) {
 				{}, // Server 2
 			},
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - server already part of cluster - 2nd transaction",
@@ -591,6 +613,7 @@ func TestClusterService_Create(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
 				require.ErrorContains(tt, err, `Server "server1" was not part of a cluster, but is now part of "cluster-foo"`)
 			},
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - repo.Update",
@@ -632,7 +655,8 @@ func TestClusterService_Create(t *testing.T) {
 			clientEnableClusterCertificate: "certificate",
 			repoUpdateErr:                  boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - serverSvc.Update",
@@ -674,7 +698,8 @@ func TestClusterService_Create(t *testing.T) {
 			clientEnableClusterCertificate: "certificate",
 			serverSvcUpdateErr:             boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - client.GetOSData",
@@ -716,7 +741,8 @@ func TestClusterService_Create(t *testing.T) {
 			clientEnableClusterCertificate: "certificate",
 			clientGetOSDataErr:             boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - provisioner.Init",
@@ -758,7 +784,8 @@ func TestClusterService_Create(t *testing.T) {
 			clientEnableClusterCertificate: "certificate",
 			provisionerInitErr:             boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name: "error - provisioner.Apply",
@@ -800,7 +827,8 @@ func TestClusterService_Create(t *testing.T) {
 			clientEnableClusterCertificate: "certificate",
 			provisionerApplyErr:            boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 	}
 
@@ -858,7 +886,6 @@ func TestClusterService_Create(t *testing.T) {
 			}
 
 			provisioner := &adapterMock.ClusterProvisioningPortMock{
-				RegisterUpdateSignalFunc: func(signal signals.Signal[provisioning.ClusterUpdateMessage]) {},
 				InitFunc: func(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
 					return tc.provisionerInitErr
 				},
@@ -869,7 +896,11 @@ func TestClusterService_Create(t *testing.T) {
 
 			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, nil, provisioner,
 				provisioning.ClusterServiceCreateClusterRetryTimeout(0),
+				provisioning.ClusterServiceUpdateSignal(updateSignal),
 			)
+
+			var signalHandlerCalled bool
+			updateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
 
 			// Run test
 			_, err := clusterSvc.Create(context.Background(), tc.cluster)
@@ -878,6 +909,7 @@ func TestClusterService_Create(t *testing.T) {
 			tc.assertErr(t, err)
 			require.Empty(t, tc.clientSetServerConfig)
 			require.Empty(t, tc.serverSvcGetByName)
+			require.True(t, signalHandlerCalled, "expected signal handler to called, but it was not OR no call was expected, but it got called")
 		})
 	}
 }
@@ -968,7 +1000,6 @@ func TestClusterService_GetProvisionerConfigurationArchive(t *testing.T) {
 			}
 
 			provisioner := &adapterMock.ClusterProvisioningPortMock{
-				RegisterUpdateSignalFunc: func(signal signals.Signal[provisioning.ClusterUpdateMessage]) {},
 				GetArchiveFunc: func(ctx context.Context, name string) (io.ReadCloser, int, error) {
 					return tc.provisionerGetArchiveRC, tc.provisionerGetArchiveSize, tc.provisionerGetArchiveErr
 				},
@@ -1498,11 +1529,14 @@ func TestClusterService_Update(t *testing.T) {
 }
 
 func TestClusterService_Rename(t *testing.T) {
+	updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
+
 	tests := []struct {
 		name          string
 		oldName       string
 		newName       string
 		repoRenameErr error
+		signalHandler func(t *testing.T, called *bool) func(ctx context.Context, cum provisioning.ClusterUpdateMessage)
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -1511,7 +1545,8 @@ func TestClusterService_Rename(t *testing.T) {
 			oldName: "one",
 			newName: "one new",
 
-			assertErr: require.NoError,
+			assertErr:     require.NoError,
+			signalHandler: requireCallSignalHandler,
 		},
 		{
 			name:    "error - old name empty",
@@ -1521,6 +1556,7 @@ func TestClusterService_Rename(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
 			},
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name:    "error - new name empty",
@@ -1531,6 +1567,7 @@ func TestClusterService_Rename(t *testing.T) {
 				var verr domain.ErrValidation
 				require.ErrorAs(tt, err, &verr, a...)
 			},
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name:          "error - repo.Rename",
@@ -1538,7 +1575,8 @@ func TestClusterService_Rename(t *testing.T) {
 			newName:       "one new",
 			repoRenameErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 	}
 
@@ -1553,18 +1591,26 @@ func TestClusterService_Rename(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil,
+				provisioning.ClusterServiceUpdateSignal(updateSignal),
+			)
+
+			var signalHandlerCalled bool
+			updateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
 
 			// Run test
 			err := clusterSvc.Rename(context.Background(), tc.oldName, tc.newName)
 
 			// Assert
 			tc.assertErr(t, err)
+			require.True(t, signalHandlerCalled, "expected signal handler to called, but it was not OR no call was expected, but it got called")
 		})
 	}
 }
 
 func TestClusterService_DeleteByName(t *testing.T) {
+	updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
+
 	tests := []struct {
 		name                                string
 		nameArg                             string
@@ -1578,9 +1624,9 @@ func TestClusterService_DeleteByName(t *testing.T) {
 		serverSvcGetAllWithFilterErr        error
 		clientPingErr                       error
 		clientFactoryResetErr               error
-		provisionerCleanupErr               error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr     require.ErrorAssertionFunc
+		signalHandler func(t *testing.T, called *bool) func(ctx context.Context, cum provisioning.ClusterUpdateMessage)
 	}{
 		{
 			name:    "success",
@@ -1589,7 +1635,8 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				Status: api.ClusterStatusPending,
 			},
 
-			assertErr: require.NoError,
+			assertErr:     require.NoError,
+			signalHandler: requireCallSignalHandler,
 		},
 		{
 			name:       "success - factory reset",
@@ -1603,7 +1650,8 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				{},
 			},
 
-			assertErr: require.NoError,
+			assertErr:     require.NoError,
+			signalHandler: requireCallSignalHandler,
 		},
 		{
 			name:    "error - name empty",
@@ -1612,6 +1660,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
 			},
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name:                         "error - serverSvc.GetAllWithFilter",
@@ -1619,7 +1668,8 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			deleteMode:                   api.ClusterDeleteModeFactoryReset,
 			serverSvcGetAllWithFilterErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name:       "error - client.Ping",
@@ -1630,7 +1680,8 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			},
 			clientPingErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name:       "error - client.FactoryReset",
@@ -1641,15 +1692,8 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			},
 			clientFactoryResetErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name:                  "error - provisioner.Cleanup with force or factory-reset",
-			nameArg:               "one",
-			deleteMode:            api.ClusterDeleteModeForce,
-			provisionerCleanupErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name:                "error - repo.DeleteByID with force or factory-reset",
@@ -1657,14 +1701,16 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			deleteMode:          api.ClusterDeleteModeForce,
 			repoDeleteByNameErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name:             "error - repo.GetByName",
 			nameArg:          "one",
 			repoGetByNameErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name:    "error - cluster state ready",
@@ -1677,6 +1723,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
 				require.ErrorContains(tt, err, `Delete for cluster in state "ready":`)
 			},
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name:                 "error - cluster state not set",
@@ -1687,6 +1734,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
 				require.ErrorContains(tt, err, "Delete for cluster with invalid state:")
 			},
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name:    "error - cluster with linked servers",
@@ -1700,6 +1748,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
 				require.ErrorContains(tt, err, "Delete for cluster with 1 linked servers ([one])")
 			},
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name:    "error - serverSvc.GetallNamesWithFilter",
@@ -1709,7 +1758,8 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			},
 			serverSvcGetAllNamesWithFilterErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 		{
 			name:    "error - repo.DeleteByID",
@@ -1719,7 +1769,8 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			},
 			repoDeleteByNameErr: boom.Error,
 
-			assertErr: boom.ErrorIs,
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
 		},
 	}
 
@@ -1753,20 +1804,19 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			provisioner := &adapterMock.ClusterProvisioningPortMock{
-				RegisterUpdateSignalFunc: func(signal signals.Signal[provisioning.ClusterUpdateMessage]) {},
-				CleanupFunc: func(ctx context.Context, name string) error {
-					return tc.provisionerCleanupErr
-				},
-			}
+			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, nil, nil,
+				provisioning.ClusterServiceUpdateSignal(updateSignal),
+			)
 
-			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, nil, provisioner)
+			var signalHandlerCalled bool
+			updateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
 
 			// Run test
 			err := clusterSvc.DeleteByName(context.Background(), tc.nameArg, tc.deleteMode)
 
 			// Assert
 			tc.assertErr(t, err)
+			require.True(t, signalHandlerCalled, "expected signal handler to called, but it was not OR no call was expected, but it got called")
 		})
 	}
 }
@@ -2476,5 +2526,24 @@ func TestClusterService_UpdateCertificate(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 		})
+	}
+}
+
+func requireNoCallSignalHandler(t *testing.T, called *bool) func(ctx context.Context, cum provisioning.ClusterUpdateMessage) {
+	t.Helper()
+
+	*called = true
+
+	return func(ctx context.Context, cum provisioning.ClusterUpdateMessage) {
+		// No call was expected. If we get called anyway, reset called.
+		*called = false
+	}
+}
+
+func requireCallSignalHandler(t *testing.T, called *bool) func(ctx context.Context, cum provisioning.ClusterUpdateMessage) {
+	t.Helper()
+
+	return func(ctx context.Context, cum provisioning.ClusterUpdateMessage) {
+		*called = true
 	}
 }

@@ -4,8 +4,6 @@ import (
 	"context"
 	"io"
 
-	"github.com/maniartech/signals"
-
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -63,6 +61,4 @@ type ClusterProvisioningPort interface {
 	Init(ctx context.Context, name string, config ClusterProvisioningConfig) error
 	Apply(ctx context.Context, cluster Cluster) error
 	GetArchive(ctx context.Context, name string) (_ io.ReadCloser, size int, _ error)
-	Cleanup(ctx context.Context, name string) error
-	RegisterUpdateSignal(signals.Signal[ClusterUpdateMessage])
 }
