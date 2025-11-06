@@ -74,6 +74,10 @@ func NewClusterService(
 		opt(clusterSvc)
 	}
 
+	if provisioner != nil {
+		provisioner.RegisterUpdateSignal(clusterSvc.clusterUpdateSignal)
+	}
+
 	return clusterSvc
 }
 
@@ -489,7 +493,18 @@ func (s clusterService) Rename(ctx context.Context, oldName string, newName stri
 		return domain.NewValidationErrf("New Cluster name cannot by empty")
 	}
 
-	return s.repo.Rename(ctx, oldName, newName)
+	err := s.repo.Rename(ctx, oldName, newName)
+	if err != nil {
+		return err
+	}
+
+	s.clusterUpdateSignal.Emit(ctx, ClusterUpdateMessage{
+		Operation: ClusterUpdateOperationRename,
+		Name:      newName,
+		OldName:   oldName,
+	})
+
+	return nil
 }
 
 func (s clusterService) DeleteByName(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) error {

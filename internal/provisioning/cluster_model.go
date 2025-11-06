@@ -145,6 +145,7 @@ type ClusterProvisioningConfig struct {
 type ClusterUpdateMessage struct {
 	Operation ClusterUpdateOperation
 	Name      string
+	OldName   string
 }
 
 type ClusterUpdateOperation string
@@ -152,4 +153,5 @@ type ClusterUpdateOperation string
 const (
 	ClusterUpdateOperationCreate ClusterUpdateOperation = "create"
 	ClusterUpdateOperationDelete ClusterUpdateOperation = "delete"
+	ClusterUpdateOperationRename ClusterUpdateOperation = "rename"
 )

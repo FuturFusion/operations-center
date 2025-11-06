@@ -10,6 +10,7 @@ import (
 	"time"
 
 	incustls "github.com/lxc/incus/v6/shared/tls"
+	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -857,6 +858,7 @@ func TestClusterService_Create(t *testing.T) {
 			}
 
 			provisioner := &adapterMock.ClusterProvisioningPortMock{
+				RegisterUpdateSignalFunc: func(signal signals.Signal[provisioning.ClusterUpdateMessage]) {},
 				InitFunc: func(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
 					return tc.provisionerInitErr
 				},
@@ -966,6 +968,7 @@ func TestClusterService_GetProvisionerConfigurationArchive(t *testing.T) {
 			}
 
 			provisioner := &adapterMock.ClusterProvisioningPortMock{
+				RegisterUpdateSignalFunc: func(signal signals.Signal[provisioning.ClusterUpdateMessage]) {},
 				GetArchiveFunc: func(ctx context.Context, name string) (io.ReadCloser, int, error) {
 					return tc.provisionerGetArchiveRC, tc.provisionerGetArchiveSize, tc.provisionerGetArchiveErr
 				},
@@ -1751,6 +1754,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			}
 
 			provisioner := &adapterMock.ClusterProvisioningPortMock{
+				RegisterUpdateSignalFunc: func(signal signals.Signal[provisioning.ClusterUpdateMessage]) {},
 				CleanupFunc: func(ctx context.Context, name string) error {
 					return tc.provisionerCleanupErr
 				},
