@@ -8,13 +8,17 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/dsnet/golib/memfile"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
+	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -24,6 +28,106 @@ import (
 
 // Run "go test github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform/ -update-goldenfiles" to update the golden files automatically.
 var updateGoldenfiles = flag.Bool("update-goldenfiles", false, "golden files are updated, if this flag is provided")
+
+func TestTerraform_RegisterUpdateSignal(t *testing.T) {
+	const oldClusterName = "old"
+	const existingClusterName = "existing"
+
+	noLogAssert := func(t *testing.T, logBuf *bytes.Buffer) {
+		t.Helper()
+	}
+
+	logContains := func(want string) func(t *testing.T, logBuf *bytes.Buffer) {
+		return func(t *testing.T, logBuf *bytes.Buffer) {
+			t.Helper()
+
+			// Give logs a little bit of time to be processed.
+			for range 5 {
+				if strings.Contains(logBuf.String(), want) {
+					break
+				}
+
+				time.Sleep(10 * time.Millisecond)
+			}
+
+			require.Contains(t, logBuf.String(), want)
+		}
+	}
+
+	tests := []struct {
+		name           string
+		operation      provisioning.ClusterUpdateOperation
+		newClusterName string
+		oldClusterName string
+
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:      "success - none rename operation",
+			operation: provisioning.ClusterUpdateOperationCreate,
+
+			assertLog: noLogAssert,
+		},
+		{
+			name:           "success - rename",
+			operation:      provisioning.ClusterUpdateOperationRename,
+			oldClusterName: oldClusterName,
+			newClusterName: "new",
+
+			assertLog: noLogAssert,
+		},
+		{
+			name:           "skip - rename old does not exist",
+			operation:      provisioning.ClusterUpdateOperationRename,
+			oldClusterName: "does_not_exist", // does not exist
+			newClusterName: "new",
+
+			assertLog: noLogAssert,
+		},
+		{
+			name:           "error - new does already exist",
+			operation:      provisioning.ClusterUpdateOperationRename,
+			oldClusterName: oldClusterName,
+			newClusterName: existingClusterName,
+
+			assertLog: logContains("failed to rename provisioner storage directory"),
+		},
+	}
+
+	_ = logContains
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			tmpDir := t.TempDir()
+			err := os.Mkdir(filepath.Join(tmpDir, oldClusterName), 0o700)
+			require.NoError(t, err)
+			err = os.Mkdir(filepath.Join(tmpDir, existingClusterName), 0o700)
+			require.NoError(t, err)
+
+			logBuf := &bytes.Buffer{}
+			err = logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			tf, err := terraform.New(tmpDir, tmpDir)
+			require.NoError(t, err)
+
+			updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
+			tf.RegisterUpdateSignal(updateSignal)
+
+			// Run test
+			updateSignal.Emit(t.Context(), provisioning.ClusterUpdateMessage{
+				Operation: tc.operation,
+				Name:      tc.newClusterName,
+				OldName:   tc.oldClusterName,
+			})
+
+			// Assert
+			tc.assertLog(t, logBuf)
+			t.Log(logBuf.String())
+		})
+	}
+}
 
 func TestTerraform_Init(t *testing.T) {
 	tests := []struct {

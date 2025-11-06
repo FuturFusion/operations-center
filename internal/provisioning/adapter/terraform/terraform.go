@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -20,9 +21,11 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	incusapi "github.com/lxc/incus/v6/shared/api"
+	"github.com/maniartech/signals"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/FuturFusion/operations-center/internal/file"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
@@ -60,6 +63,26 @@ func New(storageDir string, clientCertDir string, opts ...Option) (terraform, er
 	}
 
 	return t, nil
+}
+
+func (t terraform) RegisterUpdateSignal(clusterUpdateSignal signals.Signal[provisioning.ClusterUpdateMessage]) {
+	clusterUpdateSignal.AddListener(func(ctx context.Context, cum provisioning.ClusterUpdateMessage) {
+		if cum.Operation != provisioning.ClusterUpdateOperationRename {
+			return
+		}
+
+		oldPath := filepath.Join(t.storageDir, cum.OldName)
+		newPath := filepath.Join(t.storageDir, cum.Name)
+		if !file.PathExists(oldPath) {
+			return
+		}
+
+		err := os.Rename(oldPath, newPath)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to rename provisioner storage directory", slog.String("old_path", oldPath), slog.String("new_path", newPath), logger.Err(err))
+			return
+		}
+	})
 }
 
 func (t terraform) Init(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
