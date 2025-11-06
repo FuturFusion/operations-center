@@ -4,12 +4,14 @@ import (
 	"context"
 	"testing"
 
+	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func TestClusterTemplateService_Create(t *testing.T) {
@@ -62,7 +64,7 @@ func TestClusterTemplateService_Create(t *testing.T) {
 			clusterTemplateSvc := provisioning.NewClusterTemplateService(repo)
 
 			// Run test
-			_, err := clusterTemplateSvc.Create(context.Background(), tc.clusterTemplate)
+			_, err := clusterTemplateSvc.Create(t.Context(), tc.clusterTemplate)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -114,7 +116,7 @@ func TestClusterTemplateService_GetAll(t *testing.T) {
 			clusterTemplateSvc := provisioning.NewClusterTemplateService(repo)
 
 			// Run test
-			clusterTemplates, err := clusterTemplateSvc.GetAll(context.Background())
+			clusterTemplates, err := clusterTemplateSvc.GetAll(t.Context())
 
 			// Assert
 			tc.assertErr(t, err)
@@ -163,7 +165,7 @@ func TestClusterTemplateService_GetAllNames(t *testing.T) {
 			clusterTemplateSvc := provisioning.NewClusterTemplateService(repo)
 
 			// Run test
-			clusterTemplateIDs, err := clusterTemplateSvc.GetAllNames(context.Background())
+			clusterTemplateIDs, err := clusterTemplateSvc.GetAllNames(t.Context())
 
 			// Assert
 			tc.assertErr(t, err)
@@ -219,7 +221,7 @@ func TestClusterTemplateService_GetByName(t *testing.T) {
 			clusterTempalteSvc := provisioning.NewClusterTemplateService(repo)
 
 			// Run test
-			clusterTempalte, err := clusterTempalteSvc.GetByName(context.Background(), tc.nameArg)
+			clusterTempalte, err := clusterTempalteSvc.GetByName(t.Context(), tc.nameArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -278,7 +280,7 @@ func TestClusterTemplateService_Update(t *testing.T) {
 			clusterTempalteSvc := provisioning.NewClusterTemplateService(repo)
 
 			// Run test
-			err := clusterTempalteSvc.Update(context.Background(), tc.clusterTemplate)
+			err := clusterTempalteSvc.Update(t.Context(), tc.clusterTemplate)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -345,7 +347,7 @@ func TestClusterTemplateService_Rename(t *testing.T) {
 			clusterTemplateSvc := provisioning.NewClusterTemplateService(repo)
 
 			// Run test
-			err := clusterTemplateSvc.Rename(context.Background(), tc.oldName, tc.newName)
+			err := clusterTemplateSvc.Rename(t.Context(), tc.oldName, tc.newName)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -396,10 +398,159 @@ func TestClusterTemplateService_DeleteByName(t *testing.T) {
 			clusterTemplateSvc := provisioning.NewClusterTemplateService(repo)
 
 			// Run test
-			err := clusterTemplateSvc.DeleteByName(context.Background(), tc.nameArg)
+			err := clusterTemplateSvc.DeleteByName(t.Context(), tc.nameArg)
 
 			// Assert
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestClusterTemplateService_Apply(t *testing.T) {
+	tests := []struct {
+		name              string
+		nameArg           string
+		templateVariables incusapi.ConfigMap
+		repoGetByName     *provisioning.ClusterTemplate
+		repoGetByNameErr  error
+
+		assertErr                 require.ErrorAssertionFunc
+		wantServicesConfig        map[string]any
+		wantApplicationSeedConfig map[string]any
+	}{
+		{
+			name:    "success - empty template",
+			nameArg: "tmpl",
+			repoGetByName: &provisioning.ClusterTemplate{
+				ServiceConfigTemplate:     ``,
+				ApplicationConfigTemplate: ``,
+				Variables:                 api.ClusterTemplateVariables{},
+			},
+
+			assertErr:                 require.NoError,
+			wantServicesConfig:        map[string]any{},
+			wantApplicationSeedConfig: map[string]any{},
+		},
+		{
+			name:    "success - with template",
+			nameArg: "tmpl",
+			templateVariables: incusapi.ConfigMap{
+				"VALUE": "template value",
+			},
+			repoGetByName: &provisioning.ClusterTemplate{
+				ServiceConfigTemplate: `
+key: @VALUE@
+static: static value
+default: @VALUE_WITH_DEFAULT@
+`,
+				ApplicationConfigTemplate: ``,
+				Variables: api.ClusterTemplateVariables{
+					"VALUE": api.ClusterTemplateVariable{},
+					"VALUE_WITH_DEFAULT": api.ClusterTemplateVariable{
+						DefaultValue: "default value",
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			wantServicesConfig: map[string]any{
+				"key":     "template value",
+				"static":  "static value",
+				"default": "default value",
+			},
+			wantApplicationSeedConfig: map[string]any{},
+		},
+		{
+			name:    "error - name missing",
+			nameArg: "", // invalid
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
+				require.ErrorContains(tt, err, `Cluster template name cannot be empty`)
+			},
+		},
+		{
+			name:             "error - name missing",
+			nameArg:          "tmpl",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:              "error - service config apply variables",
+			nameArg:           "tmpl",
+			templateVariables: incusapi.ConfigMap{},
+			repoGetByName: &provisioning.ClusterTemplate{
+				ServiceConfigTemplate: `
+key: @VALUE@
+`,
+				ApplicationConfigTemplate: ``,
+				Variables: api.ClusterTemplateVariables{
+					"VALUE": api.ClusterTemplateVariable{},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(tt, err, "Failed to apply cluster template variables on service config of")
+			},
+		},
+		{
+			name:    "error - service config  yaml unmarshal",
+			nameArg: "tmpl",
+			repoGetByName: &provisioning.ClusterTemplate{
+				ServiceConfigTemplate: `
+[
+`, // invalid yaml
+				ApplicationConfigTemplate: ``,
+				Variables:                 api.ClusterTemplateVariables{},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(tt, err, "Failed to marshal service config of")
+			},
+		},
+		{
+			name:    "error - application seed config yaml unmarshal",
+			nameArg: "tmpl",
+			repoGetByName: &provisioning.ClusterTemplate{
+				ServiceConfigTemplate: ``,
+				ApplicationConfigTemplate: `
+		[
+		`, // invalid yaml
+				Variables: api.ClusterTemplateVariables{},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+				require.ErrorContains(tt, err, "Failed to marshal application seed config of")
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ClusterTemplateRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.ClusterTemplate, error) {
+					require.Equal(t, tc.nameArg, name)
+					return tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			clusterTemplateSvc := provisioning.NewClusterTemplateService(repo)
+
+			// Run test
+			servicesConfig, applicationSeedConfig, err := clusterTemplateSvc.Apply(t.Context(), tc.nameArg, tc.templateVariables)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantServicesConfig, servicesConfig)
+			require.Equal(t, tc.wantApplicationSeedConfig, applicationSeedConfig)
 		})
 	}
 }

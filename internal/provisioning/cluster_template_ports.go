@@ -2,6 +2,8 @@ package provisioning
 
 import (
 	"context"
+
+	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type ClusterTemplateService interface {
@@ -12,6 +14,7 @@ type ClusterTemplateService interface {
 	Update(ctx context.Context, clusterTemplate ClusterTemplate) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
+	Apply(ctx context.Context, name string, templateVariables incusapi.ConfigMap) (servicesConfig map[string]any, applicationSeedConfig map[string]any, _ error)
 }
 
 type ClusterTemplateRepo interface {
