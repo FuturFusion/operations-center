@@ -29,8 +29,8 @@ import (
 // Run "go test github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform/ -update-goldenfiles" to update the golden files automatically.
 var updateGoldenfiles = flag.Bool("update-goldenfiles", false, "golden files are updated, if this flag is provided")
 
-func TestTerraform_RegisterUpdateSignal(t *testing.T) {
-	const oldClusterName = "old"
+func TestTerraform_updateSignalHandler(t *testing.T) {
+	const clusterName = "old"
 	const existingClusterName = "existing"
 
 	noLogAssert := func(t *testing.T, logBuf *bytes.Buffer) {
@@ -57,40 +57,54 @@ func TestTerraform_RegisterUpdateSignal(t *testing.T) {
 	tests := []struct {
 		name           string
 		operation      provisioning.ClusterUpdateOperation
-		newClusterName string
+		clusterName    string
 		oldClusterName string
 
 		assertLog func(t *testing.T, logBuf *bytes.Buffer)
 	}{
 		{
-			name:      "success - none rename operation",
+			name:           "success - rename",
+			operation:      provisioning.ClusterUpdateOperationRename,
+			clusterName:    "new",
+			oldClusterName: clusterName,
+
+			assertLog: noLogAssert,
+		},
+		{
+			name:        "success - delete",
+			operation:   provisioning.ClusterUpdateOperationDelete,
+			clusterName: clusterName,
+
+			assertLog: noLogAssert,
+		},
+		{
+			name:      "skip - create operation",
 			operation: provisioning.ClusterUpdateOperationCreate,
 
 			assertLog: noLogAssert,
 		},
 		{
-			name:           "success - rename",
+			name:           "skip - rename - old does not exist",
 			operation:      provisioning.ClusterUpdateOperationRename,
-			oldClusterName: oldClusterName,
-			newClusterName: "new",
-
-			assertLog: noLogAssert,
-		},
-		{
-			name:           "skip - rename old does not exist",
-			operation:      provisioning.ClusterUpdateOperationRename,
+			clusterName:    "new",
 			oldClusterName: "does_not_exist", // does not exist
-			newClusterName: "new",
 
 			assertLog: noLogAssert,
 		},
 		{
-			name:           "error - new does already exist",
+			name:           "error - rename - new does already exist",
 			operation:      provisioning.ClusterUpdateOperationRename,
-			oldClusterName: oldClusterName,
-			newClusterName: existingClusterName,
+			clusterName:    existingClusterName,
+			oldClusterName: clusterName,
 
-			assertLog: logContains("failed to rename provisioner storage directory"),
+			assertLog: logContains("Failed to rename terraform storage directory"),
+		},
+		{
+			name:        "skip - delete - does not exist",
+			operation:   provisioning.ClusterUpdateOperationDelete,
+			clusterName: "does_not_exist", // does not exist
+
+			assertLog: noLogAssert,
 		},
 	}
 
@@ -100,7 +114,7 @@ func TestTerraform_RegisterUpdateSignal(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
-			err := os.Mkdir(filepath.Join(tmpDir, oldClusterName), 0o700)
+			err := os.Mkdir(filepath.Join(tmpDir, clusterName), 0o700)
 			require.NoError(t, err)
 			err = os.Mkdir(filepath.Join(tmpDir, existingClusterName), 0o700)
 			require.NoError(t, err)
@@ -109,16 +123,15 @@ func TestTerraform_RegisterUpdateSignal(t *testing.T) {
 			err = logger.InitLogger(logBuf, "", false, false)
 			require.NoError(t, err)
 
-			tf, err := terraform.New(tmpDir, tmpDir)
-			require.NoError(t, err)
-
 			updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
-			tf.RegisterUpdateSignal(updateSignal)
+
+			_, err = terraform.New(tmpDir, tmpDir, updateSignal)
+			require.NoError(t, err)
 
 			// Run test
 			updateSignal.Emit(t.Context(), provisioning.ClusterUpdateMessage{
 				Operation: tc.operation,
-				Name:      tc.newClusterName,
+				Name:      tc.clusterName,
 				OldName:   tc.oldClusterName,
 			})
 
@@ -157,7 +170,7 @@ func TestTerraform_Init(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 
-			tf, err := terraform.New(tmpDir, tmpDir, terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
+			tf, err := terraform.New(tmpDir, tmpDir, signals.NewSync[provisioning.ClusterUpdateMessage](), terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
 				return tc.terraformInitErr
 			}))
 			require.NoError(t, err)
@@ -423,7 +436,7 @@ func TestTerraform_Apply(t *testing.T) {
 			clusterName := "foobar"
 			tc.setup(t, filepath.Join(tmpDir, clusterName))
 
-			tf, err := terraform.New(tmpDir, tmpDir, terraform.WithTerraformApplyFunc(func(ctx context.Context, configDir string) error {
+			tf, err := terraform.New(tmpDir, tmpDir, signals.NewSync[provisioning.ClusterUpdateMessage](), terraform.WithTerraformApplyFunc(func(ctx context.Context, configDir string) error {
 				return tc.terraformApplyErr
 			}))
 			require.NoError(t, err)
@@ -463,7 +476,7 @@ func TestTerraform_GetArchive(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 
-			tf, err := terraform.New(tmpDir, tmpDir, terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
+			tf, err := terraform.New(tmpDir, tmpDir, signals.NewSync[provisioning.ClusterUpdateMessage](), terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
 				err := os.WriteFile(filepath.Join(configDir, "terraform.tfstate"), []byte("would be written by terraform"), 0o600)
 				require.NoError(t, err)
 
@@ -532,48 +545,6 @@ func TestTerraform_GetArchive(t *testing.T) {
 			for filename, found := range expectedFilesFound {
 				require.True(t, found, "file %q not found in zip archive", filename)
 			}
-		})
-	}
-}
-
-func TestTerraform_Cleanup(t *testing.T) {
-	const existingCluster = "existing"
-
-	tests := []struct {
-		name        string
-		clusterName string
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name:        "success",
-			clusterName: existingCluster,
-
-			assertErr: require.NoError,
-		},
-		{
-			name:        "success - not existing",
-			clusterName: "not-existing",
-
-			assertErr: require.NoError,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			tmpDir := t.TempDir()
-			err := os.Mkdir(filepath.Join(tmpDir, existingCluster), 0o700)
-			require.NoError(t, err)
-
-			tf, err := terraform.New(tmpDir, "")
-			require.NoError(t, err)
-
-			// Run tests
-			err = tf.Cleanup(t.Context(), tc.clusterName)
-
-			// Assert
-			tc.assertErr(t, err)
 		})
 	}
 }
