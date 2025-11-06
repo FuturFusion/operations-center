@@ -15,12 +15,14 @@ import (
 )
 
 type clusterHandler struct {
-	service provisioning.ClusterService
+	service            provisioning.ClusterService
+	clusterTemplateSvc provisioning.ClusterTemplateService
 }
 
-func registerProvisioningClusterHandler(router Router, authorizer *authz.Authorizer, service provisioning.ClusterService) {
+func registerProvisioningClusterHandler(router Router, authorizer *authz.Authorizer, service provisioning.ClusterService, clusterTemplateSvc provisioning.ClusterTemplateService) {
 	handler := &clusterHandler{
-		service: service,
+		service:            service,
+		clusterTemplateSvc: clusterTemplateSvc,
 	}
 
 	router.HandleFunc("GET /{$}", response.With(handler.clustersGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -205,6 +207,13 @@ func (c *clusterHandler) clustersPost(r *http.Request) response.Response {
 	err := json.NewDecoder(r.Body).Decode(&cluster)
 	if err != nil {
 		return response.BadRequest(err)
+	}
+
+	if cluster.ClusterTemplate != "" {
+		cluster.ServicesConfig, cluster.ApplicationSeedConfig, err = c.clusterTemplateSvc.Apply(r.Context(), cluster.ClusterTemplate, cluster.ClusterTemplateVariableValues)
+		if err != nil {
+			return response.SmartError(fmt.Errorf("Failed creating cluster from template %q: %w", cluster.ClusterTemplate, err))
+		}
 	}
 
 	_, err = c.service.Create(r.Context(), provisioning.Cluster{

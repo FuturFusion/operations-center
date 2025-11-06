@@ -585,7 +585,7 @@ func (d *Daemon) setupAPIRoutes(
 	registerProvisioningTokenHandler(provisioningTokenRouter, d.authorizer, tokenSvc)
 
 	provisioningClusterRouter := provisioningRouter.SubGroup("/clusters")
-	registerProvisioningClusterHandler(provisioningClusterRouter, d.authorizer, clusterSvc)
+	registerProvisioningClusterHandler(provisioningClusterRouter, d.authorizer, clusterSvc, clusterTemplateSvc)
 
 	provisioningClusterTemplateRouter := provisioningRouter.SubGroup("/cluster-templates")
 	registerProvisioningClusterTemplateHandler(provisioningClusterTemplateRouter, d.authorizer, clusterTemplateSvc)
