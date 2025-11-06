@@ -10,7 +10,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/maniartech/signals"
 )
 
 // ClusterProvisioningPortWithSlog implements provisioning.ClusterProvisioningPort that is instrumented with slog logger.
@@ -75,40 +74,6 @@ func (_d ClusterProvisioningPortWithSlog) Apply(ctx context.Context, cluster pro
 		}
 	}()
 	return _d._base.Apply(ctx, cluster)
-}
-
-// Cleanup implements provisioning.ClusterProvisioningPort.
-func (_d ClusterProvisioningPortWithSlog) Cleanup(ctx context.Context, name string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.String("name", name),
-		)
-	}
-	log.DebugContext(ctx, "=> calling Cleanup")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Cleanup returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Cleanup returned an error")
-			}
-		} else {
-			log.DebugContext(ctx, "<= method Cleanup finished")
-		}
-	}()
-	return _d._base.Cleanup(ctx, name)
 }
 
 // GetArchive implements provisioning.ClusterProvisioningPort.
@@ -180,21 +145,4 @@ func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, name string,
 		}
 	}()
 	return _d._base.Init(ctx, name, config)
-}
-
-// RegisterUpdateSignal implements provisioning.ClusterProvisioningPort.
-func (_d ClusterProvisioningPortWithSlog) RegisterUpdateSignal(signal signals.Signal[provisioning.ClusterUpdateMessage]) {
-	ctx := context.Background()
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("signal", signal),
-		)
-	}
-	log.DebugContext(ctx, "=> calling RegisterUpdateSignal")
-	defer func() {
-		log := _d._log.With()
-		log.DebugContext(ctx, "<= method RegisterUpdateSignal finished")
-	}()
-	_d._base.RegisterUpdateSignal(signal)
 }

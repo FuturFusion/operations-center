@@ -10,7 +10,6 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/maniartech/signals"
 )
 
 // Ensure that ClusterProvisioningPortMock does implement provisioning.ClusterProvisioningPort.
@@ -26,17 +25,11 @@ var _ provisioning.ClusterProvisioningPort = &ClusterProvisioningPortMock{}
 //			ApplyFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
 //				panic("mock out the Apply method")
 //			},
-//			CleanupFunc: func(ctx context.Context, name string) error {
-//				panic("mock out the Cleanup method")
-//			},
 //			GetArchiveFunc: func(ctx context.Context, name string) (io.ReadCloser, int, error) {
 //				panic("mock out the GetArchive method")
 //			},
 //			InitFunc: func(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
 //				panic("mock out the Init method")
-//			},
-//			RegisterUpdateSignalFunc: func(signal signals.Signal[provisioning.ClusterUpdateMessage])  {
-//				panic("mock out the RegisterUpdateSignal method")
 //			},
 //		}
 //
@@ -48,17 +41,11 @@ type ClusterProvisioningPortMock struct {
 	// ApplyFunc mocks the Apply method.
 	ApplyFunc func(ctx context.Context, cluster provisioning.Cluster) error
 
-	// CleanupFunc mocks the Cleanup method.
-	CleanupFunc func(ctx context.Context, name string) error
-
 	// GetArchiveFunc mocks the GetArchive method.
 	GetArchiveFunc func(ctx context.Context, name string) (io.ReadCloser, int, error)
 
 	// InitFunc mocks the Init method.
 	InitFunc func(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error
-
-	// RegisterUpdateSignalFunc mocks the RegisterUpdateSignal method.
-	RegisterUpdateSignalFunc func(signal signals.Signal[provisioning.ClusterUpdateMessage])
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -68,13 +55,6 @@ type ClusterProvisioningPortMock struct {
 			Ctx context.Context
 			// Cluster is the cluster argument value.
 			Cluster provisioning.Cluster
-		}
-		// Cleanup holds details about calls to the Cleanup method.
-		Cleanup []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Name is the name argument value.
-			Name string
 		}
 		// GetArchive holds details about calls to the GetArchive method.
 		GetArchive []struct {
@@ -92,17 +72,10 @@ type ClusterProvisioningPortMock struct {
 			// Config is the config argument value.
 			Config provisioning.ClusterProvisioningConfig
 		}
-		// RegisterUpdateSignal holds details about calls to the RegisterUpdateSignal method.
-		RegisterUpdateSignal []struct {
-			// Signal is the signal argument value.
-			Signal signals.Signal[provisioning.ClusterUpdateMessage]
-		}
 	}
-	lockApply                sync.RWMutex
-	lockCleanup              sync.RWMutex
-	lockGetArchive           sync.RWMutex
-	lockInit                 sync.RWMutex
-	lockRegisterUpdateSignal sync.RWMutex
+	lockApply      sync.RWMutex
+	lockGetArchive sync.RWMutex
+	lockInit       sync.RWMutex
 }
 
 // Apply calls ApplyFunc.
@@ -138,42 +111,6 @@ func (mock *ClusterProvisioningPortMock) ApplyCalls() []struct {
 	mock.lockApply.RLock()
 	calls = mock.calls.Apply
 	mock.lockApply.RUnlock()
-	return calls
-}
-
-// Cleanup calls CleanupFunc.
-func (mock *ClusterProvisioningPortMock) Cleanup(ctx context.Context, name string) error {
-	if mock.CleanupFunc == nil {
-		panic("ClusterProvisioningPortMock.CleanupFunc: method is nil but ClusterProvisioningPort.Cleanup was just called")
-	}
-	callInfo := struct {
-		Ctx  context.Context
-		Name string
-	}{
-		Ctx:  ctx,
-		Name: name,
-	}
-	mock.lockCleanup.Lock()
-	mock.calls.Cleanup = append(mock.calls.Cleanup, callInfo)
-	mock.lockCleanup.Unlock()
-	return mock.CleanupFunc(ctx, name)
-}
-
-// CleanupCalls gets all the calls that were made to Cleanup.
-// Check the length with:
-//
-//	len(mockedClusterProvisioningPort.CleanupCalls())
-func (mock *ClusterProvisioningPortMock) CleanupCalls() []struct {
-	Ctx  context.Context
-	Name string
-} {
-	var calls []struct {
-		Ctx  context.Context
-		Name string
-	}
-	mock.lockCleanup.RLock()
-	calls = mock.calls.Cleanup
-	mock.lockCleanup.RUnlock()
 	return calls
 }
 
@@ -250,37 +187,5 @@ func (mock *ClusterProvisioningPortMock) InitCalls() []struct {
 	mock.lockInit.RLock()
 	calls = mock.calls.Init
 	mock.lockInit.RUnlock()
-	return calls
-}
-
-// RegisterUpdateSignal calls RegisterUpdateSignalFunc.
-func (mock *ClusterProvisioningPortMock) RegisterUpdateSignal(signal signals.Signal[provisioning.ClusterUpdateMessage]) {
-	if mock.RegisterUpdateSignalFunc == nil {
-		panic("ClusterProvisioningPortMock.RegisterUpdateSignalFunc: method is nil but ClusterProvisioningPort.RegisterUpdateSignal was just called")
-	}
-	callInfo := struct {
-		Signal signals.Signal[provisioning.ClusterUpdateMessage]
-	}{
-		Signal: signal,
-	}
-	mock.lockRegisterUpdateSignal.Lock()
-	mock.calls.RegisterUpdateSignal = append(mock.calls.RegisterUpdateSignal, callInfo)
-	mock.lockRegisterUpdateSignal.Unlock()
-	mock.RegisterUpdateSignalFunc(signal)
-}
-
-// RegisterUpdateSignalCalls gets all the calls that were made to RegisterUpdateSignal.
-// Check the length with:
-//
-//	len(mockedClusterProvisioningPort.RegisterUpdateSignalCalls())
-func (mock *ClusterProvisioningPortMock) RegisterUpdateSignalCalls() []struct {
-	Signal signals.Signal[provisioning.ClusterUpdateMessage]
-} {
-	var calls []struct {
-		Signal signals.Signal[provisioning.ClusterUpdateMessage]
-	}
-	mock.lockRegisterUpdateSignal.RLock()
-	calls = mock.calls.RegisterUpdateSignal
-	mock.lockRegisterUpdateSignal.RUnlock()
 	return calls
 }
