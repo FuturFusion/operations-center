@@ -7,6 +7,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/google/uuid"
@@ -145,6 +146,41 @@ func (_d InstanceServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (
 		}
 	}()
 	return _d._base.GetByUUID(ctx, id)
+}
+
+// ResyncByName implements inventory.InstanceService.
+func (_d InstanceServiceWithSlog) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.Any("event", event),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ResyncByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method ResyncByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method ResyncByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method ResyncByName finished")
+		}
+	}()
+	return _d._base.ResyncByName(ctx, clusterName, event)
 }
 
 // ResyncByUUID implements inventory.InstanceService.

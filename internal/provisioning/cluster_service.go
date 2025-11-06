@@ -5,13 +5,18 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"iter"
+	"log/slog"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/maniartech/signals"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -21,11 +26,15 @@ type clusterService struct {
 	repo             ClusterRepo
 	client           ClusterClientPort
 	serverSvc        ServerService
-	inventorySyncers []InventorySyncer
+	inventorySyncers map[domain.ResourceType]InventorySyncer
 	provisioner      ClusterProvisioningPort
 
 	createClusterRetries      int
 	createClusterRetryTimeout time.Duration
+
+	clusterUpdateSignal               signals.Signal[ClusterUpdateMessage]
+	lifecycleEventHandlerBackoffStart time.Duration
+	lifecycleEventHandlerBackoffLimit time.Duration
 }
 
 var _ ClusterService = &clusterService{}
@@ -42,7 +51,7 @@ func NewClusterService(
 	repo ClusterRepo,
 	client ClusterClientPort,
 	serverSvc ServerService,
-	inventorySyncers []InventorySyncer,
+	inventorySyncers map[domain.ResourceType]InventorySyncer,
 	provisioner ClusterProvisioningPort,
 	opts ...ClusterServiceOption,
 ) *clusterService {
@@ -55,6 +64,10 @@ func NewClusterService(
 
 		createClusterRetries:      6,
 		createClusterRetryTimeout: 200 * time.Millisecond,
+
+		clusterUpdateSignal:               signals.NewSync[ClusterUpdateMessage](),
+		lifecycleEventHandlerBackoffStart: 200 * time.Millisecond,
+		lifecycleEventHandlerBackoffLimit: 60 * time.Second,
 	}
 
 	for _, opt := range opts {
@@ -64,7 +77,7 @@ func NewClusterService(
 	return clusterSvc
 }
 
-func (s *clusterService) SetInventorySyncers(inventorySyncers []InventorySyncer) {
+func (s *clusterService) SetInventorySyncers(inventorySyncers map[domain.ResourceType]InventorySyncer) {
 	(*s).inventorySyncers = inventorySyncers
 }
 
@@ -332,6 +345,11 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		return newCluster, err
 	}
 
+	s.clusterUpdateSignal.Emit(ctx, ClusterUpdateMessage{
+		Operation: ClusterUpdateOperationCreate,
+		Name:      newCluster.Name,
+	})
+
 	return newCluster, nil
 }
 
@@ -513,6 +531,11 @@ func (s clusterService) DeleteByName(ctx context.Context, name string, deleteMod
 			return fmt.Errorf("Failed to delete cluster: %w", err)
 		}
 
+		s.clusterUpdateSignal.Emit(ctx, ClusterUpdateMessage{
+			Operation: ClusterUpdateOperationDelete,
+			Name:      name,
+		})
+
 		return nil
 	}
 
@@ -555,6 +578,11 @@ func (s clusterService) DeleteByName(ctx context.Context, name string, deleteMod
 		return fmt.Errorf("Failed to delete cluster: %w", err)
 	}
 
+	s.clusterUpdateSignal.Emit(ctx, ClusterUpdateMessage{
+		Operation: ClusterUpdateOperationDelete,
+		Name:      name,
+	})
+
 	return nil
 }
 
@@ -585,6 +613,10 @@ func (s clusterService) ResyncInventoryByName(ctx context.Context, name string) 
 		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
+	// We iterate a map, so the order is random. But this should not be an issue
+	// since there are no constraints in the DB between the different resource
+	// types. The data in the DB will become eventually consistent after the
+	// sync is completed.
 	for _, inventorySyncer := range s.inventorySyncers {
 		err := inventorySyncer.SyncCluster(ctx, name)
 		if err != nil {
@@ -593,6 +625,135 @@ func (s clusterService) ResyncInventoryByName(ctx context.Context, name string) 
 	}
 
 	return nil
+}
+
+func (s clusterService) StartLifecycleEventsMonitor(ctx context.Context) error {
+	clusters, err := s.GetAll(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to initially load clusters for lifecycle events monitor: %w", err)
+	}
+
+	lifecycleMonitors := make(map[string]context.CancelFunc, len(clusters))
+	lifecycleMonitorsMu := sync.Mutex{}
+
+	lifecycleMonitorsMu.Lock()
+	defer lifecycleMonitorsMu.Unlock()
+
+	for _, cluster := range clusters {
+		cancel, err := s.startLifecycleEventHandler(ctx, cluster.Name)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to start lifecycle monitor", slog.String("cluster", cluster.Name), logger.Err(err))
+			continue
+		}
+
+		lifecycleMonitors[cluster.Name] = cancel
+	}
+
+	s.clusterUpdateSignal.AddListener(func(ctx context.Context, cum ClusterUpdateMessage) {
+		lifecycleMonitorsMu.Lock()
+		defer lifecycleMonitorsMu.Unlock()
+
+		switch cum.Operation {
+		case ClusterUpdateOperationCreate:
+			cancel, err := s.startLifecycleEventHandler(ctx, cum.Name)
+			if err != nil {
+				slog.WarnContext(ctx, "Failed to start lifecycle monitor", slog.String("cluster", cum.Name), logger.Err(err))
+				return
+			}
+
+			lifecycleMonitors[cum.Name] = cancel
+
+		case ClusterUpdateOperationDelete:
+			cancel, ok := lifecycleMonitors[cum.Name]
+			if !ok {
+				return
+			}
+
+			cancel()
+			delete(lifecycleMonitors, cum.Name)
+		}
+	})
+
+	return nil
+}
+
+func (s clusterService) startLifecycleEventHandler(ctx context.Context, clusterName string) (context.CancelFunc, error) {
+	endpoint, err := s.GetEndpoint(ctx, clusterName)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get cluster endpoint for lifecycle event handler: %w", err)
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+
+	go func() {
+		for {
+			var events chan domain.LifecycleEvent
+			var errChan chan error
+			var err error
+
+		retry:
+			for backoff := range exponentialBackoff(s.lifecycleEventHandlerBackoffStart, s.lifecycleEventHandlerBackoffLimit) {
+				events, errChan, err = s.client.SubscribeLifecycleEvents(ctx, endpoint)
+				if err == nil {
+					// Event stream re-established, break retry loop and start processing.
+					break
+				}
+
+				slog.WarnContext(ctx, "Failed to re-establish event stream", slog.String("cluster", clusterName), logger.Err(err))
+
+				select {
+				case <-time.After(backoff):
+					continue retry
+
+				case <-ctx.Done():
+					return
+				}
+			}
+
+		process:
+			for {
+				select {
+				case event := <-events:
+					slog.InfoContext(ctx, "lifecycle event", slog.String("cluster", clusterName), slog.Any("action", event.Operation), slog.Any("resource_type", event.ResourceType), slog.String("source", event.Source.String()))
+
+					inventorySyncer, ok := s.inventorySyncers[event.ResourceType]
+					if !ok {
+						slog.WarnContext(ctx, "No inventory syncer available for the resource type", slog.String("cluster", clusterName), slog.String("action", string(event.Operation)), slog.Any("resource_type", event.ResourceType), slog.String("source", event.Source.String()))
+						continue
+					}
+
+					err := inventorySyncer.ResyncByName(ctx, clusterName, event)
+					if err != nil {
+						slog.WarnContext(ctx, "Failed to resync", slog.String("cluster", clusterName), slog.String("action", string(event.Operation)), slog.Any("resource_type", event.ResourceType), slog.String("source", event.Source.String()), logger.Err(err))
+					}
+
+				case err := <-errChan:
+					if err != nil {
+						slog.WarnContext(ctx, "Lifecycle events subscription ended", logger.Err(err))
+					}
+
+					break process
+
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+
+	return cancel, nil
+}
+
+func exponentialBackoff(start time.Duration, limit time.Duration) iter.Seq[time.Duration] {
+	return func(yield func(time.Duration) bool) {
+		for {
+			if !yield(start) {
+				return
+			}
+
+			start = min(start*2, limit)
+		}
+	}
 }
 
 func (s clusterService) UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) error {

@@ -14,7 +14,7 @@ import (
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 )
 
-func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverClient inventory.ServerClient, authorizer *authz.Authorizer, inventoryRouter Router) []provisioning.InventorySyncer {
+func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverClient inventory.ServerClient, authorizer *authz.Authorizer, inventoryRouter Router) map[domain.ResourceType]provisioning.InventorySyncer {
 	// Service
 	inventoryInventoryAggregateSvc := inventoryServiceMiddleware.NewInventoryAggregateServiceWithSlog(
 		inventory.NewInventoryAggregateService(
@@ -69,9 +69,9 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 	registerInventory{{ .Name | pascalcase }}Handler(inventory{{ .Name | pascalcase }}Router, authorizer, inventory{{ .Name | pascalcase }}Svc)
 {{ end }}
 
-	return []provisioning.InventorySyncer{
+	return map[domain.ResourceType]provisioning.InventorySyncer{
 {{- range . }}
-		inventory{{ .Name | pascalcase }}Svc,
+		domain.ResourceType{{ .Name | pascalcase }}: inventory{{ .Name | pascalcase }}Svc,
 {{- end }}
 	}
 }

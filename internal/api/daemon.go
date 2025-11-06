@@ -207,6 +207,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 	})
 
+	// Start cluster lifecycle events monitor.
+	err = clusterSvc.StartLifecycleEventsMonitor(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Background tasks
 	d.setupBackgroundTasks(ctx, updateSvc, serverSvc, clusterSvc)
 
@@ -508,7 +514,7 @@ func (d *Daemon) setupAPIRoutes(
 	clusterTemplateSvc provisioning.ClusterTemplateService,
 	systemSvc system.SystemService,
 	db dbdriver.DBTX,
-) (*http.ServeMux, []provisioning.InventorySyncer) {
+) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
 	// or clusters.
 	serverClientProvider := serverMiddleware.NewServerClientWithSlog(
@@ -517,6 +523,11 @@ func (d *Daemon) setupAPIRoutes(
 			d.clientKey,
 		),
 		slog.Default(),
+		serverMiddleware.ServerClientWithSlogWithInformativeErrFunc(
+			func(err error) bool {
+				return errors.Is(err, domain.ErrNotFound)
+			},
+		),
 	)
 
 	serveMux := http.NewServeMux()
@@ -657,7 +668,7 @@ func (d *Daemon) setupBackgroundTasks(
 		return pollReadyServersTaskStop(deadlineFrom(ctx, 1*time.Second))
 	})
 
-	// Start background task to refresh inventory.
+	// Start background task to refresh inventory through polling.
 	refreshInventoryTask := func(ctx context.Context) {
 		slog.InfoContext(ctx, "Inventory update triggered")
 		err := clusterSvc.ResyncInventory(ctx)

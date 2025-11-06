@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -19,10 +20,11 @@ type ClusterService interface {
 	DeleteByName(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) error
 	ResyncInventory(ctx context.Context) error
 	ResyncInventoryByName(ctx context.Context, name string) error
+	StartLifecycleEventsMonitor(ctx context.Context) error
 	UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) error
 	GetEndpoint(ctx context.Context, name string) (Endpoint, error)
 	GetProvisionerConfigurationArchive(ctx context.Context, name string) (_ io.ReadCloser, size int, _ error)
-	SetInventorySyncers(inventorySyncers []InventorySyncer)
+	SetInventorySyncers(inventorySyncers map[domain.ResourceType]InventorySyncer)
 }
 
 type ClusterRepo interface {
@@ -37,7 +39,8 @@ type ClusterRepo interface {
 }
 
 type InventorySyncer interface {
-	SyncCluster(ctx context.Context, cluster string) error
+	SyncCluster(ctx context.Context, clusterName string) error
+	ResyncByName(ctx context.Context, clusterName string, sourceDetails domain.LifecycleEvent) error
 }
 
 type ClusterClientPort interface {
@@ -51,6 +54,7 @@ type ClusterClientPort interface {
 	GetOSData(ctx context.Context, endpoint Endpoint) (api.OSData, error)
 	UpdateClusterCertificate(ctx context.Context, endpoint Endpoint, certificatePEM string, keyPEM string) error
 	FactoryReset(ctx context.Context, endpoint Endpoint) error
+	SubscribeLifecycleEvents(ctx context.Context, endpoint Endpoint) (chan domain.LifecycleEvent, chan error, error)
 }
 
 type ClusterProvisioningPort interface {

@@ -9,6 +9,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -59,8 +60,11 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			ResyncInventoryByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the ResyncInventoryByName method")
 //			},
-//			SetInventorySyncersFunc: func(inventorySyncers []provisioning.InventorySyncer)  {
+//			SetInventorySyncersFunc: func(inventorySyncers map[domain.ResourceType]provisioning.InventorySyncer)  {
 //				panic("mock out the SetInventorySyncers method")
+//			},
+//			StartLifecycleEventsMonitorFunc: func(ctx context.Context) error {
+//				panic("mock out the StartLifecycleEventsMonitor method")
 //			},
 //			UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
 //				panic("mock out the Update method")
@@ -112,7 +116,10 @@ type ClusterServiceMock struct {
 	ResyncInventoryByNameFunc func(ctx context.Context, name string) error
 
 	// SetInventorySyncersFunc mocks the SetInventorySyncers method.
-	SetInventorySyncersFunc func(inventorySyncers []provisioning.InventorySyncer)
+	SetInventorySyncersFunc func(inventorySyncers map[domain.ResourceType]provisioning.InventorySyncer)
+
+	// StartLifecycleEventsMonitorFunc mocks the StartLifecycleEventsMonitor method.
+	StartLifecycleEventsMonitorFunc func(ctx context.Context) error
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, cluster provisioning.Cluster) error
@@ -207,7 +214,12 @@ type ClusterServiceMock struct {
 		// SetInventorySyncers holds details about calls to the SetInventorySyncers method.
 		SetInventorySyncers []struct {
 			// InventorySyncers is the inventorySyncers argument value.
-			InventorySyncers []provisioning.InventorySyncer
+			InventorySyncers map[domain.ResourceType]provisioning.InventorySyncer
+		}
+		// StartLifecycleEventsMonitor holds details about calls to the StartLifecycleEventsMonitor method.
+		StartLifecycleEventsMonitor []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
@@ -241,6 +253,7 @@ type ClusterServiceMock struct {
 	lockResyncInventory                    sync.RWMutex
 	lockResyncInventoryByName              sync.RWMutex
 	lockSetInventorySyncers                sync.RWMutex
+	lockStartLifecycleEventsMonitor        sync.RWMutex
 	lockUpdate                             sync.RWMutex
 	lockUpdateCertificate                  sync.RWMutex
 }
@@ -674,12 +687,12 @@ func (mock *ClusterServiceMock) ResyncInventoryByNameCalls() []struct {
 }
 
 // SetInventorySyncers calls SetInventorySyncersFunc.
-func (mock *ClusterServiceMock) SetInventorySyncers(inventorySyncers []provisioning.InventorySyncer) {
+func (mock *ClusterServiceMock) SetInventorySyncers(inventorySyncers map[domain.ResourceType]provisioning.InventorySyncer) {
 	if mock.SetInventorySyncersFunc == nil {
 		panic("ClusterServiceMock.SetInventorySyncersFunc: method is nil but ClusterService.SetInventorySyncers was just called")
 	}
 	callInfo := struct {
-		InventorySyncers []provisioning.InventorySyncer
+		InventorySyncers map[domain.ResourceType]provisioning.InventorySyncer
 	}{
 		InventorySyncers: inventorySyncers,
 	}
@@ -694,14 +707,46 @@ func (mock *ClusterServiceMock) SetInventorySyncers(inventorySyncers []provision
 //
 //	len(mockedClusterService.SetInventorySyncersCalls())
 func (mock *ClusterServiceMock) SetInventorySyncersCalls() []struct {
-	InventorySyncers []provisioning.InventorySyncer
+	InventorySyncers map[domain.ResourceType]provisioning.InventorySyncer
 } {
 	var calls []struct {
-		InventorySyncers []provisioning.InventorySyncer
+		InventorySyncers map[domain.ResourceType]provisioning.InventorySyncer
 	}
 	mock.lockSetInventorySyncers.RLock()
 	calls = mock.calls.SetInventorySyncers
 	mock.lockSetInventorySyncers.RUnlock()
+	return calls
+}
+
+// StartLifecycleEventsMonitor calls StartLifecycleEventsMonitorFunc.
+func (mock *ClusterServiceMock) StartLifecycleEventsMonitor(ctx context.Context) error {
+	if mock.StartLifecycleEventsMonitorFunc == nil {
+		panic("ClusterServiceMock.StartLifecycleEventsMonitorFunc: method is nil but ClusterService.StartLifecycleEventsMonitor was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockStartLifecycleEventsMonitor.Lock()
+	mock.calls.StartLifecycleEventsMonitor = append(mock.calls.StartLifecycleEventsMonitor, callInfo)
+	mock.lockStartLifecycleEventsMonitor.Unlock()
+	return mock.StartLifecycleEventsMonitorFunc(ctx)
+}
+
+// StartLifecycleEventsMonitorCalls gets all the calls that were made to StartLifecycleEventsMonitor.
+// Check the length with:
+//
+//	len(mockedClusterService.StartLifecycleEventsMonitorCalls())
+func (mock *ClusterServiceMock) StartLifecycleEventsMonitorCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockStartLifecycleEventsMonitor.RLock()
+	calls = mock.calls.StartLifecycleEventsMonitor
+	mock.lockStartLifecycleEventsMonitor.RUnlock()
 	return calls
 }
 

@@ -16,7 +16,7 @@ import (
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 )
 
-func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverClient inventory.ServerClient, authorizer *authz.Authorizer, inventoryRouter Router) []provisioning.InventorySyncer {
+func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterService, serverClient inventory.ServerClient, authorizer *authz.Authorizer, inventoryRouter Router) map[domain.ResourceType]provisioning.InventorySyncer {
 	// Service
 	inventoryInventoryAggregateSvc := inventoryServiceMiddleware.NewInventoryAggregateServiceWithSlog(
 		inventory.NewInventoryAggregateService(
@@ -347,21 +347,21 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 	inventoryStorageVolumeRouter := inventoryRouter.SubGroup("/storage_volumes")
 	registerInventoryStorageVolumeHandler(inventoryStorageVolumeRouter, authorizer, inventoryStorageVolumeSvc)
 
-	return []provisioning.InventorySyncer{
-		inventoryImageSvc,
-		inventoryInstanceSvc,
-		inventoryNetworkSvc,
-		inventoryNetworkACLSvc,
-		inventoryNetworkAddressSetSvc,
-		inventoryNetworkForwardSvc,
-		inventoryNetworkIntegrationSvc,
-		inventoryNetworkLoadBalancerSvc,
-		inventoryNetworkPeerSvc,
-		inventoryNetworkZoneSvc,
-		inventoryProfileSvc,
-		inventoryProjectSvc,
-		inventoryStorageBucketSvc,
-		inventoryStoragePoolSvc,
-		inventoryStorageVolumeSvc,
+	return map[domain.ResourceType]provisioning.InventorySyncer{
+		domain.ResourceTypeImage:               inventoryImageSvc,
+		domain.ResourceTypeInstance:            inventoryInstanceSvc,
+		domain.ResourceTypeNetwork:             inventoryNetworkSvc,
+		domain.ResourceTypeNetworkACL:          inventoryNetworkACLSvc,
+		domain.ResourceTypeNetworkAddressSet:   inventoryNetworkAddressSetSvc,
+		domain.ResourceTypeNetworkForward:      inventoryNetworkForwardSvc,
+		domain.ResourceTypeNetworkIntegration:  inventoryNetworkIntegrationSvc,
+		domain.ResourceTypeNetworkLoadBalancer: inventoryNetworkLoadBalancerSvc,
+		domain.ResourceTypeNetworkPeer:         inventoryNetworkPeerSvc,
+		domain.ResourceTypeNetworkZone:         inventoryNetworkZoneSvc,
+		domain.ResourceTypeProfile:             inventoryProfileSvc,
+		domain.ResourceTypeProject:             inventoryProjectSvc,
+		domain.ResourceTypeStorageBucket:       inventoryStorageBucketSvc,
+		domain.ResourceTypeStoragePool:         inventoryStoragePoolSvc,
+		domain.ResourceTypeStorageVolume:       inventoryStorageVolumeSvc,
 	}
 }

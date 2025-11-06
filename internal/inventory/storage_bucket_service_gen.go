@@ -209,6 +209,151 @@ func (s storageBucketService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 	return nil
 }
 
+func (s storageBucketService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	if event.ResourceType != "storage-bucket" {
+		return nil
+	}
+
+	var err error
+	switch event.Operation {
+	case domain.LifecycleOperationCreate:
+		err = s.handleCreateEvent(ctx, clusterName, event)
+
+	case domain.LifecycleOperationDelete:
+		err = s.handleDeleteEvent(ctx, clusterName, event)
+
+	case domain.LifecycleOperationRename:
+		err = s.handleRenameEvent(ctx, clusterName, event)
+
+	case domain.LifecycleOperationUpdate:
+		err = s.handleUpdateEvent(ctx, clusterName, event)
+
+	default:
+		err = fmt.Errorf("Invalid lifecycle operation %q", event.Operation)
+	}
+
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			// Ignore "not found" errors.
+			return nil
+		}
+
+		return fmt.Errorf("Failed to handle lifecycle event: %w", err)
+	}
+
+	return nil
+}
+
+func (s storageBucketService) handleCreateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	retrievedStorageBucket, err := s.storageBucketClient.GetStorageBucketByName(ctx, endpoint, event.Source.ProjectName, event.Source.ParentName, event.Source.Name)
+	if err != nil {
+		return err
+	}
+
+	storageBucket := StorageBucket{
+		Cluster:         clusterName,
+		Server:          retrievedStorageBucket.Location,
+		ProjectName:     retrievedStorageBucket.Project,
+		StoragePoolName: event.Source.ParentName,
+		Name:            retrievedStorageBucket.Name,
+		Object:          retrievedStorageBucket,
+		LastUpdated:     s.now(),
+	}
+
+	storageBucket.DeriveUUID()
+
+	if s.clusterSyncFilterFunc(storageBucket) {
+		return nil
+	}
+
+	err = storageBucket.Validate()
+	if err != nil {
+		return err
+	}
+
+	_, err = s.repo.Create(ctx, storageBucket)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s storageBucketService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, StorageBucketFilter{
+		Cluster:         &clusterName,
+		Project:         &event.Source.ProjectName,
+		StoragePoolName: &event.Source.ParentName,
+		Name:            &event.Source.Name,
+	})
+	if err != nil {
+		return err
+	}
+
+	var errs []error
+	for _, UUID := range UUIDs {
+		err := s.repo.DeleteByUUID(ctx, UUID)
+		errs = append(errs, err)
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("Failed to remove storage_bucket by name: %w", errors.Join(errs...))
+	}
+
+	return nil
+}
+
+func (s storageBucketService) handleRenameEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	deleteEvent := event
+	deleteEvent.Source.Name = deleteEvent.Source.OldName
+
+	var errs []error
+	errs = append(errs, s.handleDeleteEvent(ctx, clusterName, deleteEvent))
+	errs = append(errs, s.handleCreateEvent(ctx, clusterName, event))
+
+	err := errors.Join(errs...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s storageBucketService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, StorageBucketFilter{
+		Cluster:         &clusterName,
+		Project:         &event.Source.ProjectName,
+		StoragePoolName: &event.Source.ParentName,
+		Name:            &event.Source.Name,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(UUIDs) == 0 {
+		return s.handleCreateEvent(ctx, clusterName, event)
+	}
+
+	var errs []error
+	for _, UUID := range UUIDs {
+		err := s.ResyncByUUID(ctx, UUID)
+		errs = append(errs, err)
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("Failed to resync storage_bucket by name: %w", errors.Join(errs...))
+	}
+
+	return nil
+}
+
 func (s storageBucketService) SyncCluster(ctx context.Context, name string) error {
 	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
 	if err != nil {

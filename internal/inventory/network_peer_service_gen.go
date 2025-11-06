@@ -207,6 +207,147 @@ func (s networkPeerService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 	return nil
 }
 
+func (s networkPeerService) ResyncByName(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	if event.ResourceType != "network-peer" {
+		return nil
+	}
+
+	var err error
+	switch event.Operation {
+	case domain.LifecycleOperationCreate:
+		err = s.handleCreateEvent(ctx, clusterName, event)
+
+	case domain.LifecycleOperationDelete:
+		err = s.handleDeleteEvent(ctx, clusterName, event)
+
+	case domain.LifecycleOperationRename:
+		err = s.handleRenameEvent(ctx, clusterName, event)
+
+	case domain.LifecycleOperationUpdate:
+		err = s.handleUpdateEvent(ctx, clusterName, event)
+
+	default:
+		err = fmt.Errorf("Invalid lifecycle operation %q", event.Operation)
+	}
+
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			// Ignore "not found" errors.
+			return nil
+		}
+
+		return fmt.Errorf("Failed to handle lifecycle event: %w", err)
+	}
+
+	return nil
+}
+
+func (s networkPeerService) handleCreateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	endpoint, err := s.clusterSvc.GetEndpoint(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	retrievedNetworkPeer, err := s.networkPeerClient.GetNetworkPeerByName(ctx, endpoint, event.Source.ParentName, event.Source.Name)
+	if err != nil {
+		return err
+	}
+
+	networkPeer := NetworkPeer{
+		Cluster:     clusterName,
+		NetworkName: event.Source.ParentName,
+		Name:        retrievedNetworkPeer.Name,
+		Object:      retrievedNetworkPeer,
+		LastUpdated: s.now(),
+	}
+
+	networkPeer.DeriveUUID()
+
+	if s.clusterSyncFilterFunc(networkPeer) {
+		return nil
+	}
+
+	err = networkPeer.Validate()
+	if err != nil {
+		return err
+	}
+
+	_, err = s.repo.Create(ctx, networkPeer)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s networkPeerService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkPeerFilter{
+		Cluster:     &clusterName,
+		NetworkName: &event.Source.ParentName,
+		Name:        &event.Source.Name,
+	})
+	if err != nil {
+		return err
+	}
+
+	var errs []error
+	for _, UUID := range UUIDs {
+		err := s.repo.DeleteByUUID(ctx, UUID)
+		errs = append(errs, err)
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("Failed to remove network_peer by name: %w", errors.Join(errs...))
+	}
+
+	return nil
+}
+
+func (s networkPeerService) handleRenameEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	deleteEvent := event
+	deleteEvent.Source.Name = deleteEvent.Source.OldName
+
+	var errs []error
+	errs = append(errs, s.handleDeleteEvent(ctx, clusterName, deleteEvent))
+	errs = append(errs, s.handleCreateEvent(ctx, clusterName, event))
+
+	err := errors.Join(errs...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s networkPeerService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
+	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkPeerFilter{
+		Cluster:     &clusterName,
+		NetworkName: &event.Source.ParentName,
+		Name:        &event.Source.Name,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(UUIDs) == 0 {
+		return s.handleCreateEvent(ctx, clusterName, event)
+	}
+
+	var errs []error
+	for _, UUID := range UUIDs {
+		err := s.ResyncByUUID(ctx, UUID)
+		errs = append(errs, err)
+	}
+
+	err = errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("Failed to resync network_peer by name: %w", errors.Join(errs...))
+	}
+
+	return nil
+}
+
 func (s networkPeerService) SyncCluster(ctx context.Context, name string) error {
 	endpoint, err := s.clusterSvc.GetEndpoint(ctx, name)
 	if err != nil {

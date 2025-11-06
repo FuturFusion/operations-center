@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -460,7 +461,7 @@ func (_d ClusterServiceWithSlog) ResyncInventoryByName(ctx context.Context, name
 }
 
 // SetInventorySyncers implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) SetInventorySyncers(inventorySyncers []provisioning.InventorySyncer) {
+func (_d ClusterServiceWithSlog) SetInventorySyncers(inventorySyncers map[domain.ResourceType]provisioning.InventorySyncer) {
 	ctx := context.Background()
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
@@ -474,6 +475,39 @@ func (_d ClusterServiceWithSlog) SetInventorySyncers(inventorySyncers []provisio
 		log.DebugContext(ctx, "<= method SetInventorySyncers finished")
 	}()
 	_d._base.SetInventorySyncers(inventorySyncers)
+}
+
+// StartLifecycleEventsMonitor implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) StartLifecycleEventsMonitor(ctx context.Context) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling StartLifecycleEventsMonitor")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method StartLifecycleEventsMonitor returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method StartLifecycleEventsMonitor returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method StartLifecycleEventsMonitor finished")
+		}
+	}()
+	return _d._base.StartLifecycleEventsMonitor(ctx)
 }
 
 // Update implements provisioning.ClusterService.
