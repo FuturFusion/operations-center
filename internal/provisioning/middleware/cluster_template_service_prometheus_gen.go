@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/lxc/incus/v6/shared/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -35,6 +36,20 @@ func NewClusterTemplateServiceWithPrometheus(base provisioning.ClusterTemplateSe
 		base:         base,
 		instanceName: instanceName,
 	}
+}
+
+// Apply implements provisioning.ClusterTemplateService.
+func (_d ClusterTemplateServiceWithPrometheus) Apply(ctx context.Context, name string, templateVariables api.ConfigMap) (servicesConfig map[string]any, applicationSeedConfig map[string]any, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterTemplateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Apply", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Apply(ctx, name, templateVariables)
 }
 
 // Create implements provisioning.ClusterTemplateService.
