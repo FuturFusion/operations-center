@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -74,6 +75,7 @@ server B
 	}
 
 	terraformProvisioner := &adapterMock.ClusterProvisioningPortMock{
+		RegisterUpdateSignalFunc: func(signal signals.Signal[provisioning.ClusterUpdateMessage]) {},
 		InitFunc: func(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
 			return nil
 		},

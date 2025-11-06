@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/maniartech/signals"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -92,4 +93,14 @@ func (_d ClusterProvisioningPortWithPrometheus) Init(ctx context.Context, name s
 		clusterProvisioningPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Init", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Init(ctx, name, config)
+}
+
+// RegisterUpdateSignal implements provisioning.ClusterProvisioningPort.
+func (_d ClusterProvisioningPortWithPrometheus) RegisterUpdateSignal(signal signals.Signal[provisioning.ClusterUpdateMessage]) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		clusterProvisioningPortDurationSummaryVec.WithLabelValues(_d.instanceName, "RegisterUpdateSignal", result).Observe(time.Since(_since).Seconds())
+	}()
+	_d.base.RegisterUpdateSignal(signal)
 }

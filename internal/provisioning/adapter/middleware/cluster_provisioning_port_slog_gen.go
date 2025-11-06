@@ -10,6 +10,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/maniartech/signals"
 )
 
 // ClusterProvisioningPortWithSlog implements provisioning.ClusterProvisioningPort that is instrumented with slog logger.
@@ -179,4 +180,21 @@ func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, name string,
 		}
 	}()
 	return _d._base.Init(ctx, name, config)
+}
+
+// RegisterUpdateSignal implements provisioning.ClusterProvisioningPort.
+func (_d ClusterProvisioningPortWithSlog) RegisterUpdateSignal(signal signals.Signal[provisioning.ClusterUpdateMessage]) {
+	ctx := context.Background()
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("signal", signal),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RegisterUpdateSignal")
+	defer func() {
+		log := _d._log.With()
+		log.DebugContext(ctx, "<= method RegisterUpdateSignal finished")
+	}()
+	_d._base.RegisterUpdateSignal(signal)
 }
