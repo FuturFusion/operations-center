@@ -47,6 +47,12 @@ func ClusterServiceCreateClusterRetryTimeout(timeout time.Duration) ClusterServi
 	}
 }
 
+func ClusterServiceUpdateSignal(updateSignal signals.Signal[ClusterUpdateMessage]) ClusterServiceOption {
+	return func(s *clusterService) {
+		s.clusterUpdateSignal = updateSignal
+	}
+}
+
 func NewClusterService(
 	repo ClusterRepo,
 	client ClusterClientPort,
@@ -489,7 +495,18 @@ func (s clusterService) Rename(ctx context.Context, oldName string, newName stri
 		return domain.NewValidationErrf("New Cluster name cannot by empty")
 	}
 
-	return s.repo.Rename(ctx, oldName, newName)
+	err := s.repo.Rename(ctx, oldName, newName)
+	if err != nil {
+		return err
+	}
+
+	s.clusterUpdateSignal.Emit(ctx, ClusterUpdateMessage{
+		Operation: ClusterUpdateOperationRename,
+		Name:      newName,
+		OldName:   oldName,
+	})
+
+	return nil
 }
 
 func (s clusterService) DeleteByName(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) error {
@@ -521,12 +538,7 @@ func (s clusterService) DeleteByName(ctx context.Context, name string, deleteMod
 	}
 
 	if deleteMode == api.ClusterDeleteModeForce || deleteMode == api.ClusterDeleteModeFactoryReset {
-		err := s.provisioner.Cleanup(ctx, name)
-		if err != nil {
-			return fmt.Errorf("Cleanup provisioner files: %w", err)
-		}
-
-		err = s.repo.DeleteByName(ctx, name)
+		err := s.repo.DeleteByName(ctx, name)
 		if err != nil {
 			return fmt.Errorf("Failed to delete cluster: %w", err)
 		}

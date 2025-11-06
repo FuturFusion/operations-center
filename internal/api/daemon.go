@@ -458,9 +458,12 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 }
 
 func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.ServerService) (provisioning.ClusterService, error) {
+	updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
+
 	terraformProvisioner, err := terraform.New(
 		filepath.Join(d.env.VarDir(), "terraform"),
 		d.env.VarDir(),
+		updateSignal,
 	)
 	if err != nil {
 		return nil, err
@@ -482,6 +485,7 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.Se
 			serverSvc,
 			nil,
 			terraformProvisioner,
+			provisioning.ClusterServiceUpdateSignal(updateSignal),
 		),
 		slog.Default(),
 	), nil

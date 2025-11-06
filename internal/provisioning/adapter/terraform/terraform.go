@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -20,9 +21,11 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	incusapi "github.com/lxc/incus/v6/shared/api"
+	"github.com/maniartech/signals"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/FuturFusion/operations-center/internal/file"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
@@ -41,7 +44,7 @@ var _ provisioning.ClusterProvisioningPort = &terraform{}
 
 type Option func(*terraform)
 
-func New(storageDir string, clientCertDir string, opts ...Option) (terraform, error) {
+func New(storageDir string, clientCertDir string, updateSignal signals.Signal[provisioning.ClusterUpdateMessage], opts ...Option) (terraform, error) {
 	err := os.MkdirAll(storageDir, 0o700)
 	if err != nil {
 		return terraform{}, fmt.Errorf("Failed to create directory for terraform provisioner: %w", err)
@@ -59,7 +62,41 @@ func New(storageDir string, clientCertDir string, opts ...Option) (terraform, er
 		opt(&t)
 	}
 
+	t.registerUpdateSignalHandler(updateSignal)
+
 	return t, nil
+}
+
+func (t terraform) registerUpdateSignalHandler(clusterUpdateSignal signals.Signal[provisioning.ClusterUpdateMessage]) {
+	clusterUpdateSignal.AddListener(func(ctx context.Context, cum provisioning.ClusterUpdateMessage) {
+		switch cum.Operation {
+		case provisioning.ClusterUpdateOperationRename:
+			oldPath := filepath.Join(t.storageDir, cum.OldName)
+			newPath := filepath.Join(t.storageDir, cum.Name)
+			if !file.PathExists(oldPath) {
+				return
+			}
+
+			err := os.Rename(oldPath, newPath)
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to rename terraform storage directory", slog.String("old_path", oldPath), slog.String("new_path", newPath), logger.Err(err))
+				return
+			}
+
+		case provisioning.ClusterUpdateOperationDelete:
+			configDir := filepath.Join(t.storageDir, cum.Name)
+			if !file.PathExists(configDir) {
+				return
+			}
+
+			err := os.RemoveAll(configDir)
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to remove terraform configuration", slog.String("cluster", cum.Name), logger.Err(err))
+			}
+
+		default:
+		}
+	})
 }
 
 func (t terraform) Init(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
@@ -549,18 +586,4 @@ func (t terraform) GetArchive(ctx context.Context, name string) (_ io.ReadCloser
 	}
 
 	return io.NopCloser(buf), buf.Len(), nil
-}
-
-func (t terraform) Cleanup(ctx context.Context, name string) error {
-	configDir := filepath.Join(t.storageDir, name)
-	if !file.PathExists(configDir) {
-		return nil
-	}
-
-	err := os.RemoveAll(configDir)
-	if err != nil {
-		return fmt.Errorf("Failed to remove terraform configuration for cluster %q: %w", name, err)
-	}
-
-	return nil
 }

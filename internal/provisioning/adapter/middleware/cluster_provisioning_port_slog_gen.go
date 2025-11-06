@@ -76,40 +76,6 @@ func (_d ClusterProvisioningPortWithSlog) Apply(ctx context.Context, cluster pro
 	return _d._base.Apply(ctx, cluster)
 }
 
-// Cleanup implements provisioning.ClusterProvisioningPort.
-func (_d ClusterProvisioningPortWithSlog) Cleanup(ctx context.Context, name string) (err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.String("name", name),
-		)
-	}
-	log.DebugContext(ctx, "=> calling Cleanup")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method Cleanup returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method Cleanup returned an error")
-			}
-		} else {
-			log.DebugContext(ctx, "<= method Cleanup finished")
-		}
-	}()
-	return _d._base.Cleanup(ctx, name)
-}
-
 // GetArchive implements provisioning.ClusterProvisioningPort.
 func (_d ClusterProvisioningPortWithSlog) GetArchive(ctx context.Context, name string) (readCloser io.ReadCloser, size int, err error) {
 	log := _d._log.With()

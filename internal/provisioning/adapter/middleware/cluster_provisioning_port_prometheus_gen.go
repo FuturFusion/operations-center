@@ -52,20 +52,6 @@ func (_d ClusterProvisioningPortWithPrometheus) Apply(ctx context.Context, clust
 	return _d.base.Apply(ctx, cluster)
 }
 
-// Cleanup implements provisioning.ClusterProvisioningPort.
-func (_d ClusterProvisioningPortWithPrometheus) Cleanup(ctx context.Context, name string) (err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		clusterProvisioningPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Cleanup", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.Cleanup(ctx, name)
-}
-
 // GetArchive implements provisioning.ClusterProvisioningPort.
 func (_d ClusterProvisioningPortWithPrometheus) GetArchive(ctx context.Context, name string) (readCloser io.ReadCloser, size int, err error) {
 	_since := time.Now()
