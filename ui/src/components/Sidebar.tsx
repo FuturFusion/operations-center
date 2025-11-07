@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Nav, Navbar, Collapse, Container } from "react-bootstrap";
+import { Nav, Navbar, Collapse } from "react-bootstrap";
 import { Link } from "react-router";
 import { AiOutlineCluster } from "react-icons/ai";
 import { GoProjectTemplate, GoServer } from "react-icons/go";
@@ -56,236 +56,224 @@ const Sidebar = () => {
   return (
     <>
       {/* Sidebar Navbar */}
-      <Navbar bg="dark" variant="dark" className="flex-column vh-100">
+      <Navbar bg="dark" variant="dark" className="d-flex flex-column vh-100">
         <Navbar.Brand href="/ui/" style={{ margin: "5px 15px" }}>
           Operations Center
         </Navbar.Brand>
 
         {/* Sidebar content */}
-        <Container className="flex-column" style={{ padding: "0px" }}>
-          <Nav className="flex-column w-100">
-            {isAuthenticated && (
-              <>
-                <Nav.Item>
-                  <li>
-                    <Nav.Link onClick={() => toggleSubmenu("inventory", 0)}>
-                      <MdOutlineInventory2 /> Inventory{" "}
-                      {menuFoldIcon("inventory", 0)}
-                    </Nav.Link>
-                  </li>
-                  <Collapse in={openSubmenu[0] === "inventory"}>
-                    <div>
-                      <Nav className="flex-column ms-2">
-                        <li>
-                          <Nav.Link as={Link} to="/ui/inventory/images">
-                            <RiHardDrive2Line /> Images
-                          </Nav.Link>
-                        </li>
-                        <li>
-                          <Nav.Link as={Link} to="/ui/inventory/instances">
-                            <RiBox3Line /> Instances
-                          </Nav.Link>
-                        </li>
-                        <Nav.Item>
-                          <li>
-                            <Nav.Link
-                              onClick={() => toggleSubmenu("networking", 1)}
-                            >
-                              <RiOrganizationChart /> Networking
-                              {menuFoldIcon("networking", 1)}
-                            </Nav.Link>
-                          </li>
-                          <Collapse in={openSubmenu[1] === "networking"}>
-                            <div>
-                              <Nav className="flex-column ms-2">
-                                <li>
-                                  <Nav.Link
-                                    as={Link}
-                                    to="/ui/inventory/networks"
-                                  >
-                                    Networks
-                                  </Nav.Link>
-                                </li>
-                                <li>
-                                  <Nav.Link
-                                    as={Link}
-                                    to="/ui/inventory/network_acls"
-                                  >
-                                    ACLs
-                                  </Nav.Link>
-                                </li>
-                                <li>
-                                  <Nav.Link
-                                    as={Link}
-                                    to="/ui/inventory/network_forwards"
-                                  >
-                                    Forwards
-                                  </Nav.Link>
-                                </li>
-                                <li>
-                                  <Nav.Link
-                                    as={Link}
-                                    to="/ui/inventory/network_integrations"
-                                  >
-                                    Integrations
-                                  </Nav.Link>
-                                </li>
-                                <li>
-                                  <Nav.Link
-                                    as={Link}
-                                    to="/ui/inventory/network_load_balancers"
-                                  >
-                                    Load Balancers
-                                  </Nav.Link>
-                                </li>
-                                <li>
-                                  <Nav.Link
-                                    as={Link}
-                                    to="/ui/inventory/network_peers"
-                                  >
-                                    Peers
-                                  </Nav.Link>
-                                </li>
-                                <li>
-                                  <Nav.Link
-                                    as={Link}
-                                    to="/ui/inventory/network_zones"
-                                  >
-                                    Zones
-                                  </Nav.Link>
-                                </li>
-                              </Nav>
-                            </div>
-                          </Collapse>
-                        </Nav.Item>
-                        <Nav.Item>
-                          <li>
-                            <Nav.Link
-                              onClick={() => toggleSubmenu("storage", 1)}
-                            >
-                              <RiDatabase2Line /> Storage
-                              {menuFoldIcon("storage", 1)}
-                            </Nav.Link>
-                          </li>
-                          <Collapse in={openSubmenu[1] === "storage"}>
-                            <div>
-                              <Nav className="flex-column ms-2">
-                                <li>
-                                  <Nav.Link
-                                    as={Link}
-                                    to="/ui/inventory/storage_buckets"
-                                  >
-                                    Buckets
-                                  </Nav.Link>
-                                </li>
-                                <li>
-                                  <Nav.Link
-                                    as={Link}
-                                    to="/ui/inventory/storage_pools"
-                                  >
-                                    Pools
-                                  </Nav.Link>
-                                </li>
-                                <li>
-                                  <Nav.Link
-                                    as={Link}
-                                    to="/ui/inventory/storage_volumes"
-                                  >
-                                    Volumes
-                                  </Nav.Link>
-                                </li>
-                              </Nav>
-                            </div>
-                          </Collapse>
-                        </Nav.Item>
-                        <li>
-                          <Nav.Link as={Link} to="/ui/inventory/profiles">
-                            <RiPassPendingLine /> Profiles
-                          </Nav.Link>
-                        </li>
-                        <li>
-                          <Nav.Link as={Link} to="/ui/inventory/projects">
-                            <RiArticleLine /> Projects
-                          </Nav.Link>
-                        </li>
-                      </Nav>
-                    </div>
-                  </Collapse>
-                </Nav.Item>
-                <Nav.Item>
-                  <li>
-                    <Nav.Link as={Link} to="/ui/provisioning/clusters">
-                      <AiOutlineCluster /> Clusters
-                    </Nav.Link>
-                  </li>
-                </Nav.Item>
-                <Nav.Item>
-                  <li>
-                    <Nav.Link as={Link} to="/ui/provisioning/cluster-templates">
-                      <GoProjectTemplate /> Cluster templates
-                    </Nav.Link>
-                  </li>
-                </Nav.Item>
-                <Nav.Item>
-                  <li>
-                    <Nav.Link as={Link} to="/ui/provisioning/servers">
-                      <GoServer /> Servers
-                    </Nav.Link>
-                  </li>
-                </Nav.Item>
-                <Nav.Item>
-                  <li>
-                    <Nav.Link as={Link} to="/ui/provisioning/tokens">
-                      <MdOutlineToken /> Tokens
-                    </Nav.Link>
-                  </li>
-                </Nav.Item>
-                <Nav.Item>
-                  <li>
-                    <Nav.Link as={Link} to="/ui/provisioning/updates">
-                      <MdOutlineSystemUpdateAlt /> Updates
-                    </Nav.Link>
-                  </li>
-                </Nav.Item>
-              </>
-            )}
-            {!isAuthenticated && (
-              <>
+        <Nav className="flex-column w-100 flex-grow-1 overflow-auto">
+          {isAuthenticated && (
+            <>
+              <Nav.Item>
                 <li>
-                  <Nav.Link href="/oidc/login">
-                    <MdLogin /> Login
+                  <Nav.Link onClick={() => toggleSubmenu("inventory", 0)}>
+                    <MdOutlineInventory2 /> Inventory{" "}
+                    {menuFoldIcon("inventory", 0)}
                   </Nav.Link>
                 </li>
-              </>
-            )}
-          </Nav>
-          {/* Bottom Element */}
-          <div
-            className="w-100"
-            style={{ position: "absolute", bottom: "20px" }}
-          >
-            <Nav className="flex-column">
-              {isAuthenticated && (
-                <>
-                  <li>
-                    <Nav.Link as={Link} to="/ui/settings">
-                      <MdOutlineSettings /> Settings
-                    </Nav.Link>
-                  </li>
-                  <li>
-                    <Nav.Link
-                      onClick={() => {
-                        logout();
-                      }}
-                    >
-                      <MdLogout /> Logout
-                    </Nav.Link>
-                  </li>
-                </>
-              )}
-            </Nav>
-          </div>
-        </Container>
+                <Collapse in={openSubmenu[0] === "inventory"}>
+                  <div>
+                    <Nav className="flex-column ms-2">
+                      <li>
+                        <Nav.Link as={Link} to="/ui/inventory/images">
+                          <RiHardDrive2Line /> Images
+                        </Nav.Link>
+                      </li>
+                      <li>
+                        <Nav.Link as={Link} to="/ui/inventory/instances">
+                          <RiBox3Line /> Instances
+                        </Nav.Link>
+                      </li>
+                      <Nav.Item>
+                        <li>
+                          <Nav.Link
+                            onClick={() => toggleSubmenu("networking", 1)}
+                          >
+                            <RiOrganizationChart /> Networking
+                            {menuFoldIcon("networking", 1)}
+                          </Nav.Link>
+                        </li>
+                        <Collapse in={openSubmenu[1] === "networking"}>
+                          <div>
+                            <Nav className="flex-column ms-2">
+                              <li>
+                                <Nav.Link as={Link} to="/ui/inventory/networks">
+                                  Networks
+                                </Nav.Link>
+                              </li>
+                              <li>
+                                <Nav.Link
+                                  as={Link}
+                                  to="/ui/inventory/network_acls"
+                                >
+                                  ACLs
+                                </Nav.Link>
+                              </li>
+                              <li>
+                                <Nav.Link
+                                  as={Link}
+                                  to="/ui/inventory/network_forwards"
+                                >
+                                  Forwards
+                                </Nav.Link>
+                              </li>
+                              <li>
+                                <Nav.Link
+                                  as={Link}
+                                  to="/ui/inventory/network_integrations"
+                                >
+                                  Integrations
+                                </Nav.Link>
+                              </li>
+                              <li>
+                                <Nav.Link
+                                  as={Link}
+                                  to="/ui/inventory/network_load_balancers"
+                                >
+                                  Load Balancers
+                                </Nav.Link>
+                              </li>
+                              <li>
+                                <Nav.Link
+                                  as={Link}
+                                  to="/ui/inventory/network_peers"
+                                >
+                                  Peers
+                                </Nav.Link>
+                              </li>
+                              <li>
+                                <Nav.Link
+                                  as={Link}
+                                  to="/ui/inventory/network_zones"
+                                >
+                                  Zones
+                                </Nav.Link>
+                              </li>
+                            </Nav>
+                          </div>
+                        </Collapse>
+                      </Nav.Item>
+                      <Nav.Item>
+                        <li>
+                          <Nav.Link onClick={() => toggleSubmenu("storage", 1)}>
+                            <RiDatabase2Line /> Storage
+                            {menuFoldIcon("storage", 1)}
+                          </Nav.Link>
+                        </li>
+                        <Collapse in={openSubmenu[1] === "storage"}>
+                          <div>
+                            <Nav className="flex-column ms-2">
+                              <li>
+                                <Nav.Link
+                                  as={Link}
+                                  to="/ui/inventory/storage_buckets"
+                                >
+                                  Buckets
+                                </Nav.Link>
+                              </li>
+                              <li>
+                                <Nav.Link
+                                  as={Link}
+                                  to="/ui/inventory/storage_pools"
+                                >
+                                  Pools
+                                </Nav.Link>
+                              </li>
+                              <li>
+                                <Nav.Link
+                                  as={Link}
+                                  to="/ui/inventory/storage_volumes"
+                                >
+                                  Volumes
+                                </Nav.Link>
+                              </li>
+                            </Nav>
+                          </div>
+                        </Collapse>
+                      </Nav.Item>
+                      <li>
+                        <Nav.Link as={Link} to="/ui/inventory/profiles">
+                          <RiPassPendingLine /> Profiles
+                        </Nav.Link>
+                      </li>
+                      <li>
+                        <Nav.Link as={Link} to="/ui/inventory/projects">
+                          <RiArticleLine /> Projects
+                        </Nav.Link>
+                      </li>
+                    </Nav>
+                  </div>
+                </Collapse>
+              </Nav.Item>
+              <Nav.Item>
+                <li>
+                  <Nav.Link as={Link} to="/ui/provisioning/clusters">
+                    <AiOutlineCluster /> Clusters
+                  </Nav.Link>
+                </li>
+              </Nav.Item>
+              <Nav.Item>
+                <li>
+                  <Nav.Link as={Link} to="/ui/provisioning/cluster-templates">
+                    <GoProjectTemplate /> Cluster templates
+                  </Nav.Link>
+                </li>
+              </Nav.Item>
+              <Nav.Item>
+                <li>
+                  <Nav.Link as={Link} to="/ui/provisioning/servers">
+                    <GoServer /> Servers
+                  </Nav.Link>
+                </li>
+              </Nav.Item>
+              <Nav.Item>
+                <li>
+                  <Nav.Link as={Link} to="/ui/provisioning/tokens">
+                    <MdOutlineToken /> Tokens
+                  </Nav.Link>
+                </li>
+              </Nav.Item>
+              <Nav.Item>
+                <li>
+                  <Nav.Link as={Link} to="/ui/provisioning/updates">
+                    <MdOutlineSystemUpdateAlt /> Updates
+                  </Nav.Link>
+                </li>
+              </Nav.Item>
+            </>
+          )}
+          {!isAuthenticated && (
+            <>
+              <li>
+                <Nav.Link href="/oidc/login">
+                  <MdLogin /> Login
+                </Nav.Link>
+              </li>
+            </>
+          )}
+        </Nav>
+        {/* Bottom Element */}
+        <Nav className="flex-column w-100 flex-shrink-0 border-top border-secondary pt-2">
+          {isAuthenticated && (
+            <>
+              <li>
+                <Nav.Link as={Link} to="/ui/settings">
+                  <MdOutlineSettings /> Settings
+                </Nav.Link>
+              </li>
+              <li>
+                <Nav.Link
+                  onClick={() => {
+                    logout();
+                  }}
+                >
+                  <MdLogout /> Logout
+                </Nav.Link>
+              </li>
+            </>
+          )}
+        </Nav>
       </Navbar>
     </>
   );
