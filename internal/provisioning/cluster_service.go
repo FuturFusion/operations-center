@@ -24,6 +24,7 @@ import (
 
 type clusterService struct {
 	repo             ClusterRepo
+	localartifact    ClusterArtifactRepo
 	client           ClusterClientPort
 	serverSvc        ServerService
 	inventorySyncers map[domain.ResourceType]InventorySyncer
@@ -55,6 +56,7 @@ func ClusterServiceUpdateSignal(updateSignal signals.Signal[ClusterUpdateMessage
 
 func NewClusterService(
 	repo ClusterRepo,
+	localartifact ClusterArtifactRepo,
 	client ClusterClientPort,
 	serverSvc ServerService,
 	inventorySyncers map[domain.ResourceType]InventorySyncer,
@@ -63,6 +65,7 @@ func NewClusterService(
 ) *clusterService {
 	clusterSvc := &clusterService{
 		repo:             repo,
+		localartifact:    localartifact,
 		client:           client,
 		serverSvc:        serverSvc,
 		inventorySyncers: inventorySyncers,
@@ -810,4 +813,60 @@ func (s clusterService) GetEndpoint(ctx context.Context, name string) (Endpoint,
 	}
 
 	return ClusterEndpoint(servers), nil
+}
+
+func (s clusterService) GetClusterArtifactAll(ctx context.Context, clusterName string) (ClusterArtifacts, error) {
+	if clusterName == "" {
+		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	return s.localartifact.GetClusterArtifactAll(ctx, clusterName)
+}
+
+func (s clusterService) GetClusterArtifactAllNames(ctx context.Context, clusterName string) ([]string, error) {
+	if clusterName == "" {
+		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	return s.localartifact.GetClusterArtifactAllNames(ctx, clusterName)
+}
+
+func (s clusterService) GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (*ClusterArtifact, error) {
+	if clusterName == "" {
+		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	if artifactName == "" {
+		return nil, fmt.Errorf("Cluster artifact name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	return s.localartifact.GetClusterArtifactByName(ctx, clusterName, artifactName)
+}
+
+func (s clusterService) GetClusterArtifactFileByName(ctx context.Context, clusterName string, artifactName string, filename string) (*ClusterArtifactFile, error) {
+	if filename == "" {
+		return nil, fmt.Errorf("Filename cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	artifact, err := s.GetClusterArtifactByName(ctx, clusterName, artifactName)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get artifact %q for cluster %q: %w", artifactName, clusterName, err)
+	}
+
+	for _, file := range artifact.Files {
+		if file.Name == filename {
+			return &file, nil
+		}
+	}
+
+	return nil, fmt.Errorf("File %q not found in artifact %q for cluster %q: %w", filename, artifactName, clusterName, domain.ErrNotFound)
+}
+
+func (s clusterService) GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType ClusterArtifactArchiveType) (_ io.ReadCloser, size int, _ error) {
+	rc, size, err := s.localartifact.GetClusterArtifactArchiveByName(ctx, clusterName, artifactName, archiveType)
+	if err != nil {
+		return nil, 0, fmt.Errorf("Failed to get artifact %q for cluster %q: %w", artifactName, clusterName, err)
+	}
+
+	return rc, size, nil
 }

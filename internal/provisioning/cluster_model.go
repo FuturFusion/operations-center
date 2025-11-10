@@ -1,8 +1,10 @@
 package provisioning
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"io"
 	"iter"
 	"net/url"
 	"strings"
@@ -155,3 +157,83 @@ const (
 	ClusterUpdateOperationDelete ClusterUpdateOperation = "delete"
 	ClusterUpdateOperationRename ClusterUpdateOperation = "rename"
 )
+
+type ClusterArtifact struct {
+	ID          int64
+	Cluster     string `db:"primary=yes&join=clusters.name"`
+	Name        string `db:"primary=yes"`
+	Description string
+	Properties  api.ConfigMap
+	Files       ClusterArtifactFiles
+	LastUpdated time.Time `db:"update_timestamp"`
+}
+
+type ClusterArtifactFile struct {
+	Name     string
+	MimeType string
+	Size     int64
+	Open     func() (io.ReadCloser, error) `db:"ignore"`
+}
+
+type ClusterArtifactFiles []ClusterArtifactFile
+
+// Value implements the sql driver.Valuer interface.
+func (c ClusterArtifactFiles) Value() (driver.Value, error) {
+	files := make([]map[string]any, 0, len(c))
+
+	for _, file := range c {
+		files = append(files, map[string]any{
+			"Name":     file.Name,
+			"MimeType": file.MimeType,
+			"Size":     file.Size,
+		})
+	}
+
+	return json.Marshal(files)
+}
+
+// Scan implements the sql.Scanner interface.
+func (c *ClusterArtifactFiles) Scan(value any) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid cluster artifact files")
+	}
+
+	switch v := value.(type) {
+	case string:
+		if len(v) == 0 {
+			*c = ClusterArtifactFiles{}
+			return nil
+		}
+
+		return json.Unmarshal([]byte(v), c)
+	case []byte:
+		if len(v) == 0 {
+			*c = ClusterArtifactFiles{}
+			return nil
+		}
+
+		return json.Unmarshal(v, c)
+	default:
+		return fmt.Errorf("type %T is not supported for cluster artifact files", value)
+	}
+}
+
+type ClusterArtifacts []ClusterArtifact
+
+type ClusterArtifactArchiveType struct {
+	Ext        string
+	MimeType   string
+	Compressed bool
+}
+
+const (
+	ClusterArtifactArchiveTypeExtZip = "zip"
+)
+
+var ClusterArtifactArchiveTypes = map[string]ClusterArtifactArchiveType{
+	ClusterArtifactArchiveTypeExtZip: {
+		Ext:        ClusterArtifactArchiveTypeExtZip,
+		MimeType:   "application/zip",
+		Compressed: true,
+	},
+}

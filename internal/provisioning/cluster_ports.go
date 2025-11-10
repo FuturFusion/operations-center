@@ -24,6 +24,11 @@ type ClusterService interface {
 	UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) error
 	GetEndpoint(ctx context.Context, name string) (Endpoint, error)
 	GetProvisionerConfigurationArchive(ctx context.Context, name string) (_ io.ReadCloser, size int, _ error)
+	GetClusterArtifactAll(ctx context.Context, clusterName string) (ClusterArtifacts, error)
+	GetClusterArtifactAllNames(ctx context.Context, clusterName string) ([]string, error)
+	GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (*ClusterArtifact, error)
+	GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType ClusterArtifactArchiveType) (_ io.ReadCloser, size int, _ error)
+	GetClusterArtifactFileByName(ctx context.Context, clusterName string, artifactName string, filename string) (*ClusterArtifactFile, error)
 	SetInventorySyncers(inventorySyncers map[domain.ResourceType]InventorySyncer)
 }
 
@@ -36,6 +41,14 @@ type ClusterRepo interface {
 	Update(ctx context.Context, cluster Cluster) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
+}
+
+type ClusterArtifactRepo interface {
+	CreateClusterArtifactFromPath(ctx context.Context, artifact ClusterArtifact, path string) (int64, error)
+	GetClusterArtifactAll(ctx context.Context, clusterName string) (ClusterArtifacts, error)
+	GetClusterArtifactAllNames(ctx context.Context, clusterName string) ([]string, error)
+	GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (*ClusterArtifact, error)
+	GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType ClusterArtifactArchiveType) (_ io.ReadCloser, size int, _ error)
 }
 
 type InventorySyncer interface {
