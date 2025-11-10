@@ -58,7 +58,7 @@ type ClusterClientPort interface {
 }
 
 type ClusterProvisioningPort interface {
-	Init(ctx context.Context, name string, config ClusterProvisioningConfig) error
+	Init(ctx context.Context, clusterName string, config ClusterProvisioningConfig) error
 	Apply(ctx context.Context, cluster Cluster) error
 	GetArchive(ctx context.Context, name string) (_ io.ReadCloser, size int, _ error)
 }
