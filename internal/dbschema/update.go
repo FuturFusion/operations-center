@@ -43,6 +43,27 @@ var updates = map[int]update{
 	14: updateFromV13,
 	15: updateFromV14,
 	16: updateFromV15,
+	17: updateFromV16,
+}
+
+func updateFromV16(ctx context.Context, tx *sql.Tx) error {
+	// v16..v17 add table cluster_artifacts
+	stmt := `
+CREATE TABLE cluster_artifacts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  properties TEXT NOT NULL,
+  files TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (cluster_id, name),
+  CHECK (name <> ''),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE
+);
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV15(ctx context.Context, tx *sql.Tx) error {
