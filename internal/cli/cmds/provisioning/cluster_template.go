@@ -3,7 +3,6 @@ package provisioning
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -61,13 +60,6 @@ func (c *CmdClusterTemplate) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(clusterTemplateShowCmd.Command())
-
-	// Apply
-	clusterTemplateApplyCmd := cmdClusterTemplateApply{
-		ocClient: c.OCClient,
-	}
-
-	cmd.AddCommand(clusterTemplateApplyCmd.Command())
 
 	return cmd
 }
@@ -288,127 +280,4 @@ func (c *cmdClusterTemplateShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Last Updated: %s\n", clusterTemplate.LastUpdated.Truncate(time.Second).String())
 
 	return nil
-}
-
-// Apply cluster template.
-type cmdClusterTemplateApply struct {
-	ocClient *client.OperationsCenterClient
-
-	serverNames []string
-	serverType  string
-}
-
-func (c *cmdClusterTemplateApply) Command() *cobra.Command {
-	cmd := &cobra.Command{}
-	cmd.Use = "apply <template-name> <cluster-name> <cluster-connection-url> <variables.yaml>"
-	cmd.Short = "Apply the cluster template to add a new cluster"
-	cmd.Long = `Description:
-  Apply the cluster template to add a new cluster
-
-  Applies the cluster template to adds a new cluster to the operations center.
-`
-
-	cmd.RunE = c.Run
-
-	const flagServerNames = "server-names"
-	cmd.Flags().StringSliceVarP(&c.serverNames, flagServerNames, "s", nil, "Server names of the cluster members")
-	_ = cmd.MarkFlagRequired(flagServerNames)
-
-	cmd.Flags().StringVarP(&c.serverType, "server-type", "t", "incus", "Type of servers, that should be clustered, supported values are (incus, migration-manager, operations-center)")
-
-	return cmd
-}
-
-func (c *cmdClusterTemplateApply) Run(cmd *cobra.Command, args []string) error {
-	// Quick checks.
-	exit, err := validate.Args(cmd, args, 4, 4)
-	if exit {
-		return err
-	}
-
-	templateName := args[0]
-	clusterName := args[1]
-	clusterConnectionURL := args[2]
-	variableFilename := args[3]
-
-	variableValues := map[string]string{}
-	body, err := os.ReadFile(variableFilename)
-	if err != nil {
-		return err
-	}
-
-	err = yaml.Unmarshal(body, &variableValues)
-	if err != nil {
-		return err
-	}
-
-	var serverType api.ServerType
-	err = serverType.UnmarshalText([]byte(c.serverType))
-	if err != nil {
-		return err
-	}
-
-	clusterTemplate, err := c.ocClient.GetClusterTemplate(cmd.Context(), templateName)
-	if err != nil {
-		return err
-	}
-
-	serviceConfigFilled, err := applyVariables(clusterTemplate.ServiceConfigTemplate, clusterTemplate.Variables, variableValues)
-	if err != nil {
-		return err
-	}
-
-	servicesConfig := map[string]any{}
-	err = yaml.Unmarshal([]byte(serviceConfigFilled), &servicesConfig)
-	if err != nil {
-		return err
-	}
-
-	applicationConfigFilled, err := applyVariables(clusterTemplate.ApplicationConfigTemplate, clusterTemplate.Variables, variableValues)
-	if err != nil {
-		return err
-	}
-
-	applicationConfig := map[string]any{}
-	err = yaml.Unmarshal([]byte(applicationConfigFilled), &applicationConfig)
-	if err != nil {
-		return err
-	}
-
-	err = c.ocClient.CreateCluster(cmd.Context(), api.ClusterPost{
-		Cluster: api.Cluster{
-			Name:          clusterName,
-			ConnectionURL: clusterConnectionURL,
-		},
-		ServerNames:           c.serverNames,
-		ServerType:            serverType,
-		ServicesConfig:        servicesConfig,
-		ApplicationSeedConfig: applicationConfig,
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func applyVariables(template string, variables api.ClusterTemplateVariables, variableValues map[string]string) (string, error) {
-	for variableName, variableDefinition := range variables {
-		_, ok := variableValues[variableName]
-		if !ok {
-			if variableDefinition.DefaultValue == "" {
-				return "", fmt.Errorf("No value provided for variable %q, which is required, since it has no default value defined", variableName)
-			}
-
-			// Use default value.
-			variableValues[variableName] = variableDefinition.DefaultValue
-		}
-	}
-
-	for name, value := range variableValues {
-		variableName := "@" + name + "@"
-		template = strings.ReplaceAll(template, variableName, value)
-	}
-
-	return template, nil
 }

@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/lxc/incus/v6/shared/api"
 )
 
 // Ensure that ClusterTemplateServiceMock does implement provisioning.ClusterTemplateService.
@@ -21,6 +22,9 @@ var _ provisioning.ClusterTemplateService = &ClusterTemplateServiceMock{}
 //
 //		// make and configure a mocked provisioning.ClusterTemplateService
 //		mockedClusterTemplateService := &ClusterTemplateServiceMock{
+//			ApplyFunc: func(ctx context.Context, name string, templateVariables api.ConfigMap) (map[string]any, map[string]any, error) {
+//				panic("mock out the Apply method")
+//			},
 //			CreateFunc: func(ctx context.Context, clusterTemplate provisioning.ClusterTemplate) (provisioning.ClusterTemplate, error) {
 //				panic("mock out the Create method")
 //			},
@@ -49,6 +53,9 @@ var _ provisioning.ClusterTemplateService = &ClusterTemplateServiceMock{}
 //
 //	}
 type ClusterTemplateServiceMock struct {
+	// ApplyFunc mocks the Apply method.
+	ApplyFunc func(ctx context.Context, name string, templateVariables api.ConfigMap) (map[string]any, map[string]any, error)
+
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, clusterTemplate provisioning.ClusterTemplate) (provisioning.ClusterTemplate, error)
 
@@ -72,6 +79,15 @@ type ClusterTemplateServiceMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// Apply holds details about calls to the Apply method.
+		Apply []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// TemplateVariables is the templateVariables argument value.
+			TemplateVariables api.ConfigMap
+		}
 		// Create holds details about calls to the Create method.
 		Create []struct {
 			// Ctx is the ctx argument value.
@@ -120,6 +136,7 @@ type ClusterTemplateServiceMock struct {
 			ClusterTemplate provisioning.ClusterTemplate
 		}
 	}
+	lockApply        sync.RWMutex
 	lockCreate       sync.RWMutex
 	lockDeleteByName sync.RWMutex
 	lockGetAll       sync.RWMutex
@@ -127,6 +144,46 @@ type ClusterTemplateServiceMock struct {
 	lockGetByName    sync.RWMutex
 	lockRename       sync.RWMutex
 	lockUpdate       sync.RWMutex
+}
+
+// Apply calls ApplyFunc.
+func (mock *ClusterTemplateServiceMock) Apply(ctx context.Context, name string, templateVariables api.ConfigMap) (map[string]any, map[string]any, error) {
+	if mock.ApplyFunc == nil {
+		panic("ClusterTemplateServiceMock.ApplyFunc: method is nil but ClusterTemplateService.Apply was just called")
+	}
+	callInfo := struct {
+		Ctx               context.Context
+		Name              string
+		TemplateVariables api.ConfigMap
+	}{
+		Ctx:               ctx,
+		Name:              name,
+		TemplateVariables: templateVariables,
+	}
+	mock.lockApply.Lock()
+	mock.calls.Apply = append(mock.calls.Apply, callInfo)
+	mock.lockApply.Unlock()
+	return mock.ApplyFunc(ctx, name, templateVariables)
+}
+
+// ApplyCalls gets all the calls that were made to Apply.
+// Check the length with:
+//
+//	len(mockedClusterTemplateService.ApplyCalls())
+func (mock *ClusterTemplateServiceMock) ApplyCalls() []struct {
+	Ctx               context.Context
+	Name              string
+	TemplateVariables api.ConfigMap
+} {
+	var calls []struct {
+		Ctx               context.Context
+		Name              string
+		TemplateVariables api.ConfigMap
+	}
+	mock.lockApply.RLock()
+	calls = mock.calls.Apply
+	mock.lockApply.RUnlock()
+	return calls
 }
 
 // Create calls CreateFunc.

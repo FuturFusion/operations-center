@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/lxc/incus/v6/shared/api"
 )
 
 // ClusterTemplateServiceWithSlog implements provisioning.ClusterTemplateService that is instrumented with slog logger.
@@ -39,6 +40,43 @@ func NewClusterTemplateServiceWithSlog(base provisioning.ClusterTemplateService,
 	}
 
 	return this
+}
+
+// Apply implements provisioning.ClusterTemplateService.
+func (_d ClusterTemplateServiceWithSlog) Apply(ctx context.Context, name string, templateVariables api.ConfigMap) (servicesConfig map[string]any, applicationSeedConfig map[string]any, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Any("templateVariables", templateVariables),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Apply")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("servicesConfig", servicesConfig),
+				slog.Any("applicationSeedConfig", applicationSeedConfig),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method Apply returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method Apply returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method Apply finished")
+		}
+	}()
+	return _d._base.Apply(ctx, name, templateVariables)
 }
 
 // Create implements provisioning.ClusterTemplateService.

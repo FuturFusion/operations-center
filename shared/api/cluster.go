@@ -4,6 +4,8 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"time"
+
+	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type ClusterStatus string
@@ -133,6 +135,17 @@ type ClusterPost struct {
 	// ApplicationSeedConfig contains the seed configuration for the application, which is
 	// applied during post clustering. This configuration is application specific.
 	ApplicationSeedConfig map[string]any `json:"application_seed_config" yaml:"application_seed_config"`
+
+	// ClusterTemplate contains the name of a cluster template, which should be
+	// used for the cluster creation.
+	// If ClusterTemplate is a none empty string, the respective cluster template
+	// is used and the values in ServiceConfig and ApplicationConfig are
+	// disregarded. If the cluster template is not found, an error is returned.
+	ClusterTemplate string `json:"cluster_template" yaml:"cluster_template"`
+
+	// ClusterTemplateVariableValues contains the variable values, which should
+	// be applied to the respective placeholders in the cluster template.
+	ClusterTemplateVariableValues incusapi.ConfigMap `json:"cluster_template_variable_values" yaml:"cluster_template_variable_values"`
 }
 
 // ClusterCertificatePut represents the certificate and key pair for all cluster members.

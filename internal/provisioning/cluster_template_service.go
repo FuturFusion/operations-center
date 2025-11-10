@@ -3,8 +3,13 @@ package provisioning
 import (
 	"context"
 	"fmt"
+	"strings"
+
+	incusapi "github.com/lxc/incus/v6/shared/api"
+	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type clusterTemplateService struct {
@@ -85,4 +90,74 @@ func (s clusterTemplateService) DeleteByName(ctx context.Context, name string) e
 	}
 
 	return nil
+}
+
+func (s clusterTemplateService) Apply(ctx context.Context, name string, templateVariables incusapi.ConfigMap) (servicesConfig map[string]any, applicationSeedConfig map[string]any, _ error) {
+	if name == "" {
+		return nil, nil, fmt.Errorf("Cluster template name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	clusterTemplate, err := s.GetByName(ctx, name)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to get cluster template %q: %w", name, err)
+	}
+
+	servicesConfig = map[string]any{}
+	applicationSeedConfig = map[string]any{}
+
+	if templateVariables == nil {
+		templateVariables = make(incusapi.ConfigMap)
+	}
+
+	templates := []struct {
+		name     string
+		template string
+		config   *map[string]any
+	}{
+		{
+			name:     "service config",
+			template: clusterTemplate.ServiceConfigTemplate,
+			config:   &servicesConfig,
+		},
+		{
+			name:     "application seed config",
+			template: clusterTemplate.ApplicationConfigTemplate,
+			config:   &applicationSeedConfig,
+		},
+	}
+
+	for _, tmpl := range templates {
+		serviceConfigFilled, err := applyVariables(tmpl.template, clusterTemplate.Variables, templateVariables)
+		if err != nil {
+			return nil, nil, domain.NewValidationErrf("Failed to apply cluster template variables on %s of %q: %v", tmpl.name, name, err)
+		}
+
+		err = yaml.Unmarshal([]byte(serviceConfigFilled), tmpl.config)
+		if err != nil {
+			return nil, nil, domain.NewValidationErrf("Failed to marshal %s of %q: %v", tmpl.name, name, err)
+		}
+	}
+
+	return servicesConfig, applicationSeedConfig, nil
+}
+
+func applyVariables(template string, variables api.ClusterTemplateVariables, variableValues incusapi.ConfigMap) (string, error) {
+	for variableName, variableDefinition := range variables {
+		_, ok := variableValues[variableName]
+		if !ok {
+			if variableDefinition.DefaultValue == "" {
+				return "", fmt.Errorf("No value provided for variable %q, which is required, since it has no default value defined", variableName)
+			}
+
+			// Use default value.
+			variableValues[variableName] = variableDefinition.DefaultValue
+		}
+	}
+
+	for name, value := range variableValues {
+		variableName := "@" + name + "@"
+		template = strings.ReplaceAll(template, variableName, value)
+	}
+
+	return template, nil
 }
