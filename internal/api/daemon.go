@@ -465,17 +465,16 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 }
 
 func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.ServerService) (provisioning.ClusterService, error) {
-	localClusterArtifactRepo, err := provisioningClusterArtifactRepo.New(db, filepath.Join(d.env.VarDir(), "artifacts"))
+	updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
+
+	localClusterArtifactRepo, err := provisioningClusterArtifactRepo.New(db, filepath.Join(d.env.VarDir(), "artifacts"), updateSignal)
 	if err != nil {
 		return nil, err
 	}
 
-	updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
-
 	terraformProvisioner, err := terraform.New(
 		filepath.Join(d.env.VarDir(), "terraform"),
 		d.env.VarDir(),
-		updateSignal,
 	)
 	if err != nil {
 		return nil, err

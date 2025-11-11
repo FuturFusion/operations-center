@@ -33,7 +33,6 @@ func registerProvisioningClusterHandler(router Router, authorizer *authz.Authori
 	router.HandleFunc("POST /{name}", response.With(handler.clusterPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/resync-inventory", response.With(handler.clusterResyncInventoryPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("PUT /{name}/certificate", response.With(handler.clusterCertificatePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
-	router.HandleFunc("GET /{name}/terraform-configuration", response.With(handler.clusterTerraformConfigurationGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{clusterName}/artifacts", response.With(handler.clusterArtifactsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{clusterName}/artifacts/{artifactName}", response.With(handler.clusterArtifactGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{clusterName}/artifacts/{artifactName}/{filename}", response.With(handler.clusterArtifactFileGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -578,41 +577,6 @@ func (c *clusterHandler) clusterCertificatePut(r *http.Request) response.Respons
 	}
 
 	return response.EmptySyncResponse
-}
-
-// swagger:operation GET /1.0/provisioning/clusters/{name}/terraform-configuration clusters cluster_terraform_configuration_get
-//
-//	Get the cluster's Terraform configuration
-//
-//	Gets a specific cluster's Terraform configuration.
-//
-//	---
-//	produces:
-//	  - application/zip
-//	responses:
-//	  "200":
-//	    description: Zip Archive including the cluster's Terraform configuration.
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
-func (c *clusterHandler) clusterTerraformConfigurationGet(r *http.Request) response.Response {
-	name := r.PathValue("name")
-
-	rc, fileSize, err := c.service.GetProvisionerConfigurationArchive(r.Context(), name)
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to get Terraform configuration for cluster %q: %w", name, err))
-	}
-
-	// Prevent double compression of zip file with encoding gzip.
-	r.Header.Del("Accept-Encoding")
-
-	filename := fmt.Sprintf("%s-terraform-configuration.zip", name)
-	headers := map[string]string{
-		"Content-Type": "application/zip",
-	}
-
-	return response.ReadCloserResponse(r, rc, false, filename, fileSize, headers)
 }
 
 // swagger:operation GET /1.0/provisioning/clusters/{clusterName}/artifacts clusters cluster_artifacts_get
