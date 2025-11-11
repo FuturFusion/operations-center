@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
@@ -200,7 +199,7 @@ func (c *cmdClusterAdd) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	clusterTemplateVariables := incusapi.ConfigMap{}
+	clusterTemplateVariables := api.ConfigMap{}
 
 	if c.clusterTemplateVariablesFile != "" {
 		body, err := os.ReadFile(c.clusterTemplateVariablesFile)
