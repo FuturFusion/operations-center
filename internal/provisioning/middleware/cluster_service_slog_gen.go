@@ -503,42 +503,6 @@ func (_d ClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (
 	return _d._base.GetEndpoint(ctx, name)
 }
 
-// GetProvisionerConfigurationArchive implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) GetProvisionerConfigurationArchive(ctx context.Context, name string) (readCloser io.ReadCloser, size int, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.String("name", name),
-		)
-	}
-	log.DebugContext(ctx, "=> calling GetProvisionerConfigurationArchive")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("readCloser", readCloser),
-				slog.Int("size", size),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetProvisionerConfigurationArchive returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetProvisionerConfigurationArchive returned an error")
-			}
-		} else {
-			log.DebugContext(ctx, "<= method GetProvisionerConfigurationArchive finished")
-		}
-	}()
-	return _d._base.GetProvisionerConfigurationArchive(ctx, name)
-}
-
 // Rename implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	log := _d._log.With()

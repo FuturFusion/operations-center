@@ -11,6 +11,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
+	repoMock "github.com/FuturFusion/operations-center/internal/provisioning/repo/mock"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -46,6 +47,12 @@ server B
 		Status:       api.ServerStatusReady,
 	}
 
+	localArtifactRepo := &repoMock.ClusterArtifactRepoMock{
+		CreateClusterArtifactFromPathFunc: func(ctx context.Context, artifact provisioning.ClusterArtifact, path string) (int64, error) {
+			return 0, nil
+		},
+	}
+
 	client := &adapterMock.ClusterClientPortMock{
 		PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 			return nil
@@ -74,8 +81,8 @@ server B
 	}
 
 	terraformProvisioner := &adapterMock.ClusterProvisioningPortMock{
-		InitFunc: func(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
-			return nil
+		InitFunc: func(ctx context.Context, clusterName string, config provisioning.ClusterProvisioningConfig) (string, func() error, error) {
+			return "", func() error { return nil }, nil
 		},
 		ApplyFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
 			return nil
@@ -104,7 +111,7 @@ server B
 	server := sqlite.NewServer(tx)
 	serverSvc := provisioning.NewServerService(server, nil, nil, nil)
 
-	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), nil, client, serverSvc, nil, terraformProvisioner)
+	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), localArtifactRepo, client, serverSvc, nil, terraformProvisioner)
 
 	// Add server
 	_, err = server.Create(ctx, serverA)

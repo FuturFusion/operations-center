@@ -5,7 +5,6 @@ package middleware
 
 import (
 	"context"
-	"io"
 	"time"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -52,22 +51,8 @@ func (_d ClusterProvisioningPortWithPrometheus) Apply(ctx context.Context, clust
 	return _d.base.Apply(ctx, cluster)
 }
 
-// GetArchive implements provisioning.ClusterProvisioningPort.
-func (_d ClusterProvisioningPortWithPrometheus) GetArchive(ctx context.Context, name string) (readCloser io.ReadCloser, size int, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		clusterProvisioningPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetArchive", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.GetArchive(ctx, name)
-}
-
 // Init implements provisioning.ClusterProvisioningPort.
-func (_d ClusterProvisioningPortWithPrometheus) Init(ctx context.Context, clusterName string, config provisioning.ClusterProvisioningConfig) (err error) {
+func (_d ClusterProvisioningPortWithPrometheus) Init(ctx context.Context, clusterName string, config provisioning.ClusterProvisioningConfig) (temporaryPath string, cleanup func() error, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
