@@ -3,7 +3,6 @@ package provisioning
 import (
 	"crypto/tls"
 	"fmt"
-	"io"
 	"os"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
 	"github.com/FuturFusion/operations-center/internal/client"
-	"github.com/FuturFusion/operations-center/internal/file"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/render"
@@ -87,13 +85,6 @@ func (c *CmdCluster) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(clusterUpdateCertificateCmd.Command())
-
-	// Get Terraform configuration
-	clusterGetTerraformConfigurationCmd := cmdClusterGetTerraformConfiguration{
-		ocClient: c.OCClient,
-	}
-
-	cmd.AddCommand(clusterGetTerraformConfigurationCmd.Command())
 
 	// artifact sub-command
 	clusterArtifactCmd := cmdClusterArtifact{
@@ -525,62 +516,6 @@ func (c *cmdClusterUpdateCertificate) Run(cmd *cobra.Command, args []string) err
 	if err != nil {
 		return err
 	}
-
-	return nil
-}
-
-// Get cluster Terraform configuration.
-type cmdClusterGetTerraformConfiguration struct {
-	ocClient *client.OperationsCenterClient
-}
-
-func (c *cmdClusterGetTerraformConfiguration) Command() *cobra.Command {
-	cmd := &cobra.Command{}
-	cmd.Use = "terraform-configuration <name> <target-file.zip>"
-	cmd.Short = "Get cluster Terraform configuration"
-	cmd.Long = `Description:
-  Get the cluster's Terraform configuration as a zip archive.
-`
-
-	cmd.RunE = c.Run
-
-	return cmd
-}
-
-func (c *cmdClusterGetTerraformConfiguration) Run(cmd *cobra.Command, args []string) error {
-	// Quick checks.
-	exit, err := validate.Args(cmd, args, 2, 2)
-	if exit {
-		return err
-	}
-
-	name := args[0]
-	targetFilename := args[1]
-
-	if file.PathExists(targetFilename) {
-		return fmt.Errorf("target file %q already exists", targetFilename)
-	}
-
-	targetFile, err := os.OpenFile(targetFilename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
-	if err != nil {
-		return err
-	}
-
-	defer targetFile.Close()
-
-	tfConfigReader, err := c.ocClient.GetClusterTerraformConfiguration(cmd.Context(), name)
-	if err != nil {
-		return err
-	}
-
-	defer tfConfigReader.Close()
-
-	size, err := io.Copy(targetFile, tfConfigReader)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Successfully written %d bytes to %q\n", size, targetFilename)
 
 	return nil
 }
