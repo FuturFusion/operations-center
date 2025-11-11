@@ -58,7 +58,7 @@ func (c ClusterTemplateVariables) Value() (driver.Value, error) {
 // Scan implements the sql.Scanner interface.
 func (c *ClusterTemplateVariables) Scan(value any) error {
 	if value == nil {
-		return fmt.Errorf("null is not a valid token seeds")
+		return fmt.Errorf("null is not a valid cluster template variables")
 	}
 
 	switch v := value.(type) {
@@ -77,7 +77,7 @@ func (c *ClusterTemplateVariables) Scan(value any) error {
 
 		return json.Unmarshal(v, c)
 	default:
-		return fmt.Errorf("type %T is not supported for token seeds", value)
+		return fmt.Errorf("type %T is not supported for cluster template variables", value)
 	}
 }
 

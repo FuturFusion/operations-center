@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	incusapi "github.com/lxc/incus/v6/shared/api"
 	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -92,7 +91,7 @@ func (s clusterTemplateService) DeleteByName(ctx context.Context, name string) e
 	return nil
 }
 
-func (s clusterTemplateService) Apply(ctx context.Context, name string, templateVariables incusapi.ConfigMap) (servicesConfig map[string]any, applicationSeedConfig map[string]any, _ error) {
+func (s clusterTemplateService) Apply(ctx context.Context, name string, templateVariables api.ConfigMap) (servicesConfig map[string]any, applicationSeedConfig map[string]any, _ error) {
 	if name == "" {
 		return nil, nil, fmt.Errorf("Cluster template name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -106,7 +105,7 @@ func (s clusterTemplateService) Apply(ctx context.Context, name string, template
 	applicationSeedConfig = map[string]any{}
 
 	if templateVariables == nil {
-		templateVariables = make(incusapi.ConfigMap)
+		templateVariables = make(api.ConfigMap)
 	}
 
 	templates := []struct {
@@ -141,7 +140,7 @@ func (s clusterTemplateService) Apply(ctx context.Context, name string, template
 	return servicesConfig, applicationSeedConfig, nil
 }
 
-func applyVariables(template string, variables api.ClusterTemplateVariables, variableValues incusapi.ConfigMap) (string, error) {
+func applyVariables(template string, variables api.ClusterTemplateVariables, variableValues api.ConfigMap) (string, error) {
 	for variableName, variableDefinition := range variables {
 		_, ok := variableValues[variableName]
 		if !ok {

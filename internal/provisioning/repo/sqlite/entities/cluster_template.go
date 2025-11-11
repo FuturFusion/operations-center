@@ -2,7 +2,7 @@ package entities
 
 // Code generation directives.
 //
-//generate-database:mapper target cluster_config_template.mapper.go
+//generate-database:mapper target cluster_template.mapper.go
 //generate-database:mapper reset
 //
 //generate-database:mapper stmt -e cluster_template objects table=cluster_templates

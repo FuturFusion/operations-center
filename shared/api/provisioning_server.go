@@ -214,7 +214,7 @@ func (h *OSData) Scan(value any) error {
 type ServerPost struct {
 	ServerPut `yaml:",inline"`
 
-	// Name or name of the server.
+	// Name of the server.
 	// Example: incus.local
 	Name string `json:"name" yaml:"name"`
 

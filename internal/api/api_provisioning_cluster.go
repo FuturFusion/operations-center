@@ -33,7 +33,9 @@ func registerProvisioningClusterHandler(router Router, authorizer *authz.Authori
 	router.HandleFunc("POST /{name}", response.With(handler.clusterPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("POST /{name}/resync-inventory", response.With(handler.clusterResyncInventoryPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("PUT /{name}/certificate", response.With(handler.clusterCertificatePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
-	router.HandleFunc("GET /{name}/terraform-configuration", response.With(handler.clusterTerraformConfigurationGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{clusterName}/artifacts", response.With(handler.clusterArtifactsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{clusterName}/artifacts/{artifactName}", response.With(handler.clusterArtifactGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{clusterName}/artifacts/{artifactName}/{filename}", response.With(handler.clusterArtifactFileGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 }
 
 // swagger:operation GET /1.0/provisioning/clusters clusters clusters_get
@@ -577,37 +579,314 @@ func (c *clusterHandler) clusterCertificatePut(r *http.Request) response.Respons
 	return response.EmptySyncResponse
 }
 
-// swagger:operation GET /1.0/provisioning/clusters/{name}/terraform-configuration clusters cluster_terraform_configuration_get
+// swagger:operation GET /1.0/provisioning/clusters/{clusterName}/artifacts clusters cluster_artifacts_get
 //
-//	Get the cluster's Terraform configuration
+//	Get a cluster's artifacts
 //
-//	Gets a specific cluster's Terraform configuration.
+//	Returns a list of a cluster's artifacts (URLs).
 //
 //	---
 //	produces:
-//	  - application/zip
+//	  - application/json
 //	responses:
 //	  "200":
-//	    description: Zip Archive including the cluster's Terraform configuration.
+//	    description: API cluster artifacts
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of cluster artifacts
+//                items:
+//                  type: string
+//                example: |-
+//                  [
+//                    "/1.0/provisioning/clusters/one/artifacts/one",
+//                    "/1.0/provisioning/clusters/one/artifacts/two"
+//                  ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func (c *clusterHandler) clusterTerraformConfigurationGet(r *http.Request) response.Response {
-	name := r.PathValue("name")
 
-	rc, fileSize, err := c.service.GetProvisionerConfigurationArchive(r.Context(), name)
+// swagger:operation GET /1.0/provisioning/clusters/{clusterName}/artifacts?recursion=1 clusters cluster_artifacts_get_recursion
+//
+//	Get the cluster's artifacts
+//
+//	Returns a list of a cluster's artifacts (structs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API cluster artifacts
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of cluster's artifacts
+//	          items:
+//	            $ref: "#/definitions/ClusterArtifact"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (c *clusterHandler) clusterArtifactsGet(r *http.Request) response.Response {
+	clusterName := r.PathValue("clusterName")
+
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to get Terraform configuration for cluster %q: %w", name, err))
+		recursion = 0
 	}
 
-	// Prevent double compression of zip file with encoding gzip.
-	r.Header.Del("Accept-Encoding")
+	if recursion == 1 {
+		clusterArtifacts, err := c.service.GetClusterArtifactAll(r.Context(), clusterName)
+		if err != nil {
+			return response.SmartError(err)
+		}
 
-	filename := fmt.Sprintf("%s-terraform-configuration.zip", name)
+		result := make([]api.ClusterArtifact, 0, len(clusterArtifacts))
+		for _, artifact := range clusterArtifacts {
+			files := make([]api.ClusterArtifactFile, 0, len(artifact.Files))
+			for _, file := range artifact.Files {
+				files = append(files, api.ClusterArtifactFile{
+					Name:     file.Name,
+					MimeType: file.MimeType,
+					Size:     file.Size,
+				})
+			}
+
+			result = append(result, api.ClusterArtifact{
+				Name:        artifact.Name,
+				Cluster:     artifact.Cluster,
+				Description: artifact.Description,
+				Properties:  artifact.Properties,
+				Files:       files,
+				LastUpdated: artifact.LastUpdated,
+			})
+		}
+
+		return response.SyncResponse(true, result)
+	}
+
+	clusterArtifactNames, err := c.service.GetClusterArtifactAllNames(r.Context(), clusterName)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	result := make([]string, 0, len(clusterArtifactNames))
+	for _, artifactName := range clusterArtifactNames {
+		result = append(result, fmt.Sprintf("/%s/provisioning/clusters/%s/artifacts/%s", api.APIVersion, clusterName, artifactName))
+	}
+
+	return response.SyncResponse(true, result)
+}
+
+// swagger:operation GET /1.0/provisioning/clusters/{clusterName}/artifacts/{artifactName} clusters cluster_artifact_get
+//
+//	Get a cluster's artifact
+//
+//	Gets a specific cluster's artifact.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Cluster Artifact
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          $ref: "#/definitions/ClusterArtifact"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/provisioning/clusters/{clusterName}/artifacts/{artifactName}?archive=zip clusters cluster_artifact_get_archive
+//
+//	Get a cluster's artifact as archive
+//
+//	Gets a specific cluster's artifact as archive. The "archive" query parameter
+//	takes the archive format, which should be returned. As of now, "zip" is
+//	the only value supported.
+//
+//	---
+//	produces:
+//	  - application/zip
+//	parameters:
+//	  - in: query
+//	    name: archive
+//	    description: |-
+//	      Format of the archive to be returned. As of now, "zip" is the only
+//	      format supported.
+//	    type: string
+//	    example: zip
+//	responses:
+//	content:
+//	  "200":
+//	    description: Zip Archive of all the files of the artifact.
+//	    'application/zip':
+//	      schema:
+//	        type: string
+//	        format: binary
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (c *clusterHandler) clusterArtifactGet(r *http.Request) response.Response {
+	clusterName := r.PathValue("clusterName")
+	artifactName := r.PathValue("artifactName")
+
+	// Parse the archive query parameter.
+	archive := r.FormValue("archive")
+	if archive != "" {
+		archiveType, ok := provisioning.ClusterArtifactArchiveTypes[archive]
+		if !ok {
+			return response.BadRequest(fmt.Errorf("Archive type %q not supported", archive))
+		}
+
+		rc, size, err := c.service.GetClusterArtifactArchiveByName(r.Context(), clusterName, artifactName, archiveType)
+		if err != nil {
+			return response.SmartError(fmt.Errorf("Failed to get archive for artifact %q of cluster %q: %w", artifactName, clusterName, err))
+		}
+
+		// Prevent double compression of already compressed archive types.
+		if archiveType.Compressed {
+			r.Header.Del("Accept-Encoding")
+		}
+
+		filename := fmt.Sprintf("%s-%s.%s", clusterName, artifactName, archiveType.Ext)
+		headers := map[string]string{
+			"Content-Type": archiveType.MimeType,
+		}
+
+		return response.ReadCloserResponse(r, rc, false, filename, size, headers)
+	}
+
+	artifact, err := c.service.GetClusterArtifactByName(r.Context(), clusterName, artifactName)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	files := make([]api.ClusterArtifactFile, 0, len(artifact.Files))
+	for _, file := range artifact.Files {
+		files = append(files, api.ClusterArtifactFile{
+			Name:     file.Name,
+			MimeType: file.MimeType,
+			Size:     file.Size,
+		})
+	}
+
+	return response.SyncResponseETag(
+		true,
+		api.ClusterArtifact{
+			Name:        artifact.Name,
+			Cluster:     artifact.Cluster,
+			Description: artifact.Description,
+			Properties:  artifact.Properties,
+			Files:       files,
+			LastUpdated: artifact.LastUpdated,
+		},
+		artifact,
+	)
+}
+
+// swagger:operation GET /1.0/provisioning/clusters/{clusterName}/artifacts/{artifactName}/{filename} clusters cluster_artifact_file_get
+//
+//	Get a specific file from a cluster's artifact
+//
+//	Gets a specific file from a cluster's artifact.
+//
+//	---
+//	produces:
+//	  - */*
+//	responses:
+//	content:
+//	  "200":
+//	    description: File content.
+//	    '*/*':
+//	      schema:
+//	        type: string
+//	        format: binary
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (c *clusterHandler) clusterArtifactFileGet(r *http.Request) response.Response {
+	clusterName := r.PathValue("clusterName")
+	artifactName := r.PathValue("artifactName")
+	filename := r.PathValue("filename")
+
+	artifact, err := c.service.GetClusterArtifactByName(r.Context(), clusterName, artifactName)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get artifact %q for cluster %q: %w", artifactName, clusterName, err))
+	}
+
+	found := false
+	var file provisioning.ClusterArtifactFile
+	for _, file = range artifact.Files {
+		if file.Name == filename {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return response.NotFound(fmt.Errorf("File %q not found in artifact %q", filename, fmt.Sprintf("/%s/provisioning/clusters/%s/artifacts/%s", api.APIVersion, clusterName, artifactName)))
+	}
+
 	headers := map[string]string{
-		"Content-Type": "application/zip",
+		"Content-Type": file.MimeType,
 	}
 
-	return response.ReadCloserResponse(r, rc, false, filename, fileSize, headers)
+	rc, err := file.Open()
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to open %q for reading: %w", filename, err))
+	}
+
+	return response.ReadCloserResponse(r, rc, false, filename, int(file.Size), headers)
 }

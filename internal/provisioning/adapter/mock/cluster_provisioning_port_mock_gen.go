@@ -6,7 +6,6 @@ package mock
 
 import (
 	"context"
-	"io"
 	"sync"
 
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -25,10 +24,7 @@ var _ provisioning.ClusterProvisioningPort = &ClusterProvisioningPortMock{}
 //			ApplyFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
 //				panic("mock out the Apply method")
 //			},
-//			GetArchiveFunc: func(ctx context.Context, name string) (io.ReadCloser, int, error) {
-//				panic("mock out the GetArchive method")
-//			},
-//			InitFunc: func(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
+//			InitFunc: func(ctx context.Context, clusterName string, config provisioning.ClusterProvisioningConfig) (string, func() error, error) {
 //				panic("mock out the Init method")
 //			},
 //		}
@@ -41,11 +37,8 @@ type ClusterProvisioningPortMock struct {
 	// ApplyFunc mocks the Apply method.
 	ApplyFunc func(ctx context.Context, cluster provisioning.Cluster) error
 
-	// GetArchiveFunc mocks the GetArchive method.
-	GetArchiveFunc func(ctx context.Context, name string) (io.ReadCloser, int, error)
-
 	// InitFunc mocks the Init method.
-	InitFunc func(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error
+	InitFunc func(ctx context.Context, clusterName string, config provisioning.ClusterProvisioningConfig) (string, func() error, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -56,26 +49,18 @@ type ClusterProvisioningPortMock struct {
 			// Cluster is the cluster argument value.
 			Cluster provisioning.Cluster
 		}
-		// GetArchive holds details about calls to the GetArchive method.
-		GetArchive []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Name is the name argument value.
-			Name string
-		}
 		// Init holds details about calls to the Init method.
 		Init []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Name is the name argument value.
-			Name string
+			// ClusterName is the clusterName argument value.
+			ClusterName string
 			// Config is the config argument value.
 			Config provisioning.ClusterProvisioningConfig
 		}
 	}
-	lockApply      sync.RWMutex
-	lockGetArchive sync.RWMutex
-	lockInit       sync.RWMutex
+	lockApply sync.RWMutex
+	lockInit  sync.RWMutex
 }
 
 // Apply calls ApplyFunc.
@@ -114,60 +99,24 @@ func (mock *ClusterProvisioningPortMock) ApplyCalls() []struct {
 	return calls
 }
 
-// GetArchive calls GetArchiveFunc.
-func (mock *ClusterProvisioningPortMock) GetArchive(ctx context.Context, name string) (io.ReadCloser, int, error) {
-	if mock.GetArchiveFunc == nil {
-		panic("ClusterProvisioningPortMock.GetArchiveFunc: method is nil but ClusterProvisioningPort.GetArchive was just called")
-	}
-	callInfo := struct {
-		Ctx  context.Context
-		Name string
-	}{
-		Ctx:  ctx,
-		Name: name,
-	}
-	mock.lockGetArchive.Lock()
-	mock.calls.GetArchive = append(mock.calls.GetArchive, callInfo)
-	mock.lockGetArchive.Unlock()
-	return mock.GetArchiveFunc(ctx, name)
-}
-
-// GetArchiveCalls gets all the calls that were made to GetArchive.
-// Check the length with:
-//
-//	len(mockedClusterProvisioningPort.GetArchiveCalls())
-func (mock *ClusterProvisioningPortMock) GetArchiveCalls() []struct {
-	Ctx  context.Context
-	Name string
-} {
-	var calls []struct {
-		Ctx  context.Context
-		Name string
-	}
-	mock.lockGetArchive.RLock()
-	calls = mock.calls.GetArchive
-	mock.lockGetArchive.RUnlock()
-	return calls
-}
-
 // Init calls InitFunc.
-func (mock *ClusterProvisioningPortMock) Init(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
+func (mock *ClusterProvisioningPortMock) Init(ctx context.Context, clusterName string, config provisioning.ClusterProvisioningConfig) (string, func() error, error) {
 	if mock.InitFunc == nil {
 		panic("ClusterProvisioningPortMock.InitFunc: method is nil but ClusterProvisioningPort.Init was just called")
 	}
 	callInfo := struct {
-		Ctx    context.Context
-		Name   string
-		Config provisioning.ClusterProvisioningConfig
+		Ctx         context.Context
+		ClusterName string
+		Config      provisioning.ClusterProvisioningConfig
 	}{
-		Ctx:    ctx,
-		Name:   name,
-		Config: config,
+		Ctx:         ctx,
+		ClusterName: clusterName,
+		Config:      config,
 	}
 	mock.lockInit.Lock()
 	mock.calls.Init = append(mock.calls.Init, callInfo)
 	mock.lockInit.Unlock()
-	return mock.InitFunc(ctx, name, config)
+	return mock.InitFunc(ctx, clusterName, config)
 }
 
 // InitCalls gets all the calls that were made to Init.
@@ -175,14 +124,14 @@ func (mock *ClusterProvisioningPortMock) Init(ctx context.Context, name string, 
 //
 //	len(mockedClusterProvisioningPort.InitCalls())
 func (mock *ClusterProvisioningPortMock) InitCalls() []struct {
-	Ctx    context.Context
-	Name   string
-	Config provisioning.ClusterProvisioningConfig
+	Ctx         context.Context
+	ClusterName string
+	Config      provisioning.ClusterProvisioningConfig
 } {
 	var calls []struct {
-		Ctx    context.Context
-		Name   string
-		Config provisioning.ClusterProvisioningConfig
+		Ctx         context.Context
+		ClusterName string
+		Config      provisioning.ClusterProvisioningConfig
 	}
 	mock.lockInit.RLock()
 	calls = mock.calls.Init

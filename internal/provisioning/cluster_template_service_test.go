@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -410,7 +409,7 @@ func TestClusterTemplateService_Apply(t *testing.T) {
 	tests := []struct {
 		name              string
 		nameArg           string
-		templateVariables incusapi.ConfigMap
+		templateVariables api.ConfigMap
 		repoGetByName     *provisioning.ClusterTemplate
 		repoGetByNameErr  error
 
@@ -434,7 +433,7 @@ func TestClusterTemplateService_Apply(t *testing.T) {
 		{
 			name:    "success - with template",
 			nameArg: "tmpl",
-			templateVariables: incusapi.ConfigMap{
+			templateVariables: api.ConfigMap{
 				"VALUE": "template value",
 			},
 			repoGetByName: &provisioning.ClusterTemplate{
@@ -479,7 +478,7 @@ default: @VALUE_WITH_DEFAULT@
 		{
 			name:              "error - service config apply variables",
 			nameArg:           "tmpl",
-			templateVariables: incusapi.ConfigMap{},
+			templateVariables: api.ConfigMap{},
 			repoGetByName: &provisioning.ClusterTemplate{
 				ServiceConfigTemplate: `
 key: @VALUE@

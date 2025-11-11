@@ -44,6 +44,8 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/updateserver"
 	provisioningServiceMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/middleware"
+	provisioningClusterArtifactRepo "github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact"
+	localartifactEntities "github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact/entities"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/localfs"
 	provisioningRepoMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/repo/middleware"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
@@ -245,6 +247,11 @@ func (d *Daemon) initDB(_ context.Context) (dbdriver.DBTX, error) {
 
 	dbWithTransaction := transaction.Enable(db)
 	entities.PreparedStmts, err = entities.PrepareStmts(dbWithTransaction, false)
+	if err != nil {
+		return nil, err
+	}
+
+	localartifactEntities.PreparedStmts, err = localartifactEntities.PrepareStmts(dbWithTransaction, false)
 	if err != nil {
 		return nil, err
 	}
@@ -460,10 +467,14 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.ServerService) (provisioning.ClusterService, error) {
 	updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
 
+	localClusterArtifactRepo, err := provisioningClusterArtifactRepo.New(db, filepath.Join(d.env.VarDir(), "artifacts"), updateSignal)
+	if err != nil {
+		return nil, err
+	}
+
 	terraformProvisioner, err := terraform.New(
 		filepath.Join(d.env.VarDir(), "terraform"),
 		d.env.VarDir(),
-		updateSignal,
 	)
 	if err != nil {
 		return nil, err
@@ -473,6 +484,10 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.Se
 		provisioning.NewClusterService(
 			provisioningRepoMiddleware.NewClusterRepoWithSlog(
 				provisioningSqlite.NewCluster(db),
+				slog.Default(),
+			),
+			provisioningRepoMiddleware.NewClusterArtifactRepoWithSlog(
+				localClusterArtifactRepo,
 				slog.Default(),
 			),
 			provisioningAdapterMiddleware.NewClusterClientPortWithSlog(
