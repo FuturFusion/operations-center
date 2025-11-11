@@ -1,24 +1,16 @@
 package terraform_test
 
 import (
-	"archive/zip"
-	"bytes"
 	"context"
 	"flag"
-	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
-	"time"
 
-	"github.com/dsnet/golib/memfile"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
-	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
-	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -29,132 +21,21 @@ import (
 // Run "go test github.com/FuturFusion/operations-center/internal/provisioning/adapter/terraform/ -update-goldenfiles" to update the golden files automatically.
 var updateGoldenfiles = flag.Bool("update-goldenfiles", false, "golden files are updated, if this flag is provided")
 
-func TestTerraform_updateSignalHandler(t *testing.T) {
-	const clusterName = "old"
-	const existingClusterName = "existing"
-
-	noLogAssert := func(t *testing.T, logBuf *bytes.Buffer) {
-		t.Helper()
-	}
-
-	logContains := func(want string) func(t *testing.T, logBuf *bytes.Buffer) {
-		return func(t *testing.T, logBuf *bytes.Buffer) {
-			t.Helper()
-
-			// Give logs a little bit of time to be processed.
-			for range 5 {
-				if strings.Contains(logBuf.String(), want) {
-					break
-				}
-
-				time.Sleep(10 * time.Millisecond)
-			}
-
-			require.Contains(t, logBuf.String(), want)
-		}
-	}
-
-	tests := []struct {
-		name           string
-		operation      provisioning.ClusterUpdateOperation
-		clusterName    string
-		oldClusterName string
-
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
-	}{
-		{
-			name:           "success - rename",
-			operation:      provisioning.ClusterUpdateOperationRename,
-			clusterName:    "new",
-			oldClusterName: clusterName,
-
-			assertLog: noLogAssert,
-		},
-		{
-			name:        "success - delete",
-			operation:   provisioning.ClusterUpdateOperationDelete,
-			clusterName: clusterName,
-
-			assertLog: noLogAssert,
-		},
-		{
-			name:      "skip - create operation",
-			operation: provisioning.ClusterUpdateOperationCreate,
-
-			assertLog: noLogAssert,
-		},
-		{
-			name:           "skip - rename - old does not exist",
-			operation:      provisioning.ClusterUpdateOperationRename,
-			clusterName:    "new",
-			oldClusterName: "does_not_exist", // does not exist
-
-			assertLog: noLogAssert,
-		},
-		{
-			name:           "error - rename - new does already exist",
-			operation:      provisioning.ClusterUpdateOperationRename,
-			clusterName:    existingClusterName,
-			oldClusterName: clusterName,
-
-			assertLog: logContains("Failed to rename terraform storage directory"),
-		},
-		{
-			name:        "skip - delete - does not exist",
-			operation:   provisioning.ClusterUpdateOperationDelete,
-			clusterName: "does_not_exist", // does not exist
-
-			assertLog: noLogAssert,
-		},
-	}
-
-	_ = logContains
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			tmpDir := t.TempDir()
-			err := os.Mkdir(filepath.Join(tmpDir, clusterName), 0o700)
-			require.NoError(t, err)
-			err = os.Mkdir(filepath.Join(tmpDir, existingClusterName), 0o700)
-			require.NoError(t, err)
-
-			logBuf := &bytes.Buffer{}
-			err = logger.InitLogger(logBuf, "", false, false)
-			require.NoError(t, err)
-
-			updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
-
-			_, err = terraform.New(tmpDir, tmpDir, updateSignal)
-			require.NoError(t, err)
-
-			// Run test
-			updateSignal.Emit(t.Context(), provisioning.ClusterUpdateMessage{
-				Operation: tc.operation,
-				Name:      tc.clusterName,
-				OldName:   tc.oldClusterName,
-			})
-
-			// Assert
-			tc.assertLog(t, logBuf)
-			t.Log(logBuf.String())
-		})
-	}
-}
-
 func TestTerraform_Init(t *testing.T) {
 	tests := []struct {
 		name             string
 		clusterName      string
 		terraformInitErr error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr         require.ErrorAssertionFunc
+		wantTemporaryPath string
 	}{
 		{
 			name:        "success",
 			clusterName: "foobar",
 
-			assertErr: require.NoError,
+			assertErr:         require.NoError,
+			wantTemporaryPath: "foobar",
 		},
 		{
 			name:             "error - terraform init",
@@ -170,7 +51,7 @@ func TestTerraform_Init(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
 
-			tf, err := terraform.New(tmpDir, tmpDir, signals.NewSync[provisioning.ClusterUpdateMessage](), terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
+			tf, err := terraform.New(tmpDir, tmpDir, terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
 				return tc.terraformInitErr
 			}))
 			require.NoError(t, err)
@@ -223,7 +104,7 @@ cluster_groups:
 			require.NoError(t, err)
 
 			// Run tests
-			err = tf.Init(t.Context(), tc.clusterName, provisioning.ClusterProvisioningConfig{
+			temporaryPath, cleanup, err := tf.Init(t.Context(), tc.clusterName, provisioning.ClusterProvisioningConfig{
 				Servers: []provisioning.Server{
 					{
 						Name: "server-1",
@@ -254,6 +135,14 @@ cluster_groups:
 
 			// Assert
 			tc.assertErr(t, err)
+			if err == nil {
+				defer func() {
+					err := cleanup()
+					require.NoError(t, err)
+				}()
+				require.Contains(t, temporaryPath, tmpDir)
+				require.Contains(t, temporaryPath, tc.wantTemporaryPath)
+			}
 
 			fileContains(t, filepath.Join(tmpDir, "servercerts", tc.clusterName+".crt"), "cluster certificate")
 
@@ -408,7 +297,7 @@ func TestTerraform_Apply(t *testing.T) {
 			clusterName := "foobar"
 			tc.setup(t, filepath.Join(tmpDir, clusterName))
 
-			tf, err := terraform.New(tmpDir, tmpDir, signals.NewSync[provisioning.ClusterUpdateMessage](), terraform.WithTerraformApplyFunc(func(ctx context.Context, configDir string) error {
+			tf, err := terraform.New(tmpDir, tmpDir, terraform.WithTerraformApplyFunc(func(ctx context.Context, configDir string) error {
 				return tc.terraformApplyErr
 			}))
 			require.NoError(t, err)
@@ -424,99 +313,6 @@ func TestTerraform_Apply(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			tc.assertPostProcessedFiles(t, tmpDir, clusterName)
-		})
-	}
-}
-
-func TestTerraform_GetArchive(t *testing.T) {
-	tests := []struct {
-		name        string
-		clusterName string
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name:        "success",
-			clusterName: "foobar",
-
-			assertErr: require.NoError,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			tmpDir := t.TempDir()
-
-			tf, err := terraform.New(tmpDir, tmpDir, signals.NewSync[provisioning.ClusterUpdateMessage](), terraform.WithTerraformInitFunc(func(ctx context.Context, configDir string) error {
-				err := os.WriteFile(filepath.Join(configDir, "terraform.tfstate"), []byte("would be written by terraform"), 0o600)
-				require.NoError(t, err)
-
-				return nil
-			}))
-			require.NoError(t, err)
-
-			err = tf.Init(t.Context(), "foobar", provisioning.ClusterProvisioningConfig{
-				Servers: []provisioning.Server{
-					{
-						Name: "server-1",
-					},
-				},
-				ClusterEndpoint: provisioning.ClusterEndpoint{
-					provisioning.Server{
-						ConnectionURL:      "https://127.0.0.1:8443",
-						ClusterCertificate: ptr.To("cluster certificate"),
-					},
-				},
-			})
-			require.NoError(t, err)
-
-			// Run tests
-			rc, size, err := tf.GetArchive(t.Context(), "foobar")
-			if err == nil {
-				defer rc.Close()
-			}
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Greater(t, size, 3000) // We don't know the exact size of the zip archive and it migth change over time, so just make sure, it is a reasonable value.
-
-			buf := bytes.Buffer{}
-
-			n, err := io.Copy(&buf, rc)
-			require.NoError(t, err)
-			require.Equal(t, int64(size), n)
-
-			zipFile := memfile.New(buf.Bytes())
-
-			zr, err := zip.NewReader(zipFile, int64(size))
-			require.NoError(t, err)
-
-			expectedFilesFound := map[string]bool{
-				"data_cluster.tf":              false,
-				"providers.tf":                 false,
-				"resources_certificates.tf":    false,
-				"resources_cluster_groups.tf":  false,
-				"resources_networks.tf":        false,
-				"resources_profiles.tf":        false,
-				"resources_projects.tf":        false,
-				"resources_server.tf":          false,
-				"resources_storage_pools.tf":   false,
-				"resources_storage_volumes.tf": false,
-				"terraform.tfstate":            false,
-			}
-
-			for _, file := range zr.File {
-				found, ok := expectedFilesFound[file.Name]
-				require.True(t, ok, "unexpected file %q found in zip archive", file.Name)
-				require.False(t, found, "file %q has already been seen", file.Name)
-
-				expectedFilesFound[file.Name] = true
-			}
-
-			for filename, found := range expectedFilesFound {
-				require.True(t, found, "file %q not found in zip archive", filename)
-			}
 		})
 	}
 }

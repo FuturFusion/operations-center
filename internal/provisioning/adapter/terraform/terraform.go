@@ -1,15 +1,12 @@
 package terraform
 
 import (
-	"archive/zip"
-	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -20,11 +17,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	incusapi "github.com/lxc/incus/v6/shared/api"
-	"github.com/maniartech/signals"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/FuturFusion/operations-center/internal/file"
-	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
@@ -43,7 +38,7 @@ var _ provisioning.ClusterProvisioningPort = &terraform{}
 
 type Option func(*terraform)
 
-func New(storageDir string, clientCertDir string, updateSignal signals.Signal[provisioning.ClusterUpdateMessage], opts ...Option) (terraform, error) {
+func New(storageDir string, clientCertDir string, opts ...Option) (terraform, error) {
 	err := os.MkdirAll(storageDir, 0o700)
 	if err != nil {
 		return terraform{}, fmt.Errorf("Failed to create directory for terraform provisioner: %w", err)
@@ -61,47 +56,13 @@ func New(storageDir string, clientCertDir string, updateSignal signals.Signal[pr
 		opt(&t)
 	}
 
-	t.registerUpdateSignalHandler(updateSignal)
-
 	return t, nil
 }
 
-func (t terraform) registerUpdateSignalHandler(clusterUpdateSignal signals.Signal[provisioning.ClusterUpdateMessage]) {
-	clusterUpdateSignal.AddListener(func(ctx context.Context, cum provisioning.ClusterUpdateMessage) {
-		switch cum.Operation {
-		case provisioning.ClusterUpdateOperationRename:
-			oldPath := filepath.Join(t.storageDir, cum.OldName)
-			newPath := filepath.Join(t.storageDir, cum.Name)
-			if !file.PathExists(oldPath) {
-				return
-			}
-
-			err := os.Rename(oldPath, newPath)
-			if err != nil {
-				slog.ErrorContext(ctx, "Failed to rename terraform storage directory", slog.String("old_path", oldPath), slog.String("new_path", newPath), logger.Err(err))
-				return
-			}
-
-		case provisioning.ClusterUpdateOperationDelete:
-			configDir := filepath.Join(t.storageDir, cum.Name)
-			if !file.PathExists(configDir) {
-				return
-			}
-
-			err := os.RemoveAll(configDir)
-			if err != nil {
-				slog.ErrorContext(ctx, "Failed to remove terraform configuration", slog.String("cluster", cum.Name), logger.Err(err))
-			}
-
-		default:
-		}
-	})
-}
-
-func (t terraform) Init(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
+func (t terraform) Init(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) (string, func() error, error) {
 	incusPreseed, err := incusPreseedWithDefaults(config.ApplicationSeedConfig)
 	if err != nil {
-		return fmt.Errorf("Application seed config is not valid: %w", err)
+		return "", nil, fmt.Errorf("Application seed config is not valid: %w", err)
 	}
 
 	// Since we override the INCUS_CONF directory with the operations center var dir,
@@ -110,19 +71,19 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 	servercertsDir := filepath.Join(t.clientCertDir, "servercerts")
 	err = os.MkdirAll(servercertsDir, 0o700)
 	if err != nil {
-		return fmt.Errorf("Failed to create directory %q: %w", servercertsDir, err)
+		return "", nil, fmt.Errorf("Failed to create directory %q: %w", servercertsDir, err)
 	}
 
 	servercertsFilename := filepath.Join(servercertsDir, name+".crt")
 	err = os.WriteFile(servercertsFilename, []byte(config.ClusterEndpoint.GetCertificate()), 0o600)
 	if err != nil {
-		return fmt.Errorf("Failed to write servercert for %q (%s): %w", name, servercertsFilename, err)
+		return "", nil, fmt.Errorf("Failed to write servercert for %q (%s): %w", name, servercertsFilename, err)
 	}
 
 	configDir := filepath.Join(t.storageDir, name)
 	err = os.MkdirAll(configDir, 0o700)
 	if err != nil {
-		return fmt.Errorf("Failed to create directory target terraform configuration directory for cluster %q: %w", name, err)
+		return "", nil, fmt.Errorf("Failed to create directory target terraform configuration directory for cluster %q: %w", name, err)
 	}
 
 	tmpl := template.New("").Funcs(sprig.FuncMap())
@@ -132,12 +93,12 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 	})
 	tmpl, err = tmpl.ParseFS(templatesFS, "templates/*")
 	if err != nil {
-		return fmt.Errorf("Failed to parse terraform configuration templates: %w", err)
+		return "", nil, fmt.Errorf("Failed to parse terraform configuration templates: %w", err)
 	}
 
 	templateFiles, err := templatesFS.ReadDir("templates")
 	if err != nil {
-		return fmt.Errorf("Failed to read templates directory: %w", err)
+		return "", nil, fmt.Errorf("Failed to read templates directory: %w", err)
 	}
 
 	for _, templateFile := range templateFiles {
@@ -150,10 +111,7 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 			}
 
 			defer func() {
-				closeErr := targetFile.Close()
-				if closeErr != nil {
-					err = errors.Join(err, closeErr)
-				}
+				err = errors.Join(err, targetFile.Close())
 			}()
 
 			switch filepath.Ext(templateFile.Name()) {
@@ -190,16 +148,22 @@ func (t terraform) Init(ctx context.Context, name string, config provisioning.Cl
 			return nil
 		}()
 		if err != nil {
-			return err
+			return "", nil, err
 		}
 	}
 
 	err = t.terraformInitFunc(ctx, configDir)
 	if err != nil {
-		return fmt.Errorf("Failed to init Terraform: %w", err)
+		return "", nil, fmt.Errorf("Failed to init Terraform: %w", err)
 	}
 
-	return nil
+	return configDir, cleanup(configDir), nil
+}
+
+func cleanup(path string) func() error {
+	return func() error {
+		return os.RemoveAll(path)
+	}
 }
 
 func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed, error) {
@@ -387,7 +351,7 @@ func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed,
 	var hasInternalProjectDefaultProfile bool
 	for i := range preseed.Profiles {
 		switch {
-		case preseed.Profiles[i].Project == "" && preseed.Profiles[i].Name != "default":
+		case preseed.Profiles[i].Project == "" && preseed.Profiles[i].Name == "default":
 			if preseed.Profiles[i].Devices == nil {
 				preseed.Profiles[i].Devices = map[string]map[string]string{}
 			}
@@ -405,7 +369,6 @@ func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed,
 			if !ok {
 				preseed.Profiles[i].Devices["eth0"] = map[string]string{
 					"type":    "nic",
-					"name":    "eth0",
 					"network": "incusbr0",
 				}
 			}
@@ -430,7 +393,6 @@ func incusPreseedWithDefaults(config map[string]any) (incusapi.InitLocalPreseed,
 			if !ok {
 				preseed.Profiles[i].Devices["eth0"] = map[string]string{
 					"type":    "nic",
-					"name":    "eth0",
 					"network": "meshbr0",
 				}
 			}
@@ -531,52 +493,4 @@ func terraformConfigPostProcessing(path string, cluster provisioning.Cluster) er
 	}
 
 	return nil
-}
-
-func (t terraform) GetArchive(ctx context.Context, name string) (_ io.ReadCloser, size int, _ error) {
-	configDir := filepath.Join(t.storageDir, name)
-	if !file.PathExists(configDir) {
-		return nil, 0, fmt.Errorf("Initialized Terraform config not found")
-	}
-
-	buf := new(bytes.Buffer)
-
-	zipWriter := zip.NewWriter(buf)
-
-	templateFiles, err := templatesFS.ReadDir("templates")
-	if err != nil {
-		return nil, 0, fmt.Errorf("Failed to read templates directory: %w", err)
-	}
-
-	filenames := make([]string, 0, len(templateFiles)+1)
-	filenames = append(filenames, "terraform.tfstate")
-	for _, templateFile := range templateFiles {
-		filename, _ := strings.CutSuffix(templateFile.Name(), ".gotmpl")
-		filenames = append(filenames, filename)
-	}
-
-	for _, filename := range filenames {
-		zipFileWriter, err := zipWriter.Create(filename)
-		if err != nil {
-			return nil, 0, fmt.Errorf("Failed to create %q in zip file: %w", filename, err)
-		}
-
-		sourceFilename := filepath.Join(configDir, filename)
-		sourceFile, err := os.Open(sourceFilename)
-		if err != nil {
-			return nil, 0, fmt.Errorf("Failed to open source file %q: %w", sourceFilename, err)
-		}
-
-		_, err = io.Copy(zipFileWriter, sourceFile)
-		if err != nil {
-			return nil, 0, fmt.Errorf("Failed to copy content from source file %q to zip archive: %w", sourceFilename, err)
-		}
-	}
-
-	err = zipWriter.Close()
-	if err != nil {
-		return nil, 0, fmt.Errorf("Failed to close zip archive: %w", err)
-	}
-
-	return io.NopCloser(buf), buf.Len(), nil
 }
