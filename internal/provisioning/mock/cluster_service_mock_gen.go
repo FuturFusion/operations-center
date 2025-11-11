@@ -45,6 +45,21 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
 //				panic("mock out the GetByName method")
 //			},
+//			GetClusterArtifactAllFunc: func(ctx context.Context, clusterName string) (provisioning.ClusterArtifacts, error) {
+//				panic("mock out the GetClusterArtifactAll method")
+//			},
+//			GetClusterArtifactAllNamesFunc: func(ctx context.Context, clusterName string) ([]string, error) {
+//				panic("mock out the GetClusterArtifactAllNames method")
+//			},
+//			GetClusterArtifactArchiveByNameFunc: func(ctx context.Context, clusterName string, artifactName string, archiveType provisioning.ClusterArtifactArchiveType) (io.ReadCloser, int, error) {
+//				panic("mock out the GetClusterArtifactArchiveByName method")
+//			},
+//			GetClusterArtifactByNameFunc: func(ctx context.Context, clusterName string, artifactName string) (*provisioning.ClusterArtifact, error) {
+//				panic("mock out the GetClusterArtifactByName method")
+//			},
+//			GetClusterArtifactFileByNameFunc: func(ctx context.Context, clusterName string, artifactName string, filename string) (*provisioning.ClusterArtifactFile, error) {
+//				panic("mock out the GetClusterArtifactFileByName method")
+//			},
 //			GetEndpointFunc: func(ctx context.Context, name string) (provisioning.Endpoint, error) {
 //				panic("mock out the GetEndpoint method")
 //			},
@@ -99,6 +114,21 @@ type ClusterServiceMock struct {
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*provisioning.Cluster, error)
+
+	// GetClusterArtifactAllFunc mocks the GetClusterArtifactAll method.
+	GetClusterArtifactAllFunc func(ctx context.Context, clusterName string) (provisioning.ClusterArtifacts, error)
+
+	// GetClusterArtifactAllNamesFunc mocks the GetClusterArtifactAllNames method.
+	GetClusterArtifactAllNamesFunc func(ctx context.Context, clusterName string) ([]string, error)
+
+	// GetClusterArtifactArchiveByNameFunc mocks the GetClusterArtifactArchiveByName method.
+	GetClusterArtifactArchiveByNameFunc func(ctx context.Context, clusterName string, artifactName string, archiveType provisioning.ClusterArtifactArchiveType) (io.ReadCloser, int, error)
+
+	// GetClusterArtifactByNameFunc mocks the GetClusterArtifactByName method.
+	GetClusterArtifactByNameFunc func(ctx context.Context, clusterName string, artifactName string) (*provisioning.ClusterArtifact, error)
+
+	// GetClusterArtifactFileByNameFunc mocks the GetClusterArtifactFileByName method.
+	GetClusterArtifactFileByNameFunc func(ctx context.Context, clusterName string, artifactName string, filename string) (*provisioning.ClusterArtifactFile, error)
 
 	// GetEndpointFunc mocks the GetEndpoint method.
 	GetEndpointFunc func(ctx context.Context, name string) (provisioning.Endpoint, error)
@@ -176,6 +206,51 @@ type ClusterServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// GetClusterArtifactAll holds details about calls to the GetClusterArtifactAll method.
+		GetClusterArtifactAll []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+		}
+		// GetClusterArtifactAllNames holds details about calls to the GetClusterArtifactAllNames method.
+		GetClusterArtifactAllNames []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+		}
+		// GetClusterArtifactArchiveByName holds details about calls to the GetClusterArtifactArchiveByName method.
+		GetClusterArtifactArchiveByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// ArtifactName is the artifactName argument value.
+			ArtifactName string
+			// ArchiveType is the archiveType argument value.
+			ArchiveType provisioning.ClusterArtifactArchiveType
+		}
+		// GetClusterArtifactByName holds details about calls to the GetClusterArtifactByName method.
+		GetClusterArtifactByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// ArtifactName is the artifactName argument value.
+			ArtifactName string
+		}
+		// GetClusterArtifactFileByName holds details about calls to the GetClusterArtifactFileByName method.
+		GetClusterArtifactFileByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ClusterName is the clusterName argument value.
+			ClusterName string
+			// ArtifactName is the artifactName argument value.
+			ArtifactName string
+			// Filename is the filename argument value.
+			Filename string
+		}
 		// GetEndpoint holds details about calls to the GetEndpoint method.
 		GetEndpoint []struct {
 			// Ctx is the ctx argument value.
@@ -247,6 +322,11 @@ type ClusterServiceMock struct {
 	lockGetAllNamesWithFilter              sync.RWMutex
 	lockGetAllWithFilter                   sync.RWMutex
 	lockGetByName                          sync.RWMutex
+	lockGetClusterArtifactAll              sync.RWMutex
+	lockGetClusterArtifactAllNames         sync.RWMutex
+	lockGetClusterArtifactArchiveByName    sync.RWMutex
+	lockGetClusterArtifactByName           sync.RWMutex
+	lockGetClusterArtifactFileByName       sync.RWMutex
 	lockGetEndpoint                        sync.RWMutex
 	lockGetProvisionerConfigurationArchive sync.RWMutex
 	lockRename                             sync.RWMutex
@@ -503,6 +583,206 @@ func (mock *ClusterServiceMock) GetByNameCalls() []struct {
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
 	mock.lockGetByName.RUnlock()
+	return calls
+}
+
+// GetClusterArtifactAll calls GetClusterArtifactAllFunc.
+func (mock *ClusterServiceMock) GetClusterArtifactAll(ctx context.Context, clusterName string) (provisioning.ClusterArtifacts, error) {
+	if mock.GetClusterArtifactAllFunc == nil {
+		panic("ClusterServiceMock.GetClusterArtifactAllFunc: method is nil but ClusterService.GetClusterArtifactAll was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ClusterName string
+	}{
+		Ctx:         ctx,
+		ClusterName: clusterName,
+	}
+	mock.lockGetClusterArtifactAll.Lock()
+	mock.calls.GetClusterArtifactAll = append(mock.calls.GetClusterArtifactAll, callInfo)
+	mock.lockGetClusterArtifactAll.Unlock()
+	return mock.GetClusterArtifactAllFunc(ctx, clusterName)
+}
+
+// GetClusterArtifactAllCalls gets all the calls that were made to GetClusterArtifactAll.
+// Check the length with:
+//
+//	len(mockedClusterService.GetClusterArtifactAllCalls())
+func (mock *ClusterServiceMock) GetClusterArtifactAllCalls() []struct {
+	Ctx         context.Context
+	ClusterName string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ClusterName string
+	}
+	mock.lockGetClusterArtifactAll.RLock()
+	calls = mock.calls.GetClusterArtifactAll
+	mock.lockGetClusterArtifactAll.RUnlock()
+	return calls
+}
+
+// GetClusterArtifactAllNames calls GetClusterArtifactAllNamesFunc.
+func (mock *ClusterServiceMock) GetClusterArtifactAllNames(ctx context.Context, clusterName string) ([]string, error) {
+	if mock.GetClusterArtifactAllNamesFunc == nil {
+		panic("ClusterServiceMock.GetClusterArtifactAllNamesFunc: method is nil but ClusterService.GetClusterArtifactAllNames was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ClusterName string
+	}{
+		Ctx:         ctx,
+		ClusterName: clusterName,
+	}
+	mock.lockGetClusterArtifactAllNames.Lock()
+	mock.calls.GetClusterArtifactAllNames = append(mock.calls.GetClusterArtifactAllNames, callInfo)
+	mock.lockGetClusterArtifactAllNames.Unlock()
+	return mock.GetClusterArtifactAllNamesFunc(ctx, clusterName)
+}
+
+// GetClusterArtifactAllNamesCalls gets all the calls that were made to GetClusterArtifactAllNames.
+// Check the length with:
+//
+//	len(mockedClusterService.GetClusterArtifactAllNamesCalls())
+func (mock *ClusterServiceMock) GetClusterArtifactAllNamesCalls() []struct {
+	Ctx         context.Context
+	ClusterName string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ClusterName string
+	}
+	mock.lockGetClusterArtifactAllNames.RLock()
+	calls = mock.calls.GetClusterArtifactAllNames
+	mock.lockGetClusterArtifactAllNames.RUnlock()
+	return calls
+}
+
+// GetClusterArtifactArchiveByName calls GetClusterArtifactArchiveByNameFunc.
+func (mock *ClusterServiceMock) GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType provisioning.ClusterArtifactArchiveType) (io.ReadCloser, int, error) {
+	if mock.GetClusterArtifactArchiveByNameFunc == nil {
+		panic("ClusterServiceMock.GetClusterArtifactArchiveByNameFunc: method is nil but ClusterService.GetClusterArtifactArchiveByName was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		ClusterName  string
+		ArtifactName string
+		ArchiveType  provisioning.ClusterArtifactArchiveType
+	}{
+		Ctx:          ctx,
+		ClusterName:  clusterName,
+		ArtifactName: artifactName,
+		ArchiveType:  archiveType,
+	}
+	mock.lockGetClusterArtifactArchiveByName.Lock()
+	mock.calls.GetClusterArtifactArchiveByName = append(mock.calls.GetClusterArtifactArchiveByName, callInfo)
+	mock.lockGetClusterArtifactArchiveByName.Unlock()
+	return mock.GetClusterArtifactArchiveByNameFunc(ctx, clusterName, artifactName, archiveType)
+}
+
+// GetClusterArtifactArchiveByNameCalls gets all the calls that were made to GetClusterArtifactArchiveByName.
+// Check the length with:
+//
+//	len(mockedClusterService.GetClusterArtifactArchiveByNameCalls())
+func (mock *ClusterServiceMock) GetClusterArtifactArchiveByNameCalls() []struct {
+	Ctx          context.Context
+	ClusterName  string
+	ArtifactName string
+	ArchiveType  provisioning.ClusterArtifactArchiveType
+} {
+	var calls []struct {
+		Ctx          context.Context
+		ClusterName  string
+		ArtifactName string
+		ArchiveType  provisioning.ClusterArtifactArchiveType
+	}
+	mock.lockGetClusterArtifactArchiveByName.RLock()
+	calls = mock.calls.GetClusterArtifactArchiveByName
+	mock.lockGetClusterArtifactArchiveByName.RUnlock()
+	return calls
+}
+
+// GetClusterArtifactByName calls GetClusterArtifactByNameFunc.
+func (mock *ClusterServiceMock) GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (*provisioning.ClusterArtifact, error) {
+	if mock.GetClusterArtifactByNameFunc == nil {
+		panic("ClusterServiceMock.GetClusterArtifactByNameFunc: method is nil but ClusterService.GetClusterArtifactByName was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		ClusterName  string
+		ArtifactName string
+	}{
+		Ctx:          ctx,
+		ClusterName:  clusterName,
+		ArtifactName: artifactName,
+	}
+	mock.lockGetClusterArtifactByName.Lock()
+	mock.calls.GetClusterArtifactByName = append(mock.calls.GetClusterArtifactByName, callInfo)
+	mock.lockGetClusterArtifactByName.Unlock()
+	return mock.GetClusterArtifactByNameFunc(ctx, clusterName, artifactName)
+}
+
+// GetClusterArtifactByNameCalls gets all the calls that were made to GetClusterArtifactByName.
+// Check the length with:
+//
+//	len(mockedClusterService.GetClusterArtifactByNameCalls())
+func (mock *ClusterServiceMock) GetClusterArtifactByNameCalls() []struct {
+	Ctx          context.Context
+	ClusterName  string
+	ArtifactName string
+} {
+	var calls []struct {
+		Ctx          context.Context
+		ClusterName  string
+		ArtifactName string
+	}
+	mock.lockGetClusterArtifactByName.RLock()
+	calls = mock.calls.GetClusterArtifactByName
+	mock.lockGetClusterArtifactByName.RUnlock()
+	return calls
+}
+
+// GetClusterArtifactFileByName calls GetClusterArtifactFileByNameFunc.
+func (mock *ClusterServiceMock) GetClusterArtifactFileByName(ctx context.Context, clusterName string, artifactName string, filename string) (*provisioning.ClusterArtifactFile, error) {
+	if mock.GetClusterArtifactFileByNameFunc == nil {
+		panic("ClusterServiceMock.GetClusterArtifactFileByNameFunc: method is nil but ClusterService.GetClusterArtifactFileByName was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		ClusterName  string
+		ArtifactName string
+		Filename     string
+	}{
+		Ctx:          ctx,
+		ClusterName:  clusterName,
+		ArtifactName: artifactName,
+		Filename:     filename,
+	}
+	mock.lockGetClusterArtifactFileByName.Lock()
+	mock.calls.GetClusterArtifactFileByName = append(mock.calls.GetClusterArtifactFileByName, callInfo)
+	mock.lockGetClusterArtifactFileByName.Unlock()
+	return mock.GetClusterArtifactFileByNameFunc(ctx, clusterName, artifactName, filename)
+}
+
+// GetClusterArtifactFileByNameCalls gets all the calls that were made to GetClusterArtifactFileByName.
+// Check the length with:
+//
+//	len(mockedClusterService.GetClusterArtifactFileByNameCalls())
+func (mock *ClusterServiceMock) GetClusterArtifactFileByNameCalls() []struct {
+	Ctx          context.Context
+	ClusterName  string
+	ArtifactName string
+	Filename     string
+} {
+	var calls []struct {
+		Ctx          context.Context
+		ClusterName  string
+		ArtifactName string
+		Filename     string
+	}
+	mock.lockGetClusterArtifactFileByName.RLock()
+	calls = mock.calls.GetClusterArtifactFileByName
+	mock.lockGetClusterArtifactFileByName.RUnlock()
 	return calls
 }
 

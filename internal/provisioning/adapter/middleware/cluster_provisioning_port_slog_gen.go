@@ -113,12 +113,12 @@ func (_d ClusterProvisioningPortWithSlog) GetArchive(ctx context.Context, name s
 }
 
 // Init implements provisioning.ClusterProvisioningPort.
-func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) (err error) {
+func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, clusterName string, config provisioning.ClusterProvisioningConfig) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("name", name),
+			slog.String("clusterName", clusterName),
 			slog.Any("config", config),
 		)
 	}
@@ -144,5 +144,5 @@ func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, name string,
 			log.DebugContext(ctx, "<= method Init finished")
 		}
 	}()
-	return _d._base.Init(ctx, name, config)
+	return _d._base.Init(ctx, clusterName, config)
 }

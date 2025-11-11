@@ -67,7 +67,7 @@ func (_d ClusterProvisioningPortWithPrometheus) GetArchive(ctx context.Context, 
 }
 
 // Init implements provisioning.ClusterProvisioningPort.
-func (_d ClusterProvisioningPortWithPrometheus) Init(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) (err error) {
+func (_d ClusterProvisioningPortWithPrometheus) Init(ctx context.Context, clusterName string, config provisioning.ClusterProvisioningConfig) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -77,5 +77,5 @@ func (_d ClusterProvisioningPortWithPrometheus) Init(ctx context.Context, name s
 
 		clusterProvisioningPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Init", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.Init(ctx, name, config)
+	return _d.base.Init(ctx, clusterName, config)
 }

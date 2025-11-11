@@ -104,7 +104,7 @@ server B
 	server := sqlite.NewServer(tx)
 	serverSvc := provisioning.NewServerService(server, nil, nil, nil)
 
-	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), client, serverSvc, nil, terraformProvisioner)
+	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), nil, client, serverSvc, nil, terraformProvisioner)
 
 	// Add server
 	_, err = server.Create(ctx, serverA)
