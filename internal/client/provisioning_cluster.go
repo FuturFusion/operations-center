@@ -124,3 +124,67 @@ func (c OperationsCenterClient) GetClusterTerraformConfiguration(ctx context.Con
 
 	return resp.Body, nil
 }
+
+func (c OperationsCenterClient) GetClusterArtifacts(ctx context.Context, clusterName string) ([]api.ClusterArtifact, error) {
+	query := url.Values{}
+	query.Add("recursion", "1")
+
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/clusters", clusterName, "artifacts"), query, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	clusterArtifacts := []api.ClusterArtifact{}
+	err = json.Unmarshal(response.Metadata, &clusterArtifacts)
+	if err != nil {
+		return nil, err
+	}
+
+	return clusterArtifacts, nil
+}
+
+func (c OperationsCenterClient) GetClusterArtifact(ctx context.Context, clusterName string, artifactName string) (api.ClusterArtifact, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/clusters", clusterName, "artifacts", artifactName), nil, nil)
+	if err != nil {
+		return api.ClusterArtifact{}, err
+	}
+
+	clusterArtifact := api.ClusterArtifact{}
+	err = json.Unmarshal(response.Metadata, &clusterArtifact)
+	if err != nil {
+		return api.ClusterArtifact{}, err
+	}
+
+	return clusterArtifact, nil
+}
+
+func (c OperationsCenterClient) GetClusterArtifactArchive(ctx context.Context, clusterName string, artifactName string, archiveType string) (io.ReadCloser, error) {
+	query := url.Values{}
+	query.Add("archive", archiveType)
+
+	resp, err := c.doRequestRawResponse(ctx, http.MethodGet, path.Join("/provisioning/clusters", clusterName, "artifacts", artifactName), query, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		_, err = processResponse(resp)
+		return nil, err
+	}
+
+	return resp.Body, nil
+}
+
+func (c OperationsCenterClient) GetClusterArtifactFile(ctx context.Context, clusterName string, artifactName string, filename string) (io.ReadCloser, error) {
+	resp, err := c.doRequestRawResponse(ctx, http.MethodGet, path.Join("/provisioning/clusters", clusterName, "artifacts", artifactName, filename), nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		_, err = processResponse(resp)
+		return nil, err
+	}
+
+	return resp.Body, nil
+}

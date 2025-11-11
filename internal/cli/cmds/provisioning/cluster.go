@@ -95,6 +95,13 @@ func (c *CmdCluster) Command() *cobra.Command {
 
 	cmd.AddCommand(clusterGetTerraformConfigurationCmd.Command())
 
+	// artifact sub-command
+	clusterArtifactCmd := cmdClusterArtifact{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterArtifactCmd.Command())
+
 	return cmd
 }
 
