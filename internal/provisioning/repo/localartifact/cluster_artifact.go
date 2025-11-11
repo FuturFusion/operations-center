@@ -4,16 +4,20 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/lxc/incus/v6/shared/revert"
+	"github.com/maniartech/signals"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/file"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact/entities"
 	"github.com/FuturFusion/operations-center/internal/sqlite"
@@ -27,16 +31,52 @@ type clusterArtifact struct {
 
 var _ provisioning.ClusterArtifactRepo = &clusterArtifact{}
 
-func New(db sqlite.DBTX, storageDir string) (*clusterArtifact, error) {
+func New(db sqlite.DBTX, storageDir string, updateSignal signals.Signal[provisioning.ClusterUpdateMessage]) (*clusterArtifact, error) {
 	err := os.MkdirAll(storageDir, 0o700)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create directory for local artifact storage: %w", err)
 	}
 
-	return &clusterArtifact{
+	c := &clusterArtifact{
 		db:         db,
 		storageDir: storageDir,
-	}, nil
+	}
+
+	c.registerUpdateSignalHandler(updateSignal)
+
+	return c, nil
+}
+
+func (c clusterArtifact) registerUpdateSignalHandler(clusterUpdateSignal signals.Signal[provisioning.ClusterUpdateMessage]) {
+	clusterUpdateSignal.AddListener(func(ctx context.Context, cum provisioning.ClusterUpdateMessage) {
+		switch cum.Operation {
+		case provisioning.ClusterUpdateOperationRename:
+			oldPath := filepath.Join(c.storageDir, cum.OldName)
+			newPath := filepath.Join(c.storageDir, cum.Name)
+			if !file.PathExists(oldPath) {
+				return
+			}
+
+			err := os.Rename(oldPath, newPath)
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to rename cluster artifact storage directory", slog.String("old_path", oldPath), slog.String("new_path", newPath), logger.Err(err))
+				return
+			}
+
+		case provisioning.ClusterUpdateOperationDelete:
+			configDir := filepath.Join(c.storageDir, cum.Name)
+			if !file.PathExists(configDir) {
+				return
+			}
+
+			err := os.RemoveAll(configDir)
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to remove cluster artifact storage directory", slog.String("cluster", cum.Name), logger.Err(err))
+			}
+
+		default:
+		}
+	})
 }
 
 func (c clusterArtifact) CreateClusterArtifactFromPath(ctx context.Context, in provisioning.ClusterArtifact, path string) (int64, error) {
@@ -130,7 +170,7 @@ func (c clusterArtifact) CreateClusterArtifactFromPath(ctx context.Context, in p
 	return id, nil
 }
 
-func copyFile(src string, dst string) (int64, error) {
+func copyFile(src string, dst string) (_ int64, err error) {
 	source, err := os.Open(src)
 	if err != nil {
 		return 0, err
@@ -143,7 +183,9 @@ func copyFile(src string, dst string) (int64, error) {
 		return 0, err
 	}
 
-	defer destination.Close()
+	defer func() {
+		err = errors.Join(err, destination.Close())
+	}()
 
 	nBytes, err := io.Copy(destination, source)
 	return nBytes, err

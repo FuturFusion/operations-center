@@ -7,12 +7,16 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/dsnet/golib/memfile"
+	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/localartifact/entities"
@@ -23,7 +27,120 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-func TestClusterArtifactDatabaseActions(t *testing.T) {
+func TestLocalArtifact_updateSignalHandler(t *testing.T) {
+	const clusterName = "old"
+	const existingClusterName = "existing"
+
+	noLogAssert := func(t *testing.T, logBuf *bytes.Buffer) {
+		t.Helper()
+	}
+
+	logContains := func(want string) func(t *testing.T, logBuf *bytes.Buffer) {
+		return func(t *testing.T, logBuf *bytes.Buffer) {
+			t.Helper()
+
+			// Give logs a little bit of time to be processed.
+			for range 5 {
+				if strings.Contains(logBuf.String(), want) {
+					break
+				}
+
+				time.Sleep(10 * time.Millisecond)
+			}
+
+			require.Contains(t, logBuf.String(), want)
+		}
+	}
+
+	tests := []struct {
+		name           string
+		operation      provisioning.ClusterUpdateOperation
+		clusterName    string
+		oldClusterName string
+
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+	}{
+		{
+			name:           "success - rename",
+			operation:      provisioning.ClusterUpdateOperationRename,
+			clusterName:    "new",
+			oldClusterName: clusterName,
+
+			assertLog: noLogAssert,
+		},
+		{
+			name:        "success - delete",
+			operation:   provisioning.ClusterUpdateOperationDelete,
+			clusterName: clusterName,
+
+			assertLog: noLogAssert,
+		},
+		{
+			name:      "skip - create operation",
+			operation: provisioning.ClusterUpdateOperationCreate,
+
+			assertLog: noLogAssert,
+		},
+		{
+			name:           "skip - rename - old does not exist",
+			operation:      provisioning.ClusterUpdateOperationRename,
+			clusterName:    "new",
+			oldClusterName: "does_not_exist", // does not exist
+
+			assertLog: noLogAssert,
+		},
+		{
+			name:           "error - rename - new does already exist",
+			operation:      provisioning.ClusterUpdateOperationRename,
+			clusterName:    existingClusterName,
+			oldClusterName: clusterName,
+
+			assertLog: logContains("Failed to rename cluster artifact storage directory"),
+		},
+		{
+			name:        "skip - delete - does not exist",
+			operation:   provisioning.ClusterUpdateOperationDelete,
+			clusterName: "does_not_exist", // does not exist
+
+			assertLog: noLogAssert,
+		},
+	}
+
+	_ = logContains
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			tmpDir := t.TempDir()
+			err := os.Mkdir(filepath.Join(tmpDir, clusterName), 0o700)
+			require.NoError(t, err)
+			err = os.Mkdir(filepath.Join(tmpDir, existingClusterName), 0o700)
+			require.NoError(t, err)
+
+			logBuf := &bytes.Buffer{}
+			err = logger.InitLogger(logBuf, "", false, false)
+			require.NoError(t, err)
+
+			updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
+
+			_, err = localartifact.New(nil, tmpDir, updateSignal)
+			require.NoError(t, err)
+
+			// Run test
+			updateSignal.Emit(t.Context(), provisioning.ClusterUpdateMessage{
+				Operation: tc.operation,
+				Name:      tc.clusterName,
+				OldName:   tc.oldClusterName,
+			})
+
+			// Assert
+			tc.assertLog(t, logBuf)
+			t.Log(logBuf.String())
+		})
+	}
+}
+
+func TestLocalArtifactDatabaseActions(t *testing.T) {
 	clusterA := provisioning.Cluster{
 		Name: "clusterOne",
 	}
@@ -89,7 +206,7 @@ func TestClusterArtifactDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add cluster artifact from path
-	artifactRepo, err := localartifact.New(tx, filepath.Join(tmpDir, "artifacts"))
+	artifactRepo, err := localartifact.New(tx, filepath.Join(tmpDir, "artifacts"), signals.NewSync[provisioning.ClusterUpdateMessage]())
 	require.NoError(t, err)
 
 	// Create artifact from directory
