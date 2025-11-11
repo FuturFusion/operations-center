@@ -23,7 +23,6 @@ type ClusterService interface {
 	StartLifecycleEventsMonitor(ctx context.Context) error
 	UpdateCertificate(ctx context.Context, name string, certificatePEM string, keyPEM string) error
 	GetEndpoint(ctx context.Context, name string) (Endpoint, error)
-	GetProvisionerConfigurationArchive(ctx context.Context, name string) (_ io.ReadCloser, size int, _ error)
 	GetClusterArtifactAll(ctx context.Context, clusterName string) (ClusterArtifacts, error)
 	GetClusterArtifactAllNames(ctx context.Context, clusterName string) ([]string, error)
 	GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (*ClusterArtifact, error)
@@ -71,7 +70,6 @@ type ClusterClientPort interface {
 }
 
 type ClusterProvisioningPort interface {
-	Init(ctx context.Context, clusterName string, config ClusterProvisioningConfig) error
+	Init(ctx context.Context, clusterName string, config ClusterProvisioningConfig) (temporaryPath string, cleanup func() error, _ error)
 	Apply(ctx context.Context, cluster Cluster) error
-	GetArchive(ctx context.Context, name string) (_ io.ReadCloser, size int, _ error)
 }

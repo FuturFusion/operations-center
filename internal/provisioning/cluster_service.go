@@ -3,6 +3,7 @@ package provisioning
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"iter"
@@ -117,8 +118,8 @@ func (s *clusterService) SetInventorySyncers(inventorySyncers map[domain.Resourc
 //     Create an "internal" network bridge on each server.
 //     Update the default profile in the default project to use incusbr0 for networking.
 //     Update the default profile in the internal project to use internal-mesh for networking.
-func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster, error) {
-	err := newCluster.ValidateCreate()
+func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Cluster, err error) {
+	err = newCluster.ValidateCreate()
 	if err != nil {
 		return Cluster{}, err
 	}
@@ -340,7 +341,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	}
 
 	// Perform post-clustering initialization using provisioner (Terraform).
-	err = s.provisioner.Init(ctx, newCluster.Name, ClusterProvisioningConfig{
+	temporaryPath, cleanup, err := s.provisioner.Init(ctx, newCluster.Name, ClusterProvisioningConfig{
 		ClusterEndpoint:       clusterEndpoint,
 		Servers:               servers,
 		ApplicationSeedConfig: newCluster.ApplicationSeedConfig,
@@ -349,7 +350,20 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		return newCluster, err
 	}
 
+	defer func() {
+		err = errors.Join(err, cleanup())
+	}()
+
 	err = s.provisioner.Apply(ctx, newCluster)
+	if err != nil {
+		return newCluster, err
+	}
+
+	_, err = s.localartifact.CreateClusterArtifactFromPath(ctx, ClusterArtifact{
+		Cluster:     newCluster.Name,
+		Name:        "terraform-configuration",
+		Description: "Initial terraform configuration used for post-clustering.",
+	}, temporaryPath)
 	if err != nil {
 		return newCluster, err
 	}
@@ -360,24 +374,6 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	})
 
 	return newCluster, nil
-}
-
-func (s clusterService) GetProvisionerConfigurationArchive(ctx context.Context, name string) (_ io.ReadCloser, size int, _ error) {
-	cluster, err := s.repo.GetByName(ctx, name)
-	if err != nil {
-		return nil, 0, fmt.Errorf("Failed to query cluster %q from repo: %w", name, err)
-	}
-
-	if cluster.Status != api.ClusterStatusReady {
-		return nil, 0, fmt.Errorf("Failed to get provisioner configuration archive, cluster is not in ready state: %w", domain.ErrOperationNotPermitted)
-	}
-
-	rc, size, err := s.provisioner.GetArchive(ctx, name)
-	if err != nil {
-		return nil, 0, fmt.Errorf("Failed to get provisioner configuration archive: %w", err)
-	}
-
-	return rc, size, nil
 }
 
 func (s clusterService) GetAll(ctx context.Context) (Clusters, error) {
