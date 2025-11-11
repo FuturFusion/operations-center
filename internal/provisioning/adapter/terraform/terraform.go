@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -524,13 +523,7 @@ func terraformConfigPostProcessing(path string, cluster provisioning.Cluster) er
 		return errors.Join(diags.Errs()...)
 	}
 
-	clusterURL, err := url.Parse(cluster.ConnectionURL)
-	if err != nil {
-		return err
-	}
-
-	f.Body().FirstMatchingBlock("provider", []string{"incus"}).Body().FirstMatchingBlock("remote", []string{}).Body().SetAttributeValue("address", cty.StringVal(clusterURL.Hostname()))
-	f.Body().FirstMatchingBlock("provider", []string{"incus"}).Body().FirstMatchingBlock("remote", []string{}).Body().SetAttributeValue("port", cty.StringVal(clusterURL.Port()))
+	f.Body().FirstMatchingBlock("provider", []string{"incus"}).Body().FirstMatchingBlock("remote", []string{}).Body().SetAttributeValue("address", cty.StringVal(cluster.ConnectionURL))
 
 	err = os.WriteFile(providerTf, f.Bytes(), 0o600)
 	if err != nil {

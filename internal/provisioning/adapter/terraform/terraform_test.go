@@ -328,12 +328,10 @@ func TestTerraform_Apply(t *testing.T) {
 				require.NoError(t, err)
 
 				err = os.WriteFile(filepath.Join(configDir, "providers.tf"), []byte(`provider "incus" {
+  default_remote = "mycluster"
   remote {
     name    = "mycluster"
-    default = true
-    scheme  = "https"
-    address = "some-host"
-    port    = "1234"
+    address = "https://some-host:1234"
   }
 }`), 0o600)
 				require.NoError(t, err)
@@ -344,9 +342,7 @@ func TestTerraform_Apply(t *testing.T) {
 				t.Helper()
 
 				fileContains(t, filepath.Join(dir, clusterName, "providers.tf"),
-					`"localhost"`,
-					`"8443"`,
-					`"https"`,
+					`"https://localhost:8443"`,
 				)
 			},
 		},
@@ -397,30 +393,6 @@ func TestTerraform_Apply(t *testing.T) {
 				require.NoError(t, err)
 
 				err = os.WriteFile(filepath.Join(configDir, "providers.tf"), []byte(`provider "incus" {`), 0o600) // invalid Terraform configuration.
-				require.NoError(t, err)
-			},
-
-			assertErr:                require.Error,
-			assertPostProcessedFiles: noopAssertPostProcessedFiles,
-		},
-		{
-			name:                 "error - invalid cluster.connectionURL",
-			clusterConnectionURL: ":|\\", // invalid
-			setup: func(t *testing.T, configDir string) {
-				t.Helper()
-
-				err := os.MkdirAll(configDir, 0o700)
-				require.NoError(t, err)
-
-				err = os.WriteFile(filepath.Join(configDir, "providers.tf"), []byte(`provider "incus" {
-  remote {
-    name    = "mycluster"
-    default = true
-    scheme  = "https"
-    address = "some-host"
-    port    = "1234"
-  }
-}`), 0o600)
 				require.NoError(t, err)
 			},
 
