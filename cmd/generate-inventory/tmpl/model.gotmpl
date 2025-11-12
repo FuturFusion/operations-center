@@ -14,25 +14,28 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+//
+//generate-expr: {{ .Name | pascalcase }}
+
 type {{ .Name | pascalcase }} struct {
-	ID          int
-	UUID        uuid.UUID
-	Cluster     string
+	ID          int `json:"id"`
+	UUID        uuid.UUID `json:"uuid"`
+	Cluster     string `json:"cluster"`
 {{- if .ServerIDByLocation }}
-	Server      string
+	Server      string `json:"server"`
 {{- end }}
 {{- if .HasProject }}
-	ProjectName string
+	ProjectName string `json:"project"`
 {{- end }}
 {{- if .HasParent }}
-	{{ .ParentName | pascalcase }}Name string
+	{{ .ParentName | pascalcase }}Name string `json:"{{ .ParentName }}_name"`
 {{- end }}
-	Name        string
+	Name        string `json:"name"`
 {{- range .ExtraAttributes }}
-	{{ .Name | pascalcase }} {{ .Type }}
+	{{ .Name | pascalcase }} {{ .Type }} `json:"{{ .Name }}"`
 {{- end }}
-	Object      incusapi.{{ .ObjectType | pascalcase }}
-	LastUpdated time.Time
+	Object      incusapi.{{ .ObjectType | pascalcase }} `json:"object"`
+	LastUpdated time.Time `json:"last_updated"`
 }
 
 func (m *{{ .Name | pascalcase }}) DeriveUUID() *{{ .Name | pascalcase }} {
