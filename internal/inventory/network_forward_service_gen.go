@@ -75,7 +75,7 @@ func (s networkForwardService) GetAllWithFilter(ctx context.Context, filter Netw
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(NetworkForward{})}...)
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprNetworkForward(NetworkForward{}))}...)
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +89,7 @@ func (s networkForwardService) GetAllWithFilter(ctx context.Context, filter Netw
 	var filteredNetworkForwards NetworkForwards
 	if filter.Expression != nil {
 		for _, networkForward := range networkForwards {
-			output, err := expr.Run(filterExpression, networkForward)
+			output, err := expr.Run(filterExpression, ToExprNetworkForward(networkForward))
 			if err != nil {
 				return nil, err
 			}
@@ -115,7 +115,7 @@ func (s networkForwardService) GetAllUUIDsWithFilter(ctx context.Context, filter
 	var err error
 
 	type Env struct {
-		UUID string
+		UUID string `expr:"uuid"`
 	}
 
 	if filter.Expression != nil {

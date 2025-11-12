@@ -75,7 +75,7 @@ func (s networkLoadBalancerService) GetAllWithFilter(ctx context.Context, filter
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(NetworkLoadBalancer{})}...)
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprNetworkLoadBalancer(NetworkLoadBalancer{}))}...)
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +89,7 @@ func (s networkLoadBalancerService) GetAllWithFilter(ctx context.Context, filter
 	var filteredNetworkLoadBalancers NetworkLoadBalancers
 	if filter.Expression != nil {
 		for _, networkLoadBalancer := range networkLoadBalancers {
-			output, err := expr.Run(filterExpression, networkLoadBalancer)
+			output, err := expr.Run(filterExpression, ToExprNetworkLoadBalancer(networkLoadBalancer))
 			if err != nil {
 				return nil, err
 			}
@@ -115,7 +115,7 @@ func (s networkLoadBalancerService) GetAllUUIDsWithFilter(ctx context.Context, f
 	var err error
 
 	type Env struct {
-		UUID string
+		UUID string `expr:"uuid"`
 	}
 
 	if filter.Expression != nil {

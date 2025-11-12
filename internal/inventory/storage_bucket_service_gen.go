@@ -75,7 +75,7 @@ func (s storageBucketService) GetAllWithFilter(ctx context.Context, filter Stora
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(StorageBucket{})}...)
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprStorageBucket(StorageBucket{}))}...)
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +89,7 @@ func (s storageBucketService) GetAllWithFilter(ctx context.Context, filter Stora
 	var filteredStorageBuckets StorageBuckets
 	if filter.Expression != nil {
 		for _, storageBucket := range storageBuckets {
-			output, err := expr.Run(filterExpression, storageBucket)
+			output, err := expr.Run(filterExpression, ToExprStorageBucket(storageBucket))
 			if err != nil {
 				return nil, err
 			}
@@ -115,7 +115,7 @@ func (s storageBucketService) GetAllUUIDsWithFilter(ctx context.Context, filter 
 	var err error
 
 	type Env struct {
-		UUID string
+		UUID string `expr:"uuid"`
 	}
 
 	if filter.Expression != nil {

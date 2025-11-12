@@ -61,7 +61,7 @@ func (s networkService) GetAllWithFilter(ctx context.Context, filter NetworkFilt
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Network{})}...)
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprNetwork(Network{}))}...)
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +75,7 @@ func (s networkService) GetAllWithFilter(ctx context.Context, filter NetworkFilt
 	var filteredNetworks Networks
 	if filter.Expression != nil {
 		for _, network := range networks {
-			output, err := expr.Run(filterExpression, network)
+			output, err := expr.Run(filterExpression, ToExprNetwork(network))
 			if err != nil {
 				return nil, err
 			}
@@ -101,7 +101,7 @@ func (s networkService) GetAllUUIDsWithFilter(ctx context.Context, filter Networ
 	var err error
 
 	type Env struct {
-		UUID string
+		UUID string `expr:"uuid"`
 	}
 
 	if filter.Expression != nil {

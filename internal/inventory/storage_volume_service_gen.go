@@ -75,7 +75,7 @@ func (s storageVolumeService) GetAllWithFilter(ctx context.Context, filter Stora
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(StorageVolume{})}...)
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprStorageVolume(StorageVolume{}))}...)
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +89,7 @@ func (s storageVolumeService) GetAllWithFilter(ctx context.Context, filter Stora
 	var filteredStorageVolumes StorageVolumes
 	if filter.Expression != nil {
 		for _, storageVolume := range storageVolumes {
-			output, err := expr.Run(filterExpression, storageVolume)
+			output, err := expr.Run(filterExpression, ToExprStorageVolume(storageVolume))
 			if err != nil {
 				return nil, err
 			}
@@ -115,7 +115,7 @@ func (s storageVolumeService) GetAllUUIDsWithFilter(ctx context.Context, filter 
 	var err error
 
 	type Env struct {
-		UUID string
+		UUID string `expr:"uuid"`
 	}
 
 	if filter.Expression != nil {
