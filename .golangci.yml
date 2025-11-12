@@ -166,6 +166,11 @@ linters:
         # generate-database expects to find declarations of the form //generate-database: in the entities package.
         source: '^//generate-database:mapper '
         text: comment-spacing
+      - linters:
+          - revive
+        # generate-expr expects to find declarations of the form //generate-expr: in the inventory package.
+        source: '^//generate-expr: '
+        text: comment-spacing
     paths:
       - third_party$
       - builtin$
