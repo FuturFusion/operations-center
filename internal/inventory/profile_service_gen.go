@@ -61,7 +61,7 @@ func (s profileService) GetAllWithFilter(ctx context.Context, filter ProfileFilt
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Profile{})}...)
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprProfile(Profile{}))}...)
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +75,7 @@ func (s profileService) GetAllWithFilter(ctx context.Context, filter ProfileFilt
 	var filteredProfiles Profiles
 	if filter.Expression != nil {
 		for _, profile := range profiles {
-			output, err := expr.Run(filterExpression, profile)
+			output, err := expr.Run(filterExpression, ToExprProfile(profile))
 			if err != nil {
 				return nil, err
 			}
@@ -101,7 +101,7 @@ func (s profileService) GetAllUUIDsWithFilter(ctx context.Context, filter Profil
 	var err error
 
 	type Env struct {
-		UUID string
+		UUID string `expr:"uuid"`
 	}
 
 	if filter.Expression != nil {

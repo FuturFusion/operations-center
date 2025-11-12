@@ -61,7 +61,7 @@ func (s networkACLService) GetAllWithFilter(ctx context.Context, filter NetworkA
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(NetworkACL{})}...)
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprNetworkACL(NetworkACL{}))}...)
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +75,7 @@ func (s networkACLService) GetAllWithFilter(ctx context.Context, filter NetworkA
 	var filteredNetworkACLs NetworkACLs
 	if filter.Expression != nil {
 		for _, networkACL := range networkACLs {
-			output, err := expr.Run(filterExpression, networkACL)
+			output, err := expr.Run(filterExpression, ToExprNetworkACL(networkACL))
 			if err != nil {
 				return nil, err
 			}
@@ -101,7 +101,7 @@ func (s networkACLService) GetAllUUIDsWithFilter(ctx context.Context, filter Net
 	var err error
 
 	type Env struct {
-		UUID string
+		UUID string `expr:"uuid"`
 	}
 
 	if filter.Expression != nil {
