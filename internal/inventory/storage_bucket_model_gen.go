@@ -13,16 +13,19 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+//
+//generate-expr: StorageBucket
+
 type StorageBucket struct {
-	ID              int
-	UUID            uuid.UUID
-	Cluster         string
-	Server          string
-	ProjectName     string
-	StoragePoolName string
-	Name            string
-	Object          incusapi.StorageBucketFull
-	LastUpdated     time.Time
+	ID              int                        `json:"id"`
+	UUID            uuid.UUID                  `json:"uuid"`
+	Cluster         string                     `json:"cluster"`
+	Server          string                     `json:"server"`
+	ProjectName     string                     `json:"project"`
+	StoragePoolName string                     `json:"storage_pool_name"`
+	Name            string                     `json:"name"`
+	Object          incusapi.StorageBucketFull `json:"object"`
+	LastUpdated     time.Time                  `json:"last_updated"`
 }
 
 func (m *StorageBucket) DeriveUUID() *StorageBucket {

@@ -13,14 +13,17 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+//
+//generate-expr: NetworkZone
+
 type NetworkZone struct {
-	ID          int
-	UUID        uuid.UUID
-	Cluster     string
-	ProjectName string
-	Name        string
-	Object      incusapi.NetworkZone
-	LastUpdated time.Time
+	ID          int                  `json:"id"`
+	UUID        uuid.UUID            `json:"uuid"`
+	Cluster     string               `json:"cluster"`
+	ProjectName string               `json:"project"`
+	Name        string               `json:"name"`
+	Object      incusapi.NetworkZone `json:"object"`
+	LastUpdated time.Time            `json:"last_updated"`
 }
 
 func (m *NetworkZone) DeriveUUID() *NetworkZone {

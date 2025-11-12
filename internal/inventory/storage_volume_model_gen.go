@@ -14,17 +14,20 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+//
+//generate-expr: StorageVolume
+
 type StorageVolume struct {
-	ID              int
-	UUID            uuid.UUID
-	Cluster         string
-	Server          string
-	ProjectName     string
-	StoragePoolName string
-	Name            string
-	Type            string
-	Object          incusapi.StorageVolumeFull
-	LastUpdated     time.Time
+	ID              int                        `json:"id"`
+	UUID            uuid.UUID                  `json:"uuid"`
+	Cluster         string                     `json:"cluster"`
+	Server          string                     `json:"server"`
+	ProjectName     string                     `json:"project"`
+	StoragePoolName string                     `json:"storage_pool_name"`
+	Name            string                     `json:"name"`
+	Type            string                     `json:"type"`
+	Object          incusapi.StorageVolumeFull `json:"object"`
+	LastUpdated     time.Time                  `json:"last_updated"`
 }
 
 func (m *StorageVolume) DeriveUUID() *StorageVolume {
