@@ -12,17 +12,8 @@ export interface ClusterPost {
   server_type: string;
   services_config: YamlValue;
   application_seed_config: YamlValue;
-}
-
-export interface ClusterFormValues {
-  name: string;
-  connection_url: string;
-  server_names: string[];
-  server_type: string;
-  services_config: YamlValue;
-  application_seed_config: YamlValue;
-  variables: string;
-  template: string;
+  cluster_template: string;
+  cluster_template_variable_values: YamlValue;
 }
 
 export interface ClusterCertFormValues {
