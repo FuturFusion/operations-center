@@ -478,14 +478,14 @@ func (s updateService) Refresh(ctx context.Context) error {
 
 func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates, error) {
 	if s.updateFilterExpression != "" {
-		filterExpression, err := expr.Compile(s.updateFilterExpression, expr.Env(Update{}))
+		filterExpression, err := expr.Compile(s.updateFilterExpression, expr.Env(ToExprUpdate(Update{})))
 		if err != nil {
 			return nil, fmt.Errorf("Failed to compile filter expression: %w", err)
 		}
 
 		n := 0
 		for i := range updates {
-			output, err := expr.Run(filterExpression, updates[i])
+			output, err := expr.Run(filterExpression, ToExprUpdate(updates[i]))
 			if err != nil {
 				return nil, err
 			}
