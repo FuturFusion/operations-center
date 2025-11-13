@@ -11,22 +11,25 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+//
+//generate-expr: Server
+
 type Server struct {
-	ID                   int64
-	Cluster              *string `db:"leftjoin=clusters.name"`
-	Name                 string  `db:"primary=yes"`
-	Type                 api.ServerType
-	ConnectionURL        string
-	PublicConnectionURL  string
-	Certificate          string
-	ClusterCertificate   *string `db:"omit=create,update&leftjoin=clusters.certificate"`
-	ClusterConnectionURL *string `db:"omit=create,update&leftjoin=clusters.connection_url"`
-	HardwareData         api.HardwareData
-	OSData               api.OSData
-	VersionData          json.RawMessage `db:"ignore"` // FIXME: it is not yet clear, how the structure of the version information will actually look like.
-	Status               api.ServerStatus
-	LastUpdated          time.Time `db:"update_timestamp"`
-	LastSeen             time.Time
+	ID                   int64            `json:"id"`
+	Cluster              *string          `json:"cluster"                db:"leftjoin=clusters.name"`
+	Name                 string           `json:"name"                   db:"primary=yes"`
+	Type                 api.ServerType   `json:"type"`
+	ConnectionURL        string           `json:"connection_url"`
+	PublicConnectionURL  string           `json:"public_connection_url"`
+	Certificate          string           `json:"certificate"`
+	ClusterCertificate   *string          `json:"cluster_certificate"    db:"omit=create,update&leftjoin=clusters.certificate"`
+	ClusterConnectionURL *string          `json:"cluster_connection_url" db:"omit=create,update&leftjoin=clusters.connection_url"`
+	HardwareData         api.HardwareData `json:"hardware_data"`
+	OSData               api.OSData       `json:"os_data"`
+	VersionData          json.RawMessage  `json:"version_data"           db:"ignore"` // FIXME: it is not yet clear, how the structure of the version information will actually look like.
+	Status               api.ServerStatus `json:"status"`
+	LastUpdated          time.Time        `json:"last_updated"           db:"update_timestamp"`
+	LastSeen             time.Time        `json:"last_seen"`
 }
 
 func (s Server) GetConnectionURL() string {
