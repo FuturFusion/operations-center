@@ -185,7 +185,7 @@ func (s serverService) GetAllNamesWithFilter(ctx context.Context, filter ServerF
 	var err error
 
 	type Env struct {
-		Name string
+		Name string `expr:"name"`
 	}
 
 	if filter.Expression != nil {
