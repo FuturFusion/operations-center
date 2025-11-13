@@ -5,8 +5,7 @@ import { useNotification } from "context/notificationContext";
 import { useServers } from "context/useServers";
 import { useClusterTemplates } from "context/useClusterTemplates";
 import LoadingButton from "components/LoadingButton";
-import { ClusterFormValues, ClusterPost } from "types/cluster";
-import { ClusterTemplateVariable } from "types/cluster_template";
+import { ClusterPost } from "types/cluster";
 import { ServerType } from "util/server";
 import YAML from "yaml";
 
@@ -25,10 +24,8 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
   const { data: templates } = useClusterTemplates();
   const { notify } = useNotification();
 
-  const validateForm = (
-    values: ClusterFormValues,
-  ): FormikErrors<ClusterFormValues> => {
-    const errors: FormikErrors<ClusterFormValues> = {};
+  const validateForm = (values: ClusterPost): FormikErrors<ClusterPost> => {
+    const errors: FormikErrors<ClusterPost> = {};
 
     if (!values.name) {
       errors.name = "Name is required";
@@ -38,58 +35,32 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
       errors.server_names = "List of server names can not be empty";
     }
 
-    if (mode == CreateType.Template && values.template == "") {
-      errors.template = "Template is required";
+    if (mode == CreateType.Template && values.cluster_template == "") {
+      errors.cluster_template = "Template is required";
     }
 
     return errors;
   };
 
-  const formikInitialValues: ClusterFormValues = {
+  const formikInitialValues: ClusterPost = {
     name: "",
     connection_url: "",
     server_names: [],
     server_type: Object.values(ServerType)[0],
     services_config: "",
     application_seed_config: "",
-    variables: "",
-    template: "",
-  };
-
-  const applyVariables = (
-    template: string,
-    variables: Record<string, ClusterTemplateVariable>,
-    variableValues: Record<string, string>,
-  ): string => {
-    Object.entries(variables).forEach(([key, clusterVar]) => {
-      if (!(key in variableValues)) {
-        if (clusterVar.default == "") {
-          throw new Error(
-            `No value provided for variable ${key}, which is required, since it has no default value defined`,
-          );
-        }
-        variableValues[key] = clusterVar.default;
-      }
-    });
-
-    let result = template;
-    Object.entries(variableValues).forEach(([name, value]) => {
-      const variableName = "@" + name + "@";
-      const regex = new RegExp(variableName, "g");
-
-      result = result.replace(regex, value);
-    });
-
-    return result;
+    cluster_template: "",
+    cluster_template_variable_values: "",
   };
 
   const formik = useFormik({
     initialValues: formikInitialValues,
     validate: validateForm,
     enableReinitialize: true,
-    onSubmit: (values: ClusterFormValues, { setSubmitting }) => {
-      let servicesConfig = "";
-      let applicationSeedConfig = "";
+    onSubmit: (values: ClusterPost, { setSubmitting }) => {
+      let servicesConfig = {};
+      let applicationSeedConfig = {};
+      let variableValues = {};
 
       if (mode == CreateType.Manual) {
         try {
@@ -101,34 +72,10 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
           return;
         }
       } else {
-        const template = templates?.find((t) => t.name === values.template);
-
-        let variablesValues = {};
         try {
-          variablesValues = YAML.parse(values.variables);
+          variableValues = YAML.parse(values.cluster_template_variable_values);
         } catch (error) {
-          notify.error(`Error during variables parsing: ${error}`);
-          setSubmitting(false);
-          return;
-        }
-
-        try {
-          servicesConfig = YAML.parse(
-            applyVariables(
-              template?.service_config_template || "",
-              template?.variables || {},
-              variablesValues || {},
-            ),
-          );
-          applicationSeedConfig = YAML.parse(
-            applyVariables(
-              template?.application_config_template || "",
-              template?.variables || {},
-              variablesValues || {},
-            ),
-          );
-        } catch (error) {
-          notify.error(`Error during YAML value parsing: ${error}`);
+          notify.error(`Error during variable values parsing: ${error}`);
           setSubmitting(false);
           return;
         }
@@ -141,6 +88,8 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
         server_type: values.server_type,
         services_config: servicesConfig,
         application_seed_config: applicationSeedConfig,
+        cluster_template: values.cluster_template,
+        cluster_template_variable_values: variableValues,
       });
     },
   });
@@ -259,11 +208,12 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
               <Form.Group className="mb-4" controlId="templates">
                 <Form.Label>Templates</Form.Label>
                 <Form.Select
-                  name="template"
-                  value={formik.values.template}
+                  name="cluster_template"
+                  value={formik.values.cluster_template}
                   onChange={formik.handleChange}
                   isInvalid={
-                    !!formik.errors.template && formik.touched.template
+                    !!formik.errors.cluster_template &&
+                    formik.touched.cluster_template
                   }
                   disabled={formik.isSubmitting}
                 >
@@ -275,7 +225,7 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
                   ))}
                 </Form.Select>
                 <Form.Control.Feedback type="invalid">
-                  {formik.errors.template}
+                  {formik.errors.cluster_template}
                 </Form.Control.Feedback>
               </Form.Group>
               <Form.Group className="mb-4" controlId="variables">
@@ -284,8 +234,8 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
                   type="text"
                   as="textarea"
                   rows={6}
-                  name="variables"
-                  value={formik.values.variables}
+                  name="cluster_template_variable_values"
+                  value={formik.values.cluster_template_variable_values}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   disabled={formik.isSubmitting}
