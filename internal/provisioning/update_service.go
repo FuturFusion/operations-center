@@ -510,12 +510,12 @@ func (s updateService) filterUpdatesByFilterExpression(updates Updates) (Updates
 }
 
 type UpdateFileExprEnv struct {
-	Filename     string
-	Size         int
-	Sha256       string
-	Component    string
-	Type         string
-	Architecture string
+	Filename     string `expr:"file_name"`
+	Size         int    `expr:"size"`
+	Sha256       string `expr:"sha256"`
+	Component    string `expr:"component"`
+	Type         string `expr:"type"`
+	Architecture string `expr:"architecture"`
 }
 
 func (u UpdateFileExprEnv) AppliesToArchitecture(wantArch string) bool {

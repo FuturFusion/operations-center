@@ -429,7 +429,7 @@ func (s clusterService) GetAllNamesWithFilter(ctx context.Context, filter Cluste
 	var err error
 
 	type Env struct {
-		Name string
+		Name string `expr:"name"`
 	}
 
 	if filter.Expression != nil {
