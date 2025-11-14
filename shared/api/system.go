@@ -108,7 +108,7 @@ type SystemUpdatesPut struct {
 	// If a filter is defined, the filter needs to evaluate to true for the update
 	// being fetched by Operations Center.
 	// Empty filter expression does not filter at all.
-	// Example: 'stable' in Channels
+	// Example: 'stable' in channels
 	FilterExpression string `json:"filter_expression" yaml:"filter_expression"`
 
 	// Filter expression for update files using https://expr-lang.org/ on struct
