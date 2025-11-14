@@ -13,14 +13,17 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+//
+//generate-expr: NetworkForward
+
 type NetworkForward struct {
-	ID          int
-	UUID        uuid.UUID
-	Cluster     string
-	NetworkName string
-	Name        string
-	Object      incusapi.NetworkForward
-	LastUpdated time.Time
+	ID          int                     `json:"id"`
+	UUID        uuid.UUID               `json:"uuid"`
+	Cluster     string                  `json:"cluster"`
+	NetworkName string                  `json:"network_name"`
+	Name        string                  `json:"name"`
+	Object      incusapi.NetworkForward `json:"object"`
+	LastUpdated time.Time               `json:"last_updated"`
 }
 
 func (m *NetworkForward) DeriveUUID() *NetworkForward {

@@ -61,7 +61,7 @@ func (s projectService) GetAllWithFilter(ctx context.Context, filter ProjectFilt
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Project{})}...)
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprProject(Project{}))}...)
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +75,7 @@ func (s projectService) GetAllWithFilter(ctx context.Context, filter ProjectFilt
 	var filteredProjects Projects
 	if filter.Expression != nil {
 		for _, project := range projects {
-			output, err := expr.Run(filterExpression, project)
+			output, err := expr.Run(filterExpression, ToExprProject(project))
 			if err != nil {
 				return nil, err
 			}
@@ -101,7 +101,7 @@ func (s projectService) GetAllUUIDsWithFilter(ctx context.Context, filter Projec
 	var err error
 
 	type Env struct {
-		UUID string
+		UUID string `expr:"uuid"`
 	}
 
 	if filter.Expression != nil {

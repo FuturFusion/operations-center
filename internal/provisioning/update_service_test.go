@@ -857,7 +857,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 		{
 			name:             "success - one update, filtered",
 			ctx:              context.Background(),
-			filterExpression: `"stable" in Channels`,
+			filterExpression: `"stable" in channels`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
@@ -899,7 +899,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			// The file, which is downloaded has a valid sha256 checksum, one file is
 			// filtered.
 			ctx:                  context.Background(),
-			filterExpression:     `"stable" in Channels`,
+			filterExpression:     `"stable" in channels`,
 			fileFilterExpression: `AppliesToArchitecture("x86_64")`,
 
 			sourceGetLatestUpdates: provisioning.Updates{

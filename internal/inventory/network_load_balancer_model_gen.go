@@ -13,14 +13,17 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+//
+//generate-expr: NetworkLoadBalancer
+
 type NetworkLoadBalancer struct {
-	ID          int
-	UUID        uuid.UUID
-	Cluster     string
-	NetworkName string
-	Name        string
-	Object      incusapi.NetworkLoadBalancer
-	LastUpdated time.Time
+	ID          int                          `json:"id"`
+	UUID        uuid.UUID                    `json:"uuid"`
+	Cluster     string                       `json:"cluster"`
+	NetworkName string                       `json:"network_name"`
+	Name        string                       `json:"name"`
+	Object      incusapi.NetworkLoadBalancer `json:"object"`
+	LastUpdated time.Time                    `json:"last_updated"`
 }
 
 func (m *NetworkLoadBalancer) DeriveUUID() *NetworkLoadBalancer {

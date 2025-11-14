@@ -337,7 +337,7 @@ func validate(cfg config) error {
 	}
 
 	if cfg.Updates.FilterExpression != "" {
-		_, err := expr.Compile(cfg.Updates.FilterExpression, expr.Env(provisioning.Update{}))
+		_, err := expr.Compile(cfg.Updates.FilterExpression, expr.Env(provisioning.ToExprUpdate(provisioning.Update{})))
 		if err != nil {
 			return domain.NewValidationErrf(`Invalid config, failed to compile filter expression: %v`, err)
 		}

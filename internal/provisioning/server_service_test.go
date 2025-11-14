@@ -250,7 +250,7 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 		{
 			name: "success - with filter expression",
 			filter: provisioning.ServerFilter{
-				Expression: ptr.To(`Name == "one"`),
+				Expression: ptr.To(`name == "one"`),
 			},
 			repoGetAllWithFilter: provisioning.Servers{
 				provisioning.Server{
@@ -424,7 +424,7 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name: "success - with filter expression",
 			filter: provisioning.ServerFilter{
-				Expression: ptr.To(`Name matches "one"`),
+				Expression: ptr.To(`name matches "one"`),
 			},
 			repoGetAllNamesWithFilter: []string{
 				"one", "two",

@@ -48,7 +48,7 @@ func TestProfileService_GetAllWithFilter(t *testing.T) {
 		},
 		{
 			name:             "success - with filter expression",
-			filterExpression: ptr.To(`Name == "one"`),
+			filterExpression: ptr.To(`name == "one"`),
 			repoGetAllWithFilter: inventory.Profiles{
 				inventory.Profile{
 					Name: "one",
@@ -155,7 +155,7 @@ func TestProfileService_GetAllUUIDsWithFilter(t *testing.T) {
 		},
 		{
 			name:             "success - with filter expression",
-			filterExpression: ptr.To(`UUID == "11111111-1111-1111-1111-111111111111"`),
+			filterExpression: ptr.To(`uuid == "11111111-1111-1111-1111-111111111111"`),
 			repoGetAllUUIDsWithFilter: []uuid.UUID{
 				uuidgen.FromPattern(t, "1"),
 				uuidgen.FromPattern(t, "2"),
