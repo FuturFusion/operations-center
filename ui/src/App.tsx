@@ -20,7 +20,9 @@ import StorageVolume from "pages/StorageVolume";
 import Profile from "pages/Profile";
 import Project from "pages/Project";
 import Cluster from "pages/Cluster";
+import ClusterArtifactFiles from "pages/ClusterArtifactFiles";
 import ClusterCreate from "pages/ClusterCreate";
+import ClusterDetail from "pages/ClusterDetail";
 import ClusterTemplate from "pages/ClusterTemplate";
 import ClusterTemplateCreate from "pages/ClusterTemplateCreate";
 import ClusterTemplateDetail from "pages/ClusterTemplateDetail";
@@ -101,12 +103,24 @@ function App() {
             <Route path="/ui/inventory/projects" element={<Project />} />
             <Route path="/ui/provisioning/clusters" element={<Cluster />} />
             <Route
+              path="/ui/provisioning/clusters/:clusterName/artifacts/:artifactName/files"
+              element={<ClusterArtifactFiles />}
+            />
+            <Route
               path="/ui/provisioning/clusters/create"
               element={<ClusterCreate />}
             />
             <Route
               path="/ui/provisioning/clusters/create/:activeTab"
               element={<ClusterCreate />}
+            />
+            <Route
+              path="/ui/provisioning/clusters/:name"
+              element={<ClusterDetail />}
+            />
+            <Route
+              path="/ui/provisioning/clusters/:name/:activeTab"
+              element={<ClusterDetail />}
             />
             <Route
               path="/ui/provisioning/cluster-templates"

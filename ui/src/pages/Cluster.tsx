@@ -36,7 +36,14 @@ const Cluster = () => {
   const rows = clusters.map((item) => {
     return [
       {
-        content: item.name,
+        content: (
+          <Link
+            to={`/ui/provisioning/clusters/${item.name}`}
+            className="data-table-link"
+          >
+            {item.name}
+          </Link>
+        ),
         sortKey: item.name,
       },
       {
