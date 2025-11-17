@@ -1049,7 +1049,7 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 		{
 			name: "success - with filter expression",
 			filter: provisioning.ClusterFilter{
-				Expression: ptr.To(`Name == "one"`),
+				Expression: ptr.To(`name == "one"`),
 			},
 			repoGetAllWithFilter: provisioning.Clusters{
 				provisioning.Cluster{
@@ -1218,7 +1218,7 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 		{
 			name: "success - with filter expression",
 			filter: provisioning.ClusterFilter{
-				Expression: ptr.To(`Name matches "one"`),
+				Expression: ptr.To(`name matches "one"`),
 			},
 			repoGetAllNamesWithFilter: []string{
 				"one", "two",

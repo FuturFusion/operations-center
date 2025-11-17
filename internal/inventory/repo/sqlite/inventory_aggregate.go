@@ -52,13 +52,13 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 	var args []any
 
 	type Env struct {
-		Kind        string
-		ClusterName string
-		ServerName  string
-		ProjectName string
-		ParentName  string
-		Name        string
-		Object      map[string]any
+		Kind        string         `expr:"kind"`
+		ClusterName string         `expr:"cluster_name"`
+		ServerName  string         `expr:"server_name"`
+		ProjectName string         `expr:"project_name"`
+		ParentName  string         `expr:"parent_name"`
+		Name        string         `expr:"name"`
+		Object      map[string]any `expr:"object"`
 	}
 
 	if filter.Expression != nil {
