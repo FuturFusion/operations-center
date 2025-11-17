@@ -4,8 +4,6 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"time"
-
-	incusapi "github.com/lxc/incus/v6/shared/api"
 )
 
 type ClusterStatus string
@@ -145,7 +143,7 @@ type ClusterPost struct {
 
 	// ClusterTemplateVariableValues contains the variable values, which should
 	// be applied to the respective placeholders in the cluster template.
-	ClusterTemplateVariableValues incusapi.ConfigMap `json:"cluster_template_variable_values" yaml:"cluster_template_variable_values"`
+	ClusterTemplateVariableValues ConfigMap `json:"cluster_template_variable_values" yaml:"cluster_template_variable_values"`
 }
 
 // ClusterCertificatePut represents the certificate and key pair for all cluster members.

@@ -35,13 +35,13 @@ type localfs struct {
 
 var _ provisioning.UpdateFilesRepo = localfs{}
 
-func New(storageDir string, signatureVerificationRootCA string) (localfs, error) {
+func New(storageDir string, signatureVerificationRootCA string) (*localfs, error) {
 	err := os.MkdirAll(storageDir, 0o700)
 	if err != nil {
-		return localfs{}, fmt.Errorf("Failed to create directory for local update storage: %w", err)
+		return nil, fmt.Errorf("Failed to create directory for local update storage: %w", err)
 	}
 
-	return localfs{
+	return &localfs{
 		configUpdateMu: &sync.Mutex{},
 		storageDir:     storageDir,
 		verifier:       signature.NewVerifier([]byte(signatureVerificationRootCA)),

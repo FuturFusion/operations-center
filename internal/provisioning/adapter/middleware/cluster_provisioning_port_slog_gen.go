@@ -5,7 +5,6 @@ package middleware
 
 import (
 	"context"
-	"io"
 	"log/slog"
 
 	"github.com/FuturFusion/operations-center/internal/logger"
@@ -76,49 +75,13 @@ func (_d ClusterProvisioningPortWithSlog) Apply(ctx context.Context, cluster pro
 	return _d._base.Apply(ctx, cluster)
 }
 
-// GetArchive implements provisioning.ClusterProvisioningPort.
-func (_d ClusterProvisioningPortWithSlog) GetArchive(ctx context.Context, name string) (readCloser io.ReadCloser, size int, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.String("name", name),
-		)
-	}
-	log.DebugContext(ctx, "=> calling GetArchive")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("readCloser", readCloser),
-				slog.Int("size", size),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetArchive returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetArchive returned an error")
-			}
-		} else {
-			log.DebugContext(ctx, "<= method GetArchive finished")
-		}
-	}()
-	return _d._base.GetArchive(ctx, name)
-}
-
 // Init implements provisioning.ClusterProvisioningPort.
-func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) (err error) {
+func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, clusterName string, config provisioning.ClusterProvisioningConfig) (temporaryPath string, cleanup func() error, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.String("name", name),
+			slog.String("clusterName", clusterName),
 			slog.Any("config", config),
 		)
 	}
@@ -127,6 +90,8 @@ func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, name string,
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
+				slog.String("temporaryPath", temporaryPath),
+				slog.Any("cleanup", cleanup),
 				slog.Any("err", err),
 			)
 		} else {
@@ -144,5 +109,5 @@ func (_d ClusterProvisioningPortWithSlog) Init(ctx context.Context, name string,
 			log.DebugContext(ctx, "<= method Init finished")
 		}
 	}()
-	return _d._base.Init(ctx, name, config)
+	return _d._base.Init(ctx, clusterName, config)
 }

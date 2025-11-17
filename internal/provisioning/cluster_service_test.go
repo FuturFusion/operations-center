@@ -29,27 +29,28 @@ func TestClusterService_Create(t *testing.T) {
 	updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
 
 	tests := []struct {
-		name                           string
-		cluster                        provisioning.Cluster
-		repoExistsByName               bool
-		repoExistsByNameErr            error
-		repoCreateErr                  error
-		repoUpdateErr                  error
-		clientPingErr                  error
-		clientEnableOSServiceErr       error
-		clientSetServerConfig          []queue.Item[struct{}]
-		clientEnableClusterCertificate string
-		clientEnableClusterErr         error
-		clientGetClusterNodeNamesErr   error
-		clientGetClusterJoinToken      string
-		clientGetClusterJoinTokenErr   error
-		clientJoinClusterErr           error
-		clientGetOSData                api.OSData
-		clientGetOSDataErr             error
-		serverSvcGetByName             []queue.Item[*provisioning.Server]
-		serverSvcUpdateErr             error
-		provisionerApplyErr            error
-		provisionerInitErr             error
+		name                                              string
+		cluster                                           provisioning.Cluster
+		repoExistsByName                                  bool
+		repoExistsByNameErr                               error
+		repoCreateErr                                     error
+		repoUpdateErr                                     error
+		localArtifactRepoCreateClusterArtifactFromPathErr error
+		clientPingErr                                     error
+		clientEnableOSServiceErr                          error
+		clientSetServerConfig                             []queue.Item[struct{}]
+		clientEnableClusterCertificate                    string
+		clientEnableClusterErr                            error
+		clientGetClusterNodeNamesErr                      error
+		clientGetClusterJoinToken                         string
+		clientGetClusterJoinTokenErr                      error
+		clientJoinClusterErr                              error
+		clientGetOSData                                   api.OSData
+		clientGetOSDataErr                                error
+		serverSvcGetByName                                []queue.Item[*provisioning.Server]
+		serverSvcUpdateErr                                error
+		provisionerApplyErr                               error
+		provisionerInitErr                                error
 
 		assertErr     require.ErrorAssertionFunc
 		signalHandler func(t *testing.T, called *bool) func(ctx context.Context, cum provisioning.ClusterUpdateMessage)
@@ -830,6 +831,49 @@ func TestClusterService_Create(t *testing.T) {
 			assertErr:     boom.ErrorIs,
 			signalHandler: requireNoCallSignalHandler,
 		},
+		{
+			name: "error - provisioner.Apply",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+						Type: api.ServerTypeIncus,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+						Type: api.ServerTypeIncus,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+						Type: api.ServerTypeIncus,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+						Type: api.ServerTypeIncus,
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate:                    "certificate",
+			localArtifactRepoCreateClusterArtifactFromPathErr: boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
 	}
 
 	for _, tc := range tests {
@@ -844,6 +888,12 @@ func TestClusterService_Create(t *testing.T) {
 				},
 				UpdateFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
 					return tc.repoUpdateErr
+				},
+			}
+
+			localArtifactRepo := &mock.ClusterArtifactRepoMock{
+				CreateClusterArtifactFromPathFunc: func(ctx context.Context, artifact provisioning.ClusterArtifact, path string) (int64, error) {
+					return 0, tc.localArtifactRepoCreateClusterArtifactFromPathErr
 				},
 			}
 
@@ -886,15 +936,15 @@ func TestClusterService_Create(t *testing.T) {
 			}
 
 			provisioner := &adapterMock.ClusterProvisioningPortMock{
-				InitFunc: func(ctx context.Context, name string, config provisioning.ClusterProvisioningConfig) error {
-					return tc.provisionerInitErr
+				InitFunc: func(ctx context.Context, clusterName string, config provisioning.ClusterProvisioningConfig) (string, func() error, error) {
+					return "", func() error { return nil }, tc.provisionerInitErr
 				},
 				ApplyFunc: func(ctx context.Context, cluster provisioning.Cluster) error {
 					return tc.provisionerApplyErr
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, nil, provisioner,
+			clusterSvc := provisioning.NewClusterService(repo, localArtifactRepo, client, serverSvc, nil, provisioner,
 				provisioning.ClusterServiceCreateClusterRetryTimeout(0),
 				provisioning.ClusterServiceUpdateSignal(updateSignal),
 			)
@@ -910,109 +960,6 @@ func TestClusterService_Create(t *testing.T) {
 			require.Empty(t, tc.clientSetServerConfig)
 			require.Empty(t, tc.serverSvcGetByName)
 			require.True(t, signalHandlerCalled, "expected signal handler to called, but it was not OR no call was expected, but it got called")
-		})
-	}
-}
-
-func TestClusterService_GetProvisionerConfigurationArchive(t *testing.T) {
-	tests := []struct {
-		name                      string
-		repoGetByName             *provisioning.Cluster
-		repoGetByNameErr          error
-		provisionerGetArchiveErr  error
-		provisionerGetArchiveRC   io.ReadCloser
-		provisionerGetArchiveSize int
-
-		assertErr require.ErrorAssertionFunc
-		assert    func(t *testing.T, rc io.ReadCloser, size int)
-	}{
-		{
-			name: "success",
-			repoGetByName: &provisioning.Cluster{
-				Status: api.ClusterStatusReady,
-			},
-			provisionerGetArchiveRC:   io.NopCloser(bytes.NewBufferString(`foobar`)),
-			provisionerGetArchiveSize: 6,
-
-			assertErr: require.NoError,
-			assert: func(t *testing.T, rc io.ReadCloser, size int) {
-				t.Helper()
-
-				body, err := io.ReadAll(rc)
-				require.NoError(t, err)
-				require.Equal(t, []byte(`foobar`), body)
-				require.Equal(t, 6, size)
-			},
-		},
-		{
-			name:             "error - repo.GetByName",
-			repoGetByNameErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-			assert: func(t *testing.T, rc io.ReadCloser, size int) {
-				t.Helper()
-
-				require.Nil(t, rc)
-				require.Zero(t, size)
-			},
-		},
-		{
-			name: "error - cluster status not ready",
-			repoGetByName: &provisioning.Cluster{
-				Status: api.ClusterStatusPending,
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted)
-				require.ErrorContains(t, err, "cluster is not in ready state")
-			},
-			assert: func(t *testing.T, rc io.ReadCloser, size int) {
-				t.Helper()
-
-				require.Nil(t, rc)
-				require.Zero(t, size)
-			},
-		},
-		{
-			name: "error - provisioner.GetArchive",
-			repoGetByName: &provisioning.Cluster{
-				Status: api.ClusterStatusReady,
-			},
-			provisionerGetArchiveErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-			assert: func(t *testing.T, rc io.ReadCloser, size int) {
-				t.Helper()
-
-				require.Nil(t, rc)
-				require.Zero(t, size)
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			repo := &mock.ClusterRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Cluster, error) {
-					return tc.repoGetByName, tc.repoGetByNameErr
-				},
-			}
-
-			provisioner := &adapterMock.ClusterProvisioningPortMock{
-				GetArchiveFunc: func(ctx context.Context, name string) (io.ReadCloser, int, error) {
-					return tc.provisionerGetArchiveRC, tc.provisionerGetArchiveSize, tc.provisionerGetArchiveErr
-				},
-			}
-
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, provisioner)
-
-			// Run test
-			rc, size, err := clusterSvc.GetProvisionerConfigurationArchive(context.Background(), "cluster")
-
-			// Assert
-			tc.assertErr(t, err)
-			tc.assert(t, rc, size)
 		})
 	}
 }
@@ -1062,7 +1009,7 @@ func TestClusterService_GetAll(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil)
 
 			// Run test
 			clusters, err := clusterSvc.GetAll(context.Background())
@@ -1188,7 +1135,7 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetAllWithFilter(context.Background(), tc.filter)
@@ -1236,7 +1183,7 @@ func TestClusterService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil)
 
 			// Run test
 			clusterNames, err := clusterSvc.GetAllNames(context.Background())
@@ -1346,7 +1293,7 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil)
 
 			// Run test
 			clusterIDs, err := clusterSvc.GetAllNamesWithFilter(context.Background(), tc.filter)
@@ -1396,7 +1343,7 @@ func TestClusterService_GetByID(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetByName(context.Background(), tc.idArg)
@@ -1454,7 +1401,7 @@ func TestClusterService_GetByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetByName(context.Background(), tc.nameArg)
@@ -1517,7 +1464,7 @@ func TestClusterService_Update(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil)
 
 			// Run test
 			err := clusterSvc.Update(context.Background(), tc.cluster)
@@ -1591,7 +1538,7 @@ func TestClusterService_Rename(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil,
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil,
 				provisioning.ClusterServiceUpdateSignal(updateSignal),
 			)
 
@@ -1804,7 +1751,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, nil, nil,
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil,
 				provisioning.ClusterServiceUpdateSignal(updateSignal),
 			)
 
@@ -1900,7 +1847,7 @@ func TestClusterService_ResyncInventory(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil)
 			clusterSvc.SetInventorySyncers(map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer})
 
 			// Run test
@@ -1951,7 +1898,7 @@ func TestClusterService_ResyncInventoryByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(nil, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(nil, nil, nil, nil, nil, nil)
 			clusterSvc.SetInventorySyncers(map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer})
 
 			// Run test
@@ -2262,7 +2209,7 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, map[domain.ResourceType]provisioning.InventorySyncer{domain.ResourceTypeImage: inventorySyncer}, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, map[domain.ResourceType]provisioning.InventorySyncer{domain.ResourceTypeImage: inventorySyncer}, nil)
 
 			// Run test
 			err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
@@ -2383,7 +2330,7 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer}, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer}, nil)
 
 			// Run test
 			err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
@@ -2518,13 +2465,385 @@ func TestClusterService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, client, serverSvc, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil)
 
 			// Run test
 			err := clusterSvc.UpdateCertificate(context.Background(), "cluster", tc.certificatePEM, tc.keyPEM)
 
 			// Assert
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestClusterService_GetClusterArtifactAll(t *testing.T) {
+	tests := []struct {
+		name                                  string
+		argClusterName                        string
+		artifactsRepoGetClusterArtifactAll    provisioning.ClusterArtifacts
+		artifactsRepoGetClusterArtifactAllErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name:           "success",
+			argClusterName: "cluster",
+			artifactsRepoGetClusterArtifactAll: provisioning.ClusterArtifacts{
+				{
+					ID:      1,
+					Cluster: "cluster",
+					Name:    "one",
+				},
+				{
+					ID:      2,
+					Cluster: "cluster",
+					Name:    "two",
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:           "error - clusterName empty",
+			argClusterName: "", // empty
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+			count: 0,
+		},
+		{
+			name:                                  "error - artifactRepo.GetClusterArtifactAll",
+			argClusterName:                        "cluster",
+			artifactsRepoGetClusterArtifactAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			artifactsRepo := &mock.ClusterArtifactRepoMock{
+				GetClusterArtifactAllFunc: func(ctx context.Context, clusterName string) (provisioning.ClusterArtifacts, error) {
+					return tc.artifactsRepoGetClusterArtifactAll, tc.artifactsRepoGetClusterArtifactAllErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil)
+
+			// Run test
+			artifacts, err := clusterSvc.GetClusterArtifactAll(context.Background(), tc.argClusterName)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, artifacts, tc.count)
+		})
+	}
+}
+
+func TestClusterService_GetClusterArtifactAllNames(t *testing.T) {
+	tests := []struct {
+		name                                       string
+		argClusterName                             string
+		artifactsRepoGetClusterArtifactAllNames    []string
+		artifactsRepoGetClusterArtifactAllNamesErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name:           "success",
+			argClusterName: "cluster",
+			artifactsRepoGetClusterArtifactAllNames: []string{
+				"one", "two",
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:           "error - clusterName empty",
+			argClusterName: "", // empty
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+			count: 0,
+		},
+		{
+			name:           "error - artifactRepo.GetClusterArtifactAllNames",
+			argClusterName: "cluster",
+			artifactsRepoGetClusterArtifactAllNamesErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			artifactsRepo := &mock.ClusterArtifactRepoMock{
+				GetClusterArtifactAllNamesFunc: func(ctx context.Context, clusterName string) ([]string, error) {
+					return tc.artifactsRepoGetClusterArtifactAllNames, tc.artifactsRepoGetClusterArtifactAllNamesErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil)
+
+			// Run test
+			names, err := clusterSvc.GetClusterArtifactAllNames(context.Background(), tc.argClusterName)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, names, tc.count)
+		})
+	}
+}
+
+func TestClusterService_GetClusterArtifactByName(t *testing.T) {
+	tests := []struct {
+		name                                     string
+		argClusterName                           string
+		argArtifactName                          string
+		artifactsRepoGetClusterArtifactByName    *provisioning.ClusterArtifact
+		artifactsRepoGetClusterArtifactByNameErr error
+
+		assertErr require.ErrorAssertionFunc
+		want      *provisioning.ClusterArtifact
+	}{
+		{
+			name:            "success",
+			argClusterName:  "cluster",
+			argArtifactName: "one",
+			artifactsRepoGetClusterArtifactByName: &provisioning.ClusterArtifact{
+				ID:      1,
+				Cluster: "cluster",
+				Name:    "one",
+			},
+
+			assertErr: require.NoError,
+			want: &provisioning.ClusterArtifact{
+				ID:      1,
+				Cluster: "cluster",
+				Name:    "one",
+			},
+		},
+		{
+			name:            "error - clusterName empty",
+			argClusterName:  "", // empty
+			argArtifactName: "one",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
+			name:            "error - artifactName empty",
+			argClusterName:  "cluster",
+			argArtifactName: "", // empty
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
+			name:                                     "error - artifactsRepo.GetClusterArtifactByName",
+			argClusterName:                           "cluster",
+			argArtifactName:                          "one",
+			artifactsRepoGetClusterArtifactByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			artifactsRepo := &mock.ClusterArtifactRepoMock{
+				GetClusterArtifactByNameFunc: func(ctx context.Context, clusterName, artifactName string) (*provisioning.ClusterArtifact, error) {
+					return tc.artifactsRepoGetClusterArtifactByName, tc.artifactsRepoGetClusterArtifactByNameErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil)
+
+			// Run test
+			got, err := clusterSvc.GetClusterArtifactByName(context.Background(), tc.argClusterName, tc.argArtifactName)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestClusterService_GetClusterArtifactFileByName(t *testing.T) {
+	tests := []struct {
+		name                                     string
+		argClusterName                           string
+		argArtifactName                          string
+		argFilename                              string
+		artifactsRepoGetClusterArtifactByName    *provisioning.ClusterArtifact
+		artifactsRepoGetClusterArtifactByNameErr error
+
+		assertErr require.ErrorAssertionFunc
+		want      *provisioning.ClusterArtifactFile
+	}{
+		{
+			name:            "success",
+			argClusterName:  "cluster",
+			argArtifactName: "one",
+			argFilename:     "somefile.txt",
+			artifactsRepoGetClusterArtifactByName: &provisioning.ClusterArtifact{
+				ID:      1,
+				Cluster: "cluster",
+				Name:    "one",
+				Files: provisioning.ClusterArtifactFiles{
+					{
+						Name:     "somefile.txt",
+						MimeType: "text/plain",
+						Size:     10,
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			want: &provisioning.ClusterArtifactFile{
+				Name:     "somefile.txt",
+				MimeType: "text/plain",
+				Size:     10,
+			},
+		},
+		{
+			name:            "error - filename empty",
+			argClusterName:  "cluster",
+			argArtifactName: "one",
+			argFilename:     "", // empty
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
+			name:                                     "error - artifactRepo.GetClusterArtifactByName",
+			argClusterName:                           "cluster",
+			argArtifactName:                          "one",
+			argFilename:                              "somefile.txt",
+			artifactsRepoGetClusterArtifactByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:            "error - file not found",
+			argClusterName:  "cluster",
+			argArtifactName: "one",
+			argFilename:     "somefile.txt",
+			artifactsRepoGetClusterArtifactByName: &provisioning.ClusterArtifact{
+				ID:      1,
+				Cluster: "cluster",
+				Name:    "one",
+				Files: provisioning.ClusterArtifactFiles{
+					{
+						Name:     "otherfile.txt", // filename does not match
+						MimeType: "text/plain",
+						Size:     10,
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrNotFound, a...)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			artifactsRepo := &mock.ClusterArtifactRepoMock{
+				GetClusterArtifactByNameFunc: func(ctx context.Context, clusterName, artifactName string) (*provisioning.ClusterArtifact, error) {
+					return tc.artifactsRepoGetClusterArtifactByName, tc.artifactsRepoGetClusterArtifactByNameErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil)
+
+			// Run test
+			got, err := clusterSvc.GetClusterArtifactFileByName(context.Background(), tc.argClusterName, tc.argArtifactName, tc.argFilename)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestClusterService_GetClusterArtifactArchiveByName(t *testing.T) {
+	tests := []struct {
+		name                                             string
+		argClusterName                                   string
+		argArtifactName                                  string
+		argFilename                                      string
+		artifactsRepoGetClusterArtifactArchiveByNameRC   io.ReadCloser
+		artifactsRepoGetClusterArtifactArchiveByNameSize int
+		artifactsRepoGetClusterArtifactArchiveByNameErr  error
+
+		assertErr require.ErrorAssertionFunc
+		assert    func(t *testing.T, rc io.ReadCloser, size int)
+	}{
+		{
+			name:            "success",
+			argClusterName:  "cluster",
+			argArtifactName: "one",
+			argFilename:     "somefile.txt",
+			artifactsRepoGetClusterArtifactArchiveByNameRC:   io.NopCloser(bytes.NewBufferString(`foobar`)),
+			artifactsRepoGetClusterArtifactArchiveByNameSize: 6,
+
+			assertErr: require.NoError,
+			assert: func(t *testing.T, rc io.ReadCloser, size int) {
+				t.Helper()
+
+				body, err := io.ReadAll(rc)
+				require.NoError(t, err)
+				require.Equal(t, []byte(`foobar`), body)
+				require.Equal(t, 6, size)
+			},
+		},
+		{
+			name: "error - artifactsRepo.GetClusterArtifactArchiveByNameFunc",
+			artifactsRepoGetClusterArtifactArchiveByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assert: func(t *testing.T, rc io.ReadCloser, size int) {
+				t.Helper()
+
+				require.Nil(t, rc)
+				require.Zero(t, size)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			artifactsRepo := &mock.ClusterArtifactRepoMock{
+				GetClusterArtifactArchiveByNameFunc: func(ctx context.Context, clusterName, artifactName string, archiveType provisioning.ClusterArtifactArchiveType) (io.ReadCloser, int, error) {
+					return tc.artifactsRepoGetClusterArtifactArchiveByNameRC, tc.artifactsRepoGetClusterArtifactArchiveByNameSize, tc.artifactsRepoGetClusterArtifactArchiveByNameErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil)
+
+			zipArchiveType, ok := provisioning.ClusterArtifactArchiveTypes[provisioning.ClusterArtifactArchiveTypeExtZip]
+			require.True(t, ok)
+
+			// Run test
+			rc, size, err := clusterSvc.GetClusterArtifactArchiveByName(context.Background(), tc.argClusterName, tc.argArtifactName, zipArchiveType)
+
+			// Assert
+			tc.assertErr(t, err)
+			tc.assert(t, rc, size)
 		})
 	}
 }

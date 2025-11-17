@@ -138,6 +138,76 @@ func (_d ClusterServiceWithPrometheus) GetByName(ctx context.Context, name strin
 	return _d.base.GetByName(ctx, name)
 }
 
+// GetClusterArtifactAll implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) GetClusterArtifactAll(ctx context.Context, clusterName string) (clusterArtifacts provisioning.ClusterArtifacts, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetClusterArtifactAll", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetClusterArtifactAll(ctx, clusterName)
+}
+
+// GetClusterArtifactAllNames implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) GetClusterArtifactAllNames(ctx context.Context, clusterName string) (strings []string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetClusterArtifactAllNames", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetClusterArtifactAllNames(ctx, clusterName)
+}
+
+// GetClusterArtifactArchiveByName implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType provisioning.ClusterArtifactArchiveType) (readCloser io.ReadCloser, size int, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetClusterArtifactArchiveByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetClusterArtifactArchiveByName(ctx, clusterName, artifactName, archiveType)
+}
+
+// GetClusterArtifactByName implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (clusterArtifact *provisioning.ClusterArtifact, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetClusterArtifactByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetClusterArtifactByName(ctx, clusterName, artifactName)
+}
+
+// GetClusterArtifactFileByName implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) GetClusterArtifactFileByName(ctx context.Context, clusterName string, artifactName string, filename string) (clusterArtifactFile *provisioning.ClusterArtifactFile, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetClusterArtifactFileByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetClusterArtifactFileByName(ctx, clusterName, artifactName, filename)
+}
+
 // GetEndpoint implements provisioning.ClusterService.
 func (_d ClusterServiceWithPrometheus) GetEndpoint(ctx context.Context, name string) (endpoint provisioning.Endpoint, err error) {
 	_since := time.Now()
@@ -150,20 +220,6 @@ func (_d ClusterServiceWithPrometheus) GetEndpoint(ctx context.Context, name str
 		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetEndpoint", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetEndpoint(ctx, name)
-}
-
-// GetProvisionerConfigurationArchive implements provisioning.ClusterService.
-func (_d ClusterServiceWithPrometheus) GetProvisionerConfigurationArchive(ctx context.Context, name string) (readCloser io.ReadCloser, size int, err error) {
-	_since := time.Now()
-	defer func() {
-		result := "ok"
-		if err != nil {
-			result = "error"
-		}
-
-		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetProvisionerConfigurationArchive", result).Observe(time.Since(_since).Seconds())
-	}()
-	return _d.base.GetProvisionerConfigurationArchive(ctx, name)
 }
 
 // Rename implements provisioning.ClusterService.

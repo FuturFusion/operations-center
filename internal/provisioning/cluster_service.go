@@ -3,6 +3,7 @@ package provisioning
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"iter"
@@ -24,6 +25,7 @@ import (
 
 type clusterService struct {
 	repo             ClusterRepo
+	localartifact    ClusterArtifactRepo
 	client           ClusterClientPort
 	serverSvc        ServerService
 	inventorySyncers map[domain.ResourceType]InventorySyncer
@@ -55,6 +57,7 @@ func ClusterServiceUpdateSignal(updateSignal signals.Signal[ClusterUpdateMessage
 
 func NewClusterService(
 	repo ClusterRepo,
+	localartifact ClusterArtifactRepo,
 	client ClusterClientPort,
 	serverSvc ServerService,
 	inventorySyncers map[domain.ResourceType]InventorySyncer,
@@ -63,6 +66,7 @@ func NewClusterService(
 ) *clusterService {
 	clusterSvc := &clusterService{
 		repo:             repo,
+		localartifact:    localartifact,
 		client:           client,
 		serverSvc:        serverSvc,
 		inventorySyncers: inventorySyncers,
@@ -114,8 +118,8 @@ func (s *clusterService) SetInventorySyncers(inventorySyncers map[domain.Resourc
 //     Create an "internal" network bridge on each server.
 //     Update the default profile in the default project to use incusbr0 for networking.
 //     Update the default profile in the internal project to use internal-mesh for networking.
-func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster, error) {
-	err := newCluster.ValidateCreate()
+func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Cluster, err error) {
+	err = newCluster.ValidateCreate()
 	if err != nil {
 		return Cluster{}, err
 	}
@@ -337,7 +341,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	}
 
 	// Perform post-clustering initialization using provisioner (Terraform).
-	err = s.provisioner.Init(ctx, newCluster.Name, ClusterProvisioningConfig{
+	temporaryPath, cleanup, err := s.provisioner.Init(ctx, newCluster.Name, ClusterProvisioningConfig{
 		ClusterEndpoint:       clusterEndpoint,
 		Servers:               servers,
 		ApplicationSeedConfig: newCluster.ApplicationSeedConfig,
@@ -346,7 +350,20 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 		return newCluster, err
 	}
 
+	defer func() {
+		err = errors.Join(err, cleanup())
+	}()
+
 	err = s.provisioner.Apply(ctx, newCluster)
+	if err != nil {
+		return newCluster, err
+	}
+
+	_, err = s.localartifact.CreateClusterArtifactFromPath(ctx, ClusterArtifact{
+		Cluster:     newCluster.Name,
+		Name:        "terraform-configuration",
+		Description: "Initial terraform configuration used for post-clustering.",
+	}, temporaryPath)
 	if err != nil {
 		return newCluster, err
 	}
@@ -357,24 +374,6 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (Cluster
 	})
 
 	return newCluster, nil
-}
-
-func (s clusterService) GetProvisionerConfigurationArchive(ctx context.Context, name string) (_ io.ReadCloser, size int, _ error) {
-	cluster, err := s.repo.GetByName(ctx, name)
-	if err != nil {
-		return nil, 0, fmt.Errorf("Failed to query cluster %q from repo: %w", name, err)
-	}
-
-	if cluster.Status != api.ClusterStatusReady {
-		return nil, 0, fmt.Errorf("Failed to get provisioner configuration archive, cluster is not in ready state: %w", domain.ErrOperationNotPermitted)
-	}
-
-	rc, size, err := s.provisioner.GetArchive(ctx, name)
-	if err != nil {
-		return nil, 0, fmt.Errorf("Failed to get provisioner configuration archive: %w", err)
-	}
-
-	return rc, size, nil
 }
 
 func (s clusterService) GetAll(ctx context.Context) (Clusters, error) {
@@ -810,4 +809,60 @@ func (s clusterService) GetEndpoint(ctx context.Context, name string) (Endpoint,
 	}
 
 	return ClusterEndpoint(servers), nil
+}
+
+func (s clusterService) GetClusterArtifactAll(ctx context.Context, clusterName string) (ClusterArtifacts, error) {
+	if clusterName == "" {
+		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	return s.localartifact.GetClusterArtifactAll(ctx, clusterName)
+}
+
+func (s clusterService) GetClusterArtifactAllNames(ctx context.Context, clusterName string) ([]string, error) {
+	if clusterName == "" {
+		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	return s.localartifact.GetClusterArtifactAllNames(ctx, clusterName)
+}
+
+func (s clusterService) GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (*ClusterArtifact, error) {
+	if clusterName == "" {
+		return nil, fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	if artifactName == "" {
+		return nil, fmt.Errorf("Cluster artifact name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	return s.localartifact.GetClusterArtifactByName(ctx, clusterName, artifactName)
+}
+
+func (s clusterService) GetClusterArtifactFileByName(ctx context.Context, clusterName string, artifactName string, filename string) (*ClusterArtifactFile, error) {
+	if filename == "" {
+		return nil, fmt.Errorf("Filename cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	artifact, err := s.GetClusterArtifactByName(ctx, clusterName, artifactName)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get artifact %q for cluster %q: %w", artifactName, clusterName, err)
+	}
+
+	for _, file := range artifact.Files {
+		if file.Name == filename {
+			return &file, nil
+		}
+	}
+
+	return nil, fmt.Errorf("File %q not found in artifact %q for cluster %q: %w", filename, artifactName, clusterName, domain.ErrNotFound)
+}
+
+func (s clusterService) GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType ClusterArtifactArchiveType) (_ io.ReadCloser, size int, _ error) {
+	rc, size, err := s.localartifact.GetClusterArtifactArchiveByName(ctx, clusterName, artifactName, archiveType)
+	if err != nil {
+		return nil, 0, fmt.Errorf("Failed to get artifact %q for cluster %q: %w", artifactName, clusterName, err)
+	}
+
+	return rc, size, nil
 }

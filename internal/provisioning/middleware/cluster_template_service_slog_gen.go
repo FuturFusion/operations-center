@@ -9,7 +9,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/lxc/incus/v6/shared/api"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 // ClusterTemplateServiceWithSlog implements provisioning.ClusterTemplateService that is instrumented with slog logger.

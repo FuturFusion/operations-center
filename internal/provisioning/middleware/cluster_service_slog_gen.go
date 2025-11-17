@@ -287,6 +287,187 @@ func (_d ClusterServiceWithSlog) GetByName(ctx context.Context, name string) (cl
 	return _d._base.GetByName(ctx, name)
 }
 
+// GetClusterArtifactAll implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) GetClusterArtifactAll(ctx context.Context, clusterName string) (clusterArtifacts provisioning.ClusterArtifacts, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetClusterArtifactAll")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("clusterArtifacts", clusterArtifacts),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetClusterArtifactAll returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetClusterArtifactAll returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetClusterArtifactAll finished")
+		}
+	}()
+	return _d._base.GetClusterArtifactAll(ctx, clusterName)
+}
+
+// GetClusterArtifactAllNames implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) GetClusterArtifactAllNames(ctx context.Context, clusterName string) (strings []string, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetClusterArtifactAllNames")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("strings", strings),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetClusterArtifactAllNames returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetClusterArtifactAllNames returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetClusterArtifactAllNames finished")
+		}
+	}()
+	return _d._base.GetClusterArtifactAllNames(ctx, clusterName)
+}
+
+// GetClusterArtifactArchiveByName implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) GetClusterArtifactArchiveByName(ctx context.Context, clusterName string, artifactName string, archiveType provisioning.ClusterArtifactArchiveType) (readCloser io.ReadCloser, size int, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.String("artifactName", artifactName),
+			slog.Any("archiveType", archiveType),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetClusterArtifactArchiveByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("readCloser", readCloser),
+				slog.Int("size", size),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetClusterArtifactArchiveByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetClusterArtifactArchiveByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetClusterArtifactArchiveByName finished")
+		}
+	}()
+	return _d._base.GetClusterArtifactArchiveByName(ctx, clusterName, artifactName, archiveType)
+}
+
+// GetClusterArtifactByName implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (clusterArtifact *provisioning.ClusterArtifact, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.String("artifactName", artifactName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetClusterArtifactByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("clusterArtifact", clusterArtifact),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetClusterArtifactByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetClusterArtifactByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetClusterArtifactByName finished")
+		}
+	}()
+	return _d._base.GetClusterArtifactByName(ctx, clusterName, artifactName)
+}
+
+// GetClusterArtifactFileByName implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) GetClusterArtifactFileByName(ctx context.Context, clusterName string, artifactName string, filename string) (clusterArtifactFile *provisioning.ClusterArtifactFile, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("clusterName", clusterName),
+			slog.String("artifactName", artifactName),
+			slog.String("filename", filename),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetClusterArtifactFileByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("clusterArtifactFile", clusterArtifactFile),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetClusterArtifactFileByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetClusterArtifactFileByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetClusterArtifactFileByName finished")
+		}
+	}()
+	return _d._base.GetClusterArtifactFileByName(ctx, clusterName, artifactName, filename)
+}
+
 // GetEndpoint implements provisioning.ClusterService.
 func (_d ClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (endpoint provisioning.Endpoint, err error) {
 	log := _d._log.With()
@@ -320,42 +501,6 @@ func (_d ClusterServiceWithSlog) GetEndpoint(ctx context.Context, name string) (
 		}
 	}()
 	return _d._base.GetEndpoint(ctx, name)
-}
-
-// GetProvisionerConfigurationArchive implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) GetProvisionerConfigurationArchive(ctx context.Context, name string) (readCloser io.ReadCloser, size int, err error) {
-	log := _d._log.With()
-	if _d._log.Enabled(ctx, logger.LevelTrace) {
-		log = log.With(
-			slog.Any("ctx", ctx),
-			slog.String("name", name),
-		)
-	}
-	log.DebugContext(ctx, "=> calling GetProvisionerConfigurationArchive")
-	defer func() {
-		log := _d._log.With()
-		if _d._log.Enabled(ctx, logger.LevelTrace) {
-			log = _d._log.With(
-				slog.Any("readCloser", readCloser),
-				slog.Int("size", size),
-				slog.Any("err", err),
-			)
-		} else {
-			if err != nil {
-				log = _d._log.With("err", err)
-			}
-		}
-		if err != nil {
-			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetProvisionerConfigurationArchive returned an informative error")
-			} else {
-				log.ErrorContext(ctx, "<= method GetProvisionerConfigurationArchive returned an error")
-			}
-		} else {
-			log.DebugContext(ctx, "<= method GetProvisionerConfigurationArchive finished")
-		}
-	}()
-	return _d._base.GetProvisionerConfigurationArchive(ctx, name)
 }
 
 // Rename implements provisioning.ClusterService.
