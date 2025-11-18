@@ -1,0 +1,57 @@
+name: Daily
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api-tests:
+    name: Operations Center End-to-End System Tests
+    strategy:
+      fail-fast: false
+    timeout-minutes: 120
+    runs-on:
+      - self-hosted
+      - cpu-8
+      - mem-20G
+      - disk-200G
+      - arch-amd64
+      - image-debian-13
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'oldstable'
+
+      - name: Setup Incus
+        run: |
+          apt install -y curl jq make build-essential systemd-timesyncd
+          curl https://pkgs.zabbly.com/get/incus-stable | sudo sh
+          sudo chmod 666 /var/lib/incus/unix.socket
+          incus admin init --auto
+          incus remote generate-certificate
+
+      - name: Build binaries
+        run: |
+          go version
+          mkdir -p ./bin
+          CGO_ENABLED=0 GOARCH=amd64 go build -o ./bin/operations-center.linux.amd64 ./cmd/operations-center
+          go build -o ./bin/operations-centerd ./cmd/operations-centerd
+
+      - name: Run End-to-End Tests
+        env:
+          OPERATIONS_CENTER_E2E_TEST: "true"
+        run: |
+          set -o pipefail
+          go test -v ./e2e_tests -timeout 120m | tee e2e_tests.out
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          cat e2e_tests.out && false
