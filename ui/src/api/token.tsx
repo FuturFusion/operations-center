@@ -1,4 +1,4 @@
-import { Token, TokenSeed } from "types/token";
+import { Token, TokenSeed, YamlValue } from "types/token";
 import { APIResponse } from "types/response";
 import { processResponse } from "util/response";
 
@@ -14,6 +14,15 @@ export const fetchTokens = (): Promise<Token[]> => {
 export const fetchToken = (uuid: string): Promise<Token> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/tokens/${uuid}`)
+      .then((response) => response.json())
+      .then((data) => resolve(data.metadata))
+      .catch(reject);
+  });
+};
+
+export const fetchTokenProviderConfig = (uuid: string): Promise<YamlValue> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/tokens/${uuid}/provider-config`)
       .then((response) => response.json())
       .then((data) => resolve(data.metadata))
       .catch(reject);
