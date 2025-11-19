@@ -31,11 +31,19 @@ jobs:
 
       - name: Setup Incus
         run: |
-          apt install -y curl jq make build-essential systemd-timesyncd
+          apt install -y curl jq make build-essential systemd-timesyncd unzip
           curl https://pkgs.zabbly.com/get/incus-stable | sudo sh
           sudo chmod 666 /var/lib/incus/unix.socket
           incus admin init --auto
           incus remote generate-certificate
+
+      - name: Install opentofu
+        run: |
+          curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
+          chmod +x install-opentofu.sh
+          ./install-opentofu.sh --install-method deb
+          rm -f install-opentofu.sh
+          tofu -version
 
       - name: Build binaries
         run: |
