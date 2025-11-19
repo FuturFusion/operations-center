@@ -55,6 +55,20 @@ export const createCluster = (body: string): Promise<APIResponse<null>> => {
   });
 };
 
+export const deleteCluster = (
+  name: string,
+  mode: string,
+): Promise<APIResponse<object>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/clusters/${name}?mode=${mode}`, {
+      method: "DELETE",
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
 export const resyncClusterInventory = (
   name: string,
 ): Promise<APIResponse<null>> => {
