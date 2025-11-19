@@ -20,3 +20,17 @@ export interface ClusterCertFormValues {
   cluster_certificate: string;
   cluster_certificate_key: string;
 }
+
+export interface ClusterArtifactFile {
+  name: string;
+  mime_type: string;
+  size: number;
+}
+
+export interface ClusterArtifact {
+  name: string;
+  description: string;
+  properties: YamlValue;
+  files: ClusterArtifactFile[];
+  last_updated: string;
+}
