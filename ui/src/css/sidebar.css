@@ -1,5 +1,6 @@
 nav {
-  width: 240px;
+  width: 220px;
+  min-width: 220px;
 }
 
 .navbar-nav li:hover {
