@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
-import { fetchToken } from "api/token";
+import { fetchToken, fetchTokenProviderConfig } from "api/token";
 import { formatDate } from "util/date";
+import YAML from "yaml";
 
 const TokenOverview = () => {
   const { uuid } = useParams();
@@ -13,6 +14,11 @@ const TokenOverview = () => {
   } = useQuery({
     queryKey: ["tokens", uuid],
     queryFn: () => fetchToken(uuid || ""),
+  });
+
+  const { data: providerConfig = null } = useQuery({
+    queryKey: ["tokens", uuid, "provider-config"],
+    queryFn: () => fetchTokenProviderConfig(uuid || ""),
   });
 
   if (isLoading) {
@@ -42,6 +48,14 @@ const TokenOverview = () => {
       <div className="row">
         <div className="col-2 detail-table-header">Remaining uses</div>
         <div className="col-10 detail-table-cell">{token?.uses_remaining}</div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Provider config</div>
+        <div className="col-10 detail-table-cell">
+          <pre>
+            {providerConfig ? YAML.stringify(providerConfig, null, 2) : ""}
+          </pre>
+        </div>
       </div>
     </div>
   );
