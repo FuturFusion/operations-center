@@ -1,4 +1,4 @@
-import { FC } from "react";
+import { FC, KeyboardEvent } from "react";
 import { Form } from "react-bootstrap";
 import { FormikErrors, useFormik } from "formik";
 import { useNotification } from "context/notificationContext";
@@ -94,6 +94,14 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
     },
   });
 
+  // Explicit handler for Ctrl+A, since Firefox does not handle this shortcut properly.
+  const handleServersKeyDown = (e: KeyboardEvent<HTMLSelectElement>) => {
+    if (e.ctrlKey && e.key === "a") {
+      e.preventDefault();
+      formik.setFieldValue("server_names", servers?.map((s) => s.name) ?? []);
+    }
+  };
+
   return (
     <div className="form-container">
       <div>
@@ -142,6 +150,7 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
                 );
                 formik.setFieldValue("server_names", selected);
               }}
+              onKeyDown={handleServersKeyDown}
               isInvalid={
                 !!formik.errors.server_names && formik.touched.server_names
               }
