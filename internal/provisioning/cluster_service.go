@@ -363,7 +363,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 		Cluster:     newCluster.Name,
 		Name:        "terraform-configuration",
 		Description: "Initial terraform configuration used for post-clustering.",
-	}, temporaryPath)
+	}, temporaryPath, []string{".terraform.lock.hcl"})
 	if err != nil {
 		return newCluster, err
 	}
