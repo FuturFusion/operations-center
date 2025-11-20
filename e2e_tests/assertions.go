@@ -99,3 +99,37 @@ func assertInventory(t *testing.T) {
 
 	require.True(t, success, "inventory assertions failed")
 }
+
+func assertTerraformArtifact(t *testing.T) {
+	t.Helper()
+
+	var resp cmdResponse
+	var err error
+	success := true
+
+	tmpDir := t.TempDir()
+
+	t.Log("List cluster artifacts")
+	resp, err = run(t, `../bin/operations-center.linux.%s provisioning cluster artifact list incus-os-cluster -f json | jq -r -e '[ .[] | select(.cluster == "incus-os-cluster") ] | length == 1'`, cpuArch)
+	require.NoError(t, err, "expect 1 artifact for cluster incus-os-cluster: terraform-cofiguration")
+	if !resp.Success() {
+		success = false
+		fmt.Println("====[ Cluster List ]====")
+		resp := mustRun(t, "../bin/operations-center.linux.%s provisioning cluster artifact list incus-os-cluster", cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	require.True(t, success, "terraform artifact assertion failed")
+
+	t.Log("Fetch terraform-configuration cluster artifact")
+	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster artifact archive incus-os-cluster terraform-configuration %s/terraform.zip`, cpuArch, tmpDir)
+
+	t.Log("Uncompress terraform-configuration cluster artifact")
+	mustRun(t, `unzip %[1]s/terraform.zip -d %[1]s`, tmpDir)
+
+	t.Log("Terrafrom init")
+	mustRun(t, `tofu -chdir=%s init`, tmpDir)
+
+	t.Log("Terraform plan")
+	mustRun(t, `tofu -chdir=%s plan`, tmpDir)
+}

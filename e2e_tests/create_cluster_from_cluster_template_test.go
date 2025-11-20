@@ -55,4 +55,6 @@ func createClusterFromTemplate(t *testing.T, tmpDir string) {
 	// Assertions
 	assertIncusRemote(t, firstInstanceIP)
 	assertInventory(t)
+	assertTerraformArtifact(t)
+	assertWebsocketEventsInventoryUpdate(t)
 }

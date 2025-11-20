@@ -54,8 +54,17 @@ incus exec e2e -- bash
 
 ```shell
 apt update
-apt install -y curl jq golang git make
+apt install -y curl jq golang git make build-essential systemd-timesyncd unzip
 curl https://pkgs.zabbly.com/get/incus-stable | sudo sh
+curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
+chmod +x install-opentofu.sh
+./install-opentofu.sh --install-method deb
+rm -f install-opentofu.sh
+```
+
+Get the source code and build the Operations Center binaries:
+
+```shell
 git clone https://github.com/FuturFusion/operations-center.git
 cd operations-center
 go get -v ./...
