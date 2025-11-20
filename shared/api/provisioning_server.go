@@ -175,6 +175,9 @@ type OSData struct {
 
 	// Security contains the security data of the server OS, in the same form as presented by IncusOS in the security API.
 	Security incusosapi.SystemSecurity `json:"security" yaml:"security"`
+
+	// Storage contains the storage data of the server OS, in the same form as presented by IncusOS in the storage API.
+	Storage incusosapi.SystemStorage `json:"storage" yaml:"storage"`
 }
 
 // Value implements the sql driver.Valuer interface.
