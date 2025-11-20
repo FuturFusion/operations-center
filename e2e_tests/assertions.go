@@ -133,3 +133,25 @@ func assertTerraformArtifact(t *testing.T) {
 	t.Log("Terraform plan")
 	mustRun(t, `tofu -chdir=%s plan`, tmpDir)
 }
+
+func assertWebsocketEventsInventoryUpdate(t *testing.T) {
+	t.Helper()
+
+	var resp cmdResponse
+	success := true
+
+	t.Log("Launch instance to trigger websocket event")
+	mustRun(t, `incus launch images:alpine/edge incus-os-cluster:c1`)
+
+	t.Log("Wait for inventory update")
+	ok, err := waitForSuccessWithTimeout(t, "instance list", `../bin/operations-center.linux.%s inventory instance list -f json | jq -r -e '[ .[] | select(.cluster == "incus-os-cluster") | .name ] | length == 1'`, 30*time.Second, cpuArch)
+	require.NoError(t, err, "expect 1 instance: c1")
+	if !ok {
+		success = false
+		fmt.Println("====[ Instance List ]====")
+		resp = mustRun(t, "../bin/operations-center.linux.%s inventory instance list", cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	require.True(t, success, "inventory assertions failed after websocket events")
+}

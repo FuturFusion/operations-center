@@ -206,6 +206,44 @@ func runWithContext(ctx context.Context, t *testing.T, command string, args ...a
 	return resp, nil
 }
 
+// mustWaitAgentRunningContext waits for the incus agent to be running inside
+// the given VM.
+func waitForSuccessWithTimeout(t *testing.T, desc string, command string, timeout time.Duration, args ...any) (success bool, err error) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(timeout))
+	defer cancel()
+
+	count := 0
+	for {
+		resp, err := run(t, command, args...)
+		if err != nil {
+			return false, err
+		}
+
+		if resp.Success() {
+			break
+		}
+
+		if count%10 == 0 {
+			t.Logf("Waiting %ds for %q", count, desc)
+		}
+
+		count++
+
+		select {
+		case <-ctx.Done():
+			return false, nil
+
+		case <-time.After(1 * time.Second):
+		}
+	}
+
+	t.Logf("Success %q after %ds", desc, count)
+
+	return true, nil
+}
+
 // mustWaitAgentRunning waits for the incus agent to be running inside the
 // given VM. The test is failed on error.
 func mustWaitAgentRunning(t *testing.T, vm string, args ...any) {

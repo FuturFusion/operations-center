@@ -37,4 +37,5 @@ func createCluster(t *testing.T, tmpDir string) {
 	assertIncusRemote(t, instanceIPs[0])
 	assertInventory(t)
 	assertTerraformArtifact(t)
+	assertWebsocketEventsInventoryUpdate(t)
 }
