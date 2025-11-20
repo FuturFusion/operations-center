@@ -7,6 +7,7 @@ import TokenSeedImageForm from "components/TokenSeedImageForm";
 import { useNotification } from "context/notificationContext";
 import { TokenSeed } from "types/token";
 import { TokenSeedImageFormValues } from "types/token";
+import { downloadFile } from "util/util";
 
 interface Props {
   seed: TokenSeed;
@@ -46,14 +47,9 @@ const TokenSeedDownloadModal: FC<Props> = ({
         values.type,
         values.architecture,
       );
+      const filename = `${seed.name}.${(values as TokenSeedImageFormValues).type}`;
 
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${seed.name}.${(values as TokenSeedImageFormValues).type}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      downloadFile(url, filename);
     } catch (error) {
       notify.error(`Error during image downloading: ${error}`);
     }

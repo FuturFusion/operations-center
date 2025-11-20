@@ -7,6 +7,7 @@ import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { Token } from "types/token";
 import { TokenImageFormValues } from "types/token";
+import { downloadFile } from "util/util";
 import YAML from "yaml";
 
 interface Props {
@@ -104,14 +105,9 @@ const TokenDownloadModal: FC<Props> = ({
         token.uuid,
         JSON.stringify(values, null, 2),
       );
+      const filename = `${token.uuid}.${(values as TokenImageFormValues).type}`;
 
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${token.uuid}.${(values as TokenImageFormValues).type}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      downloadFile(url, filename);
     } catch (error) {
       notify.error(`Error during image downloading: ${error}`);
     }
