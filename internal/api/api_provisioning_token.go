@@ -434,10 +434,11 @@ func (t *tokenHandler) tokenImagePost(r *http.Request) response.Response {
 
 	rc, err := t.service.GetPreSeedImage(r.Context(), UUID, tokenImagePost.Type, tokenImagePost.Architecture, provisioning.TokenImageSeedConfigs{
 		Applications:     tokenImagePost.Seeds.Applications,
+		Incus:            tokenImagePost.Seeds.Incus,
+		Install:          tokenImagePost.Seeds.Install,
 		MigrationManager: tokenImagePost.Seeds.MigrationManager,
 		Network:          tokenImagePost.Seeds.Network,
 		OperationsCenter: tokenImagePost.Seeds.OperationsCenter,
-		Install:          tokenImagePost.Seeds.Install,
 	})
 	if err != nil {
 		return response.SmartError(err)
@@ -548,10 +549,11 @@ func (t *tokenHandler) tokenSeedsPost(r *http.Request) response.Response {
 		Public:      tokenSeedsPost.Public,
 		Seeds: provisioning.TokenImageSeedConfigs{
 			Applications:     tokenSeedsPost.Seeds.Applications,
+			Incus:            tokenSeedsPost.Seeds.Incus,
+			Install:          tokenSeedsPost.Seeds.Install,
 			MigrationManager: tokenSeedsPost.Seeds.MigrationManager,
 			Network:          tokenSeedsPost.Seeds.Network,
 			OperationsCenter: tokenSeedsPost.Seeds.OperationsCenter,
-			Install:          tokenSeedsPost.Seeds.Install,
 		},
 	})
 	if err != nil {
@@ -673,10 +675,11 @@ func (t *tokenHandler) tokenSeedsGet(r *http.Request) response.Response {
 						Public:      tokenSeed.Public,
 						Seeds: api.TokenSeedConfigs{
 							Applications:     tokenSeed.Seeds.Applications,
+							Incus:            tokenSeed.Seeds.Incus,
+							Install:          tokenSeed.Seeds.Install,
 							MigrationManager: tokenSeed.Seeds.MigrationManager,
 							Network:          tokenSeed.Seeds.Network,
 							OperationsCenter: tokenSeed.Seeds.OperationsCenter,
-							Install:          tokenSeed.Seeds.Install,
 						},
 					},
 				},
@@ -793,10 +796,11 @@ func (t *tokenHandler) tokenSeedGet(r *http.Request) response.Response {
 						Public:      seedConfig.Public,
 						Seeds: api.TokenSeedConfigs{
 							Applications:     seedConfig.Seeds.Applications,
+							Incus:            seedConfig.Seeds.Incus,
+							Install:          seedConfig.Seeds.Install,
 							MigrationManager: seedConfig.Seeds.MigrationManager,
 							Network:          seedConfig.Seeds.Network,
 							OperationsCenter: seedConfig.Seeds.OperationsCenter,
-							Install:          seedConfig.Seeds.Install,
 						},
 					},
 				},
@@ -898,10 +902,11 @@ func (t *tokenHandler) tokenSeedPut(r *http.Request) response.Response {
 		Public:      tokenSeed.Public,
 		Seeds: provisioning.TokenImageSeedConfigs{
 			Applications:     tokenSeed.Seeds.Applications,
+			Incus:            tokenSeed.Seeds.Incus,
+			Install:          tokenSeed.Seeds.Install,
 			MigrationManager: tokenSeed.Seeds.MigrationManager,
 			Network:          tokenSeed.Seeds.Network,
 			OperationsCenter: tokenSeed.Seeds.OperationsCenter,
-			Install:          tokenSeed.Seeds.Install,
 		},
 	})
 	if err != nil {
