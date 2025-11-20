@@ -7,6 +7,7 @@ import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { Token } from "types/token";
 import { TokenImageFormValues } from "types/token";
+import { downloadFile } from "util/util";
 import YAML from "yaml";
 
 interface Props {
@@ -28,6 +29,7 @@ const TokenDownloadModal: FC<Props> = ({
     type: "iso",
     seeds: {
       application: "",
+      secondary_applications: [],
       migration_manager: "",
       operations_center: "",
       install: {
@@ -70,11 +72,21 @@ const TokenDownloadModal: FC<Props> = ({
         return;
       }
 
+      let applications = [{ name: values.seeds.application }];
+      if (values.seeds.application == "incus") {
+        applications = [
+          ...applications,
+          ...values.seeds.secondary_applications.map((app) => {
+            return { name: app };
+          }),
+        ];
+      }
+
       handleClose();
       download({
         ...values,
         seeds: {
-          applications: { applications: [{ name: values.seeds.application }] },
+          applications: { applications: applications },
           install: values.seeds.install,
           network: parsedNetwork,
           migration_manager: parsedMigrationManager,
@@ -93,14 +105,9 @@ const TokenDownloadModal: FC<Props> = ({
         token.uuid,
         JSON.stringify(values, null, 2),
       );
+      const filename = `${token.uuid}.${(values as TokenImageFormValues).type}`;
 
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${token.uuid}.${(values as TokenImageFormValues).type}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      downloadFile(url, filename);
     } catch (error) {
       notify.error(`Error during image downloading: ${error}`);
     }
