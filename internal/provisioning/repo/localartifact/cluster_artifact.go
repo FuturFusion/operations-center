@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/lxc/incus/v6/shared/revert"
@@ -79,7 +80,7 @@ func (c clusterArtifact) registerUpdateSignalHandler(clusterUpdateSignal signals
 	})
 }
 
-func (c clusterArtifact) CreateClusterArtifactFromPath(ctx context.Context, in provisioning.ClusterArtifact, path string) (int64, error) {
+func (c clusterArtifact) CreateClusterArtifactFromPath(ctx context.Context, in provisioning.ClusterArtifact, path string, ignoredFiles []string) (int64, error) {
 	if in.Cluster == "" {
 		return 0, fmt.Errorf("Failed to create cluster artifact from path, cluster name can not be empty: %w", domain.ErrConstraintViolation)
 	}
@@ -108,6 +109,10 @@ func (c clusterArtifact) CreateClusterArtifactFromPath(ctx context.Context, in p
 		for _, entry := range dirEntries {
 			if entry.IsDir() || !entry.Type().IsRegular() {
 				// Only regular files are added to the artifact.
+				continue
+			}
+
+			if slices.Contains(ignoredFiles, entry.Name()) {
 				continue
 			}
 
