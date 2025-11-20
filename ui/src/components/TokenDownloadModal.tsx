@@ -28,6 +28,7 @@ const TokenDownloadModal: FC<Props> = ({
     type: "iso",
     seeds: {
       application: "",
+      secondary_applications: [],
       migration_manager: "",
       operations_center: "",
       install: {
@@ -70,11 +71,21 @@ const TokenDownloadModal: FC<Props> = ({
         return;
       }
 
+      let applications = [{ name: values.seeds.application }];
+      if (values.seeds.application == "incus") {
+        applications = [
+          ...applications,
+          ...values.seeds.secondary_applications.map((app) => {
+            return { name: app };
+          }),
+        ];
+      }
+
       handleClose();
       download({
         ...values,
         seeds: {
-          applications: { applications: [{ name: values.seeds.application }] },
+          applications: { applications: applications },
           install: values.seeds.install,
           network: parsedNetwork,
           migration_manager: parsedMigrationManager,

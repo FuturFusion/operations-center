@@ -1,9 +1,14 @@
 import { FC } from "react";
 import { Button, Form } from "react-bootstrap";
 import { FormikErrors, useFormik } from "formik";
+import SecondaryIncusSelect from "components/SecondaryIncusSelect";
 import { useNotification } from "context/notificationContext";
-import { TokenSeed, TokenSeedFormValues } from "types/token";
-import { applicationsOptions } from "util/util";
+import {
+  TokenSeed,
+  TokenSeedApplication,
+  TokenSeedFormValues,
+} from "types/token";
+import { applicationsOptions, secondaryIncusAppOptions } from "util/util";
 import YAML from "yaml";
 
 interface Props {
@@ -19,11 +24,24 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
     public: false,
     seeds: {
       application: "",
+      secondary_applications: [],
       migration_manager: "",
       operations_center: "",
       install: "",
       network: "",
     },
+  };
+
+  const getMainApplication = (apps: TokenSeedApplication[]): string => {
+    return apps.find((app) => app.name in applicationsOptions)?.name ?? "";
+  };
+
+  const getSecondaryApplications = (apps: TokenSeedApplication[]): string[] => {
+    return (
+      apps
+        .filter((app) => app.name in secondaryIncusAppOptions)
+        .map((a) => a.name) ?? []
+    );
   };
 
   if (seed) {
@@ -32,7 +50,12 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
       description: seed.description,
       public: seed.public,
       seeds: {
-        application: seed.seeds.applications?.applications?.[0]?.name || "",
+        application: getMainApplication(
+          seed.seeds.applications?.applications ?? [],
+        ),
+        secondary_applications: getSecondaryApplications(
+          seed.seeds.applications?.applications ?? [],
+        ),
         migration_manager: seed.seeds.migration_manager
           ? YAML.stringify(seed.seeds.migration_manager)
           : "",
@@ -77,11 +100,21 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
         return;
       }
 
+      let applications = [{ name: values.seeds.application }];
+      if (values.seeds.application == "incus") {
+        applications = [
+          ...applications,
+          ...values.seeds.secondary_applications.map((app) => {
+            return { name: app };
+          }),
+        ];
+      }
+
       const tokenSeed = {
         ...values,
         seeds: {
           ...values.seeds,
-          applications: { applications: [{ name: values.seeds.application }] },
+          applications: { applications: applications },
           install: parsedInstall,
           network: parsedNetwork,
           migration_manager: parsedMigrationManager,
@@ -160,6 +193,26 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
               {formik.errors.seeds?.application}
             </Form.Control.Feedback>
           </Form.Group>
+          {formik.values.seeds.application === "incus" && (
+            <SecondaryIncusSelect
+              value={formik.values.seeds.secondary_applications}
+              onChange={(val, checked) => {
+                if (checked) {
+                  formik.setFieldValue("seeds.secondary_applications", [
+                    ...formik.values.seeds.secondary_applications,
+                    val,
+                  ]);
+                } else {
+                  formik.setFieldValue(
+                    "seeds.secondary_applications",
+                    formik.values.seeds.secondary_applications.filter(
+                      (v) => v !== val,
+                    ),
+                  );
+                }
+              }}
+            />
+          )}
           {formik.values.seeds.application === "migration-manager" && (
             <Form.Group className="mb-4" controlId="migration-manager">
               <Form.Label>Migration manager seed data</Form.Label>

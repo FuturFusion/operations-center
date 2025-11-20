@@ -35,6 +35,7 @@ export interface InstallFormValues {
 
 export interface SeedsFormValues {
   application: string;
+  secondary_applications: string[];
   install: InstallFormValues;
   network: string;
   migration_manager: string;
@@ -79,6 +80,7 @@ export interface TokenSeed {
 
 export interface TokenSeedConfigsFormValues {
   application: string;
+  secondary_applications: string[];
   install: string;
   network: string;
   migration_manager: string;

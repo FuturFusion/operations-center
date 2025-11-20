@@ -67,6 +67,11 @@ export const applicationsOptions = {
   "operations-center": "Operations center",
 };
 
+export const secondaryIncusAppOptions = {
+  "incus-ceph": "Ceph",
+  "incus-linstor": "Linstor",
+};
+
 export function downloadFile(url: string, filename: string) {
   const a = document.createElement("a");
   a.href = url;

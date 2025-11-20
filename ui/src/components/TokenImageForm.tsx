@@ -3,6 +3,7 @@ import { Form } from "react-bootstrap";
 import { FormikProps } from "formik/dist/types";
 import ArchSelect from "components/ArchSelect";
 import ImageTypeSelect from "components/ImageTypeSelect";
+import SecondaryIncusSelect from "components/SecondaryIncusSelect";
 import { TokenImageFormValues } from "types/token";
 import { applicationsOptions } from "util/util";
 
@@ -74,6 +75,26 @@ const TokenImageForm: FC<Props> = ({ formik }) => {
             {formik.errors.seeds?.application}
           </Form.Control.Feedback>
         </Form.Group>
+        {formik.values.seeds.application === "incus" && (
+          <SecondaryIncusSelect
+            value={formik.values.seeds.secondary_applications}
+            onChange={(val, checked) => {
+              if (checked) {
+                formik.setFieldValue("seeds.secondary_applications", [
+                  ...formik.values.seeds.secondary_applications,
+                  val,
+                ]);
+              } else {
+                formik.setFieldValue(
+                  "seeds.secondary_applications",
+                  formik.values.seeds.secondary_applications.filter(
+                    (v) => v !== val,
+                  ),
+                );
+              }
+            }}
+          />
+        )}
         {formik.values.seeds.application === "migration-manager" && (
           <Form.Group className="mb-4" controlId="migration-manager">
             <Form.Label>Migration manager seed data</Form.Label>
