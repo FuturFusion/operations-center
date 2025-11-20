@@ -58,6 +58,11 @@ func TestE2E(t *testing.T) {
 			name:     "create cluster from cluster template",
 			testFunc: createClusterFromTemplate,
 		},
+		{
+			name:     "factory reset cluster",
+			testFunc: factoryResetCluster,
+			skip:     true, // FIXME: Does not yet work
+		},
 	}
 
 	var err error

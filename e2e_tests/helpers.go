@@ -19,6 +19,7 @@ import (
 
 	shellwords "github.com/mattn/go-shellwords"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 )
 
 // isFile checks if a path is a regular file.
@@ -403,6 +404,48 @@ func mustWaitOperationsCenterAPIReady(t *testing.T) {
 	}
 
 	t.Logf("Operations Center API ready after %ds", count)
+}
+
+func mustWaitIncusOSReady(t *testing.T, names []string) {
+	t.Helper()
+
+	timeoutCtx, cancel := context.WithTimeout(t.Context(), strechedTimeout(10*time.Minute))
+	defer cancel()
+
+	errgrp, errgrpctx := errgroup.WithContext(timeoutCtx)
+	ok, _ := strconv.ParseBool(concurrentSetup)
+	if !ok {
+		errgrp.SetLimit(1)
+	}
+
+	for _, name := range names {
+		errgrp.Go(func() (err error) {
+			stop := timeTrack(t, fmt.Sprintf("mustWaitIncusOSReady %s", name), "false")
+			defer stop()
+
+			defer func() {
+				if err != nil {
+					err = fmt.Errorf("%s: %w", name, err)
+				}
+			}()
+
+			t.Logf("Waiting for %s to be ready", name)
+			err = waitAgentRunningWithContext(errgrpctx, t, name)
+			if err != nil {
+				return err
+			}
+
+			err = waitExpectedLogWithContext(errgrpctx, t, name, "incus-osd", "System is ready", false)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+	}
+
+	err := errgrp.Wait()
+	require.NoError(t, err, "Failed to create IncusOS VMs for e2e test")
 }
 
 // fmtRunErr takes the cmdResponse and the error of a run function
