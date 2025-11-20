@@ -39,7 +39,7 @@ func NewClusterArtifactRepoWithPrometheus(base provisioning.ClusterArtifactRepo,
 }
 
 // CreateClusterArtifactFromPath implements provisioning.ClusterArtifactRepo.
-func (_d ClusterArtifactRepoWithPrometheus) CreateClusterArtifactFromPath(ctx context.Context, artifact provisioning.ClusterArtifact, path string) (n int64, err error) {
+func (_d ClusterArtifactRepoWithPrometheus) CreateClusterArtifactFromPath(ctx context.Context, artifact provisioning.ClusterArtifact, path string, ignoredFiles []string) (n int64, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -49,7 +49,7 @@ func (_d ClusterArtifactRepoWithPrometheus) CreateClusterArtifactFromPath(ctx co
 
 		clusterArtifactRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "CreateClusterArtifactFromPath", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.CreateClusterArtifactFromPath(ctx, artifact, path)
+	return _d.base.CreateClusterArtifactFromPath(ctx, artifact, path, ignoredFiles)
 }
 
 // GetClusterArtifactAll implements provisioning.ClusterArtifactRepo.

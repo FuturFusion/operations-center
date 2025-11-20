@@ -48,7 +48,7 @@ server B
 	}
 
 	localArtifactRepo := &repoMock.ClusterArtifactRepoMock{
-		CreateClusterArtifactFromPathFunc: func(ctx context.Context, artifact provisioning.ClusterArtifact, path string) (int64, error) {
+		CreateClusterArtifactFromPathFunc: func(ctx context.Context, artifact provisioning.ClusterArtifact, path string, ignoredFiles []string) (int64, error) {
 			return 0, nil
 		},
 	}
