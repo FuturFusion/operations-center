@@ -536,10 +536,27 @@ func TestClientServer(t *testing.T) {
 }`),
 							},
 						},
+						// GET /os/1.0/system/storage
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "pools": [
+        {
+          "name": "some pool"
+        }
+      ]
+    }
+  }
+}`),
+							},
+						},
 					},
 
 					assertErr: require.NoError,
-					wantPaths: []string{"GET /os/1.0/system/network", "GET /os/1.0/system/security"},
+					wantPaths: []string{"GET /os/1.0/system/network", "GET /os/1.0/system/security", "GET /os/1.0/system/storage"},
 					assertResult: func(t *testing.T, res any) {
 						t.Helper()
 						wantResources := api.OSData{
@@ -552,10 +569,17 @@ func TestClientServer(t *testing.T) {
 								},
 							},
 							Security: incusosapi.SystemSecurity{
-								Config: struct {
-									EncryptionRecoveryKeys []string `json:"encryption_recovery_keys" yaml:"encryption_recovery_keys"`
-								}{
+								Config: incusosapi.SystemSecurityConfig{
 									EncryptionRecoveryKeys: []string{"very secret recovery key"},
+								},
+							},
+							Storage: incusosapi.SystemStorage{
+								Config: incusosapi.SystemStorageConfig{
+									Pools: []incusosapi.SystemStoragePool{
+										{
+											Name: "some pool",
+										},
+									},
 								},
 							},
 						}
@@ -659,6 +683,97 @@ func TestClientServer(t *testing.T) {
 
 					assertErr:    require.Error,
 					wantPaths:    []string{"GET /os/1.0/system/network", "GET /os/1.0/system/security"},
+					assertResult: noResult,
+				},
+				{
+					name: "error - storage data unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/network
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "dns": {
+        "hostname": "foobar",
+        "domain": "local"
+      }
+    }
+  }
+}`),
+							},
+						},
+						// GET /os/1.0/system/security
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "encryption_recovery_keys": [ "very secret recovery key" ]
+    }
+  }
+}`),
+							},
+						},
+						// GET /os/1.0/system/storage
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/network", "GET /os/1.0/system/security", "GET /os/1.0/system/storage"},
+					assertResult: noResult,
+				},
+				{
+					name: "error - storage data invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/network
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "dns": {
+        "hostname": "foobar",
+        "domain": "local"
+      }
+    }
+  }
+}`),
+							},
+						},
+						// GET /os/1.0/system/security
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "encryption_recovery_keys": [ "very secret recovery key" ]
+    }
+  }
+}`),
+							},
+						},
+						// GET /os/1.0/system/storage
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/network", "GET /os/1.0/system/security", "GET /os/1.0/system/storage"},
 					assertResult: noResult,
 				},
 			},

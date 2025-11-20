@@ -144,9 +144,21 @@ func (c client) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (
 		return api.OSData{}, fmt.Errorf("Unexpected response metadata while fetching OS security information from %q: %w", endpoint.GetConnectionURL(), err)
 	}
 
+	resp, _, err = client.RawQuery(http.MethodGet, "/os/1.0/system/storage", http.NoBody, "")
+	if err != nil {
+		return api.OSData{}, fmt.Errorf("Get OS storage data from %q failed: %w", endpoint.GetConnectionURL(), err)
+	}
+
+	var storage incusosapi.SystemStorage
+	err = json.Unmarshal(resp.Metadata, &storage)
+	if err != nil {
+		return api.OSData{}, fmt.Errorf("Unexpected response metadata while fetching OS storage information from %q: %w", endpoint.GetConnectionURL(), err)
+	}
+
 	return api.OSData{
 		Network:  network,
 		Security: security,
+		Storage:  storage,
 	}, nil
 }
 
