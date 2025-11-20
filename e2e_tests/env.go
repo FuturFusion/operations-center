@@ -13,6 +13,7 @@ var (
 	timeoutStretchFactor = envFloatOrDefault("OPERATIONS_CENTER_E2E_TEST_TIMEOUT_STRETCH_FACTOR", 1.0)
 	cpuArch              = envOrDefault("OPERATIONS_CENTER_E2E_TEST_CPU_ARCH", "amd64")
 	debug                = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_DEBUG", false)
+	noCleanup            = envBoolOrDefault("OPERATIONS_CENTER_E2E_TEST_NO_CLEANUP", false)
 )
 
 func envOrDefault(envVar string, defaultValue string) string {

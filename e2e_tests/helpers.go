@@ -109,7 +109,7 @@ func mustRun(t *testing.T, command string, args ...any) cmdResponse {
 	resp, err := runWithContext(t.Context(), t, command, args...)
 	require.NoError(t, err)
 	if !resp.Success() {
-		t.Fatalf("run: %q failed with:\n%s", resp.command, resp.Output())
+		t.Fatalf("Run: %q failed with:\n%s", resp.command, resp.Output())
 	}
 
 	return resp
@@ -126,7 +126,7 @@ func mustRunWithTimeout(t *testing.T, command string, timeout time.Duration, arg
 	resp, err := runWithContext(ctx, t, command, args...)
 	require.NoError(t, err)
 	if !resp.Success() {
-		t.Fatalf("run: %q failed with:\n%s", resp.command, resp.Output())
+		t.Fatalf("Run: %q failed with:\n%s", resp.command, resp.Output())
 	}
 
 	return resp
@@ -134,13 +134,13 @@ func mustRunWithTimeout(t *testing.T, command string, timeout time.Duration, arg
 
 // mustRunWithContext is mustRun with a separate context.
 // see mustRun for details.
-func mustRunWithContext(ctx context.Context, t *testing.T, command string, args ...any) cmdResponse {
+func mustRunWithContext(ctx context.Context, t *testing.T, command string, args ...any) cmdResponse { //nolint:unparam
 	t.Helper()
 
 	resp, err := runWithContext(ctx, t, command, args...)
 	require.NoError(t, err)
 	if !resp.Success() {
-		t.Fatalf("run: %q failed with:\n%s", resp.command, resp.Output())
+		t.Fatalf("Run: %q failed with:\n%s", resp.command, resp.Output())
 	}
 
 	return resp
@@ -252,20 +252,20 @@ func waitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, a
 		}
 
 		if count%10 == 0 {
-			t.Logf("waiting %ds for agent on %s\n", count, vm)
+			t.Logf("Waiting %ds for agent on %s", count, vm)
 		}
 
 		count++
 
 		select {
 		case <-ctx.Done():
-			t.Fatalf("context done: %v", t.Context().Err())
+			t.Fatalf("Context done: %v", t.Context().Err())
 
 		case <-time.After(1 * time.Second):
 		}
 	}
 
-	t.Logf("agent running on %s after %ds\n", vm, count)
+	t.Logf("Agent running on %s after %ds", vm, count)
 
 	return nil
 }
@@ -323,20 +323,20 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 		}
 
 		if count%10 == 0 {
-			t.Logf("waiting %ds for log %q on %s\n", count, want, vm)
+			t.Logf("Waiting %ds for log %q on %s", count, want, vm)
 		}
 
 		count++
 
 		select {
 		case <-ctx.Done():
-			t.Fatalf("context done: %v", t.Context().Err())
+			t.Fatalf("Context done: %v", t.Context().Err())
 
 		case <-time.After(1 * time.Second):
 		}
 	}
 
-	t.Logf("log %q appeared on %s after %ds\n", want, vm, count)
+	t.Logf("Log %q appeared on %s after %ds", want, vm, count)
 
 	return nil
 }
@@ -345,6 +345,9 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 // Center. The test is failed on error.
 func mustWaitUpdatesReady(t *testing.T) {
 	t.Helper()
+
+	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(5*time.Minute))
+	defer cancel()
 
 	count := 0
 	for {
@@ -355,20 +358,51 @@ func mustWaitUpdatesReady(t *testing.T) {
 		}
 
 		if count%10 == 0 {
-			t.Logf("waiting %ds on updates in Operations Center", count)
+			t.Logf("Waiting %ds on updates in Operations Center", count)
 		}
 
 		count++
 
 		select {
-		case <-t.Context().Done():
-			t.Fatalf("context done: %v", t.Context().Err())
+		case <-ctx.Done():
+			t.Fatalf("Context done: %v", ctx.Err())
 
 		case <-time.After(1 * time.Second):
 		}
 	}
 
-	t.Logf("updates present Operations Center after %ds", count)
+	t.Logf("Updates present Operations Center after %ds", count)
+}
+
+func mustWaitOperationsCenterAPIReady(t *testing.T) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(t.Context(), strechedTimeout(60*time.Second))
+	defer cancel()
+
+	count := 0
+	for {
+		resp, err := run(t, `../bin/operations-center.linux.%s provisioning server list`, cpuArch)
+		require.NoError(t, err)
+		if resp.Success() {
+			break
+		}
+
+		if count%10 == 0 {
+			t.Logf("Waiting %ds on Operations Center API to become ready", count)
+		}
+
+		count++
+
+		select {
+		case <-ctx.Done():
+			t.Fatalf("Context done: %v", ctx.Err())
+
+		case <-time.After(1 * time.Second):
+		}
+	}
+
+	t.Logf("Operations Center API ready after %ds", count)
 }
 
 // fmtRunErr takes the cmdResponse and the error of a run function
@@ -383,6 +417,30 @@ func fmtRunErr(resp cmdResponse, err error) error {
 	}
 
 	return nil
+}
+
+func mustNotBeAlreadyClustered(t *testing.T) {
+	t.Helper()
+
+	clusterListResp, err := run(t, "incus exec IncusOS01 -- incus cluster list")
+	require.NoError(t, err)
+	require.NotEqual(t, 0, clusterListResp.exitCode, "IncusOS01 is already part of a cluster")
+}
+
+func mustGetInstanceIPAndNames(t *testing.T, names []string) (instanceIPs []string, instanceNames []string) {
+	t.Helper()
+
+	instanceIPs = make([]string, 0, len(names))
+	instanceNames = make([]string, 0, len(names))
+	for _, name := range names {
+		ipResp := mustRun(t, `incus list -f json | jq -r '.[] | select(.name == "%s") | .state.network | to_entries[] | .value.addresses[]? | select(.family == "inet" and .scope == "global") | [ .address ] | first'`, name)
+		instanceIPs = append(instanceIPs, strings.TrimSpace(ipResp.Output()))
+
+		nameResp := mustRun(t, `incus list -f json | jq -r '.[] | select(.name == "%s") | .state.os_info.hostname'`, name)
+		instanceNames = append(instanceNames, strings.TrimSpace(nameResp.Output()))
+	}
+
+	return instanceIPs, instanceNames
 }
 
 // indent indents the given input line by line by prefix.
@@ -431,7 +489,7 @@ func timeTrack(t *testing.T, optionals ...string) (stop func()) {
 	indentLevelMu.Lock()
 	defer indentLevelMu.Unlock()
 
-	t.Logf(">%s start: %s", strings.Repeat(">", indentLevel*2), name)
+	t.Logf(">%s Start: %s", strings.Repeat(">", indentLevel*2), name)
 	start := time.Now()
 
 	indentLevel += indent
@@ -442,7 +500,7 @@ func timeTrack(t *testing.T, optionals ...string) (stop func()) {
 
 		indentLevel -= indent
 
-		t.Logf("<%s stop  : %s 🕛 %v", strings.Repeat("<", indentLevel*2), name, time.Since(start))
+		t.Logf("<%s Stop  : %s 🕛 %v", strings.Repeat("<", indentLevel*2), name, time.Since(start))
 	}
 }
 

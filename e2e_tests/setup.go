@@ -20,14 +20,21 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func setup(t *testing.T, tmpDir string) {
+func setupOperationsCenter(t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
-	if hasSetupSnapshots(t) {
-		restoreSetupSnapshots(t)
+	names := []string{"OperationsCenter"}
+	if hasSnapshot(t, "setupOperationsCenter", names) {
+		if !hasLastSnapshot(t, "setupOperationsCenter", names) {
+			return
+		}
+
+		restoreSnapshot(t, "setupOperationsCenter", names)
+		replaceOperationsCenterExecutable(t)
+		mustWaitOperationsCenterAPIReady(t)
 		return
 	}
 
@@ -47,9 +54,29 @@ func setup(t *testing.T, tmpDir string) {
 
 	setupLocalOperationsCenterConfig(t)
 
-	token := createProvisioningToken(t)
-
 	mustWaitUpdatesReady(t)
+
+	createSnapshot(t, "setupOperationsCenter", names)
+}
+
+func setupIncusOSWithToken(t *testing.T, tmpDir string) {
+	t.Helper()
+
+	stop := timeTrack(t)
+	defer stop()
+
+	names := []string{"OperationsCenter", "IncusOS01", "IncusOS02", "IncusOS03"}
+	if hasSnapshot(t, "setup", names) {
+		// Restore OperationsCenter first for it to be running when the Incus instances are restored.
+		restoreSnapshot(t, "setup", names[:1])
+		replaceOperationsCenterExecutable(t)
+		mustWaitOperationsCenterAPIReady(t)
+
+		restoreSnapshot(t, "setup", names[1:])
+		return
+	}
+
+	token := createProvisioningToken(t)
 
 	incusOSPreseededISOFilename := createIncusOSPreseededISO(t, tmpDir, token)
 
@@ -59,20 +86,68 @@ func setup(t *testing.T, tmpDir string) {
 
 	printServerList(t)
 
-	createPostSetupSnapshots(t)
+	createSnapshot(t, "setup", names)
 }
 
-func hasSetupSnapshots(t *testing.T) bool {
+func cleanupIncusOS(t *testing.T) func() {
+	t.Helper()
+
+	return func() {
+		// In t.Cleanup, t.Context() is cancelled, so we need a detached context.
+		ctx, cancel := context.WithTimeout(context.Background(), strechedTimeout(30*time.Second))
+		defer cancel()
+
+		names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
+		for _, name := range names {
+			mustRunWithContext(ctx, t, `incus remove --force %s`, name)
+		}
+
+		mustRunWithContext(ctx, t, `incus snapshot remove OperationsCenter setup`)
+	}
+}
+
+func setupIncusOSWithTokenSeed(t *testing.T, tmpDir string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
+	setupOperationsCenter(t, tmpDir)
+
 	names := []string{"OperationsCenter", "IncusOS01", "IncusOS02", "IncusOS03"}
+	if hasSnapshot(t, "setup", names) {
+		// Restore OperationsCenter first for it to be running when the Incus instances are restored.
+		restoreSnapshot(t, "setup", names[:1])
+		replaceOperationsCenterExecutable(t)
+		mustWaitOperationsCenterAPIReady(t)
+
+		restoreSnapshot(t, "setup", names[1:])
+		return
+	}
+
+	token := createProvisioningToken(t)
+
+	incusOSPreseededISOFilename := createIncusOSPreseededISOFromTokenSeed(t, tmpDir, token)
+
+	importIncusOSISOStorageVolume(t, tmpDir, token, incusOSPreseededISOFilename)
+
+	createIncusOSInstances(t, token)
+
+	printServerList(t)
+
+	createSnapshot(t, "setup", names)
+}
+
+func hasSnapshot(t *testing.T, snapshot string, names []string) bool {
+	t.Helper()
+
+	stop := timeTrack(t)
+	defer stop()
+
 	for _, name := range names {
-		snapshotExistsRes := mustRun(t, `incus snapshot list %s -f json | jq -r '[ .[] | select(.name == "setup") ] | length > 0'`, name)
-		snapshotExists, _ := strconv.ParseBool(strings.TrimSpace(snapshotExistsRes.Output()))
-		if !snapshotExists {
+		snapshotExistsRes, err := run(t, `incus snapshot list %s -f json | jq -r -e '[ .[] | select(.name == "%s") ] | length > 0'`, name, snapshot)
+		require.NoError(t, err)
+		if !snapshotExistsRes.Success() {
 			return false
 		}
 	}
@@ -80,18 +155,28 @@ func hasSetupSnapshots(t *testing.T) bool {
 	return true
 }
 
-func restoreSetupSnapshots(t *testing.T) {
+func hasLastSnapshot(t *testing.T, snapshot string, names []string) bool {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
-	mustRun(t, "incus snapshot restore %s setup", "OperationsCenter")
-	mustWaitAgentRunning(t, "OperationsCenter")
-	mustWaitExpectedLog(t, "OperationsCenter", "incus-osd", "System is ready")
+	for _, name := range names {
+		snapshotExistsRes, err := run(t, `incus snapshot list %s -f json | jq -r -e '. | last | .name == "%s"'`, name, snapshot)
+		require.NoError(t, err)
+		if !snapshotExistsRes.Success() {
+			return false
+		}
+	}
 
-	replaceOperationsCenterExecutable(t)
-	replaceOperationsCenterExecutable(t)
+	return true
+}
+
+func restoreSnapshot(t *testing.T, snapshot string, names []string) {
+	t.Helper()
+
+	stop := timeTrack(t)
+	defer stop()
 
 	errgrp, errgrpctx := errgroup.WithContext(t.Context())
 	ok, _ := strconv.ParseBool(concurrentSetup)
@@ -99,10 +184,9 @@ func restoreSetupSnapshots(t *testing.T) {
 		errgrp.SetLimit(1)
 	}
 
-	names := []string{"IncusOS01", "IncusOS02", "IncusOS03"}
 	for _, name := range names {
 		errgrp.Go(func() (err error) {
-			stop := timeTrack(t, fmt.Sprintf("restoreSetupSnapshots %s", name), "false")
+			stop := timeTrack(t, fmt.Sprintf("restoreSnapshot %s", name), "false")
 			defer stop()
 
 			defer func() {
@@ -111,7 +195,7 @@ func restoreSetupSnapshots(t *testing.T) {
 				}
 			}()
 
-			err = fmtRunErr(runWithContext(errgrpctx, t, "incus snapshot restore %s setup", name))
+			err = fmtRunErr(runWithContext(errgrpctx, t, "incus snapshot restore %s %s", name, snapshot))
 			if err != nil {
 				return err
 			}
@@ -131,7 +215,7 @@ func restoreSetupSnapshots(t *testing.T) {
 	}
 
 	err := errgrp.Wait()
-	require.NoError(t, err, "failed to restore IncusOS VMS snapshot")
+	require.NoError(t, err, "failed to restore %v VMs snapshot", names)
 }
 
 func getClientCertificate(t *testing.T) string {
@@ -243,18 +327,6 @@ func replaceOperationsCenterExecutable(t *testing.T) {
 	stop := timeTrack(t)
 	defer stop()
 
-	equal := false
-	operationsCenterdExists, err := run(t, "incus exec OperationsCenter -- test -f /root/operations-centerd")
-	if err == nil && operationsCenterdExists.exitCode == 0 {
-		operationsCenterdMD5Sum := mustRun(t, "incus exec OperationsCenter -- md5sum /root/operations-centerd")
-		localOperationsCenterMD5Sum := mustRun(t, "md5sum ../bin/operations-centerd")
-		equal = strings.Split(operationsCenterdMD5Sum.Output(), " ")[0] == strings.Split(localOperationsCenterMD5Sum.Output(), " ")[0]
-	}
-
-	if equal {
-		return
-	}
-
 	mustRun(t, `incus exec OperationsCenter -- bash -c "systemctl stop operations-center || true"`)
 	mustRun(t, `incus exec OperationsCenter -- bash -c "umount /dev/mapper/root || true"`)
 	mustRun(t, `incus file push ../bin/operations-centerd OperationsCenter/root/operations-centerd`)
@@ -337,7 +409,33 @@ func createIncusOSPreseededISO(t *testing.T, tmpDir string, token string) string
 		err := os.WriteFile(filepath.Join(tmpDir, "incusos_seed.yaml"), incusOSSeedFileYAML, 0o600)
 		require.NoError(t, err)
 
-		mustRunWithTimeout(t, `../bin/operations-center.linux.%[4]s provisioning token get-image %[1]s %[2]s/%[3]s %[2]s/incusos_seed.yaml`, 10*time.Minute, token, tmpDir, incusOSPreseededISOFilename, cpuArch)
+		mustRunWithTimeout(t, `../bin/operations-center.linux.%[1]s provisioning token get-image %[2]s %[3]s/%[4]s %[3]s/incusos_seed.yaml`, 10*time.Minute, cpuArch, token, tmpDir, incusOSPreseededISOFilename)
+	}
+
+	return incusOSPreseededISOFilename
+}
+
+func createIncusOSPreseededISOFromTokenSeed(t *testing.T, tmpDir string, token string) string {
+	t.Helper()
+
+	incusOSPreseededISOFilename := fmt.Sprintf("IncusOS-preseeded-%[1]s.iso", token)
+	if !isFile(filepath.Join(tmpDir, incusOSPreseededISOFilename)) {
+		stop := timeTrack(t)
+		defer stop()
+
+		clientCertificate := getClientCertificate(t)
+
+		incusOSSeedFileYAML := replacePlaceholders(incusOSSeedFileYAMLTemplate,
+			map[string]string{
+				"$CLIENT_CERTIFICATE$": indent(clientCertificate, strings.Repeat(" ", 10)),
+			},
+		)
+
+		err := os.WriteFile(filepath.Join(tmpDir, "incusos_seed.yaml"), incusOSSeedFileYAML, 0o600)
+		require.NoError(t, err)
+
+		mustRun(t, `../bin/operations-center.linux.%s provisioning token seed add %s incus-os-cluster %s/incusos_seed.yaml`, cpuArch, token, tmpDir)
+		mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning token seed get-image %s incus-os-cluster %s/%s`, 10*time.Minute, cpuArch, token, tmpDir, incusOSPreseededISOFilename)
 	}
 
 	return incusOSPreseededISOFilename
@@ -458,7 +556,7 @@ func createIncusOSInstances(t *testing.T, token string) {
 	}
 
 	err := errgrp.Wait()
-	require.NoError(t, err, "failed to create IncusOS VMs for e2e test")
+	require.NoError(t, err, "Failed to create IncusOS VMs for e2e test")
 
 	// Wait for instances to self update in Operations Center
 	instanceReadyTimeoutCtx, instanceReadyCancel := context.WithTimeout(t.Context(), strechedTimeout(1*time.Minute))
@@ -490,21 +588,20 @@ func printServerList(t *testing.T) {
 	fmt.Println(resp.Output())
 }
 
-func createPostSetupSnapshots(t *testing.T) {
+func createSnapshot(t *testing.T, snapshot string, names []string) {
 	t.Helper()
 
 	stop := timeTrack(t)
 	defer stop()
 
-	names := []string{"OperationsCenter", "IncusOS01", "IncusOS02", "IncusOS03"}
 	for _, name := range names {
 		mustRun(t, `incus exec %s -- sync`, name)
-		snapshotExistsRes := mustRun(t, `incus snapshot list %s -f json | jq -r '[ .[] | select(.name == "setup") ] | length > 0'`, name)
+		snapshotExistsRes := mustRun(t, `incus snapshot list %s -f json | jq -r '[ .[] | select(.name == "%s") ] | length > 0'`, name, snapshot)
 		snapshotExists, _ := strconv.ParseBool(strings.TrimSpace(snapshotExistsRes.Output()))
 		if snapshotExists {
 			continue
 		}
 
-		mustRun(t, "incus snapshot create %s setup", name)
+		mustRun(t, "incus snapshot create %s %s", name, snapshot)
 	}
 }

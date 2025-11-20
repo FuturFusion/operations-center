@@ -16,13 +16,34 @@ func TestE2E(t *testing.T) {
 		t.Skip("OPERATIONS_CENTER_E2E_TEST env var not set, skipping end 2 end tests.")
 	}
 
-	tests := []struct {
+	type testCase struct {
 		name string
 
 		testFunc func(t *testing.T, tmpDir string)
 
 		skip bool
-	}{
+	}
+
+	type setupType struct {
+		name        string
+		setupFunc   func(t *testing.T, tmpDir string)
+		cleanupFunc func(t *testing.T) func()
+	}
+
+	setupTypeTests := []setupType{
+		{
+			name:        "with token",
+			setupFunc:   setupIncusOSWithToken,
+			cleanupFunc: cleanupIncusOS,
+		},
+		{
+			name:        "with token seed",
+			setupFunc:   setupIncusOSWithTokenSeed,
+			cleanupFunc: cleanupIncusOS,
+		},
+	}
+
+	testCases := []testCase{
 		{
 			name: "setup only",
 			testFunc: func(t *testing.T, tmpDir string) {
@@ -57,20 +78,30 @@ func TestE2E(t *testing.T) {
 
 	require.NoError(t, err)
 
-	t.Logf("temporary directory: %s", tmpDir)
+	t.Logf("Temporary directory: %s", tmpDir)
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			if tc.skip {
-				t.SkipNow()
+	for _, ts := range setupTypeTests {
+		t.Run(ts.name, func(t *testing.T) {
+			setupOperationsCenter(t, tmpDir)
+
+			if !noCleanup {
+				t.Cleanup(ts.cleanupFunc(t))
 			}
 
-			stop := timeTrack(t, tc.name)
-			defer stop()
+			for _, tc := range testCases {
+				t.Run(tc.name, func(t *testing.T) {
+					if tc.skip {
+						t.SkipNow()
+					}
 
-			setup(t, tmpDir)
+					stop := timeTrack(t, tc.name)
+					defer stop()
 
-			tc.testFunc(t, tmpDir)
+					ts.setupFunc(t, tmpDir)
+
+					tc.testFunc(t, tmpDir)
+				})
+			}
 		})
 	}
 }
