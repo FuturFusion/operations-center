@@ -43,7 +43,7 @@ type ClusterRepo interface {
 }
 
 type ClusterArtifactRepo interface {
-	CreateClusterArtifactFromPath(ctx context.Context, artifact ClusterArtifact, path string) (int64, error)
+	CreateClusterArtifactFromPath(ctx context.Context, artifact ClusterArtifact, path string, ignoredFiles []string) (int64, error)
 	GetClusterArtifactAll(ctx context.Context, clusterName string) (ClusterArtifacts, error)
 	GetClusterArtifactAllNames(ctx context.Context, clusterName string) ([]string, error)
 	GetClusterArtifactByName(ctx context.Context, clusterName string, artifactName string) (*ClusterArtifact, error)

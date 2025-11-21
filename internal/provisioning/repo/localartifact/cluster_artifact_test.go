@@ -177,6 +177,8 @@ func TestLocalArtifactDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(sourcePath, "two.txt"), []byte(`two with more content`), 0o600)
 	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(sourcePath, ".terraform.lock.hcl"), []byte(`ignored`), 0o600)
+	require.NoError(t, err)
 	// Create directory, should be skipped
 	err = os.Mkdir(filepath.Join(sourcePath, "dir"), 0o700)
 	require.NoError(t, err)
@@ -210,11 +212,11 @@ func TestLocalArtifactDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create artifact from directory
-	_, err = artifactRepo.CreateClusterArtifactFromPath(ctx, artifactOne, sourcePath)
+	_, err = artifactRepo.CreateClusterArtifactFromPath(ctx, artifactOne, sourcePath, []string{".terraform.lock.hcl"})
 	require.NoError(t, err)
 
 	// Create artifact from file
-	_, err = artifactRepo.CreateClusterArtifactFromPath(ctx, artifactTwo, filepath.Join(sourcePath, "one.txt"))
+	_, err = artifactRepo.CreateClusterArtifactFromPath(ctx, artifactTwo, filepath.Join(sourcePath, "one.txt"), []string{})
 	require.NoError(t, err)
 
 	artifacts, err := artifactRepo.GetClusterArtifactAll(ctx, "clusterOne")

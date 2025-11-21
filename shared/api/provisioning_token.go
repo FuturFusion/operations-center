@@ -132,6 +132,9 @@ type TokenSeedConfigs struct {
 	// Applications represents the applications configuration (applications.yaml) to be included in the pre-seeded image.
 	Applications map[string]any `json:"applications" yaml:"applications"`
 
+	// Incus represents the incus preseed configuration (incus.yaml) fo be included in the pre-seeded image.
+	Incus map[string]any `json:"incus" yaml:"incus"`
+
 	// Install represents the install configuration (install.yaml) to be included in the pre-seeded image.
 	Install map[string]any `json:"install" yaml:"install"`
 

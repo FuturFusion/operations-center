@@ -22,7 +22,7 @@ var _ provisioning.ClusterArtifactRepo = &ClusterArtifactRepoMock{}
 //
 //		// make and configure a mocked provisioning.ClusterArtifactRepo
 //		mockedClusterArtifactRepo := &ClusterArtifactRepoMock{
-//			CreateClusterArtifactFromPathFunc: func(ctx context.Context, artifact provisioning.ClusterArtifact, path string) (int64, error) {
+//			CreateClusterArtifactFromPathFunc: func(ctx context.Context, artifact provisioning.ClusterArtifact, path string, ignoredFiles []string) (int64, error) {
 //				panic("mock out the CreateClusterArtifactFromPath method")
 //			},
 //			GetClusterArtifactAllFunc: func(ctx context.Context, clusterName string) (provisioning.ClusterArtifacts, error) {
@@ -45,7 +45,7 @@ var _ provisioning.ClusterArtifactRepo = &ClusterArtifactRepoMock{}
 //	}
 type ClusterArtifactRepoMock struct {
 	// CreateClusterArtifactFromPathFunc mocks the CreateClusterArtifactFromPath method.
-	CreateClusterArtifactFromPathFunc func(ctx context.Context, artifact provisioning.ClusterArtifact, path string) (int64, error)
+	CreateClusterArtifactFromPathFunc func(ctx context.Context, artifact provisioning.ClusterArtifact, path string, ignoredFiles []string) (int64, error)
 
 	// GetClusterArtifactAllFunc mocks the GetClusterArtifactAll method.
 	GetClusterArtifactAllFunc func(ctx context.Context, clusterName string) (provisioning.ClusterArtifacts, error)
@@ -69,6 +69,8 @@ type ClusterArtifactRepoMock struct {
 			Artifact provisioning.ClusterArtifact
 			// Path is the path argument value.
 			Path string
+			// IgnoredFiles is the ignoredFiles argument value.
+			IgnoredFiles []string
 		}
 		// GetClusterArtifactAll holds details about calls to the GetClusterArtifactAll method.
 		GetClusterArtifactAll []struct {
@@ -113,23 +115,25 @@ type ClusterArtifactRepoMock struct {
 }
 
 // CreateClusterArtifactFromPath calls CreateClusterArtifactFromPathFunc.
-func (mock *ClusterArtifactRepoMock) CreateClusterArtifactFromPath(ctx context.Context, artifact provisioning.ClusterArtifact, path string) (int64, error) {
+func (mock *ClusterArtifactRepoMock) CreateClusterArtifactFromPath(ctx context.Context, artifact provisioning.ClusterArtifact, path string, ignoredFiles []string) (int64, error) {
 	if mock.CreateClusterArtifactFromPathFunc == nil {
 		panic("ClusterArtifactRepoMock.CreateClusterArtifactFromPathFunc: method is nil but ClusterArtifactRepo.CreateClusterArtifactFromPath was just called")
 	}
 	callInfo := struct {
-		Ctx      context.Context
-		Artifact provisioning.ClusterArtifact
-		Path     string
+		Ctx          context.Context
+		Artifact     provisioning.ClusterArtifact
+		Path         string
+		IgnoredFiles []string
 	}{
-		Ctx:      ctx,
-		Artifact: artifact,
-		Path:     path,
+		Ctx:          ctx,
+		Artifact:     artifact,
+		Path:         path,
+		IgnoredFiles: ignoredFiles,
 	}
 	mock.lockCreateClusterArtifactFromPath.Lock()
 	mock.calls.CreateClusterArtifactFromPath = append(mock.calls.CreateClusterArtifactFromPath, callInfo)
 	mock.lockCreateClusterArtifactFromPath.Unlock()
-	return mock.CreateClusterArtifactFromPathFunc(ctx, artifact, path)
+	return mock.CreateClusterArtifactFromPathFunc(ctx, artifact, path, ignoredFiles)
 }
 
 // CreateClusterArtifactFromPathCalls gets all the calls that were made to CreateClusterArtifactFromPath.
@@ -137,14 +141,16 @@ func (mock *ClusterArtifactRepoMock) CreateClusterArtifactFromPath(ctx context.C
 //
 //	len(mockedClusterArtifactRepo.CreateClusterArtifactFromPathCalls())
 func (mock *ClusterArtifactRepoMock) CreateClusterArtifactFromPathCalls() []struct {
-	Ctx      context.Context
-	Artifact provisioning.ClusterArtifact
-	Path     string
+	Ctx          context.Context
+	Artifact     provisioning.ClusterArtifact
+	Path         string
+	IgnoredFiles []string
 } {
 	var calls []struct {
-		Ctx      context.Context
-		Artifact provisioning.ClusterArtifact
-		Path     string
+		Ctx          context.Context
+		Artifact     provisioning.ClusterArtifact
+		Path         string
+		IgnoredFiles []string
 	}
 	mock.lockCreateClusterArtifactFromPath.RLock()
 	calls = mock.calls.CreateClusterArtifactFromPath

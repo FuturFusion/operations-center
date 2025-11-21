@@ -363,7 +363,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 		Cluster:     newCluster.Name,
 		Name:        "terraform-configuration",
 		Description: "Initial terraform configuration used for post-clustering.",
-	}, temporaryPath)
+	}, temporaryPath, []string{".terraform.lock.hcl"})
 	if err != nil {
 		return newCluster, err
 	}
@@ -666,7 +666,7 @@ func (s clusterService) StartLifecycleEventsMonitor(ctx context.Context) error {
 
 		switch cum.Operation {
 		case ClusterUpdateOperationCreate:
-			cancel, err := s.startLifecycleEventHandler(ctx, cum.Name)
+			cancel, err := s.startLifecycleEventHandler(context.Background(), cum.Name)
 			if err != nil {
 				slog.WarnContext(ctx, "Failed to start lifecycle monitor", slog.String("cluster", cum.Name), logger.Err(err))
 				return

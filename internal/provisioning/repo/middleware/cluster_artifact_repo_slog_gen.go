@@ -43,13 +43,14 @@ func NewClusterArtifactRepoWithSlog(base provisioning.ClusterArtifactRepo, log *
 }
 
 // CreateClusterArtifactFromPath implements provisioning.ClusterArtifactRepo.
-func (_d ClusterArtifactRepoWithSlog) CreateClusterArtifactFromPath(ctx context.Context, artifact provisioning.ClusterArtifact, path string) (n int64, err error) {
+func (_d ClusterArtifactRepoWithSlog) CreateClusterArtifactFromPath(ctx context.Context, artifact provisioning.ClusterArtifact, path string, ignoredFiles []string) (n int64, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("artifact", artifact),
 			slog.String("path", path),
+			slog.Any("ignoredFiles", ignoredFiles),
 		)
 	}
 	log.DebugContext(ctx, "=> calling CreateClusterArtifactFromPath")
@@ -75,7 +76,7 @@ func (_d ClusterArtifactRepoWithSlog) CreateClusterArtifactFromPath(ctx context.
 			log.DebugContext(ctx, "<= method CreateClusterArtifactFromPath finished")
 		}
 	}()
-	return _d._base.CreateClusterArtifactFromPath(ctx, artifact, path)
+	return _d._base.CreateClusterArtifactFromPath(ctx, artifact, path, ignoredFiles)
 }
 
 // GetClusterArtifactAll implements provisioning.ClusterArtifactRepo.

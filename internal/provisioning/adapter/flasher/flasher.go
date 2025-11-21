@@ -78,10 +78,12 @@ func (f *Flasher) GenerateSeededImage(ctx context.Context, id uuid.UUID, seedCon
 		return nil, err
 	}
 
-	seedConfig.Incus = map[string]any{
-		"apply_defaults": false,
-		"version":        "1",
+	if seedConfig.Incus == nil {
+		seedConfig.Incus = map[string]any{}
 	}
+
+	seedConfig.Incus["apply_defaults"] = false
+	seedConfig.Incus["version"] = "1"
 
 	seedProvider := &seed.Provider{
 		SystemProviderConfig: providerConfig.SystemProviderConfig,

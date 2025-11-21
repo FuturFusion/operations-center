@@ -146,6 +146,8 @@ require (
 	github.com/spf13/viper v1.21.0 // indirect
 	github.com/stoewer/go-strcase v1.3.1 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.16 // indirect
 	github.com/tklauser/numcpus v0.11.0 // indirect
 	github.com/urfave/cli v1.22.17 // indirect
@@ -204,6 +206,7 @@ require (
 	github.com/lxc/incus-os/incus-osd v0.0.0-20251119045938-823b38b2f650
 	github.com/lxc/incus/v6 v6.18.1-0.20251105073233-3554c3053d5d
 	github.com/maniartech/signals v1.3.1
+	github.com/mattn/go-shellwords v1.0.12
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/oauth2-proxy/mockoidc v0.0.0-20240214162133-caebfff84d25
 	github.com/olekukonko/tablewriter v1.1.0
@@ -215,6 +218,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.40.0
 	github.com/testcontainers/testcontainers-go/modules/openfga v0.40.0
+	github.com/tidwall/gjson v1.18.0
 	github.com/vektra/mockery/v3 v3.6.1
 	github.com/zclconf/go-cty v1.17.0
 	github.com/zitadel/oidc/v3 v3.45.0
