@@ -35,10 +35,14 @@ A simple way to run the end to end tests as a developer is to create a VM using 
 and run the tests inside the VM.
 
 Make sure, that there is sufficient disk space available on the storage pool.
+Since the end to end tests use snapshots, it is recommended to use a ZFS storage pool.
 
 ```shell
+incus storage create zfs local-zfs
 incus create images:debian/13 e2e --vm -c limits.cpu=4 -c limits.memory=20GiB
-incus config device override e2e root size=200GiB
+incus config device override e2e root size=50GiB
+incus storage volume create local-zfs zstorage --type=block size=150GiB
+incus storage volume attach local-zfs zstorage e2e
 incus start e2e
 incus exec e2e -- bash
 ```
@@ -53,14 +57,42 @@ incus exec e2e -- bash
 
 ### Install software inside the VM
 
+#### Stage 1: Install ZFS and DKMS modules
+
 ```shell
 apt update
+apt install -y mokutil dkms
+dkms autoinstall
+DEBIAN_FRONTEND=noninteractive apt install -y linux-headers-amd64 zfs-dkms zfsutils-linux
+mokutil --import /var/lib/dkms/mok.pub
+
+# Halt the VM to complete the DKMS module installation.
+shutdown -h now
+```
+
+Start the VM again:
+
+```shell
+incus start e2e --console
+```
+
+Enroll the MOK key.
+
+#### Stage 2: Install required packages and get Operations Center repository
+
+```shell
 apt install -y curl jq golang git make build-essential systemd-timesyncd unzip
 curl https://pkgs.zabbly.com/get/incus-stable | sudo sh
 curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
 chmod +x install-opentofu.sh
 ./install-opentofu.sh --install-method deb
 rm -f install-opentofu.sh
+```
+
+Initialize Incus with ZFS storage backend using the ZFS block device:
+
+```shell
+incus admin init --auto --storage-backend=zfs --storage-create-device=/dev/disk/by-id/$(ls -1 /dev/disk/by-id | grep zstorage)
 ```
 
 Get the source code and build the Operations Center binaries:
