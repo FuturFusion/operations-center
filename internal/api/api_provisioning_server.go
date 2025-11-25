@@ -88,13 +88,13 @@ func registerProvisioningServerHandler(router Router, authorizer *authz.Authoriz
 //	        metadata:
 //	          type: array
 //	          description: List of servers
-//                items:
-//                  type: string
-//                example: |-
-//                  [
-//                    "/1.0/provisioning/servers/one",
-//                    "/1.0/provisioning/servers/two"
-//                  ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/provisioning/servers/one",
+//	              "/1.0/provisioning/servers/two"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

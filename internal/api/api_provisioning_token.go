@@ -75,13 +75,13 @@ func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorize
 //	        metadata:
 //	          type: array
 //	          description: List of tokens
-//                items:
-//                  type: string
-//                example: |-
-//                  [
-//                    "/1.0/provisioning/tokens/b32d0079-c48b-4957-b1cb-bef54125c861",
-//                    "/1.0/provisioning/tokens/464d229b-3069-4a82-bc59-b215a7c6ed1b"
-//                  ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/provisioning/tokens/b32d0079-c48b-4957-b1cb-bef54125c861",
+//	              "/1.0/provisioning/tokens/464d229b-3069-4a82-bc59-b215a7c6ed1b"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -594,13 +594,13 @@ func (t *tokenHandler) tokenSeedsPost(r *http.Request) response.Response {
 //	        metadata:
 //	          type: array
 //	          description: List of token seed configs
-//                items:
-//                  type: string
-//                example: |-
-//                  [
-//                    "/1.0/provisioning/tokens/b32d0079-c48b-4957-b1cb-bef54125c861/images/first",
-//                    "/1.0/provisioning/tokens/b32d0079-c48b-4957-b1cb-bef54125c861/images/second"
-//                  ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/provisioning/tokens/b32d0079-c48b-4957-b1cb-bef54125c861/images/first",
+//	              "/1.0/provisioning/tokens/b32d0079-c48b-4957-b1cb-bef54125c861/images/second"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

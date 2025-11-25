@@ -78,13 +78,13 @@ func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service 
 //	        metadata:
 //	          type: array
 //	          description: List of updates
-//                items:
-//                  type: string
-//                example: |-
-//                  [
-//                    "/1.0/provisioning/updates/b32d0079-c48b-4957-b1cb-bef54125c861",
-//                    "/1.0/provisioning/updates/464d229b-3069-4a82-bc59-b215a7c6ed1b"
-//                  ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/provisioning/updates/b32d0079-c48b-4957-b1cb-bef54125c861",
+//	              "/1.0/provisioning/updates/464d229b-3069-4a82-bc59-b215a7c6ed1b"
+//	            ]
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 
