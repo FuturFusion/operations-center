@@ -122,6 +122,11 @@ update-gomod:
 	$(GO) mod tidy --go=1.24.7
 	$(GO) get toolchain@none
 
+.PHONY: update-api
+update-api:
+	$(GO) install -v -x github.com/go-swagger/go-swagger/cmd/swagger@master
+	swagger generate spec -o doc/rest-api.yaml -w ./internal/api -m -x github.com/lxc/incus/v6/shared/api -x github.com/FuturFusion/migration-manager
+
 .PHONY: e2e-test
 e2e-test: build
 	mkdir -p $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)
