@@ -82,13 +82,13 @@ func registerInventoryStorageBucketHandler(router Router, authorizer *authz.Auth
 //	        metadata:
 //	          type: array
 //	          description: List of storage buckets
-//	               items:
-//	                 type: string
-//	               example: |-
-//	                 [
-//	                   "/1.0/inventory/storage_buckets/1",
-//	                   "/1.0/inventory/storage_buckets/2"
-//	                 ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/inventory/storage_buckets/1",
+//	              "/1.0/inventory/storage_buckets/2"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

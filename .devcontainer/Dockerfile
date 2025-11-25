@@ -23,7 +23,27 @@ deb-src [signed-by=/etc/apt/keyrings/opentofu.gpg,/etc/apt/keyrings/opentofu-rep
 EOT
 
 apt update
-apt install -y vim sudo man less goreleaser jq fish zsh sqlite3 direnv docker.io kpartx tofu unzip
+apt install -y \
+  aspell \
+  aspell-en \
+  direnv \
+  docker.io \
+  fish \
+  goreleaser \
+  jq \
+  kpartx \
+  less \
+  locales \
+  locales-all \
+  man \
+  python3.13-venv \
+  ruby-mdl \
+  sqlite3 \
+  sudo \
+  tofu \
+  unzip \
+  vim \
+  zsh
 
 mkdir -p /usr/local/share/terraform/plugins/registry.opentofu.org/lxc/incus/${INCUS_TERRAFORM_PROVIDER_VERSION}/${TARGETOS}_${TARGETARCH}
 curl -sLo /usr/local/share/terraform/plugins/terraform-provider-incus.zip https://github.com/lxc/terraform-provider-incus/releases/download/v${INCUS_TERRAFORM_PROVIDER_VERSION}/terraform-provider-incus_${INCUS_TERRAFORM_PROVIDER_VERSION}_${TARGETOS}_${TARGETARCH}.zip
@@ -50,7 +70,8 @@ RUN test -b /dev/loop0 || mknod -m 660 /dev/loop0 b 7 0
 # Setup for vscode user.
 USER $USERNAME
 ENV EDITOR=vi \
-    LANG=en_US.UTF-8
+    LANG=en_US.UTF-8 \
+    LC_ALL=en_US.UTF-8
 # Build Go tools with user vscode to ensure correct file and directory permissions for the build artifacts.
 RUN go install -v github.com/google/go-licenses@latest && \
     go install -v github.com/766b/go-outliner@latest && \

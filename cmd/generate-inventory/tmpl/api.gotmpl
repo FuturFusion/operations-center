@@ -84,13 +84,13 @@ func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer 
 //	        metadata:
 //	          type: array
 //	          description: List of {{ .PluralName | words }}
-//	               items:
-//	                 type: string
-//	               example: |-
-//	                 [
-//	                   "/1.0/inventory/{{ .PluralName }}/1",
-//	                   "/1.0/inventory/{{ .PluralName }}/2"
-//	                 ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/inventory/{{ .PluralName }}/1",
+//	              "/1.0/inventory/{{ .PluralName }}/2"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

@@ -82,13 +82,13 @@ func registerInventoryStorageVolumeHandler(router Router, authorizer *authz.Auth
 //	        metadata:
 //	          type: array
 //	          description: List of storage volumes
-//	               items:
-//	                 type: string
-//	               example: |-
-//	                 [
-//	                   "/1.0/inventory/storage_volumes/1",
-//	                   "/1.0/inventory/storage_volumes/2"
-//	                 ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/inventory/storage_volumes/1",
+//	              "/1.0/inventory/storage_volumes/2"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

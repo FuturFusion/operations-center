@@ -62,13 +62,13 @@ func registerProvisioningClusterTemplateHandler(router Router, authorizer *authz
 //	        metadata:
 //	          type: array
 //	          description: List of cluster config templates
-//                items:
-//                  type: string
-//                example: |-
-//                  [
-//                    "/1.0/provisioning/cluster-config-templates/one",
-//                    "/1.0/provisioning/cluster-config-templates/two"
-//                  ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/provisioning/cluster-config-templates/one",
+//	              "/1.0/provisioning/cluster-config-templates/two"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

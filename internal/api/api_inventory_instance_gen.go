@@ -82,13 +82,13 @@ func registerInventoryInstanceHandler(router Router, authorizer *authz.Authorize
 //	        metadata:
 //	          type: array
 //	          description: List of instances
-//	               items:
-//	                 type: string
-//	               example: |-
-//	                 [
-//	                   "/1.0/inventory/instances/1",
-//	                   "/1.0/inventory/instances/2"
-//	                 ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/inventory/instances/1",
+//	              "/1.0/inventory/instances/2"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

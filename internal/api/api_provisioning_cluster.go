@@ -75,13 +75,13 @@ func registerProvisioningClusterHandler(router Router, authorizer *authz.Authori
 //	        metadata:
 //	          type: array
 //	          description: List of clusters
-//                items:
-//                  type: string
-//                example: |-
-//                  [
-//                    "/1.0/provisioning/clusters/one",
-//                    "/1.0/provisioning/clusters/two"
-//                  ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/provisioning/clusters/one",
+//	              "/1.0/provisioning/clusters/two"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -610,13 +610,13 @@ func (c *clusterHandler) clusterCertificatePut(r *http.Request) response.Respons
 //	        metadata:
 //	          type: array
 //	          description: List of cluster artifacts
-//                items:
-//                  type: string
-//                example: |-
-//                  [
-//                    "/1.0/provisioning/clusters/one/artifacts/one",
-//                    "/1.0/provisioning/clusters/one/artifacts/two"
-//                  ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/provisioning/clusters/one/artifacts/one",
+//	              "/1.0/provisioning/clusters/one/artifacts/two"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -766,10 +766,9 @@ func (c *clusterHandler) clusterArtifactsGet(r *http.Request) response.Response 
 //	    type: string
 //	    example: zip
 //	responses:
-//	content:
 //	  "200":
 //	    description: Zip Archive of all the files of the artifact.
-//	    'application/zip':
+//	    "application/zip":
 //	      schema:
 //	        type: string
 //	        format: binary
@@ -843,12 +842,11 @@ func (c *clusterHandler) clusterArtifactGet(r *http.Request) response.Response {
 //
 //	---
 //	produces:
-//	  - */*
+//	  - "*/*"
 //	responses:
-//	content:
 //	  "200":
 //	    description: File content.
-//	    '*/*':
+//	    "*/*":
 //	      schema:
 //	        type: string
 //	        format: binary

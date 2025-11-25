@@ -72,13 +72,13 @@ func registerInventoryNetworkIntegrationHandler(router Router, authorizer *authz
 //	        metadata:
 //	          type: array
 //	          description: List of network integrations
-//	               items:
-//	                 type: string
-//	               example: |-
-//	                 [
-//	                   "/1.0/inventory/network_integrations/1",
-//	                   "/1.0/inventory/network_integrations/2"
-//	                 ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/inventory/network_integrations/1",
+//	              "/1.0/inventory/network_integrations/2"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

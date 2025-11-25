@@ -77,13 +77,13 @@ func registerInventoryNetworkAddressSetHandler(router Router, authorizer *authz.
 //	        metadata:
 //	          type: array
 //	          description: List of network address sets
-//	               items:
-//	                 type: string
-//	               example: |-
-//	                 [
-//	                   "/1.0/inventory/network_address_sets/1",
-//	                   "/1.0/inventory/network_address_sets/2"
-//	                 ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/inventory/network_address_sets/1",
+//	              "/1.0/inventory/network_address_sets/2"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

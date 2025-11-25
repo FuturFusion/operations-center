@@ -77,13 +77,13 @@ func registerInventoryNetworkACLHandler(router Router, authorizer *authz.Authori
 //	        metadata:
 //	          type: array
 //	          description: List of network ACLs
-//	               items:
-//	                 type: string
-//	               example: |-
-//	                 [
-//	                   "/1.0/inventory/network_acls/1",
-//	                   "/1.0/inventory/network_acls/2"
-//	                 ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/inventory/network_acls/1",
+//	              "/1.0/inventory/network_acls/2"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
