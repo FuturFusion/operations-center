@@ -1,4 +1,4 @@
-# Instance filtering
+# Filtering
 
 Operations Center uses [expr-lang](https://expr-lang.org/) for filtering in
 various places, including filtering of results fetched from the inventory
@@ -39,6 +39,11 @@ Tip: to see the available fields of updates, run:
 
 ### Filtering updates and update files
 
+If a filter is defined, the filter needs to evaluate to `true` for the update
+being fetched by Operations Center and `false` otherwise. A filter expression
+resulting in an non boolean value is considered an error.
+The empty filter expression does not filter at all, same effect as `true`.
+
 | Expression                        | Description                                               |
 | :---                              | :---                                                      |
 | `"stable" in channels`            | Only download updates that are in the `stable` channel    |
@@ -47,7 +52,8 @@ Tip: to see the available fields of updates, run:
 ```{note}
 Operations Center has the following extended functions for filtering update files:
 
-* `AppliesToArchitecture(string)` -- returns `true`, if the file applies to the specified architecture or if the file is architecture neutral.
+* `AppliesToArchitecture(string)` -- returns `true`, if the file applies to the
+  specified architecture or if the file is architecture neutral.
 ```
 
 ```{note}
