@@ -77,13 +77,13 @@ func registerInventoryNetworkZoneHandler(router Router, authorizer *authz.Author
 //	        metadata:
 //	          type: array
 //	          description: List of network zones
-//	               items:
-//	                 type: string
-//	               example: |-
-//	                 [
-//	                   "/1.0/inventory/network_zones/1",
-//	                   "/1.0/inventory/network_zones/2"
-//	                 ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/inventory/network_zones/1",
+//	              "/1.0/inventory/network_zones/2"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

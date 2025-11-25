@@ -72,13 +72,13 @@ func registerInventoryNetworkLoadBalancerHandler(router Router, authorizer *auth
 //	        metadata:
 //	          type: array
 //	          description: List of network load balancers
-//	               items:
-//	                 type: string
-//	               example: |-
-//	                 [
-//	                   "/1.0/inventory/network_load_balancers/1",
-//	                   "/1.0/inventory/network_load_balancers/2"
-//	                 ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/inventory/network_load_balancers/1",
+//	              "/1.0/inventory/network_load_balancers/2"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

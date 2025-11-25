@@ -77,13 +77,13 @@ func registerInventoryProfileHandler(router Router, authorizer *authz.Authorizer
 //	        metadata:
 //	          type: array
 //	          description: List of profiles
-//	               items:
-//	                 type: string
-//	               example: |-
-//	                 [
-//	                   "/1.0/inventory/profiles/1",
-//	                   "/1.0/inventory/profiles/2"
-//	                 ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/inventory/profiles/1",
+//	              "/1.0/inventory/profiles/2"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

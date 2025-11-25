@@ -72,13 +72,13 @@ func registerInventoryStoragePoolHandler(router Router, authorizer *authz.Author
 //	        metadata:
 //	          type: array
 //	          description: List of storage pools
-//	               items:
-//	                 type: string
-//	               example: |-
-//	                 [
-//	                   "/1.0/inventory/storage_pools/1",
-//	                   "/1.0/inventory/storage_pools/2"
-//	                 ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/inventory/storage_pools/1",
+//	              "/1.0/inventory/storage_pools/2"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

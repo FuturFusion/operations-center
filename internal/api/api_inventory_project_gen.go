@@ -72,13 +72,13 @@ func registerInventoryProjectHandler(router Router, authorizer *authz.Authorizer
 //	        metadata:
 //	          type: array
 //	          description: List of projects
-//	               items:
-//	                 type: string
-//	               example: |-
-//	                 [
-//	                   "/1.0/inventory/projects/1",
-//	                   "/1.0/inventory/projects/2"
-//	                 ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/inventory/projects/1",
+//	              "/1.0/inventory/projects/2"
+//	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
