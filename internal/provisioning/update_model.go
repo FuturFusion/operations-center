@@ -22,7 +22,7 @@ import (
 //generate-expr: Update
 
 type Update struct {
-	ID          string                `json:"-" expr:"id"`
+	ID          string                `json:"-"`
 	UUID        uuid.UUID             `json:"-" expr:"uuid" db:"primary=yes"`
 	Format      string                `json:"format" db:"ignore"`
 	Origin      string                `json:"origin"`

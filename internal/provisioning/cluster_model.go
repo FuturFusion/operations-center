@@ -20,7 +20,7 @@ import (
 //generate-expr: Cluster
 
 type Cluster struct {
-	ID                    int64             `json:"id"`
+	ID                    int64             `json:"-"`
 	Name                  string            `json:"name" db:"primary=yes"`
 	ConnectionURL         string            `json:"connection_url"`
 	Certificate           string            `json:"certificate"`

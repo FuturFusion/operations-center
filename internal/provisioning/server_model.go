@@ -15,7 +15,7 @@ import (
 //generate-expr: Server
 
 type Server struct {
-	ID                   int64            `json:"id"`
+	ID                   int64            `json:"-"`
 	Cluster              *string          `json:"cluster"                db:"leftjoin=clusters.name"`
 	Name                 string           `json:"name"                   db:"primary=yes"`
 	Type                 api.ServerType   `json:"type"`

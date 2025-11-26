@@ -18,7 +18,7 @@ import (
 //generate-expr: {{ .Name | pascalcase }}
 
 type {{ .Name | pascalcase }} struct {
-	ID          int `json:"id"`
+	ID          int `json:"-"`
 	UUID        uuid.UUID `json:"uuid"`
 	Cluster     string `json:"cluster"`
 {{- if .ServerIDByLocation }}
