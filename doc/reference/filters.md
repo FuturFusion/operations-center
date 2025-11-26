@@ -16,9 +16,9 @@ For a full list of available functions and examples for more advanced expression
 see the full language definition at https://expr-lang.org/docs/language-definition.
 ```
 
-## Common examples
+## Common Examples
 
-### Filtering results from inventory
+### Filtering Results from Inventory
 
 | Expression                                          | Entity  | Description                                                                          |
 | :---                                                | :---    | :---                                                                                 |
@@ -37,7 +37,7 @@ Tip: to see the available fields of updates, run:
 `operations-center inventory <entity> list -f json | jq -r '. | first | keys | sort | .[]'`
 ```
 
-### Filtering updates and update files
+### Filtering Updates and Update Files
 
 If a filter is defined, the filter needs to evaluate to `true` for the update
 being fetched by Operations Center and `false` otherwise. A filter expression
