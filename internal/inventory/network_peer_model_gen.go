@@ -17,7 +17,7 @@ import (
 //generate-expr: NetworkPeer
 
 type NetworkPeer struct {
-	ID          int                  `json:"id"`
+	ID          int                  `json:"-"`
 	UUID        uuid.UUID            `json:"uuid"`
 	Cluster     string               `json:"cluster"`
 	NetworkName string               `json:"network_name"`

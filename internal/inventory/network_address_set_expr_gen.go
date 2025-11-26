@@ -27,7 +27,7 @@ type ExprApiNetworkAddressSetPut struct {
 }
 
 type ExprNetworkAddressSet struct {
-	ID          int                      `json:"id" expr:"id"`
+	ID          int                      `json:"-" expr:"-"`
 	UUID        uuid.UUID                `json:"uuid" expr:"uuid"`
 	Cluster     string                   `json:"cluster" expr:"cluster"`
 	ProjectName string                   `json:"project" expr:"project"`

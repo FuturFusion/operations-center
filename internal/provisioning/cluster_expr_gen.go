@@ -9,7 +9,7 @@ import (
 )
 
 type ExprCluster struct {
-	ID                    int64             `json:"id" expr:"id"`
+	ID                    int64             `json:"-" expr:"-"`
 	Name                  string            `json:"name" db:"primary=yes" expr:"name"`
 	ConnectionURL         string            `json:"connection_url" expr:"connection_url"`
 	Certificate           string            `json:"certificate" expr:"certificate"`

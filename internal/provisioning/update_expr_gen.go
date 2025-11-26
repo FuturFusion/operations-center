@@ -11,7 +11,7 @@ import (
 )
 
 type ExprUpdate struct {
-	ID          string                `json:"-" expr:"id"`
+	ID          string                `json:"-" expr:"-"`
 	UUID        uuid.UUID             `json:"-" expr:"uuid" db:"primary=yes"`
 	Format      string                `json:"format" db:"ignore" expr:"format"`
 	Origin      string                `json:"origin" expr:"origin"`

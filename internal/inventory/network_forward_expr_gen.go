@@ -31,7 +31,7 @@ type ExprApiNetworkForwardPut struct {
 }
 
 type ExprNetworkForward struct {
-	ID          int                   `json:"id" expr:"id"`
+	ID          int                   `json:"-" expr:"-"`
 	UUID        uuid.UUID             `json:"uuid" expr:"uuid"`
 	Cluster     string                `json:"cluster" expr:"cluster"`
 	NetworkName string                `json:"network_name" expr:"network_name"`

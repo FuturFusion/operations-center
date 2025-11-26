@@ -18,7 +18,7 @@ import (
 //generate-expr: StorageVolume
 
 type StorageVolume struct {
-	ID              int                        `json:"id"`
+	ID              int                        `json:"-"`
 	UUID            uuid.UUID                  `json:"uuid"`
 	Cluster         string                     `json:"cluster"`
 	Server          string                     `json:"server"`

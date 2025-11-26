@@ -47,7 +47,7 @@ type ExprApiStorageBucketPut struct {
 }
 
 type ExprStorageBucket struct {
-	ID              int                      `json:"id" expr:"id"`
+	ID              int                      `json:"-" expr:"-"`
 	UUID            uuid.UUID                `json:"uuid" expr:"uuid"`
 	Cluster         string                   `json:"cluster" expr:"cluster"`
 	Server          string                   `json:"server" expr:"server"`

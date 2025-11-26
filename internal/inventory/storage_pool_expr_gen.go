@@ -24,7 +24,7 @@ type ExprApiStoragePoolPut struct {
 }
 
 type ExprStoragePool struct {
-	ID          int                `json:"id" expr:"id"`
+	ID          int                `json:"-" expr:"-"`
 	UUID        uuid.UUID          `json:"uuid" expr:"uuid"`
 	Cluster     string             `json:"cluster" expr:"cluster"`
 	Name        string             `json:"name" expr:"name"`

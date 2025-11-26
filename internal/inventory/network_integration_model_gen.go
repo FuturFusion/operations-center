@@ -17,7 +17,7 @@ import (
 //generate-expr: NetworkIntegration
 
 type NetworkIntegration struct {
-	ID          int                         `json:"id"`
+	ID          int                         `json:"-"`
 	UUID        uuid.UUID                   `json:"uuid"`
 	Cluster     string                      `json:"cluster"`
 	Name        string                      `json:"name"`

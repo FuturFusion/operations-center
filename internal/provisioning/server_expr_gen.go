@@ -230,7 +230,7 @@ type ExprOsapiSystemStorageState struct {
 }
 
 type ExprServer struct {
-	ID                   int64            `json:"id" expr:"id"`
+	ID                   int64            `json:"-" expr:"-"`
 	Cluster              *string          `json:"cluster"                db:"leftjoin=clusters.name" expr:"cluster"`
 	Name                 string           `json:"name"                   db:"primary=yes" expr:"name"`
 	Type                 api.ServerType   `json:"type" expr:"type"`

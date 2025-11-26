@@ -17,7 +17,7 @@ import (
 //generate-expr: NetworkZone
 
 type NetworkZone struct {
-	ID          int                  `json:"id"`
+	ID          int                  `json:"-"`
 	UUID        uuid.UUID            `json:"uuid"`
 	Cluster     string               `json:"cluster"`
 	ProjectName string               `json:"project"`
