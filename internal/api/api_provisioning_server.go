@@ -37,6 +37,12 @@ func registerProvisioningServerHandler(router Router, authorizer *authz.Authoriz
 	// authorization is performed for these requests.
 	router.HandleFunc("PUT /:self", response.With(handler.serverPutSelf))
 
+	// Self registering of IncusOS which this Operations Center instance is served
+	// from (POST by IncusOS serving Operations Center for its own record).
+	// This route is only available through unix socket, therefore no
+	// authentication and authorization is performed for these requests.
+	router.HandleFunc("POST /:self_register", response.With(handler.serverPostSelfRegister))
+
 	router.HandleFunc("GET /{$}", response.With(handler.serversGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{name}", response.With(handler.serverGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /{name}", response.With(handler.serverPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
@@ -507,6 +513,41 @@ func (s *serverHandler) serverPutSelf(r *http.Request) response.Response {
 		ConnectionURL:             serverUpdate.ConnectionURL,
 		AuthenticationCertificate: r.TLS.PeerCertificates[0],
 	})
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed self-updating from server %q: %w", r.RemoteAddr, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/provisioning/servers/:self_register servers server_post_self_register
+//
+//	Register an Operations Center server by it self onto it self
+//
+//	Register an Operations Center server by it self onto it self.
+//	Authentication is done through unix socket.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverPostSelfRegister(r *http.Request) response.Response {
+	// Self update through unix socket from IncusOS serving Operations Center.
+	if r.RemoteAddr != "@" || r.TLS != nil {
+		return response.Forbidden(fmt.Errorf("Self register is only possible through unix socket"))
+	}
+
+	err := s.service.SelfRegisterOperationsCenter(r.Context())
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed self-updating from server %q: %w", r.RemoteAddr, err))
 	}

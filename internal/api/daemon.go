@@ -446,30 +446,51 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 }
 
 func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.TokenService, clusterSvc provisioning.ClusterService) provisioning.ServerService {
-	return provisioningServiceMiddleware.NewServerServiceWithSlog(
-		provisioning.NewServerService(
-			provisioningRepoMiddleware.NewServerRepoWithSlog(
-				provisioningSqlite.NewServer(db),
-				slog.Default(),
-			),
-			provisioningAdapterMiddleware.NewServerClientPortWithSlog(
-				provisioningIncusAdapter.New(
-					d.clientCertificate,
-					d.clientKey,
-				),
-				slog.Default(),
-				provisioningAdapterMiddleware.ServerClientPortWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						// ErrSelfUpdateNotification is used as cause when the context is
-						// cancelled. This is an expected success path and therefore not
-						// an error.
-						return errors.Is(err, provisioning.ErrSelfUpdateNotification)
-					},
-				),
-			),
-			tokenSvc,
-			clusterSvc,
+	serverSvc := provisioning.NewServerService(
+		provisioningRepoMiddleware.NewServerRepoWithSlog(
+			provisioningSqlite.NewServer(db),
+			slog.Default(),
 		),
+		provisioningAdapterMiddleware.NewServerClientPortWithSlog(
+			provisioningIncusAdapter.New(
+				d.clientCertificate,
+				d.clientKey,
+			),
+			slog.Default(),
+			provisioningAdapterMiddleware.ServerClientPortWithSlogWithInformativeErrFunc(
+				func(err error) bool {
+					// ErrSelfUpdateNotification is used as cause when the context is
+					// cancelled. This is an expected success path and therefore not
+					// an error.
+					return errors.Is(err, provisioning.ErrSelfUpdateNotification)
+				},
+			),
+		),
+		tokenSvc,
+		clusterSvc,
+		config.GetNetwork().OperationsCenterAddress,
+		d.serverCertificate,
+	)
+
+	// Server service needs to learn about updates of the public Operations Center
+	// address.
+	config.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemNetwork) {
+		err := serverSvc.UpdateServerURL(ctx, cfg.OperationsCenterAddress)
+		if err != nil {
+			slog.WarnContext(ctx, "failed to update server URL", logger.Err(err))
+		}
+	})
+
+	// Server service needs to learn about updates of the server certificate.
+	d.serverCertificateUpdate.AddListener(func(ctx context.Context, c tls.Certificate) {
+		err := serverSvc.UpdateServerCertificate(ctx, c)
+		if err != nil {
+			slog.WarnContext(ctx, "failed to update server URL", logger.Err(err))
+		}
+	})
+
+	return provisioningServiceMiddleware.NewServerServiceWithSlog(
+		serverSvc,
 		slog.Default(),
 	)
 }
@@ -869,6 +890,7 @@ func (d *Daemon) incusOSSelfRegister(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
