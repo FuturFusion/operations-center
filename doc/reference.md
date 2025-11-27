@@ -11,6 +11,7 @@ Cluster Template </reference/cluster-template>
 Cluster </reference/cluster>
 Inventory </reference/inventory>
 Server </reference/server>
+Settings </reference/settings>
 Token </reference/token>
 Update </reference/update>
 Filtering </reference/filters>

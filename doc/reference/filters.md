@@ -1,4 +1,4 @@
-# Instance filtering
+# Filtering
 
 Operations Center uses [expr-lang](https://expr-lang.org/) for filtering in
 various places, including filtering of results fetched from the inventory
@@ -16,9 +16,9 @@ For a full list of available functions and examples for more advanced expression
 see the full language definition at https://expr-lang.org/docs/language-definition.
 ```
 
-## Common examples
+## Common Examples
 
-### Filtering results from inventory
+### Filtering Results from Inventory
 
 | Expression                                          | Entity  | Description                                                                          |
 | :---                                                | :---    | :---                                                                                 |
@@ -37,7 +37,12 @@ Tip: to see the available fields of updates, run:
 `operations-center inventory <entity> list -f json | jq -r '. | first | keys | sort | .[]'`
 ```
 
-### Filtering updates and update files
+### Filtering Updates and Update Files
+
+If a filter is defined, the filter needs to evaluate to `true` for the update
+being fetched by Operations Center and `false` otherwise. A filter expression
+resulting in an non boolean value is considered an error.
+The empty filter expression does not filter at all, same effect as `true`.
 
 | Expression                        | Description                                               |
 | :---                              | :---                                                      |
@@ -47,7 +52,8 @@ Tip: to see the available fields of updates, run:
 ```{note}
 Operations Center has the following extended functions for filtering update files:
 
-* `AppliesToArchitecture(string)` -- returns `true`, if the file applies to the specified architecture or if the file is architecture neutral.
+* `AppliesToArchitecture(string)` -- returns `true`, if the file applies to the
+  specified architecture or if the file is architecture neutral.
 ```
 
 ```{note}
