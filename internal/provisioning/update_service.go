@@ -518,8 +518,29 @@ type UpdateFileExprEnv struct {
 	Architecture string `expr:"architecture"`
 }
 
-func (u UpdateFileExprEnv) AppliesToArchitecture(wantArch string) bool {
-	return u.Architecture == wantArch || u.Architecture == ""
+func (u UpdateFileExprEnv) ExprCompileOptions() []expr.Option {
+	return []expr.Option{
+		expr.Function("applies_to_architecture", func(params ...any) (any, error) {
+			if len(params) != 2 {
+				return nil, fmt.Errorf("Invalid number of arguments to 'applies_to_architecture', expected <architecture> <expected_architecture>, got %d arguments", len(params))
+			}
+
+			arch, ok := params[0].(string)
+			if !ok {
+				return nil, fmt.Errorf("Invalid first argument type to 'applies_to_architecture', expected string, got: %T", params[0])
+			}
+
+			wantArch, ok := params[1].(string)
+			if !ok {
+				return nil, fmt.Errorf("Invalid second argument type to 'applies_to_architecture', expected string, got: %T", params[0])
+			}
+
+			return arch == wantArch || arch == "", nil
+		}),
+
+		// Always compile with an empty struct for consistency.
+		expr.Env(UpdateFileExprEnv{}),
+	}
 }
 
 func UpdateFileExprEnvFrom(u UpdateFile) UpdateFileExprEnv {
@@ -535,7 +556,7 @@ func UpdateFileExprEnvFrom(u UpdateFile) UpdateFileExprEnv {
 
 func (s updateService) filterUpdateFileByFilterExpression(updates Updates) (Updates, error) {
 	if len(s.updateFileFilterExpression) > 0 {
-		fileFilterExpression, err := expr.Compile(s.updateFileFilterExpression, expr.Env(UpdateFileExprEnvFrom(UpdateFile{})))
+		fileFilterExpression, err := expr.Compile(s.updateFileFilterExpression, UpdateFileExprEnvFrom(UpdateFile{}).ExprCompileOptions()...)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to compile file filter expression: %w", err)
 		}

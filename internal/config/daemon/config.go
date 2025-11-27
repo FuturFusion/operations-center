@@ -344,7 +344,7 @@ func validate(cfg config) error {
 	}
 
 	if cfg.Updates.FileFilterExpression != "" {
-		_, err := expr.Compile(cfg.Updates.FileFilterExpression, expr.Env(provisioning.UpdateFileExprEnvFrom(provisioning.UpdateFile{})))
+		_, err := expr.Compile(cfg.Updates.FileFilterExpression, provisioning.UpdateFileExprEnvFrom(provisioning.UpdateFile{}).ExprCompileOptions()...)
 		if err != nil {
 			return domain.NewValidationErrf(`Invalid config, failed to compile file filter expression: %v`, err)
 		}
