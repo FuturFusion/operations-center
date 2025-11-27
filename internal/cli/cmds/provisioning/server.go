@@ -2,6 +2,7 @@ package provisioning
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -354,6 +355,9 @@ func (c *cmdServerRename) Run(cmd *cobra.Command, args []string) error {
 // Show server.
 type cmdServerShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagShowResources bool
+	flagShowOSData    bool
 }
 
 func (c *cmdServerShow) Command() *cobra.Command {
@@ -365,6 +369,9 @@ func (c *cmdServerShow) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
+
+	cmd.Flags().BoolVar(&c.flagShowResources, "resources", false, "show server resource details")
+	cmd.Flags().BoolVar(&c.flagShowOSData, "os-data", false, "show server OS data")
 
 	return cmd
 }
@@ -391,6 +398,24 @@ func (c *cmdServerShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Status: %s\n", server.Status.String())
 	fmt.Printf("Last Updated: %s\n", server.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Last Seen: %s\n", server.LastSeen.Truncate(time.Second).String())
+
+	if c.flagShowResources {
+		hardwareDataJSON, err := json.MarshalIndent(server.HardwareData, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Resources:\n%s\n", render.Indent(4, string(hardwareDataJSON)))
+	}
+
+	if c.flagShowOSData {
+		osDataJSON, err := json.MarshalIndent(server.OSData, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("OS Data:\n%s\n", render.Indent(4, string(osDataJSON)))
+	}
 
 	return nil
 }
