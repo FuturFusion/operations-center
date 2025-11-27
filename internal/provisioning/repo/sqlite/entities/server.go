@@ -11,6 +11,7 @@ package entities
 //generate-database:mapper stmt -e server objects-by-Cluster-and-Status
 //generate-database:mapper stmt -e server objects-by-Status
 //generate-database:mapper stmt -e server objects-by-Certificate
+//generate-database:mapper stmt -e server objects-by-Type
 //generate-database:mapper stmt -e server names
 //generate-database:mapper stmt -e server names-by-Cluster
 //generate-database:mapper stmt -e server id

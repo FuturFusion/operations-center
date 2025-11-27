@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"testing"
 
@@ -118,7 +119,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	server := sqlite.NewServer(tx)
-	serverSvc := provisioning.NewServerService(server, nil, nil, nil)
+	serverSvc := provisioning.NewServerService(server, nil, nil, nil, "", tls.Certificate{})
 
 	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), localArtifactRepo, client, serverSvc, nil, terraformProvisioner)
 
