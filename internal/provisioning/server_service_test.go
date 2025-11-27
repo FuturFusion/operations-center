@@ -150,7 +150,7 @@ one
 
 			token := uuid.MustParse("686d2a12-20f9-11f0-82c6-7fff26bab0c4")
 
-			serverSvc := provisioning.NewServerService(repo, client, tokenSvc, nil,
+			serverSvc := provisioning.NewServerService(repo, client, tokenSvc, nil, "", tls.Certificate{},
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 				provisioning.ServerServiceWithInitialConnectionDelay(0), // Disable delay for initial connection test
 			)
@@ -209,7 +209,7 @@ func TestServerService_GetAll(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, "", tls.Certificate{})
 
 			// Run test
 			servers, err := serverSvc.GetAll(context.Background())
@@ -340,7 +340,7 @@ func TestServerService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, "", tls.Certificate{})
 
 			// Run test
 			server, err := serverSvc.GetAllWithFilter(context.Background(), tc.filter)
@@ -388,7 +388,7 @@ func TestServerService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, "", tls.Certificate{})
 
 			// Run test
 			serverNames, err := serverSvc.GetAllNames(context.Background())
@@ -503,7 +503,7 @@ func TestServerService_GetAllIDsWithFilter(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, "", tls.Certificate{})
 
 			// Run test
 			serverIDs, err := serverSvc.GetAllNamesWithFilter(context.Background(), tc.filter)
@@ -561,7 +561,7 @@ func TestServerService_GetByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, "", tls.Certificate{})
 
 			// Run test
 			server, err := serverSvc.GetByName(context.Background(), tc.nameArg)
@@ -646,7 +646,9 @@ one
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, "", tls.Certificate{},
+				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
+			)
 
 			// Run test
 			err := serverSvc.Update(context.Background(), tc.server)
@@ -860,7 +862,7 @@ one
 			// have been removed after successful processing.
 			selfUpdateSignal := signals.New[provisioning.Server]()
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil,
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, "", tls.Certificate{},
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 				provisioning.ServerServiceWithSelfUpdateSignal(selfUpdateSignal),
 			)
@@ -1122,7 +1124,7 @@ one
 
 			selfUpdateSignal := signals.New[provisioning.Server]()
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil,
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, "", tls.Certificate{},
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 				provisioning.ServerServiceWithSelfUpdateSignal(selfUpdateSignal),
 			)
@@ -1162,11 +1164,10 @@ one
 }
 
 func TestServerService_SelfUpdate(t *testing.T) {
-	// Setup client certificate
-	certPEM, keyPEM, err := incustls.GenerateMemCert(true, false)
+	serverCertPEM, serverKeyPEM, err := incustls.GenerateMemCert(false, false)
 	require.NoError(t, err)
 
-	cert, err := tls.X509KeyPair(certPEM, keyPEM)
+	serverCertificate, err := tls.X509KeyPair(serverCertPEM, serverKeyPEM)
 	require.NoError(t, err)
 
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
@@ -1184,12 +1185,12 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			name: "success",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				ConnectionURL:             "http://one-new/",
-				AuthenticationCertificate: cert.Leaf,
+				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(certPEM),
+				Certificate:   string(serverCertPEM),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 			},
@@ -1200,7 +1201,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			name: "error - repo.GetByCertificate not found",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				ConnectionURL:             "http://one/",
-				AuthenticationCertificate: cert.Leaf,
+				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateErr: domain.ErrNotFound,
 
@@ -1212,7 +1213,7 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			name: "error - repo.GetByCertificate",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				ConnectionURL:             "http://one/",
-				AuthenticationCertificate: cert.Leaf,
+				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateErr: boom.Error,
 
@@ -1222,12 +1223,12 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			name: "error - validation",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				ConnectionURL:             ":|//", // invalid URL
-				AuthenticationCertificate: cert.Leaf,
+				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(certPEM),
+				Certificate:   string(serverCertPEM),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 			},
@@ -1241,12 +1242,12 @@ func TestServerService_SelfUpdate(t *testing.T) {
 			name: "error - repo.UpdateByID",
 			serverSelfUpdate: provisioning.ServerSelfUpdate{
 				ConnectionURL:             "http://one/",
-				AuthenticationCertificate: cert.Leaf,
+				AuthenticationCertificate: serverCertificate.Leaf,
 			},
 			repoGetByCertificateServer: &provisioning.Server{
 				Name:          "one",
 				ConnectionURL: "http://one/",
-				Certificate:   string(certPEM),
+				Certificate:   string(serverCertPEM),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
 			},
@@ -1269,10 +1270,104 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, "https://one:8443", serverCertificate,
+				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
+			)
 
 			// Run test
 			err := serverSvc.SelfUpdate(context.Background(), tc.serverSelfUpdate)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
+	serverCertPEM, serverKeyPEM, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	serverCertificate, err := tls.X509KeyPair(serverCertPEM, serverKeyPEM)
+	require.NoError(t, err)
+
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	tests := []struct {
+		name                    string
+		argServerURL            string
+		repoGetAllWithFilter    provisioning.Servers
+		repoGetAllWithFilterErr error
+		repoCreateID            int64
+		repoCreateErr           error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:                 "success - Operations Center initial self update (registration)",
+			argServerURL:         "https://192.168.1.200:8443",
+			repoGetAllWithFilter: provisioning.Servers{},
+			repoCreateID:         1,
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                    "error - repo.GetAllWithFilter",
+			argServerURL:            "https://192.168.1.200:8443",
+			repoGetAllWithFilterErr: boom.Error,
+			repoCreateID:            1,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:         "error - Operations Center is already registered",
+			argServerURL: "https://192.168.1.200:8443",
+			repoGetAllWithFilter: provisioning.Servers{
+				{},
+			},
+			repoCreateID: 1,
+
+			assertErr: require.Error,
+		},
+		{
+			name:                 "error - validation",
+			argServerURL:         ":|//", // invalid URL
+			repoGetAllWithFilter: provisioning.Servers{},
+			repoCreateID:         1,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name:                 "error - repo.Create",
+			argServerURL:         "https://192.168.1.200:8443",
+			repoGetAllWithFilter: provisioning.Servers{},
+			repoCreateErr:        boom.Error,
+			repoCreateID:         1,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+				CreateFunc: func(ctx context.Context, server provisioning.Server) (int64, error) {
+					return tc.repoCreateID, tc.repoCreateErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, tc.argServerURL, serverCertificate,
+				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
+			)
+
+			// Run test
+			err := serverSvc.SelfRegisterOperationsCenter(context.Background())
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1347,7 +1442,9 @@ func TestServerService_Rename(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }))
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, "", tls.Certificate{},
+				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
+			)
 
 			// Run test
 			err := serverSvc.Rename(context.Background(), tc.oldName, tc.newName)
@@ -1427,7 +1524,7 @@ func TestServerService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil)
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, "", tls.Certificate{})
 
 			// Run test
 			err := serverSvc.DeleteByName(context.Background(), tc.nameArg)
@@ -1718,7 +1815,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil,
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, "", tls.Certificate{},
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 			)
 			serverSvc.SetClusterService(clusterSvc)

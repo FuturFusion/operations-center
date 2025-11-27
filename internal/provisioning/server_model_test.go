@@ -232,10 +232,11 @@ func TestServer_Filter(t *testing.T) {
 				Cluster:     ptr.To("cluster"),
 				Status:      ptr.To(api.ServerStatusReady),
 				Certificate: ptr.To("certificate"),
+				Type:        ptr.To(api.ServerTypeIncus),
 				Expression:  ptr.To("true"),
 			},
 
-			want: `certificate=certificate&cluster=cluster&filter=true&status=ready`,
+			want: `certificate=certificate&cluster=cluster&filter=true&status=ready&type=incus`,
 		},
 	}
 

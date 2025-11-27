@@ -21,6 +21,7 @@ type ServerService interface {
 	GetSystemProvider(ctx context.Context, name string) (ServerSystemProvider, error)
 	UpdateSystemProvider(ctx context.Context, name string, providerConfig ServerSystemProvider) error
 	SelfUpdate(ctx context.Context, serverUpdate ServerSelfUpdate) error
+	SelfRegisterOperationsCenter(ctx context.Context) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
 

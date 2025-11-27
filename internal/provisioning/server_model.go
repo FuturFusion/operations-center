@@ -107,6 +107,7 @@ type ServerFilter struct {
 	Cluster     *string
 	Status      *api.ServerStatus
 	Certificate *string
+	Type        *api.ServerType
 	Expression  *string `db:"ignore"`
 }
 
@@ -121,6 +122,10 @@ func (f ServerFilter) AppendToURLValues(query url.Values) url.Values {
 
 	if f.Certificate != nil {
 		query.Add("certificate", *f.Certificate)
+	}
+
+	if f.Type != nil {
+		query.Add("type", f.Type.String())
 	}
 
 	if f.Expression != nil {
