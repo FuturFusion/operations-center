@@ -266,6 +266,26 @@ func (s tokenService) getPreSeedImage(ctx context.Context, id uuid.UUID, imageTy
 		return nil, fmt.Errorf("Latest update %q is not a file", filename)
 	}
 
+	// Apply defaults to seeds.
+	if len(seeds.Applications) == 0 {
+		seeds.Applications = map[string]any{
+			"version": "1",
+			"applications": []any{
+				map[string]any{
+					"name": "incus",
+				},
+			},
+		}
+	}
+
+	// Enforce incus pre seeds applicable for use with Operations Center.
+	if seeds.Incus == nil {
+		seeds.Incus = map[string]any{}
+	}
+
+	seeds.Incus["apply_defaults"] = false
+	seeds.Incus["version"] = "1"
+
 	rc, err := s.flasher.GenerateSeededImage(ctx, id, seeds, file)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to generate seeded image: %w", err)

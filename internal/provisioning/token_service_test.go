@@ -512,10 +512,12 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 		updateSvcGetFileByFilenameErr         error
 		flasherAdapterGenerateSeededImageErr  error
 
-		assertErr require.ErrorAssertionFunc
+		assertErr            require.ErrorAssertionFunc
+		wantApplicationsSeed map[string]any
+		wantIncusSeed        map[string]any
 	}{
 		{
-			name:            "success",
+			name:            "success - empty seeds",
 			tokenArg:        uuidA,
 			imageTypeArg:    api.ImageTypeISO,
 			architectureArg: images.UpdateFileArchitecture64BitX86,
@@ -540,6 +542,83 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			}(),
 
 			assertErr: require.NoError,
+			wantApplicationsSeed: map[string]any{
+				"version": "1",
+				"applications": []any{
+					map[string]any{
+						"name": "incus",
+					},
+				},
+			},
+			wantIncusSeed: map[string]any{
+				"apply_defaults": false,
+				"version":        "1",
+			},
+		},
+		{
+			name:            "success - with seeds",
+			tokenArg:        uuidA,
+			imageTypeArg:    api.ImageTypeISO,
+			architectureArg: images.UpdateFileArchitecture64BitX86,
+			seedConfigArg: provisioning.TokenImageSeedConfigs{
+				Applications: map[string]any{
+					"version": "1",
+					"applications": []any{
+						map[string]any{
+							"name": "operations-center",
+						},
+					},
+				},
+				Incus: map[string]any{
+					"version": "1",
+					"certificates": []any{
+						map[string]any{
+							"name":        "admin",
+							"type":        "client",
+							"certificate": "foobar",
+						},
+					},
+				},
+			},
+			updateSvcGetAllWithFilterUpdates: provisioning.Updates{
+				{
+					UUID: updateUUID,
+				},
+			},
+			updateSvcGetUpdateAllFilesUpdateFiles: provisioning.UpdateFiles{
+				{
+					Filename:     isoGzFilename,
+					Type:         images.UpdateFileTypeImageISO,
+					Architecture: images.UpdateFileArchitecture64BitX86,
+				},
+			},
+			updateSvcGetFileByFilenameReadCloser: func() io.ReadCloser {
+				f, err := os.Open(isoGzFilename)
+				require.NoError(t, err)
+
+				return f
+			}(),
+
+			assertErr: require.NoError,
+			wantApplicationsSeed: map[string]any{
+				"version": "1",
+				"applications": []any{
+					map[string]any{
+						"name": "operations-center",
+					},
+				},
+			},
+			wantIncusSeed: map[string]any{
+				"apply_defaults": false,
+				"version":        "1",
+				"certificates": []any{
+					map[string]any{
+						"name":        "admin",
+						"type":        "client",
+						"certificate": "foobar",
+					},
+				},
+			},
 		},
 
 		{
@@ -703,6 +782,18 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 			flasherAdapterGenerateSeededImageErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			wantApplicationsSeed: map[string]any{
+				"version": "1",
+				"applications": []any{
+					map[string]any{
+						"name": "incus",
+					},
+				},
+			},
+			wantIncusSeed: map[string]any{
+				"apply_defaults": false,
+				"version":        "1",
+			},
 		},
 	}
 
@@ -729,6 +820,8 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 
 			flasherAdapter := &adapterMock.FlasherPortMock{
 				GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
+					require.Equal(t, tc.wantApplicationsSeed, seedConfig.Applications)
+					require.Equal(t, tc.wantIncusSeed, seedConfig.Incus)
 					return rc, tc.flasherAdapterGenerateSeededImageErr
 				},
 			}
