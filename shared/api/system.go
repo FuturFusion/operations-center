@@ -118,12 +118,12 @@ type SystemUpdatesPut struct {
 	// Empty filter expression does not filter at all.
 	//
 	// For file filter expression, the following helper functions are available:
-	//   - AppliesToArchitecture(arch string) bool
-	//       Returns true if the Architecture field matches the given arch string
-	//       or if the Architecture field is not set.
+	//   - applies_to_architecture(arch string, expected_arch string) bool
+	//       Returns true if the 'arch' string matches the given 'expected_arch' string
+	//       or if 'arch' is not set.
 	//
 	// Examples:
-	//   AppliesToArchitecture("x86_64")
-	//   Architecture == "x86_64"
+	//   applies_to_architecture(architecture, "x86_64")
+	//   architecture == "x86_64"
 	FileFilterExpression string `json:"file_filter_expression" yaml:"file_filter_expression"`
 }

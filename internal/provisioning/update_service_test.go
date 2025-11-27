@@ -900,7 +900,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 			// filtered.
 			ctx:                  context.Background(),
 			filterExpression:     `"stable" in channels`,
-			fileFilterExpression: `AppliesToArchitecture("x86_64")`,
+			fileFilterExpression: `applies_to_architecture(architecture, "x86_64")`,
 
 			sourceGetLatestUpdates: provisioning.Updates{
 				{
