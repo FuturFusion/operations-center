@@ -21,7 +21,7 @@ type StorageBucket struct {
 	ProjectName     string
 	StoragePoolName string
 	Name            string
-	Object          incusapi.StorageBucket
+	Object          incusapi.StorageBucketFull
 	LastUpdated     time.Time
 }
 

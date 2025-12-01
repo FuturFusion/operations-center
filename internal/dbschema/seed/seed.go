@@ -586,15 +586,17 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Name:            storageBucketName,
 				StoragePoolName: faker.RandomString(storagePools),
 				ProjectName:     projectName,
-				Object: incusapi.StorageBucket{
-					StorageBucketPut: incusapi.StorageBucketPut{
-						Config:      map[string]string{},
-						Description: storageBucketName + " " + gofakeit.Sentence(5),
+				Object: incusapi.StorageBucketFull{
+					StorageBucket: incusapi.StorageBucket{
+						StorageBucketPut: incusapi.StorageBucketPut{
+							Config:      map[string]string{},
+							Description: storageBucketName + " " + gofakeit.Sentence(5),
+						},
+						Name:     storageBucketName,
+						S3URL:    gofakeit.URL(),
+						Location: gofakeit.RandomString(servers),
+						Project:  projectName,
 					},
-					Name:     storageBucketName,
-					S3URL:    gofakeit.URL(),
-					Location: gofakeit.RandomString(servers),
-					Project:  projectName,
 				},
 				LastUpdated: faker.Date(),
 			}
@@ -617,18 +619,20 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				StoragePoolName: faker.RandomString(storagePools),
 				ProjectName:     projectName,
 				Type:            gofakeit.RandomString([]string{"container", "virtual-machine"}),
-				Object: incusapi.StorageVolume{
-					StorageVolumePut: incusapi.StorageVolumePut{
-						Config:      map[string]string{},
-						Description: storageVolumeName + " " + gofakeit.Sentence(5),
-						Restore:     gofakeit.Word(),
+				Object: incusapi.StorageVolumeFull{
+					StorageVolume: incusapi.StorageVolume{
+						StorageVolumePut: incusapi.StorageVolumePut{
+							Config:      map[string]string{},
+							Description: storageVolumeName + " " + gofakeit.Sentence(5),
+							Restore:     gofakeit.Word(),
+						},
+						Name:        storageVolumeName,
+						Type:        "custom",
+						Location:    gofakeit.RandomString(servers),
+						ContentType: gofakeit.RandomString([]string{"filesystem", "block"}),
+						Project:     projectName,
+						CreatedAt:   gofakeit.Date(),
 					},
-					Name:        storageVolumeName,
-					Type:        "custom",
-					Location:    gofakeit.RandomString(servers),
-					ContentType: gofakeit.RandomString([]string{"filesystem", "block"}),
-					Project:     projectName,
-					CreatedAt:   gofakeit.Date(),
 				},
 				LastUpdated: faker.Date(),
 			}

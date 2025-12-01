@@ -40,7 +40,7 @@ func NewStorageBucketServerClientWithPrometheus(base inventory.StorageBucketServ
 }
 
 // GetStorageBucketByName implements inventory.StorageBucketServerClient.
-func (_d StorageBucketServerClientWithPrometheus) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (storageBucket api.StorageBucket, err error) {
+func (_d StorageBucketServerClientWithPrometheus) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (storageBucketFull api.StorageBucketFull, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -54,7 +54,7 @@ func (_d StorageBucketServerClientWithPrometheus) GetStorageBucketByName(ctx con
 }
 
 // GetStorageBuckets implements inventory.StorageBucketServerClient.
-func (_d StorageBucketServerClientWithPrometheus) GetStorageBuckets(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageBuckets []api.StorageBucket, err error) {
+func (_d StorageBucketServerClientWithPrometheus) GetStorageBuckets(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageBucketFulls []api.StorageBucketFull, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"

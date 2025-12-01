@@ -248,7 +248,7 @@ func TestStorageBucketService_GetByUUID(t *testing.T) {
 				ProjectName:     "one",
 				StoragePoolName: "parent one",
 				Name:            "one",
-				Object:          incusapi.StorageBucket{},
+				Object:          incusapi.StorageBucketFull{},
 				LastUpdated:     time.Now(),
 			},
 
@@ -291,7 +291,7 @@ func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 		name                                         string
 		clusterSvcGetEndpoint                        provisioning.Endpoint
 		clusterSvcGetEndpointErr                     error
-		storageBucketClientGetStorageBucketByName    incusapi.StorageBucket
+		storageBucketClientGetStorageBucketByName    incusapi.StorageBucketFull
 		storageBucketClientGetStorageBucketByNameErr error
 		repoGetByUUIDStorageBucket                   inventory.StorageBucket
 		repoGetByUUIDErr                             error
@@ -316,10 +316,12 @@ func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 					ClusterCertificate: ptr.To("cluster-cert"),
 				},
 			},
-			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
-				Name:     "storageBucket one",
-				Location: "one",
-				Project:  "project one",
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucketFull{
+				StorageBucket: incusapi.StorageBucket{
+					Name:     "storageBucket one",
+					Location: "one",
+					Project:  "project one",
+				},
 			},
 
 			assertErr: require.NoError,
@@ -420,10 +422,12 @@ func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 					ClusterCertificate: ptr.To("cluster-cert"),
 				},
 			},
-			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
-				Name:     "storageBucket one",
-				Location: "one",
-				Project:  "project one",
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucketFull{
+				StorageBucket: incusapi.StorageBucket{
+					Name:     "storageBucket one",
+					Location: "one",
+					Project:  "project one",
+				},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -447,10 +451,12 @@ func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 					ClusterCertificate: ptr.To("cluster-cert"),
 				},
 			},
-			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
-				Name:     "storageBucket one",
-				Location: "one",
-				Project:  "project one",
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucketFull{
+				StorageBucket: incusapi.StorageBucket{
+					Name:     "storageBucket one",
+					Location: "one",
+					Project:  "project one",
+				},
 			},
 			repoUpdateByUUIDErr: boom.Error,
 
@@ -482,7 +488,7 @@ func TestStorageBucketService_ResyncByUUID(t *testing.T) {
 			}
 
 			storageBucketClient := &serverMock.StorageBucketServerClientMock{
-				GetStorageBucketByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
+				GetStorageBucketByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (incusapi.StorageBucketFull, error) {
 					require.Equal(t, tc.repoGetByUUIDStorageBucket.Name, storageBucketName)
 					require.Equal(t, tc.repoGetByUUIDStorageBucket.ProjectName, projectName)
 					require.Equal(t, "storage_pool", storagePoolName)
@@ -512,7 +518,7 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 		repoGetAllUUIDsWithFilterErr                 error
 		clusterSvcGetEndpoint                        provisioning.Endpoint
 		clusterSvcGetEndpointErr                     error
-		storageBucketClientGetStorageBucketByName    incusapi.StorageBucket
+		storageBucketClientGetStorageBucketByName    incusapi.StorageBucketFull
 		storageBucketClientGetStorageBucketByNameErr error
 		serviceOptions                               []inventory.StorageBucketServiceOption
 		repoCreateErr                                error
@@ -553,10 +559,12 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 					ClusterCertificate:   ptr.To("cluster-cert"),
 				},
 			},
-			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
-				Name:     "storage_bucket",
-				Location: "server01",
-				Project:  "project",
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucketFull{
+				StorageBucket: incusapi.StorageBucket{
+					Name:     "storage_bucket",
+					Location: "server01",
+					Project:  "project",
+				},
 			},
 
 			assertErr: require.NoError,
@@ -604,10 +612,12 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 					ClusterCertificate:   ptr.To("cluster-cert"),
 				},
 			},
-			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
-				Name:     "storage_bucket-new",
-				Location: "server01",
-				Project:  "project",
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucketFull{
+				StorageBucket: incusapi.StorageBucket{
+					Name:     "storage_bucket-new",
+					Location: "server01",
+					Project:  "project",
+				},
 			},
 
 			assertErr: require.NoError,
@@ -634,10 +644,12 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 					ClusterCertificate:   ptr.To("cluster-cert"),
 				},
 			},
-			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
-				Name:     "storage_bucket filtered", // matches filter
-				Location: "server01",
-				Project:  "project",
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucketFull{
+				StorageBucket: incusapi.StorageBucket{
+					Name:     "storage_bucket filtered", // matches filter
+					Location: "server01",
+					Project:  "project",
+				},
 			},
 			serviceOptions: []inventory.StorageBucketServiceOption{
 				inventory.StorageBucketWithSyncFilter(func(storageBucket inventory.StorageBucket) bool {
@@ -678,10 +690,12 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 					ClusterCertificate:   ptr.To("cluster-cert"),
 				},
 			},
-			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
-				Name:     "storage_bucket",
-				Location: "server01",
-				Project:  "project",
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucketFull{
+				StorageBucket: incusapi.StorageBucket{
+					Name:     "storage_bucket",
+					Location: "server01",
+					Project:  "project",
+				},
 			},
 
 			assertErr: require.NoError,
@@ -760,10 +774,12 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 					ClusterCertificate:   ptr.To("cluster-cert"),
 				},
 			},
-			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
-				Name:     "", // invalid
-				Location: "server01",
-				Project:  "project",
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucketFull{
+				StorageBucket: incusapi.StorageBucket{
+					Name:     "", // invalid
+					Location: "server01",
+					Project:  "project",
+				},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -792,10 +808,12 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 					ClusterCertificate:   ptr.To("cluster-cert"),
 				},
 			},
-			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
-				Name:     "storage_bucket",
-				Location: "server01",
-				Project:  "project",
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucketFull{
+				StorageBucket: incusapi.StorageBucket{
+					Name:     "storage_bucket",
+					Location: "server01",
+					Project:  "project",
+				},
 			},
 			repoCreateErr: boom.Error,
 
@@ -877,10 +895,12 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 					ClusterCertificate:   ptr.To("cluster-cert"),
 				},
 			},
-			storageBucketClientGetStorageBucketByName: incusapi.StorageBucket{
-				Name:     "storage_bucket-new",
-				Location: "server01",
-				Project:  "project",
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucketFull{
+				StorageBucket: incusapi.StorageBucket{
+					Name:     "storage_bucket-new",
+					Location: "server01",
+					Project:  "project",
+				},
 			},
 			repoDeleteByUUIDErr: boom.Error,
 
@@ -961,7 +981,7 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 			}
 
 			storageBucketClient := &serverMock.StorageBucketServerClientMock{
-				GetStorageBucketByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
+				GetStorageBucketByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (incusapi.StorageBucketFull, error) {
 					clusterName, err := endpoint.GetServerName()
 					require.NoError(t, err)
 					require.Equal(t, tc.argClusterName, clusterName)
@@ -997,7 +1017,7 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 		clusterSvcGetEndpointErr                error
 		storagePoolClientGetStoragePools        []incusapi.StoragePool
 		storagePoolClientGetStoragePoolsErr     error
-		storageBucketClientGetStorageBuckets    []incusapi.StorageBucket
+		storageBucketClientGetStorageBuckets    []incusapi.StorageBucketFull
 		storageBucketClientGetStorageBucketsErr error
 		repoDeleteWithFilterErr                 error
 		repoCreateErr                           error
@@ -1019,11 +1039,13 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 					Name: "storagePool one",
 				},
 			},
-			storageBucketClientGetStorageBuckets: []incusapi.StorageBucket{
+			storageBucketClientGetStorageBuckets: []incusapi.StorageBucketFull{
 				{
-					Name:     "storageBucket one",
-					Location: "one",
-					Project:  "project one",
+					StorageBucket: incusapi.StorageBucket{
+						Name:     "storageBucket one",
+						Location: "one",
+						Project:  "project one",
+					},
 				},
 			},
 
@@ -1046,11 +1068,13 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 					Name: "filtered",
 				},
 			},
-			storageBucketClientGetStorageBuckets: []incusapi.StorageBucket{
+			storageBucketClientGetStorageBuckets: []incusapi.StorageBucketFull{
 				{
-					Name:     "storageBucket one",
-					Location: "one",
-					Project:  "project one",
+					StorageBucket: incusapi.StorageBucket{
+						Name:     "storageBucket one",
+						Location: "one",
+						Project:  "project one",
+					},
 				},
 			},
 			serviceOptions: []inventory.StorageBucketServiceOption{
@@ -1075,16 +1099,20 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 					Name: "storagePool one",
 				},
 			},
-			storageBucketClientGetStorageBuckets: []incusapi.StorageBucket{
+			storageBucketClientGetStorageBuckets: []incusapi.StorageBucketFull{
 				{
-					Name:     "storageBucket one",
-					Location: "one",
-					Project:  "project one",
+					StorageBucket: incusapi.StorageBucket{
+						Name:     "storageBucket one",
+						Location: "one",
+						Project:  "project one",
+					},
 				},
 				{
-					Name:     "storageBucket filtered",
-					Location: "one",
-					Project:  "project one",
+					StorageBucket: incusapi.StorageBucket{
+						Name:     "storageBucket filtered",
+						Location: "one",
+						Project:  "project one",
+					},
 				},
 			},
 			serviceOptions: []inventory.StorageBucketServiceOption{
@@ -1146,11 +1174,13 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 					Name: "storagePool one",
 				},
 			},
-			storageBucketClientGetStorageBuckets: []incusapi.StorageBucket{
+			storageBucketClientGetStorageBuckets: []incusapi.StorageBucketFull{
 				{
-					Name:     "storageBucket one",
-					Location: "one",
-					Project:  "project one",
+					StorageBucket: incusapi.StorageBucket{
+						Name:     "storageBucket one",
+						Location: "one",
+						Project:  "project one",
+					},
 				},
 			},
 			repoDeleteWithFilterErr: boom.Error,
@@ -1171,11 +1201,13 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 					Name: "storagePool one",
 				},
 			},
-			storageBucketClientGetStorageBuckets: []incusapi.StorageBucket{
+			storageBucketClientGetStorageBuckets: []incusapi.StorageBucketFull{
 				{
-					Name:     "", // invalid
-					Location: "one",
-					Project:  "project one",
+					StorageBucket: incusapi.StorageBucket{
+						Name:     "", // invalid
+						Location: "one",
+						Project:  "project one",
+					},
 				},
 			},
 
@@ -1198,11 +1230,13 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 					Name: "storagePool one",
 				},
 			},
-			storageBucketClientGetStorageBuckets: []incusapi.StorageBucket{
+			storageBucketClientGetStorageBuckets: []incusapi.StorageBucketFull{
 				{
-					Name:     "storageBucket one",
-					Location: "one",
-					Project:  "project one",
+					StorageBucket: incusapi.StorageBucket{
+						Name:     "storageBucket one",
+						Location: "one",
+						Project:  "project one",
+					},
 				},
 			},
 			repoCreateErr: boom.Error,
@@ -1236,7 +1270,7 @@ func TestStorageBucketService_SyncAll(t *testing.T) {
 			}
 
 			storageBucketClient := &serverMock.StorageBucketServerClientMock{
-				GetStorageBucketsFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]incusapi.StorageBucket, error) {
+				GetStorageBucketsFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]incusapi.StorageBucketFull, error) {
 					return tc.storageBucketClientGetStorageBuckets, tc.storageBucketClientGetStorageBucketsErr
 				},
 			}

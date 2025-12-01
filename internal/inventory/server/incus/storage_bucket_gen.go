@@ -12,13 +12,13 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetStorageBuckets(ctx context.Context, endpoint provisioning.Endpoint, storageBucketName string) ([]incusapi.StorageBucket, error) {
+func (s serverClient) GetStorageBuckets(ctx context.Context, endpoint provisioning.Endpoint, storageBucketName string) ([]incusapi.StorageBucketFull, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	serverStorageBuckets, err := client.GetStoragePoolBucketsAllProjects(storageBucketName)
+	serverStorageBuckets, err := client.GetStoragePoolBucketsFullAllProjects(storageBucketName)
 	if err != nil {
 		return nil, err
 	}
@@ -26,21 +26,21 @@ func (s serverClient) GetStorageBuckets(ctx context.Context, endpoint provisioni
 	return serverStorageBuckets, nil
 }
 
-func (s serverClient) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (incusapi.StorageBucket, error) {
+func (s serverClient) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (incusapi.StorageBucketFull, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
-		return incusapi.StorageBucket{}, err
+		return incusapi.StorageBucketFull{}, err
 	}
 
 	client = client.UseProject(projectName)
 
-	serverStorageBucket, _, err := client.GetStoragePoolBucket(storagePoolName, storageBucketName)
+	serverStorageBucket, _, err := client.GetStoragePoolBucketFull(storagePoolName, storageBucketName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
-		return incusapi.StorageBucket{}, domain.ErrNotFound
+		return incusapi.StorageBucketFull{}, domain.ErrNotFound
 	}
 
 	if err != nil {
-		return incusapi.StorageBucket{}, err
+		return incusapi.StorageBucketFull{}, err
 	}
 
 	return *serverStorageBucket, nil

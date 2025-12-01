@@ -40,7 +40,7 @@ func NewStorageVolumeServerClientWithPrometheus(base inventory.StorageVolumeServ
 }
 
 // GetStorageVolumeByName implements inventory.StorageVolumeServerClient.
-func (_d StorageVolumeServerClientWithPrometheus) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
+func (_d StorageVolumeServerClientWithPrometheus) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolumeFull api.StorageVolumeFull, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -54,7 +54,7 @@ func (_d StorageVolumeServerClientWithPrometheus) GetStorageVolumeByName(ctx con
 }
 
 // GetStorageVolumes implements inventory.StorageVolumeServerClient.
-func (_d StorageVolumeServerClientWithPrometheus) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageVolumes []api.StorageVolume, err error) {
+func (_d StorageVolumeServerClientWithPrometheus) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageVolumeFulls []api.StorageVolumeFull, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"

@@ -44,7 +44,7 @@ func NewStorageVolumeServerClientWithSlog(base inventory.StorageVolumeServerClie
 }
 
 // GetStorageVolumeByName implements inventory.StorageVolumeServerClient.
-func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
+func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolumeFull api.StorageVolumeFull, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -61,7 +61,7 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.C
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("storageVolume", storageVolume),
+				slog.Any("storageVolumeFull", storageVolumeFull),
 				slog.Any("err", err),
 			)
 		} else {
@@ -83,7 +83,7 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumeByName(ctx context.C
 }
 
 // GetStorageVolumes implements inventory.StorageVolumeServerClient.
-func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageVolumes []api.StorageVolume, err error) {
+func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageVolumeFulls []api.StorageVolumeFull, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -97,7 +97,7 @@ func (_d StorageVolumeServerClientWithSlog) GetStorageVolumes(ctx context.Contex
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("storageVolumes", storageVolumes),
+				slog.Any("storageVolumeFulls", storageVolumeFulls),
 				slog.Any("err", err),
 			)
 		} else {

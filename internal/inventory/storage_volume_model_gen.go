@@ -23,7 +23,7 @@ type StorageVolume struct {
 	StoragePoolName string
 	Name            string
 	Type            string
-	Object          incusapi.StorageVolume
+	Object          incusapi.StorageVolumeFull
 	LastUpdated     time.Time
 }
 
