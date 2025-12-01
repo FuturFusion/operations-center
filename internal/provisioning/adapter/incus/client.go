@@ -214,6 +214,40 @@ func (c client) UpdateNetworkConfig(ctx context.Context, server provisioning.Ser
 	return nil
 }
 
+func (c client) GetProviderConfig(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemProvider, error) {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return incusosapi.SystemProvider{}, err
+	}
+
+	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0/system/provider", nil, "")
+	if err != nil {
+		return incusosapi.SystemProvider{}, fmt.Errorf("Put OS provider config to %q failed: %w", server.ConnectionURL, err)
+	}
+
+	var providerConfig incusosapi.SystemProvider
+	err = json.Unmarshal(resp.Metadata, &providerConfig)
+	if err != nil {
+		return incusosapi.SystemProvider{}, fmt.Errorf("Unexpected response metadata while getting provider information from %q: %w", server.GetConnectionURL(), err)
+	}
+
+	return providerConfig, nil
+}
+
+func (c client) UpdateProviderConfig(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) error {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/system/provider", providerConfig, "")
+	if err != nil {
+		return fmt.Errorf("Put OS provider config to %q failed: %w", server.ConnectionURL, err)
+	}
+
+	return nil
+}
+
 func (c client) EnableOSService(ctx context.Context, server provisioning.Server, name string, config map[string]any) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
