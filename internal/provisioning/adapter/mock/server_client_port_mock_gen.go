@@ -25,6 +25,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 //				panic("mock out the GetOSData method")
 //			},
+//			GetProviderConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemProvider, error) {
+//				panic("mock out the GetProviderConfig method")
+//			},
 //			GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
 //				panic("mock out the GetResources method")
 //			},
@@ -37,6 +40,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the UpdateNetworkConfig method")
 //			},
+//			UpdateProviderConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) error {
+//				panic("mock out the UpdateProviderConfig method")
+//			},
 //		}
 //
 //		// use mockedServerClientPort in code that requires provisioning.ServerClientPort
@@ -46,6 +52,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 type ServerClientPortMock struct {
 	// GetOSDataFunc mocks the GetOSData method.
 	GetOSDataFunc func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error)
+
+	// GetProviderConfigFunc mocks the GetProviderConfig method.
+	GetProviderConfigFunc func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemProvider, error)
 
 	// GetResourcesFunc mocks the GetResources method.
 	GetResourcesFunc func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error)
@@ -59,6 +68,9 @@ type ServerClientPortMock struct {
 	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
 	UpdateNetworkConfigFunc func(ctx context.Context, server provisioning.Server) error
 
+	// UpdateProviderConfigFunc mocks the UpdateProviderConfig method.
+	UpdateProviderConfigFunc func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) error
+
 	// calls tracks calls to the methods.
 	calls struct {
 		// GetOSData holds details about calls to the GetOSData method.
@@ -67,6 +79,13 @@ type ServerClientPortMock struct {
 			Ctx context.Context
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
+		}
+		// GetProviderConfig holds details about calls to the GetProviderConfig method.
+		GetProviderConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
 		}
 		// GetResources holds details about calls to the GetResources method.
 		GetResources []struct {
@@ -96,12 +115,23 @@ type ServerClientPortMock struct {
 			// Server is the server argument value.
 			Server provisioning.Server
 		}
+		// UpdateProviderConfig holds details about calls to the UpdateProviderConfig method.
+		UpdateProviderConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+			// ProviderConfig is the providerConfig argument value.
+			ProviderConfig provisioning.ServerSystemProvider
+		}
 	}
-	lockGetOSData           sync.RWMutex
-	lockGetResources        sync.RWMutex
-	lockGetServerType       sync.RWMutex
-	lockPing                sync.RWMutex
-	lockUpdateNetworkConfig sync.RWMutex
+	lockGetOSData            sync.RWMutex
+	lockGetProviderConfig    sync.RWMutex
+	lockGetResources         sync.RWMutex
+	lockGetServerType        sync.RWMutex
+	lockPing                 sync.RWMutex
+	lockUpdateNetworkConfig  sync.RWMutex
+	lockUpdateProviderConfig sync.RWMutex
 }
 
 // GetOSData calls GetOSDataFunc.
@@ -137,6 +167,42 @@ func (mock *ServerClientPortMock) GetOSDataCalls() []struct {
 	mock.lockGetOSData.RLock()
 	calls = mock.calls.GetOSData
 	mock.lockGetOSData.RUnlock()
+	return calls
+}
+
+// GetProviderConfig calls GetProviderConfigFunc.
+func (mock *ServerClientPortMock) GetProviderConfig(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemProvider, error) {
+	if mock.GetProviderConfigFunc == nil {
+		panic("ServerClientPortMock.GetProviderConfigFunc: method is nil but ServerClientPort.GetProviderConfig was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockGetProviderConfig.Lock()
+	mock.calls.GetProviderConfig = append(mock.calls.GetProviderConfig, callInfo)
+	mock.lockGetProviderConfig.Unlock()
+	return mock.GetProviderConfigFunc(ctx, server)
+}
+
+// GetProviderConfigCalls gets all the calls that were made to GetProviderConfig.
+// Check the length with:
+//
+//	len(mockedServerClientPort.GetProviderConfigCalls())
+func (mock *ServerClientPortMock) GetProviderConfigCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockGetProviderConfig.RLock()
+	calls = mock.calls.GetProviderConfig
+	mock.lockGetProviderConfig.RUnlock()
 	return calls
 }
 
@@ -281,5 +347,45 @@ func (mock *ServerClientPortMock) UpdateNetworkConfigCalls() []struct {
 	mock.lockUpdateNetworkConfig.RLock()
 	calls = mock.calls.UpdateNetworkConfig
 	mock.lockUpdateNetworkConfig.RUnlock()
+	return calls
+}
+
+// UpdateProviderConfig calls UpdateProviderConfigFunc.
+func (mock *ServerClientPortMock) UpdateProviderConfig(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) error {
+	if mock.UpdateProviderConfigFunc == nil {
+		panic("ServerClientPortMock.UpdateProviderConfigFunc: method is nil but ServerClientPort.UpdateProviderConfig was just called")
+	}
+	callInfo := struct {
+		Ctx            context.Context
+		Server         provisioning.Server
+		ProviderConfig provisioning.ServerSystemProvider
+	}{
+		Ctx:            ctx,
+		Server:         server,
+		ProviderConfig: providerConfig,
+	}
+	mock.lockUpdateProviderConfig.Lock()
+	mock.calls.UpdateProviderConfig = append(mock.calls.UpdateProviderConfig, callInfo)
+	mock.lockUpdateProviderConfig.Unlock()
+	return mock.UpdateProviderConfigFunc(ctx, server, providerConfig)
+}
+
+// UpdateProviderConfigCalls gets all the calls that were made to UpdateProviderConfig.
+// Check the length with:
+//
+//	len(mockedServerClientPort.UpdateProviderConfigCalls())
+func (mock *ServerClientPortMock) UpdateProviderConfigCalls() []struct {
+	Ctx            context.Context
+	Server         provisioning.Server
+	ProviderConfig provisioning.ServerSystemProvider
+} {
+	var calls []struct {
+		Ctx            context.Context
+		Server         provisioning.Server
+		ProviderConfig provisioning.ServerSystemProvider
+	}
+	mock.lockUpdateProviderConfig.RLock()
+	calls = mock.calls.UpdateProviderConfig
+	mock.lockUpdateProviderConfig.RUnlock()
 	return calls
 }

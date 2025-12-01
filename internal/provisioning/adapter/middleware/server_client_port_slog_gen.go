@@ -77,6 +77,41 @@ func (_d ServerClientPortWithSlog) GetOSData(ctx context.Context, endpoint provi
 	return _d._base.GetOSData(ctx, endpoint)
 }
 
+// GetProviderConfig implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) GetProviderConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemProvider, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetProviderConfig")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("v", v),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetProviderConfig returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetProviderConfig returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetProviderConfig finished")
+		}
+	}()
+	return _d._base.GetProviderConfig(ctx, server)
+}
+
 // GetResources implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) GetResources(ctx context.Context, endpoint provisioning.Endpoint) (hardwareData api.HardwareData, err error) {
 	log := _d._log.With()
@@ -213,4 +248,39 @@ func (_d ServerClientPortWithSlog) UpdateNetworkConfig(ctx context.Context, serv
 		}
 	}()
 	return _d._base.UpdateNetworkConfig(ctx, server)
+}
+
+// UpdateProviderConfig implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) UpdateProviderConfig(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+			slog.Any("providerConfig", providerConfig),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateProviderConfig")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateProviderConfig returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateProviderConfig returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateProviderConfig finished")
+		}
+	}()
+	return _d._base.UpdateProviderConfig(ctx, server, providerConfig)
 }

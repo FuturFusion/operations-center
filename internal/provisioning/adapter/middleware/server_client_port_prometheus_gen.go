@@ -52,6 +52,20 @@ func (_d ServerClientPortWithPrometheus) GetOSData(ctx context.Context, endpoint
 	return _d.base.GetOSData(ctx, endpoint)
 }
 
+// GetProviderConfig implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) GetProviderConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemProvider, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetProviderConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetProviderConfig(ctx, server)
+}
+
 // GetResources implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithPrometheus) GetResources(ctx context.Context, endpoint provisioning.Endpoint) (hardwareData api.HardwareData, err error) {
 	_since := time.Now()
@@ -106,4 +120,18 @@ func (_d ServerClientPortWithPrometheus) UpdateNetworkConfig(ctx context.Context
 		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateNetworkConfig", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.UpdateNetworkConfig(ctx, server)
+}
+
+// UpdateProviderConfig implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) UpdateProviderConfig(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateProviderConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateProviderConfig(ctx, server, providerConfig)
 }
