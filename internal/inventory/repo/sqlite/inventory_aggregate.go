@@ -369,7 +369,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			inventoryAggregate.Projects = append(inventoryAggregate.Projects, project)
 
 		case "storage_bucket":
-			var object incusapi.StorageBucket
+			var object incusapi.StorageBucketFull
 			err := json.Unmarshal(inventoryResource.Object, &object)
 			if err != nil {
 				return nil, err
@@ -402,7 +402,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			inventoryAggregate.StoragePools = append(inventoryAggregate.StoragePools, storagePool)
 
 		case "storage_volume":
-			var object incusapi.StorageVolume
+			var object incusapi.StorageVolumeFull
 			err := json.Unmarshal(inventoryResource.Object, &object)
 			if err != nil {
 				return nil, err
