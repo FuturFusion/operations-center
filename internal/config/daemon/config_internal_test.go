@@ -331,7 +331,7 @@ func Test_validate(t *testing.T) {
 				},
 			}
 
-			InitTest(t, env)
+			InitTest(t, env, nil)
 
 			if tc.oldCfg != nil {
 				err := UpdateNetwork(t.Context(), tc.oldCfg.Network.SystemNetworkPut)
