@@ -70,10 +70,11 @@ project:
   incus-get-method: GetProject
 
 storage_bucket:
+  object-type: StorageBucketFull
   server-id-by-location: true
   parent: storage_pool
-  incus-get-all-method: GetStoragePoolBucketsAllProjects
-  incus-get-method: GetStoragePoolBucket
+  incus-get-all-method: GetStoragePoolBucketsFullAllProjects
+  incus-get-method: GetStoragePoolBucketFull
   has-parent-filter: true
 
 storage_pool:
@@ -82,11 +83,12 @@ storage_pool:
   incus-get-method: GetStoragePool
 
 storage_volume:
+  object-type: StorageVolumeFull
   server-id-by-location: true
   is-server-id-optional: true
   parent: storage_pool
-  incus-get-all-method: GetStoragePoolVolumesAllProjects
-  incus-get-method: GetStoragePoolVolume
+  incus-get-all-method: GetStoragePoolVolumesFullAllProjects
+  incus-get-method: GetStoragePoolVolumeFull
   extra-attributes:
     - name: type
       type: string
