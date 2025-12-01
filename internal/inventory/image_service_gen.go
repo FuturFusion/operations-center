@@ -61,7 +61,7 @@ func (s imageService) GetAllWithFilter(ctx context.Context, filter ImageFilter) 
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Image{})}...)
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprImage(Image{}))}...)
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +75,7 @@ func (s imageService) GetAllWithFilter(ctx context.Context, filter ImageFilter) 
 	var filteredImages Images
 	if filter.Expression != nil {
 		for _, image := range images {
-			output, err := expr.Run(filterExpression, image)
+			output, err := expr.Run(filterExpression, ToExprImage(image))
 			if err != nil {
 				return nil, err
 			}
@@ -101,7 +101,7 @@ func (s imageService) GetAllUUIDsWithFilter(ctx context.Context, filter ImageFil
 	var err error
 
 	type Env struct {
-		UUID string
+		UUID string `expr:"uuid"`
 	}
 
 	if filter.Expression != nil {

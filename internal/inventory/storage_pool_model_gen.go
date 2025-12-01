@@ -13,13 +13,16 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+//
+//generate-expr: StoragePool
+
 type StoragePool struct {
-	ID          int
-	UUID        uuid.UUID
-	Cluster     string
-	Name        string
-	Object      incusapi.StoragePool
-	LastUpdated time.Time
+	ID          int                  `json:"-"`
+	UUID        uuid.UUID            `json:"uuid"`
+	Cluster     string               `json:"cluster"`
+	Name        string               `json:"name"`
+	Object      incusapi.StoragePool `json:"object"`
+	LastUpdated time.Time            `json:"last_updated"`
 }
 
 func (m *StoragePool) DeriveUUID() *StoragePool {

@@ -385,7 +385,7 @@ func (s clusterService) GetAllWithFilter(ctx context.Context, filter ClusterFilt
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Cluster{})}...)
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprCluster(Cluster{}))}...)
 		if err != nil {
 			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
@@ -399,7 +399,7 @@ func (s clusterService) GetAllWithFilter(ctx context.Context, filter ClusterFilt
 	var filteredClusters Clusters
 	if filter.Expression != nil {
 		for _, cluster := range clusters {
-			output, err := expr.Run(filterExpression, cluster)
+			output, err := expr.Run(filterExpression, ToExprCluster(cluster))
 			if err != nil {
 				return nil, domain.NewValidationErrf("Failed to execute filter expression: %v", err)
 			}
@@ -429,7 +429,7 @@ func (s clusterService) GetAllNamesWithFilter(ctx context.Context, filter Cluste
 	var err error
 
 	type Env struct {
-		Name string
+		Name string `expr:"name"`
 	}
 
 	if filter.Expression != nil {

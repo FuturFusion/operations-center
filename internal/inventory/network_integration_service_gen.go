@@ -61,7 +61,7 @@ func (s networkIntegrationService) GetAllWithFilter(ctx context.Context, filter 
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(NetworkIntegration{})}...)
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprNetworkIntegration(NetworkIntegration{}))}...)
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +75,7 @@ func (s networkIntegrationService) GetAllWithFilter(ctx context.Context, filter 
 	var filteredNetworkIntegrations NetworkIntegrations
 	if filter.Expression != nil {
 		for _, networkIntegration := range networkIntegrations {
-			output, err := expr.Run(filterExpression, networkIntegration)
+			output, err := expr.Run(filterExpression, ToExprNetworkIntegration(networkIntegration))
 			if err != nil {
 				return nil, err
 			}
@@ -101,7 +101,7 @@ func (s networkIntegrationService) GetAllUUIDsWithFilter(ctx context.Context, fi
 	var err error
 
 	type Env struct {
-		UUID string
+		UUID string `expr:"uuid"`
 	}
 
 	if filter.Expression != nil {

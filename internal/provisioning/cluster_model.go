@@ -16,17 +16,20 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+//
+//generate-expr: Cluster
+
 type Cluster struct {
-	ID                    int64
-	Name                  string `db:"primary=yes"`
-	ConnectionURL         string
-	Certificate           string
-	Status                api.ClusterStatus
-	ServerNames           []string       `db:"ignore"`
-	ServerType            api.ServerType `db:"ignore"`
-	ServicesConfig        map[string]any `db:"ignore"`
-	ApplicationSeedConfig map[string]any `db:"ignore"`
-	LastUpdated           time.Time      `db:"update_timestamp"`
+	ID                    int64             `json:"-"`
+	Name                  string            `json:"name" db:"primary=yes"`
+	ConnectionURL         string            `json:"connection_url"`
+	Certificate           string            `json:"certificate"`
+	Status                api.ClusterStatus `json:"status"`
+	ServerNames           []string          `json:"server_names"            db:"ignore"`
+	ServerType            api.ServerType    `json:"server_type"             db:"ignore"`
+	ServicesConfig        map[string]any    `json:"services_config"         db:"ignore"`
+	ApplicationSeedConfig map[string]any    `json:"application_seed_config" db:"ignore"`
+	LastUpdated           time.Time         `json:"last_updated"            db:"update_timestamp"`
 }
 
 const nameProhibitedCharacters = `\/:*?"<>|`

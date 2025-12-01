@@ -13,14 +13,17 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+//
+//generate-expr: Profile
+
 type Profile struct {
-	ID          int
-	UUID        uuid.UUID
-	Cluster     string
-	ProjectName string
-	Name        string
-	Object      incusapi.Profile
-	LastUpdated time.Time
+	ID          int              `json:"-"`
+	UUID        uuid.UUID        `json:"uuid"`
+	Cluster     string           `json:"cluster"`
+	ProjectName string           `json:"project"`
+	Name        string           `json:"name"`
+	Object      incusapi.Profile `json:"object"`
+	LastUpdated time.Time        `json:"last_updated"`
 }
 
 func (m *Profile) DeriveUUID() *Profile {

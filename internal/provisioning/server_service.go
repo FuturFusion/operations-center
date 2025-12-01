@@ -135,7 +135,7 @@ func (s serverService) GetAllWithFilter(ctx context.Context, filter ServerFilter
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(Server{})}...)
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExprServer(Server{}))}...)
 		if err != nil {
 			return nil, domain.NewValidationErrf("Failed to compile filter expression: %v", err)
 		}
@@ -155,7 +155,7 @@ func (s serverService) GetAllWithFilter(ctx context.Context, filter ServerFilter
 	var filteredServers Servers
 	if filter.Expression != nil {
 		for _, server := range servers {
-			output, err := expr.Run(filterExpression, server)
+			output, err := expr.Run(filterExpression, ToExprServer(server))
 			if err != nil {
 				return nil, domain.NewValidationErrf("Failed to execute filter expression: %v", err)
 			}
@@ -185,7 +185,7 @@ func (s serverService) GetAllNamesWithFilter(ctx context.Context, filter ServerF
 	var err error
 
 	type Env struct {
-		Name string
+		Name string `expr:"name"`
 	}
 
 	if filter.Expression != nil {

@@ -44,16 +44,17 @@ being fetched by Operations Center and `false` otherwise. A filter expression
 resulting in an non boolean value is considered an error.
 The empty filter expression does not filter at all, same effect as `true`.
 
-| Expression                        | Description                                               |
-| :---                              | :---                                                      |
-| `"stable" in channels`            | Only download updates that are in the `stable` channel    |
-| `AppliesToArchitecture("x86_64")` | Only download updates that apply to `x86_64` architecture |
+| Expression                                        | Description                                               |
+| :---                                              | :---                                                      |
+| `"stable" in channels`                            | Only download updates that are in the `stable` channel    |
+| `applies_to_architecture(architecture, "x86_64")` | Only download updates that apply to `x86_64` architecture |
 
 ```{note}
 Operations Center has the following extended functions for filtering update files:
 
-* `AppliesToArchitecture(string)` -- returns `true`, if the file applies to the
-  specified architecture or if the file is architecture neutral.
+* `applies_to_architecture(architecture string, expected_architecture string)`
+   -- returns `true`, if the file architecture matches the expected architecture
+   or if the file is architecture neutral.
 ```
 
 ```{note}

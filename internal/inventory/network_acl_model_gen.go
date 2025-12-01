@@ -13,14 +13,17 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+//
+//generate-expr: NetworkACL
+
 type NetworkACL struct {
-	ID          int
-	UUID        uuid.UUID
-	Cluster     string
-	ProjectName string
-	Name        string
-	Object      incusapi.NetworkACL
-	LastUpdated time.Time
+	ID          int                 `json:"-"`
+	UUID        uuid.UUID           `json:"uuid"`
+	Cluster     string              `json:"cluster"`
+	ProjectName string              `json:"project"`
+	Name        string              `json:"name"`
+	Object      incusapi.NetworkACL `json:"object"`
+	LastUpdated time.Time           `json:"last_updated"`
 }
 
 func (m *NetworkACL) DeriveUUID() *NetworkACL {

@@ -87,7 +87,7 @@ func (s {{ .Name | camelcase }}Service) GetAllWithFilter(ctx context.Context, fi
 	var err error
 
 	if filter.Expression != nil {
-		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env({{ .Name | pascalcase }}{})}...)
+		filterExpression, err = expr.Compile(*filter.Expression, []expr.Option{expr.Env(ToExpr{{.Name | pascalcase}}({{ .Name | pascalcase }}{}))}...)
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +101,7 @@ func (s {{ .Name | camelcase }}Service) GetAllWithFilter(ctx context.Context, fi
 	var filtered{{ .PluralName | pascalcase }} {{ .PluralName | pascalcase }}
 	if filter.Expression != nil {
 		for _, {{ .Name | camelcase }} := range {{ .PluralName | camelcase }} {
-			output, err := expr.Run(filterExpression, {{ .Name | camelcase }})
+			output, err := expr.Run(filterExpression, ToExpr{{.Name | pascalcase}}({{ .Name | camelcase }}))
 			if err != nil {
 				return nil, err
 			}
@@ -127,7 +127,7 @@ func (s {{ .Name | camelcase }}Service) GetAllUUIDsWithFilter(ctx context.Contex
 	var err error
 
 	type Env struct {
-		UUID string
+		UUID string `expr:"uuid"`
 	}
 
 	if filter.Expression != nil {

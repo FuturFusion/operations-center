@@ -18,20 +18,23 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+//
+//generate-expr: Update
+
 type Update struct {
 	ID          string                `json:"-"`
-	UUID        uuid.UUID             `json:"-" db:"primary=yes"`
+	UUID        uuid.UUID             `json:"-" expr:"uuid" db:"primary=yes"`
 	Format      string                `json:"format" db:"ignore"`
 	Origin      string                `json:"origin"`
 	Version     string                `json:"version"`
 	PublishedAt time.Time             `json:"published_at"`
 	Severity    images.UpdateSeverity `json:"severity"`
 	Channels    UpdateChannels        `json:"channels"`
-	Changelog   string                `json:"-"`
+	Changelog   string                `json:"-" expr:"change_log"`
 	Files       UpdateFiles           `json:"files"`
 	URL         string                `json:"url"`
-	Status      api.UpdateStatus      `json:"-"`
-	LastUpdated time.Time             `json:"-" db:"update_timestamp"`
+	Status      api.UpdateStatus      `json:"-" expr:"status"`
+	LastUpdated time.Time             `json:"-" expr:"last_updated" db:"update_timestamp"`
 }
 
 func (u Update) Validate() error {

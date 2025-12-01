@@ -13,15 +13,18 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+//
+//generate-expr: Instance
+
 type Instance struct {
-	ID          int
-	UUID        uuid.UUID
-	Cluster     string
-	Server      string
-	ProjectName string
-	Name        string
-	Object      incusapi.InstanceFull
-	LastUpdated time.Time
+	ID          int                   `json:"-"`
+	UUID        uuid.UUID             `json:"uuid"`
+	Cluster     string                `json:"cluster"`
+	Server      string                `json:"server"`
+	ProjectName string                `json:"project"`
+	Name        string                `json:"name"`
+	Object      incusapi.InstanceFull `json:"object"`
+	LastUpdated time.Time             `json:"last_updated"`
 }
 
 func (m *Instance) DeriveUUID() *Instance {
