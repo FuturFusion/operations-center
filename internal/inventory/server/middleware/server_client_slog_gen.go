@@ -909,7 +909,7 @@ func (_d ServerClientWithSlog) GetProjects(ctx context.Context, endpoint provisi
 }
 
 // GetStorageBucketByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (storageBucket api.StorageBucket, err error) {
+func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (storageBucketFull api.StorageBucketFull, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -925,7 +925,7 @@ func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, endpo
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("storageBucket", storageBucket),
+				slog.Any("storageBucketFull", storageBucketFull),
 				slog.Any("err", err),
 			)
 		} else {
@@ -947,7 +947,7 @@ func (_d ServerClientWithSlog) GetStorageBucketByName(ctx context.Context, endpo
 }
 
 // GetStorageBuckets implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetStorageBuckets(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageBuckets []api.StorageBucket, err error) {
+func (_d ServerClientWithSlog) GetStorageBuckets(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageBucketFulls []api.StorageBucketFull, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -961,7 +961,7 @@ func (_d ServerClientWithSlog) GetStorageBuckets(ctx context.Context, endpoint p
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("storageBuckets", storageBuckets),
+				slog.Any("storageBucketFulls", storageBucketFulls),
 				slog.Any("err", err),
 			)
 		} else {
@@ -1054,7 +1054,7 @@ func (_d ServerClientWithSlog) GetStoragePools(ctx context.Context, endpoint pro
 }
 
 // GetStorageVolumeByName implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolume api.StorageVolume, err error) {
+func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (storageVolumeFull api.StorageVolumeFull, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1071,7 +1071,7 @@ func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpo
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("storageVolume", storageVolume),
+				slog.Any("storageVolumeFull", storageVolumeFull),
 				slog.Any("err", err),
 			)
 		} else {
@@ -1093,7 +1093,7 @@ func (_d ServerClientWithSlog) GetStorageVolumeByName(ctx context.Context, endpo
 }
 
 // GetStorageVolumes implements inventory.ServerClient.
-func (_d ServerClientWithSlog) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageVolumes []api.StorageVolume, err error) {
+func (_d ServerClientWithSlog) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (storageVolumeFulls []api.StorageVolumeFull, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
@@ -1107,7 +1107,7 @@ func (_d ServerClientWithSlog) GetStorageVolumes(ctx context.Context, endpoint p
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
-				slog.Any("storageVolumes", storageVolumes),
+				slog.Any("storageVolumeFulls", storageVolumeFulls),
 				slog.Any("err", err),
 			)
 		} else {

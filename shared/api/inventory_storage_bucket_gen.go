@@ -11,12 +11,12 @@ import (
 )
 
 type StorageBucket struct {
-	UUID            uuid.UUID              `json:"uuid" yaml:"uuid"`
-	Cluster         string                 `json:"cluster" yaml:"cluster"`
-	Server          string                 `json:"server" yaml:"server"`
-	ProjectName     string                 `json:"project_name" yaml:"project_name"`
-	StoragePoolName string                 `json:"parent_name" yaml:"parent_name"`
-	Name            string                 `json:"name" yaml:"name"`
-	Object          incusapi.StorageBucket `json:"object" yaml:"object"`
-	LastUpdated     time.Time              `json:"last_updated" yaml:"last_updated"`
+	UUID            uuid.UUID                  `json:"uuid" yaml:"uuid"`
+	Cluster         string                     `json:"cluster" yaml:"cluster"`
+	Server          string                     `json:"server" yaml:"server"`
+	ProjectName     string                     `json:"project_name" yaml:"project_name"`
+	StoragePoolName string                     `json:"parent_name" yaml:"parent_name"`
+	Name            string                     `json:"name" yaml:"name"`
+	Object          incusapi.StorageBucketFull `json:"object" yaml:"object"`
+	LastUpdated     time.Time                  `json:"last_updated" yaml:"last_updated"`
 }

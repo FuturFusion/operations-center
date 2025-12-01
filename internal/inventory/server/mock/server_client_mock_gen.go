@@ -95,10 +95,10 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //			GetProjectsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.Project, error) {
 //				panic("mock out the GetProjects method")
 //			},
-//			GetStorageBucketByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (api.StorageBucket, error) {
+//			GetStorageBucketByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (api.StorageBucketFull, error) {
 //				panic("mock out the GetStorageBucketByName method")
 //			},
-//			GetStorageBucketsFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageBucket, error) {
+//			GetStorageBucketsFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageBucketFull, error) {
 //				panic("mock out the GetStorageBuckets method")
 //			},
 //			GetStoragePoolByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (api.StoragePool, error) {
@@ -107,10 +107,10 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //			GetStoragePoolsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.StoragePool, error) {
 //				panic("mock out the GetStoragePools method")
 //			},
-//			GetStorageVolumeByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (api.StorageVolume, error) {
+//			GetStorageVolumeByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (api.StorageVolumeFull, error) {
 //				panic("mock out the GetStorageVolumeByName method")
 //			},
-//			GetStorageVolumesFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageVolume, error) {
+//			GetStorageVolumesFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageVolumeFull, error) {
 //				panic("mock out the GetStorageVolumes method")
 //			},
 //			HasExtensionFunc: func(ctx context.Context, endpoint provisioning.Endpoint, extension string) bool {
@@ -196,10 +196,10 @@ type ServerClientMock struct {
 	GetProjectsFunc func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.Project, error)
 
 	// GetStorageBucketByNameFunc mocks the GetStorageBucketByName method.
-	GetStorageBucketByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (api.StorageBucket, error)
+	GetStorageBucketByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (api.StorageBucketFull, error)
 
 	// GetStorageBucketsFunc mocks the GetStorageBuckets method.
-	GetStorageBucketsFunc func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageBucket, error)
+	GetStorageBucketsFunc func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageBucketFull, error)
 
 	// GetStoragePoolByNameFunc mocks the GetStoragePoolByName method.
 	GetStoragePoolByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) (api.StoragePool, error)
@@ -208,10 +208,10 @@ type ServerClientMock struct {
 	GetStoragePoolsFunc func(ctx context.Context, endpoint provisioning.Endpoint) ([]api.StoragePool, error)
 
 	// GetStorageVolumeByNameFunc mocks the GetStorageVolumeByName method.
-	GetStorageVolumeByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (api.StorageVolume, error)
+	GetStorageVolumeByNameFunc func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (api.StorageVolumeFull, error)
 
 	// GetStorageVolumesFunc mocks the GetStorageVolumes method.
-	GetStorageVolumesFunc func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageVolume, error)
+	GetStorageVolumesFunc func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageVolumeFull, error)
 
 	// HasExtensionFunc mocks the HasExtension method.
 	HasExtensionFunc func(ctx context.Context, endpoint provisioning.Endpoint, extension string) bool
@@ -1506,7 +1506,7 @@ func (mock *ServerClientMock) GetProjectsCalls() []struct {
 }
 
 // GetStorageBucketByName calls GetStorageBucketByNameFunc.
-func (mock *ServerClientMock) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (api.StorageBucket, error) {
+func (mock *ServerClientMock) GetStorageBucketByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageBucketName string) (api.StorageBucketFull, error) {
 	if mock.GetStorageBucketByNameFunc == nil {
 		panic("ServerClientMock.GetStorageBucketByNameFunc: method is nil but ServerClient.GetStorageBucketByName was just called")
 	}
@@ -1554,7 +1554,7 @@ func (mock *ServerClientMock) GetStorageBucketByNameCalls() []struct {
 }
 
 // GetStorageBuckets calls GetStorageBucketsFunc.
-func (mock *ServerClientMock) GetStorageBuckets(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageBucket, error) {
+func (mock *ServerClientMock) GetStorageBuckets(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageBucketFull, error) {
 	if mock.GetStorageBucketsFunc == nil {
 		panic("ServerClientMock.GetStorageBucketsFunc: method is nil but ServerClient.GetStorageBuckets was just called")
 	}
@@ -1670,7 +1670,7 @@ func (mock *ServerClientMock) GetStoragePoolsCalls() []struct {
 }
 
 // GetStorageVolumeByName calls GetStorageVolumeByNameFunc.
-func (mock *ServerClientMock) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (api.StorageVolume, error) {
+func (mock *ServerClientMock) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (api.StorageVolumeFull, error) {
 	if mock.GetStorageVolumeByNameFunc == nil {
 		panic("ServerClientMock.GetStorageVolumeByNameFunc: method is nil but ServerClient.GetStorageVolumeByName was just called")
 	}
@@ -1722,7 +1722,7 @@ func (mock *ServerClientMock) GetStorageVolumeByNameCalls() []struct {
 }
 
 // GetStorageVolumes calls GetStorageVolumesFunc.
-func (mock *ServerClientMock) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageVolume, error) {
+func (mock *ServerClientMock) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]api.StorageVolumeFull, error) {
 	if mock.GetStorageVolumesFunc == nil {
 		panic("ServerClientMock.GetStorageVolumesFunc: method is nil but ServerClient.GetStorageVolumes was just called")
 	}

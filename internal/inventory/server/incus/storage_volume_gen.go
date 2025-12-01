@@ -12,13 +12,13 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
-func (s serverClient) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storageVolumeName string) ([]incusapi.StorageVolume, error) {
+func (s serverClient) GetStorageVolumes(ctx context.Context, endpoint provisioning.Endpoint, storageVolumeName string) ([]incusapi.StorageVolumeFull, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	serverStorageVolumes, err := client.GetStoragePoolVolumesAllProjects(storageVolumeName)
+	serverStorageVolumes, err := client.GetStoragePoolVolumesFullAllProjects(storageVolumeName)
 	if err != nil {
 		return nil, err
 	}
@@ -26,21 +26,21 @@ func (s serverClient) GetStorageVolumes(ctx context.Context, endpoint provisioni
 	return serverStorageVolumes, nil
 }
 
-func (s serverClient) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error) {
+func (s serverClient) GetStorageVolumeByName(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolumeFull, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
-		return incusapi.StorageVolume{}, err
+		return incusapi.StorageVolumeFull{}, err
 	}
 
 	client = client.UseProject(projectName)
 
-	serverStorageVolume, _, err := client.GetStoragePoolVolume(storagePoolName, storageVolumeType, storageVolumeName)
+	serverStorageVolume, _, err := client.GetStoragePoolVolumeFull(storagePoolName, storageVolumeType, storageVolumeName)
 	if incusapi.StatusErrorCheck(err, http.StatusNotFound) {
-		return incusapi.StorageVolume{}, domain.ErrNotFound
+		return incusapi.StorageVolumeFull{}, domain.ErrNotFound
 	}
 
 	if err != nil {
-		return incusapi.StorageVolume{}, err
+		return incusapi.StorageVolumeFull{}, err
 	}
 
 	return *serverStorageVolume, nil

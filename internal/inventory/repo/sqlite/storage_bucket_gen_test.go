@@ -83,7 +83,7 @@ server-two
 		ProjectName:     "one",
 		StoragePoolName: "parent one",
 		Name:            "one",
-		Object:          incusapi.StorageBucket{},
+		Object:          incusapi.StorageBucketFull{},
 		LastUpdated:     time.Now(),
 	}
 
@@ -95,7 +95,7 @@ server-two
 		ProjectName:     "two",
 		StoragePoolName: "parent one",
 		Name:            "two",
-		Object:          incusapi.StorageBucket{},
+		Object:          incusapi.StorageBucketFull{},
 		LastUpdated:     time.Now(),
 	}
 

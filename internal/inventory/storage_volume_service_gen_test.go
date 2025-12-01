@@ -248,7 +248,7 @@ func TestStorageVolumeService_GetByUUID(t *testing.T) {
 				ProjectName:     "one",
 				StoragePoolName: "parent one",
 				Name:            "one",
-				Object:          incusapi.StorageVolume{},
+				Object:          incusapi.StorageVolumeFull{},
 				LastUpdated:     time.Now(),
 			},
 
@@ -291,7 +291,7 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 		name                                         string
 		clusterSvcGetEndpoint                        provisioning.Endpoint
 		clusterSvcGetEndpointErr                     error
-		storageVolumeClientGetStorageVolumeByName    incusapi.StorageVolume
+		storageVolumeClientGetStorageVolumeByName    incusapi.StorageVolumeFull
 		storageVolumeClientGetStorageVolumeByNameErr error
 		repoGetByUUIDStorageVolume                   inventory.StorageVolume
 		repoGetByUUIDErr                             error
@@ -316,10 +316,12 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 					ClusterCertificate: ptr.To("cluster-cert"),
 				},
 			},
-			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
-				Name:     "storageVolume one",
-				Location: "one",
-				Project:  "project one",
+			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolumeFull{
+				StorageVolume: incusapi.StorageVolume{
+					Name:     "storageVolume one",
+					Location: "one",
+					Project:  "project one",
+				},
 			},
 
 			assertErr: require.NoError,
@@ -420,10 +422,12 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 					ClusterCertificate: ptr.To("cluster-cert"),
 				},
 			},
-			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
-				Name:     "storageVolume one",
-				Location: "one",
-				Project:  "project one",
+			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolumeFull{
+				StorageVolume: incusapi.StorageVolume{
+					Name:     "storageVolume one",
+					Location: "one",
+					Project:  "project one",
+				},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -447,10 +451,12 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 					ClusterCertificate: ptr.To("cluster-cert"),
 				},
 			},
-			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
-				Name:     "storageVolume one",
-				Location: "one",
-				Project:  "project one",
+			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolumeFull{
+				StorageVolume: incusapi.StorageVolume{
+					Name:     "storageVolume one",
+					Location: "one",
+					Project:  "project one",
+				},
 			},
 			repoUpdateByUUIDErr: boom.Error,
 
@@ -482,7 +488,7 @@ func TestStorageVolumeService_ResyncByUUID(t *testing.T) {
 			}
 
 			storageVolumeClient := &serverMock.StorageVolumeServerClientMock{
-				GetStorageVolumeByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error) {
+				GetStorageVolumeByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolumeFull, error) {
 					require.Equal(t, tc.repoGetByUUIDStorageVolume.Name, storageVolumeName)
 					require.Equal(t, tc.repoGetByUUIDStorageVolume.ProjectName, projectName)
 					require.Equal(t, "storage_pool", storagePoolName)
@@ -512,7 +518,7 @@ func TestStorageVolumeService_ResyncByName(t *testing.T) {
 		repoGetAllUUIDsWithFilterErr                 error
 		clusterSvcGetEndpoint                        provisioning.Endpoint
 		clusterSvcGetEndpointErr                     error
-		storageVolumeClientGetStorageVolumeByName    incusapi.StorageVolume
+		storageVolumeClientGetStorageVolumeByName    incusapi.StorageVolumeFull
 		storageVolumeClientGetStorageVolumeByNameErr error
 		serviceOptions                               []inventory.StorageVolumeServiceOption
 		repoCreateErr                                error
@@ -554,10 +560,12 @@ func TestStorageVolumeService_ResyncByName(t *testing.T) {
 					ClusterCertificate:   ptr.To("cluster-cert"),
 				},
 			},
-			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
-				Name:     "storage_volume",
-				Location: "server01",
-				Project:  "project",
+			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolumeFull{
+				StorageVolume: incusapi.StorageVolume{
+					Name:     "storage_volume",
+					Location: "server01",
+					Project:  "project",
+				},
 			},
 
 			assertErr: require.NoError,
@@ -607,10 +615,12 @@ func TestStorageVolumeService_ResyncByName(t *testing.T) {
 					ClusterCertificate:   ptr.To("cluster-cert"),
 				},
 			},
-			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
-				Name:     "storage_volume-new",
-				Location: "server01",
-				Project:  "project",
+			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolumeFull{
+				StorageVolume: incusapi.StorageVolume{
+					Name:     "storage_volume-new",
+					Location: "server01",
+					Project:  "project",
+				},
 			},
 
 			assertErr: require.NoError,
@@ -638,10 +648,12 @@ func TestStorageVolumeService_ResyncByName(t *testing.T) {
 					ClusterCertificate:   ptr.To("cluster-cert"),
 				},
 			},
-			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
-				Name:     "storage_volume filtered", // matches filter
-				Location: "server01",
-				Project:  "project",
+			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolumeFull{
+				StorageVolume: incusapi.StorageVolume{
+					Name:     "storage_volume filtered", // matches filter
+					Location: "server01",
+					Project:  "project",
+				},
 			},
 			serviceOptions: []inventory.StorageVolumeServiceOption{
 				inventory.StorageVolumeWithSyncFilter(func(storageVolume inventory.StorageVolume) bool {
@@ -684,10 +696,12 @@ func TestStorageVolumeService_ResyncByName(t *testing.T) {
 					ClusterCertificate:   ptr.To("cluster-cert"),
 				},
 			},
-			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
-				Name:     "storage_volume",
-				Location: "server01",
-				Project:  "project",
+			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolumeFull{
+				StorageVolume: incusapi.StorageVolume{
+					Name:     "storage_volume",
+					Location: "server01",
+					Project:  "project",
+				},
 			},
 
 			assertErr: require.NoError,
@@ -769,10 +783,12 @@ func TestStorageVolumeService_ResyncByName(t *testing.T) {
 					ClusterCertificate:   ptr.To("cluster-cert"),
 				},
 			},
-			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
-				Name:     "", // invalid
-				Location: "server01",
-				Project:  "project",
+			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolumeFull{
+				StorageVolume: incusapi.StorageVolume{
+					Name:     "", // invalid
+					Location: "server01",
+					Project:  "project",
+				},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -802,10 +818,12 @@ func TestStorageVolumeService_ResyncByName(t *testing.T) {
 					ClusterCertificate:   ptr.To("cluster-cert"),
 				},
 			},
-			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
-				Name:     "storage_volume",
-				Location: "server01",
-				Project:  "project",
+			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolumeFull{
+				StorageVolume: incusapi.StorageVolume{
+					Name:     "storage_volume",
+					Location: "server01",
+					Project:  "project",
+				},
 			},
 			repoCreateErr: boom.Error,
 
@@ -891,10 +909,12 @@ func TestStorageVolumeService_ResyncByName(t *testing.T) {
 					ClusterCertificate:   ptr.To("cluster-cert"),
 				},
 			},
-			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolume{
-				Name:     "storage_volume-new",
-				Location: "server01",
-				Project:  "project",
+			storageVolumeClientGetStorageVolumeByName: incusapi.StorageVolumeFull{
+				StorageVolume: incusapi.StorageVolume{
+					Name:     "storage_volume-new",
+					Location: "server01",
+					Project:  "project",
+				},
 			},
 			repoDeleteByUUIDErr: boom.Error,
 
@@ -977,7 +997,7 @@ func TestStorageVolumeService_ResyncByName(t *testing.T) {
 			}
 
 			storageVolumeClient := &serverMock.StorageVolumeServerClientMock{
-				GetStorageVolumeByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolume, error) {
+				GetStorageVolumeByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, projectName string, storagePoolName string, storageVolumeName string, storageVolumeType string) (incusapi.StorageVolumeFull, error) {
 					clusterName, err := endpoint.GetServerName()
 					require.NoError(t, err)
 					require.Equal(t, tc.argClusterName, clusterName)
@@ -1014,7 +1034,7 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 		clusterSvcGetEndpointErr                error
 		storagePoolClientGetStoragePools        []incusapi.StoragePool
 		storagePoolClientGetStoragePoolsErr     error
-		storageVolumeClientGetStorageVolumes    []incusapi.StorageVolume
+		storageVolumeClientGetStorageVolumes    []incusapi.StorageVolumeFull
 		storageVolumeClientGetStorageVolumesErr error
 		repoDeleteWithFilterErr                 error
 		repoCreateErr                           error
@@ -1036,11 +1056,13 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 					Name: "storagePool one",
 				},
 			},
-			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolume{
+			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolumeFull{
 				{
-					Name:     "storageVolume one",
-					Location: "one",
-					Project:  "project one",
+					StorageVolume: incusapi.StorageVolume{
+						Name:     "storageVolume one",
+						Location: "one",
+						Project:  "project one",
+					},
 				},
 			},
 
@@ -1063,11 +1085,13 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 					Name: "filtered",
 				},
 			},
-			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolume{
+			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolumeFull{
 				{
-					Name:     "storageVolume one",
-					Location: "one",
-					Project:  "project one",
+					StorageVolume: incusapi.StorageVolume{
+						Name:     "storageVolume one",
+						Location: "one",
+						Project:  "project one",
+					},
 				},
 			},
 			serviceOptions: []inventory.StorageVolumeServiceOption{
@@ -1092,16 +1116,20 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 					Name: "storagePool one",
 				},
 			},
-			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolume{
+			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolumeFull{
 				{
-					Name:     "storageVolume one",
-					Location: "one",
-					Project:  "project one",
+					StorageVolume: incusapi.StorageVolume{
+						Name:     "storageVolume one",
+						Location: "one",
+						Project:  "project one",
+					},
 				},
 				{
-					Name:     "storageVolume filtered",
-					Location: "one",
-					Project:  "project one",
+					StorageVolume: incusapi.StorageVolume{
+						Name:     "storageVolume filtered",
+						Location: "one",
+						Project:  "project one",
+					},
 				},
 			},
 			serviceOptions: []inventory.StorageVolumeServiceOption{
@@ -1163,11 +1191,13 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 					Name: "storagePool one",
 				},
 			},
-			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolume{
+			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolumeFull{
 				{
-					Name:     "storageVolume one",
-					Location: "one",
-					Project:  "project one",
+					StorageVolume: incusapi.StorageVolume{
+						Name:     "storageVolume one",
+						Location: "one",
+						Project:  "project one",
+					},
 				},
 			},
 			repoDeleteWithFilterErr: boom.Error,
@@ -1188,11 +1218,13 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 					Name: "storagePool one",
 				},
 			},
-			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolume{
+			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolumeFull{
 				{
-					Name:     "", // invalid
-					Location: "one",
-					Project:  "project one",
+					StorageVolume: incusapi.StorageVolume{
+						Name:     "", // invalid
+						Location: "one",
+						Project:  "project one",
+					},
 				},
 			},
 
@@ -1215,11 +1247,13 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 					Name: "storagePool one",
 				},
 			},
-			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolume{
+			storageVolumeClientGetStorageVolumes: []incusapi.StorageVolumeFull{
 				{
-					Name:     "storageVolume one",
-					Location: "one",
-					Project:  "project one",
+					StorageVolume: incusapi.StorageVolume{
+						Name:     "storageVolume one",
+						Location: "one",
+						Project:  "project one",
+					},
 				},
 			},
 			repoCreateErr: boom.Error,
@@ -1253,7 +1287,7 @@ func TestStorageVolumeService_SyncAll(t *testing.T) {
 			}
 
 			storageVolumeClient := &serverMock.StorageVolumeServerClientMock{
-				GetStorageVolumesFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]incusapi.StorageVolume, error) {
+				GetStorageVolumesFunc: func(ctx context.Context, endpoint provisioning.Endpoint, storagePoolName string) ([]incusapi.StorageVolumeFull, error) {
 					return tc.storageVolumeClientGetStorageVolumes, tc.storageVolumeClientGetStorageVolumesErr
 				},
 			}

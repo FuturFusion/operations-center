@@ -84,7 +84,7 @@ server-two
 		StoragePoolName: "parent one",
 		Name:            "one",
 		Type:            "custom",
-		Object:          incusapi.StorageVolume{},
+		Object:          incusapi.StorageVolumeFull{},
 		LastUpdated:     time.Now(),
 	}
 
@@ -97,7 +97,7 @@ server-two
 		StoragePoolName: "parent one",
 		Name:            "two",
 		Type:            "custom",
-		Object:          incusapi.StorageVolume{},
+		Object:          incusapi.StorageVolumeFull{},
 		LastUpdated:     time.Now(),
 	}
 
