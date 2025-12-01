@@ -391,6 +391,39 @@ func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newN
 	return _d._base.Rename(ctx, oldName, newName)
 }
 
+// SelfRegisterOperationsCenter implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) SelfRegisterOperationsCenter(ctx context.Context) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SelfRegisterOperationsCenter")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method SelfRegisterOperationsCenter returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method SelfRegisterOperationsCenter returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method SelfRegisterOperationsCenter finished")
+		}
+	}()
+	return _d._base.SelfRegisterOperationsCenter(ctx)
+}
+
 // SelfUpdate implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) SelfUpdate(ctx context.Context, serverUpdate provisioning.ServerSelfUpdate) (err error) {
 	log := _d._log.With()
