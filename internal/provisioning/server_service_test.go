@@ -78,6 +78,25 @@ one
 			},
 		},
 		{
+			name: "error - remote Operations Center",
+			server: provisioning.Server{
+				Name:          "one",
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Type:   api.ServerTypeOperationsCenter,
+				Status: api.ServerStatusReady,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
 			name: "error - repo.Create",
 			server: provisioning.Server{
 				Name:          "one",

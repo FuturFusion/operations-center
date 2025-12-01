@@ -122,6 +122,10 @@ func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer S
 			return fmt.Errorf("Validate server: %w", err)
 		}
 
+		if newServer.Type == api.ServerTypeOperationsCenter {
+			return domain.NewValidationErrf("Remote operations centers can not be registered")
+		}
+
 		newServer.ID, err = s.repo.Create(ctx, newServer)
 		if err != nil {
 			return fmt.Errorf("Create server: %w", err)
