@@ -65,7 +65,7 @@ func TestSystemConfigUpdate(t *testing.T) {
 	}
 
 	// Setup daemon with empty (default) configuration for actual tests.
-	config.InitTest(t, env)
+	config.InitTest(t, env, nil)
 	require.NoError(t, err)
 
 	d := restapi.NewDaemon(
