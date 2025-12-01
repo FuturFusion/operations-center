@@ -315,6 +315,34 @@ func (s serverService) UpdateSystemNetwork(ctx context.Context, name string, sys
 	return nil
 }
 
+func (s serverService) GetSystemProvider(ctx context.Context, name string) (ServerSystemProvider, error) {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return ServerSystemProvider{}, fmt.Errorf("Failed to get server %q: %w", name, err)
+	}
+
+	providerConfig, err := s.client.GetProviderConfig(ctx, *server)
+	if err != nil {
+		return ServerSystemProvider{}, err
+	}
+
+	return providerConfig, nil
+}
+
+func (s serverService) UpdateSystemProvider(ctx context.Context, name string, providerConfig ServerSystemProvider) error {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q: %w", name, err)
+	}
+
+	err = s.client.UpdateProviderConfig(ctx, *server, providerConfig)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUpdate) error {
 	var server *Server
 

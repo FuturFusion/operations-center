@@ -18,6 +18,8 @@ type ServerService interface {
 	GetByName(ctx context.Context, name string) (*Server, error)
 	Update(ctx context.Context, server Server) error
 	UpdateSystemNetwork(ctx context.Context, name string, networkConfig ServerSystemNetwork) error
+	GetSystemProvider(ctx context.Context, name string) (ServerSystemProvider, error)
+	UpdateSystemProvider(ctx context.Context, name string, providerConfig ServerSystemProvider) error
 	SelfUpdate(ctx context.Context, serverUpdate ServerSelfUpdate) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
@@ -44,4 +46,6 @@ type ServerClientPort interface {
 	GetOSData(ctx context.Context, endpoint Endpoint) (api.OSData, error)
 	GetServerType(ctx context.Context, endpoint Endpoint) (api.ServerType, error)
 	UpdateNetworkConfig(ctx context.Context, server Server) error
+	GetProviderConfig(ctx context.Context, server Server) (ServerSystemProvider, error)
+	UpdateProviderConfig(ctx context.Context, server Server, providerConfig ServerSystemProvider) error
 }

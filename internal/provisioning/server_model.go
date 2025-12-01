@@ -139,3 +139,5 @@ type ServerSelfUpdate struct {
 }
 
 type ServerSystemNetwork = api.ServerSystemNetwork
+
+type ServerSystemProvider = api.ServerSystemProvider
