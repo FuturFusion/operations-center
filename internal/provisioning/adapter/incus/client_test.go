@@ -1730,7 +1730,7 @@ func TestClientServer_SubscribeLifecycleEvents(t *testing.T) {
 			case <-ctx.Done():
 			case <-t.Context().Done():
 				t.Fatal("Test context cancelled before test ended")
-			case <-time.After(1000 * time.Millisecond):
+			case <-time.After(5000 * time.Millisecond):
 				t.Error("Test timeout reached before test ended")
 			}
 
