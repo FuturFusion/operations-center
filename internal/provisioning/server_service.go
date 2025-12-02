@@ -576,7 +576,7 @@ func (s *serverService) PollServers(ctx context.Context, serverStatus api.Server
 	var errs []error
 	for _, server := range servers {
 		err = s.pollServer(ctx, server, updateServerConfiguration)
-		if err != nil {
+		if err != nil && !errors.Is(err, api.NotIncusOSError) {
 			errs = append(errs, err)
 			continue
 		}
