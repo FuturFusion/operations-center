@@ -154,6 +154,11 @@ func (c *cmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 		AuthType: config.AuthTypeUntrusted,
 	}
 
+	isRemoteCommand := cmd.Name() == "remote" || (cmd.HasParent() && cmd.Parent().Name() == "remote")
+	if isRemoteCommand {
+		c.config.ForceLocal = true
+	}
+
 	if c.config.DefaultRemote != "" {
 		r, ok := c.config.Remotes[c.config.DefaultRemote]
 		if ok {
