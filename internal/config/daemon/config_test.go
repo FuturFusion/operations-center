@@ -157,7 +157,7 @@ func TestUpdateNetwork(t *testing.T) {
 				IsIncusOSFunc: func() bool {
 					return false
 				},
-			})
+			}, nil)
 
 			err := config.UpdateNetwork(t.Context(), tc.cfg)
 

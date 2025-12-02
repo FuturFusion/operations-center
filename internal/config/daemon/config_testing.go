@@ -7,13 +7,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func InitTest(t *testing.T, testEnv enver) {
+func InitTest(t *testing.T, testEnv enver, saveErr error) {
 	t.Helper()
 
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
-	saveFunc = saveInMemory
+	saveFunc = func(cfg config) error {
+		if saveErr != nil {
+			return saveErr
+		}
+
+		globalConfigInstance = cfg
+
+		return nil
+	}
 
 	env = testEnv
 
@@ -23,10 +31,4 @@ func InitTest(t *testing.T, testEnv enver) {
 	require.NoError(t, err)
 
 	globalConfigInstance = cfg
-}
-
-func saveInMemory(cfg config) error {
-	globalConfigInstance = cfg
-
-	return nil
 }

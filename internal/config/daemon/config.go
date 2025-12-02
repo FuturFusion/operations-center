@@ -277,46 +277,9 @@ func saveToDisk(cfg config) error {
 
 func validate(cfg config) error {
 	// Network configuration
-	isRestServerAddressChanged := globalConfigInstance.Network.RestServerAddress != cfg.Network.RestServerAddress
-	if env.IsIncusOS() && isRestServerAddressChanged && cfg.Network.RestServerAddress == "" {
-		return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" can not be empty when running on IncusOS`)
-	}
-
-	if cfg.Network.RestServerAddress != "" {
-		host, portStr, err := net.SplitHostPort(cfg.Network.RestServerAddress)
-		if err != nil {
-			return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" is not a valid address: %v`, err)
-		}
-
-		if host != "" {
-			ip := net.ParseIP(host)
-			if ip == nil {
-				return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" does not contain a valid ip`)
-			}
-		}
-
-		if portStr != "" {
-			port, err := strconv.ParseInt(portStr, 10, 64)
-			if err != nil {
-				return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" does not contain a valid port`)
-			}
-
-			if port < 1 || port > 0xffff {
-				return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" port out of range (%d - %d)`, 1, 0xffff)
-			}
-		}
-	}
-
-	if (cfg.Network.RestServerAddress != "" && cfg.Network.OperationsCenterAddress == "") ||
-		(cfg.Network.RestServerAddress == "" && cfg.Network.OperationsCenterAddress != "") {
-		return domain.NewValidationErrf(`Invalid config, "network.address" and "network.rest_server_address" either both are set or both are unset`)
-	}
-
-	if cfg.Network.OperationsCenterAddress != "" {
-		_, err := url.Parse(cfg.Network.OperationsCenterAddress)
-		if err != nil {
-			return domain.NewValidationErrf(`Invalid config, "network.address" property is expected to be a valid URL: %v`, err)
-		}
+	err := ValidateNetworkConfig(cfg.Network)
+	if err != nil {
+		return err
 	}
 
 	// Updates configuration
@@ -369,6 +332,52 @@ func validate(cfg config) error {
 	isTrustedTLSClientCertFingerprintsUpdated := !slices.Equal(globalConfigInstance.Security.TrustedTLSClientCertFingerprints, cfg.Security.TrustedTLSClientCertFingerprints)
 	if env.IsIncusOS() && isTrustedTLSClientCertFingerprintsUpdated && len(cfg.Security.TrustedTLSClientCertFingerprints) == 0 {
 		return domain.NewValidationErrf(`Invalid config, "security.trusted_tls_client_cert_fingerprints" property can not be empty when running on IncusOS`)
+	}
+
+	return nil
+}
+
+func ValidateNetworkConfig(cfg api.SystemNetwork) error {
+	isRestServerAddressChanged := globalConfigInstance.Network.RestServerAddress != cfg.RestServerAddress
+	if env.IsIncusOS() && isRestServerAddressChanged && cfg.RestServerAddress == "" {
+		return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" can not be empty when running on IncusOS`)
+	}
+
+	if cfg.RestServerAddress != "" {
+		host, portStr, err := net.SplitHostPort(cfg.RestServerAddress)
+		if err != nil {
+			return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" is not a valid address: %v`, err)
+		}
+
+		if host != "" {
+			ip := net.ParseIP(host)
+			if ip == nil {
+				return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" does not contain a valid ip`)
+			}
+		}
+
+		if portStr != "" {
+			port, err := strconv.ParseInt(portStr, 10, 64)
+			if err != nil {
+				return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" does not contain a valid port`)
+			}
+
+			if port < 1 || port > 0xffff {
+				return domain.NewValidationErrf(`Invalid config, "network.rest_server_address" port out of range (%d - %d)`, 1, 0xffff)
+			}
+		}
+	}
+
+	if (cfg.RestServerAddress != "" && cfg.OperationsCenterAddress == "") ||
+		(cfg.RestServerAddress == "" && cfg.OperationsCenterAddress != "") {
+		return domain.NewValidationErrf(`Invalid config, "network.address" and "network.rest_server_address" either both are set or both are unset`)
+	}
+
+	if cfg.OperationsCenterAddress != "" {
+		_, err := url.Parse(cfg.OperationsCenterAddress)
+		if err != nil {
+			return domain.NewValidationErrf(`Invalid config, "network.address" property is expected to be a valid URL: %v`, err)
+		}
 	}
 
 	return nil

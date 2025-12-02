@@ -286,6 +286,41 @@ func (_d ServerServiceWithSlog) GetByName(ctx context.Context, name string) (ser
 	return _d._base.GetByName(ctx, name)
 }
 
+// GetSystemProvider implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) GetSystemProvider(ctx context.Context, name string) (v provisioning.ServerSystemProvider, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetSystemProvider")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("v", v),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetSystemProvider returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetSystemProvider returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetSystemProvider finished")
+		}
+	}()
+	return _d._base.GetSystemProvider(ctx, name)
+}
+
 // PollServers implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) (err error) {
 	log := _d._log.With()
@@ -474,4 +509,39 @@ func (_d ServerServiceWithSlog) UpdateSystemNetwork(ctx context.Context, name st
 		}
 	}()
 	return _d._base.UpdateSystemNetwork(ctx, name, networkConfig)
+}
+
+// UpdateSystemProvider implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) UpdateSystemProvider(ctx context.Context, name string, providerConfig provisioning.ServerSystemProvider) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Any("providerConfig", providerConfig),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateSystemProvider")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateSystemProvider returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateSystemProvider returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateSystemProvider finished")
+		}
+	}()
+	return _d._base.UpdateSystemProvider(ctx, name, providerConfig)
 }

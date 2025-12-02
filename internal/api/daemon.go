@@ -166,7 +166,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	serverSvc.SetClusterService(clusterSvc)
 	clusterTemplateSvc := d.setupClusterTemplateService(dbWithTransaction)
-	systemSvc := d.setupSystemService()
+	systemSvc := d.setupSystemService(serverSvc)
 
 	// Setup API routes
 	serveMux, inventorySyncers := d.setupAPIRoutes(updateSvc, tokenSvc, serverSvc, clusterSvc, clusterTemplateSvc, systemSvc, dbWithTransaction)
@@ -518,9 +518,9 @@ func (d *Daemon) setupClusterTemplateService(db dbdriver.DBTX) provisioning.Clus
 	)
 }
 
-func (d *Daemon) setupSystemService() system.SystemService {
+func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) system.SystemService {
 	return systemServiceMiddleware.NewSystemServiceWithSlog(
-		system.NewSystemService(d.env, d.serverCertificateUpdate),
+		system.NewSystemService(d.env, d.serverCertificateUpdate, serverSvc),
 		slog.Default(),
 	)
 }

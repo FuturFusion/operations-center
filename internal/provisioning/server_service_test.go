@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
@@ -871,6 +872,183 @@ one
 			tc.assertErr(t, err)
 			require.Empty(t, tc.repoUpdate)
 			require.True(t, selfUpdateSignal.IsEmpty())
+		})
+	}
+}
+
+func TestServerService_GetSystemProvider(t *testing.T) {
+	tests := []struct {
+		name                       string
+		repoGetByNameServer        provisioning.Server
+		repoGetByNameErr           error
+		clientGetProviderConfig    provisioning.ServerSystemProvider
+		clientGetProviderConfigErr error
+
+		assertErr require.ErrorAssertionFunc
+		want      provisioning.ServerSystemProvider
+	}{
+		{
+			name: "success",
+			repoGetByNameServer: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+			clientGetProviderConfig: provisioning.ServerSystemProvider{
+				Config: incusosapi.SystemProviderConfig{
+					Name: "operations-center",
+				},
+				State: incusosapi.SystemProviderState{
+					Registered: true,
+				},
+			},
+
+			assertErr: require.NoError,
+			want: provisioning.ServerSystemProvider{
+				Config: incusosapi.SystemProviderConfig{
+					Name: "operations-center",
+				},
+				State: incusosapi.SystemProviderState{
+					Registered: true,
+				},
+			},
+		},
+		{
+			name:             "error - repo.GetByName",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.GetProviderConfig",
+			repoGetByNameServer: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+			clientGetProviderConfigErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				GetProviderConfigFunc: func(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemProvider, error) {
+					return tc.clientGetProviderConfig, tc.clientGetProviderConfigErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil)
+
+			// Run test
+			got, err := serverSvc.GetSystemProvider(t.Context(), "one")
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestServerService_UpdateSystemProvider(t *testing.T) {
+	tests := []struct {
+		name                          string
+		repoGetByNameServer           provisioning.Server
+		repoGetByNameErr              error
+		clientUpdateProviderConfigErr error
+
+		assertErr require.ErrorAssertionFunc
+		want      provisioning.ServerSystemProvider
+	}{
+		{
+			name: "success",
+			repoGetByNameServer: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.UpdateProviderConfig",
+			repoGetByNameServer: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+		one
+		-----END CERTIFICATE-----
+		`,
+				Status: api.ServerStatusReady,
+			},
+			clientUpdateProviderConfigErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				UpdateProviderConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) error {
+					return tc.clientUpdateProviderConfigErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil)
+
+			// Run test
+			err := serverSvc.UpdateSystemProvider(t.Context(), "one", incusosapi.SystemProvider{
+				Config: incusosapi.SystemProviderConfig{
+					Name: "operations-center-new",
+				},
+			},
+			)
+
+			// Assert
+			tc.assertErr(t, err)
 		})
 	}
 }

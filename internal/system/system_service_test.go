@@ -8,13 +8,18 @@ import (
 	"testing"
 	"time"
 
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
-	"github.com/FuturFusion/operations-center/internal/environment/mock"
+	envMock "github.com/FuturFusion/operations-center/internal/environment/mock"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/system"
+	"github.com/FuturFusion/operations-center/internal/system/mock"
+	"github.com/FuturFusion/operations-center/internal/testing/boom"
+	"github.com/FuturFusion/operations-center/internal/testing/queue"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -23,16 +28,20 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name     string
-		setupEnv func(t *testing.T, targetDir string)
-		certPEM  string
-		keyPEM   string
+		name                       string
+		setupEnv                   func(t *testing.T, targetDir string)
+		certPEM                    string
+		keyPEM                     string
+		serverGetAll               provisioning.Servers
+		serverGetAllErr            error
+		serverGetSystemProvider    []queue.Item[provisioning.ServerSystemProvider]
+		serverUpdateSystemProvider []queue.Item[struct{}]
 
 		serverCertificateUpdateCallExpected bool
-		assertError                         require.ErrorAssertionFunc
+		assertErr                           require.ErrorAssertionFunc
 	}{
 		{
-			name: "success",
+			name: "success - no registered servers",
 			setupEnv: func(t *testing.T, targetDir string) {
 				t.Helper()
 			},
@@ -40,7 +49,37 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			keyPEM:  string(keyPEM),
 
 			serverCertificateUpdateCallExpected: true,
-			assertError:                         require.NoError,
+			assertErr:                           require.NoError,
+		},
+		{
+			name: "success - with registered servers",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+			serverGetAll: provisioning.Servers{
+				{
+					Name: "one",
+				},
+			},
+			serverGetSystemProvider: []queue.Item[provisioning.ServerSystemProvider]{
+				{
+					Value: incusosapi.SystemProvider{
+						Config: incusosapi.SystemProviderConfig{
+							Config: map[string]string{
+								"server_certificate": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+							},
+						},
+					},
+				},
+			},
+			serverUpdateSystemProvider: []queue.Item[struct{}]{
+				{},
+			},
+
+			serverCertificateUpdateCallExpected: true,
+			assertErr:                           require.NoError,
 		},
 		{
 			name: "error - invalid certificate",
@@ -51,7 +90,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			keyPEM:  "invalid-key",
 
 			serverCertificateUpdateCallExpected: false,
-			assertError: func(tt require.TestingT, err error, a ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Failed to validate key pair")
 			},
 		},
@@ -66,7 +105,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			keyPEM:  string(keyPEM),
 
 			serverCertificateUpdateCallExpected: false,
-			assertError: func(tt require.TestingT, err error, a ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "server.crt")
 			},
 		},
@@ -81,17 +120,175 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			keyPEM:  string(keyPEM),
 
 			serverCertificateUpdateCallExpected: false,
-			assertError: func(tt require.TestingT, err error, a ...any) {
+			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "server.key")
+			},
+		},
+		{
+			name: "error - with registered servers - repo.GetAll",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM:         string(certPEM),
+			keyPEM:          string(keyPEM),
+			serverGetAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - with registered servers - server.GetSystemProvider",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+			serverGetAll: provisioning.Servers{
+				{
+					Name: "one",
+				},
+			},
+			serverGetSystemProvider: []queue.Item[provisioning.ServerSystemProvider]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - with registered servers - server.UpdateSystemProvider",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+			serverGetAll: provisioning.Servers{
+				{
+					Name: "one",
+				},
+			},
+			serverGetSystemProvider: []queue.Item[provisioning.ServerSystemProvider]{
+				{
+					Value: incusosapi.SystemProvider{
+						Config: incusosapi.SystemProviderConfig{
+							Config: map[string]string{
+								"server_certificate": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+							},
+						},
+					},
+				},
+			},
+			serverUpdateSystemProvider: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - with registered servers - revert ok",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+			serverGetAll: provisioning.Servers{
+				{
+					Name: "one",
+				},
+				{
+					Name: "two",
+				},
+			},
+			serverGetSystemProvider: []queue.Item[provisioning.ServerSystemProvider]{
+				{
+					Value: incusosapi.SystemProvider{
+						Config: incusosapi.SystemProviderConfig{
+							Config: map[string]string{
+								"server_certificate": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+							},
+						},
+					},
+				},
+				{
+					Value: incusosapi.SystemProvider{
+						Config: incusosapi.SystemProviderConfig{
+							Config: map[string]string{
+								"server_certificate": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+							},
+						},
+					},
+				},
+			},
+			serverUpdateSystemProvider: []queue.Item[struct{}]{
+				{},
+				{
+					Err: boom.Error,
+				},
+				{},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - with registered servers - revert error",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+			serverGetAll: provisioning.Servers{
+				{
+					Name: "one",
+				},
+				{
+					Name: "two",
+				},
+			},
+			serverGetSystemProvider: []queue.Item[provisioning.ServerSystemProvider]{
+				{
+					Value: incusosapi.SystemProvider{
+						Config: incusosapi.SystemProviderConfig{
+							Config: map[string]string{
+								"server_certificate": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+							},
+						},
+					},
+				},
+				{
+					Value: incusosapi.SystemProvider{
+						Config: incusosapi.SystemProviderConfig{
+							Config: map[string]string{
+								"server_certificate": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+							},
+						},
+					},
+				},
+			},
+			serverUpdateSystemProvider: []queue.Item[struct{}]{
+				{},
+				{
+					Err: boom.Error,
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				boom.ErrorIs(tt, err)
+				require.ErrorContains(tt, err, `Failed to revert provider config of "one"`)
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// Setup
 			tmpDir := t.TempDir()
 
-			env := &mock.EnvironmentMock{
+			env := &envMock.EnvironmentMock{
 				VarDirFunc: func() string {
 					return tmpDir
 				},
@@ -106,10 +303,27 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 				serverCertificateUpdateResp <- struct{}{}
 			})
 
-			systemSvc := system.NewSystemService(env, serverCertificateUpdate)
+			serverSvc := &mock.ProvisioningServerServiceMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
+					return tc.serverGetAll, tc.serverGetAllErr
+				},
+				GetSystemProviderFunc: func(ctx context.Context, name string) (provisioning.ServerSystemProvider, error) {
+					return queue.Pop(t, &tc.serverGetSystemProvider)
+				},
+				UpdateSystemProviderFunc: func(ctx context.Context, name string, providerConfig provisioning.ServerSystemProvider) error {
+					require.Equal(t, string(certPEM), providerConfig.Config.Config["server_certificate"])
+					_, err := queue.Pop(t, &tc.serverUpdateSystemProvider)
+					return err
+				},
+			}
 
+			systemSvc := system.NewSystemService(env, serverCertificateUpdate, serverSvc)
+
+			// Run test
 			err = systemSvc.UpdateCertificate(context.Background(), tc.certPEM, tc.keyPEM)
-			tc.assertError(t, err)
+
+			// Assert
+			tc.assertErr(t, err)
 
 			serverCertificateUpdateCalled := false
 			select {
@@ -119,21 +333,28 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			}
 
 			require.Equal(t, tc.serverCertificateUpdateCallExpected, serverCertificateUpdateCalled)
+			require.Empty(t, tc.serverGetSystemProvider)
+			require.Empty(t, tc.serverUpdateSystemProvider)
 		})
 	}
 }
 
 func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 	tests := []struct {
-		name           string
-		securityConfig api.SystemNetwork
+		name                       string
+		networkConfig              api.SystemNetwork
+		serverGetAll               provisioning.Servers
+		serverGetAllErr            error
+		serverGetSystemProvider    []queue.Item[provisioning.ServerSystemProvider]
+		serverUpdateSystemProvider []queue.Item[struct{}]
+		configSaveErr              error
 
 		assertErr         require.ErrorAssertionFunc
 		wantNetworkConfig api.SystemNetwork
 	}{
 		{
-			name: "empty",
-			securityConfig: api.SystemNetwork{
+			name: "success - empty",
+			networkConfig: api.SystemNetwork{
 				SystemNetworkPut: api.SystemNetworkPut{},
 			},
 
@@ -143,8 +364,84 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "error",
-			securityConfig: api.SystemNetwork{
+			name: "success - OperationsCenterAddress change",
+			networkConfig: api.SystemNetwork{
+				SystemNetworkPut: api.SystemNetworkPut{
+					OperationsCenterAddress: "https://new:8443/",
+					RestServerAddress:       "192.168.1.200:8443",
+				},
+			},
+			serverGetAll: provisioning.Servers{
+				{
+					Name: "one",
+				},
+			},
+			serverGetSystemProvider: []queue.Item[incusosapi.SystemProvider]{
+				{
+					Value: incusosapi.SystemProvider{
+						Config: incusosapi.SystemProviderConfig{
+							Config: map[string]string{
+								"server_url": "https://one:8443/",
+							},
+						},
+					},
+				},
+			},
+			serverUpdateSystemProvider: []queue.Item[struct{}]{
+				{},
+			},
+
+			assertErr: require.NoError,
+			wantNetworkConfig: api.SystemNetwork{
+				SystemNetworkPut: api.SystemNetworkPut{
+					OperationsCenterAddress: "https://new:8443/",
+					RestServerAddress:       "192.168.1.200:8443",
+				},
+			},
+		},
+		{
+			name: "success - OperationsCenterAddress change - system provider config not initialized",
+			networkConfig: api.SystemNetwork{
+				SystemNetworkPut: api.SystemNetworkPut{
+					OperationsCenterAddress: "https://new:8443/",
+					RestServerAddress:       "192.168.1.200:8443",
+				},
+			},
+			serverGetAll: provisioning.Servers{
+				{
+					Name: "one",
+				},
+			},
+			serverGetSystemProvider: []queue.Item[incusosapi.SystemProvider]{
+				{
+					Value: incusosapi.SystemProvider{},
+				},
+			},
+			serverUpdateSystemProvider: []queue.Item[struct{}]{
+				{},
+			},
+
+			assertErr: require.NoError,
+			wantNetworkConfig: api.SystemNetwork{
+				SystemNetworkPut: api.SystemNetworkPut{
+					OperationsCenterAddress: "https://new:8443/",
+					RestServerAddress:       "192.168.1.200:8443",
+				},
+			},
+		},
+		{
+			name: "error - NetworkSetDefaults",
+			networkConfig: api.SystemNetwork{
+				SystemNetworkPut: api.SystemNetworkPut{
+					RestServerAddress: ":::", // invalid
+				},
+			},
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - validation",
+			networkConfig: api.SystemNetwork{
 				SystemNetworkPut: api.SystemNetworkPut{
 					OperationsCenterAddress: ":|\\", // invalid
 				},
@@ -152,27 +449,215 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 
 			assertErr: require.Error,
 		},
+		{
+			name: "error - config.UpdateNetwork",
+			networkConfig: api.SystemNetwork{
+				SystemNetworkPut: api.SystemNetworkPut{},
+			},
+			configSaveErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - OperationsCenterAddress change - repo.GetAll",
+			networkConfig: api.SystemNetwork{
+				SystemNetworkPut: api.SystemNetworkPut{
+					OperationsCenterAddress: "https://new:8443/",
+					RestServerAddress:       "192.168.1.200:8443",
+				},
+			},
+			serverGetAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - OperationsCenterAddress change - server.GetSystemProvider",
+			networkConfig: api.SystemNetwork{
+				SystemNetworkPut: api.SystemNetworkPut{
+					OperationsCenterAddress: "https://new:8443/",
+					RestServerAddress:       "192.168.1.200:8443",
+				},
+			},
+			serverGetAll: provisioning.Servers{
+				{
+					Name: "one",
+				},
+			},
+			serverGetSystemProvider: []queue.Item[provisioning.ServerSystemProvider]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - OperationsCenterAddress change - server.UpdateSystemProvider first",
+			networkConfig: api.SystemNetwork{
+				SystemNetworkPut: api.SystemNetworkPut{
+					OperationsCenterAddress: "https://new:8443/",
+					RestServerAddress:       "192.168.1.200:8443",
+				},
+			},
+			serverGetAll: provisioning.Servers{
+				{
+					Name: "one",
+				},
+			},
+			serverGetSystemProvider: []queue.Item[incusosapi.SystemProvider]{
+				{
+					Value: incusosapi.SystemProvider{
+						Config: incusosapi.SystemProviderConfig{
+							Config: map[string]string{
+								"server_url": "https://one:8443/",
+							},
+						},
+					},
+				},
+			},
+			serverUpdateSystemProvider: []queue.Item[struct{}]{
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - OperationsCenterAddress change - server.UpdateSystemProvider second - revert ok",
+			networkConfig: api.SystemNetwork{
+				SystemNetworkPut: api.SystemNetworkPut{
+					OperationsCenterAddress: "https://new:8443/",
+					RestServerAddress:       "192.168.1.200:8443",
+				},
+			},
+			serverGetAll: provisioning.Servers{
+				{
+					Name: "one",
+				},
+				{
+					Name: "two",
+				},
+			},
+			serverGetSystemProvider: []queue.Item[incusosapi.SystemProvider]{
+				{
+					Value: incusosapi.SystemProvider{
+						Config: incusosapi.SystemProviderConfig{
+							Config: map[string]string{
+								"server_url": "https://one:8443/",
+							},
+						},
+					},
+				},
+				{
+					Value: incusosapi.SystemProvider{
+						Config: incusosapi.SystemProviderConfig{
+							Config: map[string]string{
+								"server_url": "https://one:8443/",
+							},
+						},
+					},
+				},
+			},
+			serverUpdateSystemProvider: []queue.Item[struct{}]{
+				{},
+				{
+					Err: boom.Error,
+				},
+				{},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - OperationsCenterAddress change - server.UpdateSystemProvider second - revert error",
+			networkConfig: api.SystemNetwork{
+				SystemNetworkPut: api.SystemNetworkPut{
+					OperationsCenterAddress: "https://new:8443/",
+					RestServerAddress:       "192.168.1.200:8443",
+				},
+			},
+			serverGetAll: provisioning.Servers{
+				{
+					Name: "one",
+				},
+				{
+					Name: "two",
+				},
+			},
+			serverGetSystemProvider: []queue.Item[incusosapi.SystemProvider]{
+				{
+					Value: incusosapi.SystemProvider{
+						Config: incusosapi.SystemProviderConfig{
+							Config: map[string]string{
+								"server_url": "https://one:8443/",
+							},
+						},
+					},
+				},
+				{
+					Value: incusosapi.SystemProvider{
+						Config: incusosapi.SystemProviderConfig{
+							Config: map[string]string{
+								"server_url": "https://one:8443/",
+							},
+						},
+					},
+				},
+			},
+			serverUpdateSystemProvider: []queue.Item[struct{}]{
+				{},
+				{
+					Err: boom.Error,
+				},
+				{
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				boom.ErrorIs(tt, err)
+				require.ErrorContains(tt, err, `Failed to revert provider config of "one"`)
+			},
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			env := &mock.EnvironmentMock{
+			env := &envMock.EnvironmentMock{
 				IsIncusOSFunc: func() bool {
 					return false
 				},
 			}
 
-			config.InitTest(t, env)
-			systemSvc := system.NewSystemService(nil, nil)
+			serverSvc := &mock.ProvisioningServerServiceMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
+					return tc.serverGetAll, tc.serverGetAllErr
+				},
+				GetSystemProviderFunc: func(ctx context.Context, name string) (provisioning.ServerSystemProvider, error) {
+					return queue.Pop(t, &tc.serverGetSystemProvider)
+				},
+				UpdateSystemProviderFunc: func(ctx context.Context, name string, providerConfig provisioning.ServerSystemProvider) error {
+					require.Equal(t, "https://new:8443/", providerConfig.Config.Config["server_url"])
+					_, err := queue.Pop(t, &tc.serverUpdateSystemProvider)
+					return err
+				},
+			}
+
+			config.InitTest(t, env, tc.configSaveErr)
+			// config.UpdateNetwork(t.Context(), tc.networkConfig)
+			systemSvc := system.NewSystemService(nil, nil, serverSvc)
 
 			// Run test
-			err := systemSvc.UpdateNetworkConfig(t.Context(), tc.securityConfig.SystemNetworkPut)
+			err := systemSvc.UpdateNetworkConfig(t.Context(), tc.networkConfig.SystemNetworkPut)
 			gotNetworkConfig := systemSvc.GetNetworkConfig(t.Context())
 
 			// Assert
 			tc.assertErr(t, err)
 			require.Equal(t, tc.wantNetworkConfig, gotNetworkConfig)
+			require.Empty(t, tc.serverGetSystemProvider)
+			require.Empty(t, tc.serverUpdateSystemProvider)
 		})
 	}
 }
@@ -196,17 +681,17 @@ func TestSystemService_GetNetworkConfig(t *testing.T) {
 				},
 			}
 
-			env := &mock.EnvironmentMock{
+			env := &envMock.EnvironmentMock{
 				IsIncusOSFunc: func() bool {
 					return false
 				},
 			}
 
-			config.InitTest(t, env)
+			config.InitTest(t, env, nil)
 			err := config.UpdateNetwork(t.Context(), networkConfig.SystemNetworkPut)
 			require.NoError(t, err)
 
-			systemSvc := system.NewSystemService(nil, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil)
 
 			// Run test
 			gotNetworkConfig := systemSvc.GetNetworkConfig(t.Context())
@@ -262,14 +747,14 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			env := &mock.EnvironmentMock{
+			env := &envMock.EnvironmentMock{
 				IsIncusOSFunc: func() bool {
 					return false
 				},
 			}
 
-			config.InitTest(t, env)
-			systemSvc := system.NewSystemService(nil, nil)
+			config.InitTest(t, env, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateSecurityConfig(t.Context(), tc.securityConfig.SystemSecurityPut)
@@ -284,15 +769,15 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 
 func TestSystemService_UpdateUpdatesConfig(t *testing.T) {
 	tests := []struct {
-		name           string
-		securityConfig api.SystemUpdates
+		name          string
+		updatesConfig api.SystemUpdates
 
 		assertErr         require.ErrorAssertionFunc
 		wantUpdatesConfig api.SystemUpdates
 	}{
 		{
 			name: "success",
-			securityConfig: api.SystemUpdates{
+			updatesConfig: api.SystemUpdates{
 				SystemUpdatesPut: api.SystemUpdatesPut{
 					Source: "https://somesource:443",
 					SignatureVerificationRootCA: `-----BEGIN CERTIFICATE-----
@@ -319,7 +804,7 @@ dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 		},
 		{
 			name: "error",
-			securityConfig: api.SystemUpdates{
+			updatesConfig: api.SystemUpdates{
 				SystemUpdatesPut: api.SystemUpdatesPut{
 					Source: ":|\\", // invalid
 				},
@@ -338,17 +823,17 @@ dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			env := &mock.EnvironmentMock{
+			env := &envMock.EnvironmentMock{
 				IsIncusOSFunc: func() bool {
 					return false
 				},
 			}
 
-			config.InitTest(t, env)
-			systemSvc := system.NewSystemService(nil, nil)
+			config.InitTest(t, env, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil)
 
 			// Run test
-			err := systemSvc.UpdateUpdatesConfig(t.Context(), tc.securityConfig.SystemUpdatesPut)
+			err := systemSvc.UpdateUpdatesConfig(t.Context(), tc.updatesConfig.SystemUpdatesPut)
 			gotUpdatesConfig := systemSvc.GetUpdatesConfig(t.Context())
 
 			// Assert

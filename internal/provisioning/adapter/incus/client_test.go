@@ -1234,6 +1234,124 @@ func TestClientServer(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			name: "GetProviderConfig",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetProviderConfig(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/provider
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"type":"sync","status":"Success","status_code":200,"operation":"","error_code":0,"error":"","metadata":{"config":{"name":"operations-center","config":{"server_certificate":"-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n","server_token":"5df55e4e-3bfb-46c8-94c3-b04b56f9e3ba","server_url":"https://192.168.1.200:8443"}},"state":{"registered":true}}}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /os/1.0/system/provider"},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantProviderConfig := provisioning.ServerSystemProvider{
+							Config: incusosapi.SystemProviderConfig{
+								Name: "operations-center",
+								Config: map[string]string{
+									"server_certificate": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n",
+									"server_token":       "5df55e4e-3bfb-46c8-94c3-b04b56f9e3ba",
+									"server_url":         "https://192.168.1.200:8443",
+								},
+							},
+							State: incusosapi.SystemProviderState{
+								Registered: true,
+							},
+						}
+
+						require.Equal(t, wantProviderConfig, res)
+					},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/provider
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/provider"},
+					assertResult: noResult,
+				},
+				{
+					name: "error - provider config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/provider
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/provider"},
+					assertResult: noResult,
+				},
+			},
+		},
+
+		{
+			name: "UpdateProviderConfig",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.UpdateProviderConfig(ctx, target, incusosapi.SystemProvider{
+					Config: incusosapi.SystemProviderConfig{
+						Config: map[string]string{
+							"server_url": "https://new-operations-center:8443",
+						},
+					},
+				})
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"PUT /os/1.0/system/provider"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"PUT /os/1.0/system/provider"},
+				},
+			},
+		},
 		{
 			name: "JoinCluster",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
