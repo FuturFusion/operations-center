@@ -470,7 +470,7 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 					// ErrSelfUpdateNotification is used as cause when the context is
 					// cancelled. This is an expected success path and therefore not
 					// an error.
-					return errors.Is(err, provisioning.ErrSelfUpdateNotification)
+					return errors.Is(err, provisioning.ErrSelfUpdateNotification) || errors.Is(err, api.NotIncusOSError)
 				},
 			),
 		),
