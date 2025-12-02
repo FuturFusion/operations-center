@@ -371,6 +371,10 @@ func (s *serverService) UpdateSystemProvider(ctx context.Context, name string, p
 }
 
 func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUpdate) error {
+	if serverUpdate.Self {
+		return s.selfUpdateOperationsCenter(ctx)
+	}
+
 	var server *Server
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
@@ -399,13 +403,64 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfU
 			return fmt.Errorf("Failed to validate server update: %w", err)
 		}
 
-		return s.repo.Update(ctx, *server)
+		err = s.repo.Update(ctx, *server)
+		if err != nil {
+			return fmt.Errorf("Failed to self-update server: %w", err)
+		}
+
+		return nil
 	})
 	if err != nil {
 		return err
 	}
 
 	s.selfUpdateSignal.Emit(ctx, *server)
+
+	return nil
+}
+
+func (s *serverService) selfUpdateOperationsCenter(ctx context.Context) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		servers, err := s.repo.GetAllWithFilter(ctx, ServerFilter{
+			Type: ptr.To(api.ServerTypeOperationsCenter),
+		})
+		if err != nil {
+			return fmt.Errorf(`Failed to get servers of type "operations-center": %w`, err)
+		}
+
+		if len(servers) != 1 {
+			return fmt.Errorf(`Invalid internal state, expect exactly 1 server of type "operations-center", found %d`, len(servers))
+		}
+
+		s.mu.Lock()
+		serverCert := pem.EncodeToMemory(&pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: s.serverCertificate.Leaf.Raw,
+		})
+		serverURL := s.serverURL
+		s.mu.Unlock()
+
+		server := servers[0]
+		server.ConnectionURL = serverURL
+		server.Certificate = string(serverCert)
+		server.Status = api.ServerStatusReady
+		server.LastSeen = s.now()
+
+		err = server.Validate()
+		if err != nil {
+			return fmt.Errorf("Failed to validate operations-center server update: %w", err)
+		}
+
+		err = s.repo.Update(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to self-update operations-center: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -437,7 +492,7 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 			Type:          api.ServerTypeOperationsCenter,
 			ConnectionURL: serverURL,
 			Certificate:   string(serverCert),
-			Status:        api.ServerStatusReady,
+			Status:        api.ServerStatusPending,
 			LastSeen:      s.now(),
 		}
 

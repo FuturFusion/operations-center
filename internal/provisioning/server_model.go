@@ -142,6 +142,11 @@ func (f ServerFilter) String() string {
 type ServerSelfUpdate struct {
 	ConnectionURL             string
 	AuthenticationCertificate *x509.Certificate
+
+	// Self is set to true, if the self update API has been called through
+	// unix socket. This is the case, when IncusOS is serving Operations Center
+	// and triggers a self update on its self.
+	Self bool
 }
 
 type ServerSystemNetwork = api.ServerSystemNetwork

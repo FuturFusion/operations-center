@@ -26,6 +26,243 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
+func TestServerService_UpdateServerURL(t *testing.T) {
+	serverCertPEM, serverKeyPEM, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	serverCertificate, err := tls.X509KeyPair(serverCertPEM, serverKeyPEM)
+	require.NoError(t, err)
+
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	tests := []struct {
+		name                    string
+		argServerURL            string
+		repoGetAllWithFilter    provisioning.Servers
+		repoGetAllWithFilterErr error
+		repoUpdateErr           error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:         "success - operations center self update",
+			argServerURL: "https://new:8443",
+			repoGetAllWithFilter: provisioning.Servers{
+				{
+					Name:          "one",
+					ConnectionURL: "http://one/",
+					Certificate:   string(serverCertPEM),
+					Type:          api.ServerTypeOperationsCenter,
+					Status:        api.ServerStatusReady,
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                    "error - operations center self update - repo.GetAllWithFilter",
+			argServerURL:            "https://new:8443",
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                 "error - operations center self update - no server of type operations center",
+			argServerURL:         "https://new:8443",
+			repoGetAllWithFilter: provisioning.Servers{},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid internal state, expect exactly 1 server of type "operations-center", found 0`)
+			},
+		},
+		{
+			name:         "error - operations center self update - multiple servers of type operations center",
+			argServerURL: "https://new:8443",
+			repoGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "one",
+				},
+				{
+					Name: "two",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid internal state, expect exactly 1 server of type "operations-center", found 2`)
+			},
+		},
+		{
+			name:         "error - operations center self update - validation",
+			argServerURL: ":|//", // invalid URL
+			repoGetAllWithFilter: provisioning.Servers{
+				{
+					Name:          "one",
+					ConnectionURL: "http://one/",
+					Certificate:   string(serverCertPEM),
+					Type:          api.ServerTypeOperationsCenter,
+					Status:        api.ServerStatusReady,
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name:         "error - operations center self update - repo.Update",
+			argServerURL: "https://new:8443",
+			repoGetAllWithFilter: provisioning.Servers{
+				{
+					Name:          "one",
+					ConnectionURL: "http://one/",
+					Certificate:   string(serverCertPEM),
+					Type:          api.ServerTypeOperationsCenter,
+					Status:        api.ServerStatusReady,
+				},
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					require.Equal(t, fixedDate, in.LastSeen)
+					return tc.repoUpdateErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, "https://one:8443", serverCertificate,
+				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
+			)
+
+			// Run test
+			err := serverSvc.UpdateServerURL(t.Context(), tc.argServerURL)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestServerService_UpdateCertificate(t *testing.T) {
+	serverCertPEM, serverKeyPEM, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	serverCertificate, err := tls.X509KeyPair(serverCertPEM, serverKeyPEM)
+	require.NoError(t, err)
+
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	tests := []struct {
+		name                    string
+		argCertificate          tls.Certificate
+		repoGetAllWithFilter    provisioning.Servers
+		repoGetAllWithFilterErr error
+		repoUpdateErr           error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:           "success - operations center self update",
+			argCertificate: serverCertificate,
+			repoGetAllWithFilter: provisioning.Servers{
+				{
+					Name:          "one",
+					ConnectionURL: "http://one/",
+					Certificate:   string(serverCertPEM),
+					Type:          api.ServerTypeOperationsCenter,
+					Status:        api.ServerStatusReady,
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                    "error - operations center self update - repo.GetAllWithFilter",
+			argCertificate:          serverCertificate,
+			repoGetAllWithFilterErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                 "error - operations center self update - no server of type operations center",
+			argCertificate:       serverCertificate,
+			repoGetAllWithFilter: provisioning.Servers{},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid internal state, expect exactly 1 server of type "operations-center", found 0`)
+			},
+		},
+		{
+			name:           "error - operations center self update - multiple servers of type operations center",
+			argCertificate: serverCertificate,
+			repoGetAllWithFilter: provisioning.Servers{
+				{
+					Name: "one",
+				},
+				{
+					Name: "two",
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid internal state, expect exactly 1 server of type "operations-center", found 2`)
+			},
+		},
+		// validateion error not covered
+		{
+			name:           "error - operations center self update - repo.Update",
+			argCertificate: serverCertificate,
+			repoGetAllWithFilter: provisioning.Servers{
+				{
+					Name:          "one",
+					ConnectionURL: "http://one/",
+					Certificate:   string(serverCertPEM),
+					Type:          api.ServerTypeOperationsCenter,
+					Status:        api.ServerStatusReady,
+				},
+			},
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					require.Equal(t, fixedDate, in.LastSeen)
+					return tc.repoUpdateErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, "https://one:8443", serverCertificate,
+				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
+			)
+
+			// Run test
+			err := serverSvc.UpdateServerCertificate(t.Context(), tc.argCertificate)
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestServerService_Create(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
@@ -980,7 +1217,7 @@ one
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil)
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, "", tls.Certificate{})
 
 			// Run test
 			got, err := serverSvc.GetSystemProvider(t.Context(), "one")
@@ -1058,7 +1295,7 @@ one
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, client, nil, nil)
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, "", tls.Certificate{})
 
 			// Run test
 			err := serverSvc.UpdateSystemProvider(t.Context(), "one", incusosapi.SystemProvider{
@@ -1194,6 +1431,8 @@ func TestServerService_SelfUpdate(t *testing.T) {
 	tests := []struct {
 		name                       string
 		serverSelfUpdate           provisioning.ServerSelfUpdate
+		repoGetAllWithFilter       provisioning.Servers
+		repoGetAllWithFilterErr    error
 		repoGetByCertificateServer *provisioning.Server
 		repoGetByCertificateErr    error
 		repoUpdateErr              error
@@ -1212,6 +1451,23 @@ func TestServerService_SelfUpdate(t *testing.T) {
 				Certificate:   string(serverCertPEM),
 				Type:          api.ServerTypeIncus,
 				Status:        api.ServerStatusReady,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - operations center self update",
+			serverSelfUpdate: provisioning.ServerSelfUpdate{
+				Self: true,
+			},
+			repoGetAllWithFilter: provisioning.Servers{
+				{
+					Name:          "one",
+					ConnectionURL: "http://one/",
+					Certificate:   string(serverCertPEM),
+					Type:          api.ServerTypeOperationsCenter,
+					Status:        api.ServerStatusReady,
+				},
 			},
 
 			assertErr: require.NoError,
@@ -1280,6 +1536,9 @@ func TestServerService_SelfUpdate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &repoMock.ServerRepoMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
+				},
 				GetByCertificateFunc: func(ctx context.Context, certificatePEM string) (*provisioning.Server, error) {
 					return tc.repoGetByCertificateServer, tc.repoGetByCertificateErr
 				},
