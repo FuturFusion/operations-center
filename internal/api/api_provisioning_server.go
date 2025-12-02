@@ -33,8 +33,13 @@ func registerProvisioningServerHandler(router Router, authorizer *authz.Authoriz
 	router.HandleFunc("POST /{$}", response.With(handler.serversPost))
 
 	// Self update of existing servers (PUT request of a server for their own record)
-	// is authenticated using the stored certificate of the server. Therefore no
-	// authorization is performed for these requests.
+	// is authenticated using the stored certificate of the server or by using
+	// the unix socket connection. Therefore no authorization is performed for
+	// these requests.
+	//
+	// Using the unix socket connection for this end point is a special case,
+	// since it only allows to update the server record of this Operations Center
+	// instance.
 	router.HandleFunc("PUT /:self", response.With(handler.serverPutSelf))
 
 	// Self registering of IncusOS which this Operations Center instance is served
@@ -474,6 +479,10 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 //	Authentication is done by the servers certificate provided during the
 //	initial registration.
 //
+//	Special case is, if this endpoint is called over the unix socket. In this
+//	case, it allows to update the server record of this Operations Center
+//	itself.
+//
 //	---
 //	consumes:
 //	  - application/json
@@ -498,6 +507,11 @@ func (s *serverHandler) serverPut(r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func (s *serverHandler) serverPutSelf(r *http.Request) response.Response {
+	// Self update through unix socket from IncusOS serving Operations Center.
+	if r.RemoteAddr == "@" && r.TLS == nil {
+		return s.serverPutSelfUnixSocket(r)
+	}
+
 	// Ensure presence of client certificate.
 	if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
 		return response.Forbidden(fmt.Errorf("No client certificate provided"))
@@ -515,6 +529,24 @@ func (s *serverHandler) serverPutSelf(r *http.Request) response.Response {
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed self-updating from server %q: %w", r.RemoteAddr, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+func (s *serverHandler) serverPutSelfUnixSocket(r *http.Request) response.Response {
+	var serverUpdate api.ServerSelfUpdate
+	err := json.NewDecoder(r.Body).Decode(&serverUpdate)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	err = s.service.SelfUpdate(r.Context(), provisioning.ServerSelfUpdate{
+		ConnectionURL: serverUpdate.ConnectionURL,
+		Self:          true,
+	})
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed self-updating own Operations Center over unix socket: %w", err))
 	}
 
 	return response.EmptySyncResponse
