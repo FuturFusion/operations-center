@@ -321,17 +321,25 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg api.SystemSecurit
 		}
 	}
 
-	// Setup client cert fingerprint authentication.
-	if len(cfg.TrustedTLSClientCertFingerprints) > 0 {
-		authers = append(authers, authntls.New(cfg.TrustedTLSClientCertFingerprints))
+	trustedFingerprints := make([]string, 0, len(cfg.TrustedTLSClientCertFingerprints)+1)
+
+	// Always trust our own client certificate if present.
+	// This required to self connect if Operations Center is self-registered.
+	clientCertFingerprint, err := incusTLS.CertFingerprintStr(d.clientCertificate)
+	if err == nil {
+		trustedFingerprints = append(trustedFingerprints, clientCertFingerprint)
 	}
+
+	// Setup client cert fingerprint authentication.
+	trustedFingerprints = append(trustedFingerprints, cfg.TrustedTLSClientCertFingerprints...)
+	authers = append(authers, authntls.New(trustedFingerprints))
 
 	// Create authenticator
 	*d.authenticator = authn.New(authers)
 
 	authorizers := []authz.Authorizer{
 		unixsocket.New(),
-		authztls.New(ctx, cfg.TrustedTLSClientCertFingerprints),
+		authztls.New(ctx, trustedFingerprints),
 	}
 
 	if cfg.OpenFGA.APIURL != "" && cfg.OpenFGA.APIToken != "" && cfg.OpenFGA.StoreID != "" {
