@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/expr-lang/expr"
 	"github.com/google/uuid"
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
@@ -23,6 +24,59 @@ import (
 	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
+
+func TestUpdateFileExprEnv_ExprCompileOptions(t *testing.T) {
+	tests := []struct {
+		name             string
+		filterExpression string
+
+		assertErr require.ErrorAssertionFunc
+		want      any
+	}{
+		{
+			name:             "success",
+			filterExpression: `applies_to_architecture(architecture, "arm64")`,
+
+			assertErr: require.NoError,
+			want:      true,
+		},
+		{
+			name:             "error - invalid number of arguments",
+			filterExpression: `applies_to_architecture(architecture, "arm64", "invalid")`,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid number of arguments to 'applies_to_architecture', expected <architecture> <expected_architecture>, got 3 arguments`)
+			},
+		},
+		{
+			name:             "error - first argument not string",
+			filterExpression: `applies_to_architecture(0, "arm64")`, // invalid: 0 is not a string
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid first argument type to 'applies_to_architecture', expected string, got: int`)
+			},
+		},
+		{
+			name:             "error - second argument not string",
+			filterExpression: `applies_to_architecture(architecture, 0)`, // invalid: 0 is not a string
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid second argument type to 'applies_to_architecture', expected string, got: int`)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			fileFilterExpression, err := expr.Compile(tc.filterExpression, provisioning.UpdateFileExprEnvFrom(provisioning.UpdateFile{}).ExprCompileOptions()...)
+			require.NoError(t, err)
+
+			result, err := expr.Run(fileFilterExpression, provisioning.UpdateFileExprEnvFrom(provisioning.UpdateFile{}))
+			tc.assertErr(t, err)
+			require.Equal(t, tc.want, result)
+		})
+	}
+}
 
 func TestUpdateService_CreateFromArchive(t *testing.T) {
 	tests := []struct {

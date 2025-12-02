@@ -532,7 +532,7 @@ func (u UpdateFileExprEnv) ExprCompileOptions() []expr.Option {
 
 			wantArch, ok := params[1].(string)
 			if !ok {
-				return nil, fmt.Errorf("Invalid second argument type to 'applies_to_architecture', expected string, got: %T", params[0])
+				return nil, fmt.Errorf("Invalid second argument type to 'applies_to_architecture', expected string, got: %T", params[1])
 			}
 
 			return arch == wantArch || arch == "", nil
