@@ -154,6 +154,8 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 			result = append(result, api.Cluster{
 				Name:          cluster.Name,
 				ConnectionURL: cluster.ConnectionURL,
+				Certificate:   cluster.Certificate,
+				Fingerprint:   cluster.Fingerprint,
 				Status:        cluster.Status,
 				LastUpdated:   cluster.LastUpdated,
 			})
@@ -280,6 +282,8 @@ func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
 		api.Cluster{
 			Name:          cluster.Name,
 			ConnectionURL: cluster.ConnectionURL,
+			Certificate:   cluster.Certificate,
+			Fingerprint:   cluster.Fingerprint,
 			LastUpdated:   cluster.LastUpdated,
 		},
 		cluster,
