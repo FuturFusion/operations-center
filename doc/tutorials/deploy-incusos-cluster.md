@@ -38,9 +38,6 @@ Make sure, you have your client certificate ready.
 
 ```shell
 incus remote get-client-certificate
------BEGIN CERTIFICATE-----
-...
------END CERTIFICATE-----
 ```
 
 `````{tabs}
@@ -157,7 +154,7 @@ incus start OperationsCenter --console
 ```
 
 Wait for Operations Center to fully installed, which is the case when you see
-the following message:
+the following message in the log output:
 
 ```text
 System is ready
@@ -173,11 +170,15 @@ Note down the server certificate fingerprint shown in the logs looking like this
 
 Exit the console again (`<ctrl>+a q`) and reset the terminal if necessary (`reset`).
 
-## Access Operations Center with the CLI
+## Access Operations Center
+
+`````{tabs}
+````{group-tab} CLI
 
 Make sure, Operations Center CLI is using the client certificate and key we
 used to seed the IncusOS installation ISO with and add the newly installed
-Operations Center instance as a new remote `tutorial-operations-center` for `operations-center` CLI.
+Operations Center instance as a new remote `tutorial-operations-center` for
+`operations-center` CLI.
 
 Replace `<operations-center-ip>` with the IP address you noted down earlier.
 
@@ -191,6 +192,25 @@ operations-center remote add tutorial-operations-center https://<operations-cent
 operations-center remote switch tutorial-operations-center
 ```
 
+````
+````{group-tab} Web UI
+
+Follow the instructions in the
+[Setup Operations Center UI tutorial](./setup-operations-center-ui.md) to set up
+certificate-based authentication for the Operations Center UI.
+
+Point your web browser to `https://<operations-center-ip>:8443` (replace
+`<operations-center-ip>` with the IP address you noted down earlier) and log in
+using your client certificate.
+
+If everything worked as expected, you should see the Operations Center UI like
+this:
+
+![Operations Center UI - Logged in](../images/tutorial-setup-operations-center-ui-logged-in.png)
+
+````
+`````
+
 ## Wait for Updates
 
 As soon as Operations Center is up and running, it starts checking for updates
@@ -199,6 +219,9 @@ The cached updates are also used as source for the pre-seeded IncusOS
 installation images. Therefore, we need to wait for the updates to be downloaded
 before we can continue with the deployment of the IncusOS instances.
 
+`````{tabs}
+````{group-tab} CLI
+
 The following command lists all the available updates. As soon as there is
 at least one update in state `ready` you can continue with the deployment.
 
@@ -206,7 +229,23 @@ at least one update in state `ready` you can continue with the deployment.
 operations-center provisioning update list
 ```
 
+````
+````{group-tab} Web UI
+
+Navigate to *Updates*.
+
+![Operations Center UI - Updates](../images/tutorial-deploy-incusos-cluster-updates.png)
+
+Wait until at least one update is in state `ready` before you continue with the
+deployment.
+
+````
+`````
+
 ## Prepare for IncusOS Installation
+
+`````{tabs}
+````{group-tab} CLI
 
 Create a new provisioning [token](../reference/token.md) for the IncusOS
 installations and list the tokens to get the token `UUID`:
@@ -221,6 +260,23 @@ Now get the pre-seeded installation ISO (this process may take a while):
 ```shell
 operations-center provisioning token get-image <token> ~/Downloads/IncusOS.iso --architecture x86_64 --type iso
 ```
+
+````
+````{group-tab} Web UI
+
+Navigate to *Tokens* and click *Issue token*.
+
+![Operations Center UI - Tokens](../images/tutorial-deploy-incusos-cluster-tokens.png)
+
+![Operations Center UI - Issue Token](../images/tutorial-deploy-incusos-cluster-issue-token.png)
+
+Now get the pre-seeded installation ISO by clicking on the download action of
+the newly created token and save it as `~/Downloads/IncusOS.iso`.
+
+![Operations Center UI - Download ISO](../images/tutorial-deploy-incusos-cluster-token-download-iso.png)
+
+````
+`````
 
 ## Install IncusOS
 
@@ -282,16 +338,10 @@ incus start IncusOS --console
 ```
 
 Wait for Operations Center to fully installed, which is the case when you see
-the following message:
+the following message in the log output:
 
 ```text
 System is ready
-```
-
-Note down the server certificate fingerprint shown in the logs looking like this:
-
-```text
-2025-12-02 14:17:32 INFO Application TLS certificate fingerprint fingerprint=a7cc5eb2f7041b3d67179ec1ee79c5f7974f8177926b3735b53f0e0ec1507638 name=incus
 ```
 
 ## Cluster the Servers
@@ -302,6 +352,9 @@ application configuration.
 
 Make sure, you have your client certificate at hand (see at the beginning of
 this guide, get it with `incus remote get-client-certificate`).
+
+`````{tabs}
+````{group-tab} CLI
 
 Create a file `application-config.yaml` like this, past your client certificate
 and make sure the indentation is correct:
@@ -352,6 +405,46 @@ a load balancer to access the cluster through all servers.
 operations-center provisioning cluster add tutorial-incusos-cluster <connection-url> --server-names <server-name> --application-seed-config application-config.yaml
 ```
 
+Check the existence of the newly created cluster with:
+
+```shell
+operations-center provisioning cluster list
+```
+
+````
+````{group-tab} Web UI
+
+Navigate to *Clusters* and click *Create cluster*.
+
+![Operations Center UI - Clusters](../images/tutorial-deploy-incusos-cluster-clusters.png)
+
+Fill in the following details:
+
+* Name: `tutorial-incusos-cluster`
+* Connection URL: `<connection-url>` (use the connection URL of the first server)
+* Select the servers to be part of the cluster (select all servers you created
+  previously)
+* Server type: `incus`
+* Services configuration: leave empty for this tutorial
+* Application seed config:
+  ```
+  certificates:
+    - type: client
+      name: my-client-cert
+      description: "Client certificate for accessing the cluster"
+      certificate: |-
+        <paste your client certificate here>
+  ```
+
+![Operations Center UI - Create Cluster](../images/tutorial-deploy-incusos-cluster-create-cluster.png)
+
+Click the *Create* button to create the cluster.
+
+After successful cluster creation, you should see the cluster in the list.
+
+````
+`````
+
 ```{note}
 If the clustering fails, the cluster can be removed from Operations Center and
 all the servers can be reset (factory reset) with the following command:
@@ -372,13 +465,9 @@ For more serious setups, you might want to look into the options these config
 files offer.
 ```
 
-Check the existence of the newly created cluster with:
-
-```shell
-operations-center provisioning cluster list
-```
-
 Note down the connection URL and the fingerprint of the cluster for the next step.
+
+## Access the IncusOS Cluster
 
 In order to access the newly created Incus cluster, add it as a remote to Incus:
 
@@ -392,6 +481,16 @@ Test the connection to Incus:
 ```shell
 incus cluster list
 ```
+
+If you want to access the Incus Web UI of the cluster, add your client
+certificate to the trusted certificates:
+
+```shell
+incus config trust add-certificate .config/incus/client.crt
+```
+
+Now point your web browser to the connection URL of the cluster and you
+should be able to log in using your client certificate.
 
 ## Terraform Configuration
 
@@ -423,6 +522,7 @@ at the beginning of this tutorial, you can simply delete the project including
 all everything contained in the project with the following command:
 
 ```shell
+incus project switch default
 incus project delete tutorial-incusos-cluster --force
 operations-center remote remove tutorial-operations-center
 incus remote switch local
