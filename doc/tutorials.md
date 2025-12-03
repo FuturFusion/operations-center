@@ -6,4 +6,5 @@ Operations Center.
 ```{toctree}
 :maxdepth: 1
 Deploy IncusOS Cluster </tutorials/deploy-incusos-cluster>
+Setup Operations Center UI </tutorials/setup-operations-center-ui>
 ```
