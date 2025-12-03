@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/lxc/incus/v6/shared/termios"
@@ -152,11 +153,21 @@ func (c *cmdServerList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Cluster", "Name", "Connection URL", "Public Connection URL", "Type", "Status", "Last Updated", "Last Seen"}
+	header := []string{"Cluster", "Name", "Connection URL", "Public Connection URL", "Certificate Fingerprint", "Type", "Status", "Last Updated", "Last Seen"}
 	data := [][]string{}
 
 	for _, server := range servers {
-		data = append(data, []string{server.Cluster, server.Name, server.ConnectionURL, server.PublicConnectionURL, server.Type.String(), server.Status.String(), server.LastUpdated.Truncate(time.Second).String(), server.LastSeen.Truncate(time.Second).String()})
+		data = append(data, []string{
+			server.Cluster,
+			server.Name,
+			server.ConnectionURL,
+			server.PublicConnectionURL,
+			server.Fingerprint[:min(len(server.Fingerprint), 12)],
+			server.Type.String(),
+			server.Status.String(),
+			server.LastUpdated.Truncate(time.Second).String(),
+			server.LastSeen.Truncate(time.Second).String(),
+		})
 	}
 
 	sort.ColumnsNaturally(data)
@@ -394,6 +405,8 @@ func (c *cmdServerShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Name: %s\n", server.Name)
 	fmt.Printf("Connection URL: %s\n", server.ConnectionURL)
 	fmt.Printf("Public Connection URL: %s\n", server.PublicConnectionURL)
+	fmt.Printf("Certificate:\n%s", indent("  ", strings.TrimSpace(server.Certificate)))
+	fmt.Printf("Certificate Fingerprint: %s\n", server.Fingerprint)
 	fmt.Printf("Type: %s\n", server.Type.String())
 	fmt.Printf("Status: %s\n", server.Status.String())
 	fmt.Printf("Last Updated: %s\n", server.LastUpdated.Truncate(time.Second).String())

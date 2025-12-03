@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -280,11 +281,17 @@ func (c *cmdClusterList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Connection URL", "Status", "Last Updated"}
+	header := []string{"Name", "Connection URL", "Certificate Fingerprint", "Status", "Last Updated"}
 	data := [][]string{}
 
 	for _, cluster := range clusters {
-		data = append(data, []string{cluster.Name, cluster.ConnectionURL, cluster.Status.String(), cluster.LastUpdated.Truncate(time.Second).String()})
+		data = append(data, []string{
+			cluster.Name,
+			cluster.ConnectionURL,
+			cluster.Fingerprint[:min(len(cluster.Fingerprint), 12)],
+			cluster.Status.String(),
+			cluster.LastUpdated.Truncate(time.Second).String(),
+		})
 	}
 
 	sort.ColumnsNaturally(data)
@@ -423,6 +430,8 @@ func (c *cmdClusterShow) Run(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Name: %s\n", cluster.Name)
 	fmt.Printf("Connection URL: %s\n", cluster.ConnectionURL)
+	fmt.Printf("Certificate:\n%s", indent("  ", strings.TrimSpace(cluster.Certificate)))
+	fmt.Printf("Certificate Fingerprint: %s\n", cluster.Fingerprint)
 	fmt.Printf("Status: %s\n", cluster.Status.String())
 	fmt.Printf("Last Updated: %s\n", cluster.LastUpdated.Truncate(time.Second).String())
 
