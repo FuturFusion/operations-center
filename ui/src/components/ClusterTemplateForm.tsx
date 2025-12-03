@@ -89,6 +89,7 @@ const ClusterTemplateForm: FC<Props> = ({
               value={formik.values.service_config_template}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
+              className="editor"
             />
           </Form.Group>
           <Form.Group className="mb-3" controlId="applicationTemplate">
@@ -101,6 +102,7 @@ const ClusterTemplateForm: FC<Props> = ({
               value={formik.values.application_config_template}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
+              className="editor"
             />
           </Form.Group>
           <Form.Group className="mb-3" controlId="variables">

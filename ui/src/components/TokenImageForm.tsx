@@ -106,6 +106,7 @@ const TokenImageForm: FC<Props> = ({ formik }) => {
               value={formik.values.seeds.migration_manager}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
+              className="editor"
             />
           </Form.Group>
         )}
@@ -120,6 +121,7 @@ const TokenImageForm: FC<Props> = ({ formik }) => {
               value={formik.values.seeds.operations_center}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
+              className="editor"
             />
           </Form.Group>
         )}
@@ -133,6 +135,7 @@ const TokenImageForm: FC<Props> = ({ formik }) => {
             value={formik.values.seeds.network}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
+            className="editor"
           />
         </Form.Group>
       </Form>

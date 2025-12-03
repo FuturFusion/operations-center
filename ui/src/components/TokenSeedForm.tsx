@@ -224,6 +224,7 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
                 value={formik.values.seeds.migration_manager}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
+                className="editor"
               />
             </Form.Group>
           )}
@@ -238,6 +239,7 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
                 value={formik.values.seeds.operations_center}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
+                className="editor"
               />
             </Form.Group>
           )}
@@ -251,6 +253,7 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
               value={formik.values.seeds.install}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
+              className="editor"
             />
           </Form.Group>
           <Form.Group className="mb-4" controlId="network">
@@ -263,6 +266,7 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
               value={formik.values.seeds.network}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
+              className="editor"
             />
           </Form.Group>
         </Form>

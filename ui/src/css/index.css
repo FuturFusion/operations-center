@@ -47,3 +47,10 @@ tr.overview-table-header th {
   font-size: 12px;
   cursor: pointer;
 }
+
+.editor {
+  font-family: "Inter Mono", monospace;
+  white-space: pre;
+  overflow-x: auto;
+  overflow-y: auto;
+}
