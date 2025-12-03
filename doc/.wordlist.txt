@@ -21,6 +21,7 @@ IncusOS
 InitLocalPreseed
 IPv
 JSON
+Keychain
 keypair
 lang
 LVM
@@ -28,7 +29,9 @@ MacOS
 nvme
 OIDC
 OpenFGA
+OpenSSL
 OpenTofu
+PFX
 PKCS
 pre
 preseed
