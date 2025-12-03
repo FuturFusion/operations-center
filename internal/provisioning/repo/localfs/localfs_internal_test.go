@@ -350,10 +350,8 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			assertUpdate: func(t *testing.T, tmpDir string, update *provisioning.Update) {
 				t.Helper()
 				wantUUID := uuidFromUpdate(provisioning.Update{
-					Origin:      "testdata (local)",
-					Version:     "1",
-					Channels:    []string{"daily"},
-					PublishedAt: time.Date(2025, 5, 21, 7, 25, 37, 0, time.UTC),
+					Origin:  "testdata (local)",
+					Version: "1",
 				}).String()
 
 				require.Equal(t, wantUUID, update.UUID.String())
@@ -372,13 +370,14 @@ func TestLocalfs_CreateFromArchive(t *testing.T) {
 			name:            "success - update already present",
 			tarContentFiles: "testdata/success",
 			updateManifest: provisioning.Update{
-				Origin:   "testdata",
-				Severity: images.UpdateSeverityNone,
+				Origin:  "testdata",
+				Version: "1",
 			},
 			setupTmpDir: func(t *testing.T, tmpDir string) {
 				t.Helper()
 				wantUUID := uuidFromUpdate(provisioning.Update{
-					Origin: "testdata (local)",
+					Origin:  "testdata (local)",
+					Version: "1",
 				}).String()
 
 				err := os.MkdirAll(filepath.Join(tmpDir, wantUUID), 0o700) // target directory for update already exists
