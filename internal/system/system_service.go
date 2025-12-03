@@ -110,6 +110,11 @@ func (s *systemService) updateProviderConfigAll(ctx context.Context, cfg map[str
 	defer reverter.Fail()
 
 	for _, server := range servers {
+		// Don't update the system provider config for Operations Center.
+		if server.Type == api.ServerTypeOperationsCenter {
+			continue
+		}
+
 		oldProviderConfig, err := s.serverSvc.GetSystemProvider(ctx, server.Name)
 		if err != nil {
 			return fmt.Errorf("Failed to get system provider for %q: %w", server.Name, err)
