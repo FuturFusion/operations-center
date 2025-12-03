@@ -195,6 +195,7 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   disabled={formik.isSubmitting}
+                  className="editor"
                 />
               </Form.Group>
               <Form.Group className="mb-4" controlId="applicationSeedConfig">
@@ -208,6 +209,7 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   disabled={formik.isSubmitting}
+                  className="editor"
                 />
               </Form.Group>
             </>
@@ -248,6 +250,7 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   disabled={formik.isSubmitting}
+                  className="editor"
                 />
               </Form.Group>
             </>

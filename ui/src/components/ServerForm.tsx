@@ -67,6 +67,7 @@ const ServerForm: FC<Props> = ({
               value={formik.values.network_configuration}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
+              className="editor"
             />
           </Form.Group>
         </Form>
