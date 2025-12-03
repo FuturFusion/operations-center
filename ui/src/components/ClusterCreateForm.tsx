@@ -20,7 +20,7 @@ interface Props {
 }
 
 const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
-  const { data: servers } = useServers("Cluster==nil");
+  const { data: servers } = useServers("cluster==nil");
   const { data: templates } = useClusterTemplates();
   const { notify } = useNotification();
 
