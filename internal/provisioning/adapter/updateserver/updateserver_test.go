@@ -47,7 +47,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 			assertErr: require.NoError,
 			wantUpdates: provisioning.Updates{
 				{
-					UUID:        uuid.MustParse(`1f82dc0a-0487-5532-a76a-74ed263b2280`),
+					UUID:        uuid.MustParse(`84f9f9b4-8bff-50ca-9c9f-020bb266e5cf`),
 					Version:     "1",
 					Channels:    provisioning.UpdateChannels{"daily", "stable"},
 					Severity:    images.UpdateSeverityNone,
@@ -89,7 +89,7 @@ func TestUpdateServer_GetLatest(t *testing.T) {
 			assertErr: require.NoError,
 			wantUpdates: provisioning.Updates{
 				{
-					UUID:        uuid.MustParse(`25eacea3-d627-5c40-bfe5-52a9ea85e0ea`),
+					UUID:        uuid.MustParse(`69869f43-e46c-5094-8e04-c94c88b65d0d`),
 					Version:     "2",
 					Severity:    images.UpdateSeverityNone,
 					PublishedAt: time.Date(2025, 5, 22, 15, 21, 0, 0, time.UTC),

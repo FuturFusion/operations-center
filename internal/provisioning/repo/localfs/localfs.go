@@ -236,9 +236,7 @@ func uuidFromUpdate(u provisioning.Update) uuid.UUID {
 
 	identifier := strings.Join([]string{
 		u.Origin,
-		strings.Join(channels, ","),
 		u.Version,
-		u.PublishedAt.String(),
 	}, idSeparator)
 
 	return uuid.NewSHA1(UpdateSourceSpaceUUID, []byte(identifier))
