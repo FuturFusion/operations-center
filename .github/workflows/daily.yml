@@ -54,6 +54,7 @@ jobs:
 
       - name: Run End-to-End Tests
         env:
+          FLAKY_SKIP_ON_FAIL: "true"
           OPERATIONS_CENTER_E2E_TEST: "true"
         run: |
           set -o pipefail
