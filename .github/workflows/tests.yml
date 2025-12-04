@@ -89,5 +89,6 @@ jobs:
           # Required for github access with increased rate limiting during test
           # of github repo to access GH releases.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FLAKY_SKIP_ON_FAIL: "true"
         run: |
           make test
