@@ -156,7 +156,7 @@ func (i *networkForwardHandler) networkForwardsGet(r *http.Request) response.Res
 	}
 
 	if r.URL.Query().Get("project") != "" {
-		filter.Project = ptr.To(r.URL.Query().Get("project"))
+		filter.ProjectName = ptr.To(r.URL.Query().Get("project"))
 	}
 
 	if r.URL.Query().Get("filter") != "" {
@@ -178,7 +178,7 @@ func (i *networkForwardHandler) networkForwardsGet(r *http.Request) response.Res
 				ProjectName: networkForward.ProjectName,
 				NetworkName: networkForward.NetworkName,
 				Name:        networkForward.Name,
-				Object:      networkForward.Object,
+				Object:      networkForward.Object.NetworkForward,
 				LastUpdated: networkForward.LastUpdated,
 			})
 		}
@@ -252,7 +252,7 @@ func (i *networkForwardHandler) networkForwardGet(r *http.Request) response.Resp
 			ProjectName: networkForward.ProjectName,
 			NetworkName: networkForward.NetworkName,
 			Name:        networkForward.Name,
-			Object:      networkForward.Object,
+			Object:      networkForward.Object.NetworkForward,
 			LastUpdated: networkForward.LastUpdated,
 		},
 	)

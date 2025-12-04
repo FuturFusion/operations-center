@@ -162,7 +162,7 @@ func (i *storagePoolHandler) storagePoolsGet(r *http.Request) response.Response 
 				UUID:        storagePool.UUID,
 				Cluster:     storagePool.Cluster,
 				Name:        storagePool.Name,
-				Object:      storagePool.Object,
+				Object:      storagePool.Object.StoragePool,
 				LastUpdated: storagePool.LastUpdated,
 			})
 		}
@@ -234,7 +234,7 @@ func (i *storagePoolHandler) storagePoolGet(r *http.Request) response.Response {
 			UUID:        storagePool.UUID,
 			Cluster:     storagePool.Cluster,
 			Name:        storagePool.Name,
-			Object:      storagePool.Object,
+			Object:      storagePool.Object.StoragePool,
 			LastUpdated: storagePool.LastUpdated,
 		},
 	)

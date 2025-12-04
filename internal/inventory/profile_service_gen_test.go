@@ -247,7 +247,7 @@ func TestProfileService_GetByUUID(t *testing.T) {
 				Cluster:     "one",
 				ProjectName: "one",
 				Name:        "one",
-				Object:      incusapi.Profile{},
+				Object:      inventory.IncusProfileWrapper{},
 				LastUpdated: time.Now(),
 			},
 
@@ -894,7 +894,7 @@ func TestProfileService_ResyncByName(t *testing.T) {
 			repo := &repoMock.ProfileRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.ProfileFilter) ([]uuid.UUID, error) {
 					require.Equal(t, tc.argClusterName, *filter.Cluster)
-					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.Project)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.ProjectName)
 					require.Contains(t, tc.argLifecycleEvent.Source.Name, *filter.Name)
 					return tc.repoGetAllUUIDsWithFilterUUIDs, tc.repoGetAllUUIDsWithFilterErr
 				},

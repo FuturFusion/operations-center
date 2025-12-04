@@ -77,9 +77,9 @@ ORDER BY clusters.name, images.name
 		args = append(args, sql.Named("cluster_name", filter.Cluster))
 	}
 
-	if filter.Project != nil {
+	if filter.ProjectName != nil {
 		whereClause = append(whereClause, ` AND images.project_name = :project`)
-		args = append(args, sql.Named("project", filter.Project))
+		args = append(args, sql.Named("project", filter.ProjectName))
 	}
 
 	if filter.Name != nil {
@@ -131,9 +131,9 @@ ORDER BY images.id
 		args = append(args, sql.Named("cluster_name", filter.Cluster))
 	}
 
-	if filter.Project != nil {
+	if filter.ProjectName != nil {
 		whereClause = append(whereClause, ` AND images.project_name = :project`)
-		args = append(args, sql.Named("project", filter.Project))
+		args = append(args, sql.Named("project", filter.ProjectName))
 	}
 
 	if filter.Name != nil {

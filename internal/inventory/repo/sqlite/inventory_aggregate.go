@@ -204,7 +204,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 				Cluster:     inventoryResource.ClusterName,
 				ProjectName: ptr.From(inventoryResource.ProjectName),
 				Name:        inventoryResource.Name,
-				Object:      object,
+				Object: inventory.IncusImageWrapper{
+					Image: object,
+				},
 			}
 
 			inventoryAggregate.Images = append(inventoryAggregate.Images, image)
@@ -221,7 +223,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 				ProjectName: ptr.From(inventoryResource.ProjectName),
 				Server:      ptr.From(inventoryResource.ServerName),
 				Name:        inventoryResource.Name,
-				Object:      object,
+				Object: inventory.IncusInstanceFullWrapper{
+					InstanceFull: object,
+				},
 			}
 
 			inventoryAggregate.Instances = append(inventoryAggregate.Instances, instance)
@@ -237,7 +241,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 				Cluster:     inventoryResource.ClusterName,
 				ProjectName: ptr.From(inventoryResource.ProjectName),
 				Name:        inventoryResource.Name,
-				Object:      object,
+				Object: inventory.IncusNetworkWrapper{
+					Network: object,
+				},
 			}
 
 			inventoryAggregate.Networks = append(inventoryAggregate.Networks, network)
@@ -253,7 +259,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 				Cluster:     inventoryResource.ClusterName,
 				ProjectName: ptr.From(inventoryResource.ProjectName),
 				Name:        inventoryResource.Name,
-				Object:      object,
+				Object: inventory.IncusNetworkACLWrapper{
+					NetworkACL: object,
+				},
 			}
 
 			inventoryAggregate.NetworkACLs = append(inventoryAggregate.NetworkACLs, networkACL)
@@ -269,7 +277,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 				Cluster:     inventoryResource.ClusterName,
 				NetworkName: ptr.From(inventoryResource.ParentName),
 				Name:        inventoryResource.Name,
-				Object:      object,
+				Object: inventory.IncusNetworkForwardWrapper{
+					NetworkForward: object,
+				},
 			}
 
 			inventoryAggregate.NetworkForwards = append(inventoryAggregate.NetworkForwards, networkForward)
@@ -284,7 +294,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			networkIntegration := inventory.NetworkIntegration{
 				Cluster: inventoryResource.ClusterName,
 				Name:    inventoryResource.Name,
-				Object:  object,
+				Object: inventory.IncusNetworkIntegrationWrapper{
+					NetworkIntegration: object,
+				},
 			}
 
 			inventoryAggregate.NetworkIntegrations = append(inventoryAggregate.NetworkIntegrations, networkIntegration)
@@ -300,7 +312,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 				Cluster:     inventoryResource.ClusterName,
 				NetworkName: ptr.From(inventoryResource.ParentName),
 				Name:        inventoryResource.Name,
-				Object:      object,
+				Object: inventory.IncusNetworkLoadBalancerWrapper{
+					NetworkLoadBalancer: object,
+				},
 			}
 
 			inventoryAggregate.NetworkLoadBalancers = append(inventoryAggregate.NetworkLoadBalancers, networkLoadBalancer)
@@ -316,7 +330,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 				Cluster:     inventoryResource.ClusterName,
 				NetworkName: ptr.From(inventoryResource.ParentName),
 				Name:        inventoryResource.Name,
-				Object:      object,
+				Object: inventory.IncusNetworkPeerWrapper{
+					NetworkPeer: object,
+				},
 			}
 
 			inventoryAggregate.NetworkPeers = append(inventoryAggregate.NetworkPeers, networkPeer)
@@ -332,7 +348,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 				Cluster:     inventoryResource.ClusterName,
 				ProjectName: ptr.From(inventoryResource.ProjectName),
 				Name:        inventoryResource.Name,
-				Object:      object,
+				Object: inventory.IncusNetworkZoneWrapper{
+					NetworkZone: object,
+				},
 			}
 
 			inventoryAggregate.NetworkZones = append(inventoryAggregate.NetworkZones, networkZone)
@@ -348,7 +366,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 				Cluster:     inventoryResource.ClusterName,
 				ProjectName: ptr.From(inventoryResource.ProjectName),
 				Name:        inventoryResource.Name,
-				Object:      object,
+				Object: inventory.IncusProfileWrapper{
+					Profile: object,
+				},
 			}
 
 			inventoryAggregate.Profiles = append(inventoryAggregate.Profiles, profile)
@@ -363,7 +383,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			project := inventory.Project{
 				Cluster: inventoryResource.ClusterName,
 				Name:    inventoryResource.Name,
-				Object:  object,
+				Object: inventory.IncusProjectWrapper{
+					Project: object,
+				},
 			}
 
 			inventoryAggregate.Projects = append(inventoryAggregate.Projects, project)
@@ -381,7 +403,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 				StoragePoolName: ptr.From(inventoryResource.ParentName),
 				Server:          ptr.From(inventoryResource.ServerName),
 				Name:            inventoryResource.Name,
-				Object:          object,
+				Object: inventory.IncusStorageBucketFullWrapper{
+					StorageBucketFull: object,
+				},
 			}
 
 			inventoryAggregate.StorageBuckets = append(inventoryAggregate.StorageBuckets, storageBucket)
@@ -396,7 +420,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 			storagePool := inventory.StoragePool{
 				Cluster: inventoryResource.ClusterName,
 				Name:    inventoryResource.Name,
-				Object:  object,
+				Object: inventory.IncusStoragePoolWrapper{
+					StoragePool: object,
+				},
 			}
 
 			inventoryAggregate.StoragePools = append(inventoryAggregate.StoragePools, storagePool)
@@ -414,7 +440,9 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 				StoragePoolName: ptr.From(inventoryResource.ParentName),
 				Server:          ptr.From(inventoryResource.ServerName),
 				Name:            inventoryResource.Name,
-				Object:          object,
+				Object: inventory.IncusStorageVolumeFullWrapper{
+					StorageVolumeFull: object,
+				},
 			}
 
 			inventoryAggregate.StorageVolumes = append(inventoryAggregate.StorageVolumes, storageVolume)

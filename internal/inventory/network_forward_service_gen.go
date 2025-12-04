@@ -184,7 +184,7 @@ func (s networkForwardService) ResyncByUUID(ctx context.Context, id uuid.UUID) e
 			return err
 		}
 
-		networkForward.Object = retrievedNetworkForward
+		networkForward.Object = IncusNetworkForwardWrapper{retrievedNetworkForward}
 		networkForward.LastUpdated = s.now()
 		networkForward.DeriveUUID()
 
@@ -257,7 +257,7 @@ func (s networkForwardService) handleCreateEvent(ctx context.Context, clusterNam
 		Cluster:     clusterName,
 		NetworkName: event.Source.ParentName,
 		Name:        retrievedNetworkForward.ListenAddress,
-		Object:      retrievedNetworkForward,
+		Object:      IncusNetworkForwardWrapper{retrievedNetworkForward},
 		LastUpdated: s.now(),
 	}
 
@@ -283,7 +283,7 @@ func (s networkForwardService) handleCreateEvent(ctx context.Context, clusterNam
 func (s networkForwardService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkForwardFilter{
 		Cluster:     &clusterName,
-		Project:     &event.Source.ProjectName,
+		ProjectName: &event.Source.ProjectName,
 		NetworkName: &event.Source.ParentName,
 		Name:        &event.Source.Name,
 	})
@@ -324,7 +324,7 @@ func (s networkForwardService) handleRenameEvent(ctx context.Context, clusterNam
 func (s networkForwardService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkForwardFilter{
 		Cluster:     &clusterName,
-		Project:     &event.Source.ProjectName,
+		ProjectName: &event.Source.ProjectName,
 		NetworkName: &event.Source.ParentName,
 		Name:        &event.Source.Name,
 	})
@@ -385,7 +385,7 @@ func (s networkForwardService) SyncCluster(ctx context.Context, name string) err
 					Cluster:     name,
 					NetworkName: network.Name,
 					Name:        retrievedNetworkForward.ListenAddress,
-					Object:      retrievedNetworkForward,
+					Object:      IncusNetworkForwardWrapper{retrievedNetworkForward},
 					LastUpdated: s.now(),
 				}
 

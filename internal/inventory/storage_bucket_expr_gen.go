@@ -46,16 +46,20 @@ type ExprApiStorageBucketPut struct {
 	Description string        `json:"description" yaml:"description" expr:"description"`
 }
 
+type ExprIncusStorageBucketFullWrapper struct {
+	ExprApiStorageBucketFull `json:"-" expr:"-"`
+}
+
 type ExprStorageBucket struct {
-	ID              int                      `json:"-" expr:"-"`
-	UUID            uuid.UUID                `json:"uuid" expr:"uuid"`
-	Cluster         string                   `json:"cluster" expr:"cluster"`
-	Server          string                   `json:"server" expr:"server"`
-	ProjectName     string                   `json:"project" expr:"project"`
-	StoragePoolName string                   `json:"storage_pool_name" expr:"storage_pool_name"`
-	Name            string                   `json:"name" expr:"name"`
-	Object          ExprApiStorageBucketFull `json:"object" expr:"object"`
-	LastUpdated     time.Time                `json:"last_updated" expr:"last_updated"`
+	ID              int                               `json:"-" expr:"-"`
+	UUID            uuid.UUID                         `json:"uuid"          db:"primary=yes" expr:"uuid"`
+	Cluster         string                            `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
+	Server          string                            `json:"server"        db:"leftjoin=servers.name" expr:"server"`
+	ProjectName     string                            `json:"project"       db:"sql=storage_buckets.project_name" expr:"project"`
+	StoragePoolName string                            `json:"storage_pool_name" expr:"storage_pool_name"`
+	Name            string                            `json:"name" expr:"name"`
+	Object          ExprIncusStorageBucketFullWrapper `json:"object" expr:"object"`
+	LastUpdated     time.Time                         `json:"last_updated"  db:"update_timestamp" expr:"last_updated"`
 }
 
 func ToExprApiStorageBucket(s api.StorageBucket) ExprApiStorageBucket {
@@ -107,6 +111,12 @@ func ToExprApiStorageBucketPut(s api.StorageBucketPut) ExprApiStorageBucketPut {
 	}
 }
 
+func ToExprIncusStorageBucketFullWrapper(i IncusStorageBucketFullWrapper) ExprIncusStorageBucketFullWrapper {
+	return ExprIncusStorageBucketFullWrapper{
+		ExprApiStorageBucketFull: ToExprApiStorageBucketFull(i.StorageBucketFull),
+	}
+}
+
 func ToExprStorageBucket(s StorageBucket) ExprStorageBucket {
 	return ExprStorageBucket{
 		ID:              s.ID,
@@ -116,7 +126,7 @@ func ToExprStorageBucket(s StorageBucket) ExprStorageBucket {
 		ProjectName:     s.ProjectName,
 		StoragePoolName: s.StoragePoolName,
 		Name:            s.Name,
-		Object:          ToExprApiStorageBucketFull(s.Object),
+		Object:          ToExprIncusStorageBucketFullWrapper(s.Object),
 		LastUpdated:     s.LastUpdated,
 	}
 }

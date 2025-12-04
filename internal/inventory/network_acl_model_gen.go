@@ -3,6 +3,9 @@
 package inventory
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -13,17 +16,40 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+type IncusNetworkACLWrapper struct {
+	incusapi.NetworkACL `json:"-"`
+}
+
+func (w IncusNetworkACLWrapper) Value() (driver.Value, error) {
+	return json.Marshal(w.NetworkACL)
+}
+
+func (w *IncusNetworkACLWrapper) Scan(value interface{}) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid network_acl")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return json.Unmarshal([]byte(v), &w.NetworkACL)
+	case []byte:
+		return json.Unmarshal(v, &w.NetworkACL)
+	default:
+		return fmt.Errorf("type %T is not supported for network_acl", value)
+	}
+}
+
 //
 //generate-expr: NetworkACL
 
 type NetworkACL struct {
-	ID          int                 `json:"-"`
-	UUID        uuid.UUID           `json:"uuid"`
-	Cluster     string              `json:"cluster"`
-	ProjectName string              `json:"project"`
-	Name        string              `json:"name"`
-	Object      incusapi.NetworkACL `json:"object"`
-	LastUpdated time.Time           `json:"last_updated"`
+	ID          int                    `json:"-"`
+	UUID        uuid.UUID              `json:"uuid"          db:"primary=yes"`
+	Cluster     string                 `json:"cluster"       db:"leftjoin=clusters.name"`
+	ProjectName string                 `json:"project"       db:"sql=network_acls.project_name"`
+	Name        string                 `json:"name"`
+	Object      IncusNetworkACLWrapper `json:"object"`
+	LastUpdated time.Time              `json:"last_updated"  db:"update_timestamp"`
 }
 
 func (m *NetworkACL) DeriveUUID() *NetworkACL {
@@ -63,19 +89,24 @@ func (m NetworkACL) Validate() error {
 type NetworkACLs []NetworkACL
 
 type NetworkACLFilter struct {
-	Cluster    *string
-	Project    *string
-	Name       *string
-	Expression *string
+	UUID        *uuid.UUID
+	Cluster     *string
+	ProjectName *string
+	Name        *string
+	Expression  *string `db:"ignore"`
 }
 
 func (f NetworkACLFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.UUID != nil {
+		query.Add("uuid", f.UUID.String())
+	}
+
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
 	}
 
-	if f.Project != nil {
-		query.Add("project", *f.Project)
+	if f.ProjectName != nil {
+		query.Add("project", *f.ProjectName)
 	}
 
 	if f.Name != nil {
@@ -92,3 +123,10 @@ func (f NetworkACLFilter) AppendToURLValues(query url.Values) url.Values {
 func (f NetworkACLFilter) String() string {
 	return f.AppendToURLValues(url.Values{}).Encode()
 }
+
+// generate-database does not handle acronyms for pascalcase variant.
+// Add the type aliases for compatibility.
+type (
+	NetworkAcl       = NetworkACL
+	NetworkAclFilter = NetworkACLFilter
+)

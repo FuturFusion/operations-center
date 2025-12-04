@@ -171,7 +171,7 @@ func (s networkACLService) ResyncByUUID(ctx context.Context, id uuid.UUID) error
 		}
 
 		networkACL.ProjectName = retrievedNetworkACL.Project
-		networkACL.Object = retrievedNetworkACL
+		networkACL.Object = IncusNetworkACLWrapper{retrievedNetworkACL}
 		networkACL.LastUpdated = s.now()
 		networkACL.DeriveUUID()
 
@@ -244,7 +244,7 @@ func (s networkACLService) handleCreateEvent(ctx context.Context, clusterName st
 		Cluster:     clusterName,
 		ProjectName: retrievedNetworkACL.Project,
 		Name:        retrievedNetworkACL.Name,
-		Object:      retrievedNetworkACL,
+		Object:      IncusNetworkACLWrapper{retrievedNetworkACL},
 		LastUpdated: s.now(),
 	}
 
@@ -269,9 +269,9 @@ func (s networkACLService) handleCreateEvent(ctx context.Context, clusterName st
 
 func (s networkACLService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkACLFilter{
-		Cluster: &clusterName,
-		Project: &event.Source.ProjectName,
-		Name:    &event.Source.Name,
+		Cluster:     &clusterName,
+		ProjectName: &event.Source.ProjectName,
+		Name:        &event.Source.Name,
 	})
 	if err != nil {
 		return err
@@ -309,9 +309,9 @@ func (s networkACLService) handleRenameEvent(ctx context.Context, clusterName st
 
 func (s networkACLService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkACLFilter{
-		Cluster: &clusterName,
-		Project: &event.Source.ProjectName,
-		Name:    &event.Source.Name,
+		Cluster:     &clusterName,
+		ProjectName: &event.Source.ProjectName,
+		Name:        &event.Source.Name,
 	})
 	if err != nil {
 		return err
@@ -359,7 +359,7 @@ func (s networkACLService) SyncCluster(ctx context.Context, name string) error {
 				Cluster:     name,
 				ProjectName: retrievedNetworkACL.Project,
 				Name:        retrievedNetworkACL.Name,
-				Object:      retrievedNetworkACL,
+				Object:      IncusNetworkACLWrapper{retrievedNetworkACL},
 				LastUpdated: s.now(),
 			}
 

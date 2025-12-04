@@ -136,7 +136,7 @@ func (c *cmdNetworkLoadBalancerList) run(cmd *cobra.Command, args []string) erro
 	}
 
 	if c.flagFilterProject != "" {
-		filter.Project = ptr.To(c.flagFilterProject)
+		filter.ProjectName = ptr.To(c.flagFilterProject)
 	}
 
 	if c.flagFilterExpression != "" {

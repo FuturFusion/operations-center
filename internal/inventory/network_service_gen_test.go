@@ -247,7 +247,7 @@ func TestNetworkService_GetByUUID(t *testing.T) {
 				Cluster:     "one",
 				ProjectName: "one",
 				Name:        "one",
-				Object:      incusapi.Network{},
+				Object:      inventory.IncusNetworkWrapper{},
 				LastUpdated: time.Now(),
 			},
 
@@ -894,7 +894,7 @@ func TestNetworkService_ResyncByName(t *testing.T) {
 			repo := &repoMock.NetworkRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.NetworkFilter) ([]uuid.UUID, error) {
 					require.Equal(t, tc.argClusterName, *filter.Cluster)
-					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.Project)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.ProjectName)
 					require.Contains(t, tc.argLifecycleEvent.Source.Name, *filter.Name)
 					return tc.repoGetAllUUIDsWithFilterUUIDs, tc.repoGetAllUUIDsWithFilterErr
 				},

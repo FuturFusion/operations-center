@@ -36,15 +36,19 @@ type ExprApiNetworkLoadBalancerPut struct {
 	Ports       []ExprApiNetworkLoadBalancerPort    `json:"ports" yaml:"ports" expr:"ports"`
 }
 
+type ExprIncusNetworkLoadBalancerWrapper struct {
+	ExprApiNetworkLoadBalancer `json:"-" expr:"-"`
+}
+
 type ExprNetworkLoadBalancer struct {
-	ID          int                        `json:"-" expr:"-"`
-	UUID        uuid.UUID                  `json:"uuid" expr:"uuid"`
-	Cluster     string                     `json:"cluster" expr:"cluster"`
-	ProjectName string                     `json:"project" expr:"project"`
-	NetworkName string                     `json:"network_name" expr:"network_name"`
-	Name        string                     `json:"name" expr:"name"`
-	Object      ExprApiNetworkLoadBalancer `json:"object" expr:"object"`
-	LastUpdated time.Time                  `json:"last_updated" expr:"last_updated"`
+	ID          int                                 `json:"-" expr:"-"`
+	UUID        uuid.UUID                           `json:"uuid"          db:"primary=yes" expr:"uuid"`
+	Cluster     string                              `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
+	ProjectName string                              `json:"project"       db:"sql=network_load_balancers.project_name" expr:"project"`
+	NetworkName string                              `json:"network_name" expr:"network_name"`
+	Name        string                              `json:"name" expr:"name"`
+	Object      ExprIncusNetworkLoadBalancerWrapper `json:"object" expr:"object"`
+	LastUpdated time.Time                           `json:"last_updated"  db:"update_timestamp" expr:"last_updated"`
 }
 
 func ToExprApiNetworkLoadBalancer(n api.NetworkLoadBalancer) ExprApiNetworkLoadBalancer {
@@ -82,6 +86,12 @@ func ToExprApiNetworkLoadBalancerPut(n api.NetworkLoadBalancerPut) ExprApiNetwor
 	}
 }
 
+func ToExprIncusNetworkLoadBalancerWrapper(i IncusNetworkLoadBalancerWrapper) ExprIncusNetworkLoadBalancerWrapper {
+	return ExprIncusNetworkLoadBalancerWrapper{
+		ExprApiNetworkLoadBalancer: ToExprApiNetworkLoadBalancer(i.NetworkLoadBalancer),
+	}
+}
+
 func ToExprNetworkLoadBalancer(n NetworkLoadBalancer) ExprNetworkLoadBalancer {
 	return ExprNetworkLoadBalancer{
 		ID:          n.ID,
@@ -90,7 +100,7 @@ func ToExprNetworkLoadBalancer(n NetworkLoadBalancer) ExprNetworkLoadBalancer {
 		ProjectName: n.ProjectName,
 		NetworkName: n.NetworkName,
 		Name:        n.Name,
-		Object:      ToExprApiNetworkLoadBalancer(n.Object),
+		Object:      ToExprIncusNetworkLoadBalancerWrapper(n.Object),
 		LastUpdated: n.LastUpdated,
 	}
 }

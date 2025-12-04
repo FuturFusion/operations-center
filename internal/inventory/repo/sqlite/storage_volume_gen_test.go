@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -84,7 +83,7 @@ server-two
 		StoragePoolName: "parent one",
 		Name:            "one",
 		Type:            "custom",
-		Object:          incusapi.StorageVolumeFull{},
+		Object:          inventory.IncusStorageVolumeFullWrapper{},
 		LastUpdated:     time.Now(),
 	}
 
@@ -97,7 +96,7 @@ server-two
 		StoragePoolName: "parent two",
 		Name:            "two",
 		Type:            "custom",
-		Object:          incusapi.StorageVolumeFull{},
+		Object:          inventory.IncusStorageVolumeFullWrapper{},
 		LastUpdated:     time.Now(),
 	}
 
@@ -158,7 +157,7 @@ server-two
 	storageVolumeUUIDs, err = storageVolume.GetAllUUIDsWithFilter(ctx, inventory.StorageVolumeFilter{
 		Cluster:         ptr.To("one"),
 		Server:          ptr.To("one"),
-		Project:         ptr.To("one"),
+		ProjectName:     ptr.To("one"),
 		StoragePoolName: ptr.To("parent one"),
 		Name:            ptr.To("one"),
 	})
@@ -170,7 +169,7 @@ server-two
 	dbStorageVolume, err = storageVolume.GetAllWithFilter(ctx, inventory.StorageVolumeFilter{
 		Cluster:         ptr.To("one"),
 		Server:          ptr.To("one"),
-		Project:         ptr.To("one"),
+		ProjectName:     ptr.To("one"),
 		StoragePoolName: ptr.To("parent one"),
 		Name:            ptr.To("one"),
 	})

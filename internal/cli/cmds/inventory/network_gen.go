@@ -132,7 +132,7 @@ func (c *cmdNetworkList) run(cmd *cobra.Command, args []string) error {
 	}
 
 	if c.flagFilterProject != "" {
-		filter.Project = ptr.To(c.flagFilterProject)
+		filter.ProjectName = ptr.To(c.flagFilterProject)
 	}
 
 	if c.flagFilterExpression != "" {

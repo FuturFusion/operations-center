@@ -5,23 +5,100 @@ package inventory_test
 import (
 	"testing"
 
+	"github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
+
+func TestIncusNetworkPeerWrapper_Value(t *testing.T) {
+	tests := []struct {
+		name string
+
+		networkPeer inventory.IncusNetworkPeerWrapper
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+
+			networkPeer: inventory.IncusNetworkPeerWrapper{
+				NetworkPeer: api.NetworkPeer{},
+			},
+
+			assertErr: require.NoError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := tc.networkPeer.Value()
+
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestIncusNetworkPeerWrapper_Scan(t *testing.T) {
+	tests := []struct {
+		name string
+
+		value any
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - []byte",
+
+			value: []byte(`{}`),
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - string",
+
+			value: `{}`,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - nil",
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - unsupported type",
+
+			value: 1, // not supported for IncusNetworkPeerWrapper
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			updateFiles := inventory.IncusNetworkPeerWrapper{}
+
+			err := updateFiles.Scan(tc.value)
+
+			tc.assertErr(t, err)
+		})
+	}
+}
 
 func TestNetworkPeer_Validate(t *testing.T) {
 	tests := []struct {
-		name  string
-		image *inventory.NetworkPeer
+		name        string
+		networkPeer *inventory.NetworkPeer
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "valid",
-			image: (&inventory.NetworkPeer{
+			networkPeer: (&inventory.NetworkPeer{
 				ID:          1,
 				Cluster:     "one",
 				NetworkName: "network one",
@@ -32,7 +109,7 @@ func TestNetworkPeer_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid cluster ID",
-			image: (&inventory.NetworkPeer{
+			networkPeer: (&inventory.NetworkPeer{
 				ID:          1,
 				Cluster:     "", // invalid
 				NetworkName: "network one",
@@ -46,7 +123,7 @@ func TestNetworkPeer_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid project name",
-			image: (&inventory.NetworkPeer{
+			networkPeer: (&inventory.NetworkPeer{
 				ID:          1,
 				Cluster:     "one",
 				NetworkName: "", // invalid
@@ -60,7 +137,7 @@ func TestNetworkPeer_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid name",
-			image: (&inventory.NetworkPeer{
+			networkPeer: (&inventory.NetworkPeer{
 				ID:          1,
 				Cluster:     "one",
 				NetworkName: "network one",
@@ -74,7 +151,7 @@ func TestNetworkPeer_Validate(t *testing.T) {
 		},
 		{
 			name: "error - UUID not derived",
-			image: &inventory.NetworkPeer{
+			networkPeer: &inventory.NetworkPeer{
 				ID:          1,
 				Cluster:     "one",
 				NetworkName: "network one",
@@ -90,7 +167,7 @@ func TestNetworkPeer_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.image.Validate()
+			err := tc.networkPeer.Validate()
 
 			tc.assertErr(t, err)
 		})
@@ -113,14 +190,15 @@ func TestNetworkPeer_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: inventory.NetworkPeerFilter{
+				UUID:        ptr.To(uuidgen.FromPattern(t, "1")),
 				Cluster:     ptr.To("cluster"),
-				Project:     ptr.To("project"),
+				ProjectName: ptr.To("project"),
 				NetworkName: ptr.To("network"),
 				Name:        ptr.To("name"),
 				Expression:  ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true&name=name&parent=network&project=project`,
+			want: `cluster=cluster&filter=true&name=name&parent=network&project=project&uuid=11111111-1111-1111-1111-111111111111`,
 		},
 	}
 

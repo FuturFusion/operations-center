@@ -170,7 +170,7 @@ func (i *storageBucketHandler) storageBucketsGet(r *http.Request) response.Respo
 	}
 
 	if r.URL.Query().Get("project") != "" {
-		filter.Project = ptr.To(r.URL.Query().Get("project"))
+		filter.ProjectName = ptr.To(r.URL.Query().Get("project"))
 	}
 
 	if r.URL.Query().Get("filter") != "" {
@@ -193,7 +193,7 @@ func (i *storageBucketHandler) storageBucketsGet(r *http.Request) response.Respo
 				ProjectName:     storageBucket.ProjectName,
 				StoragePoolName: storageBucket.StoragePoolName,
 				Name:            storageBucket.Name,
-				Object:          storageBucket.Object,
+				Object:          storageBucket.Object.StorageBucketFull,
 				LastUpdated:     storageBucket.LastUpdated,
 			})
 		}
@@ -268,7 +268,7 @@ func (i *storageBucketHandler) storageBucketGet(r *http.Request) response.Respon
 			ProjectName:     storageBucket.ProjectName,
 			StoragePoolName: storageBucket.StoragePoolName,
 			Name:            storageBucket.Name,
-			Object:          storageBucket.Object,
+			Object:          storageBucket.Object.StorageBucketFull,
 			LastUpdated:     storageBucket.LastUpdated,
 		},
 	)

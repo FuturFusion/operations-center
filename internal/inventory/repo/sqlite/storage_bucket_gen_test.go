@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -83,7 +82,7 @@ server-two
 		ProjectName:     "one",
 		StoragePoolName: "parent one",
 		Name:            "one",
-		Object:          incusapi.StorageBucketFull{},
+		Object:          inventory.IncusStorageBucketFullWrapper{},
 		LastUpdated:     time.Now(),
 	}
 
@@ -95,7 +94,7 @@ server-two
 		ProjectName:     "two",
 		StoragePoolName: "parent two",
 		Name:            "two",
-		Object:          incusapi.StorageBucketFull{},
+		Object:          inventory.IncusStorageBucketFullWrapper{},
 		LastUpdated:     time.Now(),
 	}
 
@@ -156,7 +155,7 @@ server-two
 	storageBucketUUIDs, err = storageBucket.GetAllUUIDsWithFilter(ctx, inventory.StorageBucketFilter{
 		Cluster:         ptr.To("one"),
 		Server:          ptr.To("one"),
-		Project:         ptr.To("one"),
+		ProjectName:     ptr.To("one"),
 		StoragePoolName: ptr.To("parent one"),
 		Name:            ptr.To("one"),
 	})
@@ -168,7 +167,7 @@ server-two
 	dbStorageBucket, err = storageBucket.GetAllWithFilter(ctx, inventory.StorageBucketFilter{
 		Cluster:         ptr.To("one"),
 		Server:          ptr.To("one"),
-		Project:         ptr.To("one"),
+		ProjectName:     ptr.To("one"),
 		StoragePoolName: ptr.To("parent one"),
 		Name:            ptr.To("one"),
 	})

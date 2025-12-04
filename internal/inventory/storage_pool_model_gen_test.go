@@ -5,23 +5,100 @@ package inventory_test
 import (
 	"testing"
 
+	"github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
+
+func TestIncusStoragePoolWrapper_Value(t *testing.T) {
+	tests := []struct {
+		name string
+
+		storagePool inventory.IncusStoragePoolWrapper
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+
+			storagePool: inventory.IncusStoragePoolWrapper{
+				StoragePool: api.StoragePool{},
+			},
+
+			assertErr: require.NoError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := tc.storagePool.Value()
+
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestIncusStoragePoolWrapper_Scan(t *testing.T) {
+	tests := []struct {
+		name string
+
+		value any
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - []byte",
+
+			value: []byte(`{}`),
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - string",
+
+			value: `{}`,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - nil",
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - unsupported type",
+
+			value: 1, // not supported for IncusStoragePoolWrapper
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			updateFiles := inventory.IncusStoragePoolWrapper{}
+
+			err := updateFiles.Scan(tc.value)
+
+			tc.assertErr(t, err)
+		})
+	}
+}
 
 func TestStoragePool_Validate(t *testing.T) {
 	tests := []struct {
-		name  string
-		image *inventory.StoragePool
+		name        string
+		storagePool *inventory.StoragePool
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "valid",
-			image: (&inventory.StoragePool{
+			storagePool: (&inventory.StoragePool{
 				ID:      1,
 				Cluster: "one",
 				Name:    "one",
@@ -31,7 +108,7 @@ func TestStoragePool_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid cluster ID",
-			image: (&inventory.StoragePool{
+			storagePool: (&inventory.StoragePool{
 				ID:      1,
 				Cluster: "", // invalid
 				Name:    "one",
@@ -44,7 +121,7 @@ func TestStoragePool_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid name",
-			image: (&inventory.StoragePool{
+			storagePool: (&inventory.StoragePool{
 				ID:      1,
 				Cluster: "one",
 				Name:    "", // invalid
@@ -57,7 +134,7 @@ func TestStoragePool_Validate(t *testing.T) {
 		},
 		{
 			name: "error - UUID not derived",
-			image: &inventory.StoragePool{
+			storagePool: &inventory.StoragePool{
 				ID:      1,
 				Cluster: "one",
 				Name:    "one",
@@ -72,7 +149,7 @@ func TestStoragePool_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.image.Validate()
+			err := tc.storagePool.Validate()
 
 			tc.assertErr(t, err)
 		})
@@ -95,12 +172,13 @@ func TestStoragePool_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: inventory.StoragePoolFilter{
+				UUID:       ptr.To(uuidgen.FromPattern(t, "1")),
 				Cluster:    ptr.To("cluster"),
 				Name:       ptr.To("name"),
 				Expression: ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true&name=name`,
+			want: `cluster=cluster&filter=true&name=name&uuid=11111111-1111-1111-1111-111111111111`,
 		},
 	}
 

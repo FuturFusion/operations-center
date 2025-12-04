@@ -25,15 +25,19 @@ type ExprApiNetworkPeerPut struct {
 	Config      api.ConfigMap `json:"config" yaml:"config" expr:"config"`
 }
 
+type ExprIncusNetworkPeerWrapper struct {
+	ExprApiNetworkPeer `json:"-" expr:"-"`
+}
+
 type ExprNetworkPeer struct {
-	ID          int                `json:"-" expr:"-"`
-	UUID        uuid.UUID          `json:"uuid" expr:"uuid"`
-	Cluster     string             `json:"cluster" expr:"cluster"`
-	ProjectName string             `json:"project" expr:"project"`
-	NetworkName string             `json:"network_name" expr:"network_name"`
-	Name        string             `json:"name" expr:"name"`
-	Object      ExprApiNetworkPeer `json:"object" expr:"object"`
-	LastUpdated time.Time          `json:"last_updated" expr:"last_updated"`
+	ID          int                         `json:"-" expr:"-"`
+	UUID        uuid.UUID                   `json:"uuid"          db:"primary=yes" expr:"uuid"`
+	Cluster     string                      `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
+	ProjectName string                      `json:"project"       db:"sql=network_peers.project_name" expr:"project"`
+	NetworkName string                      `json:"network_name" expr:"network_name"`
+	Name        string                      `json:"name" expr:"name"`
+	Object      ExprIncusNetworkPeerWrapper `json:"object" expr:"object"`
+	LastUpdated time.Time                   `json:"last_updated"  db:"update_timestamp" expr:"last_updated"`
 }
 
 func ToExprApiNetworkPeer(n api.NetworkPeer) ExprApiNetworkPeer {
@@ -56,6 +60,12 @@ func ToExprApiNetworkPeerPut(n api.NetworkPeerPut) ExprApiNetworkPeerPut {
 	}
 }
 
+func ToExprIncusNetworkPeerWrapper(i IncusNetworkPeerWrapper) ExprIncusNetworkPeerWrapper {
+	return ExprIncusNetworkPeerWrapper{
+		ExprApiNetworkPeer: ToExprApiNetworkPeer(i.NetworkPeer),
+	}
+}
+
 func ToExprNetworkPeer(n NetworkPeer) ExprNetworkPeer {
 	return ExprNetworkPeer{
 		ID:          n.ID,
@@ -64,7 +74,7 @@ func ToExprNetworkPeer(n NetworkPeer) ExprNetworkPeer {
 		ProjectName: n.ProjectName,
 		NetworkName: n.NetworkName,
 		Name:        n.Name,
-		Object:      ToExprApiNetworkPeer(n.Object),
+		Object:      ToExprIncusNetworkPeerWrapper(n.Object),
 		LastUpdated: n.LastUpdated,
 	}
 }

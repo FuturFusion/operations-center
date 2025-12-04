@@ -162,7 +162,7 @@ func (i *projectHandler) projectsGet(r *http.Request) response.Response {
 				UUID:        project.UUID,
 				Cluster:     project.Cluster,
 				Name:        project.Name,
-				Object:      project.Object,
+				Object:      project.Object.Project,
 				LastUpdated: project.LastUpdated,
 			})
 		}
@@ -234,7 +234,7 @@ func (i *projectHandler) projectGet(r *http.Request) response.Response {
 			UUID:        project.UUID,
 			Cluster:     project.Cluster,
 			Name:        project.Name,
-			Object:      project.Object,
+			Object:      project.Object.Project,
 			LastUpdated: project.LastUpdated,
 		},
 	)

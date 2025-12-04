@@ -156,7 +156,7 @@ func (i *imageHandler) imagesGet(r *http.Request) response.Response {
 	}
 
 	if r.URL.Query().Get("project") != "" {
-		filter.Project = ptr.To(r.URL.Query().Get("project"))
+		filter.ProjectName = ptr.To(r.URL.Query().Get("project"))
 	}
 
 	if r.URL.Query().Get("filter") != "" {
@@ -177,7 +177,7 @@ func (i *imageHandler) imagesGet(r *http.Request) response.Response {
 				Cluster:     image.Cluster,
 				ProjectName: image.ProjectName,
 				Name:        image.Name,
-				Object:      image.Object,
+				Object:      image.Object.Image,
 				LastUpdated: image.LastUpdated,
 			})
 		}
@@ -250,7 +250,7 @@ func (i *imageHandler) imageGet(r *http.Request) response.Response {
 			Cluster:     image.Cluster,
 			ProjectName: image.ProjectName,
 			Name:        image.Name,
-			Object:      image.Object,
+			Object:      image.Object.Image,
 			LastUpdated: image.LastUpdated,
 		},
 	)

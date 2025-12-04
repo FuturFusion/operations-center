@@ -156,7 +156,7 @@ func (i *networkHandler) networksGet(r *http.Request) response.Response {
 	}
 
 	if r.URL.Query().Get("project") != "" {
-		filter.Project = ptr.To(r.URL.Query().Get("project"))
+		filter.ProjectName = ptr.To(r.URL.Query().Get("project"))
 	}
 
 	if r.URL.Query().Get("filter") != "" {
@@ -177,7 +177,7 @@ func (i *networkHandler) networksGet(r *http.Request) response.Response {
 				Cluster:     network.Cluster,
 				ProjectName: network.ProjectName,
 				Name:        network.Name,
-				Object:      network.Object,
+				Object:      network.Object.Network,
 				LastUpdated: network.LastUpdated,
 			})
 		}
@@ -250,7 +250,7 @@ func (i *networkHandler) networkGet(r *http.Request) response.Response {
 			Cluster:     network.Cluster,
 			ProjectName: network.ProjectName,
 			Name:        network.Name,
-			Object:      network.Object,
+			Object:      network.Object.Network,
 			LastUpdated: network.LastUpdated,
 		},
 	)

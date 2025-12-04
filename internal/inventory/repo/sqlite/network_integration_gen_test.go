@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -80,7 +79,7 @@ server-two
 	networkIntegrationA := inventory.NetworkIntegration{
 		Cluster:     "one",
 		Name:        "one",
-		Object:      incusapi.NetworkIntegration{},
+		Object:      inventory.IncusNetworkIntegrationWrapper{},
 		LastUpdated: time.Now(),
 	}
 
@@ -89,7 +88,7 @@ server-two
 	networkIntegrationB := inventory.NetworkIntegration{
 		Cluster:     "two",
 		Name:        "two",
-		Object:      incusapi.NetworkIntegration{},
+		Object:      inventory.IncusNetworkIntegrationWrapper{},
 		LastUpdated: time.Now(),
 	}
 

@@ -5,23 +5,100 @@ package inventory_test
 import (
 	"testing"
 
+	"github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
+
+func TestIncusInstanceFullWrapper_Value(t *testing.T) {
+	tests := []struct {
+		name string
+
+		instancefull inventory.IncusInstanceFullWrapper
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+
+			instancefull: inventory.IncusInstanceFullWrapper{
+				InstanceFull: api.InstanceFull{},
+			},
+
+			assertErr: require.NoError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := tc.instancefull.Value()
+
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestIncusInstanceFullWrapper_Scan(t *testing.T) {
+	tests := []struct {
+		name string
+
+		value any
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - []byte",
+
+			value: []byte(`{}`),
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - string",
+
+			value: `{}`,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - nil",
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - unsupported type",
+
+			value: 1, // not supported for IncusInstanceFullWrapper
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			updateFiles := inventory.IncusInstanceFullWrapper{}
+
+			err := updateFiles.Scan(tc.value)
+
+			tc.assertErr(t, err)
+		})
+	}
+}
 
 func TestInstance_Validate(t *testing.T) {
 	tests := []struct {
-		name  string
-		image *inventory.Instance
+		name     string
+		instance *inventory.Instance
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "valid",
-			image: (&inventory.Instance{
+			instance: (&inventory.Instance{
 				ID:          1,
 				Cluster:     "one",
 				Server:      "one",
@@ -33,7 +110,7 @@ func TestInstance_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid cluster ID",
-			image: (&inventory.Instance{
+			instance: (&inventory.Instance{
 				ID:          1,
 				Cluster:     "", // invalid
 				Server:      "one",
@@ -48,7 +125,7 @@ func TestInstance_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid project name",
-			image: (&inventory.Instance{
+			instance: (&inventory.Instance{
 				ID:          1,
 				Cluster:     "one",
 				Server:      "", // invalid
@@ -63,7 +140,7 @@ func TestInstance_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid project name",
-			image: (&inventory.Instance{
+			instance: (&inventory.Instance{
 				ID:          1,
 				Cluster:     "one",
 				Server:      "one",
@@ -78,7 +155,7 @@ func TestInstance_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid name",
-			image: (&inventory.Instance{
+			instance: (&inventory.Instance{
 				ID:          1,
 				Cluster:     "one",
 				Server:      "one",
@@ -93,7 +170,7 @@ func TestInstance_Validate(t *testing.T) {
 		},
 		{
 			name: "error - UUID not derived",
-			image: &inventory.Instance{
+			instance: &inventory.Instance{
 				ID:          1,
 				Cluster:     "one",
 				Server:      "one",
@@ -110,7 +187,7 @@ func TestInstance_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.image.Validate()
+			err := tc.instance.Validate()
 
 			tc.assertErr(t, err)
 		})
@@ -133,14 +210,15 @@ func TestInstance_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: inventory.InstanceFilter{
-				Cluster:    ptr.To("cluster"),
-				Server:     ptr.To("server"),
-				Project:    ptr.To("project"),
-				Name:       ptr.To("name"),
-				Expression: ptr.To("true"),
+				UUID:        ptr.To(uuidgen.FromPattern(t, "1")),
+				Cluster:     ptr.To("cluster"),
+				Server:      ptr.To("server"),
+				ProjectName: ptr.To("project"),
+				Name:        ptr.To("name"),
+				Expression:  ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true&name=name&project=project&server=server`,
+			want: `cluster=cluster&filter=true&name=name&project=project&server=server&uuid=11111111-1111-1111-1111-111111111111`,
 		},
 	}
 

@@ -184,7 +184,7 @@ func (s networkPeerService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 			return err
 		}
 
-		networkPeer.Object = retrievedNetworkPeer
+		networkPeer.Object = IncusNetworkPeerWrapper{retrievedNetworkPeer}
 		networkPeer.LastUpdated = s.now()
 		networkPeer.DeriveUUID()
 
@@ -257,7 +257,7 @@ func (s networkPeerService) handleCreateEvent(ctx context.Context, clusterName s
 		Cluster:     clusterName,
 		NetworkName: event.Source.ParentName,
 		Name:        retrievedNetworkPeer.Name,
-		Object:      retrievedNetworkPeer,
+		Object:      IncusNetworkPeerWrapper{retrievedNetworkPeer},
 		LastUpdated: s.now(),
 	}
 
@@ -283,7 +283,7 @@ func (s networkPeerService) handleCreateEvent(ctx context.Context, clusterName s
 func (s networkPeerService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkPeerFilter{
 		Cluster:     &clusterName,
-		Project:     &event.Source.ProjectName,
+		ProjectName: &event.Source.ProjectName,
 		NetworkName: &event.Source.ParentName,
 		Name:        &event.Source.Name,
 	})
@@ -324,7 +324,7 @@ func (s networkPeerService) handleRenameEvent(ctx context.Context, clusterName s
 func (s networkPeerService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkPeerFilter{
 		Cluster:     &clusterName,
-		Project:     &event.Source.ProjectName,
+		ProjectName: &event.Source.ProjectName,
 		NetworkName: &event.Source.ParentName,
 		Name:        &event.Source.Name,
 	})
@@ -385,7 +385,7 @@ func (s networkPeerService) SyncCluster(ctx context.Context, name string) error 
 					Cluster:     name,
 					NetworkName: network.Name,
 					Name:        retrievedNetworkPeer.Name,
-					Object:      retrievedNetworkPeer,
+					Object:      IncusNetworkPeerWrapper{retrievedNetworkPeer},
 					LastUpdated: s.now(),
 				}
 

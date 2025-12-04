@@ -246,7 +246,7 @@ func TestProjectService_GetByUUID(t *testing.T) {
 				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "one",
-				Object:      incusapi.Project{},
+				Object:      inventory.IncusProjectWrapper{},
 				LastUpdated: time.Now(),
 			},
 

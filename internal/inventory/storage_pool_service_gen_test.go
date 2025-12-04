@@ -246,7 +246,7 @@ func TestStoragePoolService_GetByUUID(t *testing.T) {
 				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "one",
-				Object:      incusapi.StoragePool{},
+				Object:      inventory.IncusStoragePoolWrapper{},
 				LastUpdated: time.Now(),
 			},
 
