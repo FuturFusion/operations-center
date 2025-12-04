@@ -1,6 +1,8 @@
 export interface Cluster {
   name: string;
   connection_url: string;
+  certificate: string;
+  fingerprint: string;
   status: string;
   last_updated: string;
 }

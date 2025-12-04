@@ -85,6 +85,16 @@ const ServerOverview = () => {
         <div className="col-10 detail-table-cell">{server?.server_status}</div>
       </div>
       <div className="row">
+        <div className="col-2 detail-table-header">Certificate</div>
+        <div className="col-10 detail-table-cell">
+          <pre>{server?.certificate}</pre>
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Fingerprint</div>
+        <div className="col-10 detail-table-cell">{server?.fingerprint}</div>
+      </div>
+      <div className="row">
         <div className="col-2 detail-table-header">Last updated</div>
         <div className="col-10 detail-table-cell">
           {formatDate(server?.last_updated || "")}
