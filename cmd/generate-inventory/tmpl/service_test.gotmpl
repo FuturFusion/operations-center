@@ -250,7 +250,7 @@ func Test{{ .Name | pascalcase }}Service_GetByUUID(t *testing.T) {
 				{{ .ParentName | pascalcase }}Name: "parent one",
 {{- end }}
 				Name:        "one",
-				Object:      incusapi.{{ .ObjectType | pascalcase }}{},
+				Object:      inventory.Incus{{ .ObjectType | pascalcase }}Wrapper{},
 				LastUpdated: time.Now(),
 			},
 
@@ -1236,7 +1236,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) ([]uuid.UUID, error) {
 					require.Equal(t, tc.argClusterName, *filter.Cluster)
 {{- if .HasProjectDirect }}
-					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.Project)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.ProjectName)
 {{- end }}
 {{- if .HasParent }}
 					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, *filter.{{ .ParentName | pascalcase }}Name)

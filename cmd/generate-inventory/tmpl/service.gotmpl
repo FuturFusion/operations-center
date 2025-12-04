@@ -205,7 +205,7 @@ func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uui
 {{- range .ExtraAttributes }}
 		{{ $.Name | camelcase }}. {{ .Name | pascalcase }} = retrieved{{ $.Name | pascalcase }}.{{ .Name | pascalcase }}
 {{- end }}
-		{{ .Name | camelcase }}.Object = retrieved{{ .Name | pascalcase }}
+		{{ .Name | camelcase }}.Object = Incus{{ .ObjectType | pascalcase }}Wrapper{retrieved{{ .Name | pascalcase }}}
 		{{ .Name | camelcase }}.LastUpdated = s.now()
 		{{ .Name | camelcase }}.DeriveUUID()
 
@@ -289,7 +289,7 @@ func (s {{ .Name | camelcase }}Service) handleCreateEvent(ctx context.Context, c
 {{- range .ExtraAttributes }}
 		{{ .Name | pascalcase }}: retrieved{{ $.Name | pascalcase }}.{{ .Name | pascalcase }},
 {{- end}}
-		Object:      retrieved{{ .Name | pascalcase }},
+		Object:      Incus{{ .ObjectType | pascalcase }}Wrapper{retrieved{{ .Name | pascalcase }}},
 		LastUpdated: s.now(),
 	}
 
@@ -316,7 +316,7 @@ func (s {{ .Name | camelcase }}Service) handleDeleteEvent(ctx context.Context, c
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, {{ .Name | pascalcase }}Filter{
 		Cluster: &clusterName,
 {{- if .HasProject }}
-		Project: &event.Source.ProjectName,
+		ProjectName: &event.Source.ProjectName,
 {{- end }}
 {{- if .HasParent }}
 		{{ .ParentName | pascalcase }}Name: &event.Source.ParentName,
@@ -361,7 +361,7 @@ func (s {{ .Name | camelcase }}Service) handleUpdateEvent(ctx context.Context, c
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, {{ .Name | pascalcase }}Filter{
 		Cluster: &clusterName,
 {{- if .HasProject }}
-		Project: &event.Source.ProjectName,
+		ProjectName: &event.Source.ProjectName,
 {{- end }}
 {{- if .HasParent }}
 		{{ .ParentName | pascalcase }}Name: &event.Source.ParentName,
@@ -454,7 +454,7 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 {{- range .ExtraAttributes }}
 				{{ .Name | pascalcase }}: retrieved{{ $.Name | pascalcase }}.{{ .Name | pascalcase }},
 {{- end}}
-				Object:      retrieved{{ .Name | pascalcase }},
+				Object:      Incus{{ .ObjectType | pascalcase }}Wrapper{retrieved{{ .Name | pascalcase }}},
 				LastUpdated: s.now(),
 			}
 

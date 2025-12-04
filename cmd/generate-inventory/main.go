@@ -77,6 +77,11 @@ var targets = []struct {
 		TargetFileType: FileTypeGo,
 	},
 	{
+		TemplateName:   "repo_sqlite_entities.gotmpl",
+		TargetName:     "internal/inventory/repo/sqlite/entities/{{ .Name }}_gen.go",
+		TargetFileType: FileTypeGo,
+	},
+	{
 		TemplateName:   "repo_sqlite_test.gotmpl",
 		TargetName:     "internal/inventory/repo/sqlite/{{ .Name }}_gen_test.go",
 		TargetFileType: FileTypeGo,

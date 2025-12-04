@@ -27,7 +27,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 				{{ .ParentName | pascalcase }}Name: {{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name,
 {{- end }}
 				Name:        {{ .Name | camelcase }}.Name,
-				Object:      {{ .Name | camelcase }}.Object,
+				Object:      {{ .Name | camelcase }}.Object.{{ .ObjectType | pascalcase }},
 			})
 		}
 
