@@ -30,14 +30,18 @@ type ExprApiNetworkForwardPut struct {
 	Ports       []ExprApiNetworkForwardPort `json:"ports" yaml:"ports" expr:"ports"`
 }
 
+type ExprIncusNetworkForwardWrapper struct {
+	ExprApiNetworkForward `json:"-" expr:"-"`
+}
+
 type ExprNetworkForward struct {
-	ID          int                   `json:"-" expr:"-"`
-	UUID        uuid.UUID             `json:"uuid" expr:"uuid"`
-	Cluster     string                `json:"cluster" expr:"cluster"`
-	NetworkName string                `json:"network_name" expr:"network_name"`
-	Name        string                `json:"name" expr:"name"`
-	Object      ExprApiNetworkForward `json:"object" expr:"object"`
-	LastUpdated time.Time             `json:"last_updated" expr:"last_updated"`
+	ID          int                            `json:"-" expr:"-"`
+	UUID        uuid.UUID                      `json:"uuid"          db:"primary=yes" expr:"uuid"`
+	Cluster     string                         `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
+	NetworkName string                         `json:"network_name" expr:"network_name"`
+	Name        string                         `json:"name" expr:"name"`
+	Object      ExprIncusNetworkForwardWrapper `json:"object" expr:"object"`
+	LastUpdated time.Time                      `json:"last_updated"  db:"update_timestamp" expr:"last_updated"`
 }
 
 func ToExprApiNetworkForward(n api.NetworkForward) ExprApiNetworkForward {
@@ -67,6 +71,12 @@ func ToExprApiNetworkForwardPut(n api.NetworkForwardPut) ExprApiNetworkForwardPu
 	}
 }
 
+func ToExprIncusNetworkForwardWrapper(i IncusNetworkForwardWrapper) ExprIncusNetworkForwardWrapper {
+	return ExprIncusNetworkForwardWrapper{
+		ExprApiNetworkForward: ToExprApiNetworkForward(i.NetworkForward),
+	}
+}
+
 func ToExprNetworkForward(n NetworkForward) ExprNetworkForward {
 	return ExprNetworkForward{
 		ID:          n.ID,
@@ -74,7 +84,7 @@ func ToExprNetworkForward(n NetworkForward) ExprNetworkForward {
 		Cluster:     n.Cluster,
 		NetworkName: n.NetworkName,
 		Name:        n.Name,
-		Object:      ToExprApiNetworkForward(n.Object),
+		Object:      ToExprIncusNetworkForwardWrapper(n.Object),
 		LastUpdated: n.LastUpdated,
 	}
 }

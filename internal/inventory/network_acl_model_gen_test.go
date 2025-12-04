@@ -5,23 +5,100 @@ package inventory_test
 import (
 	"testing"
 
+	"github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
+
+func TestIncusNetworkACLWrapper_Value(t *testing.T) {
+	tests := []struct {
+		name string
+
+		networkACL inventory.IncusNetworkACLWrapper
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+
+			networkACL: inventory.IncusNetworkACLWrapper{
+				NetworkACL: api.NetworkACL{},
+			},
+
+			assertErr: require.NoError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := tc.networkACL.Value()
+
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestIncusNetworkACLWrapper_Scan(t *testing.T) {
+	tests := []struct {
+		name string
+
+		value any
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - []byte",
+
+			value: []byte(`{}`),
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - string",
+
+			value: `{}`,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - nil",
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - unsupported type",
+
+			value: 1, // not supported for IncusNetworkACLWrapper
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			updateFiles := inventory.IncusNetworkACLWrapper{}
+
+			err := updateFiles.Scan(tc.value)
+
+			tc.assertErr(t, err)
+		})
+	}
+}
 
 func TestNetworkACL_Validate(t *testing.T) {
 	tests := []struct {
-		name  string
-		image *inventory.NetworkACL
+		name       string
+		networkACL *inventory.NetworkACL
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "valid",
-			image: (&inventory.NetworkACL{
+			networkACL: (&inventory.NetworkACL{
 				ID:          1,
 				Cluster:     "one",
 				ProjectName: "project one",
@@ -32,7 +109,7 @@ func TestNetworkACL_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid cluster ID",
-			image: (&inventory.NetworkACL{
+			networkACL: (&inventory.NetworkACL{
 				ID:          1,
 				Cluster:     "", // invalid
 				ProjectName: "project one",
@@ -46,7 +123,7 @@ func TestNetworkACL_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid project name",
-			image: (&inventory.NetworkACL{
+			networkACL: (&inventory.NetworkACL{
 				ID:          1,
 				Cluster:     "one",
 				ProjectName: "", // invalid
@@ -60,7 +137,7 @@ func TestNetworkACL_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid name",
-			image: (&inventory.NetworkACL{
+			networkACL: (&inventory.NetworkACL{
 				ID:          1,
 				Cluster:     "one",
 				ProjectName: "project one",
@@ -74,7 +151,7 @@ func TestNetworkACL_Validate(t *testing.T) {
 		},
 		{
 			name: "error - UUID not derived",
-			image: &inventory.NetworkACL{
+			networkACL: &inventory.NetworkACL{
 				ID:          1,
 				Cluster:     "one",
 				ProjectName: "project one",
@@ -90,7 +167,7 @@ func TestNetworkACL_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.image.Validate()
+			err := tc.networkACL.Validate()
 
 			tc.assertErr(t, err)
 		})
@@ -113,13 +190,14 @@ func TestNetworkACL_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: inventory.NetworkACLFilter{
-				Cluster:    ptr.To("cluster"),
-				Project:    ptr.To("project"),
-				Name:       ptr.To("name"),
-				Expression: ptr.To("true"),
+				UUID:        ptr.To(uuidgen.FromPattern(t, "1")),
+				Cluster:     ptr.To("cluster"),
+				ProjectName: ptr.To("project"),
+				Name:        ptr.To("name"),
+				Expression:  ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true&name=name&project=project`,
+			want: `cluster=cluster&filter=true&name=name&project=project&uuid=11111111-1111-1111-1111-111111111111`,
 		},
 	}
 

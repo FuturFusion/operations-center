@@ -20,13 +20,17 @@ type ExprApiProjectPut struct {
 	Description string        `json:"description" yaml:"description" expr:"description"`
 }
 
+type ExprIncusProjectWrapper struct {
+	ExprApiProject `json:"-" expr:"-"`
+}
+
 type ExprProject struct {
-	ID          int            `json:"-" expr:"-"`
-	UUID        uuid.UUID      `json:"uuid" expr:"uuid"`
-	Cluster     string         `json:"cluster" expr:"cluster"`
-	Name        string         `json:"name" expr:"name"`
-	Object      ExprApiProject `json:"object" expr:"object"`
-	LastUpdated time.Time      `json:"last_updated" expr:"last_updated"`
+	ID          int                     `json:"-" expr:"-"`
+	UUID        uuid.UUID               `json:"uuid"          db:"primary=yes" expr:"uuid"`
+	Cluster     string                  `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
+	Name        string                  `json:"name" expr:"name"`
+	Object      ExprIncusProjectWrapper `json:"object" expr:"object"`
+	LastUpdated time.Time               `json:"last_updated"  db:"update_timestamp" expr:"last_updated"`
 }
 
 func ToExprApiProject(p api.Project) ExprApiProject {
@@ -44,13 +48,19 @@ func ToExprApiProjectPut(p api.ProjectPut) ExprApiProjectPut {
 	}
 }
 
+func ToExprIncusProjectWrapper(i IncusProjectWrapper) ExprIncusProjectWrapper {
+	return ExprIncusProjectWrapper{
+		ExprApiProject: ToExprApiProject(i.Project),
+	}
+}
+
 func ToExprProject(p Project) ExprProject {
 	return ExprProject{
 		ID:          p.ID,
 		UUID:        p.UUID,
 		Cluster:     p.Cluster,
 		Name:        p.Name,
-		Object:      ToExprApiProject(p.Object),
+		Object:      ToExprIncusProjectWrapper(p.Object),
 		LastUpdated: p.LastUpdated,
 	}
 }

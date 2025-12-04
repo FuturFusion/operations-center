@@ -156,7 +156,7 @@ func (i *networkACLHandler) networkACLsGet(r *http.Request) response.Response {
 	}
 
 	if r.URL.Query().Get("project") != "" {
-		filter.Project = ptr.To(r.URL.Query().Get("project"))
+		filter.ProjectName = ptr.To(r.URL.Query().Get("project"))
 	}
 
 	if r.URL.Query().Get("filter") != "" {
@@ -177,7 +177,7 @@ func (i *networkACLHandler) networkACLsGet(r *http.Request) response.Response {
 				Cluster:     networkACL.Cluster,
 				ProjectName: networkACL.ProjectName,
 				Name:        networkACL.Name,
-				Object:      networkACL.Object,
+				Object:      networkACL.Object.NetworkACL,
 				LastUpdated: networkACL.LastUpdated,
 			})
 		}
@@ -250,7 +250,7 @@ func (i *networkACLHandler) networkACLGet(r *http.Request) response.Response {
 			Cluster:     networkACL.Cluster,
 			ProjectName: networkACL.ProjectName,
 			Name:        networkACL.Name,
-			Object:      networkACL.Object,
+			Object:      networkACL.Object.NetworkACL,
 			LastUpdated: networkACL.LastUpdated,
 		},
 	)

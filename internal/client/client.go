@@ -18,6 +18,7 @@ import (
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 
 	oidcClient "github.com/FuturFusion/operations-center/internal/client/oidc"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -209,6 +210,18 @@ func processResponse(resp *http.Response) (*api.Response, error) {
 	}
 
 	if response.Code != 0 {
+		if response.Code == http.StatusNotFound {
+			return &response, domain.ErrNotFound
+		}
+
+		if response.Code == http.StatusUnauthorized {
+			return &response, domain.ErrNotAuthenticated
+		}
+
+		if response.Code == http.StatusForbidden {
+			return &response, domain.ErrNotAuthorized
+		}
+
 		return &response, fmt.Errorf("Received an error from the server: %s", response.Error)
 	}
 

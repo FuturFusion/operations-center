@@ -12,6 +12,8 @@ var (
 
 	ErrOperationNotPermitted = errors.New("Operation not permitted")
 
+	ErrNotAuthenticated = errors.New("Not authenticated")
+
 	ErrNotAuthorized = errors.New("Not authorized")
 )
 

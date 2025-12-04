@@ -179,7 +179,7 @@ func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *htt
 
 {{ if .HasProject }}
 	if r.URL.Query().Get("project") != "" {
-		filter.Project = ptr.To(r.URL.Query().Get("project"))
+		filter.ProjectName = ptr.To(r.URL.Query().Get("project"))
 	}
 {{ end }}
 
@@ -212,7 +212,7 @@ func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *htt
 					{{- range .ExtraAttributes }}
 						{{ .Name | pascalcase }}: {{ $.Name | camelcase }}.{{ .Name | pascalcase }},
 					{{- end }}
-					Object:      {{ .Name | camelcase }}.Object,
+					Object:      {{ .Name | camelcase }}.Object.{{ .ObjectType | pascalcase }},
 					LastUpdated: {{ .Name | camelcase }}.LastUpdated,
 			})
 		}
@@ -296,7 +296,7 @@ func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}Get(r *http.Requ
 			{{- range .ExtraAttributes }}
 				{{ .Name | pascalcase }}: {{ $.Name | camelcase }}.{{ .Name | pascalcase }},
 			{{- end }}
-			Object:      {{ .Name | camelcase }}.Object,
+			Object:      {{ .Name | camelcase }}.Object.{{ .ObjectType | pascalcase }},
 			LastUpdated: {{ .Name | camelcase }}.LastUpdated,
 		},
 	)

@@ -171,7 +171,7 @@ func (s imageService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 		}
 
 		image.ProjectName = retrievedImage.Project
-		image.Object = retrievedImage
+		image.Object = IncusImageWrapper{retrievedImage}
 		image.LastUpdated = s.now()
 		image.DeriveUUID()
 
@@ -244,7 +244,7 @@ func (s imageService) handleCreateEvent(ctx context.Context, clusterName string,
 		Cluster:     clusterName,
 		ProjectName: retrievedImage.Project,
 		Name:        retrievedImage.Fingerprint,
-		Object:      retrievedImage,
+		Object:      IncusImageWrapper{retrievedImage},
 		LastUpdated: s.now(),
 	}
 
@@ -269,9 +269,9 @@ func (s imageService) handleCreateEvent(ctx context.Context, clusterName string,
 
 func (s imageService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, ImageFilter{
-		Cluster: &clusterName,
-		Project: &event.Source.ProjectName,
-		Name:    &event.Source.Name,
+		Cluster:     &clusterName,
+		ProjectName: &event.Source.ProjectName,
+		Name:        &event.Source.Name,
 	})
 	if err != nil {
 		return err
@@ -309,9 +309,9 @@ func (s imageService) handleRenameEvent(ctx context.Context, clusterName string,
 
 func (s imageService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, ImageFilter{
-		Cluster: &clusterName,
-		Project: &event.Source.ProjectName,
-		Name:    &event.Source.Name,
+		Cluster:     &clusterName,
+		ProjectName: &event.Source.ProjectName,
+		Name:        &event.Source.Name,
 	})
 	if err != nil {
 		return err
@@ -359,7 +359,7 @@ func (s imageService) SyncCluster(ctx context.Context, name string) error {
 				Cluster:     name,
 				ProjectName: retrievedImage.Project,
 				Name:        retrievedImage.Fingerprint,
-				Object:      retrievedImage,
+				Object:      IncusImageWrapper{retrievedImage},
 				LastUpdated: s.now(),
 			}
 

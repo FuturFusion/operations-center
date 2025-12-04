@@ -3,6 +3,9 @@
 package inventory
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -13,17 +16,40 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+type IncusImageWrapper struct {
+	incusapi.Image `json:"-"`
+}
+
+func (w IncusImageWrapper) Value() (driver.Value, error) {
+	return json.Marshal(w.Image)
+}
+
+func (w *IncusImageWrapper) Scan(value interface{}) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid image")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return json.Unmarshal([]byte(v), &w.Image)
+	case []byte:
+		return json.Unmarshal(v, &w.Image)
+	default:
+		return fmt.Errorf("type %T is not supported for image", value)
+	}
+}
+
 //
 //generate-expr: Image
 
 type Image struct {
-	ID          int            `json:"-"`
-	UUID        uuid.UUID      `json:"uuid"`
-	Cluster     string         `json:"cluster"`
-	ProjectName string         `json:"project"`
-	Name        string         `json:"name"`
-	Object      incusapi.Image `json:"object"`
-	LastUpdated time.Time      `json:"last_updated"`
+	ID          int               `json:"-"`
+	UUID        uuid.UUID         `json:"uuid"          db:"primary=yes"`
+	Cluster     string            `json:"cluster"       db:"leftjoin=clusters.name"`
+	ProjectName string            `json:"project"       db:"sql=images.project_name"`
+	Name        string            `json:"name"`
+	Object      IncusImageWrapper `json:"object"`
+	LastUpdated time.Time         `json:"last_updated"  db:"update_timestamp"`
 }
 
 func (m *Image) DeriveUUID() *Image {
@@ -63,19 +89,24 @@ func (m Image) Validate() error {
 type Images []Image
 
 type ImageFilter struct {
-	Cluster    *string
-	Project    *string
-	Name       *string
-	Expression *string
+	UUID        *uuid.UUID
+	Cluster     *string
+	ProjectName *string
+	Name        *string
+	Expression  *string `db:"ignore"`
 }
 
 func (f ImageFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.UUID != nil {
+		query.Add("uuid", f.UUID.String())
+	}
+
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
 	}
 
-	if f.Project != nil {
-		query.Add("project", *f.Project)
+	if f.ProjectName != nil {
+		query.Add("project", *f.ProjectName)
 	}
 
 	if f.Name != nil {

@@ -163,7 +163,7 @@ func (i *networkForwardHandler) networkForwardsGet(r *http.Request) response.Res
 				Cluster:     networkForward.Cluster,
 				NetworkName: networkForward.NetworkName,
 				Name:        networkForward.Name,
-				Object:      networkForward.Object,
+				Object:      networkForward.Object.NetworkForward,
 				LastUpdated: networkForward.LastUpdated,
 			})
 		}
@@ -236,7 +236,7 @@ func (i *networkForwardHandler) networkForwardGet(r *http.Request) response.Resp
 			Cluster:     networkForward.Cluster,
 			NetworkName: networkForward.NetworkName,
 			Name:        networkForward.Name,
-			Object:      networkForward.Object,
+			Object:      networkForward.Object.NetworkForward,
 			LastUpdated: networkForward.LastUpdated,
 		},
 	)

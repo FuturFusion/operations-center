@@ -1,7 +1,5 @@
 package entities
 
-import "github.com/google/uuid"
-
 // Code generation directives.
 //
 //generate-database:mapper target update.mapper.go
@@ -29,7 +27,3 @@ import "github.com/google/uuid"
 //generate-database:mapper method -e update Create
 //generate-database:mapper method -e update Update
 //generate-database:mapper method -e update DeleteOne-by-UUID
-
-type UpdateFilter struct {
-	UUID *uuid.UUID
-}

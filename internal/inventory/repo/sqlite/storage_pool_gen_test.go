@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -80,7 +79,7 @@ server-two
 	storagePoolA := inventory.StoragePool{
 		Cluster:     "one",
 		Name:        "one",
-		Object:      incusapi.StoragePool{},
+		Object:      inventory.IncusStoragePoolWrapper{},
 		LastUpdated: time.Now(),
 	}
 
@@ -89,7 +88,7 @@ server-two
 	storagePoolB := inventory.StoragePool{
 		Cluster:     "two",
 		Name:        "two",
-		Object:      incusapi.StoragePool{},
+		Object:      inventory.IncusStoragePoolWrapper{},
 		LastUpdated: time.Now(),
 	}
 

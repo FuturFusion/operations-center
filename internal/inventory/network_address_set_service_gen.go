@@ -171,7 +171,7 @@ func (s networkAddressSetService) ResyncByUUID(ctx context.Context, id uuid.UUID
 		}
 
 		networkAddressSet.ProjectName = retrievedNetworkAddressSet.Project
-		networkAddressSet.Object = retrievedNetworkAddressSet
+		networkAddressSet.Object = IncusNetworkAddressSetWrapper{retrievedNetworkAddressSet}
 		networkAddressSet.LastUpdated = s.now()
 		networkAddressSet.DeriveUUID()
 
@@ -244,7 +244,7 @@ func (s networkAddressSetService) handleCreateEvent(ctx context.Context, cluster
 		Cluster:     clusterName,
 		ProjectName: retrievedNetworkAddressSet.Project,
 		Name:        retrievedNetworkAddressSet.Name,
-		Object:      retrievedNetworkAddressSet,
+		Object:      IncusNetworkAddressSetWrapper{retrievedNetworkAddressSet},
 		LastUpdated: s.now(),
 	}
 
@@ -269,9 +269,9 @@ func (s networkAddressSetService) handleCreateEvent(ctx context.Context, cluster
 
 func (s networkAddressSetService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkAddressSetFilter{
-		Cluster: &clusterName,
-		Project: &event.Source.ProjectName,
-		Name:    &event.Source.Name,
+		Cluster:     &clusterName,
+		ProjectName: &event.Source.ProjectName,
+		Name:        &event.Source.Name,
 	})
 	if err != nil {
 		return err
@@ -309,9 +309,9 @@ func (s networkAddressSetService) handleRenameEvent(ctx context.Context, cluster
 
 func (s networkAddressSetService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkAddressSetFilter{
-		Cluster: &clusterName,
-		Project: &event.Source.ProjectName,
-		Name:    &event.Source.Name,
+		Cluster:     &clusterName,
+		ProjectName: &event.Source.ProjectName,
+		Name:        &event.Source.Name,
 	})
 	if err != nil {
 		return err
@@ -363,7 +363,7 @@ func (s networkAddressSetService) SyncCluster(ctx context.Context, name string) 
 				Cluster:     name,
 				ProjectName: retrievedNetworkAddressSet.Project,
 				Name:        retrievedNetworkAddressSet.Name,
-				Object:      retrievedNetworkAddressSet,
+				Object:      IncusNetworkAddressSetWrapper{retrievedNetworkAddressSet},
 				LastUpdated: s.now(),
 			}
 
