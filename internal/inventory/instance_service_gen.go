@@ -172,7 +172,7 @@ func (s instanceService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 
 		instance.Server = retrievedInstance.Location
 		instance.ProjectName = retrievedInstance.Project
-		instance.Object = retrievedInstance
+		instance.Object = IncusInstanceFullWrapper{retrievedInstance}
 		instance.LastUpdated = s.now()
 		instance.DeriveUUID()
 
@@ -246,7 +246,7 @@ func (s instanceService) handleCreateEvent(ctx context.Context, clusterName stri
 		Server:      retrievedInstance.Location,
 		ProjectName: retrievedInstance.Project,
 		Name:        retrievedInstance.Name,
-		Object:      retrievedInstance,
+		Object:      IncusInstanceFullWrapper{retrievedInstance},
 		LastUpdated: s.now(),
 	}
 
@@ -271,9 +271,9 @@ func (s instanceService) handleCreateEvent(ctx context.Context, clusterName stri
 
 func (s instanceService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, InstanceFilter{
-		Cluster: &clusterName,
-		Project: &event.Source.ProjectName,
-		Name:    &event.Source.Name,
+		Cluster:     &clusterName,
+		ProjectName: &event.Source.ProjectName,
+		Name:        &event.Source.Name,
 	})
 	if err != nil {
 		return err
@@ -311,9 +311,9 @@ func (s instanceService) handleRenameEvent(ctx context.Context, clusterName stri
 
 func (s instanceService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, InstanceFilter{
-		Cluster: &clusterName,
-		Project: &event.Source.ProjectName,
-		Name:    &event.Source.Name,
+		Cluster:     &clusterName,
+		ProjectName: &event.Source.ProjectName,
+		Name:        &event.Source.Name,
 	})
 	if err != nil {
 		return err
@@ -362,7 +362,7 @@ func (s instanceService) SyncCluster(ctx context.Context, name string) error {
 				Server:      retrievedInstance.Location,
 				ProjectName: retrievedInstance.Project,
 				Name:        retrievedInstance.Name,
-				Object:      retrievedInstance,
+				Object:      IncusInstanceFullWrapper{retrievedInstance},
 				LastUpdated: s.now(),
 			}
 

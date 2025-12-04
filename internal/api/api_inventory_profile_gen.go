@@ -156,7 +156,7 @@ func (i *profileHandler) profilesGet(r *http.Request) response.Response {
 	}
 
 	if r.URL.Query().Get("project") != "" {
-		filter.Project = ptr.To(r.URL.Query().Get("project"))
+		filter.ProjectName = ptr.To(r.URL.Query().Get("project"))
 	}
 
 	if r.URL.Query().Get("filter") != "" {
@@ -177,7 +177,7 @@ func (i *profileHandler) profilesGet(r *http.Request) response.Response {
 				Cluster:     profile.Cluster,
 				ProjectName: profile.ProjectName,
 				Name:        profile.Name,
-				Object:      profile.Object,
+				Object:      profile.Object.Profile,
 				LastUpdated: profile.LastUpdated,
 			})
 		}
@@ -250,7 +250,7 @@ func (i *profileHandler) profileGet(r *http.Request) response.Response {
 			Cluster:     profile.Cluster,
 			ProjectName: profile.ProjectName,
 			Name:        profile.Name,
-			Object:      profile.Object,
+			Object:      profile.Object.Profile,
 			LastUpdated: profile.LastUpdated,
 		},
 	)

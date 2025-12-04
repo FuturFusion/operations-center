@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -81,7 +80,7 @@ server-two
 		Cluster:     "one",
 		ProjectName: "one",
 		Name:        "one",
-		Object:      incusapi.NetworkACL{},
+		Object:      inventory.IncusNetworkACLWrapper{},
 		LastUpdated: time.Now(),
 	}
 
@@ -91,7 +90,7 @@ server-two
 		Cluster:     "two",
 		ProjectName: "two",
 		Name:        "two",
-		Object:      incusapi.NetworkACL{},
+		Object:      inventory.IncusNetworkACLWrapper{},
 		LastUpdated: time.Now(),
 	}
 
@@ -150,9 +149,9 @@ server-two
 
 	// Ensure we have one entry with filter for cluster, server, project and name.
 	networkACLUUIDs, err = networkACL.GetAllUUIDsWithFilter(ctx, inventory.NetworkACLFilter{
-		Cluster: ptr.To("one"),
-		Project: ptr.To("one"),
-		Name:    ptr.To("one"),
+		Cluster:     ptr.To("one"),
+		ProjectName: ptr.To("one"),
+		Name:        ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkACLUUIDs, 1)
@@ -160,9 +159,9 @@ server-two
 
 	// Ensure we have one entry with filter for cluster, server, project and name.
 	dbNetworkACL, err = networkACL.GetAllWithFilter(ctx, inventory.NetworkACLFilter{
-		Cluster: ptr.To("one"),
-		Project: ptr.To("one"),
-		Name:    ptr.To("one"),
+		Cluster:     ptr.To("one"),
+		ProjectName: ptr.To("one"),
+		Name:        ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetworkACL, 1)

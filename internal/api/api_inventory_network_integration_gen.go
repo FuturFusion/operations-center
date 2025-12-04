@@ -162,7 +162,7 @@ func (i *networkIntegrationHandler) networkIntegrationsGet(r *http.Request) resp
 				UUID:        networkIntegration.UUID,
 				Cluster:     networkIntegration.Cluster,
 				Name:        networkIntegration.Name,
-				Object:      networkIntegration.Object,
+				Object:      networkIntegration.Object.NetworkIntegration,
 				LastUpdated: networkIntegration.LastUpdated,
 			})
 		}
@@ -234,7 +234,7 @@ func (i *networkIntegrationHandler) networkIntegrationGet(r *http.Request) respo
 			UUID:        networkIntegration.UUID,
 			Cluster:     networkIntegration.Cluster,
 			Name:        networkIntegration.Name,
-			Object:      networkIntegration.Object,
+			Object:      networkIntegration.Object.NetworkIntegration,
 			LastUpdated: networkIntegration.LastUpdated,
 		},
 	)

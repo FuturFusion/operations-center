@@ -186,7 +186,7 @@ func (s storageBucketService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 
 		storageBucket.Server = retrievedStorageBucket.Location
 		storageBucket.ProjectName = retrievedStorageBucket.Project
-		storageBucket.Object = retrievedStorageBucket
+		storageBucket.Object = IncusStorageBucketFullWrapper{retrievedStorageBucket}
 		storageBucket.LastUpdated = s.now()
 		storageBucket.DeriveUUID()
 
@@ -261,7 +261,7 @@ func (s storageBucketService) handleCreateEvent(ctx context.Context, clusterName
 		ProjectName:     retrievedStorageBucket.Project,
 		StoragePoolName: event.Source.ParentName,
 		Name:            retrievedStorageBucket.Name,
-		Object:          retrievedStorageBucket,
+		Object:          IncusStorageBucketFullWrapper{retrievedStorageBucket},
 		LastUpdated:     s.now(),
 	}
 
@@ -287,7 +287,7 @@ func (s storageBucketService) handleCreateEvent(ctx context.Context, clusterName
 func (s storageBucketService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, StorageBucketFilter{
 		Cluster:         &clusterName,
-		Project:         &event.Source.ProjectName,
+		ProjectName:     &event.Source.ProjectName,
 		StoragePoolName: &event.Source.ParentName,
 		Name:            &event.Source.Name,
 	})
@@ -328,7 +328,7 @@ func (s storageBucketService) handleRenameEvent(ctx context.Context, clusterName
 func (s storageBucketService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, StorageBucketFilter{
 		Cluster:         &clusterName,
-		Project:         &event.Source.ProjectName,
+		ProjectName:     &event.Source.ProjectName,
 		StoragePoolName: &event.Source.ParentName,
 		Name:            &event.Source.Name,
 	})
@@ -391,7 +391,7 @@ func (s storageBucketService) SyncCluster(ctx context.Context, name string) erro
 					ProjectName:     retrievedStorageBucket.Project,
 					StoragePoolName: storagePool.Name,
 					Name:            retrievedStorageBucket.Name,
-					Object:          retrievedStorageBucket,
+					Object:          IncusStorageBucketFullWrapper{retrievedStorageBucket},
 					LastUpdated:     s.now(),
 				}
 

@@ -170,7 +170,7 @@ func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
 	}
 
 	if r.URL.Query().Get("project") != "" {
-		filter.Project = ptr.To(r.URL.Query().Get("project"))
+		filter.ProjectName = ptr.To(r.URL.Query().Get("project"))
 	}
 
 	if r.URL.Query().Get("filter") != "" {
@@ -192,7 +192,7 @@ func (i *instanceHandler) instancesGet(r *http.Request) response.Response {
 				Server:      instance.Server,
 				ProjectName: instance.ProjectName,
 				Name:        instance.Name,
-				Object:      instance.Object,
+				Object:      instance.Object.InstanceFull,
 				LastUpdated: instance.LastUpdated,
 			})
 		}
@@ -266,7 +266,7 @@ func (i *instanceHandler) instanceGet(r *http.Request) response.Response {
 			Server:      instance.Server,
 			ProjectName: instance.ProjectName,
 			Name:        instance.Name,
-			Object:      instance.Object,
+			Object:      instance.Object.InstanceFull,
 			LastUpdated: instance.LastUpdated,
 		},
 	)
