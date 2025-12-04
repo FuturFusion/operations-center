@@ -42,6 +42,16 @@ const ClusterOverview = () => {
         </div>
       </div>
       <div className="row">
+        <div className="col-2 detail-table-header">Certificate</div>
+        <div className="col-10 detail-table-cell">
+          <pre>{cluster?.certificate}</pre>
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Fingerprint</div>
+        <div className="col-10 detail-table-cell">{cluster?.fingerprint}</div>
+      </div>
+      <div className="row">
         <div className="col-2 detail-table-header">Last updated</div>
         <div className="col-10 detail-table-cell">
           {formatDate(cluster?.last_updated || "")}

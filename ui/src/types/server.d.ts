@@ -11,6 +11,8 @@ export interface Server {
   connection_url: string;
   server_type: string;
   server_status: string;
+  certificate: string;
+  fingerprint: string;
   last_updated: string;
   last_seen: string;
   hardware_data: string;
