@@ -22,10 +22,6 @@ func generateCmd() *cobra.Command {
 		Use:   "generate",
 		Short: "Generate code for all `//generate-expr: <struct>` declarations.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if os.Getenv("GOPACKAGE") == "" {
-				return errors.New("GOPACKAGE environment variable is not set")
-			}
-
 			return generate(*pkgs)
 		},
 	}
