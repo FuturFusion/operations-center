@@ -212,7 +212,7 @@ func (c *cmd{{ .Name | pascalcase }}List) Run(cmd *cobra.Command, args []string)
 {{- if .HasProject }}
 
 	if c.flagFilterProject != "" {
-		filter.Project = ptr.To(c.flagFilterProject)
+		filter.ProjectName = ptr.To(c.flagFilterProject)
 	}
 {{- end }}
 
