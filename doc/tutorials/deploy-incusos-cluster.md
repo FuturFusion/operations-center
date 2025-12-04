@@ -411,6 +411,12 @@ Check the existence of the newly created cluster with:
 operations-center provisioning cluster list
 ```
 
+Note down the fingerprint of the cluster by showing it with:
+
+```shell
+operations-center provisioning cluster show tutorial-incusos-cluster
+```
+
 ````
 ````{group-tab} Web UI
 
