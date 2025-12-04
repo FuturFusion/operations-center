@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	incustls "github.com/lxc/incus/v6/shared/tls"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
@@ -28,7 +30,24 @@ func (c cluster) Create(ctx context.Context, in provisioning.Cluster) (int64, er
 }
 
 func (c cluster) GetAll(ctx context.Context) (provisioning.Clusters, error) {
-	return entities.GetClusters(ctx, transaction.GetDBTX(ctx, c.db))
+	clusters, err := entities.GetClusters(ctx, transaction.GetDBTX(ctx, c.db))
+	if err != nil {
+		return nil, err
+	}
+
+	var errs []error
+	for i := range clusters {
+		if clusters[i].Certificate == "" {
+			continue
+		}
+
+		clusters[i].Fingerprint, err = incustls.CertFingerprintStr(clusters[i].Certificate)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return clusters, errors.Join(errs...)
 }
 
 func (c cluster) GetAllNames(ctx context.Context) ([]string, error) {
@@ -36,7 +55,21 @@ func (c cluster) GetAllNames(ctx context.Context) ([]string, error) {
 }
 
 func (c cluster) GetByName(ctx context.Context, name string) (*provisioning.Cluster, error) {
-	return entities.GetCluster(ctx, transaction.GetDBTX(ctx, c.db), name)
+	cluster, err := entities.GetCluster(ctx, transaction.GetDBTX(ctx, c.db), name)
+	if err != nil {
+		return nil, err
+	}
+
+	if cluster.Certificate == "" {
+		return cluster, nil
+	}
+
+	cluster.Fingerprint, err = incustls.CertFingerprintStr(cluster.Certificate)
+	if err != nil {
+		return nil, err
+	}
+
+	return cluster, nil
 }
 
 func (c cluster) ExistsByName(ctx context.Context, name string) (bool, error) {
