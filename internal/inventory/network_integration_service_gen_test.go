@@ -246,7 +246,7 @@ func TestNetworkIntegrationService_GetByUUID(t *testing.T) {
 				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "one",
-				Object:      incusapi.NetworkIntegration{},
+				Object:      inventory.IncusNetworkIntegrationWrapper{},
 				LastUpdated: time.Now(),
 			},
 

@@ -187,7 +187,7 @@ func (s storageVolumeService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 		storageVolume.Server = retrievedStorageVolume.Location
 		storageVolume.ProjectName = retrievedStorageVolume.Project
 		storageVolume.Type = retrievedStorageVolume.Type
-		storageVolume.Object = retrievedStorageVolume
+		storageVolume.Object = IncusStorageVolumeFullWrapper{retrievedStorageVolume}
 		storageVolume.LastUpdated = s.now()
 		storageVolume.DeriveUUID()
 
@@ -263,7 +263,7 @@ func (s storageVolumeService) handleCreateEvent(ctx context.Context, clusterName
 		StoragePoolName: event.Source.ParentName,
 		Name:            retrievedStorageVolume.Name,
 		Type:            retrievedStorageVolume.Type,
-		Object:          retrievedStorageVolume,
+		Object:          IncusStorageVolumeFullWrapper{retrievedStorageVolume},
 		LastUpdated:     s.now(),
 	}
 
@@ -289,7 +289,7 @@ func (s storageVolumeService) handleCreateEvent(ctx context.Context, clusterName
 func (s storageVolumeService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, StorageVolumeFilter{
 		Cluster:         &clusterName,
-		Project:         &event.Source.ProjectName,
+		ProjectName:     &event.Source.ProjectName,
 		StoragePoolName: &event.Source.ParentName,
 		Name:            &event.Source.Name,
 	})
@@ -330,7 +330,7 @@ func (s storageVolumeService) handleRenameEvent(ctx context.Context, clusterName
 func (s storageVolumeService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, StorageVolumeFilter{
 		Cluster:         &clusterName,
-		Project:         &event.Source.ProjectName,
+		ProjectName:     &event.Source.ProjectName,
 		StoragePoolName: &event.Source.ParentName,
 		Name:            &event.Source.Name,
 	})
@@ -394,7 +394,7 @@ func (s storageVolumeService) SyncCluster(ctx context.Context, name string) erro
 					StoragePoolName: storagePool.Name,
 					Name:            retrievedStorageVolume.Name,
 					Type:            retrievedStorageVolume.Type,
-					Object:          retrievedStorageVolume,
+					Object:          IncusStorageVolumeFullWrapper{retrievedStorageVolume},
 					LastUpdated:     s.now(),
 				}
 

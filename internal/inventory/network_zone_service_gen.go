@@ -171,7 +171,7 @@ func (s networkZoneService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 		}
 
 		networkZone.ProjectName = retrievedNetworkZone.Project
-		networkZone.Object = retrievedNetworkZone
+		networkZone.Object = IncusNetworkZoneWrapper{retrievedNetworkZone}
 		networkZone.LastUpdated = s.now()
 		networkZone.DeriveUUID()
 
@@ -244,7 +244,7 @@ func (s networkZoneService) handleCreateEvent(ctx context.Context, clusterName s
 		Cluster:     clusterName,
 		ProjectName: retrievedNetworkZone.Project,
 		Name:        retrievedNetworkZone.Name,
-		Object:      retrievedNetworkZone,
+		Object:      IncusNetworkZoneWrapper{retrievedNetworkZone},
 		LastUpdated: s.now(),
 	}
 
@@ -269,9 +269,9 @@ func (s networkZoneService) handleCreateEvent(ctx context.Context, clusterName s
 
 func (s networkZoneService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkZoneFilter{
-		Cluster: &clusterName,
-		Project: &event.Source.ProjectName,
-		Name:    &event.Source.Name,
+		Cluster:     &clusterName,
+		ProjectName: &event.Source.ProjectName,
+		Name:        &event.Source.Name,
 	})
 	if err != nil {
 		return err
@@ -309,9 +309,9 @@ func (s networkZoneService) handleRenameEvent(ctx context.Context, clusterName s
 
 func (s networkZoneService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkZoneFilter{
-		Cluster: &clusterName,
-		Project: &event.Source.ProjectName,
-		Name:    &event.Source.Name,
+		Cluster:     &clusterName,
+		ProjectName: &event.Source.ProjectName,
+		Name:        &event.Source.Name,
 	})
 	if err != nil {
 		return err
@@ -359,7 +359,7 @@ func (s networkZoneService) SyncCluster(ctx context.Context, name string) error 
 				Cluster:     name,
 				ProjectName: retrievedNetworkZone.Project,
 				Name:        retrievedNetworkZone.Name,
-				Object:      retrievedNetworkZone,
+				Object:      IncusNetworkZoneWrapper{retrievedNetworkZone},
 				LastUpdated: s.now(),
 			}
 

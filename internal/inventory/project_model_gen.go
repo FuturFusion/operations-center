@@ -3,6 +3,9 @@
 package inventory
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -13,16 +16,39 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+type IncusProjectWrapper struct {
+	incusapi.Project `json:"-"`
+}
+
+func (w IncusProjectWrapper) Value() (driver.Value, error) {
+	return json.Marshal(w.Project)
+}
+
+func (w *IncusProjectWrapper) Scan(value interface{}) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid project")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return json.Unmarshal([]byte(v), &w.Project)
+	case []byte:
+		return json.Unmarshal(v, &w.Project)
+	default:
+		return fmt.Errorf("type %T is not supported for project", value)
+	}
+}
+
 //
 //generate-expr: Project
 
 type Project struct {
-	ID          int              `json:"-"`
-	UUID        uuid.UUID        `json:"uuid"`
-	Cluster     string           `json:"cluster"`
-	Name        string           `json:"name"`
-	Object      incusapi.Project `json:"object"`
-	LastUpdated time.Time        `json:"last_updated"`
+	ID          int                 `json:"-"`
+	UUID        uuid.UUID           `json:"uuid"          db:"primary=yes"`
+	Cluster     string              `json:"cluster"       db:"leftjoin=clusters.name"`
+	Name        string              `json:"name"`
+	Object      IncusProjectWrapper `json:"object"`
+	LastUpdated time.Time           `json:"last_updated"  db:"update_timestamp"`
 }
 
 func (m *Project) DeriveUUID() *Project {
@@ -57,12 +83,17 @@ func (m Project) Validate() error {
 type Projects []Project
 
 type ProjectFilter struct {
+	UUID       *uuid.UUID
 	Cluster    *string
 	Name       *string
-	Expression *string
+	Expression *string `db:"ignore"`
 }
 
 func (f ProjectFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.UUID != nil {
+		query.Add("uuid", f.UUID.String())
+	}
+
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
 	}

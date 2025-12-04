@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -81,7 +80,7 @@ server-two
 		Cluster:     "one",
 		NetworkName: "parent one",
 		Name:        "one",
-		Object:      incusapi.NetworkPeer{},
+		Object:      inventory.IncusNetworkPeerWrapper{},
 		LastUpdated: time.Now(),
 	}
 
@@ -91,7 +90,7 @@ server-two
 		Cluster:     "two",
 		NetworkName: "parent one",
 		Name:        "two",
-		Object:      incusapi.NetworkPeer{},
+		Object:      inventory.IncusNetworkPeerWrapper{},
 		LastUpdated: time.Now(),
 	}
 

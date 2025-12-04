@@ -170,7 +170,7 @@ func (s networkIntegrationService) ResyncByUUID(ctx context.Context, id uuid.UUI
 			return err
 		}
 
-		networkIntegration.Object = retrievedNetworkIntegration
+		networkIntegration.Object = IncusNetworkIntegrationWrapper{retrievedNetworkIntegration}
 		networkIntegration.LastUpdated = s.now()
 		networkIntegration.DeriveUUID()
 
@@ -242,7 +242,7 @@ func (s networkIntegrationService) handleCreateEvent(ctx context.Context, cluste
 	networkIntegration := NetworkIntegration{
 		Cluster:     clusterName,
 		Name:        retrievedNetworkIntegration.Name,
-		Object:      retrievedNetworkIntegration,
+		Object:      IncusNetworkIntegrationWrapper{retrievedNetworkIntegration},
 		LastUpdated: s.now(),
 	}
 
@@ -354,7 +354,7 @@ func (s networkIntegrationService) SyncCluster(ctx context.Context, name string)
 			networkIntegration := NetworkIntegration{
 				Cluster:     name,
 				Name:        retrievedNetworkIntegration.Name,
-				Object:      retrievedNetworkIntegration,
+				Object:      IncusNetworkIntegrationWrapper{retrievedNetworkIntegration},
 				LastUpdated: s.now(),
 			}
 

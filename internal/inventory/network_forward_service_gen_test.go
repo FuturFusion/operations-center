@@ -247,7 +247,7 @@ func TestNetworkForwardService_GetByUUID(t *testing.T) {
 				Cluster:     "one",
 				NetworkName: "parent one",
 				Name:        "one",
-				Object:      incusapi.NetworkForward{},
+				Object:      inventory.IncusNetworkForwardWrapper{},
 				LastUpdated: time.Now(),
 			},
 

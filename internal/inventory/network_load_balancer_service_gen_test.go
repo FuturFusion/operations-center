@@ -247,7 +247,7 @@ func TestNetworkLoadBalancerService_GetByUUID(t *testing.T) {
 				Cluster:     "one",
 				NetworkName: "parent one",
 				Name:        "one",
-				Object:      incusapi.NetworkLoadBalancer{},
+				Object:      inventory.IncusNetworkLoadBalancerWrapper{},
 				LastUpdated: time.Now(),
 			},
 

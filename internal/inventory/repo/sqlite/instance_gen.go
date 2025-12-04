@@ -88,9 +88,9 @@ ORDER BY clusters.name, servers.name, instances.name
 		args = append(args, sql.Named("server_name", filter.Server))
 	}
 
-	if filter.Project != nil {
+	if filter.ProjectName != nil {
 		whereClause = append(whereClause, ` AND instances.project_name = :project`)
-		args = append(args, sql.Named("project", filter.Project))
+		args = append(args, sql.Named("project", filter.ProjectName))
 	}
 
 	if filter.Name != nil {
@@ -148,9 +148,9 @@ ORDER BY instances.id
 		args = append(args, sql.Named("server_name", filter.Server))
 	}
 
-	if filter.Project != nil {
+	if filter.ProjectName != nil {
 		whereClause = append(whereClause, ` AND instances.project_name = :project`)
-		args = append(args, sql.Named("project", filter.Project))
+		args = append(args, sql.Named("project", filter.ProjectName))
 	}
 
 	if filter.Name != nil {

@@ -163,7 +163,7 @@ func (i *networkLoadBalancerHandler) networkLoadBalancersGet(r *http.Request) re
 				Cluster:     networkLoadBalancer.Cluster,
 				NetworkName: networkLoadBalancer.NetworkName,
 				Name:        networkLoadBalancer.Name,
-				Object:      networkLoadBalancer.Object,
+				Object:      networkLoadBalancer.Object.NetworkLoadBalancer,
 				LastUpdated: networkLoadBalancer.LastUpdated,
 			})
 		}
@@ -236,7 +236,7 @@ func (i *networkLoadBalancerHandler) networkLoadBalancerGet(r *http.Request) res
 			Cluster:     networkLoadBalancer.Cluster,
 			NetworkName: networkLoadBalancer.NetworkName,
 			Name:        networkLoadBalancer.Name,
-			Object:      networkLoadBalancer.Object,
+			Object:      networkLoadBalancer.Object.NetworkLoadBalancer,
 			LastUpdated: networkLoadBalancer.LastUpdated,
 		},
 	)
