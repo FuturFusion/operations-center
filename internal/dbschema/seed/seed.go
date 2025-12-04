@@ -99,17 +99,19 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 			project := inventory.Project{
 				Cluster: clusterName,
 				Name:    projectName,
-				Object: incusapi.Project{
-					Name: projectName,
-					ProjectPut: incusapi.ProjectPut{
-						Description: projectName + " " + gofakeit.Sentence(5),
-						Config: map[string]string{
-							"features.images":          strconv.FormatBool(gofakeit.Bool()),
-							"features.networks":        strconv.FormatBool(gofakeit.Bool()),
-							"features.networks.zones":  strconv.FormatBool(gofakeit.Bool()),
-							"features.profiles":        strconv.FormatBool(gofakeit.Bool()),
-							"features.storage.buckets": strconv.FormatBool(gofakeit.Bool()),
-							"features.storage.volumes": strconv.FormatBool(gofakeit.Bool()),
+				Object: inventory.IncusProjectWrapper{
+					Project: incusapi.Project{
+						Name: projectName,
+						ProjectPut: incusapi.ProjectPut{
+							Description: projectName + " " + gofakeit.Sentence(5),
+							Config: map[string]string{
+								"features.images":          strconv.FormatBool(gofakeit.Bool()),
+								"features.networks":        strconv.FormatBool(gofakeit.Bool()),
+								"features.networks.zones":  strconv.FormatBool(gofakeit.Bool()),
+								"features.profiles":        strconv.FormatBool(gofakeit.Bool()),
+								"features.storage.buckets": strconv.FormatBool(gofakeit.Bool()),
+								"features.storage.volumes": strconv.FormatBool(gofakeit.Bool()),
+							},
 						},
 					},
 				},
@@ -133,17 +135,19 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Cluster:     clusterName,
 				Name:        networkName,
 				ProjectName: projectName,
-				Object: incusapi.Network{
-					Name: networkName,
-					NetworkPut: incusapi.NetworkPut{
-						Description: networkName + " " + gofakeit.Sentence(5),
-						Config:      map[string]string{},
+				Object: inventory.IncusNetworkWrapper{
+					Network: incusapi.Network{
+						Name: networkName,
+						NetworkPut: incusapi.NetworkPut{
+							Description: networkName + " " + gofakeit.Sentence(5),
+							Config:      map[string]string{},
+						},
+						Type:      randomNetworkType(),
+						Managed:   gofakeit.Bool(),
+						Status:    randomStatus(),
+						Locations: randomSelection(servers),
+						Project:   projectName,
 					},
-					Type:      randomNetworkType(),
-					Managed:   gofakeit.Bool(),
-					Status:    randomStatus(),
-					Locations: randomSelection(servers),
-					Project:   projectName,
 				},
 				LastUpdated: faker.Date(),
 			}
@@ -163,15 +167,17 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 			storagePool := inventory.StoragePool{
 				Cluster: clusterName,
 				Name:    storagePoolName,
-				Object: incusapi.StoragePool{
-					Name: storagePoolName,
-					StoragePoolPut: incusapi.StoragePoolPut{
-						Description: storagePoolName + " " + gofakeit.Sentence(5),
-						Config:      map[string]string{},
+				Object: inventory.IncusStoragePoolWrapper{
+					StoragePool: incusapi.StoragePool{
+						Name: storagePoolName,
+						StoragePoolPut: incusapi.StoragePoolPut{
+							Description: storagePoolName + " " + gofakeit.Sentence(5),
+							Config:      map[string]string{},
+						},
+						Driver:    randomStoragePoolDriver(),
+						Status:    randomStatus(),
+						Locations: randomSelection(servers),
 					},
-					Driver:    randomStoragePoolDriver(),
-					Status:    randomStatus(),
-					Locations: randomSelection(servers),
 				},
 				LastUpdated: faker.Date(),
 			}
@@ -191,36 +197,38 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Cluster:     clusterName,
 				Name:        imageName,
 				ProjectName: projectName,
-				Object: incusapi.Image{
-					UpdateSource: &incusapi.ImageSource{
-						Alias:     gofakeit.Word(),
-						Protocol:  "simplestreams",
-						Server:    gofakeit.URL(),
-						ImageType: randomType(),
-					},
-					Aliases: []incusapi.ImageAlias{
-						{
-							Name:        gofakeit.Word(),
-							Description: gofakeit.LoremIpsumSentence(5),
+				Object: inventory.IncusImageWrapper{
+					Image: incusapi.Image{
+						UpdateSource: &incusapi.ImageSource{
+							Alias:     gofakeit.Word(),
+							Protocol:  "simplestreams",
+							Server:    gofakeit.URL(),
+							ImageType: randomType(),
 						},
+						Aliases: []incusapi.ImageAlias{
+							{
+								Name:        gofakeit.Word(),
+								Description: gofakeit.LoremIpsumSentence(5),
+							},
+						},
+						Architecture: randomArchitecture(),
+						Cached:       gofakeit.Bool(),
+						Filename:     "/" + strings.ReplaceAll(strings.ToLower(gofakeit.Sentence(4)), " ", "/") + gofakeit.FileExtension(),
+						Fingerprint:  gofakeit.HexUint(256),
+						Size:         int64(gofakeit.Uint16()),
+						CreatedAt:    gofakeit.Date(),
+						LastUsedAt:   gofakeit.Date(),
+						UploadedAt:   gofakeit.Date(),
+						ImagePut: incusapi.ImagePut{
+							AutoUpdate: gofakeit.Bool(),
+							Properties: map[string]string{},
+							Public:     gofakeit.Bool(),
+							ExpiresAt:  gofakeit.Date(),
+							Profiles:   []string{},
+						},
+						Project: projectName,
+						Type:    randomType(),
 					},
-					Architecture: randomArchitecture(),
-					Cached:       gofakeit.Bool(),
-					Filename:     "/" + strings.ReplaceAll(strings.ToLower(gofakeit.Sentence(4)), " ", "/") + gofakeit.FileExtension(),
-					Fingerprint:  gofakeit.HexUint(256),
-					Size:         int64(gofakeit.Uint16()),
-					CreatedAt:    gofakeit.Date(),
-					LastUsedAt:   gofakeit.Date(),
-					UploadedAt:   gofakeit.Date(),
-					ImagePut: incusapi.ImagePut{
-						AutoUpdate: gofakeit.Bool(),
-						Properties: map[string]string{},
-						Public:     gofakeit.Bool(),
-						ExpiresAt:  gofakeit.Date(),
-						Profiles:   []string{},
-					},
-					Project: projectName,
-					Type:    randomType(),
 				},
 				LastUpdated: faker.Date(),
 			}
@@ -239,12 +247,14 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Cluster:     clusterName,
 				Name:        profileName,
 				ProjectName: faker.RandomString(projects),
-				Object: incusapi.Profile{
-					Name: profileName,
-					ProfilePut: incusapi.ProfilePut{
-						Description: profileName + " " + gofakeit.Sentence(5),
-						Config:      map[string]string{},
-						Devices:     map[string]map[string]string{},
+				Object: inventory.IncusProfileWrapper{
+					Profile: incusapi.Profile{
+						Name: profileName,
+						ProfilePut: incusapi.ProfilePut{
+							Description: profileName + " " + gofakeit.Sentence(5),
+							Config:      map[string]string{},
+							Devices:     map[string]map[string]string{},
+						},
 					},
 				},
 				LastUpdated: faker.Date(),
@@ -268,64 +278,66 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Server:      serverName,
 				Name:        instanceName,
 				ProjectName: projectName,
-				Object: incusapi.InstanceFull{
-					Instance: incusapi.Instance{
-						InstancePut: incusapi.InstancePut{
-							Architecture: randomArchitecture(),
-							Config:       map[string]string{},
-							Description:  instanceName + " " + gofakeit.Sentence(5),
-							Ephemeral:    gofakeit.Bool(),
-							Devices:      map[string]map[string]string{},
-							Profiles:     []string{},
-							Restore:      gofakeit.RandomString([]string{"snap0", "", "", "", "", "", "", ""}),
-							Stateful:     gofakeit.Bool(),
-						},
-						CreatedAt:       gofakeit.Date(),
-						Name:            instanceName,
-						LastUsedAt:      gofakeit.Date(),
-						Type:            randomType(),
-						ExpandedConfig:  map[string]string{},
-						ExpandedDevices: map[string]map[string]string{},
-						Status:          instanceState,
-						StatusCode:      instanceStateCode(instanceState),
-						Location:        serverName,
-						Project:         projectName,
-					},
-					Backups: []incusapi.InstanceBackup{
-						{
-							Name:             fmt.Sprintf("backup%d", gofakeit.IntN(10)),
-							CreatedAt:        gofakeit.Date(),
-							ExpiresAt:        gofakeit.Date(),
-							InstanceOnly:     gofakeit.Bool(),
-							OptimizedStorage: gofakeit.Bool(),
-						},
-					},
-					State: &incusapi.InstanceState{
-						Status:     instanceState,
-						StatusCode: instanceStateCode(instanceState),
-						Pid:        gofakeit.Int64(),
-						Disk:       map[string]incusapi.InstanceStateDisk{},
-						Memory:     incusapi.InstanceStateMemory{},
-						Network:    map[string]incusapi.InstanceStateNetwork{},
-						Processes:  int64(gofakeit.IntN(100)),
-					},
-					Snapshots: []incusapi.InstanceSnapshot{
-						{
-							InstanceSnapshotPut: incusapi.InstanceSnapshotPut{
-								ExpiresAt: gofakeit.Date(),
+				Object: inventory.IncusInstanceFullWrapper{
+					InstanceFull: incusapi.InstanceFull{
+						Instance: incusapi.Instance{
+							InstancePut: incusapi.InstancePut{
+								Architecture: randomArchitecture(),
+								Config:       map[string]string{},
+								Description:  instanceName + " " + gofakeit.Sentence(5),
+								Ephemeral:    gofakeit.Bool(),
+								Devices:      map[string]map[string]string{},
+								Profiles:     []string{},
+								Restore:      gofakeit.RandomString([]string{"snap0", "", "", "", "", "", "", ""}),
+								Stateful:     gofakeit.Bool(),
 							},
-							Architecture:    randomArchitecture(),
-							Config:          map[string]string{},
 							CreatedAt:       gofakeit.Date(),
-							Devices:         map[string]map[string]string{},
-							Ephemeral:       gofakeit.Bool(),
+							Name:            instanceName,
+							LastUsedAt:      gofakeit.Date(),
+							Type:            randomType(),
 							ExpandedConfig:  map[string]string{},
 							ExpandedDevices: map[string]map[string]string{},
-							LastUsedAt:      gofakeit.Date(),
-							Name:            fmt.Sprintf("snapshot%d", gofakeit.IntN(20)),
-							Profiles:        []string{},
-							Stateful:        gofakeit.Bool(),
-							Size:            int64(gofakeit.Uint32()),
+							Status:          instanceState,
+							StatusCode:      instanceStateCode(instanceState),
+							Location:        serverName,
+							Project:         projectName,
+						},
+						Backups: []incusapi.InstanceBackup{
+							{
+								Name:             fmt.Sprintf("backup%d", gofakeit.IntN(10)),
+								CreatedAt:        gofakeit.Date(),
+								ExpiresAt:        gofakeit.Date(),
+								InstanceOnly:     gofakeit.Bool(),
+								OptimizedStorage: gofakeit.Bool(),
+							},
+						},
+						State: &incusapi.InstanceState{
+							Status:     instanceState,
+							StatusCode: instanceStateCode(instanceState),
+							Pid:        gofakeit.Int64(),
+							Disk:       map[string]incusapi.InstanceStateDisk{},
+							Memory:     incusapi.InstanceStateMemory{},
+							Network:    map[string]incusapi.InstanceStateNetwork{},
+							Processes:  int64(gofakeit.IntN(100)),
+						},
+						Snapshots: []incusapi.InstanceSnapshot{
+							{
+								InstanceSnapshotPut: incusapi.InstanceSnapshotPut{
+									ExpiresAt: gofakeit.Date(),
+								},
+								Architecture:    randomArchitecture(),
+								Config:          map[string]string{},
+								CreatedAt:       gofakeit.Date(),
+								Devices:         map[string]map[string]string{},
+								Ephemeral:       gofakeit.Bool(),
+								ExpandedConfig:  map[string]string{},
+								ExpandedDevices: map[string]map[string]string{},
+								LastUsedAt:      gofakeit.Date(),
+								Name:            fmt.Sprintf("snapshot%d", gofakeit.IntN(20)),
+								Profiles:        []string{},
+								Stateful:        gofakeit.Bool(),
+								Size:            int64(gofakeit.Uint32()),
+							},
 						},
 					},
 				},
@@ -347,43 +359,45 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Cluster:     clusterName,
 				Name:        networkACLName,
 				ProjectName: projectName,
-				Object: incusapi.NetworkACL{
-					NetworkACLPost: incusapi.NetworkACLPost{
-						Name: networkACLName,
-					},
-					NetworkACLPut: incusapi.NetworkACLPut{
-						Description: networkACLName + " " + gofakeit.Sentence(5),
-						Egress: []incusapi.NetworkACLRule{
-							{
-								Action:          "deny",
-								Source:          gofakeit.IPv4Address(),
-								Destination:     gofakeit.IPv4Address(),
-								Protocol:        "ip",
-								SourcePort:      strconv.FormatInt(int64(gofakeit.Uint16()), 10),
-								DestinationPort: strconv.FormatInt(int64(gofakeit.Uint16()), 10),
-								ICMPType:        "8",
-								ICMPCode:        "0",
-								Description:     networkACLName + " acl " + gofakeit.Sentence(5),
-								State:           gofakeit.RandomString([]string{"enabled", "disabled"}),
-							},
+				Object: inventory.IncusNetworkACLWrapper{
+					NetworkACL: incusapi.NetworkACL{
+						NetworkACLPost: incusapi.NetworkACLPost{
+							Name: networkACLName,
 						},
-						Ingress: []incusapi.NetworkACLRule{
-							{
-								Action:          "deny",
-								Source:          gofakeit.IPv4Address(),
-								Destination:     gofakeit.IPv4Address(),
-								Protocol:        gofakeit.RandomString([]string{"tcp", "udp"}),
-								SourcePort:      strconv.FormatInt(int64(gofakeit.Uint16()), 10),
-								DestinationPort: strconv.FormatInt(int64(gofakeit.Uint16()), 10),
-								ICMPType:        "8",
-								ICMPCode:        "0",
-								Description:     networkACLName + " acl " + gofakeit.Sentence(5),
-								State:           gofakeit.RandomString([]string{"enabled", "disabled"}),
+						NetworkACLPut: incusapi.NetworkACLPut{
+							Description: networkACLName + " " + gofakeit.Sentence(5),
+							Egress: []incusapi.NetworkACLRule{
+								{
+									Action:          "deny",
+									Source:          gofakeit.IPv4Address(),
+									Destination:     gofakeit.IPv4Address(),
+									Protocol:        "ip",
+									SourcePort:      strconv.FormatInt(int64(gofakeit.Uint16()), 10),
+									DestinationPort: strconv.FormatInt(int64(gofakeit.Uint16()), 10),
+									ICMPType:        "8",
+									ICMPCode:        "0",
+									Description:     networkACLName + " acl " + gofakeit.Sentence(5),
+									State:           gofakeit.RandomString([]string{"enabled", "disabled"}),
+								},
 							},
+							Ingress: []incusapi.NetworkACLRule{
+								{
+									Action:          "deny",
+									Source:          gofakeit.IPv4Address(),
+									Destination:     gofakeit.IPv4Address(),
+									Protocol:        gofakeit.RandomString([]string{"tcp", "udp"}),
+									SourcePort:      strconv.FormatInt(int64(gofakeit.Uint16()), 10),
+									DestinationPort: strconv.FormatInt(int64(gofakeit.Uint16()), 10),
+									ICMPType:        "8",
+									ICMPCode:        "0",
+									Description:     networkACLName + " acl " + gofakeit.Sentence(5),
+									State:           gofakeit.RandomString([]string{"enabled", "disabled"}),
+								},
+							},
+							Config: map[string]string{},
 						},
-						Config: map[string]string{},
+						Project: projectName,
 					},
-					Project: projectName,
 				},
 				LastUpdated: faker.Date(),
 			}
@@ -403,16 +417,18 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Cluster:     clusterName,
 				Name:        networkAddressSetName,
 				ProjectName: projectName,
-				Object: incusapi.NetworkAddressSet{
-					NetworkAddressSetPost: incusapi.NetworkAddressSetPost{
-						Name: networkAddressSetName,
+				Object: inventory.IncusNetworkAddressSetWrapper{
+					NetworkAddressSet: incusapi.NetworkAddressSet{
+						NetworkAddressSetPost: incusapi.NetworkAddressSetPost{
+							Name: networkAddressSetName,
+						},
+						NetworkAddressSetPut: incusapi.NetworkAddressSetPut{
+							Description: networkAddressSetName + " " + gofakeit.Sentence(5),
+							Addresses:   ipAddresses(randBetween(0, 10)),
+							Config:      map[string]string{},
+						},
+						Project: projectName,
 					},
-					NetworkAddressSetPut: incusapi.NetworkAddressSetPut{
-						Description: networkAddressSetName + " " + gofakeit.Sentence(5),
-						Addresses:   ipAddresses(randBetween(0, 10)),
-						Config:      map[string]string{},
-					},
-					Project: projectName,
 				},
 				LastUpdated: faker.Date(),
 			}
@@ -431,22 +447,24 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Cluster:     clusterName,
 				Name:        networkForwardName,
 				NetworkName: faker.RandomString(networks),
-				Object: incusapi.NetworkForward{
-					NetworkForwardPut: incusapi.NetworkForwardPut{
-						Description: networkForwardName + " " + gofakeit.Sentence(5),
-						Config:      map[string]string{},
-						Ports: []incusapi.NetworkForwardPort{
-							{
-								Description:   networkForwardName + " forward " + gofakeit.Sentence(5),
-								Protocol:      gofakeit.RandomString([]string{"tcp", "udp"}),
-								ListenPort:    strconv.FormatInt(int64(gofakeit.Uint16()), 10),
-								TargetPort:    strconv.FormatInt(int64(gofakeit.Uint16()), 10),
-								TargetAddress: gofakeit.IPv4Address(),
+				Object: inventory.IncusNetworkForwardWrapper{
+					NetworkForward: incusapi.NetworkForward{
+						NetworkForwardPut: incusapi.NetworkForwardPut{
+							Description: networkForwardName + " " + gofakeit.Sentence(5),
+							Config:      map[string]string{},
+							Ports: []incusapi.NetworkForwardPort{
+								{
+									Description:   networkForwardName + " forward " + gofakeit.Sentence(5),
+									Protocol:      gofakeit.RandomString([]string{"tcp", "udp"}),
+									ListenPort:    strconv.FormatInt(int64(gofakeit.Uint16()), 10),
+									TargetPort:    strconv.FormatInt(int64(gofakeit.Uint16()), 10),
+									TargetAddress: gofakeit.IPv4Address(),
+								},
 							},
 						},
+						ListenAddress: gofakeit.IPv4Address(),
+						Location:      gofakeit.RandomString(servers),
 					},
-					ListenAddress: gofakeit.IPv4Address(),
-					Location:      gofakeit.RandomString(servers),
 				},
 				LastUpdated: faker.Date(),
 			}
@@ -464,13 +482,15 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 			networkIntegration := inventory.NetworkIntegration{
 				Cluster: clusterName,
 				Name:    networkIntegrationName,
-				Object: incusapi.NetworkIntegration{
-					NetworkIntegrationPut: incusapi.NetworkIntegrationPut{
-						Description: networkIntegrationName + " " + gofakeit.Sentence(5),
-						Config:      map[string]string{},
+				Object: inventory.IncusNetworkIntegrationWrapper{
+					NetworkIntegration: incusapi.NetworkIntegration{
+						NetworkIntegrationPut: incusapi.NetworkIntegrationPut{
+							Description: networkIntegrationName + " " + gofakeit.Sentence(5),
+							Config:      map[string]string{},
+						},
+						Name: networkIntegrationName,
+						Type: randomNetworkType(),
 					},
-					Name: networkIntegrationName,
-					Type: randomNetworkType(),
 				},
 				LastUpdated: faker.Date(),
 			}
@@ -489,24 +509,26 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Cluster:     clusterName,
 				Name:        networkLoadBalancerName,
 				NetworkName: faker.RandomString(networks),
-				Object: incusapi.NetworkLoadBalancer{
-					NetworkLoadBalancerPut: incusapi.NetworkLoadBalancerPut{
-						Description: networkLoadBalancerName + " " + gofakeit.Sentence(5),
-						Config:      map[string]string{},
-						Backends: []incusapi.NetworkLoadBalancerBackend{
-							{
-								Name:          gofakeit.Word(),
-								Description:   networkLoadBalancerName + " backend " + gofakeit.Sentence(5),
-								TargetPort:    strconv.FormatInt(int64(gofakeit.Uint16()), 10),
-								TargetAddress: gofakeit.IPv4Address(),
+				Object: inventory.IncusNetworkLoadBalancerWrapper{
+					NetworkLoadBalancer: incusapi.NetworkLoadBalancer{
+						NetworkLoadBalancerPut: incusapi.NetworkLoadBalancerPut{
+							Description: networkLoadBalancerName + " " + gofakeit.Sentence(5),
+							Config:      map[string]string{},
+							Backends: []incusapi.NetworkLoadBalancerBackend{
+								{
+									Name:          gofakeit.Word(),
+									Description:   networkLoadBalancerName + " backend " + gofakeit.Sentence(5),
+									TargetPort:    strconv.FormatInt(int64(gofakeit.Uint16()), 10),
+									TargetAddress: gofakeit.IPv4Address(),
+								},
 							},
-						},
-						Ports: []incusapi.NetworkLoadBalancerPort{
-							{
-								Description:   networkLoadBalancerName + " port " + gofakeit.Sentence(5),
-								Protocol:      gofakeit.RandomString([]string{"tcp", "udp"}),
-								ListenPort:    strconv.FormatInt(int64(gofakeit.Uint16()), 10),
-								TargetBackend: []string{gofakeit.IPv4Address()},
+							Ports: []incusapi.NetworkLoadBalancerPort{
+								{
+									Description:   networkLoadBalancerName + " port " + gofakeit.Sentence(5),
+									Protocol:      gofakeit.RandomString([]string{"tcp", "udp"}),
+									ListenPort:    strconv.FormatInt(int64(gofakeit.Uint16()), 10),
+									TargetBackend: []string{gofakeit.IPv4Address()},
+								},
 							},
 						},
 					},
@@ -528,17 +550,19 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Cluster:     clusterName,
 				Name:        networkPeerName,
 				NetworkName: faker.RandomString(networks),
-				Object: incusapi.NetworkPeer{
-					NetworkPeerPut: incusapi.NetworkPeerPut{
-						Description: networkPeerName + " " + gofakeit.Sentence(5),
-						Config:      map[string]string{},
+				Object: inventory.IncusNetworkPeerWrapper{
+					NetworkPeer: incusapi.NetworkPeer{
+						NetworkPeerPut: incusapi.NetworkPeerPut{
+							Description: networkPeerName + " " + gofakeit.Sentence(5),
+							Config:      map[string]string{},
+						},
+						Name:              networkPeerName,
+						TargetProject:     gofakeit.RandomString(projects),
+						TargetNetwork:     gofakeit.IPv4Address(),
+						Status:            randomStatus(),
+						Type:              randomNetworkType(),
+						TargetIntegration: "ovn-ic1",
 					},
-					Name:              networkPeerName,
-					TargetProject:     gofakeit.RandomString(projects),
-					TargetNetwork:     gofakeit.IPv4Address(),
-					Status:            randomStatus(),
-					Type:              randomNetworkType(),
-					TargetIntegration: "ovn-ic1",
 				},
 				LastUpdated: faker.Date(),
 			}
@@ -558,13 +582,15 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Cluster:     clusterName,
 				Name:        networkZoneName,
 				ProjectName: projectName,
-				Object: incusapi.NetworkZone{
-					NetworkZonePut: incusapi.NetworkZonePut{
-						Description: networkZoneName + " " + gofakeit.Sentence(5),
-						Config:      map[string]string{},
+				Object: inventory.IncusNetworkZoneWrapper{
+					NetworkZone: incusapi.NetworkZone{
+						NetworkZonePut: incusapi.NetworkZonePut{
+							Description: networkZoneName + " " + gofakeit.Sentence(5),
+							Config:      map[string]string{},
+						},
+						Name:    networkZoneName,
+						Project: projectName,
 					},
-					Name:    networkZoneName,
-					Project: projectName,
 				},
 				LastUpdated: faker.Date(),
 			}
@@ -586,16 +612,18 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				Name:            storageBucketName,
 				StoragePoolName: faker.RandomString(storagePools),
 				ProjectName:     projectName,
-				Object: incusapi.StorageBucketFull{
-					StorageBucket: incusapi.StorageBucket{
-						StorageBucketPut: incusapi.StorageBucketPut{
-							Config:      map[string]string{},
-							Description: storageBucketName + " " + gofakeit.Sentence(5),
+				Object: inventory.IncusStorageBucketFullWrapper{
+					StorageBucketFull: incusapi.StorageBucketFull{
+						StorageBucket: incusapi.StorageBucket{
+							StorageBucketPut: incusapi.StorageBucketPut{
+								Config:      map[string]string{},
+								Description: storageBucketName + " " + gofakeit.Sentence(5),
+							},
+							Name:     storageBucketName,
+							S3URL:    gofakeit.URL(),
+							Location: gofakeit.RandomString(servers),
+							Project:  projectName,
 						},
-						Name:     storageBucketName,
-						S3URL:    gofakeit.URL(),
-						Location: gofakeit.RandomString(servers),
-						Project:  projectName,
 					},
 				},
 				LastUpdated: faker.Date(),
@@ -619,19 +647,21 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 				StoragePoolName: faker.RandomString(storagePools),
 				ProjectName:     projectName,
 				Type:            gofakeit.RandomString([]string{"container", "virtual-machine"}),
-				Object: incusapi.StorageVolumeFull{
-					StorageVolume: incusapi.StorageVolume{
-						StorageVolumePut: incusapi.StorageVolumePut{
-							Config:      map[string]string{},
-							Description: storageVolumeName + " " + gofakeit.Sentence(5),
-							Restore:     gofakeit.Word(),
+				Object: inventory.IncusStorageVolumeFullWrapper{
+					StorageVolumeFull: incusapi.StorageVolumeFull{
+						StorageVolume: incusapi.StorageVolume{
+							StorageVolumePut: incusapi.StorageVolumePut{
+								Config:      map[string]string{},
+								Description: storageVolumeName + " " + gofakeit.Sentence(5),
+								Restore:     gofakeit.Word(),
+							},
+							Name:        storageVolumeName,
+							Type:        "custom",
+							Location:    gofakeit.RandomString(servers),
+							ContentType: gofakeit.RandomString([]string{"filesystem", "block"}),
+							Project:     projectName,
+							CreatedAt:   gofakeit.Date(),
 						},
-						Name:        storageVolumeName,
-						Type:        "custom",
-						Location:    gofakeit.RandomString(servers),
-						ContentType: gofakeit.RandomString([]string{"filesystem", "block"}),
-						Project:     projectName,
-						CreatedAt:   gofakeit.Date(),
 					},
 				},
 				LastUpdated: faker.Date(),
