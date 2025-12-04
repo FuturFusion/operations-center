@@ -29,8 +29,3 @@ package entities
 //generate-database:mapper method -e server Update
 //generate-database:mapper method -e server Rename
 //generate-database:mapper method -e server DeleteOne-by-Name
-
-type ServerFilter struct {
-	Name    *string
-	Cluster *string
-}
