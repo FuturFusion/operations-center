@@ -163,7 +163,7 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 				Cluster:     image.Cluster,
 				ProjectName: image.ProjectName,
 				Name:        image.Name,
-				Object:      image.Object,
+				Object:      image.Object.Image,
 			})
 		}
 
@@ -173,7 +173,7 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 				Server:      instance.Server,
 				ProjectName: instance.ProjectName,
 				Name:        instance.Name,
-				Object:      instance.Object,
+				Object:      instance.Object.InstanceFull,
 			})
 		}
 
@@ -182,7 +182,7 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 				Cluster:     network.Cluster,
 				ProjectName: network.ProjectName,
 				Name:        network.Name,
-				Object:      network.Object,
+				Object:      network.Object.Network,
 			})
 		}
 
@@ -191,7 +191,7 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 				Cluster:     networkACL.Cluster,
 				ProjectName: networkACL.ProjectName,
 				Name:        networkACL.Name,
-				Object:      networkACL.Object,
+				Object:      networkACL.Object.NetworkACL,
 			})
 		}
 
@@ -200,7 +200,7 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 				Cluster:     networkForward.Cluster,
 				NetworkName: networkForward.NetworkName,
 				Name:        networkForward.Name,
-				Object:      networkForward.Object,
+				Object:      networkForward.Object.NetworkForward,
 			})
 		}
 
@@ -208,7 +208,7 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 			resultItem.NetworkIntegrations = append(resultItem.NetworkIntegrations, api.NetworkIntegration{
 				Cluster: networkIntegration.Cluster,
 				Name:    networkIntegration.Name,
-				Object:  networkIntegration.Object,
+				Object:  networkIntegration.Object.NetworkIntegration,
 			})
 		}
 
@@ -217,7 +217,7 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 				Cluster:     networkLoadBalancer.Cluster,
 				NetworkName: networkLoadBalancer.NetworkName,
 				Name:        networkLoadBalancer.Name,
-				Object:      networkLoadBalancer.Object,
+				Object:      networkLoadBalancer.Object.NetworkLoadBalancer,
 			})
 		}
 
@@ -226,7 +226,7 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 				Cluster:     networkPeer.Cluster,
 				NetworkName: networkPeer.NetworkName,
 				Name:        networkPeer.Name,
-				Object:      networkPeer.Object,
+				Object:      networkPeer.Object.NetworkPeer,
 			})
 		}
 
@@ -235,7 +235,7 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 				Cluster:     networkZone.Cluster,
 				ProjectName: networkZone.ProjectName,
 				Name:        networkZone.Name,
-				Object:      networkZone.Object,
+				Object:      networkZone.Object.NetworkZone,
 			})
 		}
 
@@ -244,7 +244,7 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 				Cluster:     profile.Cluster,
 				ProjectName: profile.ProjectName,
 				Name:        profile.Name,
-				Object:      profile.Object,
+				Object:      profile.Object.Profile,
 			})
 		}
 
@@ -252,7 +252,7 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 			resultItem.Projects = append(resultItem.Projects, api.Project{
 				Cluster: project.Cluster,
 				Name:    project.Name,
-				Object:  project.Object,
+				Object:  project.Object.Project,
 			})
 		}
 
@@ -263,7 +263,7 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 				ProjectName:     storageBucket.ProjectName,
 				StoragePoolName: storageBucket.StoragePoolName,
 				Name:            storageBucket.Name,
-				Object:          storageBucket.Object,
+				Object:          storageBucket.Object.StorageBucketFull,
 			})
 		}
 
@@ -271,7 +271,7 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 			resultItem.StoragePools = append(resultItem.StoragePools, api.StoragePool{
 				Cluster: storagePool.Cluster,
 				Name:    storagePool.Name,
-				Object:  storagePool.Object,
+				Object:  storagePool.Object.StoragePool,
 			})
 		}
 
@@ -282,7 +282,7 @@ func (i *queryHandler) querysGet(r *http.Request) response.Response {
 				ProjectName:     storageVolume.ProjectName,
 				StoragePoolName: storageVolume.StoragePoolName,
 				Name:            storageVolume.Name,
-				Object:          storageVolume.Object,
+				Object:          storageVolume.Object.StorageVolumeFull,
 			})
 		}
 
