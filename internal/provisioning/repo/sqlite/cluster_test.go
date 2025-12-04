@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -17,26 +18,34 @@ import (
 )
 
 func TestClusterDatabaseActions(t *testing.T) {
+	certPEMA, _, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	fingerprintA, err := incustls.CertFingerprintStr(string(certPEMA))
+	require.NoError(t, err)
+
+	certPEMB, _, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	fingerprintB, err := incustls.CertFingerprintStr(string(certPEMB))
+	require.NoError(t, err)
+
 	clusterA := provisioning.Cluster{
 		Name:          "one",
 		ConnectionURL: "https://cluster-one/",
-		Certificate: `-----BEGIN CERTIFICATE-----
-cluster A
------END CERTIFICATE-----
-`,
-		Status:      api.ClusterStatusReady,
-		ServerNames: []string{"server1", "server2"},
+		Certificate:   string(certPEMA),
+		Fingerprint:   fingerprintA,
+		Status:        api.ClusterStatusReady,
+		ServerNames:   []string{"server1", "server2"},
 	}
 
 	clusterB := provisioning.Cluster{
 		Name:          "two",
 		ConnectionURL: "https://cluster-one/",
-		Certificate: `-----BEGIN CERTIFICATE-----
-cluster B
------END CERTIFICATE-----
-`,
-		Status:      api.ClusterStatusReady,
-		ServerNames: []string{"server10", "server11"},
+		Certificate:   string(certPEMB),
+		Fingerprint:   fingerprintB,
+		Status:        api.ClusterStatusReady,
+		ServerNames:   []string{"server10", "server11"},
 	}
 
 	ctx := context.Background()

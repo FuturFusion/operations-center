@@ -244,6 +244,17 @@ type ServerPut struct {
 type Server struct {
 	ServerPost `yaml:",inline"`
 
+	// Certificate of the server endpoint in PEM encoded format.
+	// Example:
+	//	-----BEGIN CERTIFICATE-----
+	//	...
+	//	-----END CERTIFICATE-----
+	Certificate string `json:"certificate" yaml:"certificate"`
+
+	// Fingerprint in SHA256 format of the certificate.
+	// Example: fd200419b271f1dc2a5591b693cc5774b7f234e1ff8c6b78ad703b6888fe2b69
+	Fingerprint string `json:"fingerprint" yaml:"fingerprint"`
+
 	// The cluster the server is part of.
 	// Example: one
 	Cluster string `json:"cluster" yaml:"cluster"`

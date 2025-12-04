@@ -9,7 +9,7 @@ import (
 
 	"github.com/lxc/incus/v6/shared/ask"
 	"github.com/lxc/incus/v6/shared/termios"
-	localtls "github.com/lxc/incus/v6/shared/tls"
+	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/internal/cli/cmds"
@@ -205,7 +205,7 @@ func (c *cmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 
 		// asker to verify fingerprint
 		asker := ask.NewAsker(bufio.NewReader(cmd.InOrStdin()))
-		trustedCert, err := asker.AskBool(fmt.Sprintf("Server presented an untrusted TLS certificate with SHA256 fingerprint %s. Is this the correct fingerprint? (yes/no) [default=no]: ", localtls.CertFingerprint(serverCert.Certificate)), "no")
+		trustedCert, err := asker.AskBool(fmt.Sprintf("Server presented an untrusted TLS certificate with SHA256 fingerprint %s. Is this the correct fingerprint? (yes/no) [default=no]: ", incustls.CertFingerprint(serverCert.Certificate)), "no")
 		if err != nil {
 			return err
 		}

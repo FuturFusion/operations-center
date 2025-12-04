@@ -2,7 +2,10 @@ package sqlite
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+	incustls "github.com/lxc/incus/v6/shared/tls"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -28,11 +31,40 @@ func (s server) Create(ctx context.Context, in provisioning.Server) (int64, erro
 }
 
 func (s server) GetAll(ctx context.Context) (provisioning.Servers, error) {
-	return entities.GetServers(ctx, transaction.GetDBTX(ctx, s.db))
+	return s.getAllWithFilter(ctx, nil)
 }
 
 func (s server) GetAllWithFilter(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
-	return entities.GetServers(ctx, transaction.GetDBTX(ctx, s.db), filter)
+	return s.getAllWithFilter(ctx, &filter)
+}
+
+func (s server) getAllWithFilter(ctx context.Context, filter *provisioning.ServerFilter) (provisioning.Servers, error) {
+	var servers provisioning.Servers
+	var err error
+
+	if filter == nil {
+		servers, err = entities.GetServers(ctx, transaction.GetDBTX(ctx, s.db))
+	} else {
+		servers, err = entities.GetServers(ctx, transaction.GetDBTX(ctx, s.db), *filter)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	var errs []error
+	for i := range servers {
+		if servers[i].Certificate == "" {
+			continue
+		}
+
+		servers[i].Fingerprint, err = incustls.CertFingerprintStr(servers[i].Certificate)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return servers, errors.Join(errs...)
 }
 
 func (s server) GetAllNames(ctx context.Context) ([]string, error) {
@@ -44,11 +76,25 @@ func (s server) GetAllNamesWithFilter(ctx context.Context, filter provisioning.S
 }
 
 func (s server) GetByName(ctx context.Context, name string) (*provisioning.Server, error) {
-	return entities.GetServer(ctx, transaction.GetDBTX(ctx, s.db), name)
+	server, err := entities.GetServer(ctx, transaction.GetDBTX(ctx, s.db), name)
+	if err != nil {
+		return nil, err
+	}
+
+	if server.Certificate == "" {
+		return server, nil
+	}
+
+	server.Fingerprint, err = incustls.CertFingerprintStr(server.Certificate)
+	if err != nil {
+		return nil, err
+	}
+
+	return server, nil
 }
 
 func (s server) GetByCertificate(ctx context.Context, certificatePEM string) (*provisioning.Server, error) {
-	servers, err := entities.GetServers(ctx, transaction.GetDBTX(ctx, s.db), provisioning.ServerFilter{
+	servers, err := s.getAllWithFilter(ctx, &provisioning.ServerFilter{
 		Certificate: &certificatePEM,
 	})
 	if err != nil {

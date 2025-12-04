@@ -1,7 +1,6 @@
 package provisioning
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"strings"
@@ -222,7 +221,7 @@ func (c *cmdUpdateShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Published At: %s\n", update.PublishedAt.Truncate(time.Second).String())
 	fmt.Printf("Severity: %s\n", update.Severity.String())
 	fmt.Printf("Status: %s\n", update.Status.String())
-	fmt.Printf("Changelog:\n%s\n\n", indent("  ", update.Changelog))
+	fmt.Printf("Changelog:\n%s", indent("  ", strings.TrimSpace(update.Changelog)))
 	fmt.Println("Files:")
 
 	for _, updateFile := range updateFiles {
@@ -230,23 +229,6 @@ func (c *cmdUpdateShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-func indent(indent string, s string) string {
-	lines := strings.Split(s, "\n")
-
-	out := bytes.Buffer{}
-
-	for _, line := range lines {
-		if line == "" {
-			out.WriteString("\n")
-			continue
-		}
-
-		out.WriteString(indent + s + "\n")
-	}
-
-	return out.String()
 }
 
 // Add update.

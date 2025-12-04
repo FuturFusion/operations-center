@@ -21,9 +21,10 @@ import (
 
 type Cluster struct {
 	ID                    int64             `json:"-"`
-	Name                  string            `json:"name" db:"primary=yes"`
+	Name                  string            `json:"name"                    db:"primary=yes"`
 	ConnectionURL         string            `json:"connection_url"`
 	Certificate           string            `json:"certificate"`
+	Fingerprint           string            `json:"fingerprint"             db:"ignore"`
 	Status                api.ClusterStatus `json:"status"`
 	ServerNames           []string          `json:"server_names"            db:"ignore"`
 	ServerType            api.ServerType    `json:"server_type"             db:"ignore"`

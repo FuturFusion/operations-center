@@ -100,6 +100,17 @@ type Cluster struct {
 	// Example: https://incus.local:6443
 	ConnectionURL string `json:"connection_url" yaml:"connection_url"`
 
+	// Certificate of the cluster endpoint in PEM encoded format.
+	// Example:
+	//	-----BEGIN CERTIFICATE-----
+	//	...
+	//	-----END CERTIFICATE-----
+	Certificate string `json:"certificate" yaml:"certificate"`
+
+	// Fingerprint in SHA256 format of the certificate.
+	// Example: fd200419b271f1dc2a5591b693cc5774b7f234e1ff8c6b78ad703b6888fe2b69
+	Fingerprint string `json:"fingerprint" yaml:"fingerprint"`
+
 	// Status contains the status the cluster is currently in from the point of view of Operations Center.
 	// Possible values for status are: pending, ready
 	// Example: pending

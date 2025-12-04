@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -21,30 +22,38 @@ import (
 )
 
 func TestServerDatabaseActions(t *testing.T) {
+	certPEMA, _, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	fingerprintA, err := incustls.CertFingerprintStr(string(certPEMA))
+	require.NoError(t, err)
+
+	certPEMB, _, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	fingerprintB, err := incustls.CertFingerprintStr(string(certPEMB))
+	require.NoError(t, err)
+
 	serverA := provisioning.Server{
 		Name:          "one",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://one/",
-		Certificate: `-----BEGIN CERTIFICATE-----
-server A
------END CERTIFICATE-----
-`,
-		HardwareData: api.HardwareData{},
-		VersionData:  json.RawMessage(nil),
-		Status:       api.ServerStatusReady,
+		Certificate:   string(certPEMA),
+		Fingerprint:   fingerprintA,
+		HardwareData:  api.HardwareData{},
+		VersionData:   json.RawMessage(nil),
+		Status:        api.ServerStatusReady,
 	}
 
 	serverB := provisioning.Server{
 		Name:          "two",
 		Type:          api.ServerTypeIncus,
 		ConnectionURL: "https://two/",
-		Certificate: `-----BEGIN CERTIFICATE-----
-server B
------END CERTIFICATE-----
-`,
-		HardwareData: api.HardwareData{},
-		VersionData:  json.RawMessage(nil),
-		Status:       api.ServerStatusReady,
+		Certificate:   string(certPEMB),
+		Fingerprint:   fingerprintB,
+		HardwareData:  api.HardwareData{},
+		VersionData:   json.RawMessage(nil),
+		Status:        api.ServerStatusReady,
 	}
 
 	localArtifactRepo := &repoMock.ClusterArtifactRepoMock{
