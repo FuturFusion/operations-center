@@ -22,6 +22,7 @@ type Server struct {
 	ConnectionURL        string           `json:"connection_url"`
 	PublicConnectionURL  string           `json:"public_connection_url"`
 	Certificate          string           `json:"certificate"`
+	Fingerprint          string           `json:"fingerprint"            db:"ignore"`
 	ClusterCertificate   *string          `json:"cluster_certificate"    db:"omit=create,update&leftjoin=clusters.certificate"`
 	ClusterConnectionURL *string          `json:"cluster_connection_url" db:"omit=create,update&leftjoin=clusters.connection_url"`
 	HardwareData         api.HardwareData `json:"hardware_data"`
