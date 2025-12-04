@@ -51,9 +51,6 @@ func TestAuthentication(t *testing.T) {
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 
-	err := os.Setenv("OPERATIONS_CENTER_DISABLE_BACKGROUND_TASKS", "true")
-	require.NoError(t, err)
-
 	// Add dummy server.crt.
 	f, err := os.Create(filepath.Join(tmpDir, "server.crt"))
 	require.NoError(t, err)
@@ -690,7 +687,10 @@ func TestAuthentication(t *testing.T) {
 		},
 	}
 
-	config.InitTest(t, env, nil)
+	config.InitTest(t, env, nil, config.InternalConfig{
+		IsBackgroundTasksDisabled: true,
+		SourcePollSkipFirst:       true,
+	})
 	err = config.UpdateNetwork(ctx, api.SystemNetworkPut{
 		OperationsCenterAddress: "https://127.0.0.1:17443",
 		RestServerAddress:       "[::1]:17443",
