@@ -171,6 +171,11 @@ linters:
         # generate-expr expects to find declarations of the form //generate-expr: in the inventory package.
         source: '^//generate-expr: '
         text: comment-spacing
+      - linters:
+          - revive
+        # It's useful to have a sort and API package but revive disagrees.
+        source: '^package (sort|api)$'
+        text: var-naming
     paths:
       - third_party$
       - builtin$
