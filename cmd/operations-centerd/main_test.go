@@ -60,6 +60,9 @@ network:
 	err = os.Setenv("OPERATIONS_CENTER_DISABLE_BACKGROUND_TASKS", "true")
 	require.NoError(t, err)
 
+	err = os.Setenv("OPERATIONS_SOURCE_POLL_SKIP_FIRST", "true")
+	require.NoError(t, err)
+
 	env := &mock.EnvironmentMock{
 		GetUnixSocketFunc: func() string {
 			return filepath.Join(tmpDir, "unix.socket")
@@ -132,6 +135,9 @@ func TestMain0RunDaemonStartError(t *testing.T) {
 	require.NoError(t, err)
 
 	err = os.Setenv("OPERATIONS_CENTER_DISABLE_BACKGROUND_TASKS", "true")
+	require.NoError(t, err)
+
+	err = os.Setenv("OPERATIONS_SOURCE_POLL_SKIP_FIRST", "true")
 	require.NoError(t, err)
 
 	tests := []struct {
