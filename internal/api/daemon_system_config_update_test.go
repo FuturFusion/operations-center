@@ -24,6 +24,9 @@ func TestSystemConfigUpdate(t *testing.T) {
 		t.Skip("Authentication tests are slow due to the use of test containers")
 	}
 
+	err := os.Setenv("OPERATIONS_CENTER_DISABLE_BACKGROUND_TASKS", "true")
+	require.NoError(t, err)
+
 	// Setup
 	ctx := context.Background()
 	tmpDir := t.TempDir()

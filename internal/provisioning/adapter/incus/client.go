@@ -102,6 +102,8 @@ func (c client) GetResources(ctx context.Context, endpoint provisioning.Endpoint
 
 	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0/system/resources", http.NoBody, "")
 	if err != nil {
+		err = api.AsNotIncusOSError(err)
+
 		return api.HardwareData{}, fmt.Errorf("Get resources from %q failed: %w", endpoint.GetConnectionURL(), err)
 	}
 
@@ -124,6 +126,8 @@ func (c client) GetOSData(ctx context.Context, endpoint provisioning.Endpoint) (
 
 	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0/system/network", http.NoBody, "")
 	if err != nil {
+		err = api.AsNotIncusOSError(err)
+
 		return api.OSData{}, fmt.Errorf("Get OS network data from %q failed: %w", endpoint.GetConnectionURL(), err)
 	}
 

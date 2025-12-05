@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/expr-lang/expr"
@@ -28,6 +29,10 @@ type serverService struct {
 	client     ServerClientPort
 	tokenSvc   TokenService
 	clusterSvc ClusterService
+
+	mu                sync.Mutex
+	serverURL         string
+	serverCertificate tls.Certificate
 
 	now                    func() time.Time
 	initialConnectionDelay time.Duration
@@ -56,12 +61,30 @@ func ServerServiceWithInitialConnectionDelay(delay time.Duration) ServerServiceO
 	}
 }
 
-func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenService, clusterSvc ClusterService, opts ...ServerServiceOption) *serverService {
+func (s *serverService) UpdateServerURL(ctx context.Context, serverURL string) error {
+	s.mu.Lock()
+	s.serverURL = serverURL
+	s.mu.Unlock()
+
+	return s.selfUpdateOperationsCenter(ctx)
+}
+
+func (s *serverService) UpdateServerCertificate(ctx context.Context, serverCertificate tls.Certificate) error {
+	s.mu.Lock()
+	s.serverCertificate = serverCertificate
+	s.mu.Unlock()
+
+	return s.selfUpdateOperationsCenter(ctx)
+}
+
+func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenService, clusterSvc ClusterService, serverConnectionURL string, serverCertificate tls.Certificate, opts ...ServerServiceOption) *serverService {
 	serverSvc := &serverService{
-		repo:       repo,
-		client:     client,
-		tokenSvc:   tokenSvc,
-		clusterSvc: clusterSvc,
+		repo:              repo,
+		client:            client,
+		tokenSvc:          tokenSvc,
+		clusterSvc:        clusterSvc,
+		serverURL:         serverConnectionURL,
+		serverCertificate: serverCertificate,
 
 		now:                    time.Now,
 		initialConnectionDelay: 1 * time.Second,
@@ -80,7 +103,7 @@ func (s *serverService) SetClusterService(clusterSvc ClusterService) {
 	s.clusterSvc = clusterSvc
 }
 
-func (s serverService) Create(ctx context.Context, token uuid.UUID, newServer Server) (Server, error) {
+func (s *serverService) Create(ctx context.Context, token uuid.UUID, newServer Server) (Server, error) {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		err := s.tokenSvc.Consume(ctx, token)
 		if err != nil {
@@ -97,6 +120,10 @@ func (s serverService) Create(ctx context.Context, token uuid.UUID, newServer Se
 		err = newServer.Validate()
 		if err != nil {
 			return fmt.Errorf("Validate server: %w", err)
+		}
+
+		if newServer.Type == api.ServerTypeOperationsCenter {
+			return domain.NewValidationErrf("Remote operations centers can not be registered")
 		}
 
 		newServer.ID, err = s.repo.Create(ctx, newServer)
@@ -126,11 +153,11 @@ func (s serverService) Create(ctx context.Context, token uuid.UUID, newServer Se
 	return newServer, nil
 }
 
-func (s serverService) GetAll(ctx context.Context) (Servers, error) {
+func (s *serverService) GetAll(ctx context.Context) (Servers, error) {
 	return s.repo.GetAll(ctx)
 }
 
-func (s serverService) GetAllWithFilter(ctx context.Context, filter ServerFilter) (Servers, error) {
+func (s *serverService) GetAllWithFilter(ctx context.Context, filter ServerFilter) (Servers, error) {
 	var filterExpression *vm.Program
 	var err error
 
@@ -176,11 +203,11 @@ func (s serverService) GetAllWithFilter(ctx context.Context, filter ServerFilter
 	return servers, nil
 }
 
-func (s serverService) GetAllNames(ctx context.Context) ([]string, error) {
+func (s *serverService) GetAllNames(ctx context.Context) ([]string, error) {
 	return s.repo.GetAllNames(ctx)
 }
 
-func (s serverService) GetAllNamesWithFilter(ctx context.Context, filter ServerFilter) ([]string, error) {
+func (s *serverService) GetAllNamesWithFilter(ctx context.Context, filter ServerFilter) ([]string, error) {
 	var filterExpression *vm.Program
 	var err error
 
@@ -231,7 +258,7 @@ func (s serverService) GetAllNamesWithFilter(ctx context.Context, filter ServerF
 	return serverIDs, nil
 }
 
-func (s serverService) GetByName(ctx context.Context, name string) (*Server, error) {
+func (s *serverService) GetByName(ctx context.Context, name string) (*Server, error) {
 	if name == "" {
 		return nil, fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -239,7 +266,7 @@ func (s serverService) GetByName(ctx context.Context, name string) (*Server, err
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s serverService) Update(ctx context.Context, server Server) error {
+func (s *serverService) Update(ctx context.Context, server Server) error {
 	err := server.Validate()
 	if err != nil {
 		return fmt.Errorf("Failed to validate server for update: %w", err)
@@ -248,7 +275,7 @@ func (s serverService) Update(ctx context.Context, server Server) error {
 	return s.repo.Update(ctx, server)
 }
 
-func (s serverService) UpdateSystemNetwork(ctx context.Context, name string, systemNetwork ServerSystemNetwork) (err error) {
+func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, systemNetwork ServerSystemNetwork) (err error) {
 	server := &Server{}
 	updatedServer := &Server{}
 
@@ -315,7 +342,7 @@ func (s serverService) UpdateSystemNetwork(ctx context.Context, name string, sys
 	return nil
 }
 
-func (s serverService) GetSystemProvider(ctx context.Context, name string) (ServerSystemProvider, error) {
+func (s *serverService) GetSystemProvider(ctx context.Context, name string) (ServerSystemProvider, error) {
 	server, err := s.GetByName(ctx, name)
 	if err != nil {
 		return ServerSystemProvider{}, fmt.Errorf("Failed to get server %q: %w", name, err)
@@ -329,7 +356,7 @@ func (s serverService) GetSystemProvider(ctx context.Context, name string) (Serv
 	return providerConfig, nil
 }
 
-func (s serverService) UpdateSystemProvider(ctx context.Context, name string, providerConfig ServerSystemProvider) error {
+func (s *serverService) UpdateSystemProvider(ctx context.Context, name string, providerConfig ServerSystemProvider) error {
 	server, err := s.GetByName(ctx, name)
 	if err != nil {
 		return fmt.Errorf("Failed to get server %q: %w", name, err)
@@ -343,7 +370,11 @@ func (s serverService) UpdateSystemProvider(ctx context.Context, name string, pr
 	return nil
 }
 
-func (s serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUpdate) error {
+func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUpdate) error {
+	if serverUpdate.Self {
+		return s.selfUpdateOperationsCenter(ctx)
+	}
+
 	var server *Server
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
@@ -372,7 +403,12 @@ func (s serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUp
 			return fmt.Errorf("Failed to validate server update: %w", err)
 		}
 
-		return s.repo.Update(ctx, *server)
+		err = s.repo.Update(ctx, *server)
+		if err != nil {
+			return fmt.Errorf("Failed to self-update server: %w", err)
+		}
+
+		return nil
 	})
 	if err != nil {
 		return err
@@ -383,7 +419,103 @@ func (s serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUp
 	return nil
 }
 
-func (s serverService) Rename(ctx context.Context, oldName string, newName string) error {
+func (s *serverService) selfUpdateOperationsCenter(ctx context.Context) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		servers, err := s.repo.GetAllWithFilter(ctx, ServerFilter{
+			Type: ptr.To(api.ServerTypeOperationsCenter),
+		})
+		if err != nil {
+			return fmt.Errorf(`Failed to get servers of type "operations-center": %w`, err)
+		}
+
+		if len(servers) != 1 {
+			return fmt.Errorf(`Invalid internal state, expect exactly 1 server of type "operations-center", found %d`, len(servers))
+		}
+
+		s.mu.Lock()
+		serverCert := pem.EncodeToMemory(&pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: s.serverCertificate.Leaf.Raw,
+		})
+		serverURL := s.serverURL
+		s.mu.Unlock()
+
+		server := servers[0]
+		server.ConnectionURL = serverURL
+		server.Certificate = string(serverCert)
+		server.Status = api.ServerStatusReady
+		server.LastSeen = s.now()
+
+		err = server.Validate()
+		if err != nil {
+			return fmt.Errorf("Failed to validate operations-center server update: %w", err)
+		}
+
+		err = s.repo.Update(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to self-update operations-center: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error {
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		servers, err := s.repo.GetAllWithFilter(ctx, ServerFilter{
+			Type: ptr.To(api.ServerTypeOperationsCenter),
+		})
+		if err != nil {
+			return fmt.Errorf(`Failed to get server of type "operations-center": %w`, err)
+		}
+
+		if len(servers) > 0 {
+			return fmt.Errorf(`Invalid internal state, already a server of type "operations-center" found`)
+		}
+
+		s.mu.Lock()
+		serverCert := pem.EncodeToMemory(&pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: s.serverCertificate.Leaf.Raw,
+		})
+
+		serverURL := s.serverURL
+		s.mu.Unlock()
+
+		newServer := Server{
+			Name:          "operations-center",
+			Type:          api.ServerTypeOperationsCenter,
+			ConnectionURL: serverURL,
+			Certificate:   string(serverCert),
+			Status:        api.ServerStatusPending,
+			LastSeen:      s.now(),
+		}
+
+		err = newServer.Validate()
+		if err != nil {
+			return fmt.Errorf("Validate server: %w", err)
+		}
+
+		newServer.ID, err = s.repo.Create(ctx, newServer)
+		if err != nil {
+			return fmt.Errorf("Create server: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *serverService) Rename(ctx context.Context, oldName string, newName string) error {
 	if oldName == "" {
 		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -399,7 +531,7 @@ func (s serverService) Rename(ctx context.Context, oldName string, newName strin
 	return s.repo.Rename(ctx, oldName, newName)
 }
 
-func (s serverService) DeleteByName(ctx context.Context, name string) error {
+func (s *serverService) DeleteByName(ctx context.Context, name string) error {
 	if name == "" {
 		return fmt.Errorf("Server name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
@@ -433,7 +565,7 @@ func (s serverService) DeleteByName(ctx context.Context, name string) error {
 //   - Periodic connectivity test for all servers in the inventory.
 //   - Periodic connectivity test for all pending servers in the inventory.
 //   - Periodic update of server configuration data (network, security, resources)
-func (s serverService) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error {
+func (s *serverService) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error {
 	servers, err := s.repo.GetAllWithFilter(ctx, ServerFilter{
 		Status: ptr.To(serverStatus),
 	})
@@ -444,7 +576,7 @@ func (s serverService) PollServers(ctx context.Context, serverStatus api.ServerS
 	var errs []error
 	for _, server := range servers {
 		err = s.pollServer(ctx, server, updateServerConfiguration)
-		if err != nil {
+		if err != nil && !errors.Is(err, api.NotIncusOSError) {
 			errs = append(errs, err)
 			continue
 		}
@@ -453,7 +585,7 @@ func (s serverService) PollServers(ctx context.Context, serverStatus api.ServerS
 	return errors.Join(errs...)
 }
 
-func (s serverService) pollServer(ctx context.Context, server Server, updateServerConfiguration bool) error {
+func (s *serverService) pollServer(ctx context.Context, server Server, updateServerConfiguration bool) error {
 	// Since we re-try frequently, we only grant a short timeout for the
 	// connection attept.
 	ctxWithTimeout, cancelFunc := context.WithTimeout(ctx, 1*time.Second)

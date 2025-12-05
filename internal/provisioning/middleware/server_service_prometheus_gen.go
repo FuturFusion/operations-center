@@ -179,6 +179,20 @@ func (_d ServerServiceWithPrometheus) Rename(ctx context.Context, oldName string
 	return _d.base.Rename(ctx, oldName, newName)
 }
 
+// SelfRegisterOperationsCenter implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) SelfRegisterOperationsCenter(ctx context.Context) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SelfRegisterOperationsCenter", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.SelfRegisterOperationsCenter(ctx)
+}
+
 // SelfUpdate implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) SelfUpdate(ctx context.Context, serverUpdate provisioning.ServerSelfUpdate) (err error) {
 	_since := time.Now()

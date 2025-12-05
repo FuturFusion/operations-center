@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -10,6 +9,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/authz"
 	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/response"
+	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type osProxyHandler struct {
@@ -29,7 +29,7 @@ func registerOSProxy(router Router, prefix string, authorizer *authz.Authorizer,
 func (o *osProxyHandler) apiOSProxy(r *http.Request) response.Response {
 	// Check if this is an IncusOS system.
 	if !o.env.IsIncusOS() {
-		return response.BadRequest(errors.New("System isn't running IncusOS"))
+		return response.BadRequest(api.NotIncusOSError)
 	}
 
 	// Prepare the proxy.

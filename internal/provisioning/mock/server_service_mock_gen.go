@@ -53,6 +53,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
+//			SelfRegisterOperationsCenterFunc: func(ctx context.Context) error {
+//				panic("mock out the SelfRegisterOperationsCenter method")
+//			},
 //			SelfUpdateFunc: func(ctx context.Context, serverUpdate provisioning.ServerSelfUpdate) error {
 //				panic("mock out the SelfUpdate method")
 //			},
@@ -104,6 +107,9 @@ type ServerServiceMock struct {
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
+
+	// SelfRegisterOperationsCenterFunc mocks the SelfRegisterOperationsCenter method.
+	SelfRegisterOperationsCenterFunc func(ctx context.Context) error
 
 	// SelfUpdateFunc mocks the SelfUpdate method.
 	SelfUpdateFunc func(ctx context.Context, serverUpdate provisioning.ServerSelfUpdate) error
@@ -194,6 +200,11 @@ type ServerServiceMock struct {
 			// NewName is the newName argument value.
 			NewName string
 		}
+		// SelfRegisterOperationsCenter holds details about calls to the SelfRegisterOperationsCenter method.
+		SelfRegisterOperationsCenter []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// SelfUpdate holds details about calls to the SelfUpdate method.
 		SelfUpdate []struct {
 			// Ctx is the ctx argument value.
@@ -232,21 +243,22 @@ type ServerServiceMock struct {
 			ProviderConfig provisioning.ServerSystemProvider
 		}
 	}
-	lockCreate                sync.RWMutex
-	lockDeleteByName          sync.RWMutex
-	lockGetAll                sync.RWMutex
-	lockGetAllNames           sync.RWMutex
-	lockGetAllNamesWithFilter sync.RWMutex
-	lockGetAllWithFilter      sync.RWMutex
-	lockGetByName             sync.RWMutex
-	lockGetSystemProvider     sync.RWMutex
-	lockPollServers           sync.RWMutex
-	lockRename                sync.RWMutex
-	lockSelfUpdate            sync.RWMutex
-	lockSetClusterService     sync.RWMutex
-	lockUpdate                sync.RWMutex
-	lockUpdateSystemNetwork   sync.RWMutex
-	lockUpdateSystemProvider  sync.RWMutex
+	lockCreate                       sync.RWMutex
+	lockDeleteByName                 sync.RWMutex
+	lockGetAll                       sync.RWMutex
+	lockGetAllNames                  sync.RWMutex
+	lockGetAllNamesWithFilter        sync.RWMutex
+	lockGetAllWithFilter             sync.RWMutex
+	lockGetByName                    sync.RWMutex
+	lockGetSystemProvider            sync.RWMutex
+	lockPollServers                  sync.RWMutex
+	lockRename                       sync.RWMutex
+	lockSelfRegisterOperationsCenter sync.RWMutex
+	lockSelfUpdate                   sync.RWMutex
+	lockSetClusterService            sync.RWMutex
+	lockUpdate                       sync.RWMutex
+	lockUpdateSystemNetwork          sync.RWMutex
+	lockUpdateSystemProvider         sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -610,6 +622,38 @@ func (mock *ServerServiceMock) RenameCalls() []struct {
 	mock.lockRename.RLock()
 	calls = mock.calls.Rename
 	mock.lockRename.RUnlock()
+	return calls
+}
+
+// SelfRegisterOperationsCenter calls SelfRegisterOperationsCenterFunc.
+func (mock *ServerServiceMock) SelfRegisterOperationsCenter(ctx context.Context) error {
+	if mock.SelfRegisterOperationsCenterFunc == nil {
+		panic("ServerServiceMock.SelfRegisterOperationsCenterFunc: method is nil but ServerService.SelfRegisterOperationsCenter was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockSelfRegisterOperationsCenter.Lock()
+	mock.calls.SelfRegisterOperationsCenter = append(mock.calls.SelfRegisterOperationsCenter, callInfo)
+	mock.lockSelfRegisterOperationsCenter.Unlock()
+	return mock.SelfRegisterOperationsCenterFunc(ctx)
+}
+
+// SelfRegisterOperationsCenterCalls gets all the calls that were made to SelfRegisterOperationsCenter.
+// Check the length with:
+//
+//	len(mockedServerService.SelfRegisterOperationsCenterCalls())
+func (mock *ServerServiceMock) SelfRegisterOperationsCenterCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockSelfRegisterOperationsCenter.RLock()
+	calls = mock.calls.SelfRegisterOperationsCenter
+	mock.lockSelfRegisterOperationsCenter.RUnlock()
 	return calls
 }
 

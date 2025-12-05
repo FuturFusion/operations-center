@@ -107,6 +107,7 @@ type ServerFilter struct {
 	Cluster     *string
 	Status      *api.ServerStatus
 	Certificate *string
+	Type        *api.ServerType
 	Expression  *string `db:"ignore"`
 }
 
@@ -123,6 +124,10 @@ func (f ServerFilter) AppendToURLValues(query url.Values) url.Values {
 		query.Add("certificate", *f.Certificate)
 	}
 
+	if f.Type != nil {
+		query.Add("type", f.Type.String())
+	}
+
 	if f.Expression != nil {
 		query.Add("filter", *f.Expression)
 	}
@@ -137,6 +142,11 @@ func (f ServerFilter) String() string {
 type ServerSelfUpdate struct {
 	ConnectionURL             string
 	AuthenticationCertificate *x509.Certificate
+
+	// Self is set to true, if the self update API has been called through
+	// unix socket. This is the case, when IncusOS is serving Operations Center
+	// and triggers a self update on its self.
+	Self bool
 }
 
 type ServerSystemNetwork = api.ServerSystemNetwork

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 // StatusErrorf returns a new StatusError containing the specified status and message.
@@ -69,4 +70,33 @@ func StatusErrorMatch(err error, matchStatusCodes ...int) (int, bool) {
 func StatusErrorCheck(err error, matchStatusCodes ...int) bool {
 	_, found := StatusErrorMatch(err, matchStatusCodes...)
 	return found
+}
+
+type notIncusOSError struct{}
+
+var NotIncusOSError = notIncusOSError{}
+
+const notIncusOSErrorMessage = "System isn't running IncusOS"
+
+func (notIncusOSError) Error() string {
+	return notIncusOSErrorMessage
+}
+
+func (notIncusOSError) Is(target error) bool {
+	return target == NotIncusOSError
+}
+
+// AsNotIncusOSError returns a NotIncusOSError, if the passed error matches the
+// message of NotIncusOSError. Otherwise the passed error is returned
+// unaltered.
+func AsNotIncusOSError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if strings.Contains(err.Error(), notIncusOSErrorMessage) {
+		return notIncusOSError{}
+	}
+
+	return err
 }

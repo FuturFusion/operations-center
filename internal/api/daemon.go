@@ -1,10 +1,13 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
 	"net"
@@ -15,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"github.com/maniartech/signals"
 	"golang.org/x/sync/errgroup"
@@ -33,6 +37,7 @@ import (
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/dbschema"
 	"github.com/FuturFusion/operations-center/internal/domain"
+	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/file"
 	inventoryIncusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
@@ -218,6 +223,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// Background tasks
 	d.setupBackgroundTasks(ctx, updateSvc, serverSvc, clusterSvc)
 
+	err = d.incusOSSelfRegister(ctx)
+	if err != nil {
+		return fmt.Errorf("IncusOS self registration: %w", err)
+	}
+
 	// Finalize daemon start
 	// Wait for immediate errors during startup.
 	select {
@@ -311,17 +321,25 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg api.SystemSecurit
 		}
 	}
 
-	// Setup client cert fingerprint authentication.
-	if len(cfg.TrustedTLSClientCertFingerprints) > 0 {
-		authers = append(authers, authntls.New(cfg.TrustedTLSClientCertFingerprints))
+	trustedFingerprints := make([]string, 0, len(cfg.TrustedTLSClientCertFingerprints)+1)
+
+	// Always trust our own client certificate if present.
+	// This required to self connect if Operations Center is self-registered.
+	clientCertFingerprint, err := incusTLS.CertFingerprintStr(d.clientCertificate)
+	if err == nil {
+		trustedFingerprints = append(trustedFingerprints, clientCertFingerprint)
 	}
+
+	// Setup client cert fingerprint authentication.
+	trustedFingerprints = append(trustedFingerprints, cfg.TrustedTLSClientCertFingerprints...)
+	authers = append(authers, authntls.New(trustedFingerprints))
 
 	// Create authenticator
 	*d.authenticator = authn.New(authers)
 
 	authorizers := []authz.Authorizer{
 		unixsocket.New(),
-		authztls.New(ctx, cfg.TrustedTLSClientCertFingerprints),
+		authztls.New(ctx, trustedFingerprints),
 	}
 
 	if cfg.OpenFGA.APIURL != "" && cfg.OpenFGA.APIToken != "" && cfg.OpenFGA.StoreID != "" {
@@ -436,30 +454,51 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 }
 
 func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.TokenService, clusterSvc provisioning.ClusterService) provisioning.ServerService {
-	return provisioningServiceMiddleware.NewServerServiceWithSlog(
-		provisioning.NewServerService(
-			provisioningRepoMiddleware.NewServerRepoWithSlog(
-				provisioningSqlite.NewServer(db),
-				slog.Default(),
-			),
-			provisioningAdapterMiddleware.NewServerClientPortWithSlog(
-				provisioningIncusAdapter.New(
-					d.clientCertificate,
-					d.clientKey,
-				),
-				slog.Default(),
-				provisioningAdapterMiddleware.ServerClientPortWithSlogWithInformativeErrFunc(
-					func(err error) bool {
-						// ErrSelfUpdateNotification is used as cause when the context is
-						// cancelled. This is an expected success path and therefore not
-						// an error.
-						return errors.Is(err, provisioning.ErrSelfUpdateNotification)
-					},
-				),
-			),
-			tokenSvc,
-			clusterSvc,
+	serverSvc := provisioning.NewServerService(
+		provisioningRepoMiddleware.NewServerRepoWithSlog(
+			provisioningSqlite.NewServer(db),
+			slog.Default(),
 		),
+		provisioningAdapterMiddleware.NewServerClientPortWithSlog(
+			provisioningIncusAdapter.New(
+				d.clientCertificate,
+				d.clientKey,
+			),
+			slog.Default(),
+			provisioningAdapterMiddleware.ServerClientPortWithSlogWithInformativeErrFunc(
+				func(err error) bool {
+					// ErrSelfUpdateNotification is used as cause when the context is
+					// cancelled. This is an expected success path and therefore not
+					// an error.
+					return errors.Is(err, provisioning.ErrSelfUpdateNotification) || errors.Is(err, api.NotIncusOSError)
+				},
+			),
+		),
+		tokenSvc,
+		clusterSvc,
+		config.GetNetwork().OperationsCenterAddress,
+		d.serverCertificate,
+	)
+
+	// Server service needs to learn about updates of the public Operations Center
+	// address.
+	config.NetworkUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemNetwork) {
+		err := serverSvc.UpdateServerURL(ctx, cfg.OperationsCenterAddress)
+		if err != nil {
+			slog.WarnContext(ctx, "failed to update server URL", logger.Err(err))
+		}
+	})
+
+	// Server service needs to learn about updates of the server certificate.
+	d.serverCertificateUpdate.AddListener(func(ctx context.Context, c tls.Certificate) {
+		err := serverSvc.UpdateServerCertificate(ctx, c)
+		if err != nil {
+			slog.WarnContext(ctx, "failed to update server URL", logger.Err(err))
+		}
+	})
+
+	return provisioningServiceMiddleware.NewServerServiceWithSlog(
+		serverSvc,
 		slog.Default(),
 	)
 }
@@ -808,6 +847,80 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg api.SystemNetwork) er
 	})
 
 	return <-errCh
+}
+
+// incusOSSelfRegister changes the provider in IncusOS from images to it self
+// (Operations Center). This will trigger IncusOS to register it self with this
+// instance of Operations Center.
+// For this, the communication goes through the unix socket.
+func (d *Daemon) incusOSSelfRegister(ctx context.Context) error {
+	if !d.env.IsIncusOS() {
+		return nil
+	}
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _ string, _ string) (net.Conn, error) {
+				raddr, err := net.ResolveUnixAddr("unix", internalenvironment.IncusOSSocket)
+				if err != nil {
+					return nil, err
+				}
+
+				return net.DialUnix("unix", nil, raddr)
+			},
+
+			DisableKeepAlives: true,
+		},
+	}
+
+	// Special IncusOS provider configuration with provider "operations-center"
+	// but without URL, token and certificate.
+	// This will be recognized by IncusOS as the special case of it providing
+	// Operations Center as application and will then trigger it to hit the
+	// self-registration endpoint on the unix socket.
+	provider := incusosapi.SystemProvider{
+		Config: incusosapi.SystemProviderConfig{
+			Name: "operations-center",
+		},
+	}
+
+	data, err := json.Marshal(provider)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, "/1.0/system/provider", bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	response := api.Response{}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("Failed to fetch %s: %s: %s", resp.Request.URL.String(), resp.Status, string(body))
+		}
+
+		return err
+	}
+
+	if response.Type == api.ErrorResponse {
+		return api.StatusErrorf(resp.StatusCode, "%v", response.Error)
+	}
+
+	return nil
 }
 
 func (d *Daemon) Stop(ctx context.Context) error {

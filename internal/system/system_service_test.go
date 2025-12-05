@@ -61,6 +61,11 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
+					Type: api.ServerTypeIncus,
+				},
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
 				},
 			},
 			serverGetSystemProvider: []queue.Item[provisioning.ServerSystemProvider]{
@@ -145,6 +150,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
+					Type: api.ServerTypeIncus,
 				},
 			},
 			serverGetSystemProvider: []queue.Item[provisioning.ServerSystemProvider]{
@@ -165,6 +171,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
+					Type: api.ServerTypeIncus,
 				},
 			},
 			serverGetSystemProvider: []queue.Item[provisioning.ServerSystemProvider]{
@@ -196,9 +203,11 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
+					Type: api.ServerTypeIncus,
 				},
 				{
 					Name: "two",
+					Type: api.ServerTypeIncus,
 				},
 			},
 			serverGetSystemProvider: []queue.Item[provisioning.ServerSystemProvider]{
@@ -241,9 +250,11 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
+					Type: api.ServerTypeIncus,
 				},
 				{
 					Name: "two",
+					Type: api.ServerTypeIncus,
 				},
 			},
 			serverGetSystemProvider: []queue.Item[provisioning.ServerSystemProvider]{
@@ -374,6 +385,11 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
+					Type: api.ServerTypeIncus,
+				},
+				{
+					Name: "operations-center",
+					Type: api.ServerTypeOperationsCenter,
 				},
 			},
 			serverGetSystemProvider: []queue.Item[incusosapi.SystemProvider]{
@@ -410,6 +426,7 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
+					Type: api.ServerTypeIncus,
 				},
 			},
 			serverGetSystemProvider: []queue.Item[incusosapi.SystemProvider]{
@@ -481,6 +498,7 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
+					Type: api.ServerTypeIncus,
 				},
 			},
 			serverGetSystemProvider: []queue.Item[provisioning.ServerSystemProvider]{
@@ -502,6 +520,7 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
+					Type: api.ServerTypeIncus,
 				},
 			},
 			serverGetSystemProvider: []queue.Item[incusosapi.SystemProvider]{
@@ -534,9 +553,11 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
+					Type: api.ServerTypeIncus,
 				},
 				{
 					Name: "two",
+					Type: api.ServerTypeIncus,
 				},
 			},
 			serverGetSystemProvider: []queue.Item[incusosapi.SystemProvider]{
@@ -580,9 +601,11 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 			serverGetAll: provisioning.Servers{
 				{
 					Name: "one",
+					Type: api.ServerTypeIncus,
 				},
 				{
 					Name: "two",
+					Type: api.ServerTypeIncus,
 				},
 			},
 			serverGetSystemProvider: []queue.Item[incusosapi.SystemProvider]{
