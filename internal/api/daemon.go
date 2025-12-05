@@ -889,7 +889,7 @@ func (d *Daemon) incusOSSelfRegister(ctx context.Context) error {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, "/1.0/system/provider", bytes.NewBuffer(data))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, "http://unix/1.0/system/provider", bytes.NewBuffer(data))
 	if err != nil {
 		return err
 	}
