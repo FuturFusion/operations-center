@@ -1,10 +1,11 @@
 import { FC, useState } from "react";
 import { MdOutlineFileDownload, MdOutlineSync } from "react-icons/md";
 import { PiCertificate } from "react-icons/pi";
-import { downloadTerraformData, resyncClusterInventory } from "api/cluster";
+import { downloadArtifact, resyncClusterInventory } from "api/cluster";
 import ClusterUpdateCertModal from "components/ClusterUpdateCertModal";
 import { useNotification } from "context/notificationContext";
 import { Cluster } from "types/cluster";
+import { downloadFile } from "util/util";
 
 interface Props {
   cluster: Cluster;
@@ -24,15 +25,12 @@ const ClusterActions: FC<Props> = ({ cluster }) => {
 
   const onDownloadTerraformData = async () => {
     try {
-      const url = await downloadTerraformData(cluster.name);
+      const artifactName = "terraform-configuration";
+      const url = await downloadArtifact(cluster.name || "", artifactName);
 
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${cluster.name}-terraform-configuration.zip`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      const filename = `${cluster.name}-${artifactName}.zip`;
+
+      downloadFile(url, filename);
     } catch (error) {
       notify.error(`Error during terraform data downloading: ${error}`);
     }
