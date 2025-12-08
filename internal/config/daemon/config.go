@@ -32,6 +32,11 @@ type config struct {
 	Updates api.SystemUpdates `json:"updates" yaml:"updates"`
 }
 
+type InternalConfig struct {
+	IsBackgroundTasksDisabled bool
+	SourcePollSkipFirst       bool
+}
+
 type enver interface {
 	VarDir() string
 	IsIncusOS() bool
@@ -41,6 +46,7 @@ type enver interface {
 var (
 	globalConfigInstanceMu sync.Mutex
 	globalConfigInstance   config
+	globalInternalConfig   InternalConfig
 
 	saveFunc = saveToDisk
 
@@ -55,6 +61,8 @@ func Init(vardir enver) error {
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
 
+	initInternalConfig()
+
 	env = vardir
 
 	err := loadConfig()
@@ -68,6 +76,19 @@ func Init(vardir enver) error {
 	}
 
 	return nil
+}
+
+func initInternalConfig() {
+	env := os.Getenv(ApplicationEnvPrefix + "_DISABLE_BACKGROUND_TASKS")
+	isBackgroundTasksDisabled, _ := strconv.ParseBool(env)
+
+	env = os.Getenv(ApplicationEnvPrefix + "_SOURCE_POLL_SKIP_FIRST")
+	sourcePollSkipFirst, _ := strconv.ParseBool(env)
+
+	globalInternalConfig = InternalConfig{
+		IsBackgroundTasksDisabled: isBackgroundTasksDisabled,
+		SourcePollSkipFirst:       sourcePollSkipFirst,
+	}
 }
 
 func loadConfig() error {
