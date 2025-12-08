@@ -60,13 +60,6 @@ export function humanReadableToBytes(input: string): number {
   return Math.round(value * Math.pow(base, index));
 }
 
-export const applicationsOptions = {
-  "": "",
-  incus: "Incus",
-  "migration-manager": "Migration manager",
-  "operations-center": "Operations center",
-};
-
 export const secondaryIncusAppOptions = {
   "incus-ceph": "Ceph",
   "incus-linstor": "Linstor",

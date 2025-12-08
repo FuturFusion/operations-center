@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { fetchServers } from "api/server";
 import DataTable from "components/DataTable";
+import type { ServerTypeKey } from "util/server";
+import { ServerTypeString } from "util/server";
 
 const Server = () => {
   const {
@@ -52,7 +54,7 @@ const Server = () => {
         sortKey: item.connection_url,
       },
       {
-        content: item.server_type,
+        content: ServerTypeString[item.server_type as ServerTypeKey],
         sortKey: item.server_type,
       },
       {
