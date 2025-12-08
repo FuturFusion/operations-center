@@ -5,6 +5,22 @@ image:
   obect-display-name: Fingerprint
   incus-get-all-method: GetImagesAllProjects
   incus-get-method: GetImage
+  display-attributes:
+    - alias: Description
+      lookup: Object.Properties.description
+      show-in-list: true
+    - alias: Type
+      lookup: Object.Type
+      show-in-list: true
+  column-pipelines:
+    - name: name
+      pipeline: trunc 12
+      enabled-in-list: true
+      enabled-in-show: false
+    - name: last_updated
+      pipeline: date "2006-01-02 15:04:05 MST"
+      enabled-in-list: true
+      enabled-in-show: true
 
 instance:
   object-type: InstanceFull
@@ -12,22 +28,46 @@ instance:
   is-server-id-not-defining: true
   incus-get-all-method: GetInstancesFullAllProjects
   incus-get-method: GetInstanceFull
+  column-pipelines:
+    - name: last_updated
+      pipeline: date "2006-01-02 15:04:05 MST"
+      enabled-in-list: true
+      enabled-in-show: true
 
 network:
   incus-get-all-method: GetNetworksAllProjects
   incus-get-method: GetNetwork
   has-sync-filter: true
+  display-attributes:
+    - alias: Type
+      lookup: Object.Type
+      show-in-list: true
+  column-pipelines:
+    - name: last_updated
+      pipeline: date "2006-01-02 15:04:05 MST"
+      enabled-in-list: true
+      enabled-in-show: true
 
 network_acl:
   uses-embedded-post-type: true
   incus-get-all-method: GetNetworkACLsAllProjects
   incus-get-method: GetNetworkACL
+  column-pipelines:
+    - name: last_updated
+      pipeline: date "2006-01-02 15:04:05 MST"
+      enabled-in-list: true
+      enabled-in-show: true
 
 network_address_set:
   requires-extension: network_address_set
   uses-embedded-post-type: true
   incus-get-all-method: GetNetworkAddressSetsAllProjects
   incus-get-method: GetNetworkAddressSet
+  column-pipelines:
+    - name: last_updated
+      pipeline: date "2006-01-02 15:04:05 MST"
+      enabled-in-list: true
+      enabled-in-show: true
 
 network_forward:
   object-name-property-name: listen_address
@@ -37,11 +77,25 @@ network_forward:
   incus-get-all-method: GetNetworkForwards
   incus-get-method: GetNetworkForward
   has-parent-filter: true
+  column-pipelines:
+    - name: last_updated
+      pipeline: date "2006-01-02 15:04:05 MST"
+      enabled-in-list: true
+      enabled-in-show: true
 
 network_integration:
   omit-project: true
   incus-get-all-method: GetNetworkIntegrations
   incus-get-method: GetNetworkIntegration
+  display-attributes:
+    - alias: Type
+      lookup: Object.Type
+      show-in-list: true
+  column-pipelines:
+    - name: last_updated
+      pipeline: date "2006-01-02 15:04:05 MST"
+      enabled-in-list: true
+      enabled-in-show: true
 
 network_load_balancer:
   object-name-property-name: listen_address
@@ -51,6 +105,11 @@ network_load_balancer:
   incus-get-all-method: GetNetworkLoadBalancers
   incus-get-method: GetNetworkLoadBalancer
   has-parent-filter: true
+  column-pipelines:
+    - name: last_updated
+      pipeline: date "2006-01-02 15:04:05 MST"
+      enabled-in-list: true
+      enabled-in-show: true
 
 network_peer:
   omit-project: true
@@ -58,19 +117,43 @@ network_peer:
   incus-get-all-method: GetNetworkPeers
   incus-get-method: GetNetworkPeer
   has-parent-filter: true
+  display-attributes:
+    - alias: Type
+      lookup: Object.Type
+      show-in-list: true
+  column-pipelines:
+    - name: last_updated
+      pipeline: date "2006-01-02 15:04:05 MST"
+      enabled-in-list: true
+      enabled-in-show: true
 
 network_zone:
   incus-get-all-method: GetNetworkZonesAllProjects
   incus-get-method: GetNetworkZone
+  column-pipelines:
+    - name: last_updated
+      pipeline: date "2006-01-02 15:04:05 MST"
+      enabled-in-list: true
+      enabled-in-show: true
 
 profile:
   incus-get-all-method: GetProfilesAllProjects
   incus-get-method: GetProfile
+  column-pipelines:
+    - name: last_updated
+      pipeline: date "2006-01-02 15:04:05 MST"
+      enabled-in-list: true
+      enabled-in-show: true
 
 project:
   omit-project: true
   incus-get-all-method: GetProjects
   incus-get-method: GetProject
+  column-pipelines:
+    - name: last_updated
+      pipeline: date "2006-01-02 15:04:05 MST"
+      enabled-in-list: true
+      enabled-in-show: true
 
 storage_bucket:
   object-type: StorageBucketFull
@@ -79,11 +162,25 @@ storage_bucket:
   incus-get-all-method: GetStoragePoolBucketsFullAllProjects
   incus-get-method: GetStoragePoolBucketFull
   has-parent-filter: true
+  column-pipelines:
+    - name: last_updated
+      pipeline: date "2006-01-02 15:04:05 MST"
+      enabled-in-list: true
+      enabled-in-show: true
 
 storage_pool:
   omit-project: true
   incus-get-all-method: GetStoragePools
   incus-get-method: GetStoragePool
+  display-attributes:
+    - alias: Driver
+      lookup: Object.Driver
+      show-in-list: true
+  column-pipelines:
+    - name: last_updated
+      pipeline: date "2006-01-02 15:04:05 MST"
+      enabled-in-list: true
+      enabled-in-show: true
 
 storage_volume:
   object-type: StorageVolumeFull
@@ -98,3 +195,8 @@ storage_volume:
       type: string
       test-dummy-value: >-
         "custom"
+  column-pipelines:
+    - name: last_updated
+      pipeline: date "2006-01-02 15:04:05 MST"
+      enabled-in-list: true
+      enabled-in-show: true
