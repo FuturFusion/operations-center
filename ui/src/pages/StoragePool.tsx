@@ -2,6 +2,7 @@ import { Container } from "react-bootstrap";
 import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchStoragePools } from "api/storage_pool";
+import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
@@ -21,7 +22,7 @@ const StoragePool = () => {
     retry: false,
   });
 
-  const headers = ["Name", "Cluster", "Last updated"];
+  const headers = ["Name", "Driver", "Cluster", "Last updated"];
   const rows = pools.map((item) => {
     return [
       {
@@ -35,7 +36,11 @@ const StoragePool = () => {
         sortKey: item.name,
       },
       {
-        content: item.cluster,
+        content: item.object.driver,
+        sortKey: item.object.driver,
+      },
+      {
+        content: <ClusterLink cluster={item.cluster} />,
         sortKey: item.cluster,
       },
       {

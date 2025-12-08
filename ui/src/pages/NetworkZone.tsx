@@ -2,6 +2,7 @@ import { Container } from "react-bootstrap";
 import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchNetworkZones } from "api/network_zone";
+import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ProjectIncusLink from "components/ProjectIncusLink";
@@ -21,16 +22,12 @@ const NetworkZone = () => {
     retry: false,
   });
 
-  const headers = ["Name", "Cluster", "Project", "Last updated"];
+  const headers = ["Name", "Project", "Cluster", "Last updated"];
   const rows = zones.map((item) => {
     return [
       {
         content: item.name,
         sortKey: item.name,
-      },
-      {
-        content: item.cluster,
-        sortKey: item.cluster,
       },
       {
         content: (
@@ -40,6 +37,10 @@ const NetworkZone = () => {
           />
         ),
         sortKey: item.project_name,
+      },
+      {
+        content: <ClusterLink cluster={item.cluster} />,
+        sortKey: item.cluster,
       },
       {
         content: formatDate(item.last_updated),

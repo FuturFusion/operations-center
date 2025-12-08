@@ -2,13 +2,16 @@ import { Container } from "react-bootstrap";
 import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchNetworkLoadBalancers } from "api/network_load_balancer";
+import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
+import { useNetworkMap } from "context/useNetworks";
 import { formatDate } from "util/date";
 
 const NetworkLoadBalancer = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
+  const { networkMap } = useNetworkMap();
 
   const {
     data: load_balancers = [],
@@ -20,7 +23,13 @@ const NetworkLoadBalancer = () => {
     retry: false,
   });
 
-  const headers = ["Name", "Cluster", "Network name", "Last updated"];
+  const headers = [
+    "Address",
+    "Network name",
+    "Project",
+    "Cluster",
+    "Last updated",
+  ];
   const rows = load_balancers.map((item) => {
     return [
       {
@@ -28,12 +37,16 @@ const NetworkLoadBalancer = () => {
         sortKey: item.name,
       },
       {
-        content: item.cluster,
-        sortKey: item.cluster,
-      },
-      {
         content: item.parent_name,
         sortKey: item.parent_name,
+      },
+      {
+        content: networkMap[item.parent_name]?.project_name,
+        sortKey: networkMap[item.parent_name]?.project_name,
+      },
+      {
+        content: <ClusterLink cluster={item.cluster} />,
+        sortKey: item.cluster,
       },
       {
         content: formatDate(item.last_updated),

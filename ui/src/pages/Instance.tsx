@@ -2,10 +2,12 @@ import { Container } from "react-bootstrap";
 import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchInstances } from "api/instance";
+import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
 import ProjectIncusLink from "components/ProjectIncusLink";
+import ServerLink from "components/ServerLink";
 import { formatDate } from "util/date";
 
 const Instance = () => {
@@ -22,7 +24,7 @@ const Instance = () => {
     retry: false,
   });
 
-  const headers = ["Name", "Cluster", "Server", "Project", "Last updated"];
+  const headers = ["Name", "Project", "Cluster", "Server", "Last updated"];
   const rows = instances.map((item) => {
     return [
       {
@@ -36,14 +38,6 @@ const Instance = () => {
         sortKey: item.name,
       },
       {
-        content: item.cluster,
-        sortKey: item.cluster,
-      },
-      {
-        content: item.server,
-        sortKey: item.server,
-      },
-      {
         content: (
           <ProjectIncusLink
             cluster={item.cluster}
@@ -51,6 +45,14 @@ const Instance = () => {
           />
         ),
         sortKey: item.project_name,
+      },
+      {
+        content: <ClusterLink cluster={item.cluster} />,
+        sortKey: item.cluster,
+      },
+      {
+        content: <ServerLink server={item.server} />,
+        sortKey: item.server,
       },
       {
         content: formatDate(item.last_updated),

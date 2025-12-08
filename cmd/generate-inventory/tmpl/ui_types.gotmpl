@@ -1,3 +1,5 @@
+import { JSONValue } from "types/common";
+
 export interface {{ .Name | pascalcase }} {
   uuid: string;
   cluster: string;
@@ -14,6 +16,6 @@ export interface {{ .Name | pascalcase }} {
 {{- range .ExtraAttributes }}
   {{ .Name }}: string;
 {{- end }}
-  object: string;
+  object: JSONValue;
   last_updated: string;
 }
