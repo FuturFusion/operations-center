@@ -2,6 +2,7 @@
 
 image:
   object-name-property-name: fingerprint
+  obect-display-name: Fingerprint
   incus-get-all-method: GetImagesAllProjects
   incus-get-method: GetImage
 
@@ -30,6 +31,7 @@ network_address_set:
 
 network_forward:
   object-name-property-name: listen_address
+  obect-display-name: Address
   omit-project: true
   parent: network
   incus-get-all-method: GetNetworkForwards
@@ -43,6 +45,7 @@ network_integration:
 
 network_load_balancer:
   object-name-property-name: listen_address
+  obect-display-name: Address
   omit-project: true
   parent: network
   incus-get-all-method: GetNetworkLoadBalancers
