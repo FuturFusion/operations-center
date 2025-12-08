@@ -35,6 +35,22 @@ one
 			assertErr: require.NoError,
 		},
 		{
+			name: "valid - type operations center with empty connection URL",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeOperationsCenter,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name: "error - name empty",
 			server: provisioning.Server{
 				Name:          "", // invalid
@@ -98,6 +114,25 @@ one
 				Type:          api.ServerType("invalid"), // invalid
 				Cluster:       ptr.To("one"),
 				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - connection URL empty",
+			server: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "", // invalid
 				Certificate: `-----BEGIN CERTIFICATE-----
 one
 -----END CERTIFICATE-----
