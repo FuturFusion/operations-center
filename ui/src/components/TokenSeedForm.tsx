@@ -8,7 +8,8 @@ import {
   TokenSeedApplication,
   TokenSeedFormValues,
 } from "types/token";
-import { applicationsOptions, secondaryIncusAppOptions } from "util/util";
+import { ServerTypeString } from "util/server";
+import { secondaryIncusAppOptions } from "util/util";
 import YAML from "yaml";
 
 interface Props {
@@ -33,7 +34,7 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
   };
 
   const getMainApplication = (apps: TokenSeedApplication[]): string => {
-    return apps.find((app) => app.name in applicationsOptions)?.name ?? "";
+    return apps.find((app) => app.name in ServerTypeString)?.name ?? "";
   };
 
   const getSecondaryApplications = (apps: TokenSeedApplication[]): string[] => {
@@ -183,7 +184,7 @@ const TokenSeedForm: FC<Props> = ({ seed, onSubmit }) => {
               }}
               isInvalid={!!formik.errors.seeds?.application}
             >
-              {Object.entries(applicationsOptions).map(([value, label]) => (
+              {Object.entries(ServerTypeString).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>

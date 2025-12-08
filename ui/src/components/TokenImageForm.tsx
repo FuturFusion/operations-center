@@ -5,7 +5,7 @@ import ArchSelect from "components/ArchSelect";
 import ImageTypeSelect from "components/ImageTypeSelect";
 import SecondaryIncusSelect from "components/SecondaryIncusSelect";
 import { TokenImageFormValues } from "types/token";
-import { applicationsOptions } from "util/util";
+import { ServerTypeString } from "util/server";
 
 interface Props {
   formik: FormikProps<TokenImageFormValues>;
@@ -65,7 +65,7 @@ const TokenImageForm: FC<Props> = ({ formik }) => {
             }}
             isInvalid={!!formik.errors.seeds?.application}
           >
-            {Object.entries(applicationsOptions).map(([value, label]) => (
+            {Object.entries(ServerTypeString).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>

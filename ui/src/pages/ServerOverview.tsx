@@ -4,6 +4,8 @@ import { Link, useParams } from "react-router";
 import { IoChevronDownOutline, IoChevronUpOutline } from "react-icons/io5";
 import { fetchServer } from "api/server";
 import { formatDate } from "util/date";
+import type { ServerTypeKey } from "util/server";
+import { ServerTypeString } from "util/server";
 
 type FieldState = {
   hw: boolean;
@@ -78,7 +80,9 @@ const ServerOverview = () => {
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Type</div>
-        <div className="col-10 detail-table-cell">{server?.server_type}</div>
+        <div className="col-10 detail-table-cell">
+          {ServerTypeString[(server?.server_type as ServerTypeKey) ?? ""]}
+        </div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Status</div>
