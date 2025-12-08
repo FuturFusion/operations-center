@@ -47,9 +47,11 @@ func networkPeerWithParentFilter(network incusapi.Network) bool {
 
 func storageBucketWithParentFilter(storagePool incusapi.StoragePool) bool {
 	switch storagePool.Driver {
-	case "ceph", "linstor", "lvmcluster":
+	case "btrfs", "cephobject", "dir", "zfs":
+		// Only these drivers actually allow storage buckets.
+		// Therefore these must not be filtered.
+		return false
+	default:
 		return true
 	}
-
-	return false
 }
