@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
-	"time"
 
+	"github.com/Masterminds/sprig/v3"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
@@ -78,6 +78,20 @@ var networkLoadBalancerColumnSorters = map[string]sort.ColumnSorter{
 	},
 }
 
+var networkLoadBalancerColumnAliases = map[string]string{
+	"Name":        "Address",
+	"NetworkName": "Network Name",
+	"LastUpdated": "Last Updated",
+}
+
+var networkLoadBalancerListColumnPipelines = map[string]string{
+	"LastUpdated": `date "2006-01-02 15:04:05 MST"`,
+}
+
+var networkLoadBalancerShowColumnPipelines = map[string]string{
+	"LastUpdated": `date "2006-01-02 15:04:05 MST"`,
+}
+
 func (c *cmdNetworkLoadBalancerList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
@@ -131,18 +145,24 @@ func (c *cmdNetworkLoadBalancerList) Run(cmd *cobra.Command, args []string) erro
 
 	for i, field := range fields {
 		title := strings.Trim(field, "{} .")
-		if title == "Name" {
-			title = "Address"
+		titleAlias, ok := networkLoadBalancerColumnAliases[title]
+		if !ok {
+			titleAlias = title
 		}
 
-		fieldTmpl := tmpl.New(title)
-		_, err := fieldTmpl.Parse(field)
+		fieldTemplate := field
+		fieldPipeline, ok := networkLoadBalancerListColumnPipelines[title]
+		if ok {
+			fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
+		}
+
+		_, err := tmpl.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
 		if err != nil {
 			return err
 		}
 
-		header = append(header, title)
-		sorter, ok := networkLoadBalancerColumnSorters[title]
+		header = append(header, titleAlias)
+		sorter, ok := networkLoadBalancerColumnSorters[titleAlias]
 		if ok {
 			sorter.Index = i
 			columnSorters = append(columnSorters, sorter)
@@ -153,8 +173,6 @@ func (c *cmdNetworkLoadBalancerList) Run(cmd *cobra.Command, args []string) erro
 	wr := &bytes.Buffer{}
 
 	for _, networkLoadBalancer := range networkLoadBalancers {
-		networkLoadBalancer.LastUpdated = networkLoadBalancer.LastUpdated.Truncate(time.Second)
-
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
@@ -177,6 +195,8 @@ func (c *cmdNetworkLoadBalancerList) Run(cmd *cobra.Command, args []string) erro
 // Show network_load_balancer.
 type cmdNetworkLoadBalancerShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagShowObject bool
 }
 
 func (c *cmdNetworkLoadBalancerShow) Command() *cobra.Command {
@@ -188,6 +208,8 @@ func (c *cmdNetworkLoadBalancerShow) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
+
+	cmd.Flags().BoolVar(&c.flagShowObject, "object", false, "show inventory object")
 
 	return cmd
 }
@@ -206,17 +228,44 @@ func (c *cmdNetworkLoadBalancerShow) Run(cmd *cobra.Command, args []string) erro
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent(networkLoadBalancer.Object, "", "  ")
-	if err != nil {
-		return err
+	// Render the item.
+	fields := strings.Split(networkLoadBalancerDefaultColumns, ",")
+	for _, field := range fields {
+		title := strings.Trim(field, "{} .")
+		titleAlias, ok := networkLoadBalancerColumnAliases[title]
+		if !ok {
+			titleAlias = title
+		}
+
+		fieldTemplate := field
+		fieldPipeline, ok := networkLoadBalancerShowColumnPipelines[title]
+		if ok {
+			fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
+		}
+
+		tmpl, err := template.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprint(cmd.OutOrStdout(), titleAlias)
+		fmt.Fprint(cmd.OutOrStdout(), ": ")
+		err = tmpl.ExecuteTemplate(cmd.OutOrStdout(), titleAlias, networkLoadBalancer)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintln(cmd.OutOrStdout(), "")
 	}
 
-	fmt.Printf("UUID: %s\n", networkLoadBalancer.UUID.String())
-	fmt.Printf("Address: %s\n", networkLoadBalancer.Name)
-	fmt.Printf("Network Name: %s\n", networkLoadBalancer.NetworkName)
-	fmt.Printf("Cluster: %s\n", networkLoadBalancer.Cluster)
-	fmt.Printf("Last Updated: %s\n", networkLoadBalancer.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+	if c.flagShowObject {
+		objectJSON, err := json.MarshalIndent(networkLoadBalancer.Object, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+	}
 
 	return nil
 }

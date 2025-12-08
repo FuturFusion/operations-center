@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
-	"time"
 
+	"github.com/Masterminds/sprig/v3"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
@@ -89,6 +89,21 @@ var storageVolumeColumnSorters = map[string]sort.ColumnSorter{
 	},
 }
 
+var storageVolumeColumnAliases = map[string]string{
+	"Type":            "Type",
+	"StoragePoolName": "Storage Pool Name",
+	"ProjectName":     "Project",
+	"LastUpdated":     "Last Updated",
+}
+
+var storageVolumeListColumnPipelines = map[string]string{
+	"LastUpdated": `date "2006-01-02 15:04:05 MST"`,
+}
+
+var storageVolumeShowColumnPipelines = map[string]string{
+	"LastUpdated": `date "2006-01-02 15:04:05 MST"`,
+}
+
 func (c *cmdStorageVolumeList) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "list"
@@ -152,15 +167,24 @@ func (c *cmdStorageVolumeList) Run(cmd *cobra.Command, args []string) error {
 
 	for i, field := range fields {
 		title := strings.Trim(field, "{} .")
+		titleAlias, ok := storageVolumeColumnAliases[title]
+		if !ok {
+			titleAlias = title
+		}
 
-		fieldTmpl := tmpl.New(title)
-		_, err := fieldTmpl.Parse(field)
+		fieldTemplate := field
+		fieldPipeline, ok := storageVolumeListColumnPipelines[title]
+		if ok {
+			fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
+		}
+
+		_, err := tmpl.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
 		if err != nil {
 			return err
 		}
 
-		header = append(header, title)
-		sorter, ok := storageVolumeColumnSorters[title]
+		header = append(header, titleAlias)
+		sorter, ok := storageVolumeColumnSorters[titleAlias]
 		if ok {
 			sorter.Index = i
 			columnSorters = append(columnSorters, sorter)
@@ -171,8 +195,6 @@ func (c *cmdStorageVolumeList) Run(cmd *cobra.Command, args []string) error {
 	wr := &bytes.Buffer{}
 
 	for _, storageVolume := range storageVolumes {
-		storageVolume.LastUpdated = storageVolume.LastUpdated.Truncate(time.Second)
-
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
@@ -195,6 +217,8 @@ func (c *cmdStorageVolumeList) Run(cmd *cobra.Command, args []string) error {
 // Show storage_volume.
 type cmdStorageVolumeShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagShowObject bool
 }
 
 func (c *cmdStorageVolumeShow) Command() *cobra.Command {
@@ -206,6 +230,8 @@ func (c *cmdStorageVolumeShow) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
+
+	cmd.Flags().BoolVar(&c.flagShowObject, "object", false, "show inventory object")
 
 	return cmd
 }
@@ -224,20 +250,44 @@ func (c *cmdStorageVolumeShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent(storageVolume.Object, "", "  ")
-	if err != nil {
-		return err
+	// Render the item.
+	fields := strings.Split(storageVolumeDefaultColumns, ",")
+	for _, field := range fields {
+		title := strings.Trim(field, "{} .")
+		titleAlias, ok := storageVolumeColumnAliases[title]
+		if !ok {
+			titleAlias = title
+		}
+
+		fieldTemplate := field
+		fieldPipeline, ok := storageVolumeShowColumnPipelines[title]
+		if ok {
+			fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
+		}
+
+		tmpl, err := template.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprint(cmd.OutOrStdout(), titleAlias)
+		fmt.Fprint(cmd.OutOrStdout(), ": ")
+		err = tmpl.ExecuteTemplate(cmd.OutOrStdout(), titleAlias, storageVolume)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintln(cmd.OutOrStdout(), "")
 	}
 
-	fmt.Printf("UUID: %s\n", storageVolume.UUID.String())
-	fmt.Printf("Name: %s\n", storageVolume.Name)
-	fmt.Printf("Type: %s\n", storageVolume.Type)
-	fmt.Printf("Storage Pool Name: %s\n", storageVolume.StoragePoolName)
-	fmt.Printf("Project Name: %s\n", storageVolume.ProjectName)
-	fmt.Printf("Cluster: %s\n", storageVolume.Cluster)
-	fmt.Printf("Server: %s\n", storageVolume.Server)
-	fmt.Printf("Last Updated: %s\n", storageVolume.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+	if c.flagShowObject {
+		objectJSON, err := json.MarshalIndent(storageVolume.Object, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+	}
 
 	return nil
 }
