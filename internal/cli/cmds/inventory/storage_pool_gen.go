@@ -64,13 +64,13 @@ type cmdStoragePoolList struct {
 	flagFormat  string
 }
 
-const storagePoolDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Name }},{{ .LastUpdated }}`
+const storagePoolDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .Cluster }},{{ .LastUpdated }}`
 
 var storagePoolColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
-	"Name": {
+	"Cluster": {
 		Less: sort.NaturalLess,
 	},
 }
@@ -206,8 +206,8 @@ func (c *cmdStoragePoolShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("UUID: %s\n", storagePool.UUID.String())
-	fmt.Printf("Cluster: %s\n", storagePool.Cluster)
 	fmt.Printf("Name: %s\n", storagePool.Name)
+	fmt.Printf("Cluster: %s\n", storagePool.Cluster)
 	fmt.Printf("Last Updated: %s\n", storagePool.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 

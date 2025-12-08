@@ -65,16 +65,16 @@ type cmdProfileList struct {
 	flagFormat  string
 }
 
-const profileDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const profileDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .ProjectName }},{{ .Cluster }},{{ .LastUpdated }}`
 
 var profileColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
 	"ProjectName": {
 		Less: sort.NaturalLess,
 	},
-	"Name": {
+	"Cluster": {
 		Less: sort.NaturalLess,
 	},
 }
@@ -215,9 +215,9 @@ func (c *cmdProfileShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("UUID: %s\n", profile.UUID.String())
-	fmt.Printf("Cluster: %s\n", profile.Cluster)
-	fmt.Printf("Project Name: %s\n", profile.ProjectName)
 	fmt.Printf("Name: %s\n", profile.Name)
+	fmt.Printf("Project Name: %s\n", profile.ProjectName)
+	fmt.Printf("Cluster: %s\n", profile.Cluster)
 	fmt.Printf("Last Updated: %s\n", profile.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 

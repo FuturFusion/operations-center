@@ -64,16 +64,16 @@ type cmdNetworkLoadBalancerList struct {
 	flagFormat  string
 }
 
-const networkLoadBalancerDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .NetworkName }},{{ .Name }},{{ .LastUpdated }}`
+const networkLoadBalancerDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .NetworkName }},{{ .Cluster }},{{ .LastUpdated }}`
 
 var networkLoadBalancerColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
 	"ParentName": {
 		Less: sort.NaturalLess,
 	},
-	"Name": {
+	"Cluster": {
 		Less: sort.NaturalLess,
 	},
 }
@@ -212,9 +212,9 @@ func (c *cmdNetworkLoadBalancerShow) Run(cmd *cobra.Command, args []string) erro
 	}
 
 	fmt.Printf("UUID: %s\n", networkLoadBalancer.UUID.String())
-	fmt.Printf("Cluster: %s\n", networkLoadBalancer.Cluster)
-	fmt.Printf("Network Name: %s\n", networkLoadBalancer.NetworkName)
 	fmt.Printf("Address: %s\n", networkLoadBalancer.Name)
+	fmt.Printf("Network Name: %s\n", networkLoadBalancer.NetworkName)
+	fmt.Printf("Cluster: %s\n", networkLoadBalancer.Cluster)
 	fmt.Printf("Last Updated: %s\n", networkLoadBalancer.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 

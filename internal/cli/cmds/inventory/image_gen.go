@@ -65,16 +65,16 @@ type cmdImageList struct {
 	flagFormat  string
 }
 
-const imageDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const imageDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .ProjectName }},{{ .Cluster }},{{ .LastUpdated }}`
 
 var imageColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
 	"ProjectName": {
 		Less: sort.NaturalLess,
 	},
-	"Name": {
+	"Cluster": {
 		Less: sort.NaturalLess,
 	},
 }
@@ -218,9 +218,9 @@ func (c *cmdImageShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("UUID: %s\n", image.UUID.String())
-	fmt.Printf("Cluster: %s\n", image.Cluster)
-	fmt.Printf("Project Name: %s\n", image.ProjectName)
 	fmt.Printf("Fingerprint: %s\n", image.Name)
+	fmt.Printf("Project Name: %s\n", image.ProjectName)
+	fmt.Printf("Cluster: %s\n", image.Cluster)
 	fmt.Printf("Last Updated: %s\n", image.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 

@@ -65,16 +65,16 @@ type cmdNetworkAddressSetList struct {
 	flagFormat  string
 }
 
-const networkAddressSetDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const networkAddressSetDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .ProjectName }},{{ .Cluster }},{{ .LastUpdated }}`
 
 var networkAddressSetColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
 	"ProjectName": {
 		Less: sort.NaturalLess,
 	},
-	"Name": {
+	"Cluster": {
 		Less: sort.NaturalLess,
 	},
 }
@@ -215,9 +215,9 @@ func (c *cmdNetworkAddressSetShow) Run(cmd *cobra.Command, args []string) error 
 	}
 
 	fmt.Printf("UUID: %s\n", networkAddressSet.UUID.String())
-	fmt.Printf("Cluster: %s\n", networkAddressSet.Cluster)
-	fmt.Printf("Project Name: %s\n", networkAddressSet.ProjectName)
 	fmt.Printf("Name: %s\n", networkAddressSet.Name)
+	fmt.Printf("Project Name: %s\n", networkAddressSet.ProjectName)
+	fmt.Printf("Cluster: %s\n", networkAddressSet.Cluster)
 	fmt.Printf("Last Updated: %s\n", networkAddressSet.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 

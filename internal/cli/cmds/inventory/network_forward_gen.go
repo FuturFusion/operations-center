@@ -64,16 +64,16 @@ type cmdNetworkForwardList struct {
 	flagFormat  string
 }
 
-const networkForwardDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .NetworkName }},{{ .Name }},{{ .LastUpdated }}`
+const networkForwardDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .NetworkName }},{{ .Cluster }},{{ .LastUpdated }}`
 
 var networkForwardColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
 	"ParentName": {
 		Less: sort.NaturalLess,
 	},
-	"Name": {
+	"Cluster": {
 		Less: sort.NaturalLess,
 	},
 }
@@ -212,9 +212,9 @@ func (c *cmdNetworkForwardShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("UUID: %s\n", networkForward.UUID.String())
-	fmt.Printf("Cluster: %s\n", networkForward.Cluster)
-	fmt.Printf("Network Name: %s\n", networkForward.NetworkName)
 	fmt.Printf("Address: %s\n", networkForward.Name)
+	fmt.Printf("Network Name: %s\n", networkForward.NetworkName)
+	fmt.Printf("Cluster: %s\n", networkForward.Cluster)
 	fmt.Printf("Last Updated: %s\n", networkForward.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 

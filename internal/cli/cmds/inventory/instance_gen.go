@@ -66,19 +66,19 @@ type cmdInstanceList struct {
 	flagFormat  string
 }
 
-const instanceDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const instanceDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .ProjectName }},{{ .Cluster }},{{ .Server }},{{ .LastUpdated }}`
 
 var instanceColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
-		Less: sort.NaturalLess,
-	},
-	"Server": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
 	"ProjectName": {
 		Less: sort.NaturalLess,
 	},
-	"Name": {
+	"Cluster": {
+		Less: sort.NaturalLess,
+	},
+	"Server": {
 		Less: sort.NaturalLess,
 	},
 }
@@ -224,10 +224,10 @@ func (c *cmdInstanceShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("UUID: %s\n", instance.UUID.String())
+	fmt.Printf("Name: %s\n", instance.Name)
+	fmt.Printf("Project Name: %s\n", instance.ProjectName)
 	fmt.Printf("Cluster: %s\n", instance.Cluster)
 	fmt.Printf("Server: %s\n", instance.Server)
-	fmt.Printf("Project Name: %s\n", instance.ProjectName)
-	fmt.Printf("Name: %s\n", instance.Name)
 	fmt.Printf("Last Updated: %s\n", instance.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 

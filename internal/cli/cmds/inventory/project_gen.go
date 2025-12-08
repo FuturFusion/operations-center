@@ -64,13 +64,13 @@ type cmdProjectList struct {
 	flagFormat  string
 }
 
-const projectDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Name }},{{ .LastUpdated }}`
+const projectDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .Cluster }},{{ .LastUpdated }}`
 
 var projectColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
-	"Name": {
+	"Cluster": {
 		Less: sort.NaturalLess,
 	},
 }
@@ -206,8 +206,8 @@ func (c *cmdProjectShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("UUID: %s\n", project.UUID.String())
-	fmt.Printf("Cluster: %s\n", project.Cluster)
 	fmt.Printf("Name: %s\n", project.Name)
+	fmt.Printf("Cluster: %s\n", project.Cluster)
 	fmt.Printf("Last Updated: %s\n", project.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 

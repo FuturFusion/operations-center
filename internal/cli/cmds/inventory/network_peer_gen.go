@@ -64,16 +64,16 @@ type cmdNetworkPeerList struct {
 	flagFormat  string
 }
 
-const networkPeerDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .NetworkName }},{{ .Name }},{{ .LastUpdated }}`
+const networkPeerDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .NetworkName }},{{ .Cluster }},{{ .LastUpdated }}`
 
 var networkPeerColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
 	"ParentName": {
 		Less: sort.NaturalLess,
 	},
-	"Name": {
+	"Cluster": {
 		Less: sort.NaturalLess,
 	},
 }
@@ -209,9 +209,9 @@ func (c *cmdNetworkPeerShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("UUID: %s\n", networkPeer.UUID.String())
-	fmt.Printf("Cluster: %s\n", networkPeer.Cluster)
-	fmt.Printf("Network Name: %s\n", networkPeer.NetworkName)
 	fmt.Printf("Name: %s\n", networkPeer.Name)
+	fmt.Printf("Network Name: %s\n", networkPeer.NetworkName)
+	fmt.Printf("Cluster: %s\n", networkPeer.Cluster)
 	fmt.Printf("Last Updated: %s\n", networkPeer.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 

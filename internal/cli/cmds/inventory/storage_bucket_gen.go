@@ -66,13 +66,10 @@ type cmdStorageBucketList struct {
 	flagFormat  string
 }
 
-const storageBucketDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .StoragePoolName }},{{ .Name }},{{ .LastUpdated }}`
+const storageBucketDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .StoragePoolName }},{{ .ProjectName }},{{ .Cluster }},{{ .Server }},{{ .LastUpdated }}`
 
 var storageBucketColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
-		Less: sort.NaturalLess,
-	},
-	"Server": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
 	"ProjectName": {
@@ -81,7 +78,10 @@ var storageBucketColumnSorters = map[string]sort.ColumnSorter{
 	"ParentName": {
 		Less: sort.NaturalLess,
 	},
-	"Name": {
+	"Cluster": {
+		Less: sort.NaturalLess,
+	},
+	"Server": {
 		Less: sort.NaturalLess,
 	},
 }
@@ -227,11 +227,11 @@ func (c *cmdStorageBucketShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("UUID: %s\n", storageBucket.UUID.String())
+	fmt.Printf("Name: %s\n", storageBucket.Name)
+	fmt.Printf("Storage Pool Name: %s\n", storageBucket.StoragePoolName)
+	fmt.Printf("Project Name: %s\n", storageBucket.ProjectName)
 	fmt.Printf("Cluster: %s\n", storageBucket.Cluster)
 	fmt.Printf("Server: %s\n", storageBucket.Server)
-	fmt.Printf("Project Name: %s\n", storageBucket.ProjectName)
-	fmt.Printf("Storage Pool Name: %s\n", storageBucket.StoragePoolName)
-	fmt.Printf("Name: %s\n", storageBucket.Name)
 	fmt.Printf("Last Updated: %s\n", storageBucket.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 

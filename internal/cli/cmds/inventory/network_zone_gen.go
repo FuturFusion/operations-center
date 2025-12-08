@@ -65,16 +65,16 @@ type cmdNetworkZoneList struct {
 	flagFormat  string
 }
 
-const networkZoneDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const networkZoneDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .ProjectName }},{{ .Cluster }},{{ .LastUpdated }}`
 
 var networkZoneColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
 	"ProjectName": {
 		Less: sort.NaturalLess,
 	},
-	"Name": {
+	"Cluster": {
 		Less: sort.NaturalLess,
 	},
 }
@@ -215,9 +215,9 @@ func (c *cmdNetworkZoneShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("UUID: %s\n", networkZone.UUID.String())
-	fmt.Printf("Cluster: %s\n", networkZone.Cluster)
-	fmt.Printf("Project Name: %s\n", networkZone.ProjectName)
 	fmt.Printf("Name: %s\n", networkZone.Name)
+	fmt.Printf("Project Name: %s\n", networkZone.ProjectName)
+	fmt.Printf("Cluster: %s\n", networkZone.Cluster)
 	fmt.Printf("Last Updated: %s\n", networkZone.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 

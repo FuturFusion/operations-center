@@ -65,16 +65,16 @@ type cmdNetworkACLList struct {
 	flagFormat  string
 }
 
-const networkACLDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const networkACLDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .ProjectName }},{{ .Cluster }},{{ .LastUpdated }}`
 
 var networkACLColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
 	"ProjectName": {
 		Less: sort.NaturalLess,
 	},
-	"Name": {
+	"Cluster": {
 		Less: sort.NaturalLess,
 	},
 }
@@ -215,9 +215,9 @@ func (c *cmdNetworkACLShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("UUID: %s\n", networkACL.UUID.String())
-	fmt.Printf("Cluster: %s\n", networkACL.Cluster)
-	fmt.Printf("Project Name: %s\n", networkACL.ProjectName)
 	fmt.Printf("Name: %s\n", networkACL.Name)
+	fmt.Printf("Project Name: %s\n", networkACL.ProjectName)
+	fmt.Printf("Cluster: %s\n", networkACL.Cluster)
 	fmt.Printf("Last Updated: %s\n", networkACL.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 

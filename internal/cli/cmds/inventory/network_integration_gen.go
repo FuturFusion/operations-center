@@ -64,13 +64,13 @@ type cmdNetworkIntegrationList struct {
 	flagFormat  string
 }
 
-const networkIntegrationDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Name }},{{ .LastUpdated }}`
+const networkIntegrationDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .Cluster }},{{ .LastUpdated }}`
 
 var networkIntegrationColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
-	"Name": {
+	"Cluster": {
 		Less: sort.NaturalLess,
 	},
 }
@@ -206,8 +206,8 @@ func (c *cmdNetworkIntegrationShow) Run(cmd *cobra.Command, args []string) error
 	}
 
 	fmt.Printf("UUID: %s\n", networkIntegration.UUID.String())
-	fmt.Printf("Cluster: %s\n", networkIntegration.Cluster)
 	fmt.Printf("Name: %s\n", networkIntegration.Name)
+	fmt.Printf("Cluster: %s\n", networkIntegration.Cluster)
 	fmt.Printf("Last Updated: %s\n", networkIntegration.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 

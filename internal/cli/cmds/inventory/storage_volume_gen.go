@@ -66,25 +66,25 @@ type cmdStorageVolumeList struct {
 	flagFormat  string
 }
 
-const storageVolumeDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .StoragePoolName }},{{ .Name }},{{ .Type }},{{ .LastUpdated }}`
+const storageVolumeDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .Type }},{{ .StoragePoolName }},{{ .ProjectName }},{{ .Cluster }},{{ .Server }},{{ .LastUpdated }}`
 
 var storageVolumeColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
-		Less: sort.NaturalLess,
-	},
-	"Server": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
 	"ProjectName": {
 		Less: sort.NaturalLess,
 	},
+	"Type": {
+		Less: sort.NaturalLess,
+	},
 	"ParentName": {
 		Less: sort.NaturalLess,
 	},
-	"Name": {
+	"Cluster": {
 		Less: sort.NaturalLess,
 	},
-	"Type": {
+	"Server": {
 		Less: sort.NaturalLess,
 	},
 }
@@ -230,12 +230,12 @@ func (c *cmdStorageVolumeShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("UUID: %s\n", storageVolume.UUID.String())
-	fmt.Printf("Cluster: %s\n", storageVolume.Cluster)
-	fmt.Printf("Server: %s\n", storageVolume.Server)
-	fmt.Printf("Project Name: %s\n", storageVolume.ProjectName)
-	fmt.Printf("Storage Pool Name: %s\n", storageVolume.StoragePoolName)
 	fmt.Printf("Name: %s\n", storageVolume.Name)
 	fmt.Printf("Type: %s\n", storageVolume.Type)
+	fmt.Printf("Storage Pool Name: %s\n", storageVolume.StoragePoolName)
+	fmt.Printf("Project Name: %s\n", storageVolume.ProjectName)
+	fmt.Printf("Cluster: %s\n", storageVolume.Cluster)
+	fmt.Printf("Server: %s\n", storageVolume.Server)
 	fmt.Printf("Last Updated: %s\n", storageVolume.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 
