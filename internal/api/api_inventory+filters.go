@@ -45,6 +45,15 @@ func networkPeerWithParentFilter(network incusapi.Network) bool {
 	return false
 }
 
+func storageVolumeWithParentFilter(storagePool incusapi.StoragePool) bool {
+	switch storagePool.Driver {
+	case "cephobject":
+		return true
+	}
+
+	return false
+}
+
 func storageBucketWithParentFilter(storagePool incusapi.StoragePool) bool {
 	switch storagePool.Driver {
 	case "btrfs", "cephobject", "dir", "zfs":
