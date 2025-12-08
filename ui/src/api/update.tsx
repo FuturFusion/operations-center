@@ -29,6 +29,25 @@ export const fetchUpdateFiles = (uuid: string): Promise<UpdateFile[]> => {
   });
 };
 
+export const downloadUpdateFile = (
+  uuid: string,
+  filename: string,
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/updates/${uuid}/files/${filename}`)
+      .then(async (response) => {
+        if (!response.ok) {
+          const r = await response.json();
+          throw Error(r.error);
+        }
+
+        return response.blob();
+      })
+      .then((data) => resolve(URL.createObjectURL(data)))
+      .catch(reject);
+  });
+};
+
 export const refreshUpdates = (): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/updates/:refresh`, {
