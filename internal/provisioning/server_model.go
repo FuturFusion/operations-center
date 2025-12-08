@@ -72,6 +72,10 @@ func (s Server) Validate() error {
 		return domain.NewValidationErrf(`Invalid server, ":self" is reserved for internal use and not allowed as server name`)
 	}
 
+	if s.Type != api.ServerTypeOperationsCenter && s.ConnectionURL == "" {
+		return domain.NewValidationErrf("Invalid server, connection URL can not be empty for server type %s", s.Type)
+	}
+
 	_, err := url.Parse(s.ConnectionURL)
 	if err != nil {
 		return domain.NewValidationErrf("Invalid server, connection URL is not valid: %v", err)
