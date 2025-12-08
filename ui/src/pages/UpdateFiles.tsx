@@ -3,6 +3,7 @@ import { useParams } from "react-router";
 import { BsHash } from "react-icons/bs";
 import { fetchUpdateFiles } from "api/update";
 import DataTable from "components/DataTable.tsx";
+import UpdateFileLink from "components/UpdateFileLink.tsx";
 import { bytesToHumanReadable } from "util/util";
 
 const UpdateFiles = () => {
@@ -30,7 +31,7 @@ const UpdateFiles = () => {
   const rows = files.map((item) => {
     return [
       {
-        content: item.filename,
+        content: <UpdateFileLink uuid={uuid} filename={item.filename} />,
         sortKey: item.filename,
       },
       {
