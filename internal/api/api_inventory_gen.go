@@ -294,6 +294,7 @@ func registerInventoryRoutes(db dbdriver.DBTX, clusterSvc provisioning.ClusterSe
 			clusterSvc,
 			serverClient,
 			serverClient,
+			inventory.StorageVolumeWithParentFilter(storageVolumeWithParentFilter),
 		),
 		slog.Default(),
 	)

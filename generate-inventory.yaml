@@ -89,6 +89,7 @@ storage_volume:
   parent: storage_pool
   incus-get-all-method: GetStoragePoolVolumesFullAllProjects
   incus-get-method: GetStoragePoolVolumeFull
+  has-parent-filter: true
   extra-attributes:
     - name: type
       type: string
