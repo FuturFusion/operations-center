@@ -47,7 +47,7 @@ func networkPeerWithParentFilter(network incusapi.Network) bool {
 
 func storageBucketWithParentFilter(storagePool incusapi.StoragePool) bool {
 	switch storagePool.Driver {
-	case "ceph", "lvmcluster":
+	case "ceph", "linstor", "lvmcluster":
 		return true
 	}
 
