@@ -164,6 +164,8 @@ type entityArgs struct {
 	ParentPluralName       string
 	ParentObjectType       string
 	ExtraAttributes        []ExtraAttribute
+	DisplayAttributes      []DisplayAttribute
+	ColumnPipelines        []ColumnPipeline
 	HasSyncFilter          bool
 	HasParentFilter        bool
 }
@@ -256,6 +258,8 @@ func main() {
 			ParentPluralName:       entity.ParentPluralName,
 			ParentObjectType:       entity.ParentObjectType,
 			ExtraAttributes:        entity.ExtraAttributes,
+			DisplayAttributes:      entity.DisplayAttributes,
+			ColumnPipelines:        entity.ColumnPipelines,
 			HasSyncFilter:          entity.HasSyncFilter,
 			HasParentFilter:        entity.HasParentFilter,
 		}
