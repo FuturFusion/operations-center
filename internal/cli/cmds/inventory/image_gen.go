@@ -137,6 +137,9 @@ func (c *cmdImageList) Run(cmd *cobra.Command, args []string) error {
 
 	for i, field := range fields {
 		title := strings.Trim(field, "{} .")
+		if title == "Name" {
+			title = "Fingerprint"
+		}
 
 		fieldTmpl := tmpl.New(title)
 		_, err := fieldTmpl.Parse(field)
@@ -217,7 +220,7 @@ func (c *cmdImageShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("UUID: %s\n", image.UUID.String())
 	fmt.Printf("Cluster: %s\n", image.Cluster)
 	fmt.Printf("Project Name: %s\n", image.ProjectName)
-	fmt.Printf("Name: %s\n", image.Name)
+	fmt.Printf("Fingerprint: %s\n", image.Name)
 	fmt.Printf("Last Updated: %s\n", image.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 

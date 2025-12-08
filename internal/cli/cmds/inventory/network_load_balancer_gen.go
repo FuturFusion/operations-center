@@ -131,6 +131,9 @@ func (c *cmdNetworkLoadBalancerList) Run(cmd *cobra.Command, args []string) erro
 
 	for i, field := range fields {
 		title := strings.Trim(field, "{} .")
+		if title == "Name" {
+			title = "Address"
+		}
 
 		fieldTmpl := tmpl.New(title)
 		_, err := fieldTmpl.Parse(field)
@@ -211,7 +214,7 @@ func (c *cmdNetworkLoadBalancerShow) Run(cmd *cobra.Command, args []string) erro
 	fmt.Printf("UUID: %s\n", networkLoadBalancer.UUID.String())
 	fmt.Printf("Cluster: %s\n", networkLoadBalancer.Cluster)
 	fmt.Printf("Network Name: %s\n", networkLoadBalancer.NetworkName)
-	fmt.Printf("Name: %s\n", networkLoadBalancer.Name)
+	fmt.Printf("Address: %s\n", networkLoadBalancer.Name)
 	fmt.Printf("Last Updated: %s\n", networkLoadBalancer.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 

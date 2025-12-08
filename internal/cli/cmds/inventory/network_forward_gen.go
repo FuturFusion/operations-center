@@ -131,6 +131,9 @@ func (c *cmdNetworkForwardList) Run(cmd *cobra.Command, args []string) error {
 
 	for i, field := range fields {
 		title := strings.Trim(field, "{} .")
+		if title == "Name" {
+			title = "Address"
+		}
 
 		fieldTmpl := tmpl.New(title)
 		_, err := fieldTmpl.Parse(field)
@@ -211,7 +214,7 @@ func (c *cmdNetworkForwardShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("UUID: %s\n", networkForward.UUID.String())
 	fmt.Printf("Cluster: %s\n", networkForward.Cluster)
 	fmt.Printf("Network Name: %s\n", networkForward.NetworkName)
-	fmt.Printf("Name: %s\n", networkForward.Name)
+	fmt.Printf("Address: %s\n", networkForward.Name)
 	fmt.Printf("Last Updated: %s\n", networkForward.LastUpdated.Truncate(time.Second).String())
 	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
 
