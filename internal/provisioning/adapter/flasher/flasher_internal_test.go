@@ -7,6 +7,8 @@ import (
 
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/internal/testing/flaky"
 )
 
 func Test_isSelfSigned(t *testing.T) {
@@ -34,7 +36,7 @@ func Test_isSelfSigned(t *testing.T) {
 			name: "not self signed - linuxcontainers.org",
 			cert: func() tls.Certificate {
 				resp, err := http.Get("https://linuxcontainers.org")
-				require.NoError(t, err)
+				require.NoError(flaky.SkipOnFail(t, "calling external resources during test may fail"), err)
 
 				defer resp.Body.Close()
 
