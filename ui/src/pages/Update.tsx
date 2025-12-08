@@ -66,7 +66,7 @@ const Update = () => {
     "Status",
     "Severity",
     "Origin",
-    "Channel",
+    "Channels",
   ];
   const rows = updates.map((item) => {
     return [
@@ -98,8 +98,7 @@ const Update = () => {
         sortKey: item.origin,
       },
       {
-        content: item.channel,
-        sortKey: item.channel,
+        content: (item.channels ?? []).join(", "),
       },
     ];
   });

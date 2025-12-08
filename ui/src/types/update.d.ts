@@ -4,7 +4,7 @@ export interface Update {
   published_at: string;
   severity: string;
   origin: string;
-  channel: string;
+  channels: string[];
   changelog: string;
   update_status: string;
 }
