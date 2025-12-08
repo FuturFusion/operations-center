@@ -20,7 +20,16 @@ const SystemCertConfiguration = () => {
       });
   };
 
-  return <SystemCertForm onSubmit={onSubmit} />;
+  return (
+    <>
+      <h5>
+        By default Operations Center uses an automatically generated self-signed
+        TLS certificate. To replace it with a valid certificate, please provide
+        a replacement PEM-encoded X509 certificate and key.
+      </h5>
+      <SystemCertForm onSubmit={onSubmit} />
+    </>
+  );
 };
 
 export default SystemCertConfiguration;
