@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
-	"time"
 
+	"github.com/Masterminds/sprig/v3"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
@@ -64,15 +64,28 @@ type cmdStoragePoolList struct {
 	flagFormat  string
 }
 
-const storagePoolDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Name }},{{ .LastUpdated }}`
+const storagePoolDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .Object.Driver }},{{ .Cluster }},{{ .LastUpdated }}`
 
 var storagePoolColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
-		Less: sort.NaturalLess,
-	},
 	"Name": {
 		Less: sort.NaturalLess,
 	},
+	"Cluster": {
+		Less: sort.NaturalLess,
+	},
+}
+
+var storagePoolColumnAliases = map[string]string{
+	"Object.Driver": "Driver",
+	"LastUpdated":   "Last Updated",
+}
+
+var storagePoolListColumnPipelines = map[string]string{
+	"LastUpdated": `date "2006-01-02 15:04:05 MST"`,
+}
+
+var storagePoolShowColumnPipelines = map[string]string{
+	"LastUpdated": `date "2006-01-02 15:04:05 MST"`,
 }
 
 func (c *cmdStoragePoolList) Command() *cobra.Command {
@@ -128,15 +141,24 @@ func (c *cmdStoragePoolList) Run(cmd *cobra.Command, args []string) error {
 
 	for i, field := range fields {
 		title := strings.Trim(field, "{} .")
+		titleAlias, ok := storagePoolColumnAliases[title]
+		if !ok {
+			titleAlias = title
+		}
 
-		fieldTmpl := tmpl.New(title)
-		_, err := fieldTmpl.Parse(field)
+		fieldTemplate := field
+		fieldPipeline, ok := storagePoolListColumnPipelines[title]
+		if ok {
+			fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
+		}
+
+		_, err := tmpl.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
 		if err != nil {
 			return err
 		}
 
-		header = append(header, title)
-		sorter, ok := storagePoolColumnSorters[title]
+		header = append(header, titleAlias)
+		sorter, ok := storagePoolColumnSorters[titleAlias]
 		if ok {
 			sorter.Index = i
 			columnSorters = append(columnSorters, sorter)
@@ -147,8 +169,6 @@ func (c *cmdStoragePoolList) Run(cmd *cobra.Command, args []string) error {
 	wr := &bytes.Buffer{}
 
 	for _, storagePool := range storagePools {
-		storagePool.LastUpdated = storagePool.LastUpdated.Truncate(time.Second)
-
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
@@ -171,6 +191,8 @@ func (c *cmdStoragePoolList) Run(cmd *cobra.Command, args []string) error {
 // Show storage_pool.
 type cmdStoragePoolShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagShowObject bool
 }
 
 func (c *cmdStoragePoolShow) Command() *cobra.Command {
@@ -182,6 +204,8 @@ func (c *cmdStoragePoolShow) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
+
+	cmd.Flags().BoolVar(&c.flagShowObject, "object", false, "show inventory object")
 
 	return cmd
 }
@@ -200,16 +224,44 @@ func (c *cmdStoragePoolShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent(storagePool.Object, "", "  ")
-	if err != nil {
-		return err
+	// Render the item.
+	fields := strings.Split(storagePoolDefaultColumns, ",")
+	for _, field := range fields {
+		title := strings.Trim(field, "{} .")
+		titleAlias, ok := storagePoolColumnAliases[title]
+		if !ok {
+			titleAlias = title
+		}
+
+		fieldTemplate := field
+		fieldPipeline, ok := storagePoolShowColumnPipelines[title]
+		if ok {
+			fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
+		}
+
+		tmpl, err := template.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprint(cmd.OutOrStdout(), titleAlias)
+		fmt.Fprint(cmd.OutOrStdout(), ": ")
+		err = tmpl.ExecuteTemplate(cmd.OutOrStdout(), titleAlias, storagePool)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintln(cmd.OutOrStdout(), "")
 	}
 
-	fmt.Printf("UUID: %s\n", storagePool.UUID.String())
-	fmt.Printf("Cluster: %s\n", storagePool.Cluster)
-	fmt.Printf("Name: %s\n", storagePool.Name)
-	fmt.Printf("Last Updated: %s\n", storagePool.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+	if c.flagShowObject {
+		objectJSON, err := json.MarshalIndent(storagePool.Object, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+	}
 
 	return nil
 }

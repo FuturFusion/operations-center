@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
-	"time"
 
+	"github.com/Masterminds/sprig/v3"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
@@ -65,18 +65,31 @@ type cmdNetworkAddressSetList struct {
 	flagFormat  string
 }
 
-const networkAddressSetDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .ProjectName }},{{ .Name }},{{ .LastUpdated }}`
+const networkAddressSetDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .ProjectName }},{{ .Cluster }},{{ .LastUpdated }}`
 
 var networkAddressSetColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
 	"ProjectName": {
 		Less: sort.NaturalLess,
 	},
-	"Name": {
+	"Cluster": {
 		Less: sort.NaturalLess,
 	},
+}
+
+var networkAddressSetColumnAliases = map[string]string{
+	"ProjectName": "Project",
+	"LastUpdated": "Last Updated",
+}
+
+var networkAddressSetListColumnPipelines = map[string]string{
+	"LastUpdated": `date "2006-01-02 15:04:05 MST"`,
+}
+
+var networkAddressSetShowColumnPipelines = map[string]string{
+	"LastUpdated": `date "2006-01-02 15:04:05 MST"`,
 }
 
 func (c *cmdNetworkAddressSetList) Command() *cobra.Command {
@@ -137,15 +150,24 @@ func (c *cmdNetworkAddressSetList) Run(cmd *cobra.Command, args []string) error 
 
 	for i, field := range fields {
 		title := strings.Trim(field, "{} .")
+		titleAlias, ok := networkAddressSetColumnAliases[title]
+		if !ok {
+			titleAlias = title
+		}
 
-		fieldTmpl := tmpl.New(title)
-		_, err := fieldTmpl.Parse(field)
+		fieldTemplate := field
+		fieldPipeline, ok := networkAddressSetListColumnPipelines[title]
+		if ok {
+			fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
+		}
+
+		_, err := tmpl.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
 		if err != nil {
 			return err
 		}
 
-		header = append(header, title)
-		sorter, ok := networkAddressSetColumnSorters[title]
+		header = append(header, titleAlias)
+		sorter, ok := networkAddressSetColumnSorters[titleAlias]
 		if ok {
 			sorter.Index = i
 			columnSorters = append(columnSorters, sorter)
@@ -156,8 +178,6 @@ func (c *cmdNetworkAddressSetList) Run(cmd *cobra.Command, args []string) error 
 	wr := &bytes.Buffer{}
 
 	for _, networkAddressSet := range networkAddressSets {
-		networkAddressSet.LastUpdated = networkAddressSet.LastUpdated.Truncate(time.Second)
-
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
@@ -180,6 +200,8 @@ func (c *cmdNetworkAddressSetList) Run(cmd *cobra.Command, args []string) error 
 // Show network_address_set.
 type cmdNetworkAddressSetShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagShowObject bool
 }
 
 func (c *cmdNetworkAddressSetShow) Command() *cobra.Command {
@@ -191,6 +213,8 @@ func (c *cmdNetworkAddressSetShow) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
+
+	cmd.Flags().BoolVar(&c.flagShowObject, "object", false, "show inventory object")
 
 	return cmd
 }
@@ -209,17 +233,44 @@ func (c *cmdNetworkAddressSetShow) Run(cmd *cobra.Command, args []string) error 
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent(networkAddressSet.Object, "", "  ")
-	if err != nil {
-		return err
+	// Render the item.
+	fields := strings.Split(networkAddressSetDefaultColumns, ",")
+	for _, field := range fields {
+		title := strings.Trim(field, "{} .")
+		titleAlias, ok := networkAddressSetColumnAliases[title]
+		if !ok {
+			titleAlias = title
+		}
+
+		fieldTemplate := field
+		fieldPipeline, ok := networkAddressSetShowColumnPipelines[title]
+		if ok {
+			fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
+		}
+
+		tmpl, err := template.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprint(cmd.OutOrStdout(), titleAlias)
+		fmt.Fprint(cmd.OutOrStdout(), ": ")
+		err = tmpl.ExecuteTemplate(cmd.OutOrStdout(), titleAlias, networkAddressSet)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintln(cmd.OutOrStdout(), "")
 	}
 
-	fmt.Printf("UUID: %s\n", networkAddressSet.UUID.String())
-	fmt.Printf("Cluster: %s\n", networkAddressSet.Cluster)
-	fmt.Printf("Project Name: %s\n", networkAddressSet.ProjectName)
-	fmt.Printf("Name: %s\n", networkAddressSet.Name)
-	fmt.Printf("Last Updated: %s\n", networkAddressSet.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+	if c.flagShowObject {
+		objectJSON, err := json.MarshalIndent(networkAddressSet.Object, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+	}
 
 	return nil
 }

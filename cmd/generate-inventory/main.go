@@ -151,6 +151,7 @@ type entityArgs struct {
 	ObjectType             string
 	ObjectEmbedded         bool
 	ObjectNamePropertyName string
+	ObjectDisplayName      string
 	HasProject             bool
 	UsesEmbeddedPostType   bool
 	ServerIDByLocation     bool
@@ -163,6 +164,8 @@ type entityArgs struct {
 	ParentPluralName       string
 	ParentObjectType       string
 	ExtraAttributes        []ExtraAttribute
+	DisplayAttributes      []DisplayAttribute
+	ColumnPipelines        []ColumnPipeline
 	HasSyncFilter          bool
 	HasParentFilter        bool
 }
@@ -197,6 +200,10 @@ func main() {
 
 		if entity.ObjectNamePropertyName == "" {
 			cfg[name].ObjectNamePropertyName = "Name"
+		}
+
+		if entity.ObjectDisplayName == "" {
+			cfg[name].ObjectDisplayName = "Name"
 		}
 
 		if entity.ObjectType != "" {
@@ -238,6 +245,7 @@ func main() {
 			ObjectType:             entity.ObjectType,
 			ObjectEmbedded:         entity.ObjectEmbedded,
 			ObjectNamePropertyName: entity.ObjectNamePropertyName,
+			ObjectDisplayName:      entity.ObjectDisplayName,
 			HasProject:             !entity.OmitProject,
 			UsesEmbeddedPostType:   entity.UsesEmbeddedPostType,
 			ServerIDByLocation:     entity.ServerIDByLocation,
@@ -250,6 +258,8 @@ func main() {
 			ParentPluralName:       entity.ParentPluralName,
 			ParentObjectType:       entity.ParentObjectType,
 			ExtraAttributes:        entity.ExtraAttributes,
+			DisplayAttributes:      entity.DisplayAttributes,
+			ColumnPipelines:        entity.ColumnPipelines,
 			HasSyncFilter:          entity.HasSyncFilter,
 			HasParentFilter:        entity.HasParentFilter,
 		}

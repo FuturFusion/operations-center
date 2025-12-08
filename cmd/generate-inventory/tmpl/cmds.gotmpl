@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
-	"time"
 
+	"github.com/Masterminds/sprig/v3"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
@@ -78,33 +78,38 @@ The basic idea is:
 - Since we do not want to have a final comma at the end of the list, the last column ("LastUpdated")
   is not added to the list, but literaly after the range in the template.
 */ -}}
-{{- $defaultColumns := list "UUID" "Cluster" -}}
-{{- if .ServerIDByLocation -}}
-{{- $defaultColumns = append $defaultColumns "Server" -}}
-{{- end -}}
-{{- if .HasProject }}
-{{- $defaultColumns = append $defaultColumns "ProjectName" -}}
+{{- $defaultColumns := list "UUID" "Name" -}}
+{{- range .ExtraAttributes }}
+	{{- $defaultColumns = append $defaultColumns (.Name | pascalcase) -}}
+{{- end }}
+{{- range .DisplayAttributes }}
+	{{- if .ShowInList }}
+		{{- $defaultColumns = append $defaultColumns .Lookup -}}
+	{{- end }}
 {{- end }}
 {{- if .HasParent }}
 {{- $defaultColumns = append $defaultColumns (printf "%sName" (.ParentName | pascalcase)) -}}
 {{- end }}
-{{- $defaultColumns = append $defaultColumns "Name" -}}
-{{- range .ExtraAttributes }}
-	{{- $defaultColumns = append $defaultColumns (.Name | pascalcase) -}}
+{{- if .HasProject }}
+{{- $defaultColumns = append $defaultColumns "ProjectName" -}}
 {{- end }}
+{{- $defaultColumns = append $defaultColumns "Cluster" -}}
+{{- if .ServerIDByLocation -}}
+{{- $defaultColumns = append $defaultColumns "Server" -}}
+{{- end -}}
 const {{ .Name | camelcase }}DefaultColumns = `{{- range $item := $defaultColumns -}} {{- "{{" }} .{{ $item }} {{ "}}" -}}, {{- end -}}{{- "{{ .LastUpdated }}" -}}`
 
 var {{ .Name | camelcase }}ColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
-{{- if .ServerIDByLocation }}
-	"Server": {
+{{- if .HasProject }}
+	"ProjectName": {
 		Less: sort.NaturalLess,
 	},
 {{- end }}
-{{- if .HasProject }}
-	"ProjectName": {
+{{- range .ExtraAttributes }}
+	"{{ .Name | pascalcase }}": {
 		Less: sort.NaturalLess,
 	},
 {{- end }}
@@ -113,13 +118,48 @@ var {{ .Name | camelcase }}ColumnSorters = map[string]sort.ColumnSorter{
 		Less: sort.NaturalLess,
 	},
 {{- end }}
-	"Name": {
+	"Cluster": {
 		Less: sort.NaturalLess,
 	},
+{{- if .ServerIDByLocation }}
+	"Server": {
+		Less: sort.NaturalLess,
+	},
+{{- end }}
+}
+
+var {{ .Name | camelcase }}ColumnAliases = map[string]string{
+{{- if ne "Name" .ObjectDisplayName }}
+	"Name": "{{ .ObjectDisplayName }}",
+{{- end }}
 {{- range .ExtraAttributes }}
-	"{{ .Name | pascalcase }}": {
-		Less: sort.NaturalLess,
-	},
+	"{{ .Name | pascalcase }}": "{{ .Name | titlecase }}",
+{{- end }}
+{{- range .DisplayAttributes }}
+	"{{ .Lookup }}": "{{ .Alias }}",
+{{- end }}
+{{- if .HasParent }}
+	"{{ .ParentName | pascalcase }}Name": "{{ .ParentName | titlecase }} Name",
+{{- end }}
+{{- if .HasProject }}
+	"ProjectName": "Project",
+{{- end }}
+	"LastUpdated": "Last Updated",
+}
+
+var {{ .Name | camelcase }}ListColumnPipelines = map[string]string{
+{{- range .ColumnPipelines }}
+	{{- if .EnabledInList }}
+		"{{ .Name | pascalcase }}": `{{ .Pipeline }}`,
+	{{- end }}
+{{- end }}
+}
+
+var {{ .Name | camelcase }}ShowColumnPipelines = map[string]string{
+{{- range .ColumnPipelines }}
+	{{- if .EnabledInShow }}
+		"{{ .Name | pascalcase }}": `{{ .Pipeline }}`,
+	{{- end }}
 {{- end }}
 }
 
@@ -174,7 +214,7 @@ func (c *cmd{{ .Name | pascalcase }}List) Run(cmd *cobra.Command, args []string)
 	if c.flagFilterProject != "" {
 		filter.Project = ptr.To(c.flagFilterProject)
 	}
-{{- end}}
+{{- end }}
 
 	if c.flagFilterExpression != "" {
 		filter.Expression = ptr.To(c.flagFilterExpression)
@@ -194,15 +234,24 @@ func (c *cmd{{ .Name | pascalcase }}List) Run(cmd *cobra.Command, args []string)
 
 	for i, field := range fields {
 		title := strings.Trim(field, "{} .")
+		titleAlias, ok := {{ .Name | camelcase }}ColumnAliases[title]
+		if !ok {
+			titleAlias = title
+		}
 
-		fieldTmpl := tmpl.New(title)
-		_, err := fieldTmpl.Parse(field)
+		fieldTemplate := field
+		fieldPipeline, ok := {{ .Name | camelcase }}ListColumnPipelines[title]
+		if ok {
+			fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
+		}
+
+		_, err := tmpl.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
 		if err != nil {
 			return err
 		}
 
-		header = append(header, title)
-		sorter, ok := {{ .Name | camelcase }}ColumnSorters[title]
+		header = append(header, titleAlias)
+		sorter, ok := {{ .Name | camelcase }}ColumnSorters[titleAlias]
 		if ok {
 			sorter.Index = i
 			columnSorters = append(columnSorters, sorter)
@@ -213,8 +262,6 @@ func (c *cmd{{ .Name | pascalcase }}List) Run(cmd *cobra.Command, args []string)
 	wr := &bytes.Buffer{}
 
 	for _, {{ .Name | camelcase }} := range {{ .PluralName | camelcase }} {
-		{{ .Name | camelcase }}.LastUpdated = {{ .Name | camelcase }}.LastUpdated.Truncate(time.Second)
-
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
@@ -237,6 +284,8 @@ func (c *cmd{{ .Name | pascalcase }}List) Run(cmd *cobra.Command, args []string)
 // Show {{ .Name }}.
 type cmd{{ .Name | pascalcase }}Show struct{
 	ocClient *client.OperationsCenterClient
+
+	flagShowObject bool
 }
 
 func (c *cmd{{ .Name | pascalcase }}Show) Command() *cobra.Command {
@@ -248,6 +297,8 @@ func (c *cmd{{ .Name | pascalcase }}Show) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
+
+	cmd.Flags().BoolVar(&c.flagShowObject, "object", false, "show inventory object")
 
 	return cmd
 }
@@ -266,28 +317,44 @@ func (c *cmd{{ .Name | pascalcase }}Show) Run(cmd *cobra.Command, args []string)
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent({{ .Name | camelcase }}.Object, "", "  ")
-	if err != nil {
-		return err
+	// Render the item.
+	fields := strings.Split({{ .Name | camelcase }}DefaultColumns, ",")
+	for _, field := range fields {
+		title := strings.Trim(field, "{} .")
+		titleAlias, ok := {{ .Name | camelcase }}ColumnAliases[title]
+		if !ok {
+			titleAlias = title
+		}
+
+		fieldTemplate := field
+		fieldPipeline, ok := {{ .Name | camelcase }}ShowColumnPipelines[title]
+		if ok {
+			fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
+		}
+
+		tmpl, err := template.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprint(cmd.OutOrStdout(), titleAlias)
+		fmt.Fprint(cmd.OutOrStdout(), ": ")
+		err = tmpl.ExecuteTemplate(cmd.OutOrStdout(), titleAlias, {{ .Name | camelcase }})
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintln(cmd.OutOrStdout(), "")
 	}
 
-	fmt.Printf("UUID: %s\n", {{ .Name | camelcase }}.UUID.String())
-	fmt.Printf("Cluster: %s\n", {{ .Name | camelcase }}.Cluster)
-{{- if .ServerIDByLocation }}
-	fmt.Printf("Server: %s\n", {{ .Name | camelcase }}.Server)
-{{- end }}
-{{- if .HasProject }}
-	fmt.Printf("Project Name: %s\n", {{ .Name | camelcase }}.ProjectName)
-{{- end }}
-{{- if .HasParent }}
-	fmt.Printf("{{ .ParentName | titlecase }} Name: %s\n", {{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name)
-{{- end }}
-	fmt.Printf("Name: %s\n", {{ .Name | camelcase }}.Name)
-	{{- range .ExtraAttributes }}
-		fmt.Printf("{{ .Name | titlecase }}: %s\n", {{ $.Name | camelcase }}.{{ .Name | pascalcase }})
-	{{- end }}
-	fmt.Printf("Last Updated: %s\n", {{ .Name | camelcase }}.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+	if c.flagShowObject {
+		objectJSON, err := json.MarshalIndent({{ .Name | camelcase }}.Object, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+	}
 
 	return nil
 }

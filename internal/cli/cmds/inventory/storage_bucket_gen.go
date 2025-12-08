@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
-	"time"
 
+	"github.com/Masterminds/sprig/v3"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/operations-center/internal/cli/validate"
@@ -66,13 +66,10 @@ type cmdStorageBucketList struct {
 	flagFormat  string
 }
 
-const storageBucketDefaultColumns = `{{ .UUID }},{{ .Cluster }},{{ .Server }},{{ .ProjectName }},{{ .StoragePoolName }},{{ .Name }},{{ .LastUpdated }}`
+const storageBucketDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .StoragePoolName }},{{ .ProjectName }},{{ .Cluster }},{{ .Server }},{{ .LastUpdated }}`
 
 var storageBucketColumnSorters = map[string]sort.ColumnSorter{
-	"Cluster": {
-		Less: sort.NaturalLess,
-	},
-	"Server": {
+	"Name": {
 		Less: sort.NaturalLess,
 	},
 	"ProjectName": {
@@ -81,9 +78,26 @@ var storageBucketColumnSorters = map[string]sort.ColumnSorter{
 	"ParentName": {
 		Less: sort.NaturalLess,
 	},
-	"Name": {
+	"Cluster": {
 		Less: sort.NaturalLess,
 	},
+	"Server": {
+		Less: sort.NaturalLess,
+	},
+}
+
+var storageBucketColumnAliases = map[string]string{
+	"StoragePoolName": "Storage Pool Name",
+	"ProjectName":     "Project",
+	"LastUpdated":     "Last Updated",
+}
+
+var storageBucketListColumnPipelines = map[string]string{
+	"LastUpdated": `date "2006-01-02 15:04:05 MST"`,
+}
+
+var storageBucketShowColumnPipelines = map[string]string{
+	"LastUpdated": `date "2006-01-02 15:04:05 MST"`,
 }
 
 func (c *cmdStorageBucketList) Command() *cobra.Command {
@@ -149,15 +163,24 @@ func (c *cmdStorageBucketList) Run(cmd *cobra.Command, args []string) error {
 
 	for i, field := range fields {
 		title := strings.Trim(field, "{} .")
+		titleAlias, ok := storageBucketColumnAliases[title]
+		if !ok {
+			titleAlias = title
+		}
 
-		fieldTmpl := tmpl.New(title)
-		_, err := fieldTmpl.Parse(field)
+		fieldTemplate := field
+		fieldPipeline, ok := storageBucketListColumnPipelines[title]
+		if ok {
+			fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
+		}
+
+		_, err := tmpl.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
 		if err != nil {
 			return err
 		}
 
-		header = append(header, title)
-		sorter, ok := storageBucketColumnSorters[title]
+		header = append(header, titleAlias)
+		sorter, ok := storageBucketColumnSorters[titleAlias]
 		if ok {
 			sorter.Index = i
 			columnSorters = append(columnSorters, sorter)
@@ -168,8 +191,6 @@ func (c *cmdStorageBucketList) Run(cmd *cobra.Command, args []string) error {
 	wr := &bytes.Buffer{}
 
 	for _, storageBucket := range storageBuckets {
-		storageBucket.LastUpdated = storageBucket.LastUpdated.Truncate(time.Second)
-
 		row := make([]string, len(header))
 		for i, field := range header {
 			wr.Reset()
@@ -192,6 +213,8 @@ func (c *cmdStorageBucketList) Run(cmd *cobra.Command, args []string) error {
 // Show storage_bucket.
 type cmdStorageBucketShow struct {
 	ocClient *client.OperationsCenterClient
+
+	flagShowObject bool
 }
 
 func (c *cmdStorageBucketShow) Command() *cobra.Command {
@@ -203,6 +226,8 @@ func (c *cmdStorageBucketShow) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
+
+	cmd.Flags().BoolVar(&c.flagShowObject, "object", false, "show inventory object")
 
 	return cmd
 }
@@ -221,19 +246,44 @@ func (c *cmdStorageBucketShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	objectJSON, err := json.MarshalIndent(storageBucket.Object, "", "  ")
-	if err != nil {
-		return err
+	// Render the item.
+	fields := strings.Split(storageBucketDefaultColumns, ",")
+	for _, field := range fields {
+		title := strings.Trim(field, "{} .")
+		titleAlias, ok := storageBucketColumnAliases[title]
+		if !ok {
+			titleAlias = title
+		}
+
+		fieldTemplate := field
+		fieldPipeline, ok := storageBucketShowColumnPipelines[title]
+		if ok {
+			fieldTemplate = strings.Replace(fieldTemplate, "}}", "|"+fieldPipeline+"}}", 1)
+		}
+
+		tmpl, err := template.New(titleAlias).Funcs(sprig.FuncMap()).Parse(fieldTemplate)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprint(cmd.OutOrStdout(), titleAlias)
+		fmt.Fprint(cmd.OutOrStdout(), ": ")
+		err = tmpl.ExecuteTemplate(cmd.OutOrStdout(), titleAlias, storageBucket)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintln(cmd.OutOrStdout(), "")
 	}
 
-	fmt.Printf("UUID: %s\n", storageBucket.UUID.String())
-	fmt.Printf("Cluster: %s\n", storageBucket.Cluster)
-	fmt.Printf("Server: %s\n", storageBucket.Server)
-	fmt.Printf("Project Name: %s\n", storageBucket.ProjectName)
-	fmt.Printf("Storage Pool Name: %s\n", storageBucket.StoragePoolName)
-	fmt.Printf("Name: %s\n", storageBucket.Name)
-	fmt.Printf("Last Updated: %s\n", storageBucket.LastUpdated.Truncate(time.Second).String())
-	fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+	if c.flagShowObject {
+		objectJSON, err := json.MarshalIndent(storageBucket.Object, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Object:\n%s\n", render.Indent(4, string(objectJSON)))
+	}
 
 	return nil
 }
