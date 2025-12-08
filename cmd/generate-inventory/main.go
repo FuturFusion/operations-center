@@ -151,6 +151,7 @@ type entityArgs struct {
 	ObjectType             string
 	ObjectEmbedded         bool
 	ObjectNamePropertyName string
+	ObjectDisplayName      string
 	HasProject             bool
 	UsesEmbeddedPostType   bool
 	ServerIDByLocation     bool
@@ -199,6 +200,10 @@ func main() {
 			cfg[name].ObjectNamePropertyName = "Name"
 		}
 
+		if entity.ObjectDisplayName == "" {
+			cfg[name].ObjectDisplayName = "Name"
+		}
+
 		if entity.ObjectType != "" {
 			cfg[name].ObjectEmbedded = true
 		}
@@ -238,6 +243,7 @@ func main() {
 			ObjectType:             entity.ObjectType,
 			ObjectEmbedded:         entity.ObjectEmbedded,
 			ObjectNamePropertyName: entity.ObjectNamePropertyName,
+			ObjectDisplayName:      entity.ObjectDisplayName,
 			HasProject:             !entity.OmitProject,
 			UsesEmbeddedPostType:   entity.UsesEmbeddedPostType,
 			ServerIDByLocation:     entity.ServerIDByLocation,

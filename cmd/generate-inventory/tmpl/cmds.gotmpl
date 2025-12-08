@@ -174,7 +174,7 @@ func (c *cmd{{ .Name | pascalcase }}List) Run(cmd *cobra.Command, args []string)
 	if c.flagFilterProject != "" {
 		filter.Project = ptr.To(c.flagFilterProject)
 	}
-{{- end}}
+{{- end }}
 
 	if c.flagFilterExpression != "" {
 		filter.Expression = ptr.To(c.flagFilterExpression)
@@ -194,6 +194,11 @@ func (c *cmd{{ .Name | pascalcase }}List) Run(cmd *cobra.Command, args []string)
 
 	for i, field := range fields {
 		title := strings.Trim(field, "{} .")
+{{- if ne "Name" .ObjectDisplayName }}
+		if title == "Name" {
+			title = "{{ .ObjectDisplayName }}"
+		}
+{{- end }}
 
 		fieldTmpl := tmpl.New(title)
 		_, err := fieldTmpl.Parse(field)
@@ -282,7 +287,7 @@ func (c *cmd{{ .Name | pascalcase }}Show) Run(cmd *cobra.Command, args []string)
 {{- if .HasParent }}
 	fmt.Printf("{{ .ParentName | titlecase }} Name: %s\n", {{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name)
 {{- end }}
-	fmt.Printf("Name: %s\n", {{ .Name | camelcase }}.Name)
+	fmt.Printf("{{ .ObjectDisplayName }}: %s\n", {{ .Name | camelcase }}.Name)
 	{{- range .ExtraAttributes }}
 		fmt.Printf("{{ .Name | titlecase }}: %s\n", {{ $.Name | camelcase }}.{{ .Name | pascalcase }})
 	{{- end }}

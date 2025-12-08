@@ -12,6 +12,7 @@ type Entity struct {
 	PluralName             string           `yaml:"plural"`                    // plural form of the entity
 	RequiresExtension      string           `yaml:"requires-extension"`        // If provided, the incus API needs to support the given extension in order to support this resoruce type
 	ObjectNamePropertyName string           `yaml:"object-name-property-name"` // Name property of the object
+	ObjectDisplayName      string           `yaml:"obect-display-name"`        // Display name of the object
 	ObjectType             string           `yaml:"object-type"`               // Go type used for object in model
 	ObjectEmbedded         bool             `yaml:"-"`
 	OmitProject            bool             `yaml:"omit-project"`              // if omit-project is provided, the entity does not have a relation to a project
