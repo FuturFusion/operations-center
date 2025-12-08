@@ -89,9 +89,9 @@ ORDER BY clusters.name, servers.name, storage_buckets.name
 		args = append(args, sql.Named("server_name", filter.Server))
 	}
 
-	if filter.Project != nil {
+	if filter.ProjectName != nil {
 		whereClause = append(whereClause, ` AND storage_buckets.project_name = :project`)
-		args = append(args, sql.Named("project", filter.Project))
+		args = append(args, sql.Named("project", filter.ProjectName))
 	}
 
 	if filter.StoragePoolName != nil {
@@ -154,9 +154,9 @@ ORDER BY storage_buckets.id
 		args = append(args, sql.Named("server_name", filter.Server))
 	}
 
-	if filter.Project != nil {
+	if filter.ProjectName != nil {
 		whereClause = append(whereClause, ` AND storage_buckets.project_name = :project`)
-		args = append(args, sql.Named("project", filter.Project))
+		args = append(args, sql.Named("project", filter.ProjectName))
 	}
 
 	if filter.StoragePoolName != nil {

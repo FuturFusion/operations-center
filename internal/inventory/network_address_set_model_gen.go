@@ -3,6 +3,9 @@
 package inventory
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -13,17 +16,40 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+type IncusNetworkAddressSetWrapper struct {
+	incusapi.NetworkAddressSet `json:"-"`
+}
+
+func (w IncusNetworkAddressSetWrapper) Value() (driver.Value, error) {
+	return json.Marshal(w.NetworkAddressSet)
+}
+
+func (w *IncusNetworkAddressSetWrapper) Scan(value interface{}) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid network_address_set")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return json.Unmarshal([]byte(v), &w.NetworkAddressSet)
+	case []byte:
+		return json.Unmarshal(v, &w.NetworkAddressSet)
+	default:
+		return fmt.Errorf("type %T is not supported for network_address_set", value)
+	}
+}
+
 //
 //generate-expr: NetworkAddressSet
 
 type NetworkAddressSet struct {
-	ID          int                        `json:"-"`
-	UUID        uuid.UUID                  `json:"uuid"`
-	Cluster     string                     `json:"cluster"`
-	ProjectName string                     `json:"project"`
-	Name        string                     `json:"name"`
-	Object      incusapi.NetworkAddressSet `json:"object"`
-	LastUpdated time.Time                  `json:"last_updated"`
+	ID          int                           `json:"-"`
+	UUID        uuid.UUID                     `json:"uuid"          db:"primary=yes"`
+	Cluster     string                        `json:"cluster"       db:"leftjoin=clusters.name"`
+	ProjectName string                        `json:"project"       db:"sql=network_address_sets.project_name"`
+	Name        string                        `json:"name"`
+	Object      IncusNetworkAddressSetWrapper `json:"object"`
+	LastUpdated time.Time                     `json:"last_updated"  db:"update_timestamp"`
 }
 
 func (m *NetworkAddressSet) DeriveUUID() *NetworkAddressSet {
@@ -63,19 +89,24 @@ func (m NetworkAddressSet) Validate() error {
 type NetworkAddressSets []NetworkAddressSet
 
 type NetworkAddressSetFilter struct {
-	Cluster    *string
-	Project    *string
-	Name       *string
-	Expression *string
+	UUID        *uuid.UUID
+	Cluster     *string
+	ProjectName *string
+	Name        *string
+	Expression  *string `db:"ignore"`
 }
 
 func (f NetworkAddressSetFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.UUID != nil {
+		query.Add("uuid", f.UUID.String())
+	}
+
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
 	}
 
-	if f.Project != nil {
-		query.Add("project", *f.Project)
+	if f.ProjectName != nil {
+		query.Add("project", *f.ProjectName)
 	}
 
 	if f.Name != nil {

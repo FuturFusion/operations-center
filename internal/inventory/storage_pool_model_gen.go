@@ -3,6 +3,9 @@
 package inventory
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -13,16 +16,39 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+type IncusStoragePoolWrapper struct {
+	incusapi.StoragePool `json:"-"`
+}
+
+func (w IncusStoragePoolWrapper) Value() (driver.Value, error) {
+	return json.Marshal(w.StoragePool)
+}
+
+func (w *IncusStoragePoolWrapper) Scan(value interface{}) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid storage_pool")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return json.Unmarshal([]byte(v), &w.StoragePool)
+	case []byte:
+		return json.Unmarshal(v, &w.StoragePool)
+	default:
+		return fmt.Errorf("type %T is not supported for storage_pool", value)
+	}
+}
+
 //
 //generate-expr: StoragePool
 
 type StoragePool struct {
-	ID          int                  `json:"-"`
-	UUID        uuid.UUID            `json:"uuid"`
-	Cluster     string               `json:"cluster"`
-	Name        string               `json:"name"`
-	Object      incusapi.StoragePool `json:"object"`
-	LastUpdated time.Time            `json:"last_updated"`
+	ID          int                     `json:"-"`
+	UUID        uuid.UUID               `json:"uuid"          db:"primary=yes"`
+	Cluster     string                  `json:"cluster"       db:"leftjoin=clusters.name"`
+	Name        string                  `json:"name"`
+	Object      IncusStoragePoolWrapper `json:"object"`
+	LastUpdated time.Time               `json:"last_updated"  db:"update_timestamp"`
 }
 
 func (m *StoragePool) DeriveUUID() *StoragePool {
@@ -57,12 +83,17 @@ func (m StoragePool) Validate() error {
 type StoragePools []StoragePool
 
 type StoragePoolFilter struct {
+	UUID       *uuid.UUID
 	Cluster    *string
 	Name       *string
-	Expression *string
+	Expression *string `db:"ignore"`
 }
 
 func (f StoragePoolFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.UUID != nil {
+		query.Add("uuid", f.UUID.String())
+	}
+
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
 	}

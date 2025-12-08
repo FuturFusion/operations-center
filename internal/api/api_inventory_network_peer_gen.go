@@ -163,7 +163,7 @@ func (i *networkPeerHandler) networkPeersGet(r *http.Request) response.Response 
 				Cluster:     networkPeer.Cluster,
 				NetworkName: networkPeer.NetworkName,
 				Name:        networkPeer.Name,
-				Object:      networkPeer.Object,
+				Object:      networkPeer.Object.NetworkPeer,
 				LastUpdated: networkPeer.LastUpdated,
 			})
 		}
@@ -236,7 +236,7 @@ func (i *networkPeerHandler) networkPeerGet(r *http.Request) response.Response {
 			Cluster:     networkPeer.Cluster,
 			NetworkName: networkPeer.NetworkName,
 			Name:        networkPeer.Name,
-			Object:      networkPeer.Object,
+			Object:      networkPeer.Object.NetworkPeer,
 			LastUpdated: networkPeer.LastUpdated,
 		},
 	)

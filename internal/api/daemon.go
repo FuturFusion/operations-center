@@ -39,6 +39,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	internalenvironment "github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/file"
+	inventoryEntities "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite/entities"
 	inventoryIncusAdapter "github.com/FuturFusion/operations-center/internal/inventory/server/incus"
 	serverMiddleware "github.com/FuturFusion/operations-center/internal/inventory/server/middleware"
 	"github.com/FuturFusion/operations-center/internal/logger"
@@ -54,7 +55,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/localfs"
 	provisioningRepoMiddleware "github.com/FuturFusion/operations-center/internal/provisioning/repo/middleware"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
-	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	provisioningEntities "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/internal/system"
 	systemServiceMiddleware "github.com/FuturFusion/operations-center/internal/system/middleware"
@@ -256,7 +257,12 @@ func (d *Daemon) initDB(_ context.Context) (dbdriver.DBTX, error) {
 	}
 
 	dbWithTransaction := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(dbWithTransaction, false)
+	provisioningEntities.PreparedStmts, err = provisioningEntities.PrepareStmts(dbWithTransaction, false)
+	if err != nil {
+		return nil, err
+	}
+
+	inventoryEntities.PreparedStmts, err = inventoryEntities.PrepareStmts(dbWithTransaction, false)
 	if err != nil {
 		return nil, err
 	}

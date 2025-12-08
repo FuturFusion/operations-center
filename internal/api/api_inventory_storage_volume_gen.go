@@ -170,7 +170,7 @@ func (i *storageVolumeHandler) storageVolumesGet(r *http.Request) response.Respo
 	}
 
 	if r.URL.Query().Get("project") != "" {
-		filter.Project = ptr.To(r.URL.Query().Get("project"))
+		filter.ProjectName = ptr.To(r.URL.Query().Get("project"))
 	}
 
 	if r.URL.Query().Get("filter") != "" {
@@ -194,7 +194,7 @@ func (i *storageVolumeHandler) storageVolumesGet(r *http.Request) response.Respo
 				StoragePoolName: storageVolume.StoragePoolName,
 				Name:            storageVolume.Name,
 				Type:            storageVolume.Type,
-				Object:          storageVolume.Object,
+				Object:          storageVolume.Object.StorageVolumeFull,
 				LastUpdated:     storageVolume.LastUpdated,
 			})
 		}
@@ -270,7 +270,7 @@ func (i *storageVolumeHandler) storageVolumeGet(r *http.Request) response.Respon
 			StoragePoolName: storageVolume.StoragePoolName,
 			Name:            storageVolume.Name,
 			Type:            storageVolume.Type,
-			Object:          storageVolume.Object,
+			Object:          storageVolume.Object.StorageVolumeFull,
 			LastUpdated:     storageVolume.LastUpdated,
 		},
 	)

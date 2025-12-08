@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -81,7 +80,7 @@ server-two
 		Cluster:     "one",
 		ProjectName: "one",
 		Name:        "one",
-		Object:      incusapi.NetworkZone{},
+		Object:      inventory.IncusNetworkZoneWrapper{},
 		LastUpdated: time.Now(),
 	}
 
@@ -91,7 +90,7 @@ server-two
 		Cluster:     "two",
 		ProjectName: "two",
 		Name:        "two",
-		Object:      incusapi.NetworkZone{},
+		Object:      inventory.IncusNetworkZoneWrapper{},
 		LastUpdated: time.Now(),
 	}
 
@@ -150,9 +149,9 @@ server-two
 
 	// Ensure we have one entry with filter for cluster, server, project and name.
 	networkZoneUUIDs, err = networkZone.GetAllUUIDsWithFilter(ctx, inventory.NetworkZoneFilter{
-		Cluster: ptr.To("one"),
-		Project: ptr.To("one"),
-		Name:    ptr.To("one"),
+		Cluster:     ptr.To("one"),
+		ProjectName: ptr.To("one"),
+		Name:        ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkZoneUUIDs, 1)
@@ -160,9 +159,9 @@ server-two
 
 	// Ensure we have one entry with filter for cluster, server, project and name.
 	dbNetworkZone, err = networkZone.GetAllWithFilter(ctx, inventory.NetworkZoneFilter{
-		Cluster: ptr.To("one"),
-		Project: ptr.To("one"),
-		Name:    ptr.To("one"),
+		Cluster:     ptr.To("one"),
+		ProjectName: ptr.To("one"),
+		Name:        ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetworkZone, 1)

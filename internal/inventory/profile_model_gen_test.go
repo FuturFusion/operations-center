@@ -5,23 +5,100 @@ package inventory_test
 import (
 	"testing"
 
+	"github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
+
+func TestIncusProfileWrapper_Value(t *testing.T) {
+	tests := []struct {
+		name string
+
+		profile inventory.IncusProfileWrapper
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+
+			profile: inventory.IncusProfileWrapper{
+				Profile: api.Profile{},
+			},
+
+			assertErr: require.NoError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := tc.profile.Value()
+
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestIncusProfileWrapper_Scan(t *testing.T) {
+	tests := []struct {
+		name string
+
+		value any
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - []byte",
+
+			value: []byte(`{}`),
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - string",
+
+			value: `{}`,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - nil",
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - unsupported type",
+
+			value: 1, // not supported for IncusProfileWrapper
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			updateFiles := inventory.IncusProfileWrapper{}
+
+			err := updateFiles.Scan(tc.value)
+
+			tc.assertErr(t, err)
+		})
+	}
+}
 
 func TestProfile_Validate(t *testing.T) {
 	tests := []struct {
-		name  string
-		image *inventory.Profile
+		name    string
+		profile *inventory.Profile
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "valid",
-			image: (&inventory.Profile{
+			profile: (&inventory.Profile{
 				ID:          1,
 				Cluster:     "one",
 				ProjectName: "project one",
@@ -32,7 +109,7 @@ func TestProfile_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid cluster ID",
-			image: (&inventory.Profile{
+			profile: (&inventory.Profile{
 				ID:          1,
 				Cluster:     "", // invalid
 				ProjectName: "project one",
@@ -46,7 +123,7 @@ func TestProfile_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid project name",
-			image: (&inventory.Profile{
+			profile: (&inventory.Profile{
 				ID:          1,
 				Cluster:     "one",
 				ProjectName: "", // invalid
@@ -60,7 +137,7 @@ func TestProfile_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid name",
-			image: (&inventory.Profile{
+			profile: (&inventory.Profile{
 				ID:          1,
 				Cluster:     "one",
 				ProjectName: "project one",
@@ -74,7 +151,7 @@ func TestProfile_Validate(t *testing.T) {
 		},
 		{
 			name: "error - UUID not derived",
-			image: &inventory.Profile{
+			profile: &inventory.Profile{
 				ID:          1,
 				Cluster:     "one",
 				ProjectName: "project one",
@@ -90,7 +167,7 @@ func TestProfile_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.image.Validate()
+			err := tc.profile.Validate()
 
 			tc.assertErr(t, err)
 		})
@@ -113,13 +190,14 @@ func TestProfile_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: inventory.ProfileFilter{
-				Cluster:    ptr.To("cluster"),
-				Project:    ptr.To("project"),
-				Name:       ptr.To("name"),
-				Expression: ptr.To("true"),
+				UUID:        ptr.To(uuidgen.FromPattern(t, "1")),
+				Cluster:     ptr.To("cluster"),
+				ProjectName: ptr.To("project"),
+				Name:        ptr.To("name"),
+				Expression:  ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true&name=name&project=project`,
+			want: `cluster=cluster&filter=true&name=name&project=project&uuid=11111111-1111-1111-1111-111111111111`,
 		},
 	}
 

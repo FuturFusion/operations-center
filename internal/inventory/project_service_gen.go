@@ -170,7 +170,7 @@ func (s projectService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		project.Object = retrievedProject
+		project.Object = IncusProjectWrapper{retrievedProject}
 		project.LastUpdated = s.now()
 		project.DeriveUUID()
 
@@ -242,7 +242,7 @@ func (s projectService) handleCreateEvent(ctx context.Context, clusterName strin
 	project := Project{
 		Cluster:     clusterName,
 		Name:        retrievedProject.Name,
-		Object:      retrievedProject,
+		Object:      IncusProjectWrapper{retrievedProject},
 		LastUpdated: s.now(),
 	}
 
@@ -354,7 +354,7 @@ func (s projectService) SyncCluster(ctx context.Context, name string) error {
 			project := Project{
 				Cluster:     name,
 				Name:        retrievedProject.Name,
-				Object:      retrievedProject,
+				Object:      IncusProjectWrapper{retrievedProject},
 				LastUpdated: s.now(),
 			}
 

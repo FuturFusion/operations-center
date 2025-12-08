@@ -184,7 +184,7 @@ func (s networkForwardService) ResyncByUUID(ctx context.Context, id uuid.UUID) e
 			return err
 		}
 
-		networkForward.Object = retrievedNetworkForward
+		networkForward.Object = IncusNetworkForwardWrapper{retrievedNetworkForward}
 		networkForward.LastUpdated = s.now()
 		networkForward.DeriveUUID()
 
@@ -257,7 +257,7 @@ func (s networkForwardService) handleCreateEvent(ctx context.Context, clusterNam
 		Cluster:     clusterName,
 		NetworkName: event.Source.ParentName,
 		Name:        retrievedNetworkForward.ListenAddress,
-		Object:      retrievedNetworkForward,
+		Object:      IncusNetworkForwardWrapper{retrievedNetworkForward},
 		LastUpdated: s.now(),
 	}
 
@@ -383,7 +383,7 @@ func (s networkForwardService) SyncCluster(ctx context.Context, name string) err
 					Cluster:     name,
 					NetworkName: network.Name,
 					Name:        retrievedNetworkForward.ListenAddress,
-					Object:      retrievedNetworkForward,
+					Object:      IncusNetworkForwardWrapper{retrievedNetworkForward},
 					LastUpdated: s.now(),
 				}
 

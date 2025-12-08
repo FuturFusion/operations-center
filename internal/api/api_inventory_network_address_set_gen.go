@@ -156,7 +156,7 @@ func (i *networkAddressSetHandler) networkAddressSetsGet(r *http.Request) respon
 	}
 
 	if r.URL.Query().Get("project") != "" {
-		filter.Project = ptr.To(r.URL.Query().Get("project"))
+		filter.ProjectName = ptr.To(r.URL.Query().Get("project"))
 	}
 
 	if r.URL.Query().Get("filter") != "" {
@@ -177,7 +177,7 @@ func (i *networkAddressSetHandler) networkAddressSetsGet(r *http.Request) respon
 				Cluster:     networkAddressSet.Cluster,
 				ProjectName: networkAddressSet.ProjectName,
 				Name:        networkAddressSet.Name,
-				Object:      networkAddressSet.Object,
+				Object:      networkAddressSet.Object.NetworkAddressSet,
 				LastUpdated: networkAddressSet.LastUpdated,
 			})
 		}
@@ -250,7 +250,7 @@ func (i *networkAddressSetHandler) networkAddressSetGet(r *http.Request) respons
 			Cluster:     networkAddressSet.Cluster,
 			ProjectName: networkAddressSet.ProjectName,
 			Name:        networkAddressSet.Name,
-			Object:      networkAddressSet.Object,
+			Object:      networkAddressSet.Object.NetworkAddressSet,
 			LastUpdated: networkAddressSet.LastUpdated,
 		},
 	)

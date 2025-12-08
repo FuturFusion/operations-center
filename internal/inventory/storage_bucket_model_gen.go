@@ -3,6 +3,9 @@
 package inventory
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -13,19 +16,42 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+type IncusStorageBucketFullWrapper struct {
+	incusapi.StorageBucketFull `json:"-"`
+}
+
+func (w IncusStorageBucketFullWrapper) Value() (driver.Value, error) {
+	return json.Marshal(w.StorageBucketFull)
+}
+
+func (w *IncusStorageBucketFullWrapper) Scan(value interface{}) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid StorageBucketFull")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return json.Unmarshal([]byte(v), &w.StorageBucketFull)
+	case []byte:
+		return json.Unmarshal(v, &w.StorageBucketFull)
+	default:
+		return fmt.Errorf("type %T is not supported for StorageBucketFull", value)
+	}
+}
+
 //
 //generate-expr: StorageBucket
 
 type StorageBucket struct {
-	ID              int                        `json:"-"`
-	UUID            uuid.UUID                  `json:"uuid"`
-	Cluster         string                     `json:"cluster"`
-	Server          string                     `json:"server"`
-	ProjectName     string                     `json:"project"`
-	StoragePoolName string                     `json:"storage_pool_name"`
-	Name            string                     `json:"name"`
-	Object          incusapi.StorageBucketFull `json:"object"`
-	LastUpdated     time.Time                  `json:"last_updated"`
+	ID              int                           `json:"-"`
+	UUID            uuid.UUID                     `json:"uuid"          db:"primary=yes"`
+	Cluster         string                        `json:"cluster"       db:"leftjoin=clusters.name"`
+	Server          string                        `json:"server"        db:"leftjoin=servers.name"`
+	ProjectName     string                        `json:"project"       db:"sql=storage_buckets.project_name"`
+	StoragePoolName string                        `json:"storage_pool_name"`
+	Name            string                        `json:"name"`
+	Object          IncusStorageBucketFullWrapper `json:"object"`
+	LastUpdated     time.Time                     `json:"last_updated"  db:"update_timestamp"`
 }
 
 func (m *StorageBucket) DeriveUUID() *StorageBucket {
@@ -75,15 +101,20 @@ func (m StorageBucket) Validate() error {
 type StorageBuckets []StorageBucket
 
 type StorageBucketFilter struct {
+	UUID            *uuid.UUID
 	Cluster         *string
 	Server          *string
-	Project         *string
+	ProjectName     *string
 	StoragePoolName *string
 	Name            *string
-	Expression      *string
+	Expression      *string `db:"ignore"`
 }
 
 func (f StorageBucketFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.UUID != nil {
+		query.Add("uuid", f.UUID.String())
+	}
+
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
 	}
@@ -92,8 +123,8 @@ func (f StorageBucketFilter) AppendToURLValues(query url.Values) url.Values {
 		query.Add("server", *f.Server)
 	}
 
-	if f.Project != nil {
-		query.Add("project", *f.Project)
+	if f.ProjectName != nil {
+		query.Add("project", *f.ProjectName)
 	}
 
 	if f.StoragePoolName != nil {

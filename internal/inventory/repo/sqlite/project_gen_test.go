@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -80,7 +79,7 @@ server-two
 	projectA := inventory.Project{
 		Cluster:     "one",
 		Name:        "one",
-		Object:      incusapi.Project{},
+		Object:      inventory.IncusProjectWrapper{},
 		LastUpdated: time.Now(),
 	}
 
@@ -89,7 +88,7 @@ server-two
 	projectB := inventory.Project{
 		Cluster:     "two",
 		Name:        "two",
-		Object:      incusapi.Project{},
+		Object:      inventory.IncusProjectWrapper{},
 		LastUpdated: time.Now(),
 	}
 

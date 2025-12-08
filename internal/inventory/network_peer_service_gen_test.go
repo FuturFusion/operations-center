@@ -247,7 +247,7 @@ func TestNetworkPeerService_GetByUUID(t *testing.T) {
 				Cluster:     "one",
 				NetworkName: "parent one",
 				Name:        "one",
-				Object:      incusapi.NetworkPeer{},
+				Object:      inventory.IncusNetworkPeerWrapper{},
 				LastUpdated: time.Now(),
 			},
 

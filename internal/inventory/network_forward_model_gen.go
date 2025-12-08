@@ -3,6 +3,9 @@
 package inventory
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -13,17 +16,40 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+type IncusNetworkForwardWrapper struct {
+	incusapi.NetworkForward `json:"-"`
+}
+
+func (w IncusNetworkForwardWrapper) Value() (driver.Value, error) {
+	return json.Marshal(w.NetworkForward)
+}
+
+func (w *IncusNetworkForwardWrapper) Scan(value interface{}) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid network_forward")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return json.Unmarshal([]byte(v), &w.NetworkForward)
+	case []byte:
+		return json.Unmarshal(v, &w.NetworkForward)
+	default:
+		return fmt.Errorf("type %T is not supported for network_forward", value)
+	}
+}
+
 //
 //generate-expr: NetworkForward
 
 type NetworkForward struct {
-	ID          int                     `json:"-"`
-	UUID        uuid.UUID               `json:"uuid"`
-	Cluster     string                  `json:"cluster"`
-	NetworkName string                  `json:"network_name"`
-	Name        string                  `json:"name"`
-	Object      incusapi.NetworkForward `json:"object"`
-	LastUpdated time.Time               `json:"last_updated"`
+	ID          int                        `json:"-"`
+	UUID        uuid.UUID                  `json:"uuid"          db:"primary=yes"`
+	Cluster     string                     `json:"cluster"       db:"leftjoin=clusters.name"`
+	NetworkName string                     `json:"network_name"`
+	Name        string                     `json:"name"`
+	Object      IncusNetworkForwardWrapper `json:"object"`
+	LastUpdated time.Time                  `json:"last_updated"  db:"update_timestamp"`
 }
 
 func (m *NetworkForward) DeriveUUID() *NetworkForward {
@@ -63,13 +89,18 @@ func (m NetworkForward) Validate() error {
 type NetworkForwards []NetworkForward
 
 type NetworkForwardFilter struct {
+	UUID        *uuid.UUID
 	Cluster     *string
 	NetworkName *string
 	Name        *string
-	Expression  *string
+	Expression  *string `db:"ignore"`
 }
 
 func (f NetworkForwardFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.UUID != nil {
+		query.Add("uuid", f.UUID.String())
+	}
+
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
 	}

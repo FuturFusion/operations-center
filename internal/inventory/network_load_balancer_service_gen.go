@@ -184,7 +184,7 @@ func (s networkLoadBalancerService) ResyncByUUID(ctx context.Context, id uuid.UU
 			return err
 		}
 
-		networkLoadBalancer.Object = retrievedNetworkLoadBalancer
+		networkLoadBalancer.Object = IncusNetworkLoadBalancerWrapper{retrievedNetworkLoadBalancer}
 		networkLoadBalancer.LastUpdated = s.now()
 		networkLoadBalancer.DeriveUUID()
 
@@ -257,7 +257,7 @@ func (s networkLoadBalancerService) handleCreateEvent(ctx context.Context, clust
 		Cluster:     clusterName,
 		NetworkName: event.Source.ParentName,
 		Name:        retrievedNetworkLoadBalancer.ListenAddress,
-		Object:      retrievedNetworkLoadBalancer,
+		Object:      IncusNetworkLoadBalancerWrapper{retrievedNetworkLoadBalancer},
 		LastUpdated: s.now(),
 	}
 
@@ -383,7 +383,7 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, name string
 					Cluster:     name,
 					NetworkName: network.Name,
 					Name:        retrievedNetworkLoadBalancer.ListenAddress,
-					Object:      retrievedNetworkLoadBalancer,
+					Object:      IncusNetworkLoadBalancerWrapper{retrievedNetworkLoadBalancer},
 					LastUpdated: s.now(),
 				}
 
