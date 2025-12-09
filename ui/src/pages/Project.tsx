@@ -2,6 +2,7 @@ import { Container } from "react-bootstrap";
 import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchProjects } from "api/project";
+import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ProjectIncusLink from "components/ProjectIncusLink";
@@ -31,7 +32,7 @@ const Project = () => {
         sortKey: item.name,
       },
       {
-        content: item.cluster,
+        content: <ClusterLink cluster={item.cluster} />,
         sortKey: item.cluster,
       },
       {

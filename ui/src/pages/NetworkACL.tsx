@@ -2,6 +2,7 @@ import { Container } from "react-bootstrap";
 import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchNetworkACLs } from "api/network_acl";
+import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
@@ -22,7 +23,7 @@ const NetworkACL = () => {
     retry: false,
   });
 
-  const headers = ["Name", "Cluster", "Project", "Last updated"];
+  const headers = ["Name", "Project", "Cluster", "Last updated"];
   const rows = acls.map((item) => {
     return [
       {
@@ -36,10 +37,6 @@ const NetworkACL = () => {
         sortKey: item.name,
       },
       {
-        content: item.cluster,
-        sortKey: item.cluster,
-      },
-      {
         content: (
           <ProjectIncusLink
             cluster={item.cluster}
@@ -47,6 +44,10 @@ const NetworkACL = () => {
           />
         ),
         sortKey: item.project_name,
+      },
+      {
+        content: <ClusterLink cluster={item.cluster} />,
+        sortKey: item.cluster,
       },
       {
         content: formatDate(item.last_updated),

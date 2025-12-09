@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchNetworks } from "api/network";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
+import ClusterLink from "components/ClusterLink";
 import ObjectIncusLink from "components/ObjectIncusLink";
 import ProjectIncusLink from "components/ProjectIncusLink";
 import { formatDate } from "util/date";
@@ -22,7 +23,7 @@ const Network = () => {
     retry: false,
   });
 
-  const headers = ["Name", "Cluster", "Project", "Last updated"];
+  const headers = ["Name", "Type", "Project", "Cluster", "Last updated"];
   const rows = networks.map((item) => {
     return [
       {
@@ -36,8 +37,8 @@ const Network = () => {
         sortKey: item.name,
       },
       {
-        content: item.cluster,
-        sortKey: item.cluster,
+        content: item.object.type,
+        sortKey: item.object.type,
       },
       {
         content: (
@@ -47,6 +48,10 @@ const Network = () => {
           />
         ),
         sortKey: item.project_name,
+      },
+      {
+        content: <ClusterLink cluster={item.cluster} />,
+        sortKey: item.cluster,
       },
       {
         content: formatDate(item.last_updated),

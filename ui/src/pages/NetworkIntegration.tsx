@@ -2,6 +2,7 @@ import { Container } from "react-bootstrap";
 import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchNetworkIntegrations } from "api/network_integration";
+import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import { formatDate } from "util/date";
@@ -20,7 +21,7 @@ const NetworkIntegration = () => {
     retry: false,
   });
 
-  const headers = ["Name", "Cluster", "Last updated"];
+  const headers = ["Name", "Type", "Cluster", "Last updated"];
   const rows = network_integrations.map((item) => {
     return [
       {
@@ -28,7 +29,11 @@ const NetworkIntegration = () => {
         sortKey: item.name,
       },
       {
-        content: item.cluster,
+        content: item.object.type,
+        sortKey: item.object.type,
+      },
+      {
+        content: <ClusterLink cluster={item.cluster} />,
         sortKey: item.cluster,
       },
       {

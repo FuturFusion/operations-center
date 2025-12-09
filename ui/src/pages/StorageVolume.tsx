@@ -1,16 +1,22 @@
+import { useEffect, useState } from "react";
 import { Container } from "react-bootstrap";
 import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchStorageVolumes } from "api/storage_volume";
+import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
 import ProjectIncusLink from "components/ProjectIncusLink";
+import ServerLink from "components/ServerLink";
 import { formatDate } from "util/date";
+import type { StorageVolume } from "types/storage_volume";
 
 const StorageVolume = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
+  const [sortedItems, setSortedItems] = useState<StorageVolume[]>([]);
+  const [initialSorted, setInitialSorted] = useState(false);
 
   const {
     data: volumes = [],
@@ -22,16 +28,38 @@ const StorageVolume = () => {
     retry: false,
   });
 
+  const sortStorageVolumes = (a: StorageVolume, b: StorageVolume) => {
+    return (
+      a.type.localeCompare(b.type) ||
+      a.name.localeCompare(b.name) ||
+      a.parent_name.localeCompare(b.parent_name) ||
+      a.project_name.localeCompare(b.project_name) ||
+      a.cluster.localeCompare(b.cluster) ||
+      a.server.localeCompare(b.server)
+    );
+  };
+
+  useEffect(() => {
+    if (!volumes || volumes.length == 0) return;
+
+    if (!initialSorted) {
+      const sorted = [...volumes].sort(sortStorageVolumes);
+      setSortedItems(sorted);
+      setInitialSorted(true);
+    }
+  }, [initialSorted, volumes]);
+
   const headers = [
     "Name",
     "Type",
+    "Pool",
+    "Project",
     "Cluster",
     "Server",
-    "Project",
-    "Parent name",
     "Last updated",
   ];
-  const rows = volumes.map((item) => {
+
+  const rows = sortedItems.map((item) => {
     return [
       {
         content: (
@@ -48,12 +76,8 @@ const StorageVolume = () => {
         sortKey: item.type,
       },
       {
-        content: item.cluster,
-        sortKey: item.cluster,
-      },
-      {
-        content: item.server,
-        sortKey: item.server,
+        content: item.parent_name,
+        sortKey: item.parent_name,
       },
       {
         content: (
@@ -65,8 +89,12 @@ const StorageVolume = () => {
         sortKey: item.project_name,
       },
       {
-        content: item.parent_name,
-        sortKey: item.parent_name,
+        content: <ClusterLink cluster={item.cluster} />,
+        sortKey: item.cluster,
+      },
+      {
+        content: <ServerLink server={item.server} />,
+        sortKey: item.server,
       },
       {
         content: formatDate(item.last_updated),

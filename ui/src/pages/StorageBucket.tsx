@@ -2,10 +2,12 @@ import { Container } from "react-bootstrap";
 import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchStorageBuckets } from "api/storage_bucket";
+import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
 import ProjectIncusLink from "components/ProjectIncusLink";
+import ServerLink from "components/ServerLink";
 import { formatDate } from "util/date";
 
 const StorageBucket = () => {
@@ -24,10 +26,10 @@ const StorageBucket = () => {
 
   const headers = [
     "Name",
+    "Pool",
+    "Project",
     "Cluster",
     "Server",
-    "Project",
-    "Parent name",
     "Last updated",
   ];
   const rows = buckets.map((item) => {
@@ -43,12 +45,8 @@ const StorageBucket = () => {
         sortKey: item.name,
       },
       {
-        content: item.cluster,
-        sortKey: item.cluster,
-      },
-      {
-        content: item.server,
-        sortKey: item.server,
+        content: item.parent_name,
+        sortKey: item.parent_name,
       },
       {
         content: (
@@ -60,8 +58,12 @@ const StorageBucket = () => {
         sortKey: item.project_name,
       },
       {
-        content: item.parent_name,
-        sortKey: item.parent_name,
+        content: <ClusterLink cluster={item.cluster} />,
+        sortKey: item.cluster,
+      },
+      {
+        content: <ServerLink server={item.server} />,
+        sortKey: item.server,
       },
       {
         content: formatDate(item.last_updated),

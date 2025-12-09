@@ -5,8 +5,6 @@ import { fetchImages } from "api/image";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
-import ProjectIncusLink from "components/ProjectIncusLink";
-import { formatDate } from "util/date";
 
 const Image = () => {
   const [searchParams] = useSearchParams();
@@ -22,35 +20,26 @@ const Image = () => {
     retry: false,
   });
 
-  const headers = ["Name", "Cluster", "Project", "Last updated"];
+  const headers = ["Fingerprint", "Image description", "Image type"];
   const rows = images.map((item) => {
     return [
       {
         content: (
           <ObjectIncusLink
             cluster={item.cluster}
-            objectName={item.name}
+            objectName={item.object.fingerprint.slice(0, 12)}
             incusPath={`/ui/project/${item.project_name}/images`}
           />
         ),
-        sortKey: item.name,
+        sortKey: item.object.fingerprint,
       },
       {
-        content: item.cluster,
-        sortKey: item.cluster,
+        content: item.object.properties?.description,
+        sortKey: item.object.properties?.description,
       },
       {
-        content: (
-          <ProjectIncusLink
-            cluster={item.cluster}
-            project={item.project_name}
-          />
-        ),
-        sortKey: item.project_name,
-      },
-      {
-        content: formatDate(item.last_updated),
-        sortKey: item.last_updated,
+        content: item.object.type,
+        sortKey: item.object.type,
       },
     ];
   });
