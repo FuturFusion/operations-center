@@ -68,8 +68,8 @@ func UpdateServiceWithFileFilterExpression(filesFilterExpression string) UpdateS
 	}
 }
 
-func NewUpdateService(repo UpdateRepo, filesRepo UpdateFilesRepo, source UpdateSourcePort, opts ...UpdateServiceOption) updateService {
-	service := updateService{
+func NewUpdateService(repo UpdateRepo, filesRepo UpdateFilesRepo, source UpdateSourcePort, opts ...UpdateServiceOption) *updateService {
+	service := &updateService{
 		configUpdateMu: &sync.Mutex{},
 
 		repo:               repo,
@@ -80,7 +80,7 @@ func NewUpdateService(repo UpdateRepo, filesRepo UpdateFilesRepo, source UpdateS
 	}
 
 	for _, opt := range opts {
-		opt(&service)
+		opt(service)
 	}
 
 	return service
@@ -351,6 +351,8 @@ func (s updateService) Refresh(ctx context.Context) error {
 		return err
 	}
 
+	fmt.Println(s.updateFileFilterExpression)
+
 	// Filter update files by architecture.
 	originUpdates, err = s.filterUpdateFileByFilterExpression(originUpdates)
 	if err != nil {
@@ -521,21 +523,38 @@ type UpdateFileExprEnv struct {
 func (u UpdateFileExprEnv) ExprCompileOptions() []expr.Option {
 	return []expr.Option{
 		expr.Function("applies_to_architecture", func(params ...any) (any, error) {
-			if len(params) != 2 {
-				return nil, fmt.Errorf("Invalid number of arguments to 'applies_to_architecture', expected <architecture> <expected_architecture>, got %d arguments", len(params))
+			if len(params) < 2 {
+				return nil, fmt.Errorf("Invalid number of arguments to 'applies_to_architecture', expected <architecture> <expected_architecture>..., where <expected_architecture> is required at least once, got %d argument", len(params))
 			}
 
+			// Validate the arguments.
 			arch, ok := params[0].(string)
 			if !ok {
 				return nil, fmt.Errorf("Invalid first argument type to 'applies_to_architecture', expected string, got: %T", params[0])
 			}
 
-			wantArch, ok := params[1].(string)
-			if !ok {
-				return nil, fmt.Errorf("Invalid second argument type to 'applies_to_architecture', expected string, got: %T", params[1])
+			wantArchs := make([]string, 0, len(params)-1)
+			for i, param := range params[1:] {
+				wantArch, ok := param.(string)
+				if !ok {
+					return nil, fmt.Errorf("Invalid %d argument type to 'applies_to_architecture', expected string, got: %T", i+2, param)
+				}
+
+				wantArchs = append(wantArchs, wantArch)
 			}
 
-			return arch == wantArch || arch == "", nil
+			// Short cirquit if the provided architecture is empty (architecture agnostic).
+			if arch == "" {
+				return true, nil
+			}
+
+			for _, wantArch := range wantArchs {
+				if arch == wantArch {
+					return true, nil
+				}
+			}
+
+			return false, nil
 		}),
 
 		// Always compile with an empty struct for consistency.
