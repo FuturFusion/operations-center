@@ -1,30 +1,26 @@
-import Button from "react-bootstrap/Button";
+import { Button, Container } from "react-bootstrap";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { fetchClusters } from "api/cluster";
 import ClusterActions from "components/ClusterActions";
-import DataTable from "components/DataTable";
+import ExtendedDataTable from "components/ExtendedDataTable";
+import InventorySearchBox from "components/InventorySearchBox";
 import { formatDate } from "util/date";
 
 const Cluster = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const filter = searchParams.get("filter");
 
   const {
     data: clusters = [],
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["clusters"],
-    queryFn: fetchClusters,
+    queryKey: ["clusters", filter],
+    queryFn: () => fetchClusters(filter || ""),
+    retry: false,
   });
-
-  if (isLoading) {
-    return <div>Loading clusters...</div>;
-  }
-
-  if (error) {
-    return <div>Error while loading clusters: {error.message}</div>;
-  }
 
   const headers = [
     "Name",
@@ -78,6 +74,13 @@ const Cluster = () => {
         <div className="mx-2 mx-md-4">
           <div className="row">
             <div className="col-12">
+              <Container className="d-flex justify-content-center">
+                <InventorySearchBox />
+              </Container>
+            </div>
+          </div>
+          <div className="row">
+            <div className="col-12">
               <Button
                 variant="success"
                 className="float-end"
@@ -89,7 +92,12 @@ const Cluster = () => {
           </div>
         </div>
         <div className="scroll-container flex-grow-1">
-          <DataTable headers={headers} rows={rows} />
+          <ExtendedDataTable
+            headers={headers}
+            rows={rows}
+            isLoading={isLoading}
+            error={error}
+          />
         </div>
       </div>
     </>

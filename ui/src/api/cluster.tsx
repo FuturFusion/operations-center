@@ -2,9 +2,14 @@ import { Cluster, ClusterArtifact } from "types/cluster";
 import { APIResponse } from "types/response";
 import { processResponse } from "util/response";
 
-export const fetchClusters = (): Promise<Cluster[]> => {
+export const fetchClusters = (filter: string): Promise<Cluster[]> => {
+  let url = "/1.0/provisioning/clusters?recursion=1";
+  if (filter) {
+    url += `&filter=${filter}`;
+  }
+
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/provisioning/clusters?recursion=1`)
+    fetch(url)
       .then(processResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
