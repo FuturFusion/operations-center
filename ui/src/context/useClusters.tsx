@@ -7,7 +7,7 @@ import { Cluster } from "types/cluster";
 export const useClusters = (): UseQueryResult<Cluster[]> => {
   return useQuery({
     queryKey: ["clusters"],
-    queryFn: fetchClusters,
+    queryFn: () => fetchClusters(""),
   });
 };
 

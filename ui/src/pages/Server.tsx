@@ -1,27 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router";
+import { Container } from "react-bootstrap";
+import { Link, useSearchParams } from "react-router";
 import { fetchServers } from "api/server";
-import DataTable from "components/DataTable";
+import ExtendedDataTable from "components/ExtendedDataTable";
+import InventorySearchBox from "components/InventorySearchBox";
 import type { ServerTypeKey } from "util/server";
 import { ServerTypeString } from "util/server";
 
 const Server = () => {
+  const [searchParams] = useSearchParams();
+  const filter = searchParams.get("filter");
+
   const {
     data: servers = [],
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["servers"],
-    queryFn: () => fetchServers(""),
+    queryKey: ["servers", filter],
+    queryFn: () => fetchServers(filter || ""),
+    retry: false,
   });
-
-  if (isLoading) {
-    return <div>Loading servers...</div>;
-  }
-
-  if (error) {
-    return <div>Error while loading servers: {error.message}</div>;
-  }
 
   const headers = ["Name", "Cluster", "Connection URL", "Type", "Status"];
   const rows = servers.map((item) => {
@@ -66,9 +64,17 @@ const Server = () => {
 
   return (
     <>
+      <Container className="d-flex justify-content-center">
+        <InventorySearchBox />
+      </Container>
       <div className="d-flex flex-column">
         <div className="scroll-container flex-grow-1">
-          <DataTable headers={headers} rows={rows} />
+          <ExtendedDataTable
+            headers={headers}
+            rows={rows}
+            isLoading={isLoading}
+            error={error}
+          />
         </div>
       </div>
     </>
