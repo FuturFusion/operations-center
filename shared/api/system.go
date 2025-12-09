@@ -107,7 +107,12 @@ type SystemUpdatesPut struct {
 	// provisioning.Update.
 	// If a filter is defined, the filter needs to evaluate to true for the update
 	// being fetched by Operations Center.
-	// Empty filter expression does not filter at all.
+	// Empty filter expression does fallback to the default value defined below.
+	// To disable filtering, set to "true", which causes the filter to allow all
+	// updates.
+	//
+	// Default: 'stable' in channels
+	//
 	// Example: 'stable' in channels
 	FilterExpression string `json:"filter_expression" yaml:"filter_expression"`
 
@@ -115,15 +120,19 @@ type SystemUpdatesPut struct {
 	// provisioning.UpdateFile.
 	// If a filter is defined, the filter needs to evaluate to true for the file
 	// being fetched by Operations Center.
-	// Empty filter expression does not filter at all.
+	// Empty filter expression does fallback to the default value defined below.
+	// To disable filtering, set to "true", which causes the filter to allow all
+	// files.
 	//
 	// For file filter expression, the following helper functions are available:
-	//   - applies_to_architecture(arch string, expected_arch string) bool
-	//       Returns true if the 'arch' string matches the given 'expected_arch' string
-	//       or if 'arch' is not set.
+	//   - applies_to_architecture(arch string, expected_arch ...string) bool
+	//       Returns true if the 'arch' string matches one of the given
+	//       'expected_arch' strings or if 'architecure' is not set.
+	//
+	// Default:
+	//   applies_to_architecture(architecture, "x86_64")
 	//
 	// Examples:
-	//   applies_to_architecture(architecture, "x86_64")
 	//   architecture == "x86_64"
 	FileFilterExpression string `json:"file_filter_expression" yaml:"file_filter_expression"`
 }
