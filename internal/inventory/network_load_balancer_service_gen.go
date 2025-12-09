@@ -283,6 +283,7 @@ func (s networkLoadBalancerService) handleCreateEvent(ctx context.Context, clust
 func (s networkLoadBalancerService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkLoadBalancerFilter{
 		Cluster:     &clusterName,
+		Project:     &event.Source.ProjectName,
 		NetworkName: &event.Source.ParentName,
 		Name:        &event.Source.Name,
 	})
@@ -323,6 +324,7 @@ func (s networkLoadBalancerService) handleRenameEvent(ctx context.Context, clust
 func (s networkLoadBalancerService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkLoadBalancerFilter{
 		Cluster:     &clusterName,
+		Project:     &event.Source.ProjectName,
 		NetworkName: &event.Source.ParentName,
 		Name:        &event.Source.Name,
 	})

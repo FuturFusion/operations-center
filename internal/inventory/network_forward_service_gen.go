@@ -283,6 +283,7 @@ func (s networkForwardService) handleCreateEvent(ctx context.Context, clusterNam
 func (s networkForwardService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkForwardFilter{
 		Cluster:     &clusterName,
+		Project:     &event.Source.ProjectName,
 		NetworkName: &event.Source.ParentName,
 		Name:        &event.Source.Name,
 	})
@@ -323,6 +324,7 @@ func (s networkForwardService) handleRenameEvent(ctx context.Context, clusterNam
 func (s networkForwardService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkForwardFilter{
 		Cluster:     &clusterName,
+		Project:     &event.Source.ProjectName,
 		NetworkName: &event.Source.ParentName,
 		Name:        &event.Source.Name,
 	})

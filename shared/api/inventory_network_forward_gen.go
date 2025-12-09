@@ -13,6 +13,7 @@ import (
 type NetworkForward struct {
 	UUID        uuid.UUID               `json:"uuid" yaml:"uuid"`
 	Cluster     string                  `json:"cluster" yaml:"cluster"`
+	ProjectName string                  `json:"project_name" yaml:"project_name"`
 	NetworkName string                  `json:"parent_name" yaml:"parent_name"`
 	Name        string                  `json:"name" yaml:"name"`
 	Object      incusapi.NetworkForward `json:"object" yaml:"object"`

@@ -20,6 +20,7 @@ type NetworkPeer struct {
 	ID          int                  `json:"-"`
 	UUID        uuid.UUID            `json:"uuid"`
 	Cluster     string               `json:"cluster"`
+	ProjectName string               `json:"project"`
 	NetworkName string               `json:"network_name"`
 	Name        string               `json:"name"`
 	Object      incusapi.NetworkPeer `json:"object"`
@@ -64,6 +65,7 @@ type NetworkPeers []NetworkPeer
 
 type NetworkPeerFilter struct {
 	Cluster     *string
+	Project     *string
 	NetworkName *string
 	Name        *string
 	Expression  *string
@@ -72,6 +74,10 @@ type NetworkPeerFilter struct {
 func (f NetworkPeerFilter) AppendToURLValues(query url.Values) url.Values {
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
+	}
+
+	if f.Project != nil {
+		query.Add("project", *f.Project)
 	}
 
 	if f.NetworkName != nil {

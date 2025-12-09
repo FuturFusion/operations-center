@@ -114,12 +114,13 @@ func TestNetworkPeer_Filter(t *testing.T) {
 			name: "complete filter",
 			filter: inventory.NetworkPeerFilter{
 				Cluster:     ptr.To("cluster"),
+				Project:     ptr.To("project"),
 				NetworkName: ptr.To("network"),
 				Name:        ptr.To("name"),
 				Expression:  ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true&name=name&parent=network`,
+			want: `cluster=cluster&filter=true&name=name&parent=network&project=project`,
 		},
 	}
 

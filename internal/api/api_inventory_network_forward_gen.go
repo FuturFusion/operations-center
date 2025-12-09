@@ -46,6 +46,11 @@ func registerInventoryNetworkForwardHandler(router Router, authorizer *authz.Aut
 //	    type: string
 //	    example: cluster
 //	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
+//	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
@@ -100,6 +105,11 @@ func registerInventoryNetworkForwardHandler(router Router, authorizer *authz.Aut
 //	    type: string
 //	    example: cluster
 //	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
+//	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
@@ -145,6 +155,10 @@ func (i *networkForwardHandler) networkForwardsGet(r *http.Request) response.Res
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
 	}
 
+	if r.URL.Query().Get("project") != "" {
+		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	}
+
 	if r.URL.Query().Get("filter") != "" {
 		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
 	}
@@ -161,6 +175,7 @@ func (i *networkForwardHandler) networkForwardsGet(r *http.Request) response.Res
 			result = append(result, api.NetworkForward{
 				UUID:        networkForward.UUID,
 				Cluster:     networkForward.Cluster,
+				ProjectName: networkForward.ProjectName,
 				NetworkName: networkForward.NetworkName,
 				Name:        networkForward.Name,
 				Object:      networkForward.Object,
@@ -234,6 +249,7 @@ func (i *networkForwardHandler) networkForwardGet(r *http.Request) response.Resp
 		api.NetworkForward{
 			UUID:        networkForward.UUID,
 			Cluster:     networkForward.Cluster,
+			ProjectName: networkForward.ProjectName,
 			NetworkName: networkForward.NetworkName,
 			Name:        networkForward.Name,
 			Object:      networkForward.Object,
