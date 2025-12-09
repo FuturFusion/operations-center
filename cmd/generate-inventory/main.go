@@ -153,6 +153,8 @@ type entityArgs struct {
 	ObjectNamePropertyName string
 	ObjectDisplayName      string
 	HasProject             bool
+	HasProjectDirect       bool
+	HasProjectFromParent   bool
 	UsesEmbeddedPostType   bool
 	ServerIDByLocation     bool
 	IsServerIDOptional     bool
@@ -246,7 +248,9 @@ func main() {
 			ObjectEmbedded:         entity.ObjectEmbedded,
 			ObjectNamePropertyName: entity.ObjectNamePropertyName,
 			ObjectDisplayName:      entity.ObjectDisplayName,
-			HasProject:             !entity.OmitProject,
+			HasProject:             entity.ProjectSource == ProjectSourceDirect || entity.ProjectSource == ProjectSourceParent,
+			HasProjectDirect:       entity.ProjectSource == ProjectSourceDirect,
+			HasProjectFromParent:   entity.ProjectSource == ProjectSourceParent,
 			UsesEmbeddedPostType:   entity.UsesEmbeddedPostType,
 			ServerIDByLocation:     entity.ServerIDByLocation,
 			IsServerIDOptional:     entity.IsServerIDOptional,

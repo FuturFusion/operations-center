@@ -40,6 +40,7 @@ type ExprNetworkLoadBalancer struct {
 	ID          int                        `json:"-" expr:"-"`
 	UUID        uuid.UUID                  `json:"uuid" expr:"uuid"`
 	Cluster     string                     `json:"cluster" expr:"cluster"`
+	ProjectName string                     `json:"project" expr:"project"`
 	NetworkName string                     `json:"network_name" expr:"network_name"`
 	Name        string                     `json:"name" expr:"name"`
 	Object      ExprApiNetworkLoadBalancer `json:"object" expr:"object"`
@@ -86,6 +87,7 @@ func ToExprNetworkLoadBalancer(n NetworkLoadBalancer) ExprNetworkLoadBalancer {
 		ID:          n.ID,
 		UUID:        n.UUID,
 		Cluster:     n.Cluster,
+		ProjectName: n.ProjectName,
 		NetworkName: n.NetworkName,
 		Name:        n.Name,
 		Object:      ToExprApiNetworkLoadBalancer(n.Object),

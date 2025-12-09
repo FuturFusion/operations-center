@@ -32,10 +32,12 @@ func (r networkPeer) Create(ctx context.Context, in inventory.NetworkPeer) (inve
 	const sqlStmt = `
 WITH _lookup AS (
   SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
+), _parent_lookup AS (
+  SELECT project_name FROM networks WHERE networks.name = :network_name
 )
 INSERT INTO network_peers (uuid, cluster_id, network_name, name, object, last_updated)
 VALUES (:uuid, (SELECT cluster_id FROM _lookup), :network_name, :name, :object, :last_updated)
-RETURNING id, :uuid, :cluster_name, network_name, name, object, last_updated;
+RETURNING id, :uuid, :cluster_name, COALESCE((select project_name from _parent_lookup), '') AS project_name, network_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -61,9 +63,10 @@ RETURNING id, :uuid, :cluster_name, network_name, name, object, last_updated;
 func (r networkPeer) GetAllWithFilter(ctx context.Context, filter inventory.NetworkPeerFilter) (inventory.NetworkPeers, error) {
 	const sqlStmt = `
 SELECT
-  network_peers.id, network_peers.uuid, clusters.name, network_peers.network_name, network_peers.name, network_peers.object, network_peers.last_updated
+  network_peers.id, network_peers.uuid, clusters.name, COALESCE(networks.project_name, '') AS project_name, network_peers.network_name, network_peers.name, network_peers.object, network_peers.last_updated
 FROM network_peers
   INNER JOIN clusters ON network_peers.cluster_id = clusters.id
+  LEFT JOIN networks ON network_peers.network_name = networks.name
 WHERE true
 %s
 ORDER BY clusters.name, network_peers.name
@@ -75,6 +78,11 @@ ORDER BY clusters.name, network_peers.name
 	if filter.Cluster != nil {
 		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
 		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	if filter.Project != nil {
+		whereClause = append(whereClause, ` AND networks.project_name = :project`)
+		args = append(args, sql.Named("project", filter.Project))
 	}
 
 	if filter.NetworkName != nil {
@@ -119,6 +127,7 @@ func (r networkPeer) selectStmtGetAllUUIDWithFilter(filter inventory.NetworkPeer
 SELECT network_peers.uuid
 FROM network_peers
   INNER JOIN clusters ON network_peers.cluster_id = clusters.id
+  LEFT JOIN networks ON network_peers.network_name = networks.name
 WHERE true
 %s
 ORDER BY network_peers.id
@@ -129,6 +138,11 @@ ORDER BY network_peers.id
 	if filter.Cluster != nil {
 		whereClause = append(whereClause, ` AND clusters.name = :cluster_name`)
 		args = append(args, sql.Named("cluster_name", filter.Cluster))
+	}
+
+	if filter.Project != nil {
+		whereClause = append(whereClause, ` AND networks.project_name = :project`)
+		args = append(args, sql.Named("project", filter.Project))
 	}
 
 	if filter.NetworkName != nil {
@@ -175,10 +189,11 @@ func (r networkPeer) GetAllUUIDsWithFilter(ctx context.Context, filter inventory
 func (r networkPeer) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.NetworkPeer, error) {
 	const sqlStmt = `
 SELECT
-  network_peers.id, network_peers.uuid, clusters.name, network_peers.network_name, network_peers.name, network_peers.object, network_peers.last_updated
+  network_peers.id, network_peers.uuid, clusters.name, COALESCE(networks.project_name, '') AS project_name, network_peers.network_name, network_peers.name, network_peers.object, network_peers.last_updated
 FROM
   network_peers
   INNER JOIN clusters ON network_peers.cluster_id = clusters.id
+  LEFT JOIN networks ON network_peers.network_name = networks.name
 WHERE network_peers.uuid=:uuid;
 `
 
@@ -240,10 +255,12 @@ func (r networkPeer) UpdateByUUID(ctx context.Context, in inventory.NetworkPeer)
 	const sqlStmt = `
 WITH _lookup AS (
   SELECT id AS cluster_id FROM clusters WHERE clusters.name = :cluster_name
+), _parent_lookup AS (
+  SELECT project_name FROM networks WHERE networks.name = :network_name
 )
 UPDATE network_peers SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), network_name=:network_name, name=:name, object=:object, last_updated=:last_updated
 WHERE uuid=:uuid
-RETURNING id, :uuid, :cluster_name, network_name, name, object, last_updated;
+RETURNING id, :uuid, :cluster_name, COALESCE((select project_name from _parent_lookup), '') AS project_name, network_name, name, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -274,6 +291,7 @@ func scanNetworkPeer(row interface{ Scan(dest ...any) error }) (inventory.Networ
 		&networkPeer.ID,
 		&networkPeer.UUID,
 		&networkPeer.Cluster,
+		&networkPeer.ProjectName,
 		&networkPeer.NetworkName,
 		&networkPeer.Name,
 		&object,

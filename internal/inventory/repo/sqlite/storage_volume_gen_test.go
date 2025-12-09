@@ -94,7 +94,7 @@ server-two
 		Cluster:         "two",
 		Server:          "two",
 		ProjectName:     "two",
-		StoragePoolName: "parent one",
+		StoragePoolName: "parent two",
 		Name:            "two",
 		Type:            "custom",
 		Object:          incusapi.StorageVolumeFull{},

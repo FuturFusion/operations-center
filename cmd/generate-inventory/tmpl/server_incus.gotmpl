@@ -24,12 +24,12 @@ func (s serverClient) Get{{ .PluralName | pascalcase }}(ctx context.Context, end
 	return server{{ .PluralName | pascalcase }}, nil
 }
 
-func (s serverClient) Get{{ .Name | pascalcase }}ByName(ctx context.Context, endpoint provisioning.Endpoint, {{- if .HasProject }}projectName string, {{ end -}}{{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }}{{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error) {
+func (s serverClient) Get{{ .Name | pascalcase }}ByName(ctx context.Context, endpoint provisioning.Endpoint, {{- if .HasProjectDirect }}projectName string, {{ end -}}{{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }}{{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error) {
 	client, err := s.getClient(ctx, endpoint)
 	if err != nil {
 		return incusapi.{{ .ObjectType | pascalcase }}{}, err
 	}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 
 	client = client.UseProject(projectName)
 {{- end }}

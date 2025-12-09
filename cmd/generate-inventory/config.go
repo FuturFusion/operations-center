@@ -15,7 +15,7 @@ type Entity struct {
 	ObjectDisplayName      string             `yaml:"obect-display-name"`        // Display name of the object
 	ObjectType             string             `yaml:"object-type"`               // Go type used for object in model
 	ObjectEmbedded         bool               `yaml:"-"`
-	OmitProject            bool               `yaml:"omit-project"`              // if omit-project is provided, the entity does not have a relation to a project
+	ProjectSource          ProjectSource      `yaml:"project-source"`            // Source of the project for this entity, one of "direct", "parent" or "none". direct: the entity directly has the project property, parent: take the project from the parent, none: omit project relation for this entity.
 	UsesEmbeddedPostType   bool               `yaml:"uses-embedded-post-type"`   // if uses-embedded-post-type is provided, the name property is part of an embedded Post type
 	ServerIDByLocation     bool               `yaml:"server-id-by-location"`     // if a resource has a location, it can be used to bind it to a server
 	IsServerIDOptional     bool               `yaml:"is-server-id-optional"`     // if a resource only optionally has a location
@@ -31,6 +31,14 @@ type Entity struct {
 	HasSyncFilter          bool               `yaml:"has-sync-filter"`           // if a resource has a sync filter, it is passed to the service. The implementation needs to be provided separately.
 	HasParentFilter        bool               `yaml:"has-parent-filter"`         // if a resource has a parent filter, it is passed to the service. The implementation needs to be provided separately.
 }
+
+type ProjectSource string
+
+const (
+	ProjectSourceDirect = "direct"
+	ProjectSourceParent = "parent"
+	ProjectSourceNone   = "none"
+)
 
 type ExtraAttribute struct {
 	Name           string `yaml:"name"`

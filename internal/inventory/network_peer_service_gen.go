@@ -283,6 +283,7 @@ func (s networkPeerService) handleCreateEvent(ctx context.Context, clusterName s
 func (s networkPeerService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkPeerFilter{
 		Cluster:     &clusterName,
+		Project:     &event.Source.ProjectName,
 		NetworkName: &event.Source.ParentName,
 		Name:        &event.Source.Name,
 	})
@@ -323,6 +324,7 @@ func (s networkPeerService) handleRenameEvent(ctx context.Context, clusterName s
 func (s networkPeerService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkPeerFilter{
 		Cluster:     &clusterName,
+		Project:     &event.Source.ProjectName,
 		NetworkName: &event.Source.ParentName,
 		Name:        &event.Source.Name,
 	})

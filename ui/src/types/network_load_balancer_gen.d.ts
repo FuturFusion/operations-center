@@ -5,6 +5,7 @@ import { JSONValue } from "types/common";
 export interface NetworkLoadBalancer {
   uuid: string;
   cluster: string;
+  project_name: string;
   parent_name: string;
   name: string;
   object: JSONValue;

@@ -93,7 +93,7 @@ server-two
 		Cluster:         "two",
 		Server:          "two",
 		ProjectName:     "two",
-		StoragePoolName: "parent one",
+		StoragePoolName: "parent two",
 		Name:            "two",
 		Object:          incusapi.StorageBucketFull{},
 		LastUpdated:     time.Now(),

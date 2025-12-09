@@ -182,7 +182,7 @@ func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uui
 			return err
 		}
 
-		retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, endpoint, {{- if .HasProject }}{{ .Name | camelcase }}.ProjectName, {{ end -}}{{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}.{{ .Name | pascalcase }} {{- end}})
+		retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, endpoint, {{- if .HasProjectDirect }}{{ .Name | camelcase }}.ProjectName, {{ end -}}{{ if .HasParent }}{{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name, {{ end -}} {{ .Name | camelcase }}.Name {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}.{{ .Name | pascalcase }} {{- end}})
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, {{ .Name | camelcase }}.UUID)
 			if err != nil {
@@ -199,7 +199,7 @@ func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uui
 {{ if .ServerIDByLocation }}
 		{{ .Name | camelcase }}.Server = retrieved{{ .Name | pascalcase }}.Location
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 		{{ .Name | camelcase }}.ProjectName = retrieved{{ .Name | pascalcase }}.Project
 {{- end }}
 {{- range .ExtraAttributes }}
@@ -269,7 +269,7 @@ func (s {{ .Name | camelcase }}Service) handleCreateEvent(ctx context.Context, c
 		return err
 	}
 
-	retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, endpoint, {{- if .HasProject }}event.Source.ProjectName, {{ end -}}{{- if .HasParent }}event.Source.ParentName, {{ end -}} event.Source.Name {{- range .ExtraAttributes }}, event.Source.{{ .Name | pascalcase }} {{- end}})
+	retrieved{{ .Name | pascalcase }}, err := s.{{ .Name | camelcase }}Client.Get{{ .Name | pascalcase }}ByName(ctx, endpoint, {{- if .HasProjectDirect }}event.Source.ProjectName, {{ end -}}{{- if .HasParent }}event.Source.ParentName, {{ end -}} event.Source.Name {{- range .ExtraAttributes }}, event.Source.{{ .Name | pascalcase }} {{- end}})
 	if err != nil {
 		return err
 	}
@@ -279,7 +279,7 @@ func (s {{ .Name | camelcase }}Service) handleCreateEvent(ctx context.Context, c
 {{- if .ServerIDByLocation }}
 		Server:      retrieved{{ .Name | pascalcase }}.Location,
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 		ProjectName: retrieved{{ .Name | pascalcase }}.Project,
 {{- end }}
 {{- if .HasParent }}
@@ -444,7 +444,7 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 {{- if .ServerIDByLocation }}
 				Server:      retrieved{{ .Name | pascalcase }}.Location,
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 				ProjectName: retrieved{{ .Name | pascalcase }}.Project,
 {{- end }}
 {{- if .HasParent }}

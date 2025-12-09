@@ -46,6 +46,11 @@ func registerInventoryNetworkPeerHandler(router Router, authorizer *authz.Author
 //	    type: string
 //	    example: cluster
 //	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
+//	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
@@ -100,6 +105,11 @@ func registerInventoryNetworkPeerHandler(router Router, authorizer *authz.Author
 //	    type: string
 //	    example: cluster
 //	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
+//	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
@@ -145,6 +155,10 @@ func (i *networkPeerHandler) networkPeersGet(r *http.Request) response.Response 
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
 	}
 
+	if r.URL.Query().Get("project") != "" {
+		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	}
+
 	if r.URL.Query().Get("filter") != "" {
 		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
 	}
@@ -161,6 +175,7 @@ func (i *networkPeerHandler) networkPeersGet(r *http.Request) response.Response 
 			result = append(result, api.NetworkPeer{
 				UUID:        networkPeer.UUID,
 				Cluster:     networkPeer.Cluster,
+				ProjectName: networkPeer.ProjectName,
 				NetworkName: networkPeer.NetworkName,
 				Name:        networkPeer.Name,
 				Object:      networkPeer.Object,
@@ -234,6 +249,7 @@ func (i *networkPeerHandler) networkPeerGet(r *http.Request) response.Response {
 		api.NetworkPeer{
 			UUID:        networkPeer.UUID,
 			Cluster:     networkPeer.Cluster,
+			ProjectName: networkPeer.ProjectName,
 			NetworkName: networkPeer.NetworkName,
 			Name:        networkPeer.Name,
 			Object:      networkPeer.Object,

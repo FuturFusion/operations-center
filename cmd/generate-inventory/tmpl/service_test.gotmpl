@@ -336,7 +336,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByUUID(t *testing.T) {
 {{- if .ServerIDByLocation }}
 					Location:  "one",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 					Project: "project one",
 {{- end }}
 {{- if .ObjectEmbedded }}
@@ -476,7 +476,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByUUID(t *testing.T) {
 {{- if .ServerIDByLocation }}
 					Location:  "one",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 					Project: "project one",
 {{- end }}
 {{- if .ObjectEmbedded }}
@@ -523,7 +523,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByUUID(t *testing.T) {
 {{- if .ServerIDByLocation }}
 					Location:  "one",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 					Project: "project one",
 {{- end }}
 {{- if .ObjectEmbedded }}
@@ -560,9 +560,9 @@ func Test{{ .Name | pascalcase }}Service_ResyncByUUID(t *testing.T) {
 			}
 
 			{{ .Name | camelcase }}Client := &serverMock.{{ .Name | pascalcase }}ServerClientMock{
-				Get{{ .Name | pascalcase }}ByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, {{- if .HasProject }}projectName string, {{ end -}}{{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }} {{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error) {
+				Get{{ .Name | pascalcase }}ByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, {{- if .HasProjectDirect }}projectName string, {{ end -}}{{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }} {{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error) {
 					require.Equal(t, tc.repoGetByUUID{{ .Name | pascalcase }}.Name, {{ .Name | camelcase }}Name)
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 				require.Equal(t, tc.repoGetByUUID{{ .Name | pascalcase }}.ProjectName, projectName)
 {{- end }}
 {{- if .HasParent }}
@@ -656,7 +656,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 {{- if .ServerIDByLocation }}
 					Location:  "server01",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 					Project: "project",
 {{- end }}
 {{- if .ObjectEmbedded }}
@@ -737,7 +737,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 {{- if .ServerIDByLocation }}
 					Location:  "server01",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 					Project: "project",
 {{- end }}
 {{- if .ObjectEmbedded }}
@@ -790,7 +790,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 {{- if .ServerIDByLocation }}
 					Location:  "server01",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 					Project: "project",
 {{- end }}
 {{- if .ObjectEmbedded }}
@@ -864,7 +864,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 {{- if .ServerIDByLocation }}
 					Location:  "server01",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 					Project: "project",
 {{- end }}
 {{- if .ObjectEmbedded }}
@@ -983,7 +983,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 {{- if .ServerIDByLocation }}
 					Location:  "server01",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 					Project: "project",
 {{- end }}
 {{- if .ObjectEmbedded }}
@@ -1038,7 +1038,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 {{- if .ServerIDByLocation }}
 					Location:  "server01",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 					Project: "project",
 {{- end }}
 {{- if .ObjectEmbedded }}
@@ -1167,7 +1167,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 {{- if .ServerIDByLocation }}
 					Location:  "server01",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 					Project: "project",
 {{- end }}
 {{- if .ObjectEmbedded }}
@@ -1235,7 +1235,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			repo := &repoMock.{{ .Name | pascalcase }}RepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) ([]uuid.UUID, error) {
 					require.Equal(t, tc.argClusterName, *filter.Cluster)
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.Project)
 {{- end }}
 {{- if .HasParent }}
@@ -1246,7 +1246,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 				},
 				CreateFunc: func(ctx context.Context, {{ .Name | camelcase }} inventory.{{ .Name | pascalcase }}) (inventory.{{ .Name | pascalcase }}, error) {
 					require.Equal(t, tc.argClusterName, {{ .Name | camelcase }}.Cluster)
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, {{ .Name | camelcase }}.ProjectName)
 {{- end }}
 {{- if .HasParent }}
@@ -1275,11 +1275,11 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			}
 
 			{{ .Name | camelcase }}Client := &serverMock.{{ .Name | pascalcase }}ServerClientMock{
-				Get{{ .Name | pascalcase }}ByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, {{ if .HasProject }}projectName string,{{ end }}{{ if .HasParent }} {{ .ParentName | camelcase }}Name string,{{ end }} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }} {{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error) {
+				Get{{ .Name | pascalcase }}ByNameFunc: func(ctx context.Context, endpoint provisioning.Endpoint, {{ if .HasProjectDirect }}projectName string,{{ end }}{{ if .HasParent }} {{ .ParentName | camelcase }}Name string,{{ end }} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }} {{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error) {
 					clusterName, err := endpoint.GetServerName()
 					require.NoError(t, err)
 					require.Equal(t, tc.argClusterName, clusterName)
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, projectName)
 {{- end }}
 {{- if .HasParent }}
@@ -1365,7 +1365,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- if .ServerIDByLocation }}
 						Location:  "one",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 						Project: "project one",
 {{- end }}
 {{- if .ObjectEmbedded }}
@@ -1412,7 +1412,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- if .ServerIDByLocation }}
 						Location:  "one",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 						Project: "project one",
 {{- end }}
 {{- if .ObjectEmbedded }}
@@ -1463,7 +1463,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- if .ServerIDByLocation }}
 						Location:  "one",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 						Project: "project one",
 {{- end }}
 {{- if .ObjectEmbedded }}
@@ -1484,7 +1484,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- if .ServerIDByLocation }}
 						Location:  "one",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 						Project: "project one",
 {{- end }}
 {{- if .ObjectEmbedded }}
@@ -1596,7 +1596,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- if .ServerIDByLocation }}
 						Location:  "one",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 						Project: "project one",
 {{- end }}
 {{- if .ObjectEmbedded }}
@@ -1642,7 +1642,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- if .ServerIDByLocation }}
 						Location:  "one",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 						Project: "project one",
 {{- end }}
 {{- if .ObjectEmbedded }}
@@ -1690,7 +1690,7 @@ func Test{{ .Name | pascalcase }}Service_SyncAll(t *testing.T) {
 {{- if .ServerIDByLocation }}
 						Location:  "one",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 						Project: "project one",
 {{- end }}
 {{- if .ObjectEmbedded }}

@@ -77,6 +77,12 @@ server-two
 
 	testServers := []provisioning.Server{testServerA, testServerB}
 
+	network := inventory.Network{
+		Cluster:     "one",
+		Name:        "parent one",
+		ProjectName: "one",
+	}
+
 	networkLoadBalancerA := inventory.NetworkLoadBalancer{
 		Cluster:     "one",
 		NetworkName: "parent one",
@@ -89,7 +95,7 @@ server-two
 
 	networkLoadBalancerB := inventory.NetworkLoadBalancer{
 		Cluster:     "two",
-		NetworkName: "parent one",
+		NetworkName: "parent two",
 		Name:        "two",
 		Object:      incusapi.NetworkLoadBalancer{},
 		LastUpdated: time.Now(),
@@ -126,6 +132,9 @@ server-two
 	err = seed.Provisioning(ctx, db, testClusters, testServers)
 	require.NoError(t, err)
 
+	_, err = inventorySqlite.NewNetwork(db).Create(ctx, network)
+	require.NoError(t, err)
+
 	// Add network_load_balancers
 	networkLoadBalancerA, err = networkLoadBalancer.Create(ctx, networkLoadBalancerA)
 	require.NoError(t, err)
@@ -147,10 +156,13 @@ server-two
 	require.Len(t, dbNetworkLoadBalancer, 2)
 	require.Equal(t, networkLoadBalancerA.Name, dbNetworkLoadBalancer[0].Name)
 	require.Equal(t, networkLoadBalancerB.Name, dbNetworkLoadBalancer[1].Name)
+	require.Equal(t, networkLoadBalancerA.ProjectName, network.ProjectName)
+	require.Equal(t, networkLoadBalancerB.ProjectName, "")
 
-	// Ensure we have one entry with filter for cluster, server, network and name.
+	// Ensure we have one entry with filter for cluster, server, project, network and name.
 	networkLoadBalancerUUIDs, err = networkLoadBalancer.GetAllUUIDsWithFilter(ctx, inventory.NetworkLoadBalancerFilter{
 		Cluster:     ptr.To("one"),
+		Project:     ptr.To("one"),
 		NetworkName: ptr.To("parent one"),
 		Name:        ptr.To("one"),
 	})
@@ -158,9 +170,10 @@ server-two
 	require.Len(t, networkLoadBalancerUUIDs, 1)
 	require.ElementsMatch(t, []uuid.UUID{networkLoadBalancerA.UUID}, networkLoadBalancerUUIDs)
 
-	// Ensure we have one entry with filter for cluster, server, network and name.
+	// Ensure we have one entry with filter for cluster, server, project, network and name.
 	dbNetworkLoadBalancer, err = networkLoadBalancer.GetAllWithFilter(ctx, inventory.NetworkLoadBalancerFilter{
 		Cluster:     ptr.To("one"),
+		Project:     ptr.To("one"),
 		NetworkName: ptr.To("parent one"),
 		Name:        ptr.To("one"),
 	})

@@ -245,6 +245,7 @@ func TestNetworkLoadBalancerService_GetByUUID(t *testing.T) {
 			repoGetByUUIDNetworkLoadBalancer: inventory.NetworkLoadBalancer{
 				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
+				ProjectName: "one",
 				NetworkName: "parent one",
 				Name:        "one",
 				Object:      incusapi.NetworkLoadBalancer{},
@@ -305,6 +306,7 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "one",
+				ProjectName: "project one",
 				NetworkName: "network",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
@@ -326,6 +328,7 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "one",
+				ProjectName: "project one",
 				NetworkName: "network",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
@@ -351,6 +354,7 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "one",
+				ProjectName: "project one",
 				NetworkName: "network",
 			},
 			clusterSvcGetEndpointErr: boom.Error,
@@ -363,6 +367,7 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "one",
+				ProjectName: "project one",
 				NetworkName: "network",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
@@ -382,6 +387,7 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "one",
+				ProjectName: "project one",
 				NetworkName: "network",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
@@ -402,6 +408,7 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "", // invalid
+				ProjectName: "project one",
 				NetworkName: "network",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
@@ -426,6 +433,7 @@ func TestNetworkLoadBalancerService_ResyncByUUID(t *testing.T) {
 				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "one",
 				Name:        "one",
+				ProjectName: "project one",
 				NetworkName: "network",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
@@ -523,8 +531,9 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				ResourceType: "network-load-balancer",
 				Operation:    domain.LifecycleOperationCreate,
 				Source: domain.LifecycleSource{
-					ParentName: "network",
-					Name:       "network_load_balancer",
+					ProjectName: "project",
+					ParentName:  "network",
+					Name:        "network_load_balancer",
 				},
 			},
 			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
@@ -550,8 +559,9 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				ResourceType: "network-load-balancer",
 				Operation:    domain.LifecycleOperationDelete,
 				Source: domain.LifecycleSource{
-					ParentName: "network",
-					Name:       "network_load_balancer",
+					ProjectName: "project",
+					ParentName:  "network",
+					Name:        "network_load_balancer",
 				},
 			},
 			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
@@ -567,9 +577,10 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				ResourceType: "network-load-balancer",
 				Operation:    domain.LifecycleOperationRename,
 				Source: domain.LifecycleSource{
-					ParentName: "network",
-					Name:       "network_load_balancer-new",
-					OldName:    "network_load_balancer",
+					ProjectName: "project",
+					ParentName:  "network",
+					Name:        "network_load_balancer-new",
+					OldName:     "network_load_balancer",
 				},
 			},
 			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
@@ -597,8 +608,9 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				ResourceType: "network-load-balancer",
 				Operation:    domain.LifecycleOperationUpdate,
 				Source: domain.LifecycleSource{
-					ParentName: "network",
-					Name:       "network_load_balancer",
+					ProjectName: "project",
+					ParentName:  "network",
+					Name:        "network_load_balancer",
 				},
 			},
 			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{},
@@ -629,8 +641,9 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				ResourceType: "network-load-balancer",
 				Operation:    domain.LifecycleOperationUpdate,
 				Source: domain.LifecycleSource{
-					ParentName: "network",
-					Name:       "network_load_balancer",
+					ProjectName: "project",
+					ParentName:  "network",
+					Name:        "network_load_balancer",
 				},
 			},
 			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
@@ -640,6 +653,7 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				UUID:        uuidgen.FromPattern(t, "1"),
 				Cluster:     "cluster",
 				Name:        "network_load_balancer",
+				ProjectName: "project",
 				NetworkName: "network",
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
@@ -676,8 +690,9 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				ResourceType: "network-load-balancer",
 				Operation:    domain.LifecycleOperationCreate,
 				Source: domain.LifecycleSource{
-					ParentName: "network",
-					Name:       "network_load_balancer",
+					ProjectName: "project",
+					ParentName:  "network",
+					Name:        "network_load_balancer",
 				},
 			},
 			clusterSvcGetEndpointErr: boom.Error,
@@ -691,8 +706,9 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				ResourceType: "network-load-balancer",
 				Operation:    domain.LifecycleOperationCreate,
 				Source: domain.LifecycleSource{
-					ParentName: "network",
-					Name:       "network_load_balancer",
+					ProjectName: "project",
+					ParentName:  "network",
+					Name:        "network_load_balancer",
 				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
@@ -715,8 +731,9 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				ResourceType: "network-load-balancer",
 				Operation:    domain.LifecycleOperationCreate,
 				Source: domain.LifecycleSource{
-					ParentName: "network",
-					Name:       "network_load_balancer",
+					ProjectName: "project",
+					ParentName:  "network",
+					Name:        "network_load_balancer",
 				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
@@ -744,8 +761,9 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				ResourceType: "network-load-balancer",
 				Operation:    domain.LifecycleOperationCreate,
 				Source: domain.LifecycleSource{
-					ParentName: "network",
-					Name:       "network_load_balancer",
+					ProjectName: "project",
+					ParentName:  "network",
+					Name:        "network_load_balancer",
 				},
 			},
 			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
@@ -771,8 +789,9 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				ResourceType: "network-load-balancer",
 				Operation:    domain.LifecycleOperationDelete,
 				Source: domain.LifecycleSource{
-					ParentName: "network",
-					Name:       "network_load_balancer",
+					ProjectName: "project",
+					ParentName:  "network",
+					Name:        "network_load_balancer",
 				},
 			},
 			repoGetAllUUIDsWithFilterErr: boom.Error,
@@ -786,8 +805,9 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				ResourceType: "network-load-balancer",
 				Operation:    domain.LifecycleOperationDelete,
 				Source: domain.LifecycleSource{
-					ParentName: "network",
-					Name:       "network_load_balancer",
+					ProjectName: "project",
+					ParentName:  "network",
+					Name:        "network_load_balancer",
 				},
 			},
 			repoGetAllUUIDsWithFilterErr: domain.ErrNotFound,
@@ -801,8 +821,9 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				ResourceType: "network-load-balancer",
 				Operation:    domain.LifecycleOperationDelete,
 				Source: domain.LifecycleSource{
-					ParentName: "network",
-					Name:       "network_load_balancer",
+					ProjectName: "project",
+					ParentName:  "network",
+					Name:        "network_load_balancer",
 				},
 			},
 			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
@@ -819,9 +840,10 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				ResourceType: "network-load-balancer",
 				Operation:    domain.LifecycleOperationRename,
 				Source: domain.LifecycleSource{
-					ParentName: "network",
-					Name:       "network_load_balancer-new",
-					OldName:    "network_load_balancer",
+					ProjectName: "project",
+					ParentName:  "network",
+					Name:        "network_load_balancer-new",
+					OldName:     "network_load_balancer",
 				},
 			},
 			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
@@ -850,8 +872,9 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				ResourceType: "network-load-balancer",
 				Operation:    domain.LifecycleOperationUpdate,
 				Source: domain.LifecycleSource{
-					ParentName: "network",
-					Name:       "network_load_balancer",
+					ProjectName: "project",
+					ParentName:  "network",
+					Name:        "network_load_balancer",
 				},
 			},
 			repoGetAllUUIDsWithFilterErr: boom.Error,
@@ -865,8 +888,9 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				ResourceType: "network-load-balancer",
 				Operation:    domain.LifecycleOperationUpdate,
 				Source: domain.LifecycleSource{
-					ParentName: "network",
-					Name:       "network_load_balancer",
+					ProjectName: "project",
+					ParentName:  "network",
+					Name:        "network_load_balancer",
 				},
 			},
 			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{

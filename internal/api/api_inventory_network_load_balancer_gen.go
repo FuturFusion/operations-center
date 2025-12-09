@@ -46,6 +46,11 @@ func registerInventoryNetworkLoadBalancerHandler(router Router, authorizer *auth
 //	    type: string
 //	    example: cluster
 //	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
+//	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
@@ -100,6 +105,11 @@ func registerInventoryNetworkLoadBalancerHandler(router Router, authorizer *auth
 //	    type: string
 //	    example: cluster
 //	  - in: query
+//	    name: project
+//	    description: Project name
+//	    type: string
+//	    example: default
+//	  - in: query
 //	    name: filter
 //	    description: Filter expression
 //	    type: string
@@ -145,6 +155,10 @@ func (i *networkLoadBalancerHandler) networkLoadBalancersGet(r *http.Request) re
 		filter.Cluster = ptr.To(r.URL.Query().Get("cluster"))
 	}
 
+	if r.URL.Query().Get("project") != "" {
+		filter.Project = ptr.To(r.URL.Query().Get("project"))
+	}
+
 	if r.URL.Query().Get("filter") != "" {
 		filter.Expression = ptr.To(r.URL.Query().Get("filter"))
 	}
@@ -161,6 +175,7 @@ func (i *networkLoadBalancerHandler) networkLoadBalancersGet(r *http.Request) re
 			result = append(result, api.NetworkLoadBalancer{
 				UUID:        networkLoadBalancer.UUID,
 				Cluster:     networkLoadBalancer.Cluster,
+				ProjectName: networkLoadBalancer.ProjectName,
 				NetworkName: networkLoadBalancer.NetworkName,
 				Name:        networkLoadBalancer.Name,
 				Object:      networkLoadBalancer.Object,
@@ -234,6 +249,7 @@ func (i *networkLoadBalancerHandler) networkLoadBalancerGet(r *http.Request) res
 		api.NetworkLoadBalancer{
 			UUID:        networkLoadBalancer.UUID,
 			Cluster:     networkLoadBalancer.Cluster,
+			ProjectName: networkLoadBalancer.ProjectName,
 			NetworkName: networkLoadBalancer.NetworkName,
 			Name:        networkLoadBalancer.Name,
 			Object:      networkLoadBalancer.Object,

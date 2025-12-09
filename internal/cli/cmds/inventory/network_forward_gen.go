@@ -58,16 +58,20 @@ type cmdNetworkForwardList struct {
 	ocClient *client.OperationsCenterClient
 
 	flagFilterCluster    string
+	flagFilterProject    string
 	flagFilterExpression string
 
 	flagColumns string
 	flagFormat  string
 }
 
-const networkForwardDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .NetworkName }},{{ .Cluster }},{{ .LastUpdated }}`
+const networkForwardDefaultColumns = `{{ .UUID }},{{ .Name }},{{ .NetworkName }},{{ .ProjectName }},{{ .Cluster }},{{ .LastUpdated }}`
 
 var networkForwardColumnSorters = map[string]sort.ColumnSorter{
 	"Name": {
+		Less: sort.NaturalLess,
+	},
+	"ProjectName": {
 		Less: sort.NaturalLess,
 	},
 	"ParentName": {
@@ -81,6 +85,7 @@ var networkForwardColumnSorters = map[string]sort.ColumnSorter{
 var networkForwardColumnAliases = map[string]string{
 	"Name":        "Address",
 	"NetworkName": "Network Name",
+	"ProjectName": "Project",
 	"LastUpdated": "Last Updated",
 }
 
@@ -103,6 +108,7 @@ func (c *cmdNetworkForwardList) Command() *cobra.Command {
 	cmd.RunE = c.Run
 
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
+	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
 	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkForwardDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
@@ -125,6 +131,10 @@ func (c *cmdNetworkForwardList) Run(cmd *cobra.Command, args []string) error {
 
 	if c.flagFilterCluster != "" {
 		filter.Cluster = ptr.To(c.flagFilterCluster)
+	}
+
+	if c.flagFilterProject != "" {
+		filter.Project = ptr.To(c.flagFilterProject)
 	}
 
 	if c.flagFilterExpression != "" {

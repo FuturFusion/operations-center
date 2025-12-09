@@ -34,5 +34,5 @@ type {{ .Name | pascalcase }}ServerClient interface {
 	HasExtension(ctx context.Context, endpoint provisioning.Endpoint, extension string) (exists bool)
 {{- end }}
 	Get{{ .PluralName | pascalcase }}(ctx context.Context, endpoint provisioning.Endpoint {{- if .HasParent }}, {{ .ParentName | camelcase }}Name string {{ end }}) ([]incusapi.{{ .ObjectType | pascalcase }}, error)
-	Get{{ .Name | pascalcase }}ByName(ctx context.Context, endpoint provisioning.Endpoint, {{- if .HasProject }}projectName string, {{ end -}}{{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }} {{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error)
+	Get{{ .Name | pascalcase }}ByName(ctx context.Context, endpoint provisioning.Endpoint, {{- if .HasProjectDirect }}projectName string, {{ end -}}{{- if .HasParent }}{{ .ParentName | camelcase }}Name string, {{ end -}} {{ .Name | camelcase }}Name string {{- range .ExtraAttributes }}, {{ $.Name | camelcase }}{{ .Name | pascalcase }} {{ .Type }} {{- end}}) (incusapi.{{ .ObjectType | pascalcase }}, error)
 }

@@ -44,7 +44,7 @@ func (m *{{ .Name | pascalcase }}) DeriveUUID() *{{ .Name | pascalcase }} {
 {{- if and .ServerIDByLocation .IsServerIDDefining }}
 		m.Server,
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 		m.ProjectName,
 {{- end }}
 {{- if .HasParent }}
@@ -75,7 +75,7 @@ func (m {{ .Name | pascalcase }}) Validate() error {
 	if m.Name == "" {
 		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, name can not be empty")
 	}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 
 	if m.ProjectName == "" {
 		return domain.NewValidationErrf("Invalid {{ .Name | pascalcase }}, project name can not be empty")
