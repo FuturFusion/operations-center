@@ -52,9 +52,9 @@ The empty filter expression does not filter at all, same effect as `true`.
 ```{note}
 Operations Center has the following extended functions for filtering update files:
 
-* `applies_to_architecture(architecture string, expected_architecture string)`
-   -- returns `true`, if the file architecture matches the expected architecture
-   or if the file is architecture neutral.
+* `applies_to_architecture(architecture string, expected_architecture ...string)`
+   -- returns `true`, if the file architecture matches one of the expected
+   architectures or if the file is architecture neutral.
 ```
 
 ```{note}
