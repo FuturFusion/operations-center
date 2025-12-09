@@ -7,6 +7,10 @@ nav {
   background-color: #3f3f3f;
 }
 
+.navbar-nav .nav-link-active {
+  background-color: #3f3f3f !important;
+}
+
 .navbar-nav .nav-link {
   margin-left: 20px;
 }
