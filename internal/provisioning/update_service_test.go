@@ -34,23 +34,30 @@ func TestUpdateFileExprEnv_ExprCompileOptions(t *testing.T) {
 		want      any
 	}{
 		{
-			name:             "success",
-			filterExpression: `applies_to_architecture(architecture, "arm64")`,
+			name:             "success - one architecture",
+			filterExpression: `applies_to_architecture(architecture, "aarch64")`,
+
+			assertErr: require.NoError,
+			want:      true,
+		},
+		{
+			name:             "success - multiple architectures",
+			filterExpression: `applies_to_architecture(architecture, "aarch64", "x86_64", "i686")`,
 
 			assertErr: require.NoError,
 			want:      true,
 		},
 		{
 			name:             "error - invalid number of arguments",
-			filterExpression: `applies_to_architecture(architecture, "arm64", "invalid")`,
+			filterExpression: `applies_to_architecture(architecture)`, // too few arguments
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Invalid number of arguments to 'applies_to_architecture', expected <architecture> <expected_architecture>, got 3 arguments`)
+				require.ErrorContains(tt, err, `Invalid number of arguments to 'applies_to_architecture', expected <architecture> <expected_architecture>..., where <expected_architecture> is required at least once, got 1 argument`)
 			},
 		},
 		{
 			name:             "error - first argument not string",
-			filterExpression: `applies_to_architecture(0, "arm64")`, // invalid: 0 is not a string
+			filterExpression: `applies_to_architecture(0, "aarch64")`, // invalid: 0 is not a string
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, `Invalid first argument type to 'applies_to_architecture', expected string, got: int`)
@@ -61,7 +68,7 @@ func TestUpdateFileExprEnv_ExprCompileOptions(t *testing.T) {
 			filterExpression: `applies_to_architecture(architecture, 0)`, // invalid: 0 is not a string
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Invalid second argument type to 'applies_to_architecture', expected string, got: int`)
+				require.ErrorContains(tt, err, `Invalid 2 argument type to 'applies_to_architecture', expected string, got: int`)
 			},
 		},
 	}

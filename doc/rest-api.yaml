@@ -1,6 +1,10 @@
 definitions:
     Cluster:
         properties:
+            certificate:
+                description: Certificate of the cluster endpoint in PEM encoded format.
+                type: string
+                x-go-name: Certificate
             connection_url:
                 description: |-
                     URL, hostname or IP address of the cluster endpoint.
@@ -10,6 +14,11 @@ definitions:
                 example: https://incus.local:6443
                 type: string
                 x-go-name: ConnectionURL
+            fingerprint:
+                description: Fingerprint in SHA256 format of the certificate.
+                example: fd200419b271f1dc2a5591b693cc5774b7f234e1ff8c6b78ad703b6888fe2b69
+                type: string
+                x-go-name: Fingerprint
             last_updated:
                 description: LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
                 example: "2024-11-12T16:15:00Z"
@@ -122,6 +131,10 @@ definitions:
                     applied during post clustering. This configuration is application specific.
                 type: object
                 x-go-name: ApplicationSeedConfig
+            certificate:
+                description: Certificate of the cluster endpoint in PEM encoded format.
+                type: string
+                x-go-name: Certificate
             cluster_template:
                 description: |-
                     ClusterTemplate contains the name of a cluster template, which should be
@@ -146,6 +159,11 @@ definitions:
                 example: https://incus.local:6443
                 type: string
                 x-go-name: ConnectionURL
+            fingerprint:
+                description: Fingerprint in SHA256 format of the certificate.
+                example: fd200419b271f1dc2a5591b693cc5774b7f234e1ff8c6b78ad703b6888fe2b69
+                type: string
+                x-go-name: Fingerprint
             last_updated:
                 description: LastUpdated is the time, when this information has been updated for the last time in RFC3339 format.
                 example: "2024-11-12T16:15:00Z"
@@ -356,6 +374,8 @@ definitions:
                 $ref: '#/definitions/ResourcesNetwork'
             pci:
                 $ref: '#/definitions/ResourcesPCI'
+            serial:
+                $ref: '#/definitions/ResourcesSerial'
             storage:
                 $ref: '#/definitions/ResourcesStorage'
             system:
@@ -389,6 +409,8 @@ definitions:
                 $ref: '#/definitions/ResourcesNetwork'
             pci:
                 $ref: '#/definitions/ResourcesPCI'
+            serial:
+                $ref: '#/definitions/ResourcesSerial'
             storage:
                 $ref: '#/definitions/ResourcesStorage'
             system:
@@ -1226,6 +1248,73 @@ definitions:
                 x-go-name: ProductName
         type: object
         x-go-package: github.com/lxc/incus/v6/shared/api
+    ResourcesSerial:
+        description: ResourcesSerial represents the serial devices available on the system
+        properties:
+            devices:
+                description: List of serial devices
+                items:
+                    $ref: '#/definitions/ResourcesSerialDevice'
+                type: array
+                x-go-name: Devices
+            total:
+                description: Total number of serial devices
+                example: 1
+                format: uint64
+                type: integer
+                x-go-name: Total
+        type: object
+        x-go-package: github.com/lxc/incus/v6/shared/api
+    ResourcesSerialDevice:
+        description: ResourcesSerialDevice represents a serial device
+        properties:
+            device:
+                description: Device number (major:minor)
+                example: "188:0"
+                type: string
+                x-go-name: Device
+            device_id:
+                description: Path to /dev/serial/by-id entry
+                example: /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AB0J1234-if00-port0
+                type: string
+                x-go-name: DeviceID
+            device_path:
+                description: Path to /dev/serial/by-path entry
+                example: /dev/serial/by-path/pci-0000:00:14.0-usb-0:2:1.0-port0
+                type: string
+                x-go-name: DevicePath
+            driver:
+                description: kernel driver name (cdc_acm, ftdi_sio, pl2303, cp210x...)
+                example: cdc_acm
+                type: string
+                x-go-name: Driver
+            id:
+                description: Kernel device name (e.g. ttyUSB0, ttyACM0)
+                example: ttyUSB0
+                type: string
+                x-go-name: ID
+            product:
+                description: USB product name
+                example: Arduino Uno
+                type: string
+                x-go-name: Product
+            product_id:
+                description: USB product ID
+                example: "0043"
+                type: string
+                x-go-name: ProductID
+            vendor:
+                description: USB vendor name
+                example: Arduino LLC
+                type: string
+                x-go-name: Vendor
+            vendor_id:
+                description: USB vendor ID
+                example: "2341"
+                type: string
+                x-go-name: VendorID
+        type: object
+        x-go-package: github.com/lxc/incus/v6/shared/api
     ResourcesStorage:
         description: ResourcesStorage represents the local storage
         properties:
@@ -1613,6 +1702,10 @@ definitions:
         x-go-package: github.com/lxc/incus/v6/shared/api
     Server:
         properties:
+            certificate:
+                description: Certificate of the server endpoint in PEM encoded format.
+                type: string
+                x-go-name: Certificate
             cluster:
                 description: The cluster the server is part of.
                 example: one
@@ -1625,6 +1718,11 @@ definitions:
                 example: https://incus.local:6443
                 type: string
                 x-go-name: ConnectionURL
+            fingerprint:
+                description: Fingerprint in SHA256 format of the certificate.
+                example: fd200419b271f1dc2a5591b693cc5774b7f234e1ff8c6b78ad703b6888fe2b69
+                type: string
+                x-go-name: Fingerprint
             hardware_data:
                 $ref: '#/definitions/HardwareData'
             last_seen:
@@ -2491,25 +2589,26 @@ definitions:
                     provisioning.UpdateFile.
                     If a filter is defined, the filter needs to evaluate to true for the file
                     being fetched by Operations Center.
-                    Empty filter expression does not filter at all.
+                    Empty filter expression does fallback to the default value defined below.
+                    To disable filtering, set to "true", which causes the filter to allow all
+                    files.
 
                     For file filter expression, the following helper functions are available:
-                    applies_to_architecture(arch string, expected_arch string) bool
-                    Returns true if the 'arch' string matches the given 'expected_arch' string
-                    or if 'arch' is not set.
-
-                    Examples:
-                    applies_to_architecture(architecture, "x86_64")
-                    architecture == "x86_64"
+                    applies_to_architecture(arch string, expected_arch ...string) bool
+                    Returns true if the 'arch' string matches one of the given
+                    'expected_arch' strings or if 'architecure' is not set.
                 type: string
                 x-go-name: FileFilterExpression
             filter_expression:
+                default: '''stable'' in channels'
                 description: |-
                     Filter expression for updates using https://expr-lang.org/ on struct
                     provisioning.Update.
                     If a filter is defined, the filter needs to evaluate to true for the update
                     being fetched by Operations Center.
-                    Empty filter expression does not filter at all.
+                    Empty filter expression does fallback to the default value defined below.
+                    To disable filtering, set to "true", which causes the filter to allow all
+                    updates.
                 example: '''stable'' in channels'
                 type: string
                 x-go-name: FilterExpression
@@ -2536,25 +2635,26 @@ definitions:
                     provisioning.UpdateFile.
                     If a filter is defined, the filter needs to evaluate to true for the file
                     being fetched by Operations Center.
-                    Empty filter expression does not filter at all.
+                    Empty filter expression does fallback to the default value defined below.
+                    To disable filtering, set to "true", which causes the filter to allow all
+                    files.
 
                     For file filter expression, the following helper functions are available:
-                    applies_to_architecture(arch string, expected_arch string) bool
-                    Returns true if the 'arch' string matches the given 'expected_arch' string
-                    or if 'arch' is not set.
-
-                    Examples:
-                    applies_to_architecture(architecture, "x86_64")
-                    architecture == "x86_64"
+                    applies_to_architecture(arch string, expected_arch ...string) bool
+                    Returns true if the 'arch' string matches one of the given
+                    'expected_arch' strings or if 'architecure' is not set.
                 type: string
                 x-go-name: FileFilterExpression
             filter_expression:
+                default: '''stable'' in channels'
                 description: |-
                     Filter expression for updates using https://expr-lang.org/ on struct
                     provisioning.Update.
                     If a filter is defined, the filter needs to evaluate to true for the update
                     being fetched by Operations Center.
-                    Empty filter expression does not filter at all.
+                    Empty filter expression does fallback to the default value defined below.
+                    To disable filtering, set to "true", which causes the filter to allow all
+                    updates.
                 example: '''stable'' in channels'
                 type: string
                 x-go-name: FilterExpression
@@ -6434,6 +6534,10 @@ paths:
                 Update of a server definition by the server it self.
                 Authentication is done by the servers certificate provided during the
                 initial registration.
+
+                Special case is, if this endpoint is called over the unix socket. In this
+                case, it allows to update the server record of this Operations Center
+                itself.
             operationId: server_put_self
             parameters:
                 - description: Server definition
@@ -6456,6 +6560,28 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Update of a server by it self
+            tags:
+                - servers
+    /1.0/provisioning/servers/:self_register:
+        post:
+            description: |-
+                Register an Operations Center server by it self onto it self.
+                Authentication is done through unix socket.
+            operationId: server_post_self_register
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Register an Operations Center server by it self onto it self
             tags:
                 - servers
     /1.0/provisioning/servers/{name}:

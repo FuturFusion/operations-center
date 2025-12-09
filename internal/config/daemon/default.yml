@@ -55,14 +55,18 @@ updates:
   # provisioning.Update.
   # If a filter is defined, the filter needs to evaluate to true for the update
   # being fetched by Operations Center.
-  # Empty filter expression does not filter at all.
+  # Empty filter expression does fallback to the default value defined below.
+  # To disable filtering, set to "true", which causes the filter to allow all
+  # updates.
   filter_expression: '"stable" in channels'
 
   # Filter expression for update files using https://expr-lang.org/ on struct
   # provisioning.UpdateFile.
   # If a filter is defined, the filter needs to evaluate to true for the file
   # being fetched by Operations Center.
-  # Empty filter expression does not filter at all.
+  # Empty filter expression does fallback to the default value defined below.
+  # To disable filtering, set to "true", which causes the filter to allow all
+  # files.
   #
   # For file filter expression, the following helper functions are available:
   #   - applies_to_architecture(arch string, expected_arch string) bool
