@@ -74,13 +74,21 @@ server-two
 	}
 
 	testServers := []provisioning.Server{testServerA, testServerB}
+{{- if .HasProjectFromParent }}
+
+	{{ .ParentName | camelcase }} := inventory.{{ .ParentName | pascalcase }}{
+		Cluster:     "one",
+		Name:        "parent one",
+		ProjectName: "one",
+	}
+{{- end }}
 
 	{{ .Name | camelcase }}A := inventory.{{ .Name | pascalcase }}{
 		Cluster:     "one",
 {{- if .ServerIDByLocation }}
 		Server:      "one",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 		ProjectName: "one",
 {{- end }}
 {{- if .HasParent }}
@@ -101,11 +109,11 @@ server-two
 {{- if .ServerIDByLocation }}
 		Server:      "two",
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 		ProjectName: "two",
 {{- end }}
 {{- if .HasParent }}
-		{{ .ParentName | pascalcase }}Name:  "parent one",
+		{{ .ParentName | pascalcase }}Name:  "parent two",
 {{- end }}
 		Name:        "two",
 {{- range .ExtraAttributes }}
@@ -145,6 +153,11 @@ server-two
 	// Seed provisioning
 	err = seed.Provisioning(ctx, db, testClusters, testServers)
 	require.NoError(t, err)
+{{- if .HasProjectFromParent }}
+
+	_, err = inventorySqlite.New{{ .ParentName | pascalcase }}(db).Create(ctx, {{ .ParentName | camelcase }})
+	require.NoError(t, err)
+{{- end }}
 
 	// Add {{ .PluralName }}
 	{{ .Name | camelcase }}A, err = {{ .Name | camelcase }}.Create(ctx, {{ .Name | camelcase }}A)
@@ -167,6 +180,10 @@ server-two
 	require.Len(t, db{{ .Name | pascalcase }}, 2)
 	require.Equal(t, {{ .Name | camelcase }}A.Name, db{{ .Name | pascalcase }}[0].Name)
 	require.Equal(t, {{ .Name | camelcase }}B.Name, db{{ .Name | pascalcase }}[1].Name)
+{{- if .HasProjectFromParent }}
+	require.Equal(t, {{ .Name | camelcase }}A.ProjectName, {{ .ParentName | camelcase }}.ProjectName)
+	require.Equal(t, {{ .Name | camelcase }}B.ProjectName, "")
+{{- end }}
 
 	// Ensure we have one entry with filter for cluster, server{{ if .HasProject }}, project{{ end }}{{ if .HasParent }}, {{ .ParentName }}{{ end }} and name.
 	{{ .Name | camelcase }}UUIDs, err = {{ .Name | camelcase }}.GetAllUUIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{

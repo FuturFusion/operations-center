@@ -36,9 +36,14 @@ WITH _lookup AS (
   ) AS server_id {{ end -}}
   FROM clusters WHERE clusters.name = :cluster_name
 )
-INSERT INTO {{ .PluralName }} (uuid, cluster_id, {{ if .ServerIDByLocation -}} server_id, {{ end -}} {{ if .HasProject }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name {{- range .ExtraAttributes }}, {{ .Name }} {{- end}}, object, last_updated)
-VALUES (:uuid, (SELECT cluster_id FROM _lookup), {{ if .ServerIDByLocation -}} (SELECT server_id FROM _lookup), {{ end -}} {{ if .HasProject -}} :project_name, {{ end -}}{{ if .HasParent }}:{{ .ParentName }}_name, {{ end -}} :name {{- range .ExtraAttributes }}, :{{ .Name }} {{- end}}, :object, :last_updated)
-RETURNING id, :uuid, :cluster_name, {{ if .ServerIDByLocation -}} :server_name, {{ end -}} {{ if .HasProject }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name {{- range .ExtraAttributes }}, {{ .Name }} {{- end}}, object, last_updated;
+{{- if .HasProjectFromParent -}}
+, _parent_lookup AS (
+  SELECT project_name FROM {{ .ParentPluralName }} WHERE {{ .ParentPluralName }}.name = :{{ .ParentName }}_name
+)
+{{- end }}
+INSERT INTO {{ .PluralName }} (uuid, cluster_id, {{ if .ServerIDByLocation -}} server_id, {{ end -}} {{ if .HasProjectDirect }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name {{- range .ExtraAttributes }}, {{ .Name }} {{- end}}, object, last_updated)
+VALUES (:uuid, (SELECT cluster_id FROM _lookup), {{ if .ServerIDByLocation -}} (SELECT server_id FROM _lookup), {{ end -}} {{ if .HasProjectDirect -}} :project_name, {{ end -}}{{ if .HasParent }}:{{ .ParentName }}_name, {{ end -}} :name {{- range .ExtraAttributes }}, :{{ .Name }} {{- end}}, :object, :last_updated)
+RETURNING id, :uuid, :cluster_name, {{ if .ServerIDByLocation -}} :server_name, {{ end -}} {{ if .HasProjectDirect }}project_name, {{ end -}}{{ if .HasProjectFromParent }}COALESCE((select project_name from _parent_lookup), '') AS project_name, {{ end }}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name {{- range .ExtraAttributes }}, {{ .Name }} {{- end}}, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -52,7 +57,7 @@ RETURNING id, :uuid, :cluster_name, {{ if .ServerIDByLocation -}} :server_name, 
 {{- if .ServerIDByLocation }}
 		sql.Named("server_name", in.Server),
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 		sql.Named("project_name", in.ProjectName),
 {{- end }}
 {{- if .HasParent }}
@@ -75,11 +80,14 @@ RETURNING id, :uuid, :cluster_name, {{ if .ServerIDByLocation -}} :server_name, 
 func (r {{ .Name | camelcase }}) GetAllWithFilter(ctx context.Context, filter inventory.{{ .Name | pascalcase }}Filter) (inventory.{{ .PluralName | pascalcase }}, error) {
 	const sqlStmt = `
 SELECT
-  {{ .PluralName }}.id, {{ .PluralName }}.uuid, clusters.name, {{ if .ServerIDByLocation -}} servers.name, {{ end -}} {{ if .HasProject -}} {{ .PluralName }}.project_name, {{ end -}}{{ if .HasParent -}} {{ .PluralName }}.{{ .ParentName }}_name, {{ end -}} {{ .PluralName }}.name {{- range .ExtraAttributes }}, {{ $.PluralName }}.{{ .Name }} {{- end}}, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
+  {{ .PluralName }}.id, {{ .PluralName }}.uuid, clusters.name, {{ if .ServerIDByLocation -}} servers.name, {{ end -}} {{ if .HasProjectDirect -}} {{ .PluralName }}.project_name, {{ end -}}{{ if .HasProjectFromParent -}} COALESCE({{ .ParentPluralName }}.project_name, '') AS project_name, {{ end -}}{{ if .HasParent -}} {{ .PluralName }}.{{ .ParentName }}_name, {{ end -}} {{ .PluralName }}.name {{- range .ExtraAttributes }}, {{ $.PluralName }}.{{ .Name }} {{- end}}, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
 FROM {{ .PluralName }}
   INNER JOIN clusters ON {{ .PluralName }}.cluster_id = clusters.id
 {{- if .ServerIDByLocation }}
   INNER JOIN servers ON {{ .PluralName }}.server_id = servers.id
+{{- end }}
+{{- if .HasProjectFromParent }}
+  LEFT JOIN {{ .ParentPluralName }} ON {{ .PluralName }}.{{ .ParentName }}_name = {{ .ParentPluralName }}.name
 {{- end }}
 WHERE true
 %s
@@ -103,7 +111,7 @@ ORDER BY clusters.name, {{ if .ServerIDByLocation -}} servers.name, {{ end -}} {
 
 {{ if .HasProject }}
 	if filter.Project != nil {
-		whereClause = append(whereClause, ` AND {{ .PluralName }}.project_name = :project`)
+		whereClause = append(whereClause, ` AND {{ if .HasProjectDirect }}{{ .PluralName }}{{ else }}{{ .ParentPluralName }}{{ end }}.project_name = :project`)
 		args = append(args, sql.Named("project", filter.Project))
 	}
 {{ end }}
@@ -155,6 +163,9 @@ FROM {{ .PluralName }}
 {{- if .ServerIDByLocation }}
   INNER JOIN servers ON {{ .PluralName }}.server_id = servers.id
 {{- end }}
+{{- if .HasProjectFromParent }}
+  LEFT JOIN {{ .ParentPluralName }} ON {{ .PluralName }}.{{ .ParentName }}_name = {{ .ParentPluralName }}.name
+{{- end }}
 WHERE true
 %s
 ORDER BY {{ .PluralName }}.id
@@ -176,7 +187,7 @@ ORDER BY {{ .PluralName }}.id
 
 {{ if .HasProject }}
 	if filter.Project != nil {
-		whereClause = append(whereClause, ` AND {{ .PluralName }}.project_name = :project`)
+		whereClause = append(whereClause, ` AND {{ if .HasProjectDirect }}{{ .PluralName }}{{ else }}{{ .ParentPluralName }}{{ end }}.project_name = :project`)
 		args = append(args, sql.Named("project", filter.Project))
 	}
 {{ end }}
@@ -227,12 +238,15 @@ func (r {{ .Name | camelcase }}) GetAllUUIDsWithFilter(ctx context.Context, filt
 func (r {{ .Name | camelcase }}) GetByUUID(ctx context.Context, id uuid.UUID) (inventory.{{ .Name | pascalcase }}, error) {
 	const sqlStmt = `
 SELECT
-  {{ .PluralName }}.id, {{ .PluralName }}.uuid, clusters.name, {{ if .ServerIDByLocation -}} servers.name, {{ end -}} {{ if .HasProject -}} {{ .PluralName }}.project_name, {{ end -}}{{ if .HasParent -}} {{ .PluralName }}.{{ .ParentName }}_name, {{ end -}} {{ .PluralName }}.name {{- range .ExtraAttributes }}, {{ $.PluralName }}.{{ .Name }} {{- end}}, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
+  {{ .PluralName }}.id, {{ .PluralName }}.uuid, clusters.name, {{ if .ServerIDByLocation -}} servers.name, {{ end -}} {{ if .HasProjectDirect -}} {{ .PluralName }}.project_name, {{ end -}}{{ if .HasProjectFromParent -}} COALESCE({{ .ParentPluralName }}.project_name, '') AS project_name, {{ end -}}{{ if .HasParent -}} {{ .PluralName }}.{{ .ParentName }}_name, {{ end -}} {{ .PluralName }}.name {{- range .ExtraAttributes }}, {{ $.PluralName }}.{{ .Name }} {{- end}}, {{ .PluralName }}.object, {{ .PluralName }}.last_updated
 FROM
   {{ .PluralName }}
   INNER JOIN clusters ON {{ .PluralName }}.cluster_id = clusters.id
 {{- if .ServerIDByLocation }}
   INNER JOIN servers ON {{ .PluralName }}.server_id = servers.id
+{{- end }}
+{{- if .HasProjectFromParent }}
+  LEFT JOIN {{ .ParentPluralName }} ON {{ .PluralName }}.{{ .ParentName }}_name = {{ .ParentPluralName }}.name
 {{- end }}
 WHERE {{ .PluralName }}.uuid=:uuid;
 `
@@ -301,9 +315,14 @@ WITH _lookup AS (
   ) AS server_id {{ end -}}
   FROM clusters WHERE clusters.name = :cluster_name
 )
-UPDATE {{ .PluralName }} SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), {{ if .ServerIDByLocation -}} server_id=(SELECT server_id FROM _lookup), {{ end -}} {{ if .HasProject -}} project_name=:project_name, {{ end -}} {{ if .HasParent -}} {{ .ParentName }}_name=:{{ .ParentName }}_name, {{ end -}} name=:name {{- range .ExtraAttributes }}, {{ .Name }}=:{{ .Name }} {{- end}}, object=:object, last_updated=:last_updated
+{{- if .HasProjectFromParent -}}
+, _parent_lookup AS (
+  SELECT project_name FROM {{ .ParentPluralName }} WHERE {{ .ParentPluralName }}.name = :{{ .ParentName }}_name
+)
+{{- end }}
+UPDATE {{ .PluralName }} SET uuid=:uuid, cluster_id=(SELECT cluster_id FROM _lookup), {{ if .ServerIDByLocation -}} server_id=(SELECT server_id FROM _lookup), {{ end -}} {{ if .HasProjectDirect -}} project_name=:project_name, {{ end -}} {{ if .HasParent -}} {{ .ParentName }}_name=:{{ .ParentName }}_name, {{ end -}} name=:name {{- range .ExtraAttributes }}, {{ .Name }}=:{{ .Name }} {{- end}}, object=:object, last_updated=:last_updated
 WHERE uuid=:uuid
-RETURNING id, :uuid, :cluster_name, {{ if .ServerIDByLocation -}} :server_name, {{ end -}} {{ if .HasProject }}project_name, {{ end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name {{- range .ExtraAttributes }}, {{ .Name }} {{- end}}, object, last_updated;
+RETURNING id, :uuid, :cluster_name, {{ if .ServerIDByLocation -}} :server_name, {{ end -}} {{ if .HasProjectDirect }}project_name, {{ end -}}{{ if .HasProjectFromParent }}COALESCE((select project_name from _parent_lookup), '') AS project_name, {{end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name {{- range .ExtraAttributes }}, {{ .Name }} {{- end}}, object, last_updated;
 `
 
 	marshaledObject, err := json.Marshal(in.Object)
@@ -317,7 +336,7 @@ RETURNING id, :uuid, :cluster_name, {{ if .ServerIDByLocation -}} :server_name, 
 {{- if .ServerIDByLocation }}
 		sql.Named("server_name", in.Server),
 {{- end }}
-{{- if .HasProject }}
+{{- if .HasProjectDirect }}
 		sql.Named("project_name", in.ProjectName),
 {{- end }}
 {{- if .HasParent }}
