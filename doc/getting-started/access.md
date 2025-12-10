@@ -9,7 +9,8 @@ Center service running on the same system.
 
 To enable `operations-center` to communicate over the network, you can assign a
 network address and port. If no port is specified, Operations Center will use
-`7443`.
+port `7443` by default if run stand alone and `8443` if run as application
+on top of IncusOS.
 
 ```shell
 $ operations-center system network edit
@@ -87,7 +88,9 @@ generated in `~/.config/operations-center` can be used for this purpose.
 The exact process to do this varies between browsers and operating
 systems, but generally involves generating a PKCS#12 certificate from
 the separate `client.crt` and `client.key`, then importing that in the
-web browser's certificate store.
+web browser's certificate store.\
+You may find more detailed instructions in
+[Certificate Based Authentication](../tutorials/setup-operations-center-ui.md#certificate-based-authentication).
 
 Alternatively, the UI can be accessed with OIDC login if configured on the
 Operations Center service.

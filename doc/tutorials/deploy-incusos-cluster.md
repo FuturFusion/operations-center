@@ -160,6 +160,14 @@ the following message in the log output:
 System is ready
 ```
 
+```{note}
+It might happen, that on the first boot after the installation, an update is
+applied. In this case, the system will reboot automatically after the update is
+installed.\
+Just re-attach to the console with `incus console OperationsCenter` again after
+the reboot.
+```
+
 Note down the IP address displayed at the bottom of the screen.
 
 Note down the server certificate fingerprint shown in the logs looking like this:
@@ -207,6 +215,30 @@ If everything worked as expected, you should see the Operations Center UI like
 this:
 
 ![Operations Center UI - Logged in](../images/tutorial-setup-operations-center-ui-logged-in.png)
+
+````
+`````
+
+## Operations Center Self Registration
+
+As part of the initialization, Operations Center automatically registers itself
+as a server in its own provisioning system.
+
+You can verify this your self by having a look at the list of servers.
+
+`````{tabs}
+````{group-tab} CLI
+
+```shell
+operations-center provisioning server list
+```
+
+````
+````{group-tab} Web UI
+
+Navigate to *Servers*.
+
+![Operations Center UI - Self Registration](../images/tutorial-deploy-incusos-cluster-operations-center-self-registration.png)
 
 ````
 `````
@@ -344,6 +376,50 @@ the following message in the log output:
 System is ready
 ```
 
+```{note}
+It might happen, that on the first boot after the installation, an update is
+applied. In this case, the system will reboot automatically after the update is
+installed.\
+Just re-attach to the console with `incus console IncusOS` again after
+the reboot.
+```
+
+## Rename IncusOS Servers (Optional)
+
+By default, the server name of the IncusOS instances is the machine's host name,
+which if not defined will default to the machine ID. Therefore it is normal for
+setup using IncusOS, as we do in this guide, to have random UUID as the server
+names.\
+To make it easier to identify the servers later on, it is therefore recommended
+to rename them to something more meaningful.
+
+`````{tabs}
+````{group-tab} CLI
+
+List the servers to get their current names:
+
+```shell
+operations-center provisioning server list
+```
+
+Rename the server from `<current-server-name>` to e.g. `IncusOS`:
+
+```shell
+operations-center provisioning server rename <current-server-name> IncusOS
+```
+
+````
+````{group-tab} Web UI
+
+Navigate to *Servers*, click on the server, switch to the tab *Configuration*,
+change the *Name* and click *Rename* to rename the server.
+
+![Operations Center UI - Rename Server](../images/tutorial-deploy-incusos-cluster-rename-server.png)
+
+````
+
+`````
+
 ## Cluster the Servers
 
 In order to be able to connect to the [cluster](../reference/cluster.md) with
@@ -432,8 +508,8 @@ Fill in the following details:
   previously)
 * Server type: `incus`
 * Services configuration: leave empty for this tutorial
-* Application seed config:
-  ```
+* Application seed config (make sure, the config is valid YAML):
+  ```yaml
   certificates:
     - type: client
       name: my-client-cert
@@ -447,6 +523,9 @@ Fill in the following details:
 Click the *Create* button to create the cluster.
 
 After successful cluster creation, you should see the cluster in the list.
+
+Click on the cluster to see its details and note down the fingerprint shown
+there.
 
 ````
 `````
@@ -520,6 +599,53 @@ tofu init
 tofu plan
 cd -
 ```
+
+## Explore the Inventory (Optional)
+
+After having deployed the IncusOS cluster, you may want to explore the
+Inventory feature of Operations Center to get an overview of the automatically
+created resources (like projects, profiles, networks, storage pools, etc.).
+
+```{note}
+If the inventory is empty, trigger a resync.
+```
+
+`````{tabs}
+````{group-tab} CLI
+
+```shell
+operations-center provisioning cluster resync tutorial-incusos-cluster
+```
+
+````
+````{group-tab} Web UI
+
+Navigate to *Clusters*, click on the *Resync cluster inventory* icon for the
+respective cluster.
+
+````
+`````
+
+Now explore the inventory.
+
+`````{tabs}
+````{group-tab} CLI
+
+```shell
+operations-center inventory --help
+
+operations-center inventory project list
+operations-center inventory profile list
+...
+```
+
+````
+````{group-tab} Web UI
+
+Navigate to the respective section of interest in the *Inventory*.
+
+````
+`````{tabs}
 
 ## Start Over
 
