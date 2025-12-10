@@ -327,10 +327,11 @@ func replaceOperationsCenterExecutable(t *testing.T) {
 	stop := timeTrack(t)
 	defer stop()
 
+	mustRun(t, `incus exec OperationsCenter -- bash -c "mkdir -p /root/dev/ && mount -t tmpfs tmpfs /root/dev/"`)
 	mustRun(t, `incus exec OperationsCenter -- bash -c "systemctl stop operations-center || true"`)
-	mustRun(t, `incus exec OperationsCenter -- bash -c "umount /dev/mapper/root || true"`)
-	mustRun(t, `incus file push ../bin/operations-centerd OperationsCenter/root/operations-centerd`)
-	mustRun(t, `incus exec OperationsCenter -- bash -c "mount -o bind /root/operations-centerd /usr/local/bin/operations-centerd && systemctl start operations-center"`)
+	mustRun(t, `incus exec OperationsCenter -- bash -c "umount -l /usr/local/bin/operations-centerd"`)
+	mustRun(t, `incus file push ../bin/operations-centerd OperationsCenter/root/dev/operations-centerd`)
+	mustRun(t, `incus exec OperationsCenter -- bash -c "mount -o bind /root/dev/operations-centerd /usr/local/bin/operations-centerd && systemctl start operations-center"`)
 }
 
 func setupLocalOperationsCenterConfig(t *testing.T) {
