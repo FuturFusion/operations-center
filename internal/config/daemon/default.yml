@@ -31,6 +31,18 @@ security:
     api_url: ""
     store.id: ""
 
+  # ACME configuration.
+  acme:
+    agree_tos: false
+    ca_url: "https://acme-v02.api.letsencrypt.org/directory"
+    challenge: HTTP-01
+    domain: ""
+    email: ""
+    http_challenge_address: ":80"
+    provider: ""
+    provider_environment: []
+    provider_resolvers: []
+
 updates:
   # URL of the server providing updates for incus-os.
   source: https://images.linuxcontainers.org/os/
