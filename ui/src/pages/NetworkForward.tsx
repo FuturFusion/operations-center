@@ -7,12 +7,21 @@ import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
 import { useNetworkMap } from "context/useNetworks";
+import type { NetworkForward } from "types/network_forward";
 import { formatDate } from "util/date";
 
 const NetworkForward = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
   const { networkMap } = useNetworkMap();
+
+  const sortData = (a: NetworkForward, b: NetworkForward) => {
+    return (
+      a.name.localeCompare(b.name) ||
+      a.project_name.localeCompare(b.project_name) ||
+      a.cluster.localeCompare(b.cluster)
+    );
+  };
 
   const {
     data: network_forwards = [],
@@ -21,6 +30,7 @@ const NetworkForward = () => {
   } = useQuery({
     queryKey: ["network_forwards", filter],
     queryFn: () => fetchNetworkForwards(filter || ""),
+    select: (items) => [...items].sort(sortData),
     retry: false,
   });
 

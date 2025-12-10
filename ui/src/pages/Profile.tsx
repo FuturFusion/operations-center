@@ -7,11 +7,20 @@ import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
 import ProjectIncusLink from "components/ProjectIncusLink";
+import type { Profile } from "types/profile";
 import { formatDate } from "util/date";
 
 const Profile = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
+
+  const sortData = (a: Profile, b: Profile) => {
+    return (
+      a.name.localeCompare(b.name) ||
+      a.project_name.localeCompare(b.project_name) ||
+      a.cluster.localeCompare(b.cluster)
+    );
+  };
 
   const {
     data: profiles = [],
@@ -20,6 +29,7 @@ const Profile = () => {
   } = useQuery({
     queryKey: ["profiles", filter],
     queryFn: () => fetchProfiles(filter || ""),
+    select: (items) => [...items].sort(sortData),
     retry: false,
   });
 

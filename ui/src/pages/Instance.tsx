@@ -8,11 +8,21 @@ import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
 import ProjectIncusLink from "components/ProjectIncusLink";
 import ServerLink from "components/ServerLink";
+import type { Instance } from "types/instance";
 import { formatDate } from "util/date";
 
 const Instance = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
+
+  const sortData = (a: Instance, b: Instance) => {
+    return (
+      a.name.localeCompare(b.name) ||
+      a.project_name.localeCompare(b.project_name) ||
+      a.cluster.localeCompare(b.cluster) ||
+      a.server.localeCompare(b.server)
+    );
+  };
 
   const {
     data: instances = [],
@@ -21,6 +31,7 @@ const Instance = () => {
   } = useQuery({
     queryKey: ["instances", filter],
     queryFn: () => fetchInstances(filter || ""),
+    select: (items) => [...items].sort(sortData),
     retry: false,
   });
 

@@ -3,10 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { fetchClusterTemplates } from "api/cluster_template";
 import DataTable from "components/DataTable";
+import type { ClusterTemplate } from "types/cluster_template";
 import { formatDate } from "util/date";
 
 const ClusterTemplate = () => {
   const navigate = useNavigate();
+
+  const sortData = (a: ClusterTemplate, b: ClusterTemplate) => {
+    return a.name.localeCompare(b.name);
+  };
 
   const {
     data: templates = [],
@@ -15,6 +20,7 @@ const ClusterTemplate = () => {
   } = useQuery({
     queryKey: ["cluster-templates"],
     queryFn: fetchClusterTemplates,
+    select: (items) => [...items].sort(sortData),
   });
 
   if (isLoading) {

@@ -7,11 +7,20 @@ import InventorySearchBox from "components/InventorySearchBox";
 import ClusterLink from "components/ClusterLink";
 import ObjectIncusLink from "components/ObjectIncusLink";
 import ProjectIncusLink from "components/ProjectIncusLink";
+import type { Network } from "types/network";
 import { formatDate } from "util/date";
 
 const Network = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
+
+  const sortData = (a: Network, b: Network) => {
+    return (
+      a.name.localeCompare(b.name) ||
+      a.project_name.localeCompare(b.project_name) ||
+      a.cluster.localeCompare(b.cluster)
+    );
+  };
 
   const {
     data: networks = [],
@@ -20,6 +29,7 @@ const Network = () => {
   } = useQuery({
     queryKey: ["networks", filter],
     queryFn: () => fetchNetworks(filter || ""),
+    select: (items) => [...items].sort(sortData),
     retry: false,
   });
 

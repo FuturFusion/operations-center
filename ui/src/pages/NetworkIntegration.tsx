@@ -5,11 +5,16 @@ import { fetchNetworkIntegrations } from "api/network_integration";
 import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
+import type { NetworkIntegration } from "types/network_integration";
 import { formatDate } from "util/date";
 
 const NetworkIntegration = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
+
+  const sortData = (a: NetworkIntegration, b: NetworkIntegration) => {
+    return a.name.localeCompare(b.name) || a.cluster.localeCompare(b.cluster);
+  };
 
   const {
     data: network_integrations = [],
@@ -18,6 +23,7 @@ const NetworkIntegration = () => {
   } = useQuery({
     queryKey: ["network_integrations", filter],
     queryFn: () => fetchNetworkIntegrations(filter || ""),
+    select: (items) => [...items].sort(sortData),
     retry: false,
   });
 

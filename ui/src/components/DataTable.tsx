@@ -51,7 +51,6 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
         return 0;
       }
 
-      console.log(aSortKey, bSortKey, typeof aSortKey);
       if (sortProps.order === "asc") {
         if (typeof aSortKey === "number" && typeof bSortKey == "number") {
           return aSortKey - bSortKey;

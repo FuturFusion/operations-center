@@ -5,11 +5,21 @@ import { fetchNetworkPeers } from "api/network_peer";
 import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
+import type { NetworkPeer } from "types/network_peer";
 import { formatDate } from "util/date";
 
 const NetworkPeer = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
+
+  const sortData = (a: NetworkPeer, b: NetworkPeer) => {
+    return (
+      a.name.localeCompare(b.name) ||
+      a.parent_name.localeCompare(b.parent_name) ||
+      a.project_name.localeCompare(b.project_name) ||
+      a.cluster.localeCompare(b.cluster)
+    );
+  };
 
   const {
     data: peers = [],
@@ -18,6 +28,7 @@ const NetworkPeer = () => {
   } = useQuery({
     queryKey: ["network_peers", filter],
     queryFn: () => fetchNetworkPeers(filter || ""),
+    select: (items) => [...items].sort(sortData),
     retry: false,
   });
 

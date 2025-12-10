@@ -4,12 +4,17 @@ import { Link, useSearchParams } from "react-router";
 import { fetchServers } from "api/server";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
+import type { Server } from "types/server";
 import type { ServerTypeKey } from "util/server";
 import { ServerTypeString } from "util/server";
 
 const Server = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
+
+  const sortData = (a: Server, b: Server) => {
+    return a.name.localeCompare(b.name) || a.cluster.localeCompare(b.cluster);
+  };
 
   const {
     data: servers = [],
@@ -18,6 +23,7 @@ const Server = () => {
   } = useQuery({
     queryKey: ["servers", filter],
     queryFn: () => fetchServers(filter || ""),
+    select: (items) => [...items].sort(sortData),
     retry: false,
   });
 
