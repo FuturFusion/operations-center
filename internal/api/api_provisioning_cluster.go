@@ -284,6 +284,7 @@ func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
 			ConnectionURL: cluster.ConnectionURL,
 			Certificate:   cluster.Certificate,
 			Fingerprint:   cluster.Fingerprint,
+			Status:        cluster.Status,
 			LastUpdated:   cluster.LastUpdated,
 		},
 		cluster,
