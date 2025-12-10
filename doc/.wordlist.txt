@@ -35,6 +35,8 @@ PFX
 PKCS
 pre
 preseed
+resync
+Resync
 rollout
 SHA
 struct
