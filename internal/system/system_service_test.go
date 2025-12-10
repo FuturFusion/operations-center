@@ -762,6 +762,13 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 			wantSecurityConfig: api.SystemSecurity{
 				SystemSecurityPut: api.SystemSecurityPut{
 					TrustedTLSClientCertFingerprints: []string{},
+					ACME: api.SystemSecurityACME{
+						CAURL:               "https://acme-v02.api.letsencrypt.org/directory",
+						Challenge:           "HTTP-01",
+						Address:             ":80",
+						ProviderEnvironment: []string{},
+						ProviderResolvers:   []string{},
+					},
 				},
 			},
 		},
