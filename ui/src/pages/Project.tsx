@@ -6,11 +6,16 @@ import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ProjectIncusLink from "components/ProjectIncusLink";
+import type { Project } from "types/project";
 import { formatDate } from "util/date";
 
 const Project = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
+
+  const sortData = (a: Project, b: Project) => {
+    return a.name.localeCompare(b.name) || a.cluster.localeCompare(b.cluster);
+  };
 
   const {
     data: projects = [],
@@ -19,6 +24,7 @@ const Project = () => {
   } = useQuery({
     queryKey: ["projects", filter],
     queryFn: () => fetchProjects(filter || ""),
+    select: (items) => [...items].sort(sortData),
     retry: false,
   });
 

@@ -8,11 +8,22 @@ import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
 import ProjectIncusLink from "components/ProjectIncusLink";
 import ServerLink from "components/ServerLink";
+import type { StorageBucket } from "types/storage_bucket";
 import { formatDate } from "util/date";
 
 const StorageBucket = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
+
+  const sortData = (a: StorageBucket, b: StorageBucket) => {
+    return (
+      a.name.localeCompare(b.name) ||
+      a.parent_name.localeCompare(b.parent_name) ||
+      a.project_name.localeCompare(b.project_name) ||
+      a.cluster.localeCompare(b.cluster) ||
+      a.server.localeCompare(b.server)
+    );
+  };
 
   const {
     data: buckets = [],
@@ -21,6 +32,7 @@ const StorageBucket = () => {
   } = useQuery({
     queryKey: ["storage_buckets", filter],
     queryFn: () => fetchStorageBuckets(filter || ""),
+    select: (items) => [...items].sort(sortData),
     retry: false,
   });
 

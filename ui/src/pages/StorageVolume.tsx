@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Container } from "react-bootstrap";
 import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -15,20 +14,8 @@ import type { StorageVolume } from "types/storage_volume";
 const StorageVolume = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
-  const [sortedItems, setSortedItems] = useState<StorageVolume[]>([]);
-  const [initialSorted, setInitialSorted] = useState(false);
 
-  const {
-    data: volumes = [],
-    error,
-    isLoading,
-  } = useQuery({
-    queryKey: ["storage_volumes", filter],
-    queryFn: () => fetchStorageVolumes(filter || ""),
-    retry: false,
-  });
-
-  const sortStorageVolumes = (a: StorageVolume, b: StorageVolume) => {
+  const sortData = (a: StorageVolume, b: StorageVolume) => {
     return (
       a.type.localeCompare(b.type) ||
       a.name.localeCompare(b.name) ||
@@ -39,15 +26,16 @@ const StorageVolume = () => {
     );
   };
 
-  useEffect(() => {
-    if (!volumes || volumes.length == 0) return;
-
-    if (!initialSorted) {
-      const sorted = [...volumes].sort(sortStorageVolumes);
-      setSortedItems(sorted);
-      setInitialSorted(true);
-    }
-  }, [initialSorted, volumes]);
+  const {
+    data: volumes = [],
+    error,
+    isLoading,
+  } = useQuery({
+    queryKey: ["storage_volumes", filter],
+    queryFn: () => fetchStorageVolumes(filter || ""),
+    select: (items) => [...items].sort(sortData),
+    retry: false,
+  });
 
   const headers = [
     "Name",
@@ -59,7 +47,7 @@ const StorageVolume = () => {
     "Last updated",
   ];
 
-  const rows = sortedItems.map((item) => {
+  const rows = volumes.map((item) => {
     return [
       {
         content: (

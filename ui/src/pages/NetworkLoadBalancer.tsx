@@ -6,12 +6,22 @@ import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import { useNetworkMap } from "context/useNetworks";
+import type { NetworkLoadBalancer } from "types/network_load_balancer";
 import { formatDate } from "util/date";
 
 const NetworkLoadBalancer = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
   const { networkMap } = useNetworkMap();
+
+  const sortData = (a: NetworkLoadBalancer, b: NetworkLoadBalancer) => {
+    return (
+      a.name.localeCompare(b.name) ||
+      a.parent_name.localeCompare(b.parent_name) ||
+      a.project_name.localeCompare(b.project_name) ||
+      a.cluster.localeCompare(b.cluster)
+    );
+  };
 
   const {
     data: load_balancers = [],
@@ -20,6 +30,7 @@ const NetworkLoadBalancer = () => {
   } = useQuery({
     queryKey: ["network_load_balancers", filter],
     queryFn: () => fetchNetworkLoadBalancers(filter || ""),
+    select: (items) => [...items].sort(sortData),
     retry: false,
   });
 

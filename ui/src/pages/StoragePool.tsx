@@ -6,11 +6,16 @@ import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ObjectIncusLink from "components/ObjectIncusLink";
+import type { StoragePool } from "types/storage_pool";
 import { formatDate } from "util/date";
 
 const StoragePool = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
+
+  const sortData = (a: StoragePool, b: StoragePool) => {
+    return a.name.localeCompare(b.name) || a.cluster.localeCompare(b.cluster);
+  };
 
   const {
     data: pools = [],
@@ -19,6 +24,7 @@ const StoragePool = () => {
   } = useQuery({
     queryKey: ["storage_pools", filter],
     queryFn: () => fetchStoragePools(filter || ""),
+    select: (items) => [...items].sort(sortData),
     retry: false,
   });
 

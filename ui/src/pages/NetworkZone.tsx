@@ -6,11 +6,20 @@ import ClusterLink from "components/ClusterLink";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import ProjectIncusLink from "components/ProjectIncusLink";
+import type { NetworkZone } from "types/network_zone";
 import { formatDate } from "util/date";
 
 const NetworkZone = () => {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
+
+  const sortData = (a: NetworkZone, b: NetworkZone) => {
+    return (
+      a.name.localeCompare(b.name) ||
+      a.project_name.localeCompare(b.project_name) ||
+      a.cluster.localeCompare(b.cluster)
+    );
+  };
 
   const {
     data: zones = [],
@@ -19,6 +28,7 @@ const NetworkZone = () => {
   } = useQuery({
     queryKey: ["network_zones", filter],
     queryFn: () => fetchNetworkZones(filter || ""),
+    select: (items) => [...items].sort(sortData),
     retry: false,
   });
 

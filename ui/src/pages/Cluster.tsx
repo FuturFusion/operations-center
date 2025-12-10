@@ -5,12 +5,17 @@ import { fetchClusters } from "api/cluster";
 import ClusterActions from "components/ClusterActions";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
+import type { Cluster } from "types/cluster";
 import { formatDate } from "util/date";
 
 const Cluster = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
+
+  const sortData = (a: Cluster, b: Cluster) => {
+    return a.name.localeCompare(b.name);
+  };
 
   const {
     data: clusters = [],
@@ -19,6 +24,7 @@ const Cluster = () => {
   } = useQuery({
     queryKey: ["clusters", filter],
     queryFn: () => fetchClusters(filter || ""),
+    select: (items) => [...items].sort(sortData),
     retry: false,
   });
 
