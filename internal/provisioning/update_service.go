@@ -351,8 +351,6 @@ func (s updateService) Refresh(ctx context.Context) error {
 		return err
 	}
 
-	fmt.Println(s.updateFileFilterExpression)
-
 	// Filter update files by architecture.
 	originUpdates, err = s.filterUpdateFileByFilterExpression(originUpdates)
 	if err != nil {
