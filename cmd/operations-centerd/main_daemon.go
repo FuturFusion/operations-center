@@ -23,6 +23,7 @@ type env interface {
 	LogDir() string
 	RunDir() string
 	VarDir() string
+	CacheDir() string
 	UsrShareDir() string
 	GetUnixSocket() string
 	IsIncusOS() bool
