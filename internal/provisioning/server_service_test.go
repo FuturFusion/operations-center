@@ -41,6 +41,7 @@ func TestServerService_UpdateServerURL(t *testing.T) {
 		repoGetAllWithFilter    provisioning.Servers
 		repoGetAllWithFilterErr error
 		repoUpdateErr           error
+		repoCreateErr           error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -60,20 +61,18 @@ func TestServerService_UpdateServerURL(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name:                 "success - operations center self update - no server of type operations center - trigger self register",
+			argServerURL:         "https://new:8443",
+			repoGetAllWithFilter: provisioning.Servers{},
+
+			assertErr: require.NoError,
+		},
+		{
 			name:                    "error - operations center self update - repo.GetAllWithFilter",
 			argServerURL:            "https://new:8443",
 			repoGetAllWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
-		},
-		{
-			name:                 "error - operations center self update - no server of type operations center",
-			argServerURL:         "https://new:8443",
-			repoGetAllWithFilter: provisioning.Servers{},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Invalid internal state, expect exactly 1 server of type "operations-center", found 0`)
-			},
 		},
 		{
 			name:         "error - operations center self update - multiple servers of type operations center",
@@ -138,6 +137,9 @@ func TestServerService_UpdateServerURL(t *testing.T) {
 					require.Equal(t, fixedDate, in.LastSeen)
 					return tc.repoUpdateErr
 				},
+				CreateFunc: func(ctx context.Context, server provisioning.Server) (int64, error) {
+					return 1, tc.repoCreateErr
+				},
 			}
 
 			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, "https://one:8443", serverCertificate,
@@ -168,6 +170,7 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 		repoGetAllWithFilter    provisioning.Servers
 		repoGetAllWithFilterErr error
 		repoUpdateErr           error
+		repoCreateErr           error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -187,20 +190,18 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name:                 "success - operations center self update - no server of type operations center - trigger self register",
+			argCertificate:       serverCertificate,
+			repoGetAllWithFilter: provisioning.Servers{},
+
+			assertErr: require.NoError,
+		},
+		{
 			name:                    "error - operations center self update - repo.GetAllWithFilter",
 			argCertificate:          serverCertificate,
 			repoGetAllWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
-		},
-		{
-			name:                 "error - operations center self update - no server of type operations center",
-			argCertificate:       serverCertificate,
-			repoGetAllWithFilter: provisioning.Servers{},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Invalid internal state, expect exactly 1 server of type "operations-center", found 0`)
-			},
 		},
 		{
 			name:           "error - operations center self update - multiple servers of type operations center",
@@ -247,6 +248,9 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
 					require.Equal(t, fixedDate, in.LastSeen)
 					return tc.repoUpdateErr
+				},
+				CreateFunc: func(ctx context.Context, server provisioning.Server) (int64, error) {
+					return 1, tc.repoCreateErr
 				},
 			}
 

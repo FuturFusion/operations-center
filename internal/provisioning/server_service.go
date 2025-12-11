@@ -428,6 +428,10 @@ func (s *serverService) selfUpdateOperationsCenter(ctx context.Context) error {
 			return fmt.Errorf(`Failed to get servers of type "operations-center": %w`, err)
 		}
 
+		if len(servers) == 0 {
+			return s.SelfRegisterOperationsCenter(ctx)
+		}
+
 		if len(servers) != 1 {
 			return fmt.Errorf(`Invalid internal state, expect exactly 1 server of type "operations-center", found %d`, len(servers))
 		}
