@@ -87,7 +87,7 @@ func TestServerService_UpdateServerURL(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Invalid internal state, expect exactly 1 server of type "operations-center", found 2`)
+				require.ErrorContains(tt, err, `Invalid internal state, expect at most 1 server of type "operations-center", found 2`)
 			},
 		},
 		{
@@ -216,7 +216,7 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorContains(tt, err, `Invalid internal state, expect exactly 1 server of type "operations-center", found 2`)
+				require.ErrorContains(tt, err, `Invalid internal state, expect at most 1 server of type "operations-center", found 2`)
 			},
 		},
 		// validateion error not covered

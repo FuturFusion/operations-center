@@ -66,7 +66,7 @@ func (s *serverService) UpdateServerURL(ctx context.Context, serverURL string) e
 	s.serverURL = serverURL
 	s.mu.Unlock()
 
-	return s.selfUpdateOperationsCenter(ctx)
+	return s.SelfRegisterOperationsCenter(ctx)
 }
 
 func (s *serverService) UpdateServerCertificate(ctx context.Context, serverCertificate tls.Certificate) error {
@@ -74,7 +74,7 @@ func (s *serverService) UpdateServerCertificate(ctx context.Context, serverCerti
 	s.serverCertificate = serverCertificate
 	s.mu.Unlock()
 
-	return s.selfUpdateOperationsCenter(ctx)
+	return s.SelfRegisterOperationsCenter(ctx)
 }
 
 func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenService, clusterSvc ClusterService, serverConnectionURL string, serverCertificate tls.Certificate, opts ...ServerServiceOption) *serverService {
@@ -372,7 +372,7 @@ func (s *serverService) UpdateSystemProvider(ctx context.Context, name string, p
 
 func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfUpdate) error {
 	if serverUpdate.Self {
-		return s.selfUpdateOperationsCenter(ctx)
+		return s.SelfRegisterOperationsCenter(ctx)
 	}
 
 	var server *Server
@@ -419,56 +419,6 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfU
 	return nil
 }
 
-func (s *serverService) selfUpdateOperationsCenter(ctx context.Context) error {
-	err := transaction.Do(ctx, func(ctx context.Context) error {
-		servers, err := s.repo.GetAllWithFilter(ctx, ServerFilter{
-			Type: ptr.To(api.ServerTypeOperationsCenter),
-		})
-		if err != nil {
-			return fmt.Errorf(`Failed to get servers of type "operations-center": %w`, err)
-		}
-
-		if len(servers) == 0 {
-			return s.SelfRegisterOperationsCenter(ctx)
-		}
-
-		if len(servers) != 1 {
-			return fmt.Errorf(`Invalid internal state, expect exactly 1 server of type "operations-center", found %d`, len(servers))
-		}
-
-		s.mu.Lock()
-		serverCert := pem.EncodeToMemory(&pem.Block{
-			Type:  "CERTIFICATE",
-			Bytes: s.serverCertificate.Leaf.Raw,
-		})
-		serverURL := s.serverURL
-		s.mu.Unlock()
-
-		server := servers[0]
-		server.ConnectionURL = serverURL
-		server.Certificate = string(serverCert)
-		server.Status = api.ServerStatusReady
-		server.LastSeen = s.now()
-
-		err = server.Validate()
-		if err != nil {
-			return fmt.Errorf("Failed to validate operations-center server update: %w", err)
-		}
-
-		err = s.repo.Update(ctx, server)
-		if err != nil {
-			return fmt.Errorf("Failed to self-update operations-center: %w", err)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		servers, err := s.repo.GetAllWithFilter(ctx, ServerFilter{
@@ -478,8 +428,8 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 			return fmt.Errorf(`Failed to get server of type "operations-center": %w`, err)
 		}
 
-		if len(servers) > 0 {
-			return fmt.Errorf(`Invalid internal state, already a server of type "operations-center" found`)
+		if len(servers) > 1 {
+			return fmt.Errorf(`Invalid internal state, expect at most 1 server of type "operations-center", found %d`, len(servers))
 		}
 
 		s.mu.Lock()
@@ -491,23 +441,47 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 		serverURL := s.serverURL
 		s.mu.Unlock()
 
-		newServer := Server{
-			Name:          "operations-center",
-			Type:          api.ServerTypeOperationsCenter,
-			ConnectionURL: serverURL,
-			Certificate:   string(serverCert),
-			Status:        api.ServerStatusPending,
-			LastSeen:      s.now(),
+		var server Server
+		var upsert func(context.Context, Server) error
+
+		if len(servers) == 0 {
+			// Create server entry
+
+			server = Server{
+				Name:          "operations-center",
+				Type:          api.ServerTypeOperationsCenter,
+				ConnectionURL: serverURL,
+				Certificate:   string(serverCert),
+				Status:        api.ServerStatusReady,
+				LastSeen:      s.now(),
+			}
+
+			upsert = func(ctx context.Context, server Server) error {
+				_, err := s.repo.Create(ctx, server)
+				return err
+			}
+		} else {
+			// Update existing server entry
+
+			server = servers[0]
+			server.ConnectionURL = serverURL
+			server.Certificate = string(serverCert)
+			server.Status = api.ServerStatusReady
+			server.LastSeen = s.now()
+
+			upsert = func(ctx context.Context, server Server) error {
+				return s.repo.Update(ctx, server)
+			}
 		}
 
-		err = newServer.Validate()
+		err = server.Validate()
 		if err != nil {
 			return fmt.Errorf("Validate server: %w", err)
 		}
 
-		newServer.ID, err = s.repo.Create(ctx, newServer)
+		err = upsert(ctx, server)
 		if err != nil {
-			return fmt.Errorf("Create server: %w", err)
+			return fmt.Errorf("Self register operations-center as server: %w", err)
 		}
 
 		return nil
