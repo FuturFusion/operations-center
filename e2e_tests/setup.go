@@ -329,7 +329,7 @@ func replaceOperationsCenterExecutable(t *testing.T) {
 
 	mustRun(t, `incus exec OperationsCenter -- bash -c "mkdir -p /root/dev/ && mount -t tmpfs tmpfs /root/dev/"`)
 	mustRun(t, `incus exec OperationsCenter -- bash -c "systemctl stop operations-center || true"`)
-	mustRun(t, `incus exec OperationsCenter -- bash -c "umount -l /usr/local/bin/operations-centerd"`)
+	mustRun(t, `incus exec OperationsCenter -- bash -c "umount -l /usr/local/bin/operations-centerd || true"`)
 	mustRun(t, `incus file push ../bin/operations-centerd OperationsCenter/root/dev/operations-centerd`)
 	mustRun(t, `incus exec OperationsCenter -- bash -c "mount -o bind /root/dev/operations-centerd /usr/local/bin/operations-centerd && systemctl start operations-center"`)
 }
