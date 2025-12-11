@@ -1,5 +1,6 @@
 acked
 ACL
+Backend
 balancer
 Balancer
 changelog
@@ -35,6 +36,7 @@ PFX
 PKCS
 pre
 preseed
+resolvers
 resync
 Resync
 rollout
