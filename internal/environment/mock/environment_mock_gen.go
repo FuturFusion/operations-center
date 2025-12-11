@@ -20,6 +20,9 @@ var _ environment.Environment = &EnvironmentMock{}
 //
 //		// make and configure a mocked environment.Environment
 //		mockedEnvironment := &EnvironmentMock{
+//			CacheDirFunc: func() string {
+//				panic("mock out the CacheDir method")
+//			},
 //			GetUnixSocketFunc: func() string {
 //				panic("mock out the GetUnixSocket method")
 //			},
@@ -48,6 +51,9 @@ var _ environment.Environment = &EnvironmentMock{}
 //
 //	}
 type EnvironmentMock struct {
+	// CacheDirFunc mocks the CacheDir method.
+	CacheDirFunc func() string
+
 	// GetUnixSocketFunc mocks the GetUnixSocket method.
 	GetUnixSocketFunc func() string
 
@@ -71,6 +77,9 @@ type EnvironmentMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// CacheDir holds details about calls to the CacheDir method.
+		CacheDir []struct {
+		}
 		// GetUnixSocket holds details about calls to the GetUnixSocket method.
 		GetUnixSocket []struct {
 		}
@@ -93,6 +102,7 @@ type EnvironmentMock struct {
 		VarDir []struct {
 		}
 	}
+	lockCacheDir      sync.RWMutex
 	lockGetUnixSocket sync.RWMutex
 	lockIsIncusOS     sync.RWMutex
 	lockLogDir        sync.RWMutex
@@ -100,6 +110,33 @@ type EnvironmentMock struct {
 	lockUserConfigDir sync.RWMutex
 	lockUsrShareDir   sync.RWMutex
 	lockVarDir        sync.RWMutex
+}
+
+// CacheDir calls CacheDirFunc.
+func (mock *EnvironmentMock) CacheDir() string {
+	if mock.CacheDirFunc == nil {
+		panic("EnvironmentMock.CacheDirFunc: method is nil but Environment.CacheDir was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockCacheDir.Lock()
+	mock.calls.CacheDir = append(mock.calls.CacheDir, callInfo)
+	mock.lockCacheDir.Unlock()
+	return mock.CacheDirFunc()
+}
+
+// CacheDirCalls gets all the calls that were made to CacheDir.
+// Check the length with:
+//
+//	len(mockedEnvironment.CacheDirCalls())
+func (mock *EnvironmentMock) CacheDirCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockCacheDir.RLock()
+	calls = mock.calls.CacheDir
+	mock.lockCacheDir.RUnlock()
+	return calls
 }
 
 // GetUnixSocket calls GetUnixSocketFunc.
