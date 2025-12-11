@@ -162,10 +162,19 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// On update of ACME configuration, perform renewal of the server certificate.
 	config.SecurityACMEUpdateSignal.AddListener(func(ctx context.Context, ssa api.SystemSecurityACME) {
-		_, err := d.renewACMEServerCertificate(ctx, true)
-		if err != nil {
-			slog.ErrorContext(ctx, "Failed to renew ACME server certificate", logger.Err(err))
-		}
+		slog.InfoContext(ctx, "Trigger async ACME renewal after config change")
+
+		go func() {
+			// Use detached context to decouple async call from original request.
+			// For logging, we keep the original context, such that the original
+			// request ID is logged.
+			_, err := d.renewACMEServerCertificate(context.Background(), true)
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to renew ACME server certificate", logger.Err(err))
+			}
+
+			slog.InfoContext(ctx, "Async ACME renewal completed")
+		}()
 	})
 
 	// Setup Services
