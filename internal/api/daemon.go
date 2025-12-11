@@ -68,6 +68,7 @@ import (
 type environment interface {
 	GetUnixSocket() string
 	VarDir() string
+	CacheDir() string
 	UsrShareDir() string
 	IsIncusOS() bool
 }
