@@ -2,7 +2,6 @@ package acme
 
 import (
 	"context"
-	"crypto/x509"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -13,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lxc/incus/v6/shared/subprocess"
 	"github.com/lxc/incus/v6/shared/tls"
 	"github.com/lxc/incus/v6/shared/validate"
 
@@ -83,14 +81,9 @@ func ACMEConfigChanged(oldCfg, newCfg api.SystemSecurityACME) bool {
 	return false
 }
 
-// certificateNeedsUpdate returns true if the domain doesn't match the certificate's DNS names
-// or it's valid for less than 30 days.
-func certificateNeedsUpdate(domain string, cert *x509.Certificate) bool {
-	return !slices.Contains(cert.DNSNames, domain) || time.Now().After(cert.NotAfter.Add(-30*24*time.Hour))
-}
-
 type environment interface {
 	VarDir() string
+	CacheDir() string
 }
 
 // UpdateCertificate updates the certificate.
@@ -111,76 +104,51 @@ func UpdateCertificate(ctx context.Context, fsEnv environment, cfg api.SystemSec
 		return nil, fmt.Errorf("Failed to parse certificate: %w", err)
 	}
 
-	if !force && !certificateNeedsUpdate(cfg.Domain, cert) {
+	if !force && !tls.CertificateNeedsUpdate(cfg.Domain, cert, 30*24*time.Hour) {
 		log.Debug("Skipping renewal for certificate that is valid for more than 30 days")
 		return nil, nil
 	}
 
-	tmpDir, err := os.MkdirTemp("", "lego")
+	dir := filepath.Join(fsEnv.CacheDir(), "acme")
+	err = os.MkdirAll(dir, 0o755)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create temporary directory: %w", err)
+		return nil, fmt.Errorf("Failed to create acme account path %q: %w", dir, err)
 	}
 
+	caURL, err := url.ParseRequestURI(cfg.CAURL)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to parse CA URL %q: %q", cfg.CAURL, err)
+	}
+
+	// Remove unrelated directories when done.
 	defer func() {
-		err := os.RemoveAll(tmpDir)
-		if err != nil {
-			log.Warn("Failed to remove temporary directory", slog.Any("error", err))
+		_ = os.RemoveAll(filepath.Join(dir, "certificates"))
+		accountPath := filepath.Join(dir, "accounts")
+
+		entries, _ := os.ReadDir(accountPath)
+		for _, e := range entries {
+			if e.Name() != caURL.Hostname() {
+				// Remove other CA URL paths if the config changed.
+				_ = os.RemoveAll(filepath.Join(accountPath, e.Name()))
+			} else {
+				entries, _ := os.ReadDir(filepath.Join(accountPath, caURL.Hostname()))
+				for _, e := range entries {
+					// Remove other email paths if the config changed.
+					if e.Name() != cfg.Email {
+						_ = os.RemoveAll(filepath.Join(accountPath, caURL.Hostname(), e.Name()))
+					}
+				}
+			}
 		}
 	}()
 
-	env := os.Environ()
-
-	args := []string{
-		"--accept-tos",
-		"--domains", cfg.Domain,
-		"--email", cfg.Email,
-		"--path", tmpDir,
-		"--server", cfg.CAURL,
-	}
-
-	switch cfg.Challenge {
-	case api.ACMEChallengeDNS:
-		env = append(env, cfg.ProviderEnvironment...)
-		if cfg.Provider == "" {
-			return nil, fmt.Errorf("%q challenge type requires acme.dns.provider configuration key to be set", cfg.Challenge)
-		}
-
-		args = append(args, "--dns", cfg.Provider)
-		if len(cfg.ProviderResolvers) > 0 {
-			for _, resolver := range cfg.ProviderResolvers {
-				args = append(args, "--dns.resolvers", resolver)
-			}
-		}
-
-	case api.ACMEChallengeHTTP:
-		args = append(args, "--http", "--http.port", cfg.Address)
-	}
-
-	args = append(args, "run")
-	log.Debug("Initiating certificate renewal")
-	_, _, err = subprocess.RunCommandSplit(ctx, env, nil, "lego", args...)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to run lego command: %w", err)
-	}
-
-	// Load the generated certificate.
-	certData, err := os.ReadFile(filepath.Join(tmpDir, "certificates", fmt.Sprintf("%s.crt", cfg.Domain)))
-	if err != nil {
-		return nil, err
-	}
-
-	caData, err := os.ReadFile(filepath.Join(tmpDir, "certificates", fmt.Sprintf("%s.issuer.crt", cfg.Domain)))
-	if err != nil {
-		return nil, err
-	}
-
-	keyData, err := os.ReadFile(filepath.Join(tmpDir, "certificates", fmt.Sprintf("%s.key", cfg.Domain)))
+	certBytes, keyBytes, err := tls.RunACMEChallenge(ctx, dir, cfg.CAURL, cfg.Domain, cfg.Email, string(cfg.Challenge), cfg.Provider, cfg.Address, "", cfg.ProviderResolvers, cfg.ProviderEnvironment)
 	if err != nil {
 		return nil, err
 	}
 
 	return &api.SystemCertificatePost{
-		Certificate: string(append(certData, caData...)),
-		Key:         string(keyData),
+		Certificate: string(certBytes),
+		Key:         string(keyBytes),
 	}, nil
 }
