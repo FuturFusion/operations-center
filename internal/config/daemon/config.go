@@ -18,6 +18,7 @@ import (
 	"github.com/maniartech/signals"
 	"gopkg.in/yaml.v3"
 
+	"github.com/FuturFusion/operations-center/internal/acme"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
@@ -52,9 +53,10 @@ var (
 
 	env enver = environment.New(ApplicationName, ApplicationEnvPrefix)
 
-	NetworkUpdateSignal  = signals.NewSync[api.SystemNetwork]()
-	SecurityUpdateSignal = signals.NewSync[api.SystemSecurity]()
-	UpdatesUpdateSignal  = signals.NewSync[api.SystemUpdates]()
+	NetworkUpdateSignal      = signals.NewSync[api.SystemNetwork]()
+	SecurityUpdateSignal     = signals.NewSync[api.SystemSecurity]()
+	SecurityACMEUpdateSignal = signals.NewSync[api.SystemSecurityACME]()
+	UpdatesUpdateSignal      = signals.NewSync[api.SystemUpdates]()
 )
 
 func Init(vardir enver) error {
@@ -216,20 +218,31 @@ func GetSecurity() api.SystemSecurity {
 }
 
 func UpdateSecurity(ctx context.Context, cfg api.SystemSecurityPut) error {
-	globalConfigInstanceMu.Lock()
-	defer globalConfigInstanceMu.Unlock()
-
 	newCfg := globalConfigInstance
 	newCfg.Security.SystemSecurityPut = cfg
 
+	currentCfg := GetSecurity()
+
+	isTrustedTLSClientCertFingerprintsChanged := !slices.Equal(currentCfg.TrustedTLSClientCertFingerprints, newCfg.Security.TrustedTLSClientCertFingerprints)
+	isSecurityConfigChanged := isTrustedTLSClientCertFingerprintsChanged || currentCfg.OIDC != newCfg.Security.OIDC || currentCfg.OpenFGA != newCfg.Security.OpenFGA
+	isACMEChanged := acme.ACMEConfigChanged(currentCfg.ACME, newCfg.Security.ACME)
+
+	globalConfigInstanceMu.Lock()
 	err := validateAndSave(newCfg)
+	globalConfigInstanceMu.Unlock()
 	if err != nil {
 		return err
 	}
 
-	SecurityUpdateSignal.Emit(ctx, api.SystemSecurity{
-		SystemSecurityPut: cfg,
-	})
+	if isSecurityConfigChanged {
+		SecurityUpdateSignal.Emit(ctx, api.SystemSecurity{
+			SystemSecurityPut: cfg,
+		})
+	}
+
+	if isACMEChanged {
+		SecurityACMEUpdateSignal.Emit(ctx, cfg.ACME)
+	}
 
 	return nil
 }
@@ -347,6 +360,11 @@ func validate(cfg config) error {
 		if err != nil {
 			return domain.NewValidationErrf(`Invalid config, "security.openfga.api_url" property is expected to be a valid URL: %v`, err)
 		}
+	}
+
+	err = acme.ValidateACMEConfig(cfg.Security.ACME)
+	if err != nil {
+		return err
 	}
 
 	// Updating the configuration requires at least one certificate fingerprint to be present in order to have a fallback authentication method.

@@ -429,6 +429,12 @@ application configuration.
 Make sure, you have your client certificate at hand (see at the beginning of
 this guide, get it with `incus remote get-client-certificate`).
 
+```{note}
+To get the indentation right when pasting your client certificate in the YAML
+you may execute: `incus remote get-client-certificate | sed 's/^/      /'`
+
+```
+
 `````{tabs}
 ````{group-tab} CLI
 

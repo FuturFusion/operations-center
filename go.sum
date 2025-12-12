@@ -427,8 +427,8 @@ github.com/lufia/plan9stats v0.0.0-20251013123823-9fd1530e3ec3 h1:PwQumkgq4/acIi
 github.com/lufia/plan9stats v0.0.0-20251013123823-9fd1530e3ec3/go.mod h1:autxFIvghDt3jPTLoqZ9OZ7s9qTGNAWmYCjVFWPX/zg=
 github.com/lxc/incus-os/incus-osd v0.0.0-20251128203143-ed788dd4e9a0 h1:idGZGRLjqLpFZBlNv4VkiFPfvgYwnkFilfyc3K7SEBE=
 github.com/lxc/incus-os/incus-osd v0.0.0-20251128203143-ed788dd4e9a0/go.mod h1:a8i0bZTQBLt0BBu/KxpWsBFEJIgfjMUPXjDYMqdrxCg=
-github.com/lxc/incus/v6 v6.19.1 h1:p5RKNY8iGb+C9ud2pPwHKNBk/8eGyrT6xisZPGSx3DU=
-github.com/lxc/incus/v6 v6.19.1/go.mod h1:huGl4lNtU6dVDiBldgxdRE1tazIygpV69DCV/22mJa8=
+github.com/lxc/incus/v6 v6.19.2-0.20251210203713-23bc5120f57b h1:FAk5jGysvXgOF+rlcARBhOgkdv7nM5F9EjUy8UQAH9c=
+github.com/lxc/incus/v6 v6.19.2-0.20251210203713-23bc5120f57b/go.mod h1:huGl4lNtU6dVDiBldgxdRE1tazIygpV69DCV/22mJa8=
 github.com/magiconair/properties v1.8.5/go.mod h1:y3VJvCyxH9uVvJTWEGAELF3aiYNyPKd5NZ3oSwXrF60=
 github.com/magiconair/properties v1.8.10 h1:s31yESBquKXCV9a/ScB3ESkOjUYYv+X0rg8SYxI99mE=
 github.com/magiconair/properties v1.8.10/go.mod h1:Dhd985XPs7jluiymwWYZ0G4Z61jb3vdS329zhj2hYo0=

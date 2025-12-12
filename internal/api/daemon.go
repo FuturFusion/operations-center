@@ -23,6 +23,7 @@ import (
 	"github.com/maniartech/signals"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/FuturFusion/operations-center/internal/acme"
 	"github.com/FuturFusion/operations-center/internal/api/listener"
 	"github.com/FuturFusion/operations-center/internal/authn"
 	authnoidc "github.com/FuturFusion/operations-center/internal/authn/oidc"
@@ -67,6 +68,7 @@ import (
 type environment interface {
 	GetUnixSocket() string
 	VarDir() string
+	CacheDir() string
 	UsrShareDir() string
 	IsIncusOS() bool
 }
@@ -87,6 +89,8 @@ type Daemon struct {
 
 	server   *http.Server
 	listener *listener.FancyTLSListener
+
+	systemSvc system.SystemService
 
 	serverCertificateUpdate signals.Signal[tls.Certificate]
 	serverCertificate       tls.Certificate
@@ -144,7 +148,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// authorizers on the daemon.
 	err = d.securityConfigReload(ctx, config.GetSecurity())
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to load security config", logger.Err(err))
+		slog.ErrorContext(ctx, "Failed to load security config", logger.Err(err))
 	}
 
 	// On update of the security configuration, perform reload of the security
@@ -152,8 +156,25 @@ func (d *Daemon) Start(ctx context.Context) error {
 	config.SecurityUpdateSignal.AddListener(func(ctx context.Context, cfg api.SystemSecurity) {
 		err := d.securityConfigReload(ctx, cfg)
 		if err != nil {
-			slog.ErrorContext(ctx, "failed to reload security config", logger.Err(err))
+			slog.ErrorContext(ctx, "Failed to reload security config", logger.Err(err))
 		}
+	})
+
+	// On update of ACME configuration, perform renewal of the server certificate.
+	config.SecurityACMEUpdateSignal.AddListener(func(ctx context.Context, ssa api.SystemSecurityACME) {
+		slog.InfoContext(ctx, "Trigger async ACME renewal after config change")
+
+		go func() {
+			// Use detached context to decouple async call from original request.
+			// For logging, we keep the original context, such that the original
+			// request ID is logged.
+			_, err := d.renewACMEServerCertificate(context.Background(), true)
+			if err != nil {
+				slog.ErrorContext(ctx, "Failed to renew ACME server certificate", logger.Err(err))
+			}
+
+			slog.InfoContext(ctx, "Async ACME renewal completed")
+		}()
 	})
 
 	// Setup Services
@@ -171,10 +192,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	serverSvc.SetClusterService(clusterSvc)
 	clusterTemplateSvc := d.setupClusterTemplateService(dbWithTransaction)
-	systemSvc := d.setupSystemService(serverSvc)
+	d.systemSvc = d.setupSystemService(serverSvc)
 
 	// Setup API routes
-	serveMux, inventorySyncers := d.setupAPIRoutes(updateSvc, tokenSvc, serverSvc, clusterSvc, clusterTemplateSvc, systemSvc, dbWithTransaction)
+	serveMux, inventorySyncers := d.setupAPIRoutes(updateSvc, tokenSvc, serverSvc, clusterSvc, clusterTemplateSvc, dbWithTransaction)
 
 	clusterSvc.SetInventorySyncers(inventorySyncers)
 
@@ -360,6 +381,24 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg api.SystemSecurit
 	*d.authorizer = authzchain.New(authorizers...)
 
 	return errors.Join(errs...)
+}
+
+func (d *Daemon) renewACMEServerCertificate(ctx context.Context, force bool) (changed bool, _ error) {
+	newCert, err := acme.UpdateCertificate(ctx, d.env, config.GetSecurity().ACME, force)
+	if err != nil {
+		return false, fmt.Errorf("ACME server certificate renewal failed: %w", err)
+	}
+
+	if newCert == nil {
+		return false, nil
+	}
+
+	err = d.systemSvc.UpdateCertificate(ctx, newCert.Certificate, newCert.Key)
+	if err != nil {
+		return false, fmt.Errorf("Update server certificate with ACME certificate/key failed: %w", err)
+	}
+
+	return true, nil
 }
 
 func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (provisioning.UpdateService, error) {
@@ -570,7 +609,6 @@ func (d *Daemon) setupAPIRoutes(
 	serverSvc provisioning.ServerService,
 	clusterSvc provisioning.ClusterService,
 	clusterTemplateSvc provisioning.ClusterTemplateService,
-	systemSvc system.SystemService,
 	db dbdriver.DBTX,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
@@ -593,6 +631,7 @@ func (d *Daemon) setupAPIRoutes(
 	router := newRouter(serveMux)
 
 	registerUIHandlers(router, d.env.UsrShareDir())
+	registerWellKnownHandler(router)
 
 	const osRouterPrefix = "/os"
 	osRouter := router.SubGroup(osRouterPrefix).AddMiddlewares(
@@ -651,7 +690,7 @@ func (d *Daemon) setupAPIRoutes(
 	registerUpdateHandler(provisioningUpdateRouter, d.authorizer, updateSvc)
 
 	systemRouter := api10router.SubGroup("/system")
-	registerSystemHandler(systemRouter, d.authorizer, systemSvc)
+	registerSystemHandler(systemRouter, d.authorizer, d.systemSvc)
 
 	inventoryRouter := api10router.SubGroup("/inventory")
 
@@ -676,9 +715,10 @@ func (d *Daemon) setupBackgroundTasks(
 		err := updateSvc.Refresh(ctx)
 		if err != nil {
 			slog.ErrorContext(ctx, "Refresh updates failed", logger.Err(err))
-		} else {
-			slog.InfoContext(ctx, "Refresh updates completed")
+			return
 		}
+
+		slog.InfoContext(ctx, "Refresh updates completed")
 	}
 
 	var updateSourceOptions []task.EveryOption
@@ -697,9 +737,10 @@ func (d *Daemon) setupBackgroundTasks(
 		err := serverSvc.PollServers(ctx, api.ServerStatusPending, true)
 		if err != nil {
 			slog.ErrorContext(ctx, "Polling for pending servers failed", logger.Err(err))
-		} else {
-			slog.InfoContext(ctx, "Polling for pending servers completed")
+			return
 		}
+
+		slog.InfoContext(ctx, "Polling for pending servers completed")
 	}
 
 	pollPendingServersTaskStop, _ := task.Start(ctx, pollPendingServersTask, task.Every(config.PendingServerPollInterval))
@@ -716,9 +757,10 @@ func (d *Daemon) setupBackgroundTasks(
 		err := serverSvc.PollServers(ctx, api.ServerStatusReady, updateConfiguration)
 		if err != nil {
 			slog.ErrorContext(ctx, "Connectivity test for some servers failed", logger.Err(err))
-		} else {
-			slog.InfoContext(ctx, "Connectivity test for ready servers completed")
+			return
 		}
+
+		slog.InfoContext(ctx, "Connectivity test for ready servers completed")
 	}
 
 	pollReadyServersTaskStop, _ := task.Start(ctx, pollReadyServersTask, task.Every(config.ConnectivityCheckInterval))
@@ -732,14 +774,36 @@ func (d *Daemon) setupBackgroundTasks(
 		err := clusterSvc.ResyncInventory(ctx)
 		if err != nil {
 			slog.ErrorContext(ctx, "Inventory update failed", logger.Err(err))
-		} else {
-			slog.InfoContext(ctx, "Inventory update completed")
+			return
 		}
+
+		slog.InfoContext(ctx, "Inventory update completed")
 	}
 
 	refreshInventoryTaskStop, _ := task.Start(ctx, refreshInventoryTask, task.Every(config.InventoryUpdateInterval))
 	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
 		return refreshInventoryTaskStop(deadlineFrom(ctx, 10*time.Second))
+	})
+
+	// Start background task to renew ACME server certificate.
+	renewACMEServerCertificateTask := func(ctx context.Context) {
+		slog.InfoContext(ctx, "ACME server certificate renewal triggered")
+		changed, err := d.renewACMEServerCertificate(ctx, false)
+		if err != nil {
+			slog.ErrorContext(ctx, "ACME server certificate renewal task failed", logger.Err(err))
+			return
+		}
+
+		if !changed {
+			slog.InfoContext(ctx, "ACME server certificate renewal completed, no change")
+		}
+
+		slog.InfoContext(ctx, "ACME server certificate renewal completed")
+	}
+
+	renewACMEServerCertificateTaskStop, _ := task.Start(ctx, renewACMEServerCertificateTask, task.Every(config.ACMEServerCertificateRenewInterval))
+	d.shutdownFuncs = append(d.shutdownFuncs, func(ctx context.Context) error {
+		return renewACMEServerCertificateTaskStop(deadlineFrom(ctx, 10*time.Second))
 	})
 }
 

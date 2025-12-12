@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/lxc/incus/v6/shared/revert"
+	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/maniartech/signals"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -46,23 +47,58 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 	}
 
 	certificateFile := filepath.Join(s.env.VarDir(), "server.crt")
+	keyFile := filepath.Join(s.env.VarDir(), "server.key")
+
+	currentServerCertificate, err := os.ReadFile(certificateFile)
+	if err != nil {
+		return fmt.Errorf("Failed to read %q: %w", certificateFile, err)
+	}
+
+	currentServerKey, err := os.ReadFile(keyFile)
+	if err != nil {
+		return fmt.Errorf("Failed to read %q: %w", keyFile, err)
+	}
+
+	currentCertificate, err := tls.X509KeyPair(currentServerCertificate, currentServerKey)
+	if err != nil {
+		return fmt.Errorf("Failed to validate current key pair: %w", err)
+	}
+
+	currentServerCertificateFingerprint := incustls.CertFingerprint(currentCertificate.Leaf)
+	certificateFingerprint := incustls.CertFingerprint(serverCertificate.Leaf)
+
+	// Same certificate skip update.
+	if currentServerCertificateFingerprint == certificateFingerprint {
+		return nil
+	}
+
 	err = os.WriteFile(certificateFile, []byte(certificatePEM), 0o600)
 	if err != nil {
 		return fmt.Errorf("Failed to persist %q: %w", certificateFile, err)
 	}
 
-	keyFile := filepath.Join(s.env.VarDir(), "server.key")
 	err = os.WriteFile(keyFile, []byte(keyPEM), 0o600)
 	if err != nil {
 		return fmt.Errorf("Failed to persist %q: %w", keyFile, err)
 	}
+
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	// Notify services about new certificate, which also causes the http listener
+	// to switch to the new certificate, which is necessary for the the provider
+	// updates to be successful.
+	s.serverCertificateUpdate.Emit(ctx, serverCertificate)
+	reverter.Add(func() {
+		s.serverCertificateUpdate.Emit(ctx, currentCertificate)
+	})
 
 	err = s.updateProviderConfigAll(ctx, map[string]string{"server_certificate": certificatePEM})
 	if err != nil {
 		return err
 	}
 
-	s.serverCertificateUpdate.Emit(ctx, serverCertificate)
+	reverter.Success()
 
 	return nil
 }

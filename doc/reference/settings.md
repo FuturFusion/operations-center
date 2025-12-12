@@ -11,17 +11,52 @@ Several global settings are available to be configured in Operations Center:
 
 ## Security settings
 
-| Configuration                          | Description                                                              | Value(s)        | Default |
-| :---                                   | :---                                                                     | :---            | :---    |
-| `trusted_tls_client_cert_fingerprints` | List of SHA256 certificate fingerprints belonging to trusted TLS clients | list of strings |         |
-| `oidc.issuer`                          | OIDC issuer                                                              | string          |         |
-| `oidc.client_id`                       | OIDC client ID used for communication with OIDC issuer                   | string          |         |
-| `oidc.scope`                           | Scopes to be requested                                                   | string          |         |
-| `oidc.audience`                        | Audience the OIDC tokens should be verified against                      | string          |         |
-| `oidc.claim`                           | Claim which should be used to identify the user or subject               | string          |         |
-| `openfga.api_token`                    | API token used for communication with the OpenFGA system                 | string          |         |
-| `openfga.api_url`                      | URL of the OpenFGA API                                                   | string          |         |
-| `openfga.store_id`                     | ID of the OpenFGA store                                                  | string          |         |
+| Configuration                          | Description                                                              | Value(s)          | Default |
+| :---                                   | :---                                                                     | :---              | :---    |
+| `trusted_tls_client_cert_fingerprints` | List of SHA256 certificate fingerprints belonging to trusted TLS clients | list of strings   |         |
+| `oidc`                                 | OIDC configuration                                                       |                   |         |
+| `openfga`                              | OpenFGA configuration                                                    |                   |         |
+| `acme`                                 | ACME certificate renewal configuration                                   |                   |         |
+
+### OIDC
+
+| Configuration    | Description                                                | Value(s) | Default |
+| :---             | :---                                                       | :---     | :---    |
+| `oidc.issuer`    | OIDC issuer                                                | string   |         |
+| `oidc.client_id` | OIDC client ID used for communication with OIDC issuer     | string   |         |
+| `oidc.scope`     | Scopes to be requested                                     | string   |         |
+| `oidc.audience`  | Audience the OIDC tokens should be verified against        | string   |         |
+| `oidc.claim`     | Claim which should be used to identify the user or subject | string   |         |
+
+### OpenFGA
+
+| Configuration | Description                                              | Value(s) | Default |
+| :---          | :---                                                     | :---     | :---    |
+| `api_token`   | API token used for communication with the OpenFGA system | string   |         |
+| `api_url`     | URL of the OpenFGA API                                   | string   |         |
+| `store_id`    | ID of the OpenFGA store                                  | string   |         |
+
+### ACME
+
+Certificate renewal will be re-attempted every 24 hours, The certificate will be replaced if there are fewer than 30 days remaining until expiry.
+
+| Configuration             | Description                                                         | Value(s)          | Default                                          |
+| :---                      | :---                                                                | :---              | :---                                             |
+|  `agree_tos`              | Agree to ACME terms of service.                                     | true/false        | false                                            |
+|  `ca_url`                 | URL to the directory resource of the ACME service.                  | string            | `https://acme-v02.api.letsencrypt.org/directory` |
+|  `challenge`              | ACME challenge type to use.                                         | HTTP-01 or DNS-01 | `HTTP-01`                                        |
+|  `domain`                 | Domain for which the certificate is issued.                         | string            |                                                  |
+|  `email`                  | Email address used for the account registration.                    | string            |                                                  |
+|  `http_challenge_address` | Address and interface for HTTP server (used by HTTP-01).            | string            | `:80`                                            |
+|  `provider`               | Backend provider for the challenge (used by DNS-01).                | string            |                                                  |
+|  `provider_environment`   | Environment variables to set during the challenge (used by DNS-01). | list of strings   |                                                  |
+|  `provider_resolvers`     | List of DNS resolvers (used by DNS-01).                             | list of strings   |                                                  |
+
+```{note}
+Renewal of ACME certificates after a change of the configuration is happening
+asynchronously in the background. It may take some time until the new
+certificates are available.
+```
 
 ## Update settings
 

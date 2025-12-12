@@ -14,6 +14,7 @@ const (
 	logPathSuffix             = "log"
 	runPathDefaultPrefix      = "/run"
 	varPathDefaultPrefix      = "/var/lib"
+	cachePathDefaultPrefix    = "/var/cache"
 	usrSharePathDefaultPrefix = "/usr/share"
 
 	applicationDirEnvSuffix    = "_DIR"
@@ -25,6 +26,7 @@ type Environment interface {
 	LogDir() string
 	RunDir() string
 	VarDir() string
+	CacheDir() string
 	UsrShareDir() string
 	GetUnixSocket() string
 	UserConfigDir() (string, error)
@@ -68,6 +70,12 @@ func (e environment) RunDir() string {
 // It respects <APP_PREFIX>_DIR environment variable.
 func (e environment) VarDir() string {
 	return e.pathWithEnvOverride(varPathDefaultPrefix, e.applicationName)
+}
+
+// CacheDir returns the path to the cache directory of the application (e.g. /var/cache/<application-name>).
+// It respects <APP_PREFIX>_DIR environment variable.
+func (e environment) CacheDir() string {
+	return e.pathWithEnvOverride(cachePathDefaultPrefix, e.applicationName)
 }
 
 // UsrShareDir returns the path to the static directory of the application (e.g. /usr/share/<application-name>).

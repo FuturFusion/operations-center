@@ -1,5 +1,7 @@
 package api
 
+import "fmt"
+
 // SystemCertificatePost represents the fields available for an update of the
 // system certificate (server certificate) and key.
 //
@@ -47,6 +49,7 @@ type SystemSecurity struct {
 type SystemSecurityPut struct {
 	OIDC    SystemSecurityOIDC    `json:"oidc" yaml:"oidc"`
 	OpenFGA SystemSecurityOpenFGA `json:"openfga" yaml:"openfga"`
+	ACME    SystemSecurityACME    `json:"acme" yaml:"acme"`
 
 	// An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
 	TrustedTLSClientCertFingerprints []string `json:"trusted_tls_client_cert_fingerprints" yaml:"trusted_tls_client_cert_fingerprints"`
@@ -82,6 +85,57 @@ type SystemSecurityOpenFGA struct {
 
 	// ID of the OpenFGA store.
 	StoreID string `json:"store_id" yaml:"store_id"`
+}
+
+// ACMEChallengeType represents challenge types for ACME configuration.
+type ACMEChallengeType string
+
+const (
+	// ACMEChallengeHTTP is the HTTP ACME challenge type.
+	ACMEChallengeHTTP ACMEChallengeType = "HTTP-01"
+
+	// ACMEChallengeDNS is the DNS ACME challenge type.
+	ACMEChallengeDNS ACMEChallengeType = "DNS-01"
+)
+
+func (a ACMEChallengeType) Validate() error {
+	switch a {
+	case ACMEChallengeDNS:
+	case ACMEChallengeHTTP:
+	default:
+		return fmt.Errorf("Unknown ACME challenge type %q", a)
+	}
+
+	return nil
+}
+
+type SystemSecurityACME struct {
+	// Agree to ACME terms of service.
+	AgreeTOS bool `json:"agree_tos" yaml:"agree_tos"`
+
+	// CAURL holds the URL to the CA directory resource of the ACME service.
+	CAURL string `json:"ca_url" yaml:"ca_url"`
+
+	// Challenge holds the ACME challenge type to use.
+	Challenge ACMEChallengeType `json:"challenge" yaml:"challenge"`
+
+	// Domain for which the certificate is issued.
+	Domain string `json:"domain" yaml:"domain"`
+
+	// Email address used for the account registration.
+	Email string `json:"email" yaml:"email"`
+
+	// Address and interface for HTTP server (used by HTTP-01).
+	Address string `json:"http_challenge_address" yaml:"http_challenge_address"`
+
+	// Backend provider for the challenge (used by DNS-01)>
+	Provider string `json:"provider" yaml:"provider"`
+
+	// Environment variables to set during the challenge (used by DNS-01).
+	ProviderEnvironment []string `json:"provider_environment" yaml:"provider_environment"`
+
+	// List of DNS resolvers (used by DNS-01).
+	ProviderResolvers []string `json:"provider_resolvers" yaml:"provider_resolvers"`
 }
 
 // SystemUpdates represents the system's updates configuration.

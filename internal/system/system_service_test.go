@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incustls "github.com/lxc/incus/v6/shared/tls"
@@ -24,7 +23,16 @@ import (
 )
 
 func TestSystemService_UpdateCertificate(t *testing.T) {
+	currentCertPEM, currentKeyPEM, err := incustls.GenerateMemCert(true, false)
+	require.NoError(t, err)
+
+	currentCertFingerprint, err := incustls.CertFingerprintStr(string(currentCertPEM))
+	require.NoError(t, err)
+
 	certPEM, keyPEM, err := incustls.GenerateMemCert(true, false)
+	require.NoError(t, err)
+
+	certFingerprint, err := incustls.CertFingerprintStr(string(certPEM))
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -37,8 +45,8 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 		serverGetSystemProvider    []queue.Item[provisioning.ServerSystemProvider]
 		serverUpdateSystemProvider []queue.Item[struct{}]
 
-		serverCertificateUpdateCallExpected bool
-		assertErr                           require.ErrorAssertionFunc
+		assertErr                       require.ErrorAssertionFunc
+		wantServerCertificateUpdateEmit []queue.Item[string]
 	}{
 		{
 			name: "success - no registered servers",
@@ -48,8 +56,23 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			certPEM: string(certPEM),
 			keyPEM:  string(keyPEM),
 
-			serverCertificateUpdateCallExpected: true,
-			assertErr:                           require.NoError,
+			assertErr: require.NoError,
+			wantServerCertificateUpdateEmit: []queue.Item[string]{
+				{
+					Value: certFingerprint,
+				},
+			},
+		},
+		{
+			name: "success - no registered servers - same certificate",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+			},
+			certPEM: string(currentCertPEM),
+			keyPEM:  string(currentKeyPEM),
+
+			assertErr:                       require.NoError,
+			wantServerCertificateUpdateEmit: []queue.Item[string]{},
 		},
 		{
 			name: "success - with registered servers",
@@ -83,8 +106,12 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 				{},
 			},
 
-			serverCertificateUpdateCallExpected: true,
-			assertErr:                           require.NoError,
+			assertErr: require.NoError,
+			wantServerCertificateUpdateEmit: []queue.Item[string]{
+				{
+					Value: certFingerprint,
+				},
+			},
 		},
 		{
 			name: "error - invalid certificate",
@@ -94,40 +121,86 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			certPEM: "invalid-cert",
 			keyPEM:  "invalid-key",
 
-			serverCertificateUpdateCallExpected: false,
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "Failed to validate key pair")
 			},
+			wantServerCertificateUpdateEmit: []queue.Item[string]{},
 		},
 		{
-			name: "error - unable to write certificate file",
+			name: "error - unable to read certificate file",
 			setupEnv: func(t *testing.T, targetDir string) {
 				t.Helper()
-				err := os.MkdirAll(filepath.Join(targetDir, "server.crt"), 0o000)
+				err := os.RemoveAll(filepath.Join(targetDir, "server.crt"))
 				require.NoError(t, err)
 			},
 			certPEM: string(certPEM),
 			keyPEM:  string(keyPEM),
 
-			serverCertificateUpdateCallExpected: false,
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "server.crt")
 			},
+			wantServerCertificateUpdateEmit: []queue.Item[string]{},
 		},
 		{
-			name: "error - unable to write certificate key file",
+			name: "error - unable to read certificate key file",
 			setupEnv: func(t *testing.T, targetDir string) {
 				t.Helper()
-				err := os.MkdirAll(filepath.Join(targetDir, "server.key"), 0o000)
+				err := os.RemoveAll(filepath.Join(targetDir, "server.key"))
 				require.NoError(t, err)
 			},
 			certPEM: string(certPEM),
 			keyPEM:  string(keyPEM),
 
-			serverCertificateUpdateCallExpected: false,
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorContains(tt, err, "server.key")
 			},
+			wantServerCertificateUpdateEmit: []queue.Item[string]{},
+		},
+		{
+			name: "error - invalid current certificate",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+
+				err := os.WriteFile(filepath.Join(targetDir, "server.key"), keyPEM, 0o600)
+				require.NoError(t, err)
+			},
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "Failed to validate current key pair")
+			},
+			wantServerCertificateUpdateEmit: []queue.Item[string]{},
+		},
+		{
+			name: "error - unable to read certificate file",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+				err := os.Chmod(filepath.Join(targetDir, "server.crt"), 0o400)
+				require.NoError(t, err)
+			},
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "server.crt")
+			},
+			wantServerCertificateUpdateEmit: []queue.Item[string]{},
+		},
+		{
+			name: "error - unable to read certificate key file",
+			setupEnv: func(t *testing.T, targetDir string) {
+				t.Helper()
+				err := os.Chmod(filepath.Join(targetDir, "server.key"), 0o400)
+				require.NoError(t, err)
+			},
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, "server.key")
+			},
+			wantServerCertificateUpdateEmit: []queue.Item[string]{},
 		},
 		{
 			name: "error - with registered servers - repo.GetAll",
@@ -139,6 +212,14 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			serverGetAllErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			wantServerCertificateUpdateEmit: []queue.Item[string]{
+				{
+					Value: certFingerprint,
+				},
+				{
+					Value: currentCertFingerprint,
+				},
+			},
 		},
 		{
 			name: "error - with registered servers - server.GetSystemProvider",
@@ -160,6 +241,14 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			},
 
 			assertErr: boom.ErrorIs,
+			wantServerCertificateUpdateEmit: []queue.Item[string]{
+				{
+					Value: certFingerprint,
+				},
+				{
+					Value: currentCertFingerprint,
+				},
+			},
 		},
 		{
 			name: "error - with registered servers - server.UpdateSystemProvider",
@@ -192,6 +281,14 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			},
 
 			assertErr: boom.ErrorIs,
+			wantServerCertificateUpdateEmit: []queue.Item[string]{
+				{
+					Value: certFingerprint,
+				},
+				{
+					Value: currentCertFingerprint,
+				},
+			},
 		},
 		{
 			name: "error - with registered servers - revert ok",
@@ -239,6 +336,14 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			},
 
 			assertErr: boom.ErrorIs,
+			wantServerCertificateUpdateEmit: []queue.Item[string]{
+				{
+					Value: certFingerprint,
+				},
+				{
+					Value: currentCertFingerprint,
+				},
+			},
 		},
 		{
 			name: "error - with registered servers - revert error",
@@ -291,6 +396,14 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 				boom.ErrorIs(tt, err)
 				require.ErrorContains(tt, err, `Failed to revert provider config of "one"`)
 			},
+			wantServerCertificateUpdateEmit: []queue.Item[string]{
+				{
+					Value: certFingerprint,
+				},
+				{
+					Value: currentCertFingerprint,
+				},
+			},
 		},
 	}
 
@@ -298,6 +411,12 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			tmpDir := t.TempDir()
+
+			err := os.WriteFile(filepath.Join(tmpDir, "server.crt"), currentCertPEM, 0o600)
+			require.NoError(t, err)
+
+			err = os.WriteFile(filepath.Join(tmpDir, "server.key"), currentKeyPEM, 0o600)
+			require.NoError(t, err)
 
 			env := &envMock.EnvironmentMock{
 				VarDirFunc: func() string {
@@ -307,11 +426,12 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 
 			tc.setupEnv(t, env.VarDir())
 
-			serverCertificateUpdateResp := make(chan struct{}, 1)
-
 			serverCertificateUpdate := signals.NewSync[tls.Certificate]()
 			serverCertificateUpdate.AddListener(func(ctx context.Context, cert tls.Certificate) {
-				serverCertificateUpdateResp <- struct{}{}
+				wantCertificateFingerprint, _ := queue.Pop(t, &tc.wantServerCertificateUpdateEmit)
+
+				certFingerprint := incustls.CertFingerprint(cert.Leaf)
+				require.Equal(t, wantCertificateFingerprint, certFingerprint)
 			})
 
 			serverSvc := &mock.ProvisioningServerServiceMock{
@@ -336,16 +456,9 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 
-			serverCertificateUpdateCalled := false
-			select {
-			case <-serverCertificateUpdateResp:
-				serverCertificateUpdateCalled = true
-			case <-time.After(10 * time.Millisecond):
-			}
-
-			require.Equal(t, tc.serverCertificateUpdateCallExpected, serverCertificateUpdateCalled)
 			require.Empty(t, tc.serverGetSystemProvider)
 			require.Empty(t, tc.serverUpdateSystemProvider)
+			require.Empty(t, tc.wantServerCertificateUpdateEmit)
 		})
 	}
 }
@@ -762,6 +875,13 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 			wantSecurityConfig: api.SystemSecurity{
 				SystemSecurityPut: api.SystemSecurityPut{
 					TrustedTLSClientCertFingerprints: []string{},
+					ACME: api.SystemSecurityACME{
+						CAURL:               "https://acme-v02.api.letsencrypt.org/directory",
+						Challenge:           "HTTP-01",
+						Address:             ":80",
+						ProviderEnvironment: []string{},
+						ProviderResolvers:   []string{},
+					},
 				},
 			},
 		},

@@ -37,6 +37,9 @@ const (
 	// excessively.
 	InventoryUpdateInterval = 1 * time.Hour
 
+	// ACME server certificate renew interval.
+	ACMEServerCertificateRenewInterval = 24 * time.Hour
+
 	// Filename of the client certificate.
 	ClientCertificateFilename = "client.crt"
 
