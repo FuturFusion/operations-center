@@ -23,7 +23,11 @@ export const NavItemLink: FC<NavItemLinkProps> = ({
 }) => {
   return (
     <li className={isActive ? "nav-link-active" : ""}>
-      <Nav.Link as={Link} to={item?.to} {...navLinkProps}>
+      <Nav.Link
+        as={navLinkProps["href"] ? undefined : Link}
+        to={item?.to}
+        {...navLinkProps}
+      >
         {children}
       </Nav.Link>
     </li>
