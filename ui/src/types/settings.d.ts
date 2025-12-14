@@ -1,3 +1,5 @@
+import { ACMEChallengeValues } from "util/settings";
+
 export interface SystemNetwork {
   address: string;
   rest_server_address: string;
@@ -7,6 +9,7 @@ export interface SystemSecurity {
   trusted_tls_client_cert_fingerprints: string[];
   oidc: SystemSecurityOIDC;
   openfga: SystemSecurityOpenFGA;
+  acme: SystemSecurityACME;
 }
 
 export interface SystemSecurityOIDC {
@@ -21,6 +24,20 @@ export interface SystemSecurityOpenFGA {
   api_token: string;
   api_url: string;
   store_id: string;
+}
+
+export type ACMEChallengeType = (typeof ACMEChallengeValues)[number];
+
+export interface SystemSecurityACME {
+  agree_tos: boolean;
+  ca_url: string;
+  challenge: ACMEChallengeType;
+  domain: string;
+  email: string;
+  http_challenge_address: string;
+  provider: string;
+  provider_environment: string[];
+  provider_resolvers: string[];
 }
 
 export interface SystemCertificate {
