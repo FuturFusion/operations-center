@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -93,6 +94,7 @@ func registerUpdateHandler(router Router, authorizer *authz.Authorizer, service 
 //	Get the updates
 //
 //	Returns a list of updates (structs) sorted by version.
+//	Versions are date strings of the form yyyymmddHHMM, most recent date first.
 //
 //	---
 //	produces:
@@ -186,6 +188,14 @@ func (u *updateHandler) updatesGet(r *http.Request) response.Response {
 				Status:      update.Status,
 			})
 		}
+
+		sort.Slice(result, func(i, j int) bool {
+			// Versions are date strings of the form yyyymmddHHMM,
+			// so they are save to be just sorted alphabetically.
+			// Reverse order, since the highest date is the most recent one, which
+			// should come first.
+			return result[i].Version > result[j].Version
+		})
 
 		return response.SyncResponse(true, result)
 	}
