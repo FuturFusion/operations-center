@@ -293,39 +293,60 @@ func (c *cmdTokenGetImage) Command() *cobra.Command {
   Get a pre-seeded ISO or raw image for a token.
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVar(&c.flagImageType, "type", "iso", "type of image (iso|raw)")
 	cmd.Flags().StringVar(&c.flagArchitecture, "architecture", "x86_64", "CPU architecture for the image (x86_64|aarch64)")
 	cmd.Flags().StringSliceVar(&c.flagApplications, "application", []string{}, "Applications to be seeded in the image, e.g. incus, migration-manager, non-primary applications")
 
-	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
-		imageType := cmd.Flag("type").Value.String()
-		switch imageType {
-		case api.ImageTypeISO.String(), api.ImageTypeRaw.String():
-		default:
-			return fmt.Errorf(`Invalid value for flag "--type": %q`, imageType)
-		}
-
-		architecture := cmd.Flag("architecture").Value.String()
-		_, ok := images.UpdateFileArchitectures[images.UpdateFileArchitecture(architecture)]
-		if !ok {
-			return fmt.Errorf(`Invalid value for flag "--architecture": %q`, architecture)
-		}
-
-		return nil
-	}
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdTokenGetImage) Run(cmd *cobra.Command, args []string) (err error) {
+func (c *cmdTokenGetImage) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 2, 3)
 	if exit {
 		return err
 	}
 
+	switch c.flagImageType {
+	case api.ImageTypeISO.String(), api.ImageTypeRaw.String():
+	default:
+		return fmt.Errorf(`Invalid value for flag "--type": %q`, c.flagImageType)
+	}
+
+	_, ok := images.UpdateFileArchitectures[images.UpdateFileArchitecture(c.flagArchitecture)]
+	if !ok {
+		return fmt.Errorf(`Invalid value for flag "--architecture": %q`, c.flagArchitecture)
+	}
+
+	var primaryApplicationCount int
+	for _, application := range c.flagApplications {
+		fileComponent := images.UpdateFileComponent(application)
+		_, ok := images.UpdateFileComponents[fileComponent]
+		if !ok {
+			return fmt.Errorf(`Invalid value for flag "--application": %q`, application)
+		}
+
+		if fileComponent == images.UpdateFileComponentOperationsCenter {
+			return fmt.Errorf(`Deploying operations-center through operations-center is not supported`)
+		}
+
+		switch fileComponent {
+		case images.UpdateFileComponentIncus, images.UpdateFileComponentMigrationManager:
+			primaryApplicationCount++
+		}
+	}
+
+	if len(c.flagApplications) > 0 && primaryApplicationCount != 1 {
+		return fmt.Errorf(`Exactly one primary application (incus, migration-manager) is required`)
+	}
+
+	return nil
+}
+
+func (c *cmdTokenGetImage) run(cmd *cobra.Command, args []string) (err error) {
 	id := args[0]
 	targetFilename := args[1]
 
