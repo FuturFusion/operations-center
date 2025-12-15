@@ -1,0 +1,9 @@
+package api
+
+type InventoryAggregate struct {
+	Cluster              string                `json:"cluster" yaml:"cluster"`
+	Servers              []string              `json:"servers" yaml:"servers"`
+{{- range . }}
+	{{ .PluralName | pascalcase}} []{{ .Name | pascalcase }} `json:"{{ .PluralName | snakecase }}" yaml:"{{ .PluralName | snakecase }}"`
+{{- end }}
+}

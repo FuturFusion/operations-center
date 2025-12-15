@@ -123,12 +123,24 @@ var globalTargets = []struct {
 	TargetName   string
 }{
 	{
+		TemplateName: "api_inventory_aggregate.gotmpl",
+		TargetName:   "shared/api/api_aggregate_gen.go",
+	},
+	{
+		TemplateName: "api_inventory_query_helper.gotmpl",
+		TargetName:   "internal/api/api_inventory_query_helper_gen.go",
+	},
+	{
 		TemplateName: "api_inventory.gotmpl",
 		TargetName:   "internal/api/api_inventory_gen.go",
 	},
 	{
 		TemplateName: "cmds_inventory.gotmpl",
 		TargetName:   "internal/cli/cmds/inventory_gen.go",
+	},
+	{
+		TemplateName: "inventory_aggregate_model.gotmpl",
+		TargetName:   "internal/inventory/inventory_aggregate_model_gen.go",
 	},
 	{
 		TemplateName: "inventory_ports.gotmpl",
