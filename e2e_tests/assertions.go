@@ -38,15 +38,27 @@ func assertInventory(t *testing.T) {
 	resp, err = run(t, `../bin/operations-center.linux.%s provisioning cluster list -f json | jq -r -e '[ .[] | select(.name == "incus-os-cluster") ] | length == 1'`, cpuArch)
 	require.NoError(t, err, "expect 1 cluster entry with name incus-os-cluster")
 	if !resp.Success() {
+		t.Error("expect 1 cluster entry with name incus-os-cluster")
 		success = false
 		fmt.Println("====[ Cluster List ]====")
 		resp := mustRun(t, "../bin/operations-center.linux.%s provisioning cluster list", cpuArch)
 		fmt.Println(resp.Output())
 	}
 
-	resp, err = run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_status == "ready") ] | length == 3'`, cpuArch)
-	require.NoError(t, err, "expect 3 servers in ready state")
+	resp, err = run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == "incus" and .server_status == "ready") ] | length == 3'`, cpuArch)
+	require.NoError(t, err, "expect 3 incus servers in ready state")
 	if !resp.Success() {
+		t.Error("expect 3 incus servers in ready state")
+		success = false
+		fmt.Println("====[ Server List ]====")
+		resp := mustRun(t, "../bin/operations-center.linux.%s provisioning server list", cpuArch)
+		fmt.Println(resp.Output())
+	}
+
+	resp, err = run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.server_type == "operations-center" and .server_status == "ready") ] | length == 1'`, cpuArch)
+	require.NoError(t, err, "expect 1 operations-center in ready state")
+	if !resp.Success() {
+		t.Error("expect 1 operations-center in ready state")
 		success = false
 		fmt.Println("====[ Server List ]====")
 		resp := mustRun(t, "../bin/operations-center.linux.%s provisioning server list", cpuArch)
@@ -59,6 +71,7 @@ func assertInventory(t *testing.T) {
 	resp, err = run(t, `../bin/operations-center.linux.%s inventory network list -f json | jq -r -e '[ .[] | select(.cluster == "incus-os-cluster") | .name ] | length == 2'`, cpuArch)
 	require.NoError(t, err, "expect 2 networks: incusbr0, meshbr0")
 	if !resp.Success() {
+		t.Error("expect 2 networks: incusbr0, meshbr0")
 		success = false
 		fmt.Println("====[ Network List ]====")
 		resp = mustRun(t, "../bin/operations-center.linux.%s inventory network list", cpuArch)
@@ -68,6 +81,8 @@ func assertInventory(t *testing.T) {
 	resp, err = run(t, `../bin/operations-center.linux.%s inventory profile list -f json | jq -r -e '[ .[] | select(.cluster == "incus-os-cluster") | .name ] | length == 2'`, cpuArch)
 	require.NoError(t, err, "expect 2 profiles: default, internal")
 	if !resp.Success() {
+		t.Error("expect 2 profiles: default, internal")
+		success = false
 		fmt.Println("====[ Profile List ]====")
 		resp = mustRun(t, "../bin/operations-center.linux.%s inventory profile list", cpuArch)
 		fmt.Println(resp.Output())
@@ -76,6 +91,8 @@ func assertInventory(t *testing.T) {
 	resp, err = run(t, `../bin/operations-center.linux.%s inventory project list -f json | jq -r -e '[ .[] | select(.cluster == "incus-os-cluster") | .name ] | length == 2'`, cpuArch)
 	require.NoError(t, err, "expect 2 profiles: default, internal")
 	if !resp.Success() {
+		t.Error("expect 2 profiles: default, internal")
+		success = false
 		fmt.Println("====[ Project List ]====")
 		resp = mustRun(t, "../bin/operations-center.linux.%s inventory project list", cpuArch)
 		fmt.Println(resp.Output())
@@ -84,6 +101,8 @@ func assertInventory(t *testing.T) {
 	resp, err = run(t, `../bin/operations-center.linux.%s inventory storage-pool list -f json | jq -r -e '[ .[] | select(.cluster == "incus-os-cluster") | .name ] | length == 1'`, cpuArch)
 	require.NoError(t, err, "expect 1 storage pool: local")
 	if !resp.Success() {
+		t.Error("expect 1 storage pool: local")
+		success = false
 		fmt.Println("====[ Storage Pool List ]====")
 		resp = mustRun(t, "../bin/operations-center.linux.%s inventory storage-pool list", cpuArch)
 		fmt.Println(resp.Output())
@@ -92,6 +111,8 @@ func assertInventory(t *testing.T) {
 	resp, err = run(t, `../bin/operations-center.linux.%s inventory storage-volume list -f json | jq -r -e '[ .[] | select(.cluster == "incus-os-cluster") | .name ] | length == 6'`, cpuArch)
 	require.NoError(t, err, "expect 6 storage-volumes: images and backups for each server")
 	if !resp.Success() {
+		t.Error("expect 6 storage-volumes: images and backups for each server")
+		success = false
 		fmt.Println("====[ Storage Volume List ]====")
 		resp = mustRun(t, "../bin/operations-center.linux.%s inventory storage-volume list", cpuArch)
 		fmt.Println(resp.Output())
