@@ -1,7 +1,9 @@
 package provisioning
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -374,6 +376,13 @@ func (c *cmdUpdateFiles) Command() *cobra.Command {
 
 	cmd.AddCommand(updateFileShowCmd.Command())
 
+	// Get
+	updateFileGetCmd := cmdUpdateFileGet{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(updateFileGetCmd.Command())
+
 	return cmd
 }
 
@@ -437,9 +446,9 @@ type cmdUpdateFileShow struct {
 func (c *cmdUpdateFileShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid> <filename>"
-	cmd.Short = "Show information about a update file"
+	cmd.Short = "Show information about an update file"
 	cmd.Long = `Description:
-  Show information about a update file.
+  Show information about an update file.
 `
 
 	cmd.RunE = c.Run
@@ -482,6 +491,91 @@ func (c *cmdUpdateFileShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Component: %s\n", updateFile.Component)
 	fmt.Printf("Type: %s\n", updateFile.Type)
 	fmt.Printf("Architecture: %s\n", updateFile.Architecture.String())
+
+	return nil
+}
+
+// Get updateFile.
+type cmdUpdateFileGet struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdUpdateFileGet) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "get <uuid> <sourc-filename> <target-filename>"
+	cmd.Short = "Get an update file"
+	cmd.Long = `Description:
+  Get an update file.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdUpdateFileGet) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 3, 3)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdUpdateFileGet) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+	sourceFilename := args[1]
+	targetFilename := args[2]
+
+	updateFiles, err := c.ocClient.GetUpdateFiles(cmd.Context(), id)
+	if err != nil {
+		return err
+	}
+
+	var updateFile api.UpdateFile
+	var found bool
+
+	for _, updateFile = range updateFiles {
+		if updateFile.Filename == sourceFilename {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("File %q for Update %q not found", sourceFilename, id)
+	}
+
+	targetFile, err := os.OpenFile(targetFilename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		closeErr := targetFile.Close()
+		var removeErr error
+		if err != nil {
+			removeErr = os.Remove(targetFilename)
+		}
+
+		err = errors.Join(err, closeErr, removeErr)
+	}()
+
+	imageReader, err := c.ocClient.GetUpdatesFile(cmd.Context(), id, sourceFilename)
+	if err != nil {
+		return err
+	}
+
+	defer imageReader.Close()
+
+	size, err := io.Copy(targetFile, imageReader)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully written %d bytes to %q\n", size, targetFilename)
 
 	return nil
 }
