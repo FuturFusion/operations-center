@@ -102,43 +102,42 @@ func (c *cmdTokenAdd) Command() *cobra.Command {
   Adds a new token to the operations center.
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().IntVar(&c.uses, "uses", 1, "Allowed count of uses for the token")
 	cmd.Flags().DurationVar(&c.validDuration, "lifetime", 24*30*time.Hour, "Lifetime of the token as duration")
 	cmd.Flags().StringVar(&c.description, "description", "", "Description of the token")
 
-	cmd.PreRunE = c.ValidateFlags
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdTokenAdd) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenAdd) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
-	err = c.ocClient.CreateToken(cmd.Context(), api.TokenPut{
-		UsesRemaining: c.uses,
-		ExpireAt:      time.Now().Add(c.validDuration),
-		Description:   c.description,
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (c *cmdTokenAdd) ValidateFlags(cmd *cobra.Command, _ []string) error {
 	if c.uses <= 0 {
 		return fmt.Errorf(`Value for flag "--uses" needs to be greater or equal to 1`)
 	}
 
 	if c.validDuration <= 0 {
 		return fmt.Errorf(`Value for flag "--lifetime" needs to be greater or equal to 1`)
+	}
+
+	return nil
+}
+
+func (c *cmdTokenAdd) run(cmd *cobra.Command, args []string) error {
+	err := c.ocClient.CreateToken(cmd.Context(), api.TokenPut{
+		UsesRemaining: c.uses,
+		ExpireAt:      time.Now().Add(c.validDuration),
+		Description:   c.description,
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -159,23 +158,25 @@ func (c *cmdTokenList) Command() *cobra.Command {
   List the available tokens
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
-	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
-		return validate.FormatFlag(cmd.Flag("format").Value.String())
-	}
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdTokenList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenList) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
+	return validate.FormatFlag(cmd.Flag("format").Value.String())
+}
+
+func (c *cmdTokenList) run(cmd *cobra.Command, args []string) error {
 	tokens, err := c.ocClient.GetTokens(cmd.Context())
 	if err != nil {
 		return err
@@ -214,21 +215,26 @@ func (c *cmdTokenRemove) Command() *cobra.Command {
   Removes a token from the operations center.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdTokenRemove) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenRemove) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdTokenRemove) run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 
-	err = c.ocClient.DeleteToken(cmd.Context(), id)
+	err := c.ocClient.DeleteToken(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
@@ -249,18 +255,23 @@ func (c *cmdTokenShow) Command() *cobra.Command {
   Show information about a token.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdTokenShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdTokenShow) run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 
 	token, err := c.ocClient.GetToken(cmd.Context(), id)
