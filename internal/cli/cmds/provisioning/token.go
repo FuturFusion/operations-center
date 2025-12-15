@@ -282,6 +282,7 @@ type cmdTokenGetImage struct {
 
 	flagImageType    string
 	flagArchitecture string
+	flagApplications []string
 }
 
 func (c *cmdTokenGetImage) Command() *cobra.Command {
@@ -296,6 +297,8 @@ func (c *cmdTokenGetImage) Command() *cobra.Command {
 
 	cmd.Flags().StringVar(&c.flagImageType, "type", "iso", "type of image (iso|raw)")
 	cmd.Flags().StringVar(&c.flagArchitecture, "architecture", "x86_64", "CPU architecture for the image (x86_64|aarch64)")
+	cmd.Flags().StringSliceVar(&c.flagApplications, "application", []string{}, "Applications to be seeded in the image, e.g. incus, migration-manager, non-primary applications")
+
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		imageType := cmd.Flag("type").Value.String()
 		switch imageType {
@@ -345,6 +348,20 @@ func (c *cmdTokenGetImage) Run(cmd *cobra.Command, args []string) (err error) {
 	preseed := api.TokenImagePost{
 		Type:         imageType,
 		Architecture: architecture,
+	}
+
+	if len(c.flagApplications) > 0 {
+		applications := make([]any, 0, len(c.flagApplications))
+		for _, application := range c.flagApplications {
+			applications = append(applications, map[string]any{
+				"name": application,
+			})
+		}
+
+		preseed.Seeds.Applications = map[string]any{
+			"version":      "1",
+			"applications": applications,
+		}
 	}
 
 	if len(args) == 3 {
