@@ -564,7 +564,7 @@ func createIncusOSInstances(t *testing.T, token string) {
 	defer instanceReadyCancel()
 
 	for {
-		operationsCenterSelfRegistered := mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '[ .[] | select(.server_status == "ready") ] | length == 3'`, 10*time.Second, cpuArch)
+		operationsCenterSelfRegistered := mustRunWithTimeout(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r '[ .[] | select(.server_type == "incus" and .server_status == "ready") ] | length == 3'`, 10*time.Second, cpuArch)
 
 		ok, _ := strconv.ParseBool(strings.TrimSpace(operationsCenterSelfRegistered.Output()))
 		if ok {
