@@ -102,43 +102,42 @@ func (c *cmdTokenAdd) Command() *cobra.Command {
   Adds a new token to the operations center.
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().IntVar(&c.uses, "uses", 1, "Allowed count of uses for the token")
 	cmd.Flags().DurationVar(&c.validDuration, "lifetime", 24*30*time.Hour, "Lifetime of the token as duration")
 	cmd.Flags().StringVar(&c.description, "description", "", "Description of the token")
 
-	cmd.PreRunE = c.ValidateFlags
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdTokenAdd) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenAdd) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
-	err = c.ocClient.CreateToken(cmd.Context(), api.TokenPut{
-		UsesRemaining: c.uses,
-		ExpireAt:      time.Now().Add(c.validDuration),
-		Description:   c.description,
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (c *cmdTokenAdd) ValidateFlags(cmd *cobra.Command, _ []string) error {
 	if c.uses <= 0 {
 		return fmt.Errorf(`Value for flag "--uses" needs to be greater or equal to 1`)
 	}
 
 	if c.validDuration <= 0 {
 		return fmt.Errorf(`Value for flag "--lifetime" needs to be greater or equal to 1`)
+	}
+
+	return nil
+}
+
+func (c *cmdTokenAdd) run(cmd *cobra.Command, args []string) error {
+	err := c.ocClient.CreateToken(cmd.Context(), api.TokenPut{
+		UsesRemaining: c.uses,
+		ExpireAt:      time.Now().Add(c.validDuration),
+		Description:   c.description,
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -159,23 +158,25 @@ func (c *cmdTokenList) Command() *cobra.Command {
   List the available tokens
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
-	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
-		return validate.FormatFlag(cmd.Flag("format").Value.String())
-	}
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdTokenList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenList) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
+	return validate.FormatFlag(cmd.Flag("format").Value.String())
+}
+
+func (c *cmdTokenList) run(cmd *cobra.Command, args []string) error {
 	tokens, err := c.ocClient.GetTokens(cmd.Context())
 	if err != nil {
 		return err
@@ -214,21 +215,26 @@ func (c *cmdTokenRemove) Command() *cobra.Command {
   Removes a token from the operations center.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdTokenRemove) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenRemove) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdTokenRemove) run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 
-	err = c.ocClient.DeleteToken(cmd.Context(), id)
+	err := c.ocClient.DeleteToken(cmd.Context(), id)
 	if err != nil {
 		return err
 	}
@@ -249,18 +255,23 @@ func (c *cmdTokenShow) Command() *cobra.Command {
   Show information about a token.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdTokenShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdTokenShow) run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 
 	token, err := c.ocClient.GetToken(cmd.Context(), id)
@@ -282,6 +293,7 @@ type cmdTokenGetImage struct {
 
 	flagImageType    string
 	flagArchitecture string
+	flagApplications []string
 }
 
 func (c *cmdTokenGetImage) Command() *cobra.Command {
@@ -292,37 +304,60 @@ func (c *cmdTokenGetImage) Command() *cobra.Command {
   Get a pre-seeded ISO or raw image for a token.
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVar(&c.flagImageType, "type", "iso", "type of image (iso|raw)")
 	cmd.Flags().StringVar(&c.flagArchitecture, "architecture", "x86_64", "CPU architecture for the image (x86_64|aarch64)")
-	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
-		imageType := cmd.Flag("type").Value.String()
-		switch imageType {
-		case api.ImageTypeISO.String(), api.ImageTypeRaw.String():
-		default:
-			return fmt.Errorf(`Invalid value for flag "--type": %q`, imageType)
-		}
+	cmd.Flags().StringSliceVar(&c.flagApplications, "application", []string{}, "Applications to be seeded in the image, e.g. incus, migration-manager, non-primary applications")
 
-		architecture := cmd.Flag("architecture").Value.String()
-		_, ok := images.UpdateFileArchitectures[images.UpdateFileArchitecture(architecture)]
-		if !ok {
-			return fmt.Errorf(`Invalid value for flag "--architecture": %q`, architecture)
-		}
-
-		return nil
-	}
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdTokenGetImage) Run(cmd *cobra.Command, args []string) (err error) {
+func (c *cmdTokenGetImage) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 2, 3)
 	if exit {
 		return err
 	}
 
+	switch c.flagImageType {
+	case api.ImageTypeISO.String(), api.ImageTypeRaw.String():
+	default:
+		return fmt.Errorf(`Invalid value for flag "--type": %q`, c.flagImageType)
+	}
+
+	_, ok := images.UpdateFileArchitectures[images.UpdateFileArchitecture(c.flagArchitecture)]
+	if !ok {
+		return fmt.Errorf(`Invalid value for flag "--architecture": %q`, c.flagArchitecture)
+	}
+
+	var primaryApplicationCount int
+	for _, application := range c.flagApplications {
+		fileComponent := images.UpdateFileComponent(application)
+		_, ok := images.UpdateFileComponents[fileComponent]
+		if !ok {
+			return fmt.Errorf(`Invalid value for flag "--application": %q`, application)
+		}
+
+		if fileComponent == images.UpdateFileComponentOperationsCenter {
+			return fmt.Errorf(`Deploying operations-center through operations-center is not supported`)
+		}
+
+		switch fileComponent {
+		case images.UpdateFileComponentIncus, images.UpdateFileComponentMigrationManager:
+			primaryApplicationCount++
+		}
+	}
+
+	if len(c.flagApplications) > 0 && primaryApplicationCount != 1 {
+		return fmt.Errorf(`Exactly one primary application (incus, migration-manager) is required`)
+	}
+
+	return nil
+}
+
+func (c *cmdTokenGetImage) run(cmd *cobra.Command, args []string) (err error) {
 	id := args[0]
 	targetFilename := args[1]
 
@@ -345,6 +380,20 @@ func (c *cmdTokenGetImage) Run(cmd *cobra.Command, args []string) (err error) {
 	preseed := api.TokenImagePost{
 		Type:         imageType,
 		Architecture: architecture,
+	}
+
+	if len(c.flagApplications) > 0 {
+		applications := make([]any, 0, len(c.flagApplications))
+		for _, application := range c.flagApplications {
+			applications = append(applications, map[string]any{
+				"name": application,
+			})
+		}
+
+		preseed.Seeds.Applications = map[string]any{
+			"version":      "1",
+			"applications": applications,
+		}
 	}
 
 	if len(args) == 3 {
