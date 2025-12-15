@@ -156,17 +156,13 @@ func (c *cmdUpdateList) Run(cmd *cobra.Command, args []string) error {
 
 	sort.ColumnsSort(data, []sort.ColumnSorter{
 		{
-			Index: 1, // Origin
-			Less:  sort.NaturalLess,
-		},
-		{
-			Index: 2, // Channel
-			Less:  sort.NaturalLess,
-		},
-		{
 			Index:   3, // Version
 			Reverse: true,
 			Less:    sort.NaturalLess,
+		},
+		{
+			Index: 1, // Origin
+			Less:  sort.NaturalLess,
 		},
 		{
 			Index: 0, // UUID
