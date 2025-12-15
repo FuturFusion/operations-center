@@ -8,20 +8,9 @@ import (
 type InventoryAggregate struct {
 	Cluster              string
 	Servers              []string
-	Images               Images
-	Instances            Instances
-	Networks             Networks
-	NetworkACLs          NetworkACLs
-	NetworkForwards      NetworkForwards
-	NetworkIntegrations  NetworkIntegrations
-	NetworkLoadBalancers NetworkLoadBalancers
-	NetworkPeers         NetworkPeers
-	NetworkZones         NetworkZones
-	Profiles             Profiles
-	Projects             Projects
-	StorageBuckets       StorageBuckets
-	StoragePools         StoragePools
-	StorageVolumes       StorageVolumes
+{{- range . }}
+	{{ .PluralName | pascalcase }} {{ .PluralName | pascalcase }}
+{{- end }}
 }
 
 type InventoryAggregates []InventoryAggregate

@@ -1,0 +1,39 @@
+package api
+
+import (
+	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/shared/api"
+)
+
+func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggregates) []api.InventoryAggregate {
+	result := make([]api.InventoryAggregate, 0, len(inventoryAggregates))
+	for _, inventoryAggregate := range inventoryAggregates {
+		resultItem := api.InventoryAggregate{
+			Cluster: inventoryAggregate.Cluster,
+			Servers: inventoryAggregate.Servers,
+		}
+{{ range . }}
+
+		for _, {{ .Name | camelcase }} := range inventoryAggregate.{{ .PluralName | pascalcase }} {
+			resultItem.{{ .PluralName | pascalcase }} = append(resultItem.{{ .PluralName | pascalcase }}, api.{{ .Name | pascalcase }}{
+				Cluster:     {{ .Name | camelcase }}.Cluster,
+{{- if .ServerIDByLocation }}
+				Server:      {{ .Name | camelcase }}.Server,
+{{- end }}
+{{- if .HasProject }}
+				ProjectName: {{ .Name | camelcase }}.ProjectName,
+{{- end }}
+{{- if .HasParent }}
+				{{ .ParentName | pascalcase }}Name: {{ .Name | camelcase }}.{{ .ParentName | pascalcase }}Name,
+{{- end }}
+				Name:        {{ .Name | camelcase }}.Name,
+				Object:      {{ .Name | camelcase }}.Object,
+			})
+		}
+
+{{ end }}
+		result = append(result, resultItem)
+	}
+
+	return result
+}
