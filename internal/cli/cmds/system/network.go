@@ -65,18 +65,23 @@ func (c *cmdNetworkShow) Command() *cobra.Command {
   Show network config.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdNetworkShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdNetworkShow) run(cmd *cobra.Command, args []string) error {
 	config, err := c.ocClient.GetSystemNetworkConfig(cmd.Context())
 	if err != nil {
 		return err
@@ -100,7 +105,8 @@ func (c *cmdNetworkEdit) Command() *cobra.Command {
   Edit network configuration
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
@@ -111,13 +117,17 @@ func (c *cmdNetworkEdit) helpTemplate() string {
 ### Any line starting with a '# will be ignored.`
 }
 
-func (c *cmdNetworkEdit) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkEdit) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdNetworkEdit) run(cmd *cobra.Command, args []string) error {
 	// If stdin isn't a terminal, read text from it.
 	if !termios.IsTerminal(environment.GetStdinFd()) {
 		contents, err := io.ReadAll(os.Stdin)

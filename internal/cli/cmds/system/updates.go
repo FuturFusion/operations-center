@@ -65,18 +65,23 @@ func (c *cmdUpdatesShow) Command() *cobra.Command {
   Show updates config.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdUpdatesShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdUpdatesShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdUpdatesShow) run(cmd *cobra.Command, args []string) error {
 	config, err := c.ocClient.GetSystemUpdatesConfig(cmd.Context())
 	if err != nil {
 		return err
@@ -100,7 +105,8 @@ func (c *cmdUpdatesEdit) Command() *cobra.Command {
   Edit updates configuration
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
@@ -111,13 +117,17 @@ func (c *cmdUpdatesEdit) helpTemplate() string {
 ### Any line starting with a '# will be ignored.`
 }
 
-func (c *cmdUpdatesEdit) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdUpdatesEdit) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdUpdatesEdit) run(cmd *cobra.Command, args []string) error {
 	// If stdin isn't a terminal, read text from it.
 	if !termios.IsTerminal(environment.GetStdinFd()) {
 		contents, err := io.ReadAll(os.Stdin)
