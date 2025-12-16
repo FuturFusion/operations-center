@@ -49,7 +49,7 @@ func (c *CmdServer) Command() *cobra.Command {
 
 	cmd.AddCommand(serverListCmd.Command())
 
-	// edit
+	// Edit
 	serverEditCmd := cmdServerEdit{
 		ocClient: c.OCClient,
 	}
@@ -106,21 +106,29 @@ func (c *cmdServerList) Command() *cobra.Command {
   List the available servers
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterStatus, "status", "", "status to filter for, valid values: pending, ready")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
-	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
-		return validate.FormatFlag(cmd.Flag("format").Value.String())
-	}
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdServerList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdServerList) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 0, 0)
+	if exit {
+		return err
+	}
+
+	return validate.FormatFlag(cmd.Flag("format").Value.String())
+}
+
+func (c *cmdServerList) run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
@@ -188,7 +196,8 @@ func (c *cmdServerEdit) Command() *cobra.Command {
   Edit the server
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
@@ -204,13 +213,17 @@ func (c *cmdServerEdit) helpTemplate() string {
 `
 }
 
-func (c *cmdServerEdit) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdServerEdit) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdServerEdit) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// If stdin isn't a terminal, read text from it.
@@ -299,21 +312,26 @@ func (c *cmdServerRemove) Command() *cobra.Command {
   Removes a server from the operations center.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdServerRemove) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdServerRemove) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdServerRemove) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	err = c.ocClient.DeleteServer(cmd.Context(), name)
+	err := c.ocClient.DeleteServer(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
@@ -336,18 +354,23 @@ func (c *cmdServerRename) Command() *cobra.Command {
   Renames a server to a new name.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdServerRename) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdServerRename) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 2, 2)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdServerRename) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 	newName := args[1]
 
@@ -355,7 +378,7 @@ func (c *cmdServerRename) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Rename failed, name and new name are equal")
 	}
 
-	err = c.ocClient.RenameServer(cmd.Context(), name, newName)
+	err := c.ocClient.RenameServer(cmd.Context(), name, newName)
 	if err != nil {
 		return err
 	}
@@ -379,21 +402,26 @@ func (c *cmdServerShow) Command() *cobra.Command {
   Show information about a server.
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().BoolVar(&c.flagShowResources, "resources", false, "show server resource details")
 	cmd.Flags().BoolVar(&c.flagShowOSData, "os-data", false, "show server OS data")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdServerShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdServerShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	server, err := c.ocClient.GetServer(cmd.Context(), name)
