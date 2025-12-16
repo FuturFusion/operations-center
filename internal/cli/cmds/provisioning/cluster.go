@@ -216,8 +216,10 @@ func (c *cmdClusterAdd) Run(cmd *cobra.Command, args []string) error {
 
 	err = c.ocClient.CreateCluster(cmd.Context(), api.ClusterPost{
 		Cluster: api.Cluster{
-			Name:          name,
-			ConnectionURL: connectionURL,
+			Name: name,
+			ClusterPut: api.ClusterPut{
+				ConnectionURL: connectionURL,
+			},
 		},
 		ServerNames:                   c.serverNames,
 		ServerType:                    serverType,
