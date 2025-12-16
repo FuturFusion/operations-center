@@ -43,6 +43,12 @@ func (c *CmdSystem) Command() *cobra.Command {
 
 	cmd.AddCommand(securityCmd.Command())
 
+	settingsCmd := system.CmdSettings{
+		OCClient: c.OCClient,
+	}
+
+	cmd.AddCommand(settingsCmd.Command())
+
 	updatesCmd := system.CmdUpdates{
 		OCClient: c.OCClient,
 	}
