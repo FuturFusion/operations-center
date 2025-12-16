@@ -79,23 +79,25 @@ func (c *cmdClusterArtifactList) Command() *cobra.Command {
   List the available cluster artifacts.
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
-	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
-		return validate.FormatFlag(cmd.Flag("format").Value.String())
-	}
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdClusterArtifactList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterArtifactList) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return validate.FormatFlag(cmd.Flag("format").Value.String())
+}
+
+func (c *cmdClusterArtifactList) run(cmd *cobra.Command, args []string) error {
 	clusterName := args[0]
 
 	clusterArtifacts, err := c.ocClient.GetClusterArtifacts(cmd.Context(), clusterName)
@@ -129,18 +131,23 @@ func (c *cmdClusterArtifactShow) Command() *cobra.Command {
   Show information about a cluster artifact.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdClusterArtifactShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterArtifactShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 2, 2)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdClusterArtifactShow) run(cmd *cobra.Command, args []string) error {
 	clusterName := args[0]
 	artifactName := args[1]
 
@@ -205,18 +212,23 @@ func (c *cmdClusterArtifactGetArchive) Command() *cobra.Command {
   Get the cluster artifact as zip archive.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdClusterArtifactGetArchive) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterArtifactGetArchive) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 3, 3)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdClusterArtifactGetArchive) run(cmd *cobra.Command, args []string) error {
 	clusterName := args[0]
 	artifactName := args[1]
 	targetFilename := args[2]
@@ -262,18 +274,23 @@ func (c *cmdClusterArtifactGetFile) Command() *cobra.Command {
   Get a cluster artifact file.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdClusterArtifactGetFile) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterArtifactGetFile) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 4, 4)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdClusterArtifactGetFile) run(cmd *cobra.Command, args []string) error {
 	clusterName := args[0]
 	artifactName := args[1]
 	filename := args[2]

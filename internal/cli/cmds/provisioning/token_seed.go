@@ -105,21 +105,26 @@ func (c *cmdTokenSeedAdd) Command() *cobra.Command {
   Adds a new token seed to the operations center.
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().BoolVar(&c.public, "public", false, "Is fetching images based on this configuration allowed without authentication")
 	cmd.Flags().StringVar(&c.description, "description", "", "Description of the token")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdTokenSeedAdd) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenSeedAdd) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 3, 3)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdTokenSeedAdd) run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 	name := args[1]
 
@@ -164,23 +169,25 @@ func (c *cmdTokenSeedList) Command() *cobra.Command {
   List the available seed configurations for the given token
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
-	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
-		return validate.FormatFlag(cmd.Flag("format").Value.String())
-	}
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdTokenSeedList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenSeedList) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return validate.FormatFlag(cmd.Flag("format").Value.String())
+}
+
+func (c *cmdTokenSeedList) run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 
 	tokenSeeds, err := c.ocClient.GetTokenSeeds(cmd.Context(), id)
@@ -223,7 +230,8 @@ func (c *cmdTokenSeedEdit) Command() *cobra.Command {
   Edit the seed configuration for the given token
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
@@ -244,13 +252,17 @@ func (c *cmdTokenSeedEdit) helpTemplate() string {
 `
 }
 
-func (c *cmdTokenSeedEdit) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenSeedEdit) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 2, 2)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdTokenSeedEdit) run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 	name := args[1]
 
@@ -340,22 +352,27 @@ func (c *cmdTokenSeedRemove) Command() *cobra.Command {
   Removes a token seed configuration from the operations center.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdTokenSeedRemove) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenSeedRemove) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 2, 2)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdTokenSeedRemove) run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 	name := args[1]
 
-	err = c.ocClient.DeleteTokenSeed(cmd.Context(), id, name)
+	err := c.ocClient.DeleteTokenSeed(cmd.Context(), id, name)
 	if err != nil {
 		return err
 	}
@@ -376,18 +393,23 @@ func (c *cmdTokenSeedShow) Command() *cobra.Command {
   Show information about a token seed.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdTokenSeedShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdTokenSeedShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 2, 2)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdTokenSeedShow) run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 	name := args[1]
 
@@ -427,37 +449,39 @@ func (c *cmdTokenSeedGetImage) Command() *cobra.Command {
   Get a pre-seeded ISO or raw image for a token seed.
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVar(&c.flagImageType, "type", "iso", "type of image (iso|raw)")
 	cmd.Flags().StringVar(&c.flagArchitecture, "architecture", "x86_64", "CPU architecture for the image (x86_64|aarch64)")
-	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
-		imageType := cmd.Flag("type").Value.String()
-		switch imageType {
-		case api.ImageTypeISO.String(), api.ImageTypeRaw.String():
-		default:
-			return fmt.Errorf(`Invalid value for flag "--type": %q`, imageType)
-		}
 
-		architecture := cmd.Flag("architecture").Value.String()
-		_, ok := images.UpdateFileArchitectures[images.UpdateFileArchitecture(architecture)]
-		if !ok {
-			return fmt.Errorf(`Invalid value for flag "--architecture": %q`, architecture)
-		}
-
-		return nil
-	}
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdTokenSeedGetImage) Run(cmd *cobra.Command, args []string) (err error) {
+func (c *cmdTokenSeedGetImage) validateArgsAndFlags(cmd *cobra.Command, args []string) (err error) {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 3, 3)
 	if exit {
 		return err
 	}
 
+	imageType := cmd.Flag("type").Value.String()
+	switch imageType {
+	case api.ImageTypeISO.String(), api.ImageTypeRaw.String():
+	default:
+		return fmt.Errorf(`Invalid value for flag "--type": %q`, imageType)
+	}
+
+	architecture := cmd.Flag("architecture").Value.String()
+	_, ok := images.UpdateFileArchitectures[images.UpdateFileArchitecture(architecture)]
+	if !ok {
+		return fmt.Errorf(`Invalid value for flag "--architecture": %q`, architecture)
+	}
+
+	return nil
+}
+
+func (c *cmdTokenSeedGetImage) run(cmd *cobra.Command, args []string) (err error) {
 	id := args[0]
 	name := args[1]
 	targetFilename := args[2]

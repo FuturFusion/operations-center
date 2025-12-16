@@ -105,28 +105,30 @@ func (c *cmdNetworkPeerList) Command() *cobra.Command {
   List the available network_peers
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
 	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", networkPeerDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
-	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
-		return validate.FormatFlag(cmd.Flag("format").Value.String())
-	}
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdNetworkPeerList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkPeerList) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
+	return validate.FormatFlag(cmd.Flag("format").Value.String())
+}
+
+func (c *cmdNetworkPeerList) run(cmd *cobra.Command, args []string) error {
 	var filter inventory.NetworkPeerFilter
 
 	if c.flagFilterCluster != "" {
@@ -217,20 +219,25 @@ func (c *cmdNetworkPeerShow) Command() *cobra.Command {
   Show information about a network_peer.
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().BoolVar(&c.flagShowObject, "object", false, "show inventory object")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdNetworkPeerShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdNetworkPeerShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdNetworkPeerShow) run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 
 	networkPeer, err := c.ocClient.GetNetworkPeer(cmd.Context(), id)

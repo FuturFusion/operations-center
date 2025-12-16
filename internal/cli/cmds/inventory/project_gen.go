@@ -95,27 +95,29 @@ func (c *cmdProjectList) Command() *cobra.Command {
   List the available projects
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
 
 	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", projectDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
-	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
-		return validate.FormatFlag(cmd.Flag("format").Value.String())
-	}
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdProjectList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdProjectList) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
+	return validate.FormatFlag(cmd.Flag("format").Value.String())
+}
+
+func (c *cmdProjectList) run(cmd *cobra.Command, args []string) error {
 	var filter inventory.ProjectFilter
 
 	if c.flagFilterCluster != "" {
@@ -202,20 +204,25 @@ func (c *cmdProjectShow) Command() *cobra.Command {
   Show information about a project.
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().BoolVar(&c.flagShowObject, "object", false, "show inventory object")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdProjectShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdProjectShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdProjectShow) run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 
 	project, err := c.ocClient.GetProject(cmd.Context(), id)

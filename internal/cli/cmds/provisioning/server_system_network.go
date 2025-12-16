@@ -60,7 +60,8 @@ func (c *cmdServerSystemNetworkEdit) Command() *cobra.Command {
   Edit server system network
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
@@ -89,13 +90,17 @@ func (c *cmdServerSystemNetworkEdit) helpTemplate() string {
 ###       - 192.168.1.2`
 }
 
-func (c *cmdServerSystemNetworkEdit) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdServerSystemNetworkEdit) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdServerSystemNetworkEdit) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// If stdin isn't a terminal, read text from it.
