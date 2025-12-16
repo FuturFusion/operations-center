@@ -171,23 +171,26 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
             </Form.Group>
           </fieldset>
           <fieldset className="border p-3 mb-3 rounded">
-            <legend className="fs-5">ACME</legend>
+            <legend className="fs-5">Let's Encrypt / ACME</legend>
             <Form.Group className="mb-3" controlId="agree_tos">
-              <Form.Label>Agree to ACME terms of service</Form.Label>
-              <Form.Select
+              <Form.Label>
+                Agree to ACME{" "}
+                <a
+                  href="https://letsencrypt.org/repository/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="data-table-link"
+                >
+                  terms of service
+                </a>
+              </Form.Label>
+              <Form.Check
+                type="checkbox"
                 name="acme.agree_tos"
-                value={formik.values.acme.agree_tos ? "true" : "false"}
-                onChange={(e) =>
-                  formik.setFieldValue(
-                    "acme.agree_tos",
-                    e.target.value === "true",
-                  )
-                }
+                checked={formik.values.acme.agree_tos}
+                onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-              >
-                <option value="false">no</option>
-                <option value="true">yes</option>
-              </Form.Select>
+              />
             </Form.Group>
             <Form.Group className="mb-3" controlId="ca_url">
               <Form.Label>CA URL</Form.Label>
@@ -234,56 +237,62 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
                 onBlur={formik.handleBlur}
               />
             </Form.Group>
-            <Form.Group className="mb-3" controlId="http_challenge_address">
-              <Form.Label>Address</Form.Label>
-              <Form.Control
-                type="text"
-                name="acme.http_challenge_address"
-                value={formik.values.acme.http_challenge_address}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3" controlId="provider">
-              <Form.Label>Provider</Form.Label>
-              <Form.Control
-                type="text"
-                name="acme.provider"
-                value={formik.values.acme.provider}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3" controlId="provider_environment">
-              <Form.Label>Environment variables</Form.Label>
-              <Form.Control
-                type="text"
-                as="textarea"
-                rows={10}
-                name="acme.provider_environment"
-                value={formik.values.acme.provider_environment.join("\n")}
-                onChange={(e) => {
-                  const lines = e.target.value.split("\n");
-                  formik.setFieldValue("acme.provider_environment", lines);
-                }}
-                onBlur={formik.handleBlur}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3" controlId="provider_resolvers">
-              <Form.Label>DNS resolvers</Form.Label>
-              <Form.Control
-                type="text"
-                as="textarea"
-                rows={10}
-                name="acme.provider_resolvers"
-                value={formik.values.acme.provider_resolvers.join("\n")}
-                onChange={(e) => {
-                  const lines = e.target.value.split("\n");
-                  formik.setFieldValue("acme.provider_resolvers", lines);
-                }}
-                onBlur={formik.handleBlur}
-              />
-            </Form.Group>
+            {formik.values.acme.challenge == "HTTP-01" && (
+              <Form.Group className="mb-3" controlId="http_challenge_address">
+                <Form.Label>HTTP challenge address</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="acme.http_challenge_address"
+                  value={formik.values.acme.http_challenge_address}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                />
+              </Form.Group>
+            )}
+            {formik.values.acme.challenge == "DNS-01" && (
+              <>
+                <Form.Group className="mb-3" controlId="provider">
+                  <Form.Label>DNS provider</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="acme.provider"
+                    value={formik.values.acme.provider}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3" controlId="provider_environment">
+                  <Form.Label>DNS provider environment variables</Form.Label>
+                  <Form.Control
+                    type="text"
+                    as="textarea"
+                    rows={10}
+                    name="acme.provider_environment"
+                    value={formik.values.acme.provider_environment.join("\n")}
+                    onChange={(e) => {
+                      const lines = e.target.value.split("\n");
+                      formik.setFieldValue("acme.provider_environment", lines);
+                    }}
+                    onBlur={formik.handleBlur}
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3" controlId="provider_resolvers">
+                  <Form.Label>DNS resolvers</Form.Label>
+                  <Form.Control
+                    type="text"
+                    as="textarea"
+                    rows={3}
+                    name="acme.provider_resolvers"
+                    value={formik.values.acme.provider_resolvers.join("\n")}
+                    onChange={(e) => {
+                      const lines = e.target.value.split("\n");
+                      formik.setFieldValue("acme.provider_resolvers", lines);
+                    }}
+                    onBlur={formik.handleBlur}
+                  />
+                </Form.Group>
+              </>
+            )}
           </fieldset>
         </Form>
       </div>
