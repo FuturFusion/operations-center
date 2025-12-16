@@ -28,6 +28,9 @@ var _ system.SystemService = &SystemServiceMock{}
 //			GetSecurityConfigFunc: func(ctx context.Context) api.SystemSecurity {
 //				panic("mock out the GetSecurityConfig method")
 //			},
+//			GetSettingsConfigFunc: func(ctx context.Context) api.SystemSettings {
+//				panic("mock out the GetSettingsConfig method")
+//			},
 //			GetUpdatesConfigFunc: func(ctx context.Context) api.SystemUpdates {
 //				panic("mock out the GetUpdatesConfig method")
 //			},
@@ -39,6 +42,9 @@ var _ system.SystemService = &SystemServiceMock{}
 //			},
 //			UpdateSecurityConfigFunc: func(ctx context.Context, cfg api.SystemSecurityPut) error {
 //				panic("mock out the UpdateSecurityConfig method")
+//			},
+//			UpdateSettingsConfigFunc: func(ctx context.Context, cfg api.SystemSettingsPut) error {
+//				panic("mock out the UpdateSettingsConfig method")
 //			},
 //			UpdateUpdatesConfigFunc: func(ctx context.Context, cfg api.SystemUpdatesPut) error {
 //				panic("mock out the UpdateUpdatesConfig method")
@@ -56,6 +62,9 @@ type SystemServiceMock struct {
 	// GetSecurityConfigFunc mocks the GetSecurityConfig method.
 	GetSecurityConfigFunc func(ctx context.Context) api.SystemSecurity
 
+	// GetSettingsConfigFunc mocks the GetSettingsConfig method.
+	GetSettingsConfigFunc func(ctx context.Context) api.SystemSettings
+
 	// GetUpdatesConfigFunc mocks the GetUpdatesConfig method.
 	GetUpdatesConfigFunc func(ctx context.Context) api.SystemUpdates
 
@@ -67,6 +76,9 @@ type SystemServiceMock struct {
 
 	// UpdateSecurityConfigFunc mocks the UpdateSecurityConfig method.
 	UpdateSecurityConfigFunc func(ctx context.Context, cfg api.SystemSecurityPut) error
+
+	// UpdateSettingsConfigFunc mocks the UpdateSettingsConfig method.
+	UpdateSettingsConfigFunc func(ctx context.Context, cfg api.SystemSettingsPut) error
 
 	// UpdateUpdatesConfigFunc mocks the UpdateUpdatesConfig method.
 	UpdateUpdatesConfigFunc func(ctx context.Context, cfg api.SystemUpdatesPut) error
@@ -80,6 +92,11 @@ type SystemServiceMock struct {
 		}
 		// GetSecurityConfig holds details about calls to the GetSecurityConfig method.
 		GetSecurityConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// GetSettingsConfig holds details about calls to the GetSettingsConfig method.
+		GetSettingsConfig []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
@@ -111,6 +128,13 @@ type SystemServiceMock struct {
 			// Cfg is the cfg argument value.
 			Cfg api.SystemSecurityPut
 		}
+		// UpdateSettingsConfig holds details about calls to the UpdateSettingsConfig method.
+		UpdateSettingsConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Cfg is the cfg argument value.
+			Cfg api.SystemSettingsPut
+		}
 		// UpdateUpdatesConfig holds details about calls to the UpdateUpdatesConfig method.
 		UpdateUpdatesConfig []struct {
 			// Ctx is the ctx argument value.
@@ -121,10 +145,12 @@ type SystemServiceMock struct {
 	}
 	lockGetNetworkConfig     sync.RWMutex
 	lockGetSecurityConfig    sync.RWMutex
+	lockGetSettingsConfig    sync.RWMutex
 	lockGetUpdatesConfig     sync.RWMutex
 	lockUpdateCertificate    sync.RWMutex
 	lockUpdateNetworkConfig  sync.RWMutex
 	lockUpdateSecurityConfig sync.RWMutex
+	lockUpdateSettingsConfig sync.RWMutex
 	lockUpdateUpdatesConfig  sync.RWMutex
 }
 
@@ -189,6 +215,38 @@ func (mock *SystemServiceMock) GetSecurityConfigCalls() []struct {
 	mock.lockGetSecurityConfig.RLock()
 	calls = mock.calls.GetSecurityConfig
 	mock.lockGetSecurityConfig.RUnlock()
+	return calls
+}
+
+// GetSettingsConfig calls GetSettingsConfigFunc.
+func (mock *SystemServiceMock) GetSettingsConfig(ctx context.Context) api.SystemSettings {
+	if mock.GetSettingsConfigFunc == nil {
+		panic("SystemServiceMock.GetSettingsConfigFunc: method is nil but SystemService.GetSettingsConfig was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetSettingsConfig.Lock()
+	mock.calls.GetSettingsConfig = append(mock.calls.GetSettingsConfig, callInfo)
+	mock.lockGetSettingsConfig.Unlock()
+	return mock.GetSettingsConfigFunc(ctx)
+}
+
+// GetSettingsConfigCalls gets all the calls that were made to GetSettingsConfig.
+// Check the length with:
+//
+//	len(mockedSystemService.GetSettingsConfigCalls())
+func (mock *SystemServiceMock) GetSettingsConfigCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetSettingsConfig.RLock()
+	calls = mock.calls.GetSettingsConfig
+	mock.lockGetSettingsConfig.RUnlock()
 	return calls
 }
 
@@ -333,6 +391,42 @@ func (mock *SystemServiceMock) UpdateSecurityConfigCalls() []struct {
 	mock.lockUpdateSecurityConfig.RLock()
 	calls = mock.calls.UpdateSecurityConfig
 	mock.lockUpdateSecurityConfig.RUnlock()
+	return calls
+}
+
+// UpdateSettingsConfig calls UpdateSettingsConfigFunc.
+func (mock *SystemServiceMock) UpdateSettingsConfig(ctx context.Context, cfg api.SystemSettingsPut) error {
+	if mock.UpdateSettingsConfigFunc == nil {
+		panic("SystemServiceMock.UpdateSettingsConfigFunc: method is nil but SystemService.UpdateSettingsConfig was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Cfg api.SystemSettingsPut
+	}{
+		Ctx: ctx,
+		Cfg: cfg,
+	}
+	mock.lockUpdateSettingsConfig.Lock()
+	mock.calls.UpdateSettingsConfig = append(mock.calls.UpdateSettingsConfig, callInfo)
+	mock.lockUpdateSettingsConfig.Unlock()
+	return mock.UpdateSettingsConfigFunc(ctx, cfg)
+}
+
+// UpdateSettingsConfigCalls gets all the calls that were made to UpdateSettingsConfig.
+// Check the length with:
+//
+//	len(mockedSystemService.UpdateSettingsConfigCalls())
+func (mock *SystemServiceMock) UpdateSettingsConfigCalls() []struct {
+	Ctx context.Context
+	Cfg api.SystemSettingsPut
+} {
+	var calls []struct {
+		Ctx context.Context
+		Cfg api.SystemSettingsPut
+	}
+	mock.lockUpdateSettingsConfig.RLock()
+	calls = mock.calls.UpdateSettingsConfig
+	mock.lockUpdateSettingsConfig.RUnlock()
 	return calls
 }
 

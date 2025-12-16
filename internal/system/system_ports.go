@@ -16,6 +16,9 @@ type SystemService interface {
 	GetSecurityConfig(ctx context.Context) api.SystemSecurity
 	UpdateSecurityConfig(ctx context.Context, cfg api.SystemSecurityPut) error
 
+	GetSettingsConfig(ctx context.Context) api.SystemSettings
+	UpdateSettingsConfig(ctx context.Context, cfg api.SystemSettingsPut) error
+
 	GetUpdatesConfig(ctx context.Context) api.SystemUpdates
 	UpdateUpdatesConfig(ctx context.Context, cfg api.SystemUpdatesPut) error
 }

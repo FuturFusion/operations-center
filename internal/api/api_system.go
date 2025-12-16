@@ -25,6 +25,8 @@ func registerSystemHandler(router Router, authorizer *authz.Authorizer, service 
 	router.HandleFunc("PUT /network", response.With(handler.networkPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /security", response.With(handler.securityGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /security", response.With(handler.securityPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /settings", response.With(handler.settingsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("PUT /settings", response.With(handler.settingsPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /updates", response.With(handler.updatesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /updates", response.With(handler.updatesPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
@@ -289,6 +291,109 @@ func (s *systemHandler) securityPut(r *http.Request) response.Response {
 	err = s.service.UpdateSecurityConfig(r.Context(), securityConfig)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to update security configuration: %w", err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation Get /1.0/system/settings system system_settings_get
+//
+//	Update the system's settings configuration
+//
+//	Update the system's settings configuration.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API settings configuration
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: object
+//	          description: Settings configuration object
+//	          items:
+//	            $ref: "#/definitions/SystemSettingsConfig"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *systemHandler) settingsGet(r *http.Request) response.Response {
+	settingsConfig := s.service.GetSettingsConfig(r.Context())
+	return response.SyncResponse(true, settingsConfig)
+}
+
+// swagger:operation PUT /1.0/system/settings system system_settings_put
+//
+//	Update the system's settings configuration
+//
+//	Update the system's settings configuration.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: system_settings_put
+//	    description: System settings configuration definition
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/SystemSettingsConfigPut"
+//	responses:
+//	  "200":
+//	    description: Empty response
+//	    schema:
+//	      type: object
+//	      description: System settings configuration update response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *systemHandler) settingsPut(r *http.Request) response.Response {
+	var settingsConfig api.SystemSettingsPut
+
+	err := json.NewDecoder(r.Body).Decode(&settingsConfig)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	err = s.service.UpdateSettingsConfig(r.Context(), settingsConfig)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to update settings configuration: %w", err))
 	}
 
 	return response.EmptySyncResponse

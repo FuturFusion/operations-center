@@ -56,6 +56,30 @@ func (c OperationsCenterClient) UpdateSystemSecurityConfig(ctx context.Context, 
 	return nil
 }
 
+func (c OperationsCenterClient) GetSystemSettingsConfig(ctx context.Context) (api.SystemSettings, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, "/system/settings", nil, nil)
+	if err != nil {
+		return api.SystemSettings{}, err
+	}
+
+	cfg := api.SystemSettings{}
+	err = json.Unmarshal(response.Metadata, &cfg)
+	if err != nil {
+		return api.SystemSettings{}, err
+	}
+
+	return cfg, nil
+}
+
+func (c OperationsCenterClient) UpdateSystemSettingsConfig(ctx context.Context, cfg api.SystemSettingsPut) error {
+	_, err := c.doRequest(ctx, http.MethodPut, "/system/settings", nil, cfg)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) GetSystemUpdatesConfig(ctx context.Context) (api.SystemUpdates, error) {
 	response, err := c.doRequest(ctx, http.MethodGet, "/system/updates", nil, nil)
 	if err != nil {

@@ -6,21 +6,38 @@ package logger
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
+	"slices"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/lmittmann/tint"
 )
 
-const LevelTrace slog.Level = -8
+const (
+	LevelTrace       slog.Level = -8
+	LevelTraceString            = "TRACE"
+)
 
 const MaximumValueLength = 2000
 
+type loggerContainer struct {
+	writer   io.Writer
+	filepath string
+	file     *os.File
+}
+
+var (
+	logger   loggerContainer
+	loggerMu sync.Mutex
+)
+
 func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) error {
 	level := slog.LevelWarn
-	var replaceAttrFunc func(groups []string, attr slog.Attr) slog.Attr
 
 	if verbose {
 		level = slog.LevelInfo
@@ -28,15 +45,38 @@ func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) err
 
 	if debug {
 		level = slog.LevelDebug
-		replaceAttrFunc = logValueMaxSize(MaximumValueLength)
 	}
 
 	if verbose && debug {
 		level = LevelTrace
 	}
 
+	loggerMu.Lock()
+	logger = loggerContainer{
+		writer:   writer,
+		filepath: filepath,
+	}
+
+	loggerMu.Unlock()
+
+	return SetLogLevel(level)
+}
+
+// SetLogLevel replaces the default logger with a logger of the given log level.
+func SetLogLevel(level slog.Level) error {
+	loggerMu.Lock()
+	defer loggerMu.Unlock()
+
+	var replaceAttrFunc func(groups []string, attr slog.Attr) slog.Attr
+
+	var debug bool
+	if level <= slog.LevelDebug {
+		debug = true
+		replaceAttrFunc = logValueMaxSize(MaximumValueLength)
+	}
+
 	slogHandler := tint.NewHandler(
-		writer,
+		logger.writer,
 		&tint.Options{
 			Level:      level,
 			TimeFormat: time.RFC3339,
@@ -46,16 +86,19 @@ func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) err
 		},
 	)
 
-	if filepath != "" {
-		f, err := os.OpenFile(filepath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
-		if err != nil {
-			return err
+	if logger.filepath != "" {
+		if logger.file == nil {
+			var err error
+			logger.file, err = os.OpenFile(logger.filepath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
+			if err != nil {
+				return err
+			}
+
+			logger.writer = io.MultiWriter(logger.writer, logger.file)
 		}
 
-		writer = io.MultiWriter(writer, f)
-
 		slogHandler = slog.NewTextHandler(
-			writer,
+			logger.writer,
 			&slog.HandlerOptions{
 				Level: level,
 				// Add source information, if debug level is enabled.
@@ -72,6 +115,44 @@ func InitLogger(writer io.Writer, filepath string, verbose bool, debug bool) err
 	slog.SetDefault(logger)
 
 	return nil
+}
+
+// ValidateLevel checks a given string representation for a log level against
+// the supported log levels.
+func ValidateLevel(levelStr string) error {
+	// Empty string is ok, we just use the default value in this cases.
+	if levelStr == "" {
+		return nil
+	}
+
+	validLogLevels := []string{LevelTraceString, slog.LevelDebug.String(), slog.LevelInfo.String(), slog.LevelWarn.String(), slog.LevelError.String()}
+	if !slices.Contains(validLogLevels, levelStr) {
+		return fmt.Errorf("Log level %q is invalid, must be one of %q", levelStr, strings.Join(validLogLevels, ","))
+	}
+
+	return nil
+}
+
+// ParseLevel converts a given string representation for a log level into
+// an actual slog.Level.
+// Defaults to log level warn.
+func ParseLevel(levelStr string) slog.Level {
+	level := slog.LevelWarn
+
+	switch levelStr {
+	case LevelTraceString:
+		level = LevelTrace
+	case slog.LevelDebug.String():
+		level = slog.LevelDebug
+	case slog.LevelInfo.String():
+		level = slog.LevelInfo
+	case slog.LevelWarn.String():
+		level = slog.LevelWarn
+	case slog.LevelError.String():
+		level = slog.LevelError
+	}
+
+	return level
 }
 
 // logValueMaxSize is a slog.ReplaceAttr function, which limits the size

@@ -197,6 +197,19 @@ func (s *systemService) UpdateSecurityConfig(ctx context.Context, newConfig api.
 	return nil
 }
 
+func (s *systemService) GetSettingsConfig(_ context.Context) api.SystemSettings {
+	return config.GetSettings()
+}
+
+func (s *systemService) UpdateSettingsConfig(ctx context.Context, newConfig api.SystemSettingsPut) error {
+	err := config.UpdateSettings(ctx, newConfig)
+	if err != nil {
+		return fmt.Errorf("Failed to update security configuration: %w", err)
+	}
+
+	return nil
+}
+
 func (s *systemService) GetUpdatesConfig(_ context.Context) api.SystemUpdates {
 	return config.GetUpdates()
 }

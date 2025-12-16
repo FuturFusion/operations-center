@@ -910,6 +910,69 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 	}
 }
 
+func TestSystemService_UpdateSettingsConfig(t *testing.T) {
+	tests := []struct {
+		name           string
+		securityConfig api.SystemSettings
+
+		assertErr          require.ErrorAssertionFunc
+		wantSettingsConfig api.SystemSettings
+	}{
+		{
+			name: "success",
+			securityConfig: api.SystemSettings{
+				SystemSettingsPut: api.SystemSettingsPut{
+					LogLevel: "INFO",
+				},
+			},
+
+			assertErr: require.NoError,
+			wantSettingsConfig: api.SystemSettings{
+				SystemSettingsPut: api.SystemSettingsPut{
+					LogLevel: "INFO",
+				},
+			},
+		},
+		{
+			name: "error",
+			securityConfig: api.SystemSettings{
+				SystemSettingsPut: api.SystemSettingsPut{
+					LogLevel: "invalid", // invalid log level
+				},
+			},
+
+			assertErr: require.Error,
+			wantSettingsConfig: api.SystemSettings{
+				SystemSettingsPut: api.SystemSettingsPut{
+					LogLevel: "",
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			env := &envMock.EnvironmentMock{
+				IsIncusOSFunc: func() bool {
+					return false
+				},
+			}
+
+			config.InitTest(t, env, nil)
+			systemSvc := system.NewSystemService(nil, nil, nil)
+
+			// Run test
+			err := systemSvc.UpdateSettingsConfig(t.Context(), tc.securityConfig.SystemSettingsPut)
+			gotSettingsConfig := systemSvc.GetSettingsConfig(t.Context())
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantSettingsConfig, gotSettingsConfig)
+		})
+	}
+}
+
 func TestSystemService_UpdateUpdatesConfig(t *testing.T) {
 	tests := []struct {
 		name          string

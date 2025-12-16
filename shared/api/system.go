@@ -138,6 +138,22 @@ type SystemSecurityACME struct {
 	ProviderResolvers []string `json:"provider_resolvers" yaml:"provider_resolvers"`
 }
 
+// SystemSettings represents global system settings.
+//
+// swagger:model
+type SystemSettings struct {
+	SystemSettingsPut `yaml:",inline"`
+}
+
+// SystemSettingsPut represents the fields available for an update of the global
+// system settings.
+//
+// swagger:model
+type SystemSettingsPut struct {
+	// Daemon log level.
+	LogLevel string `json:"log_level" yaml:"log_level"`
+}
+
 // SystemUpdates represents the system's updates configuration.
 //
 // swagger:model

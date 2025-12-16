@@ -69,6 +69,13 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Failed to load config from %q: %w", c.env.VarDir(), err)
 	}
 
+	if !cmd.Flag("verbose").Changed && !cmd.Flag("debug").Changed {
+		err = logger.SetLogLevel(logger.ParseLevel(config.GetSettings().LogLevel))
+		if err != nil {
+			return fmt.Errorf("Failed to set log level to %q from config: %w", config.GetSettings().LogLevel, err)
+		}
+	}
+
 	rootCtx, stop := signal.NotifyContext(context.Background(),
 		unix.SIGPWR,
 		unix.SIGINT,

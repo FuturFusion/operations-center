@@ -2472,6 +2472,26 @@ definitions:
         title: SystemSecurityState holds information about the current security state.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemSettings:
+        properties:
+            log_level:
+                description: Daemon log level.
+                type: string
+                x-go-name: LogLevel
+        title: SystemSettings represents global system settings.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    SystemSettingsPut:
+        description: |-
+            SystemSettingsPut represents the fields available for an update of the global
+            system settings.
+        properties:
+            log_level:
+                description: Daemon log level.
+                type: string
+                x-go-name: LogLevel
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     SystemStorage:
         properties:
             config:
@@ -7787,6 +7807,87 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Update the system's security configuration
+            tags:
+                - system
+    /1.0/system/settings:
+        get:
+            description: Update the system's settings configuration.
+            operationId: system_settings_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API settings configuration
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: Settings configuration object
+                                items:
+                                    $ref: '#/definitions/SystemSettingsConfig'
+                                type: object
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the system's settings configuration
+            tags:
+                - system
+        put:
+            consumes:
+                - application/json
+            description: Update the system's settings configuration.
+            operationId: system_settings_put
+            parameters:
+                - description: System settings configuration definition
+                  in: body
+                  name: system_settings_put
+                  required: true
+                  schema:
+                    $ref: '#/definitions/SystemSettingsConfigPut'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Empty response
+                    schema:
+                        description: System settings configuration update response
+                        properties:
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the system's settings configuration
             tags:
                 - system
     /1.0/system/updates:

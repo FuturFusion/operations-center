@@ -17,18 +17,18 @@ import (
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
-type CmdNetwork struct {
+type CmdSettings struct {
 	OCClient *client.OperationsCenterClient
 }
 
-func (c *CmdNetwork) Command() *cobra.Command {
+func (c *CmdSettings) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "network"
-	cmd.Short = "Interact with network config"
+	cmd.Use = "settings"
+	cmd.Short = "Interact with settings config"
 	cmd.Long = `Description:
-  Interact with network config
+  Interact with settings config
 
-  Configure network config for operations center.
+  Configure settings config for operations center.
 `
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -36,33 +36,33 @@ func (c *CmdNetwork) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	// Show
-	networkShowCmd := cmdNetworkShow{
+	settingsShowCmd := cmdSettingsShow{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(networkShowCmd.Command())
+	cmd.AddCommand(settingsShowCmd.Command())
 
 	// Update
-	networkEditCmd := cmdNetworkEdit{
+	settingsEditCmd := cmdSettingsEdit{
 		ocClient: c.OCClient,
 	}
 
-	cmd.AddCommand(networkEditCmd.Command())
+	cmd.AddCommand(settingsEditCmd.Command())
 
 	return cmd
 }
 
-// Show network config.
-type cmdNetworkShow struct {
+// Show settings config.
+type cmdSettingsShow struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmdNetworkShow) Command() *cobra.Command {
+func (c *cmdSettingsShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show"
-	cmd.Short = "Show network config"
+	cmd.Short = "Show settings config"
 	cmd.Long = `Description:
-  Show network config.
+  Show settings config.
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -71,7 +71,7 @@ func (c *cmdNetworkShow) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdNetworkShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+func (c *cmdSettingsShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
@@ -81,8 +81,8 @@ func (c *cmdNetworkShow) validateArgsAndFlags(cmd *cobra.Command, args []string)
 	return nil
 }
 
-func (c *cmdNetworkShow) run(cmd *cobra.Command, args []string) error {
-	config, err := c.ocClient.GetSystemNetworkConfig(cmd.Context())
+func (c *cmdSettingsShow) run(cmd *cobra.Command, args []string) error {
+	config, err := c.ocClient.GetSystemSettingsConfig(cmd.Context())
 	if err != nil {
 		return err
 	}
@@ -92,17 +92,17 @@ func (c *cmdNetworkShow) run(cmd *cobra.Command, args []string) error {
 	return enc.Encode(config)
 }
 
-// Edit server system network configuration.
-type cmdNetworkEdit struct {
+// Edit server system settings configuration.
+type cmdSettingsEdit struct {
 	ocClient *client.OperationsCenterClient
 }
 
-func (c *cmdNetworkEdit) Command() *cobra.Command {
+func (c *cmdSettingsEdit) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "edit"
-	cmd.Short = "Edit network configuration"
+	cmd.Short = "Edit settings configuration"
 	cmd.Long = `Description:
-  Edit network configuration
+  Edit settings configuration
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -112,12 +112,12 @@ func (c *cmdNetworkEdit) Command() *cobra.Command {
 }
 
 // helpTemplate returns a sample YAML configuration and guidelines for editing instance configurations.
-func (c *cmdNetworkEdit) helpTemplate() string {
-	return `### This is a YAML representation of the network configuration.
+func (c *cmdSettingsEdit) helpTemplate() string {
+	return `### This is a YAML representation of the settings configuration.
 ### Any line starting with a '# will be ignored.`
 }
 
-func (c *cmdNetworkEdit) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+func (c *cmdSettingsEdit) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
@@ -127,7 +127,7 @@ func (c *cmdNetworkEdit) validateArgsAndFlags(cmd *cobra.Command, args []string)
 	return nil
 }
 
-func (c *cmdNetworkEdit) run(cmd *cobra.Command, args []string) error {
+func (c *cmdSettingsEdit) run(cmd *cobra.Command, args []string) error {
 	// If stdin isn't a terminal, read text from it.
 	if !termios.IsTerminal(environment.GetStdinFd()) {
 		contents, err := io.ReadAll(os.Stdin)
@@ -135,13 +135,13 @@ func (c *cmdNetworkEdit) run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		newdata := api.SystemNetworkPut{}
+		newdata := api.SystemSettingsPut{}
 		err = yaml.Unmarshal(contents, &newdata)
 		if err != nil {
 			return err
 		}
 
-		err = c.ocClient.UpdateSystemNetworkConfig(cmd.Context(), newdata)
+		err = c.ocClient.UpdateSystemSettingsConfig(cmd.Context(), newdata)
 		if err != nil {
 			return err
 		}
@@ -149,7 +149,7 @@ func (c *cmdNetworkEdit) run(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	networkConfig, err := c.ocClient.GetSystemNetworkConfig(cmd.Context())
+	settingsConfig, err := c.ocClient.GetSystemSettingsConfig(cmd.Context())
 	if err != nil {
 		return err
 	}
@@ -157,7 +157,7 @@ func (c *cmdNetworkEdit) run(cmd *cobra.Command, args []string) error {
 	b := &bytes.Buffer{}
 	encoder := yaml.NewEncoder(b)
 	encoder.SetIndent(2)
-	err = encoder.Encode(networkConfig)
+	err = encoder.Encode(settingsConfig)
 	if err != nil {
 		return err
 	}
@@ -169,10 +169,10 @@ func (c *cmdNetworkEdit) run(cmd *cobra.Command, args []string) error {
 	}
 
 	for {
-		newdata := api.SystemNetworkPut{}
+		newdata := api.SystemSettingsPut{}
 		err = yaml.Unmarshal(content, &newdata)
 		if err == nil {
-			err = c.ocClient.UpdateSystemNetworkConfig(cmd.Context(), newdata)
+			err = c.ocClient.UpdateSystemSettingsConfig(cmd.Context(), newdata)
 		}
 
 		// Respawn the editor

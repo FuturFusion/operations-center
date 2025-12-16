@@ -21,6 +21,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/acme"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/environment"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -29,6 +30,8 @@ type config struct {
 	Network api.SystemNetwork `json:"network" yaml:"network"`
 
 	Security api.SystemSecurity `json:"security" yaml:"security"`
+
+	Settings api.SystemSettings `json:"settings" yaml:"settings"`
 
 	Updates api.SystemUpdates `json:"updates" yaml:"updates"`
 }
@@ -247,6 +250,38 @@ func UpdateSecurity(ctx context.Context, cfg api.SystemSecurityPut) error {
 	return nil
 }
 
+func GetSettings() api.SystemSettings {
+	globalConfigInstanceMu.Lock()
+	defer globalConfigInstanceMu.Unlock()
+
+	return globalConfigInstance.Settings
+}
+
+func UpdateSettings(ctx context.Context, cfg api.SystemSettingsPut) error {
+	newCfg := globalConfigInstance
+	newCfg.Settings.SystemSettingsPut = cfg
+
+	currentCfg := GetSettings()
+
+	isLogLevelChanged := currentCfg.LogLevel != newCfg.Settings.LogLevel
+
+	globalConfigInstanceMu.Lock()
+	err := validateAndSave(newCfg)
+	globalConfigInstanceMu.Unlock()
+	if err != nil {
+		return err
+	}
+
+	if isLogLevelChanged {
+		err = logger.SetLogLevel(logger.ParseLevel(newCfg.Settings.LogLevel))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func GetUpdates() api.SystemUpdates {
 	globalConfigInstanceMu.Lock()
 	defer globalConfigInstanceMu.Unlock()
@@ -371,6 +406,12 @@ func validate(cfg config) error {
 	isTrustedTLSClientCertFingerprintsUpdated := !slices.Equal(globalConfigInstance.Security.TrustedTLSClientCertFingerprints, cfg.Security.TrustedTLSClientCertFingerprints)
 	if env.IsIncusOS() && isTrustedTLSClientCertFingerprintsUpdated && len(cfg.Security.TrustedTLSClientCertFingerprints) == 0 {
 		return domain.NewValidationErrf(`Invalid config, "security.trusted_tls_client_cert_fingerprints" property can not be empty when running on IncusOS`)
+	}
+
+	// Settings configuration
+	err = logger.ValidateLevel(cfg.Settings.LogLevel)
+	if err != nil {
+		return err
 	}
 
 	return nil

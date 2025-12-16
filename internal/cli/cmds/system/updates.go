@@ -59,7 +59,7 @@ type cmdUpdatesShow struct {
 
 func (c *cmdUpdatesShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <uuid>"
+	cmd.Use = "show"
 	cmd.Short = "Show updates config"
 	cmd.Long = `Description:
   Show updates config.

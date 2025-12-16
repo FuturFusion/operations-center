@@ -58,6 +58,16 @@ func (_d SystemServiceWithPrometheus) GetSecurityConfig(ctx context.Context) (sy
 	return _d.base.GetSecurityConfig(ctx)
 }
 
+// GetSettingsConfig implements system.SystemService.
+func (_d SystemServiceWithPrometheus) GetSettingsConfig(ctx context.Context) (systemSettings api.SystemSettings) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetSettingsConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetSettingsConfig(ctx)
+}
+
 // GetUpdatesConfig implements system.SystemService.
 func (_d SystemServiceWithPrometheus) GetUpdatesConfig(ctx context.Context) (systemUpdates api.SystemUpdates) {
 	_since := time.Now()
@@ -108,6 +118,20 @@ func (_d SystemServiceWithPrometheus) UpdateSecurityConfig(ctx context.Context, 
 		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSecurityConfig", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.UpdateSecurityConfig(ctx, cfg)
+}
+
+// UpdateSettingsConfig implements system.SystemService.
+func (_d SystemServiceWithPrometheus) UpdateSettingsConfig(ctx context.Context, cfg api.SystemSettingsPut) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSettingsConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateSettingsConfig(ctx, cfg)
 }
 
 // UpdateUpdatesConfig implements system.SystemService.
