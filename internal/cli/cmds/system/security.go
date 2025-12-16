@@ -65,18 +65,23 @@ func (c *cmdSecurityShow) Command() *cobra.Command {
   Show security config.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdSecurityShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdSecurityShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdSecurityShow) run(cmd *cobra.Command, args []string) error {
 	config, err := c.ocClient.GetSystemSecurityConfig(cmd.Context())
 	if err != nil {
 		return err
@@ -100,7 +105,8 @@ func (c *cmdSecurityEdit) Command() *cobra.Command {
   Edit security configuration
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
@@ -111,13 +117,17 @@ func (c *cmdSecurityEdit) helpTemplate() string {
 ### Any line starting with a '# will be ignored.`
 }
 
-func (c *cmdSecurityEdit) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdSecurityEdit) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdSecurityEdit) run(cmd *cobra.Command, args []string) error {
 	// If stdin isn't a terminal, read text from it.
 	if !termios.IsTerminal(environment.GetStdinFd()) {
 		contents, err := io.ReadAll(os.Stdin)

@@ -79,3 +79,12 @@ func (c OperationsCenterClient) UpdateSystemUpdatesConfig(ctx context.Context, c
 
 	return nil
 }
+
+func (c OperationsCenterClient) SetSystemCertificate(ctx context.Context, cfg api.SystemCertificatePost) error {
+	_, err := c.doRequest(ctx, http.MethodPost, "/system/certificate", nil, cfg)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
