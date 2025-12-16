@@ -152,12 +152,14 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 		result := make([]api.Cluster, 0, len(clusters))
 		for _, cluster := range clusters {
 			result = append(result, api.Cluster{
-				Name:          cluster.Name,
-				ConnectionURL: cluster.ConnectionURL,
-				Certificate:   cluster.Certificate,
-				Fingerprint:   cluster.Fingerprint,
-				Status:        cluster.Status,
-				LastUpdated:   cluster.LastUpdated,
+				Name: cluster.Name,
+				ClusterPut: api.ClusterPut{
+					ConnectionURL: cluster.ConnectionURL,
+				},
+				Certificate: cluster.Certificate,
+				Fingerprint: cluster.Fingerprint,
+				Status:      cluster.Status,
+				LastUpdated: cluster.LastUpdated,
 			})
 		}
 
@@ -280,12 +282,14 @@ func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		api.Cluster{
-			Name:          cluster.Name,
-			ConnectionURL: cluster.ConnectionURL,
-			Certificate:   cluster.Certificate,
-			Fingerprint:   cluster.Fingerprint,
-			Status:        cluster.Status,
-			LastUpdated:   cluster.LastUpdated,
+			Name: cluster.Name,
+			ClusterPut: api.ClusterPut{
+				ConnectionURL: cluster.ConnectionURL,
+			},
+			Certificate: cluster.Certificate,
+			Fingerprint: cluster.Fingerprint,
+			Status:      cluster.Status,
+			LastUpdated: cluster.LastUpdated,
 		},
 		cluster,
 	)
@@ -323,7 +327,7 @@ func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
 func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	var cluster api.Cluster
+	var cluster api.ClusterPut
 
 	err := json.NewDecoder(r.Body).Decode(&cluster)
 	if err != nil {
