@@ -85,20 +85,28 @@ func (s ClusterDeleteMode) String() string {
 	return string(s)
 }
 
-// Cluster defines a cluster of servers running Hypervisor OS.
+// ClusterPut defines the updateable part of a cluster of servers running
+// Hypervisor OS.
 //
 // swagger:model
-type Cluster struct {
-	// A human-friendly name for this cluster.
-	// Example: MyCluster
-	Name string `json:"name" yaml:"name"`
-
+type ClusterPut struct {
 	// URL, hostname or IP address of the cluster endpoint.
 	// This is only user facing, e.g. the address of a load balancer infront of
 	// the cluster and not used by Operations Center for direct communication
 	// Operations Center relies on the connection URL of the cluster members.
 	// Example: https://incus.local:6443
 	ConnectionURL string `json:"connection_url" yaml:"connection_url"`
+}
+
+// Cluster defines a cluster of servers running Hypervisor OS.
+//
+// swagger:model
+type Cluster struct {
+	ClusterPut `yaml:",inline"`
+
+	// A human-friendly name for this cluster.
+	// Example: MyCluster
+	Name string `json:"name" yaml:"name"`
 
 	// Certificate of the cluster endpoint in PEM encoded format.
 	// Example:
