@@ -278,6 +278,21 @@ func Test_validate(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
+			name: "invalid security.acme config",
+			cfg: config{
+				Security: api.SystemSecurity{
+					SystemSecurityPut: api.SystemSecurityPut{
+						ACME: api.SystemSecurityACME{
+							CAURL: ":|\\", // invalid,,
+						},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: require.Error,
+		},
+		{
 			name: "empty security.trusted_tls_client_cert_fingerprints",
 			oldCfg: &config{
 				Security: api.SystemSecurity{
@@ -321,6 +336,22 @@ func Test_validate(t *testing.T) {
 
 			assertErr: require.Error,
 		},
+
+		// Settings
+		{
+			name: "invalid log level",
+			cfg: config{
+				Settings: api.SystemSettings{
+					SystemSettingsPut: api.SystemSettingsPut{
+						LogLevel: "invalid", // invalid log level.
+					},
+				},
+				Updates: defaultUpdates,
+			},
+			isIncusOS: true,
+
+			assertErr: require.Error,
+		},
 	}
 
 	for _, tc := range tests {
@@ -337,10 +368,13 @@ func Test_validate(t *testing.T) {
 				err := UpdateNetwork(t.Context(), tc.oldCfg.Network.SystemNetworkPut)
 				require.NoError(t, err)
 
-				err = UpdateUpdates(t.Context(), tc.oldCfg.Updates.SystemUpdatesPut)
+				err = UpdateSecurity(t.Context(), tc.oldCfg.Security.SystemSecurityPut)
 				require.NoError(t, err)
 
-				err = UpdateSecurity(t.Context(), tc.oldCfg.Security.SystemSecurityPut)
+				err = UpdateSettings(t.Context(), tc.oldCfg.Settings.SystemSettingsPut)
+				require.NoError(t, err)
+
+				err = UpdateUpdates(t.Context(), tc.oldCfg.Updates.SystemUpdatesPut)
 				require.NoError(t, err)
 			}
 
