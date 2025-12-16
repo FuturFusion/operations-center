@@ -3,6 +3,7 @@ package provisioning
 import (
 	"crypto/tls"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -57,6 +58,13 @@ func (c *CmdCluster) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(clusterRemoveCmd.Command())
+
+	// Update
+	clusterUpdateCmd := cmdClusterUpdate{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterUpdateCmd.Command())
 
 	// Rename
 	clusterRenameCmd := cmdClusterRename{
@@ -349,6 +357,59 @@ func (c *cmdClusterRemove) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	err = c.ocClient.DeleteCluster(cmd.Context(), name, deleteMode)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Update cluster.
+type cmdClusterUpdate struct {
+	ocClient *client.OperationsCenterClient
+
+	flagConnectionURL string
+}
+
+func (c *cmdClusterUpdate) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "update <name>"
+	cmd.Short = "Update a cluster"
+	cmd.Long = `Description:
+  Update a cluster
+
+  Updates a cluster's connection URL.
+`
+
+	cmd.Flags().StringVar(&c.flagConnectionURL, "connection-url", "", "connection URL of the cluster")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdClusterUpdate) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	_, err = url.Parse(c.flagConnectionURL)
+	if err != nil {
+		return fmt.Errorf("Provided Connection URL is not a valid URL: %w", err)
+	}
+
+	return nil
+}
+
+func (c *cmdClusterUpdate) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.UpdateCluster(cmd.Context(), name, api.ClusterPut{
+		ConnectionURL: c.flagConnectionURL,
+	})
 	if err != nil {
 		return err
 	}
