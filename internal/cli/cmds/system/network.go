@@ -59,7 +59,7 @@ type cmdNetworkShow struct {
 
 func (c *cmdNetworkShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <uuid>"
+	cmd.Use = "show"
 	cmd.Short = "Show network config"
 	cmd.Long = `Description:
   Show network config.

@@ -59,7 +59,7 @@ type cmdSecurityShow struct {
 
 func (c *cmdSecurityShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show <uuid>"
+	cmd.Use = "show"
 	cmd.Short = "Show security config"
 	cmd.Long = `Description:
   Show security config.
