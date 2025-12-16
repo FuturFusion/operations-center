@@ -84,26 +84,32 @@ func (c *cmdClusterTemplateAdd) Command() *cobra.Command {
   Adds a new cluster-template to the operations center.
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVar(&c.description, "description", "", "Description of the cluster template")
 	cmd.Flags().StringVarP(&c.servicesConfigFile, "services-config", "c", "", "Services config for the cluster template")
 	cmd.Flags().StringVarP(&c.applicationConfigFile, "application-seed-config", "a", "", "Application seed configuration for the cluster template")
 	cmd.Flags().StringVar(&c.variablesFile, "variables", "", "Variable definitions for the cluster template")
 
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
 	return cmd
 }
 
-func (c *cmdClusterTemplateAdd) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterTemplateAdd) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdClusterTemplateAdd) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	var servicesConfigBody []byte
+	var err error
 	if c.servicesConfigFile != "" {
 		servicesConfigBody, err = os.ReadFile(c.servicesConfigFile)
 		if err != nil {
@@ -163,23 +169,24 @@ func (c *cmdClusterTemplateList) Command() *cobra.Command {
   List the available cluster-templates
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
-	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
-		return validate.FormatFlag(cmd.Flag("format").Value.String())
-	}
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdClusterTemplateList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterTemplateList) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
+	return validate.FormatFlag(cmd.Flag("format").Value.String())
+}
+
+func (c *cmdClusterTemplateList) run(cmd *cobra.Command, args []string) error {
 	clusterTemplates, err := c.ocClient.GetClusterTemplates(cmd.Context())
 	if err != nil {
 		return err
@@ -213,21 +220,26 @@ func (c *cmdClusterTemplateRemove) Command() *cobra.Command {
   Removes a cluster-template from the operations center.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdClusterTemplateRemove) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterTemplateRemove) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdClusterTemplateRemove) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
-	err = c.ocClient.DeleteClusterTemplate(cmd.Context(), name)
+	err := c.ocClient.DeleteClusterTemplate(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
@@ -248,18 +260,23 @@ func (c *cmdClusterTemplateShow) Command() *cobra.Command {
   Show information about a cluster-template.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdClusterTemplateShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterTemplateShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdClusterTemplateShow) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	clusterTemplate, err := c.ocClient.GetClusterTemplate(cmd.Context(), name)
