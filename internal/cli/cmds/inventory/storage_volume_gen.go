@@ -112,8 +112,6 @@ func (c *cmdStorageVolumeList) Command() *cobra.Command {
   List the available storage_volumes
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVar(&c.flagFilterCluster, "cluster", "", "cluster name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterServer, "server", "", "server name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterProject, "project", "", "project name to filter for")
@@ -121,20 +119,24 @@ func (c *cmdStorageVolumeList) Command() *cobra.Command {
 
 	cmd.Flags().StringVarP(&c.flagColumns, "columns", "c", storageVolumeDefaultColumns, `Comma separated list of columns to print with the respective value in Go Template format`)
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
-	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
-		return validate.FormatFlag(cmd.Flag("format").Value.String())
-	}
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdStorageVolumeList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdStorageVolumeList) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
+	return validate.FormatFlag(cmd.Flag("format").Value.String())
+}
+
+func (c *cmdStorageVolumeList) run(cmd *cobra.Command, args []string) error {
 	var filter inventory.StorageVolumeFilter
 
 	if c.flagFilterCluster != "" {
@@ -229,20 +231,25 @@ func (c *cmdStorageVolumeShow) Command() *cobra.Command {
   Show information about a storage_volume.
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().BoolVar(&c.flagShowObject, "object", false, "show inventory object")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdStorageVolumeShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdStorageVolumeShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdStorageVolumeShow) run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 
 	storageVolume, err := c.ocClient.GetStorageVolume(cmd.Context(), id)
