@@ -86,6 +86,28 @@ func (_d SystemServiceWithSlog) GetSecurityConfig(ctx context.Context) (systemSe
 	return _d._base.GetSecurityConfig(ctx)
 }
 
+// GetSettingsConfig implements system.SystemService.
+func (_d SystemServiceWithSlog) GetSettingsConfig(ctx context.Context) (systemSettings api.SystemSettings) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetSettingsConfig")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("systemSettings", systemSettings),
+			)
+		} else {
+		}
+		log.DebugContext(ctx, "<= method GetSettingsConfig finished")
+	}()
+	return _d._base.GetSettingsConfig(ctx)
+}
+
 // GetUpdatesConfig implements system.SystemService.
 func (_d SystemServiceWithSlog) GetUpdatesConfig(ctx context.Context) (systemUpdates api.SystemUpdates) {
 	log := _d._log.With()
@@ -209,6 +231,40 @@ func (_d SystemServiceWithSlog) UpdateSecurityConfig(ctx context.Context, cfg ap
 		}
 	}()
 	return _d._base.UpdateSecurityConfig(ctx, cfg)
+}
+
+// UpdateSettingsConfig implements system.SystemService.
+func (_d SystemServiceWithSlog) UpdateSettingsConfig(ctx context.Context, cfg api.SystemSettingsPut) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("cfg", cfg),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateSettingsConfig")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateSettingsConfig returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateSettingsConfig returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateSettingsConfig finished")
+		}
+	}()
+	return _d._base.UpdateSettingsConfig(ctx, cfg)
 }
 
 // UpdateUpdatesConfig implements system.SystemService.
