@@ -25,6 +25,12 @@ func (c *CmdSystem) Command() *cobra.Command {
 	cmd.Args = cobra.NoArgs
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
+	certificateCmd := system.CmdCertificate{
+		OCClient: c.OCClient,
+	}
+
+	cmd.AddCommand(certificateCmd.Command())
+
 	networkCmd := system.CmdNetwork{
 		OCClient: c.OCClient,
 	}
