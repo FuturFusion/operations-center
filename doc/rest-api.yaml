@@ -1,4 +1,8 @@
 definitions:
+    ACMEChallengeType:
+        title: ACMEChallengeType represents challenge types for ACME configuration.
+        type: string
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     Cluster:
         properties:
             certificate:
@@ -209,6 +213,22 @@ definitions:
                 x-go-name: Status
                 x-go-type: github.com/FuturFusion/operations-center/shared/api.ClusterStatus
         title: ClusterPost represents the fields available for a new cluster of servers running Hypervisor OS.
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
+    ClusterPut:
+        description: |-
+            ClusterPut defines the updateable part of a cluster of servers running
+            Hypervisor OS.
+        properties:
+            connection_url:
+                description: |-
+                    URL, hostname or IP address of the cluster endpoint.
+                    This is only user facing, e.g. the address of a load balancer infront of
+                    the cluster and not used by Operations Center for direct communication
+                    Operations Center relies on the connection URL of the cluster members.
+                example: https://incus.local:6443
+                type: string
+                x-go-name: ConnectionURL
         type: object
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     ClusterTemplate:
@@ -2278,6 +2298,48 @@ definitions:
         title: SystemSecurity defines a struct to hold information about the system's security state.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemSecurityACME:
+        properties:
+            agree_tos:
+                description: Agree to ACME terms of service.
+                type: boolean
+                x-go-name: AgreeTOS
+            ca_url:
+                description: CAURL holds the URL to the CA directory resource of the ACME service.
+                type: string
+                x-go-name: CAURL
+            challenge:
+                $ref: '#/definitions/ACMEChallengeType'
+            domain:
+                description: Domain for which the certificate is issued.
+                type: string
+                x-go-name: Domain
+            email:
+                description: Email address used for the account registration.
+                type: string
+                x-go-name: Email
+            http_challenge_address:
+                description: Address and interface for HTTP server (used by HTTP-01).
+                type: string
+                x-go-name: Address
+            provider:
+                description: Backend provider for the challenge (used by DNS-01)>
+                type: string
+                x-go-name: Provider
+            provider_environment:
+                description: Environment variables to set during the challenge (used by DNS-01).
+                items:
+                    type: string
+                type: array
+                x-go-name: ProviderEnvironment
+            provider_resolvers:
+                description: List of DNS resolvers (used by DNS-01).
+                items:
+                    type: string
+                type: array
+                x-go-name: ProviderResolvers
+        type: object
+        x-go-package: github.com/FuturFusion/operations-center/shared/api
     SystemSecurityConfig:
         properties:
             encryption_recovery_keys:
@@ -2350,6 +2412,8 @@ definitions:
             SystemSecurityPut represents the fields available for an update of the
             system's security configuration.
         properties:
+            acme:
+                $ref: '#/definitions/SystemSecurityACME'
             oidc:
                 $ref: '#/definitions/SystemSecurityOIDC'
             openfga:
@@ -3788,6 +3852,11 @@ paths:
                   in: query
                   name: cluster
                   type: string
+                - description: Project name
+                  example: default
+                  in: query
+                  name: project
+                  type: string
                 - description: Filter expression
                   example: name == "value"
                   in: query
@@ -3906,6 +3975,11 @@ paths:
                   example: cluster
                   in: query
                   name: cluster
+                  type: string
+                - description: Project name
+                  example: default
+                  in: query
+                  name: project
                   type: string
                 - description: Filter expression
                   example: name == "value"
@@ -4122,6 +4196,11 @@ paths:
                   in: query
                   name: cluster
                   type: string
+                - description: Project name
+                  example: default
+                  in: query
+                  name: project
+                  type: string
                 - description: Filter expression
                   example: name == "value"
                   in: query
@@ -4241,6 +4320,11 @@ paths:
                   in: query
                   name: cluster
                   type: string
+                - description: Project name
+                  example: default
+                  in: query
+                  name: project
+                  type: string
                 - description: Filter expression
                   example: name == "value"
                   in: query
@@ -4288,6 +4372,11 @@ paths:
                   example: cluster
                   in: query
                   name: cluster
+                  type: string
+                - description: Project name
+                  example: default
+                  in: query
+                  name: project
                   type: string
                 - description: Filter expression
                   example: name == "value"
@@ -4407,6 +4496,11 @@ paths:
                   example: cluster
                   in: query
                   name: cluster
+                  type: string
+                - description: Project name
+                  example: default
+                  in: query
+                  name: project
                   type: string
                 - description: Filter expression
                   example: name == "value"
@@ -7438,7 +7532,9 @@ paths:
                 - update
     /1.0/provisioning/updates?recursion=1:
         get:
-            description: Returns a list of updates (structs) sorted by version.
+            description: |-
+                Returns a list of updates (structs) sorted by version.
+                Versions are date strings of the form yyyymmddHHMM, most recent date first.
             operationId: updates_get_recursion
             parameters:
                 - description: Channel to filter for.
