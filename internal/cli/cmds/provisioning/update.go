@@ -1,7 +1,9 @@
 package provisioning
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -100,27 +102,29 @@ func (c *cmdUpdateList) Command() *cobra.Command {
   List the available updates
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVar(&c.flagFilterChannel, "channel", "", "channel name to filter for")
 	cmd.Flags().StringVar(&c.flagFilterOrigin, "origin", "", "origin to filter for")
 	cmd.Flags().StringVar(&c.flagFilterStatus, "status", "", "status to filter for, valid values: pending, ready")
 
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
-	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
-		return validate.FormatFlag(cmd.Flag("format").Value.String())
-	}
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdUpdateList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdUpdateList) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
+	return validate.FormatFlag(cmd.Flag("format").Value.String())
+}
+
+func (c *cmdUpdateList) run(cmd *cobra.Command, args []string) error {
 	var filter provisioning.UpdateFilter
 
 	if c.flagFilterChannel != "" {
@@ -133,7 +137,7 @@ func (c *cmdUpdateList) Run(cmd *cobra.Command, args []string) error {
 
 	if c.flagFilterStatus != "" {
 		var status api.UpdateStatus
-		err = status.UnmarshalText([]byte(c.flagFilterStatus))
+		err := status.UnmarshalText([]byte(c.flagFilterStatus))
 		if err != nil {
 			return fmt.Errorf("Invalid value for status: %v", err)
 		}
@@ -186,18 +190,23 @@ func (c *cmdUpdateShow) Command() *cobra.Command {
   Show information about a update.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdUpdateShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdUpdateShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdUpdateShow) run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 
 	update, err := c.ocClient.GetUpdate(cmd.Context(), id)
@@ -240,18 +249,23 @@ func (c *cmdUpdateAdd) Command() *cobra.Command {
   Add an update.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdUpdateAdd) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdUpdateAdd) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdUpdateAdd) run(cmd *cobra.Command, args []string) error {
 	filename := args[0]
 
 	f, err := os.Open(filename)
@@ -280,19 +294,24 @@ func (c *cmdUpdateCleanup) Command() *cobra.Command {
   Remove all update artifacts from Operations Center.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdUpdateCleanup) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdUpdateCleanup) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
-	err = c.ocClient.CleanupAllUpdates(cmd.Context())
+	return nil
+}
+
+func (c *cmdUpdateCleanup) run(cmd *cobra.Command, args []string) error {
+	err := c.ocClient.CleanupAllUpdates(cmd.Context())
 	if err != nil {
 		return fmt.Errorf("Failed to cleanup updates: %w", err)
 	}
@@ -315,21 +334,26 @@ func (c *cmdUpdateRefresh) Command() *cobra.Command {
   Refresh updates provided by Operations Center.
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().BoolVar(&c.flagWait, "wait", false, "wait for the operation to complete")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdUpdateRefresh) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdUpdateRefresh) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
-	err = c.ocClient.RefreshUpdates(cmd.Context(), c.flagWait)
+	return nil
+}
+
+func (c *cmdUpdateRefresh) run(cmd *cobra.Command, args []string) error {
+	err := c.ocClient.RefreshUpdates(cmd.Context(), c.flagWait)
 	if err != nil {
 		return fmt.Errorf("Failed to refresh updates: %w", err)
 	}
@@ -370,6 +394,13 @@ func (c *cmdUpdateFiles) Command() *cobra.Command {
 
 	cmd.AddCommand(updateFileShowCmd.Command())
 
+	// Get
+	updateFileGetCmd := cmdUpdateFileGet{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(updateFileGetCmd.Command())
+
 	return cmd
 }
 
@@ -388,23 +419,28 @@ func (c *cmdUpdateFileList) Command() *cobra.Command {
   List the available update files
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		return validate.FormatFlag(cmd.Flag("format").Value.String())
 	}
 
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
 	return cmd
 }
 
-func (c *cmdUpdateFileList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdUpdateFileList) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdUpdateFileList) run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 
 	updateFiles, err := c.ocClient.GetUpdateFiles(cmd.Context(), id)
@@ -433,23 +469,28 @@ type cmdUpdateFileShow struct {
 func (c *cmdUpdateFileShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <uuid> <filename>"
-	cmd.Short = "Show information about a update file"
+	cmd.Short = "Show information about an update file"
 	cmd.Long = `Description:
-  Show information about a update file.
+  Show information about an update file.
 `
 
+	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.Run
 
 	return cmd
 }
 
-func (c *cmdUpdateFileShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdUpdateFileShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 2, 2)
 	if exit {
 		return err
 	}
 
+	return nil
+}
+
+func (c *cmdUpdateFileShow) Run(cmd *cobra.Command, args []string) error {
 	id := args[0]
 	filename := args[1]
 
@@ -478,6 +519,91 @@ func (c *cmdUpdateFileShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Component: %s\n", updateFile.Component)
 	fmt.Printf("Type: %s\n", updateFile.Type)
 	fmt.Printf("Architecture: %s\n", updateFile.Architecture.String())
+
+	return nil
+}
+
+// Get updateFile.
+type cmdUpdateFileGet struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdUpdateFileGet) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "get <uuid> <sourc-filename> <target-filename>"
+	cmd.Short = "Get an update file"
+	cmd.Long = `Description:
+  Get an update file.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdUpdateFileGet) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 3, 3)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdUpdateFileGet) run(cmd *cobra.Command, args []string) error {
+	id := args[0]
+	sourceFilename := args[1]
+	targetFilename := args[2]
+
+	updateFiles, err := c.ocClient.GetUpdateFiles(cmd.Context(), id)
+	if err != nil {
+		return err
+	}
+
+	var updateFile api.UpdateFile
+	var found bool
+
+	for _, updateFile = range updateFiles {
+		if updateFile.Filename == sourceFilename {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("File %q for Update %q not found", sourceFilename, id)
+	}
+
+	targetFile, err := os.OpenFile(targetFilename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		closeErr := targetFile.Close()
+		var removeErr error
+		if err != nil {
+			removeErr = os.Remove(targetFilename)
+		}
+
+		err = errors.Join(err, closeErr, removeErr)
+	}()
+
+	imageReader, err := c.ocClient.GetUpdatesFile(cmd.Context(), id, sourceFilename)
+	if err != nil {
+		return err
+	}
+
+	defer imageReader.Close()
+
+	size, err := io.Copy(targetFile, imageReader)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully written %d bytes to %q\n", size, targetFilename)
 
 	return nil
 }
