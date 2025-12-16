@@ -137,7 +137,7 @@ func (c *cmdClusterAdd) Command() *cobra.Command {
 	cmd.Flags().StringVar(&c.clusterTemplateVariablesFile, "cluster-template-variables", "", "Name of the variables.yaml file containing the values to be applied in the cluster template. Required, if --cluster-template is provided")
 
 	cmd.PreRunE = c.validateArgsAndFlags
-	cmd.RunE = c.Run
+	cmd.RunE = c.run
 
 	return cmd
 }
@@ -170,7 +170,7 @@ func (c *cmdClusterAdd) validateArgsAndFlags(cmd *cobra.Command, args []string) 
 	return nil
 }
 
-func (c *cmdClusterAdd) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterAdd) run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 	connectionURL := args[1]
 
@@ -260,25 +260,26 @@ func (c *cmdClusterList) Command() *cobra.Command {
   List the available clusters
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVar(&c.flagFilterExpression, "filter", "", "filter expression to apply")
-
 	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
-	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
-		return validate.FormatFlag(cmd.Flag("format").Value.String())
-	}
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdClusterList) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterList) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 0, 0)
 	if exit {
 		return err
 	}
 
+	return validate.FormatFlag(cmd.Flag("format").Value.String())
+}
+
+func (c *cmdClusterList) run(cmd *cobra.Command, args []string) error {
 	var filter provisioning.ClusterFilter
 
 	if c.flagFilterExpression != "" {
@@ -331,14 +332,31 @@ func (c *cmdClusterRemove) Command() *cobra.Command {
   - factory-reset: everything from "force" and additionally a factory reset is performed on every server, that is part of the cluster.
 `
 
-	cmd.RunE = c.Run
-
 	cmd.Flags().StringVar(&c.flagDeleteMode, "mode", api.ClusterDeleteModeNormal.String(), "delete mode for removal of cluster, supported values: normal, force, factory-reset")
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdClusterRemove) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterRemove) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	deleteMode := api.ClusterDeleteMode(c.flagDeleteMode)
+	_, ok := api.ClusterDeleteModes[deleteMode]
+	if !ok {
+		return fmt.Errorf("Provided delete mode %q is not supported", c.flagDeleteMode)
+	}
+
+	return nil
+}
+
+func (c *cmdClusterRemove) run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -347,10 +365,6 @@ func (c *cmdClusterRemove) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 	deleteMode := api.ClusterDeleteMode(c.flagDeleteMode)
-	_, ok := api.ClusterDeleteModes[deleteMode]
-	if !ok {
-		deleteMode = api.ClusterDeleteModeNormal
-	}
 
 	if deleteMode == api.ClusterDeleteModeForce {
 		cmd.Println(`WARNING: removal of a cluster with delete mode "force" does not do any change to the actual cluster, but the cluster and the server records including all accosiated inventory information is removed from operations center.`)
@@ -432,12 +446,23 @@ func (c *cmdClusterRename) Command() *cobra.Command {
   Renames a cluster to a new name.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdClusterRename) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterRename) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 2, 2)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdClusterRename) run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 2, 2)
 	if exit {
@@ -472,12 +497,23 @@ func (c *cmdClusterShow) Command() *cobra.Command {
   Show information about a cluster.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdClusterShow) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterShow) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdClusterShow) run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -514,12 +550,23 @@ func (c *cmdClusterResync) Command() *cobra.Command {
   Resync inventory for a cluster.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdClusterResync) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterResync) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdClusterResync) run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 1, 1)
 	if exit {
@@ -549,12 +596,23 @@ func (c *cmdClusterUpdateCertificate) Command() *cobra.Command {
   Update the certificate and key for a cluster.
 `
 
-	cmd.RunE = c.Run
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
 
 	return cmd
 }
 
-func (c *cmdClusterUpdateCertificate) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdClusterUpdateCertificate) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 3, 3)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdClusterUpdateCertificate) run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := validate.Args(cmd, args, 3, 3)
 	if exit {
