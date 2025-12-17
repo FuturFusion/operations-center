@@ -180,11 +180,11 @@ func (f {{ .Name | pascalcase }}Filter) String() string {
 	return f.AppendToURLValues(url.Values{}).Encode()
 }
 
-{{ if eq .Name "network_acl" }}
+{{ if ne ( .Name | pascalcase ) ( .Name | pascalcaseWithoutAcronyms ) }}
 // generate-database does not handle acronyms for pascalcase variant.
 // Add the type aliases for compatibility.
 type (
-	NetworkAcl       = NetworkACL
-	NetworkAclFilter = NetworkACLFilter
+	{{ .Name | pascalcaseWithoutAcronyms }}       = {{ .Name | pascalcase }}
+	{{ .Name | pascalcaseWithoutAcronyms }}Filter = {{ .Name | pascalcase }}Filter
 )
 {{ end }}
