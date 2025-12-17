@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -17,7 +19,8 @@ type ClusterService interface {
 	GetByName(ctx context.Context, name string) (*Cluster, error)
 	Update(ctx context.Context, cluster Cluster) error
 	Rename(ctx context.Context, oldName string, newName string) error
-	DeleteByName(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) error
+	DeleteByName(ctx context.Context, name string, force bool) error
+	DeleteAndFactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error
 	ResyncInventory(ctx context.Context) error
 	ResyncInventoryByName(ctx context.Context, name string) error
 	StartLifecycleEventsMonitor(ctx context.Context) error
@@ -65,7 +68,7 @@ type ClusterClientPort interface {
 	JoinCluster(ctx context.Context, server Server, joinToken string, endpoint Endpoint) error
 	GetOSData(ctx context.Context, endpoint Endpoint) (api.OSData, error)
 	UpdateClusterCertificate(ctx context.Context, endpoint Endpoint, certificatePEM string, keyPEM string) error
-	FactoryReset(ctx context.Context, endpoint Endpoint) error
+	SystemFactoryReset(ctx context.Context, endpoint Endpoint, allowTPMResetFailure bool, seeds TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error
 	SubscribeLifecycleEvents(ctx context.Context, endpoint Endpoint) (chan domain.LifecycleEvent, chan error, error)
 }
 

@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
@@ -22,6 +24,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/testing/boom"
 	"github.com/FuturFusion/operations-center/internal/testing/queue"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -944,7 +947,7 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, localArtifactRepo, client, serverSvc, nil, provisioner,
+			clusterSvc := provisioning.NewClusterService(repo, localArtifactRepo, client, serverSvc, nil, nil, provisioner,
 				provisioning.ClusterServiceCreateClusterRetryTimeout(0),
 				provisioning.ClusterServiceUpdateSignal(updateSignal),
 			)
@@ -1009,7 +1012,7 @@ func TestClusterService_GetAll(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			clusters, err := clusterSvc.GetAll(context.Background())
@@ -1135,7 +1138,7 @@ func TestClusterService_GetAllWithFilter(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetAllWithFilter(context.Background(), tc.filter)
@@ -1183,7 +1186,7 @@ func TestClusterService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			clusterNames, err := clusterSvc.GetAllNames(context.Background())
@@ -1293,7 +1296,7 @@ func TestClusterService_GetAllIDsWithFilter(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			clusterIDs, err := clusterSvc.GetAllNamesWithFilter(context.Background(), tc.filter)
@@ -1343,7 +1346,7 @@ func TestClusterService_GetByID(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetByName(context.Background(), tc.idArg)
@@ -1401,7 +1404,7 @@ func TestClusterService_GetByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			cluster, err := clusterSvc.GetByName(context.Background(), tc.nameArg)
@@ -1464,7 +1467,7 @@ func TestClusterService_Update(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
 
 			// Run test
 			err := clusterSvc.Update(context.Background(), tc.cluster)
@@ -1538,7 +1541,7 @@ func TestClusterService_Rename(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil,
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil,
 				provisioning.ClusterServiceUpdateSignal(updateSignal),
 			)
 
@@ -1561,16 +1564,12 @@ func TestClusterService_DeleteByName(t *testing.T) {
 	tests := []struct {
 		name                                string
 		nameArg                             string
-		deleteMode                          api.ClusterDeleteMode
+		force                               bool
 		repoGetByNameCluster                *provisioning.Cluster
 		repoGetByNameErr                    error
 		repoDeleteByNameErr                 error
 		serverSvcGetAllNamesWithFilterNames []string
 		serverSvcGetAllNamesWithFilterErr   error
-		serverSvcGetAllWithFilter           provisioning.Servers
-		serverSvcGetAllWithFilterErr        error
-		clientPingErr                       error
-		clientFactoryResetErr               error
 
 		assertErr     require.ErrorAssertionFunc
 		signalHandler func(t *testing.T, called *bool) func(ctx context.Context, cum provisioning.ClusterUpdateMessage)
@@ -1586,15 +1585,11 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			signalHandler: requireCallSignalHandler,
 		},
 		{
-			name:       "success - factory reset",
-			nameArg:    "one",
-			deleteMode: api.ClusterDeleteModeFactoryReset,
+			name:    "success - force",
+			nameArg: "one",
+			force:   true,
 			repoGetByNameCluster: &provisioning.Cluster{
 				Status: api.ClusterStatusPending,
-			},
-			serverSvcGetAllWithFilter: provisioning.Servers{
-				{},
-				{},
 			},
 
 			assertErr:     require.NoError,
@@ -1610,42 +1605,9 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
-			name:                         "error - serverSvc.GetAllWithFilter",
-			nameArg:                      "one",
-			deleteMode:                   api.ClusterDeleteModeFactoryReset,
-			serverSvcGetAllWithFilterErr: boom.Error,
-
-			assertErr:     boom.ErrorIs,
-			signalHandler: requireNoCallSignalHandler,
-		},
-		{
-			name:       "error - client.Ping",
-			nameArg:    "one",
-			deleteMode: api.ClusterDeleteModeFactoryReset,
-			serverSvcGetAllWithFilter: provisioning.Servers{
-				{},
-			},
-			clientPingErr: boom.Error,
-
-			assertErr:     boom.ErrorIs,
-			signalHandler: requireNoCallSignalHandler,
-		},
-		{
-			name:       "error - client.FactoryReset",
-			nameArg:    "one",
-			deleteMode: api.ClusterDeleteModeFactoryReset,
-			serverSvcGetAllWithFilter: provisioning.Servers{
-				{},
-			},
-			clientFactoryResetErr: boom.Error,
-
-			assertErr:     boom.ErrorIs,
-			signalHandler: requireNoCallSignalHandler,
-		},
-		{
-			name:                "error - repo.DeleteByID with force or factory-reset",
+			name:                "error - force - repo.DeleteByName",
 			nameArg:             "one",
-			deleteMode:          api.ClusterDeleteModeForce,
+			force:               true,
 			repoDeleteByNameErr: boom.Error,
 
 			assertErr:     boom.ErrorIs,
@@ -1737,21 +1699,9 @@ func TestClusterService_DeleteByName(t *testing.T) {
 				GetAllNamesWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) ([]string, error) {
 					return tc.serverSvcGetAllNamesWithFilterNames, tc.serverSvcGetAllNamesWithFilterErr
 				},
-				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
-					return tc.serverSvcGetAllWithFilter, tc.serverSvcGetAllWithFilterErr
-				},
 			}
 
-			client := &adapterMock.ClusterClientPortMock{
-				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
-					return tc.clientPingErr
-				},
-				FactoryResetFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
-					return tc.clientFactoryResetErr
-				},
-			}
-
-			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil,
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil,
 				provisioning.ClusterServiceUpdateSignal(updateSignal),
 			)
 
@@ -1759,7 +1709,291 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			updateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
 
 			// Run test
-			err := clusterSvc.DeleteByName(context.Background(), tc.nameArg, tc.deleteMode)
+			err := clusterSvc.DeleteByName(context.Background(), tc.nameArg, tc.force)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.True(t, signalHandlerCalled, "expected signal handler to called, but it was not OR no call was expected, but it got called")
+		})
+	}
+}
+
+func TestDeleteAndFactoryResetByName(t *testing.T) {
+	updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
+
+	tests := []struct {
+		name             string
+		nameArg          string
+		tokenArg         *uuid.UUID
+		tokenSeedNameArg *string
+
+		serverSvcGetAllWithFilter         provisioning.Servers
+		serverSvcGetAllWithFilterErr      error
+		clientPingErr                     error
+		clientSystemFactoryResetErr       error
+		tokenSvcGetTokenSeedByName        *provisioning.TokenSeed
+		tokenSvcGetTokenSeedByNameErr     error
+		tokenSvcCreate                    provisioning.Token
+		tokenSvcCreateErr                 error
+		tokenSvcGetTokenProviderConfig    *api.TokenProviderConfig
+		tokenSvcGetTokenProviderConfigErr error
+		repoDeleteByNameErr               error
+
+		assertErr     require.ErrorAssertionFunc
+		signalHandler func(t *testing.T, called *bool) func(ctx context.Context, cum provisioning.ClusterUpdateMessage)
+	}{
+		{
+			name:    "success",
+			nameArg: "one",
+
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+				{},
+			},
+			tokenSvcCreate: provisioning.Token{
+				UUID: uuidgen.FromPattern(t, "1"),
+			},
+			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{
+				Version: "1",
+				SystemProviderConfig: incusosapi.SystemProviderConfig{
+					Name: "operations-center",
+					Config: map[string]string{
+						"server_url":   "https://1.2.3.4:8443",
+						"server_token": uuidgen.FromPattern(t, "1").String(),
+					},
+				},
+			},
+
+			assertErr:     require.NoError,
+			signalHandler: requireCallSignalHandler,
+		},
+		{
+			name:     "success - with token",
+			nameArg:  "one",
+			tokenArg: ptr.To(uuidgen.FromPattern(t, "1")),
+
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+				{},
+			},
+			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{
+				Version: "1",
+				SystemProviderConfig: incusosapi.SystemProviderConfig{
+					Name: "operations-center",
+					Config: map[string]string{
+						"server_url":   "https://1.2.3.4:8443",
+						"server_token": uuidgen.FromPattern(t, "1").String(),
+					},
+				},
+			},
+
+			assertErr:     require.NoError,
+			signalHandler: requireCallSignalHandler,
+		},
+		{
+			name:             "success - with token and tokenSeedName",
+			nameArg:          "one",
+			tokenArg:         ptr.To(uuidgen.FromPattern(t, "1")),
+			tokenSeedNameArg: ptr.To("token-seed-name"),
+
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+				{},
+			},
+			tokenSvcGetTokenSeedByName: &provisioning.TokenSeed{
+				Token: uuidgen.FromPattern(t, "1"),
+			},
+			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{
+				Version: "1",
+				SystemProviderConfig: incusosapi.SystemProviderConfig{
+					Name: "operations-center",
+					Config: map[string]string{
+						"server_url":   "https://1.2.3.4:8443",
+						"server_token": uuidgen.FromPattern(t, "1").String(),
+					},
+				},
+			},
+
+			assertErr:     require.NoError,
+			signalHandler: requireCallSignalHandler,
+		},
+
+		{
+			name:    "error - name empty",
+			nameArg: "", // invalid
+
+			serverSvcGetAllWithFilterErr: boom.Error,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, domain.ErrOperationNotPermitted, a...)
+			},
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:    "error - serverSvc.GetAllWithFilter",
+			nameArg: "one",
+
+			serverSvcGetAllWithFilterErr: boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:    "error - client.Ping",
+			nameArg: "one",
+
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+				{},
+			},
+			clientPingErr: boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:             "error - tokenSvc.GetTokenSeedByName",
+			nameArg:          "one",
+			tokenArg:         ptr.To(uuidgen.FromPattern(t, "1")),
+			tokenSeedNameArg: ptr.To("token-seed-name"),
+
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+				{},
+			},
+			tokenSvcGetTokenSeedByNameErr: boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:    "error - tokenSvc.Create",
+			nameArg: "one",
+
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+				{},
+			},
+			tokenSvcCreateErr: boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:    "error - tokenSvc.GetTokenProviderConfig",
+			nameArg: "one",
+
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+				{},
+			},
+			tokenSvcCreate: provisioning.Token{
+				UUID: uuidgen.FromPattern(t, "1"),
+			},
+			tokenSvcGetTokenProviderConfigErr: boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:    "error - client.SystemFactoryReset",
+			nameArg: "one",
+
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+				{},
+			},
+			tokenSvcCreate: provisioning.Token{
+				UUID: uuidgen.FromPattern(t, "1"),
+			},
+			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{
+				Version: "1",
+				SystemProviderConfig: incusosapi.SystemProviderConfig{
+					Name: "operations-center",
+					Config: map[string]string{
+						"server_url":   "https://1.2.3.4:8443",
+						"server_token": uuidgen.FromPattern(t, "1").String(),
+					},
+				},
+			},
+			clientSystemFactoryResetErr: boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
+			name:    "error - repo.DeleteByName",
+			nameArg: "one",
+
+			serverSvcGetAllWithFilter: provisioning.Servers{
+				{},
+				{},
+			},
+			tokenSvcCreate: provisioning.Token{
+				UUID: uuidgen.FromPattern(t, "1"),
+			},
+			tokenSvcGetTokenProviderConfig: &api.TokenProviderConfig{
+				Version: "1",
+				SystemProviderConfig: incusosapi.SystemProviderConfig{
+					Name: "operations-center",
+					Config: map[string]string{
+						"server_url":   "https://1.2.3.4:8443",
+						"server_token": uuidgen.FromPattern(t, "1").String(),
+					},
+				},
+			},
+			repoDeleteByNameErr: boom.Error,
+
+			assertErr:     boom.ErrorIs,
+			signalHandler: requireNoCallSignalHandler,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.ClusterRepoMock{
+				DeleteByNameFunc: func(ctx context.Context, name string) error {
+					return tc.repoDeleteByNameErr
+				},
+			}
+
+			serverSvc := &serviceMock.ServerServiceMock{
+				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
+					return tc.serverSvcGetAllWithFilter, tc.serverSvcGetAllWithFilterErr
+				},
+			}
+
+			tokenSvc := &serviceMock.TokenServiceMock{
+				GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
+					return tc.tokenSvcGetTokenSeedByName, tc.tokenSvcGetTokenSeedByNameErr
+				},
+				CreateFunc: func(ctx context.Context, token provisioning.Token) (provisioning.Token, error) {
+					return tc.tokenSvcCreate, tc.tokenSvcCreateErr
+				},
+				GetTokenProviderConfigFunc: func(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
+					return tc.tokenSvcGetTokenProviderConfig, tc.tokenSvcGetTokenProviderConfigErr
+				},
+			}
+
+			client := &adapterMock.ClusterClientPortMock{
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return tc.clientPingErr
+				},
+				SystemFactoryResetFunc: func(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error {
+					return tc.clientSystemFactoryResetErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, tokenSvc, nil, nil,
+				provisioning.ClusterServiceUpdateSignal(updateSignal),
+			)
+
+			var signalHandlerCalled bool
+			updateSignal.AddListener(tc.signalHandler(t, &signalHandlerCalled))
+
+			// Run test
+			err := clusterSvc.DeleteAndFactoryResetByName(context.Background(), tc.nameArg, tc.tokenArg, tc.tokenSeedNameArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1847,7 +2081,7 @@ func TestClusterService_ResyncInventory(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil)
 			clusterSvc.SetInventorySyncers(map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer})
 
 			// Run test
@@ -1898,7 +2132,7 @@ func TestClusterService_ResyncInventoryByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(nil, nil, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(nil, nil, nil, nil, nil, nil, nil)
 			clusterSvc.SetInventorySyncers(map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer})
 
 			// Run test
@@ -2209,7 +2443,7 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, map[domain.ResourceType]provisioning.InventorySyncer{domain.ResourceTypeImage: inventorySyncer}, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, map[domain.ResourceType]provisioning.InventorySyncer{domain.ResourceTypeImage: inventorySyncer}, nil)
 
 			// Run test
 			err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
@@ -2330,7 +2564,7 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer}, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, map[domain.ResourceType]provisioning.InventorySyncer{"test": inventorySyncer}, nil)
 
 			// Run test
 			err = clusterSvc.StartLifecycleEventsMonitor(cancableCtx)
@@ -2465,7 +2699,7 @@ func TestClusterService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil)
+			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, nil, nil, nil)
 
 			// Run test
 			err := clusterSvc.UpdateCertificate(context.Background(), "cluster", tc.certificatePEM, tc.keyPEM)
@@ -2533,7 +2767,7 @@ func TestClusterService_GetClusterArtifactAll(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil, nil)
 
 			// Run test
 			artifacts, err := clusterSvc.GetClusterArtifactAll(context.Background(), tc.argClusterName)
@@ -2592,7 +2826,7 @@ func TestClusterService_GetClusterArtifactAllNames(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil, nil)
 
 			// Run test
 			names, err := clusterSvc.GetClusterArtifactAllNames(context.Background(), tc.argClusterName)
@@ -2668,7 +2902,7 @@ func TestClusterService_GetClusterArtifactByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil, nil)
 
 			// Run test
 			got, err := clusterSvc.GetClusterArtifactByName(context.Background(), tc.argClusterName, tc.argArtifactName)
@@ -2768,7 +3002,7 @@ func TestClusterService_GetClusterArtifactFileByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil, nil)
 
 			// Run test
 			got, err := clusterSvc.GetClusterArtifactFileByName(context.Background(), tc.argClusterName, tc.argArtifactName, tc.argFilename)
@@ -2833,7 +3067,7 @@ func TestClusterService_GetClusterArtifactArchiveByName(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil)
+			clusterSvc := provisioning.NewClusterService(nil, artifactsRepo, nil, nil, nil, nil, nil)
 
 			zipArchiveType, ok := provisioning.ClusterArtifactArchiveTypes[provisioning.ClusterArtifactArchiveTypeExtZip]
 			require.True(t, ok)
