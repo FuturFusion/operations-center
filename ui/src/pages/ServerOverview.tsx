@@ -70,11 +70,11 @@ const ServerOverview = () => {
         <div className="col-2 detail-table-header">Connection URL</div>
         <div className="col-10 detail-table-cell">
           <Link
-            to={`${server?.connection_url}`}
+            to={`${server?.public_connection_url || server?.connection_url}`}
             target="_blank"
             className="data-table-link"
           >
-            {server?.connection_url}
+            {server?.public_connection_url || server?.connection_url}
           </Link>
         </div>
       </div>

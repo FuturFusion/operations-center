@@ -4,6 +4,7 @@ import {
   fetchServer,
   fetchSystemNetwork,
   renameServer,
+  updateServer,
   updateSystemNetwork,
 } from "api/server";
 import ServerForm from "components/ServerForm";
@@ -16,7 +17,7 @@ const ServerConfiguration = () => {
   const { notify } = useNotification();
   const navigate = useNavigate();
 
-  const onSubmit = (values: ServerFormValues) => {
+  const onSubmit = async (values: ServerFormValues) => {
     let networkConfig = {};
     try {
       networkConfig = YAML.parse(values.network_configuration);
@@ -25,16 +26,43 @@ const ServerConfiguration = () => {
       return;
     }
 
-    updateSystemNetwork(values.name, JSON.stringify(networkConfig, null, 2))
+    const networkUpdateSuccess = await updateSystemNetwork(
+      values.name,
+      JSON.stringify(networkConfig, null, 2),
+    )
       .then((response) => {
         if (response.error_code == 0) {
-          notify.success(`Server ${values.name} updated`);
-          navigate(`/ui/provisioning/servers/${values.name}/configuration`);
-          return;
+          return true;
         }
+
         notify.error(
           `Error during network configuration update: ${response.error}`,
         );
+        return false;
+      })
+      .catch((e) => {
+        notify.error(`Error during server update: ${e}`);
+        return false;
+      });
+
+    if (!networkUpdateSuccess) {
+      return;
+    }
+
+    updateServer(
+      values.name,
+      JSON.stringify(
+        { public_connection_url: values.public_connection_url },
+        null,
+        2,
+      ),
+    )
+      .then((response) => {
+        if (response.error_code == 0) {
+          notify.success(`Server ${values.name} updated`);
+          return;
+        }
+        notify.error(`Error during server update: ${response.error}`);
       })
       .catch((e) => {
         notify.error(`Error during server update: ${e}`);

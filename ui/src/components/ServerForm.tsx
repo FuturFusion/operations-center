@@ -19,6 +19,7 @@ const ServerForm: FC<Props> = ({
 }) => {
   const formikInitialValues = {
     name: server?.name || "",
+    public_connection_url: server?.public_connection_url || "",
     network_configuration: YAML.stringify(systemNetwork, null, 2),
   };
 
@@ -56,6 +57,16 @@ const ServerForm: FC<Props> = ({
                 Rename
               </Button>
             </div>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="public_connection_url">
+            <Form.Label>Connection URL</Form.Label>
+            <Form.Control
+              type="text"
+              name="public_connection_url"
+              value={formik.values.public_connection_url}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
           </Form.Group>
           <Form.Group className="mb-3" controlId="network_configuration">
             <Form.Label>Network configuration</Form.Label>

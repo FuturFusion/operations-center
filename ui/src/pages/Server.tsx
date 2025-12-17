@@ -29,6 +29,8 @@ const Server = () => {
 
   const headers = ["Name", "Cluster", "Connection URL", "Type", "Status"];
   const rows = servers.map((item) => {
+    const connectionURL = item.public_connection_url || item.connection_url;
+
     return [
       {
         content: (
@@ -48,14 +50,14 @@ const Server = () => {
       {
         content: (
           <Link
-            to={`${item.connection_url}`}
+            to={`${connectionURL}`}
             target="_blank"
             className="data-table-link"
           >
-            {item.connection_url}
+            {connectionURL}
           </Link>
         ),
-        sortKey: item.connection_url,
+        sortKey: connectionURL,
       },
       {
         content: ServerTypeString[item.server_type as ServerTypeKey],
