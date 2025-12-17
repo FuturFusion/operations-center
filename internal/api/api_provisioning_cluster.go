@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/operations-center/internal/authz"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/ptr"
@@ -388,6 +390,16 @@ func (c *clusterHandler) clusterPut(r *http.Request) response.Response {
 //	        - factory-reset: everything from "force" and additionally a factory reset is performed on every server, that is part of the cluster.
 //	    type: string
 //	    example: normal
+//	  - in: query
+//	    name: token
+//	    description: Token UUID
+//	    type: string
+//	    example: f1710b8e-cd77-4336-897a-96ff0e0ed529
+//	  - in: query
+//	    name: tokenSeedName
+//	    description: Token seed name for the given token.
+//	    type: string
+//	    example: token-seed-name
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -407,7 +419,33 @@ func (c *clusterHandler) clusterDelete(r *http.Request) response.Response {
 		deleteMode = api.ClusterDeleteModeNormal
 	}
 
-	err := c.service.DeleteByName(r.Context(), name, deleteMode)
+	if deleteMode == api.ClusterDeleteModeFactoryReset {
+		var tokenID *uuid.UUID
+		var tokenSeedName *string
+
+		if r.URL.Query().Get("tokenSeedName") != "" {
+			tokenSeedName = ptr.To(r.URL.Query().Get("tokenSeedName"))
+		}
+
+		if r.URL.Query().Get("token") != "" {
+			token, err := uuid.Parse(r.URL.Query().Get("token"))
+			if err != nil {
+				tokenID = nil
+				tokenSeedName = nil
+			} else {
+				tokenID = &token
+			}
+		}
+
+		err := c.service.DeleteAndFactoryResetByName(r.Context(), name, tokenID, tokenSeedName)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		return response.EmptySyncResponse
+	}
+
+	err := c.service.DeleteByName(r.Context(), name, deleteMode == api.ClusterDeleteModeForce)
 	if err != nil {
 		return response.SmartError(err)
 	}
