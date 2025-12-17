@@ -3,6 +3,9 @@
 package inventory
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -13,16 +16,39 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+type IncusNetworkIntegrationWrapper struct {
+	incusapi.NetworkIntegration `json:"-"`
+}
+
+func (w IncusNetworkIntegrationWrapper) Value() (driver.Value, error) {
+	return json.Marshal(w.NetworkIntegration)
+}
+
+func (w *IncusNetworkIntegrationWrapper) Scan(value interface{}) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid network_integration")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return json.Unmarshal([]byte(v), &w.NetworkIntegration)
+	case []byte:
+		return json.Unmarshal(v, &w.NetworkIntegration)
+	default:
+		return fmt.Errorf("type %T is not supported for network_integration", value)
+	}
+}
+
 //
 //generate-expr: NetworkIntegration
 
 type NetworkIntegration struct {
-	ID          int                         `json:"-"`
-	UUID        uuid.UUID                   `json:"uuid"`
-	Cluster     string                      `json:"cluster"`
-	Name        string                      `json:"name"`
-	Object      incusapi.NetworkIntegration `json:"object"`
-	LastUpdated time.Time                   `json:"last_updated"`
+	ID          int                            `json:"-"`
+	UUID        uuid.UUID                      `json:"uuid"          db:"primary=yes"`
+	Cluster     string                         `json:"cluster"       db:"leftjoin=clusters.name"`
+	Name        string                         `json:"name"`
+	Object      IncusNetworkIntegrationWrapper `json:"object"`
+	LastUpdated time.Time                      `json:"last_updated"  db:"update_timestamp"`
 }
 
 func (m *NetworkIntegration) DeriveUUID() *NetworkIntegration {
@@ -57,12 +83,17 @@ func (m NetworkIntegration) Validate() error {
 type NetworkIntegrations []NetworkIntegration
 
 type NetworkIntegrationFilter struct {
+	UUID       *uuid.UUID
 	Cluster    *string
 	Name       *string
-	Expression *string
+	Expression *string `db:"ignore"`
 }
 
 func (f NetworkIntegrationFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.UUID != nil {
+		query.Add("uuid", f.UUID.String())
+	}
+
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
 	}

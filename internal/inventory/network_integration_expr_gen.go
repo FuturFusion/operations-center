@@ -21,13 +21,17 @@ type ExprApiNetworkIntegrationPut struct {
 	Config      api.ConfigMap `json:"config" yaml:"config" expr:"config"`
 }
 
+type ExprIncusNetworkIntegrationWrapper struct {
+	ExprApiNetworkIntegration `json:"-" expr:"-"`
+}
+
 type ExprNetworkIntegration struct {
-	ID          int                       `json:"-" expr:"-"`
-	UUID        uuid.UUID                 `json:"uuid" expr:"uuid"`
-	Cluster     string                    `json:"cluster" expr:"cluster"`
-	Name        string                    `json:"name" expr:"name"`
-	Object      ExprApiNetworkIntegration `json:"object" expr:"object"`
-	LastUpdated time.Time                 `json:"last_updated" expr:"last_updated"`
+	ID          int                                `json:"-" expr:"-"`
+	UUID        uuid.UUID                          `json:"uuid"          db:"primary=yes" expr:"uuid"`
+	Cluster     string                             `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
+	Name        string                             `json:"name" expr:"name"`
+	Object      ExprIncusNetworkIntegrationWrapper `json:"object" expr:"object"`
+	LastUpdated time.Time                          `json:"last_updated"  db:"update_timestamp" expr:"last_updated"`
 }
 
 func ToExprApiNetworkIntegration(n api.NetworkIntegration) ExprApiNetworkIntegration {
@@ -46,13 +50,19 @@ func ToExprApiNetworkIntegrationPut(n api.NetworkIntegrationPut) ExprApiNetworkI
 	}
 }
 
+func ToExprIncusNetworkIntegrationWrapper(i IncusNetworkIntegrationWrapper) ExprIncusNetworkIntegrationWrapper {
+	return ExprIncusNetworkIntegrationWrapper{
+		ExprApiNetworkIntegration: ToExprApiNetworkIntegration(i.NetworkIntegration),
+	}
+}
+
 func ToExprNetworkIntegration(n NetworkIntegration) ExprNetworkIntegration {
 	return ExprNetworkIntegration{
 		ID:          n.ID,
 		UUID:        n.UUID,
 		Cluster:     n.Cluster,
 		Name:        n.Name,
-		Object:      ToExprApiNetworkIntegration(n.Object),
+		Object:      ToExprIncusNetworkIntegrationWrapper(n.Object),
 		LastUpdated: n.LastUpdated,
 	}
 }

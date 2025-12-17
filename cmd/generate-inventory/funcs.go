@@ -21,7 +21,7 @@ var acronyms = map[string]struct{}{
 // If a segment (with the exception of the first one) is a known acronym,
 // it is returned in all upper case.
 func CamelCase(s string) string {
-	words := capitalizedWords(s)
+	words := capitalizedWords(s, true)
 	words[0] = strings.ToLower(words[0])
 	return strings.Join(words, "")
 }
@@ -29,24 +29,29 @@ func CamelCase(s string) string {
 // PascalCase converts to pascal case ("foo_bar" -> "FooBar").
 // If a segment is a known acronym, it is returned in all upper case.
 func PascalCase(s string) string {
-	return strings.Join(capitalizedWords(s), "")
+	return strings.Join(capitalizedWords(s, true), "")
+}
+
+// PascalCaseWithoutAcronyms converts to pascal case ("foo_bar" -> "FooBar").
+func PascalCaseWithoutAcronyms(s string) string {
+	return strings.Join(capitalizedWords(s, false), "")
 }
 
 // KebabCase converts to kebab case ("foo_bar" -> "foo-bar").
 func KebabCase(s string) string {
-	return strings.ToLower(strings.Join(capitalizedWords(s), "-"))
+	return strings.ToLower(strings.Join(capitalizedWords(s, true), "-"))
 }
 
 // TitleCase converts to title case ("foo_bar" -> "Foo Bar").
 // If a segment is a known acronym, it is returned in all upper case.
 func TitleCase(s string) string {
-	return strings.Join(capitalizedWords(s), " ")
+	return strings.Join(capitalizedWords(s, true), " ")
 }
 
 // Words converts to space delimited words ("foo_bar" -> "foo bar").
 // If a segment is a known acronym, it is returned in all upper case.
 func Words(s string) string {
-	words := capitalizedWords(s)
+	words := capitalizedWords(s, true)
 	for i, w := range words {
 		runes := []rune(w)
 		if len(runes) > 1 && unicode.IsUpper(runes[1]) {
@@ -59,13 +64,15 @@ func Words(s string) string {
 	return strings.Join(words, " ")
 }
 
-func capitalizedWords(s string) []string {
+func capitalizedWords(s string, withAcronyms bool) []string {
 	words := strings.Split(s, "_")
 	for i := range words {
-		_, ok := acronyms[strings.ToLower(words[i])]
-		if ok {
-			words[i] = strings.ToUpper(words[i])
-			continue
+		if withAcronyms {
+			_, ok := acronyms[strings.ToLower(words[i])]
+			if ok {
+				words[i] = strings.ToUpper(words[i])
+				continue
+			}
 		}
 
 		// Plural?

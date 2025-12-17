@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -87,7 +86,7 @@ server-two
 		Cluster:     "one",
 		NetworkName: "parent one",
 		Name:        "one",
-		Object:      incusapi.NetworkPeer{},
+		Object:      inventory.IncusNetworkPeerWrapper{},
 		LastUpdated: time.Now(),
 	}
 
@@ -97,7 +96,7 @@ server-two
 		Cluster:     "two",
 		NetworkName: "parent two",
 		Name:        "two",
-		Object:      incusapi.NetworkPeer{},
+		Object:      inventory.IncusNetworkPeerWrapper{},
 		LastUpdated: time.Now(),
 	}
 
@@ -162,7 +161,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server, project, network and name.
 	networkPeerUUIDs, err = networkPeer.GetAllUUIDsWithFilter(ctx, inventory.NetworkPeerFilter{
 		Cluster:     ptr.To("one"),
-		Project:     ptr.To("one"),
+		ProjectName: ptr.To("one"),
 		NetworkName: ptr.To("parent one"),
 		Name:        ptr.To("one"),
 	})
@@ -173,7 +172,7 @@ server-two
 	// Ensure we have one entry with filter for cluster, server, project, network and name.
 	dbNetworkPeer, err = networkPeer.GetAllWithFilter(ctx, inventory.NetworkPeerFilter{
 		Cluster:     ptr.To("one"),
-		Project:     ptr.To("one"),
+		ProjectName: ptr.To("one"),
 		NetworkName: ptr.To("parent one"),
 		Name:        ptr.To("one"),
 	})

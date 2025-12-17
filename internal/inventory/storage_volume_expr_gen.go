@@ -63,17 +63,21 @@ type ExprApiStorageVolumeStateUsage struct {
 	Total int64  `json:"total" yaml:"total" expr:"total"`
 }
 
+type ExprIncusStorageVolumeFullWrapper struct {
+	ExprApiStorageVolumeFull `json:"-" expr:"-"`
+}
+
 type ExprStorageVolume struct {
-	ID              int                      `json:"-" expr:"-"`
-	UUID            uuid.UUID                `json:"uuid" expr:"uuid"`
-	Cluster         string                   `json:"cluster" expr:"cluster"`
-	Server          string                   `json:"server" expr:"server"`
-	ProjectName     string                   `json:"project" expr:"project"`
-	StoragePoolName string                   `json:"storage_pool_name" expr:"storage_pool_name"`
-	Name            string                   `json:"name" expr:"name"`
-	Type            string                   `json:"type" expr:"type"`
-	Object          ExprApiStorageVolumeFull `json:"object" expr:"object"`
-	LastUpdated     time.Time                `json:"last_updated" expr:"last_updated"`
+	ID              int                               `json:"-" expr:"-"`
+	UUID            uuid.UUID                         `json:"uuid"          db:"primary=yes" expr:"uuid"`
+	Cluster         string                            `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
+	Server          string                            `json:"server"        db:"leftjoin=servers.name" expr:"server"`
+	ProjectName     string                            `json:"project" expr:"project"`
+	StoragePoolName string                            `json:"storage_pool_name" db:"joinon=networks.name" expr:"storage_pool_name"`
+	Name            string                            `json:"name" expr:"name"`
+	Type            string                            `json:"type" expr:"type"`
+	Object          ExprIncusStorageVolumeFullWrapper `json:"object" expr:"object"`
+	LastUpdated     time.Time                         `json:"last_updated"  db:"update_timestamp" expr:"last_updated"`
 }
 
 func ToExprApiStorageVolume(s api.StorageVolume) ExprApiStorageVolume {
@@ -146,6 +150,12 @@ func ToExprApiStorageVolumeStateUsage(s api.StorageVolumeStateUsage) ExprApiStor
 	}
 }
 
+func ToExprIncusStorageVolumeFullWrapper(i IncusStorageVolumeFullWrapper) ExprIncusStorageVolumeFullWrapper {
+	return ExprIncusStorageVolumeFullWrapper{
+		ExprApiStorageVolumeFull: ToExprApiStorageVolumeFull(i.StorageVolumeFull),
+	}
+}
+
 func ToExprStorageVolume(s StorageVolume) ExprStorageVolume {
 	return ExprStorageVolume{
 		ID:              s.ID,
@@ -156,7 +166,7 @@ func ToExprStorageVolume(s StorageVolume) ExprStorageVolume {
 		StoragePoolName: s.StoragePoolName,
 		Name:            s.Name,
 		Type:            s.Type,
-		Object:          ToExprApiStorageVolumeFull(s.Object),
+		Object:          ToExprIncusStorageVolumeFullWrapper(s.Object),
 		LastUpdated:     s.LastUpdated,
 	}
 }

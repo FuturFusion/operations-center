@@ -47,6 +47,11 @@ var targets = []struct {
 		TargetFileType: FileTypeGo,
 	},
 	{
+		TemplateName:   "client_test.gotmpl",
+		TargetName:     "internal/client/inventory_{{ .Name }}_gen_test.go",
+		TargetFileType: FileTypeGo,
+	},
+	{
 		TemplateName:   "client.gotmpl",
 		TargetName:     "internal/client/inventory_{{ .Name }}_gen.go",
 		TargetFileType: FileTypeGo,
@@ -74,6 +79,11 @@ var targets = []struct {
 	{
 		TemplateName:   "server_incus.gotmpl",
 		TargetName:     "internal/inventory/server/incus/{{ .Name }}_gen.go",
+		TargetFileType: FileTypeGo,
+	},
+	{
+		TemplateName:   "repo_sqlite_entities.gotmpl",
+		TargetName:     "internal/inventory/repo/sqlite/entities/{{ .Name }}_gen.go",
 		TargetFileType: FileTypeGo,
 	},
 	{
@@ -241,6 +251,7 @@ func main() {
 
 	funcsMap := sprig.FuncMap()
 	funcsMap["pascalcase"] = PascalCase
+	funcsMap["pascalcaseWithoutAcronyms"] = PascalCaseWithoutAcronyms
 	funcsMap["camelcase"] = CamelCase
 	funcsMap["kebabcase"] = KebabCase
 	funcsMap["titlecase"] = TitleCase

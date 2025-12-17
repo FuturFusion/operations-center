@@ -20,7 +20,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 				Cluster:     image.Cluster,
 				ProjectName: image.ProjectName,
 				Name:        image.Name,
-				Object:      image.Object,
+				Object:      image.Object.Image,
 			})
 		}
 
@@ -30,7 +30,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 				Server:      instance.Server,
 				ProjectName: instance.ProjectName,
 				Name:        instance.Name,
-				Object:      instance.Object,
+				Object:      instance.Object.InstanceFull,
 			})
 		}
 
@@ -39,7 +39,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 				Cluster:     network.Cluster,
 				ProjectName: network.ProjectName,
 				Name:        network.Name,
-				Object:      network.Object,
+				Object:      network.Object.Network,
 			})
 		}
 
@@ -48,7 +48,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 				Cluster:     networkACL.Cluster,
 				ProjectName: networkACL.ProjectName,
 				Name:        networkACL.Name,
-				Object:      networkACL.Object,
+				Object:      networkACL.Object.NetworkACL,
 			})
 		}
 
@@ -57,7 +57,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 				Cluster:     networkAddressSet.Cluster,
 				ProjectName: networkAddressSet.ProjectName,
 				Name:        networkAddressSet.Name,
-				Object:      networkAddressSet.Object,
+				Object:      networkAddressSet.Object.NetworkAddressSet,
 			})
 		}
 
@@ -67,7 +67,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 				ProjectName: networkForward.ProjectName,
 				NetworkName: networkForward.NetworkName,
 				Name:        networkForward.Name,
-				Object:      networkForward.Object,
+				Object:      networkForward.Object.NetworkForward,
 			})
 		}
 
@@ -75,7 +75,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 			resultItem.NetworkIntegrations = append(resultItem.NetworkIntegrations, api.NetworkIntegration{
 				Cluster: networkIntegration.Cluster,
 				Name:    networkIntegration.Name,
-				Object:  networkIntegration.Object,
+				Object:  networkIntegration.Object.NetworkIntegration,
 			})
 		}
 
@@ -85,7 +85,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 				ProjectName: networkLoadBalancer.ProjectName,
 				NetworkName: networkLoadBalancer.NetworkName,
 				Name:        networkLoadBalancer.Name,
-				Object:      networkLoadBalancer.Object,
+				Object:      networkLoadBalancer.Object.NetworkLoadBalancer,
 			})
 		}
 
@@ -95,7 +95,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 				ProjectName: networkPeer.ProjectName,
 				NetworkName: networkPeer.NetworkName,
 				Name:        networkPeer.Name,
-				Object:      networkPeer.Object,
+				Object:      networkPeer.Object.NetworkPeer,
 			})
 		}
 
@@ -104,7 +104,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 				Cluster:     networkZone.Cluster,
 				ProjectName: networkZone.ProjectName,
 				Name:        networkZone.Name,
-				Object:      networkZone.Object,
+				Object:      networkZone.Object.NetworkZone,
 			})
 		}
 
@@ -113,7 +113,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 				Cluster:     profile.Cluster,
 				ProjectName: profile.ProjectName,
 				Name:        profile.Name,
-				Object:      profile.Object,
+				Object:      profile.Object.Profile,
 			})
 		}
 
@@ -121,7 +121,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 			resultItem.Projects = append(resultItem.Projects, api.Project{
 				Cluster: project.Cluster,
 				Name:    project.Name,
-				Object:  project.Object,
+				Object:  project.Object.Project,
 			})
 		}
 
@@ -132,7 +132,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 				ProjectName:     storageBucket.ProjectName,
 				StoragePoolName: storageBucket.StoragePoolName,
 				Name:            storageBucket.Name,
-				Object:          storageBucket.Object,
+				Object:          storageBucket.Object.StorageBucketFull,
 			})
 		}
 
@@ -140,7 +140,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 			resultItem.StoragePools = append(resultItem.StoragePools, api.StoragePool{
 				Cluster: storagePool.Cluster,
 				Name:    storagePool.Name,
-				Object:  storagePool.Object,
+				Object:  storagePool.Object.StoragePool,
 			})
 		}
 
@@ -151,7 +151,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 				ProjectName:     storageVolume.ProjectName,
 				StoragePoolName: storageVolume.StoragePoolName,
 				Name:            storageVolume.Name,
-				Object:          storageVolume.Object,
+				Object:          storageVolume.Object.StorageVolumeFull,
 			})
 		}
 

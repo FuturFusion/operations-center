@@ -5,23 +5,100 @@ package inventory_test
 import (
 	"testing"
 
+	"github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
+
+func TestIncusNetworkIntegrationWrapper_Value(t *testing.T) {
+	tests := []struct {
+		name string
+
+		networkIntegration inventory.IncusNetworkIntegrationWrapper
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+
+			networkIntegration: inventory.IncusNetworkIntegrationWrapper{
+				NetworkIntegration: api.NetworkIntegration{},
+			},
+
+			assertErr: require.NoError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := tc.networkIntegration.Value()
+
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestIncusNetworkIntegrationWrapper_Scan(t *testing.T) {
+	tests := []struct {
+		name string
+
+		value any
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - []byte",
+
+			value: []byte(`{}`),
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - string",
+
+			value: `{}`,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - nil",
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - unsupported type",
+
+			value: 1, // not supported for IncusNetworkIntegrationWrapper
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			updateFiles := inventory.IncusNetworkIntegrationWrapper{}
+
+			err := updateFiles.Scan(tc.value)
+
+			tc.assertErr(t, err)
+		})
+	}
+}
 
 func TestNetworkIntegration_Validate(t *testing.T) {
 	tests := []struct {
-		name  string
-		image *inventory.NetworkIntegration
+		name               string
+		networkIntegration *inventory.NetworkIntegration
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "valid",
-			image: (&inventory.NetworkIntegration{
+			networkIntegration: (&inventory.NetworkIntegration{
 				ID:      1,
 				Cluster: "one",
 				Name:    "one",
@@ -31,7 +108,7 @@ func TestNetworkIntegration_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid cluster ID",
-			image: (&inventory.NetworkIntegration{
+			networkIntegration: (&inventory.NetworkIntegration{
 				ID:      1,
 				Cluster: "", // invalid
 				Name:    "one",
@@ -44,7 +121,7 @@ func TestNetworkIntegration_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid name",
-			image: (&inventory.NetworkIntegration{
+			networkIntegration: (&inventory.NetworkIntegration{
 				ID:      1,
 				Cluster: "one",
 				Name:    "", // invalid
@@ -57,7 +134,7 @@ func TestNetworkIntegration_Validate(t *testing.T) {
 		},
 		{
 			name: "error - UUID not derived",
-			image: &inventory.NetworkIntegration{
+			networkIntegration: &inventory.NetworkIntegration{
 				ID:      1,
 				Cluster: "one",
 				Name:    "one",
@@ -72,7 +149,7 @@ func TestNetworkIntegration_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.image.Validate()
+			err := tc.networkIntegration.Validate()
 
 			tc.assertErr(t, err)
 		})
@@ -95,12 +172,13 @@ func TestNetworkIntegration_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: inventory.NetworkIntegrationFilter{
+				UUID:       ptr.To(uuidgen.FromPattern(t, "1")),
 				Cluster:    ptr.To("cluster"),
 				Name:       ptr.To("name"),
 				Expression: ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true&name=name`,
+			want: `cluster=cluster&filter=true&name=name&uuid=11111111-1111-1111-1111-111111111111`,
 		},
 	}
 

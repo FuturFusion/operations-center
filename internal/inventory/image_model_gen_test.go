@@ -5,12 +5,89 @@ package inventory_test
 import (
 	"testing"
 
+	"github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
+
+func TestIncusImageWrapper_Value(t *testing.T) {
+	tests := []struct {
+		name string
+
+		image inventory.IncusImageWrapper
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+
+			image: inventory.IncusImageWrapper{
+				Image: api.Image{},
+			},
+
+			assertErr: require.NoError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := tc.image.Value()
+
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestIncusImageWrapper_Scan(t *testing.T) {
+	tests := []struct {
+		name string
+
+		value any
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - []byte",
+
+			value: []byte(`{}`),
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - string",
+
+			value: `{}`,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - nil",
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - unsupported type",
+
+			value: 1, // not supported for IncusImageWrapper
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			updateFiles := inventory.IncusImageWrapper{}
+
+			err := updateFiles.Scan(tc.value)
+
+			tc.assertErr(t, err)
+		})
+	}
+}
 
 func TestImage_Validate(t *testing.T) {
 	tests := []struct {
@@ -113,13 +190,14 @@ func TestImage_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: inventory.ImageFilter{
-				Cluster:    ptr.To("cluster"),
-				Project:    ptr.To("project"),
-				Name:       ptr.To("name"),
-				Expression: ptr.To("true"),
+				UUID:        ptr.To(uuidgen.FromPattern(t, "1")),
+				Cluster:     ptr.To("cluster"),
+				ProjectName: ptr.To("project"),
+				Name:        ptr.To("name"),
+				Expression:  ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true&name=name&project=project`,
+			want: `cluster=cluster&filter=true&name=name&project=project&uuid=11111111-1111-1111-1111-111111111111`,
 		},
 	}
 

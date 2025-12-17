@@ -137,15 +137,19 @@ type ExprApiInstanceStateOSInfo struct {
 	FQDN          string `json:"fqdn" yaml:"fqdn" expr:"fqdn"`
 }
 
+type ExprIncusInstanceFullWrapper struct {
+	ExprApiInstanceFull `json:"-" expr:"-"`
+}
+
 type ExprInstance struct {
-	ID          int                 `json:"-" expr:"-"`
-	UUID        uuid.UUID           `json:"uuid" expr:"uuid"`
-	Cluster     string              `json:"cluster" expr:"cluster"`
-	Server      string              `json:"server" expr:"server"`
-	ProjectName string              `json:"project" expr:"project"`
-	Name        string              `json:"name" expr:"name"`
-	Object      ExprApiInstanceFull `json:"object" expr:"object"`
-	LastUpdated time.Time           `json:"last_updated" expr:"last_updated"`
+	ID          int                          `json:"-" expr:"-"`
+	UUID        uuid.UUID                    `json:"uuid"          db:"primary=yes" expr:"uuid"`
+	Cluster     string                       `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
+	Server      string                       `json:"server"        db:"leftjoin=servers.name" expr:"server"`
+	ProjectName string                       `json:"project" expr:"project"`
+	Name        string                       `json:"name" expr:"name"`
+	Object      ExprIncusInstanceFullWrapper `json:"object" expr:"object"`
+	LastUpdated time.Time                    `json:"last_updated"  db:"update_timestamp" expr:"last_updated"`
 }
 
 func ToExprApiInstance(i api.Instance) ExprApiInstance {
@@ -304,6 +308,12 @@ func ToExprApiInstanceStateOSInfo(i api.InstanceStateOSInfo) ExprApiInstanceStat
 	}
 }
 
+func ToExprIncusInstanceFullWrapper(i IncusInstanceFullWrapper) ExprIncusInstanceFullWrapper {
+	return ExprIncusInstanceFullWrapper{
+		ExprApiInstanceFull: ToExprApiInstanceFull(i.InstanceFull),
+	}
+}
+
 func ToExprInstance(i Instance) ExprInstance {
 	return ExprInstance{
 		ID:          i.ID,
@@ -312,7 +322,7 @@ func ToExprInstance(i Instance) ExprInstance {
 		Server:      i.Server,
 		ProjectName: i.ProjectName,
 		Name:        i.Name,
-		Object:      ToExprApiInstanceFull(i.Object),
+		Object:      ToExprIncusInstanceFullWrapper(i.Object),
 		LastUpdated: i.LastUpdated,
 	}
 }

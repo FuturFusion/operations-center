@@ -1,0 +1,25 @@
+package entities
+
+// Code generation directives.
+//
+//generate-database:mapper target {{ .Name }}.mapper.go
+//generate-database:mapper reset
+//
+//generate-database:mapper stmt -e {{ .Name }} objects table={{ .PluralName }}
+//generate-database:mapper stmt -e {{ .Name }} objects-by-UUID table={{ .PluralName }}
+//generate-database:mapper stmt -e {{ .Name }} names table={{ .PluralName }}
+//generate-database:mapper stmt -e {{ .Name }} id table={{ .PluralName }}
+//generate-database:mapper stmt -e {{ .Name }} create table={{ .PluralName }}
+//generate-database:mapper stmt -e {{ .Name }} update table={{ .PluralName }}
+//generate-database:mapper stmt -e {{ .Name }} rename table={{ .PluralName }}
+//generate-database:mapper stmt -e {{ .Name }} delete-by-UUID table={{ .PluralName }}
+//
+//generate-database:mapper method -e {{ .Name }} ID table={{ .PluralName }}
+//generate-database:mapper method -e {{ .Name }} Exists table={{ .PluralName }}
+//generate-database:mapper method -e {{ .Name }} GetOne table={{ .PluralName }}
+//generate-database:mapper method -e {{ .Name }} GetMany table={{ .PluralName }}
+//generate-database:mapper method -e {{ .Name }} GetNames table={{ .PluralName }}
+//generate-database:mapper method -e {{ .Name }} Create table={{ .PluralName }}
+//generate-database:mapper method -e {{ .Name }} Update table={{ .PluralName }}
+//generate-database:mapper method -e {{ .Name }} Rename table={{ .PluralName }}
+//generate-database:mapper method -e {{ .Name }} DeleteOne-by-UUID table={{ .PluralName }}

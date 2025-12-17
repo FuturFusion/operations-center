@@ -248,7 +248,7 @@ func TestStorageBucketService_GetByUUID(t *testing.T) {
 				ProjectName:     "one",
 				StoragePoolName: "parent one",
 				Name:            "one",
-				Object:          incusapi.StorageBucketFull{},
+				Object:          inventory.IncusStorageBucketFullWrapper{},
 				LastUpdated:     time.Now(),
 			},
 
@@ -949,7 +949,7 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 			repo := &repoMock.StorageBucketRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.StorageBucketFilter) ([]uuid.UUID, error) {
 					require.Equal(t, tc.argClusterName, *filter.Cluster)
-					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.Project)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.ProjectName)
 					require.Equal(t, tc.argLifecycleEvent.Source.ParentName, *filter.StoragePoolName)
 					require.Contains(t, tc.argLifecycleEvent.Source.Name, *filter.Name)
 					return tc.repoGetAllUUIDsWithFilterUUIDs, tc.repoGetAllUUIDsWithFilterErr

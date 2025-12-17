@@ -3,6 +3,9 @@
 package inventory
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -13,17 +16,40 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+type IncusNetworkZoneWrapper struct {
+	incusapi.NetworkZone `json:"-"`
+}
+
+func (w IncusNetworkZoneWrapper) Value() (driver.Value, error) {
+	return json.Marshal(w.NetworkZone)
+}
+
+func (w *IncusNetworkZoneWrapper) Scan(value interface{}) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid network_zone")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return json.Unmarshal([]byte(v), &w.NetworkZone)
+	case []byte:
+		return json.Unmarshal(v, &w.NetworkZone)
+	default:
+		return fmt.Errorf("type %T is not supported for network_zone", value)
+	}
+}
+
 //
 //generate-expr: NetworkZone
 
 type NetworkZone struct {
-	ID          int                  `json:"-"`
-	UUID        uuid.UUID            `json:"uuid"`
-	Cluster     string               `json:"cluster"`
-	ProjectName string               `json:"project"`
-	Name        string               `json:"name"`
-	Object      incusapi.NetworkZone `json:"object"`
-	LastUpdated time.Time            `json:"last_updated"`
+	ID          int                     `json:"-"`
+	UUID        uuid.UUID               `json:"uuid"          db:"primary=yes"`
+	Cluster     string                  `json:"cluster"       db:"leftjoin=clusters.name"`
+	ProjectName string                  `json:"project"`
+	Name        string                  `json:"name"`
+	Object      IncusNetworkZoneWrapper `json:"object"`
+	LastUpdated time.Time               `json:"last_updated"  db:"update_timestamp"`
 }
 
 func (m *NetworkZone) DeriveUUID() *NetworkZone {
@@ -63,19 +89,24 @@ func (m NetworkZone) Validate() error {
 type NetworkZones []NetworkZone
 
 type NetworkZoneFilter struct {
-	Cluster    *string
-	Project    *string
-	Name       *string
-	Expression *string
+	UUID        *uuid.UUID
+	Cluster     *string
+	ProjectName *string
+	Name        *string
+	Expression  *string `db:"ignore"`
 }
 
 func (f NetworkZoneFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.UUID != nil {
+		query.Add("uuid", f.UUID.String())
+	}
+
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
 	}
 
-	if f.Project != nil {
-		query.Add("project", *f.Project)
+	if f.ProjectName != nil {
+		query.Add("project", *f.ProjectName)
 	}
 
 	if f.Name != nil {

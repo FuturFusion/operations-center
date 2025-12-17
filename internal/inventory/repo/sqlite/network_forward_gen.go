@@ -80,9 +80,9 @@ ORDER BY clusters.name, network_forwards.name
 		args = append(args, sql.Named("cluster_name", filter.Cluster))
 	}
 
-	if filter.Project != nil {
+	if filter.ProjectName != nil {
 		whereClause = append(whereClause, ` AND networks.project_name = :project`)
-		args = append(args, sql.Named("project", filter.Project))
+		args = append(args, sql.Named("project", filter.ProjectName))
 	}
 
 	if filter.NetworkName != nil {
@@ -140,9 +140,9 @@ ORDER BY network_forwards.id
 		args = append(args, sql.Named("cluster_name", filter.Cluster))
 	}
 
-	if filter.Project != nil {
+	if filter.ProjectName != nil {
 		whereClause = append(whereClause, ` AND networks.project_name = :project`)
-		args = append(args, sql.Named("project", filter.Project))
+		args = append(args, sql.Named("project", filter.ProjectName))
 	}
 
 	if filter.NetworkName != nil {

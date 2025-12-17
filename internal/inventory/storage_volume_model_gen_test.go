@@ -5,23 +5,100 @@ package inventory_test
 import (
 	"testing"
 
+	"github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
+
+func TestIncusStorageVolumeFullWrapper_Value(t *testing.T) {
+	tests := []struct {
+		name string
+
+		storagevolumefull inventory.IncusStorageVolumeFullWrapper
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+
+			storagevolumefull: inventory.IncusStorageVolumeFullWrapper{
+				StorageVolumeFull: api.StorageVolumeFull{},
+			},
+
+			assertErr: require.NoError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := tc.storagevolumefull.Value()
+
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestIncusStorageVolumeFullWrapper_Scan(t *testing.T) {
+	tests := []struct {
+		name string
+
+		value any
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - []byte",
+
+			value: []byte(`{}`),
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - string",
+
+			value: `{}`,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - nil",
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - unsupported type",
+
+			value: 1, // not supported for IncusStorageVolumeFullWrapper
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			updateFiles := inventory.IncusStorageVolumeFullWrapper{}
+
+			err := updateFiles.Scan(tc.value)
+
+			tc.assertErr(t, err)
+		})
+	}
+}
 
 func TestStorageVolume_Validate(t *testing.T) {
 	tests := []struct {
-		name  string
-		image *inventory.StorageVolume
+		name          string
+		storageVolume *inventory.StorageVolume
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "valid",
-			image: (&inventory.StorageVolume{
+			storageVolume: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
 				Server:          "one",
@@ -34,7 +111,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid cluster ID",
-			image: (&inventory.StorageVolume{
+			storageVolume: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "", // invalid
 				Server:          "one",
@@ -50,7 +127,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid project name",
-			image: (&inventory.StorageVolume{
+			storageVolume: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
 				Server:          "one",
@@ -66,7 +143,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid project name",
-			image: (&inventory.StorageVolume{
+			storageVolume: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
 				Server:          "one",
@@ -82,7 +159,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid name",
-			image: (&inventory.StorageVolume{
+			storageVolume: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
 				Server:          "one",
@@ -98,7 +175,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 		},
 		{
 			name: "error - UUID not derived",
-			image: &inventory.StorageVolume{
+			storageVolume: &inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
 				Server:          "one",
@@ -116,7 +193,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.image.Validate()
+			err := tc.storageVolume.Validate()
 
 			tc.assertErr(t, err)
 		})
@@ -139,15 +216,16 @@ func TestStorageVolume_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: inventory.StorageVolumeFilter{
+				UUID:            ptr.To(uuidgen.FromPattern(t, "1")),
 				Cluster:         ptr.To("cluster"),
 				Server:          ptr.To("server"),
-				Project:         ptr.To("project"),
+				ProjectName:     ptr.To("project"),
 				StoragePoolName: ptr.To("storage_pool"),
 				Name:            ptr.To("name"),
 				Expression:      ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true&name=name&parent=storage_pool&project=project&server=server`,
+			want: `cluster=cluster&filter=true&name=name&parent=storage_pool&project=project&server=server&uuid=11111111-1111-1111-1111-111111111111`,
 		},
 	}
 

@@ -247,7 +247,7 @@ func TestInstanceService_GetByUUID(t *testing.T) {
 				Cluster:     "one",
 				ProjectName: "one",
 				Name:        "one",
-				Object:      incusapi.InstanceFull{},
+				Object:      inventory.IncusInstanceFullWrapper{},
 				LastUpdated: time.Now(),
 			},
 
@@ -924,7 +924,7 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 			repo := &repoMock.InstanceRepoMock{
 				GetAllUUIDsWithFilterFunc: func(ctx context.Context, filter inventory.InstanceFilter) ([]uuid.UUID, error) {
 					require.Equal(t, tc.argClusterName, *filter.Cluster)
-					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.Project)
+					require.Equal(t, tc.argLifecycleEvent.Source.ProjectName, *filter.ProjectName)
 					require.Contains(t, tc.argLifecycleEvent.Source.Name, *filter.Name)
 					return tc.repoGetAllUUIDsWithFilterUUIDs, tc.repoGetAllUUIDsWithFilterErr
 				},

@@ -156,7 +156,7 @@ func (i *networkZoneHandler) networkZonesGet(r *http.Request) response.Response 
 	}
 
 	if r.URL.Query().Get("project") != "" {
-		filter.Project = ptr.To(r.URL.Query().Get("project"))
+		filter.ProjectName = ptr.To(r.URL.Query().Get("project"))
 	}
 
 	if r.URL.Query().Get("filter") != "" {
@@ -177,7 +177,7 @@ func (i *networkZoneHandler) networkZonesGet(r *http.Request) response.Response 
 				Cluster:     networkZone.Cluster,
 				ProjectName: networkZone.ProjectName,
 				Name:        networkZone.Name,
-				Object:      networkZone.Object,
+				Object:      networkZone.Object.NetworkZone,
 				LastUpdated: networkZone.LastUpdated,
 			})
 		}
@@ -250,7 +250,7 @@ func (i *networkZoneHandler) networkZoneGet(r *http.Request) response.Response {
 			Cluster:     networkZone.Cluster,
 			ProjectName: networkZone.ProjectName,
 			Name:        networkZone.Name,
-			Object:      networkZone.Object,
+			Object:      networkZone.Object.NetworkZone,
 			LastUpdated: networkZone.LastUpdated,
 		},
 	)

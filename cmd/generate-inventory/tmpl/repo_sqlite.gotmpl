@@ -110,9 +110,9 @@ ORDER BY clusters.name, {{ if .ServerIDByLocation -}} servers.name, {{ end -}} {
 {{ end }}
 
 {{ if .HasProject }}
-	if filter.Project != nil {
+	if filter.ProjectName != nil {
 		whereClause = append(whereClause, ` AND {{ if .HasProjectDirect }}{{ .PluralName }}{{ else }}{{ .ParentPluralName }}{{ end }}.project_name = :project`)
-		args = append(args, sql.Named("project", filter.Project))
+		args = append(args, sql.Named("project", filter.ProjectName))
 	}
 {{ end }}
 
@@ -186,9 +186,9 @@ ORDER BY {{ .PluralName }}.id
 {{ end }}
 
 {{ if .HasProject }}
-	if filter.Project != nil {
+	if filter.ProjectName != nil {
 		whereClause = append(whereClause, ` AND {{ if .HasProjectDirect }}{{ .PluralName }}{{ else }}{{ .ParentPluralName }}{{ end }}.project_name = :project`)
-		args = append(args, sql.Named("project", filter.Project))
+		args = append(args, sql.Named("project", filter.ProjectName))
 	}
 {{ end }}
 

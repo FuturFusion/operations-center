@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -81,7 +80,7 @@ server-two
 		Cluster:     "one",
 		ProjectName: "one",
 		Name:        "one",
-		Object:      incusapi.NetworkAddressSet{},
+		Object:      inventory.IncusNetworkAddressSetWrapper{},
 		LastUpdated: time.Now(),
 	}
 
@@ -91,7 +90,7 @@ server-two
 		Cluster:     "two",
 		ProjectName: "two",
 		Name:        "two",
-		Object:      incusapi.NetworkAddressSet{},
+		Object:      inventory.IncusNetworkAddressSetWrapper{},
 		LastUpdated: time.Now(),
 	}
 
@@ -150,9 +149,9 @@ server-two
 
 	// Ensure we have one entry with filter for cluster, server, project and name.
 	networkAddressSetUUIDs, err = networkAddressSet.GetAllUUIDsWithFilter(ctx, inventory.NetworkAddressSetFilter{
-		Cluster: ptr.To("one"),
-		Project: ptr.To("one"),
-		Name:    ptr.To("one"),
+		Cluster:     ptr.To("one"),
+		ProjectName: ptr.To("one"),
+		Name:        ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, networkAddressSetUUIDs, 1)
@@ -160,9 +159,9 @@ server-two
 
 	// Ensure we have one entry with filter for cluster, server, project and name.
 	dbNetworkAddressSet, err = networkAddressSet.GetAllWithFilter(ctx, inventory.NetworkAddressSetFilter{
-		Cluster: ptr.To("one"),
-		Project: ptr.To("one"),
-		Name:    ptr.To("one"),
+		Cluster:     ptr.To("one"),
+		ProjectName: ptr.To("one"),
+		Name:        ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbNetworkAddressSet, 1)

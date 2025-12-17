@@ -1,9 +1,9 @@
 package inventory
 
 import (
-{{- with .ExtraAttributes }}
+	"database/sql/driver"
+	"encoding/json"
 	"fmt"
-{{- end }}
 	"net/url"
 	"strings"
 	"time"
@@ -14,28 +14,51 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+type Incus{{ .ObjectType | pascalcase }}Wrapper struct {
+	incusapi.{{ .ObjectType | pascalcase }} `json:"-"`
+}
+
+func (w Incus{{ .ObjectType | pascalcase }}Wrapper) Value() (driver.Value, error) {
+	return json.Marshal(w.{{ .ObjectType | pascalcase }})
+}
+
+func (w *Incus{{ .ObjectType | pascalcase }}Wrapper) Scan(value interface{}) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid {{ .ObjectType }}")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return json.Unmarshal([]byte(v), &w.{{ .ObjectType | pascalcase }})
+	case []byte:
+		return json.Unmarshal(v, &w.{{ .ObjectType | pascalcase }})
+	default:
+		return fmt.Errorf("type %T is not supported for {{ .ObjectType }}", value)
+	}
+}
+
 //
 //generate-expr: {{ .Name | pascalcase }}
 
 type {{ .Name | pascalcase }} struct {
 	ID          int `json:"-"`
-	UUID        uuid.UUID `json:"uuid"`
-	Cluster     string `json:"cluster"`
+	UUID        uuid.UUID `json:"uuid"          db:"primary=yes"`
+	Cluster     string `json:"cluster"       db:"leftjoin=clusters.name"`
 {{- if .ServerIDByLocation }}
-	Server      string `json:"server"`
+	Server      string `json:"server"        db:"leftjoin=servers.name"`
 {{- end }}
 {{- if .HasProject }}
-	ProjectName string `json:"project"`
+	ProjectName string `json:"project"{{ if .HasProjectFromParent }}       db:"leftjoin={{ .ParentPluralName | snakecase }}.project_name&joinon={{ .PluralName | snakecase }}.{{ .ParentName | snakecase }}_name&jointo=name&omit=create,update"{{ end }}`
 {{- end }}
 {{- if .HasParent }}
-	{{ .ParentName | pascalcase }}Name string `json:"{{ .ParentName }}_name"`
+	{{ .ParentName | pascalcase }}Name string `json:"{{ .ParentName }}_name" db:"joinon=networks.name"`
 {{- end }}
 	Name        string `json:"name"`
 {{- range .ExtraAttributes }}
 	{{ .Name | pascalcase }} {{ .Type }} `json:"{{ .Name }}"`
 {{- end }}
-	Object      incusapi.{{ .ObjectType | pascalcase }} `json:"object"`
-	LastUpdated time.Time `json:"last_updated"`
+	Object      Incus{{ .ObjectType | pascalcase }}Wrapper `json:"object"`
+	LastUpdated time.Time `json:"last_updated"  db:"update_timestamp"`
 }
 
 func (m *{{ .Name | pascalcase }}) DeriveUUID() *{{ .Name | pascalcase }} {
@@ -100,21 +123,26 @@ func (m {{ .Name | pascalcase }}) Validate() error {
 type {{ .PluralName | pascalcase }} []{{ .Name | pascalcase }}
 
 type {{ .Name | pascalcase }}Filter struct{
-	Cluster    *string
+	UUID        *uuid.UUID
+	Cluster     *string
 {{- if .ServerIDByLocation }}
-	Server     *string
+	Server      *string
 {{- end }}
 {{- if .HasProject }}
-	Project    *string
+	ProjectName *string {{ if .HasProjectFromParent }}`db:"ignore"`{{ end }}
 {{- end }}
 {{- if .HasParent }}
 	{{ .ParentName | pascalcase }}Name *string
 {{- end }}
-	Name       *string
-	Expression *string
+	Name        *string
+	Expression  *string `db:"ignore"`
 }
 
 func (f {{ .Name | pascalcase }}Filter) AppendToURLValues(query url.Values) url.Values {
+	if f.UUID != nil {
+		query.Add("uuid", f.UUID.String())
+	}
+
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
 	}
@@ -126,8 +154,8 @@ func (f {{ .Name | pascalcase }}Filter) AppendToURLValues(query url.Values) url.
 {{- end }}
 {{- if .HasProject }}
 
-	if f.Project != nil {
-		query.Add("project", *f.Project)
+	if f.ProjectName != nil {
+		query.Add("project", *f.ProjectName)
 	}
 {{- end }}
 {{- if .HasParent }}
@@ -151,3 +179,12 @@ func (f {{ .Name | pascalcase }}Filter) AppendToURLValues(query url.Values) url.
 func (f {{ .Name | pascalcase }}Filter) String() string {
 	return f.AppendToURLValues(url.Values{}).Encode()
 }
+
+{{ if ne ( .Name | pascalcase ) ( .Name | pascalcaseWithoutAcronyms ) }}
+// generate-database does not handle acronyms for pascalcase variant.
+// Add the type aliases for compatibility.
+type (
+	{{ .Name | pascalcaseWithoutAcronyms }}       = {{ .Name | pascalcase }}
+	{{ .Name | pascalcaseWithoutAcronyms }}Filter = {{ .Name | pascalcase }}Filter
+)
+{{ end }}

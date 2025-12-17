@@ -5,23 +5,100 @@ package inventory_test
 import (
 	"testing"
 
+	"github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
+
+func TestIncusNetworkLoadBalancerWrapper_Value(t *testing.T) {
+	tests := []struct {
+		name string
+
+		networkLoadBalancer inventory.IncusNetworkLoadBalancerWrapper
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+
+			networkLoadBalancer: inventory.IncusNetworkLoadBalancerWrapper{
+				NetworkLoadBalancer: api.NetworkLoadBalancer{},
+			},
+
+			assertErr: require.NoError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := tc.networkLoadBalancer.Value()
+
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestIncusNetworkLoadBalancerWrapper_Scan(t *testing.T) {
+	tests := []struct {
+		name string
+
+		value any
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - []byte",
+
+			value: []byte(`{}`),
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - string",
+
+			value: `{}`,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - nil",
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - unsupported type",
+
+			value: 1, // not supported for IncusNetworkLoadBalancerWrapper
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			updateFiles := inventory.IncusNetworkLoadBalancerWrapper{}
+
+			err := updateFiles.Scan(tc.value)
+
+			tc.assertErr(t, err)
+		})
+	}
+}
 
 func TestNetworkLoadBalancer_Validate(t *testing.T) {
 	tests := []struct {
-		name  string
-		image *inventory.NetworkLoadBalancer
+		name                string
+		networkLoadBalancer *inventory.NetworkLoadBalancer
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "valid",
-			image: (&inventory.NetworkLoadBalancer{
+			networkLoadBalancer: (&inventory.NetworkLoadBalancer{
 				ID:          1,
 				Cluster:     "one",
 				NetworkName: "network one",
@@ -32,7 +109,7 @@ func TestNetworkLoadBalancer_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid cluster ID",
-			image: (&inventory.NetworkLoadBalancer{
+			networkLoadBalancer: (&inventory.NetworkLoadBalancer{
 				ID:          1,
 				Cluster:     "", // invalid
 				NetworkName: "network one",
@@ -46,7 +123,7 @@ func TestNetworkLoadBalancer_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid project name",
-			image: (&inventory.NetworkLoadBalancer{
+			networkLoadBalancer: (&inventory.NetworkLoadBalancer{
 				ID:          1,
 				Cluster:     "one",
 				NetworkName: "", // invalid
@@ -60,7 +137,7 @@ func TestNetworkLoadBalancer_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid name",
-			image: (&inventory.NetworkLoadBalancer{
+			networkLoadBalancer: (&inventory.NetworkLoadBalancer{
 				ID:          1,
 				Cluster:     "one",
 				NetworkName: "network one",
@@ -74,7 +151,7 @@ func TestNetworkLoadBalancer_Validate(t *testing.T) {
 		},
 		{
 			name: "error - UUID not derived",
-			image: &inventory.NetworkLoadBalancer{
+			networkLoadBalancer: &inventory.NetworkLoadBalancer{
 				ID:          1,
 				Cluster:     "one",
 				NetworkName: "network one",
@@ -90,7 +167,7 @@ func TestNetworkLoadBalancer_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.image.Validate()
+			err := tc.networkLoadBalancer.Validate()
 
 			tc.assertErr(t, err)
 		})
@@ -113,14 +190,15 @@ func TestNetworkLoadBalancer_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: inventory.NetworkLoadBalancerFilter{
+				UUID:        ptr.To(uuidgen.FromPattern(t, "1")),
 				Cluster:     ptr.To("cluster"),
-				Project:     ptr.To("project"),
+				ProjectName: ptr.To("project"),
 				NetworkName: ptr.To("network"),
 				Name:        ptr.To("name"),
 				Expression:  ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true&name=name&parent=network&project=project`,
+			want: `cluster=cluster&filter=true&name=name&parent=network&project=project&uuid=11111111-1111-1111-1111-111111111111`,
 		},
 	}
 

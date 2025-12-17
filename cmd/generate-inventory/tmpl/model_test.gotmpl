@@ -3,23 +3,100 @@ package inventory_test
 import (
 	"testing"
 
+	"github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/inventory"
 	"github.com/FuturFusion/operations-center/internal/ptr"
+	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 )
+
+func TestIncus{{ .ObjectType | pascalcase }}Wrapper_Value(t *testing.T) {
+	tests := []struct {
+		name string
+
+		{{ .ObjectType | camelcase }} inventory.Incus{{ .ObjectType | pascalcase }}Wrapper
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+
+			{{ .ObjectType | camelcase }}: inventory.Incus{{ .ObjectType | pascalcase }}Wrapper{
+				{{ .ObjectType | pascalcase }}: api.{{ .ObjectType | pascalcase }}{},
+			},
+
+			assertErr: require.NoError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := tc.{{ .ObjectType | camelcase }}.Value()
+
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestIncus{{ .ObjectType | pascalcase }}Wrapper_Scan(t *testing.T) {
+	tests := []struct {
+		name string
+
+		value any
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success - []byte",
+
+			value: []byte(`{}`),
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - string",
+
+			value: `{}`,
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - nil",
+
+			assertErr: require.Error,
+		},
+		{
+			name: "error - unsupported type",
+
+			value: 1, // not supported for Incus{{ .ObjectType | pascalcase }}Wrapper
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			updateFiles := inventory.Incus{{ .ObjectType | pascalcase }}Wrapper{}
+
+			err := updateFiles.Scan(tc.value)
+
+			tc.assertErr(t, err)
+		})
+	}
+}
 
 func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 	tests := []struct {
 		name  string
-		image *inventory.{{ .Name | pascalcase }}
+		{{ .Name | camelcase }} *inventory.{{ .Name | pascalcase }}
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "valid",
-			image: (&inventory.{{ .Name | pascalcase }}{
+			{{ .Name | camelcase }}: (&inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "one",
 {{- if .ServerIDByLocation }}
@@ -38,7 +115,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 		},
 		{
 			name: "error - invalid cluster ID",
-			image: (&inventory.{{ .Name | pascalcase }}{
+			{{ .Name | camelcase }}: (&inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "", // invalid
 {{- if .ServerIDByLocation }}
@@ -61,7 +138,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 {{- if and .ServerIDByLocation ( not .IsServerIDOptional ) }}
 		{
 			name: "error - invalid project name",
-			image: (&inventory.{{ .Name | pascalcase }}{
+			{{ .Name | camelcase }}: (&inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "one",
 				Server:      "", // invalid
@@ -83,7 +160,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 {{- if .HasProjectDirect }}
 		{
 			name: "error - invalid project name",
-			image: (&inventory.{{ .Name | pascalcase }}{
+			{{ .Name | camelcase }}: (&inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "one",
 {{- if .ServerIDByLocation }}
@@ -105,7 +182,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 {{- if .HasParent }}
 		{
 			name: "error - invalid project name",
-			image: (&inventory.{{ .Name | pascalcase }}{
+			{{ .Name | camelcase }}: (&inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "one",
 {{- if .ServerIDByLocation }}
@@ -126,7 +203,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 {{- end }}
 		{
 			name: "error - invalid name",
-			image: (&inventory.{{ .Name | pascalcase }}{
+			{{ .Name | camelcase }}: (&inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "one",
 {{- if .ServerIDByLocation }}
@@ -148,7 +225,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 		},
 		{
 			name: "error - UUID not derived",
-			image: &inventory.{{ .Name | pascalcase }}{
+			{{ .Name | camelcase }}: &inventory.{{ .Name | pascalcase }}{
 				ID:          1,
 				Cluster:     "one",
 {{- if .ServerIDByLocation }}
@@ -172,7 +249,7 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.image.Validate()
+			err := tc.{{ .Name | camelcase }}.Validate()
 
 			tc.assertErr(t, err)
 		})
@@ -195,21 +272,22 @@ func Test{{ .Name | pascalcase }}_Filter(t *testing.T) {
 		{
 			name: "complete filter",
 			filter: inventory.{{ .Name | pascalcase }}Filter{
-				Cluster:    ptr.To("cluster"),
+				UUID:        ptr.To(uuidgen.FromPattern(t, "1")),
+				Cluster:     ptr.To("cluster"),
 {{- if .ServerIDByLocation }}
-				Server:     ptr.To("server"),
+				Server:      ptr.To("server"),
 {{- end }}
 {{- if .HasProject }}
-				Project:    ptr.To("project"),
+				ProjectName: ptr.To("project"),
 {{- end }}
 {{- if .HasParent }}
 				{{ .ParentName | pascalcase }}Name: ptr.To("{{ .ParentName }}"),
 {{- end }}
-				Name:       ptr.To("name"),
-				Expression: ptr.To("true"),
+				Name:        ptr.To("name"),
+				Expression:  ptr.To("true"),
 			},
 
-			want: `cluster=cluster&filter=true&name=name{{ if .HasParent }}&parent={{ .ParentName }}{{ end }}{{ if .HasProject }}&project=project{{ end }}{{ if .ServerIDByLocation }}&server=server{{ end }}`,
+			want: `cluster=cluster&filter=true&name=name{{ if .HasParent }}&parent={{ .ParentName }}{{ end }}{{ if .HasProject }}&project=project{{ end }}{{ if .ServerIDByLocation }}&server=server{{ end }}&uuid=11111111-1111-1111-1111-111111111111`,
 		},
 	}
 

@@ -47,13 +47,17 @@ type ExprApiImageSource struct {
 }
 
 type ExprImage struct {
-	ID          int          `json:"-" expr:"-"`
-	UUID        uuid.UUID    `json:"uuid" expr:"uuid"`
-	Cluster     string       `json:"cluster" expr:"cluster"`
-	ProjectName string       `json:"project" expr:"project"`
-	Name        string       `json:"name" expr:"name"`
-	Object      ExprApiImage `json:"object" expr:"object"`
-	LastUpdated time.Time    `json:"last_updated" expr:"last_updated"`
+	ID          int                   `json:"-" expr:"-"`
+	UUID        uuid.UUID             `json:"uuid"          db:"primary=yes" expr:"uuid"`
+	Cluster     string                `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
+	ProjectName string                `json:"project" expr:"project"`
+	Name        string                `json:"name" expr:"name"`
+	Object      ExprIncusImageWrapper `json:"object" expr:"object"`
+	LastUpdated time.Time             `json:"last_updated"  db:"update_timestamp" expr:"last_updated"`
+}
+
+type ExprIncusImageWrapper struct {
+	ExprApiImage `json:"-" expr:"-"`
 }
 
 func ToExprApiImage(i api.Image) ExprApiImage {
@@ -108,7 +112,13 @@ func ToExprImage(i Image) ExprImage {
 		Cluster:     i.Cluster,
 		ProjectName: i.ProjectName,
 		Name:        i.Name,
-		Object:      ToExprApiImage(i.Object),
+		Object:      ToExprIncusImageWrapper(i.Object),
 		LastUpdated: i.LastUpdated,
+	}
+}
+
+func ToExprIncusImageWrapper(i IncusImageWrapper) ExprIncusImageWrapper {
+	return ExprIncusImageWrapper{
+		ExprApiImage: ToExprApiImage(i.Image),
 	}
 }

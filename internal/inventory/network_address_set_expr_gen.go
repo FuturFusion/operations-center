@@ -26,14 +26,18 @@ type ExprApiNetworkAddressSetPut struct {
 	Description string        `json:"description" yaml:"description" expr:"description"`
 }
 
+type ExprIncusNetworkAddressSetWrapper struct {
+	ExprApiNetworkAddressSet `json:"-" expr:"-"`
+}
+
 type ExprNetworkAddressSet struct {
-	ID          int                      `json:"-" expr:"-"`
-	UUID        uuid.UUID                `json:"uuid" expr:"uuid"`
-	Cluster     string                   `json:"cluster" expr:"cluster"`
-	ProjectName string                   `json:"project" expr:"project"`
-	Name        string                   `json:"name" expr:"name"`
-	Object      ExprApiNetworkAddressSet `json:"object" expr:"object"`
-	LastUpdated time.Time                `json:"last_updated" expr:"last_updated"`
+	ID          int                               `json:"-" expr:"-"`
+	UUID        uuid.UUID                         `json:"uuid"          db:"primary=yes" expr:"uuid"`
+	Cluster     string                            `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
+	ProjectName string                            `json:"project" expr:"project"`
+	Name        string                            `json:"name" expr:"name"`
+	Object      ExprIncusNetworkAddressSetWrapper `json:"object" expr:"object"`
+	LastUpdated time.Time                         `json:"last_updated"  db:"update_timestamp" expr:"last_updated"`
 }
 
 func ToExprApiNetworkAddressSet(n api.NetworkAddressSet) ExprApiNetworkAddressSet {
@@ -59,6 +63,12 @@ func ToExprApiNetworkAddressSetPut(n api.NetworkAddressSetPut) ExprApiNetworkAdd
 	}
 }
 
+func ToExprIncusNetworkAddressSetWrapper(i IncusNetworkAddressSetWrapper) ExprIncusNetworkAddressSetWrapper {
+	return ExprIncusNetworkAddressSetWrapper{
+		ExprApiNetworkAddressSet: ToExprApiNetworkAddressSet(i.NetworkAddressSet),
+	}
+}
+
 func ToExprNetworkAddressSet(n NetworkAddressSet) ExprNetworkAddressSet {
 	return ExprNetworkAddressSet{
 		ID:          n.ID,
@@ -66,7 +76,7 @@ func ToExprNetworkAddressSet(n NetworkAddressSet) ExprNetworkAddressSet {
 		Cluster:     n.Cluster,
 		ProjectName: n.ProjectName,
 		Name:        n.Name,
-		Object:      ToExprApiNetworkAddressSet(n.Object),
+		Object:      ToExprIncusNetworkAddressSetWrapper(n.Object),
 		LastUpdated: n.LastUpdated,
 	}
 }

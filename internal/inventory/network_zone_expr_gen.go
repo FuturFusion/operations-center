@@ -21,14 +21,18 @@ type ExprApiNetworkZonePut struct {
 	Config      api.ConfigMap `json:"config" yaml:"config" expr:"config"`
 }
 
+type ExprIncusNetworkZoneWrapper struct {
+	ExprApiNetworkZone `json:"-" expr:"-"`
+}
+
 type ExprNetworkZone struct {
-	ID          int                `json:"-" expr:"-"`
-	UUID        uuid.UUID          `json:"uuid" expr:"uuid"`
-	Cluster     string             `json:"cluster" expr:"cluster"`
-	ProjectName string             `json:"project" expr:"project"`
-	Name        string             `json:"name" expr:"name"`
-	Object      ExprApiNetworkZone `json:"object" expr:"object"`
-	LastUpdated time.Time          `json:"last_updated" expr:"last_updated"`
+	ID          int                         `json:"-" expr:"-"`
+	UUID        uuid.UUID                   `json:"uuid"          db:"primary=yes" expr:"uuid"`
+	Cluster     string                      `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
+	ProjectName string                      `json:"project" expr:"project"`
+	Name        string                      `json:"name" expr:"name"`
+	Object      ExprIncusNetworkZoneWrapper `json:"object" expr:"object"`
+	LastUpdated time.Time                   `json:"last_updated"  db:"update_timestamp" expr:"last_updated"`
 }
 
 func ToExprApiNetworkZone(n api.NetworkZone) ExprApiNetworkZone {
@@ -47,6 +51,12 @@ func ToExprApiNetworkZonePut(n api.NetworkZonePut) ExprApiNetworkZonePut {
 	}
 }
 
+func ToExprIncusNetworkZoneWrapper(i IncusNetworkZoneWrapper) ExprIncusNetworkZoneWrapper {
+	return ExprIncusNetworkZoneWrapper{
+		ExprApiNetworkZone: ToExprApiNetworkZone(i.NetworkZone),
+	}
+}
+
 func ToExprNetworkZone(n NetworkZone) ExprNetworkZone {
 	return ExprNetworkZone{
 		ID:          n.ID,
@@ -54,7 +64,7 @@ func ToExprNetworkZone(n NetworkZone) ExprNetworkZone {
 		Cluster:     n.Cluster,
 		ProjectName: n.ProjectName,
 		Name:        n.Name,
-		Object:      ToExprApiNetworkZone(n.Object),
+		Object:      ToExprIncusNetworkZoneWrapper(n.Object),
 		LastUpdated: n.LastUpdated,
 	}
 }

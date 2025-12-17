@@ -184,7 +184,7 @@ func (s networkLoadBalancerService) ResyncByUUID(ctx context.Context, id uuid.UU
 			return err
 		}
 
-		networkLoadBalancer.Object = retrievedNetworkLoadBalancer
+		networkLoadBalancer.Object = IncusNetworkLoadBalancerWrapper{retrievedNetworkLoadBalancer}
 		networkLoadBalancer.LastUpdated = s.now()
 		networkLoadBalancer.DeriveUUID()
 
@@ -257,7 +257,7 @@ func (s networkLoadBalancerService) handleCreateEvent(ctx context.Context, clust
 		Cluster:     clusterName,
 		NetworkName: event.Source.ParentName,
 		Name:        retrievedNetworkLoadBalancer.ListenAddress,
-		Object:      retrievedNetworkLoadBalancer,
+		Object:      IncusNetworkLoadBalancerWrapper{retrievedNetworkLoadBalancer},
 		LastUpdated: s.now(),
 	}
 
@@ -283,7 +283,7 @@ func (s networkLoadBalancerService) handleCreateEvent(ctx context.Context, clust
 func (s networkLoadBalancerService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkLoadBalancerFilter{
 		Cluster:     &clusterName,
-		Project:     &event.Source.ProjectName,
+		ProjectName: &event.Source.ProjectName,
 		NetworkName: &event.Source.ParentName,
 		Name:        &event.Source.Name,
 	})
@@ -324,7 +324,7 @@ func (s networkLoadBalancerService) handleRenameEvent(ctx context.Context, clust
 func (s networkLoadBalancerService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, NetworkLoadBalancerFilter{
 		Cluster:     &clusterName,
-		Project:     &event.Source.ProjectName,
+		ProjectName: &event.Source.ProjectName,
 		NetworkName: &event.Source.ParentName,
 		Name:        &event.Source.Name,
 	})
@@ -385,7 +385,7 @@ func (s networkLoadBalancerService) SyncCluster(ctx context.Context, name string
 					Cluster:     name,
 					NetworkName: network.Name,
 					Name:        retrievedNetworkLoadBalancer.ListenAddress,
-					Object:      retrievedNetworkLoadBalancer,
+					Object:      IncusNetworkLoadBalancerWrapper{retrievedNetworkLoadBalancer},
 					LastUpdated: s.now(),
 				}
 

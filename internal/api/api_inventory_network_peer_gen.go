@@ -156,7 +156,7 @@ func (i *networkPeerHandler) networkPeersGet(r *http.Request) response.Response 
 	}
 
 	if r.URL.Query().Get("project") != "" {
-		filter.Project = ptr.To(r.URL.Query().Get("project"))
+		filter.ProjectName = ptr.To(r.URL.Query().Get("project"))
 	}
 
 	if r.URL.Query().Get("filter") != "" {
@@ -178,7 +178,7 @@ func (i *networkPeerHandler) networkPeersGet(r *http.Request) response.Response 
 				ProjectName: networkPeer.ProjectName,
 				NetworkName: networkPeer.NetworkName,
 				Name:        networkPeer.Name,
-				Object:      networkPeer.Object,
+				Object:      networkPeer.Object.NetworkPeer,
 				LastUpdated: networkPeer.LastUpdated,
 			})
 		}
@@ -252,7 +252,7 @@ func (i *networkPeerHandler) networkPeerGet(r *http.Request) response.Response {
 			ProjectName: networkPeer.ProjectName,
 			NetworkName: networkPeer.NetworkName,
 			Name:        networkPeer.Name,
-			Object:      networkPeer.Object,
+			Object:      networkPeer.Object.NetworkPeer,
 			LastUpdated: networkPeer.LastUpdated,
 		},
 	)

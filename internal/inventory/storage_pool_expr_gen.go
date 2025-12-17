@@ -23,13 +23,17 @@ type ExprApiStoragePoolPut struct {
 	Description string        `json:"description" yaml:"description" expr:"description"`
 }
 
+type ExprIncusStoragePoolWrapper struct {
+	ExprApiStoragePool `json:"-" expr:"-"`
+}
+
 type ExprStoragePool struct {
-	ID          int                `json:"-" expr:"-"`
-	UUID        uuid.UUID          `json:"uuid" expr:"uuid"`
-	Cluster     string             `json:"cluster" expr:"cluster"`
-	Name        string             `json:"name" expr:"name"`
-	Object      ExprApiStoragePool `json:"object" expr:"object"`
-	LastUpdated time.Time          `json:"last_updated" expr:"last_updated"`
+	ID          int                         `json:"-" expr:"-"`
+	UUID        uuid.UUID                   `json:"uuid"          db:"primary=yes" expr:"uuid"`
+	Cluster     string                      `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
+	Name        string                      `json:"name" expr:"name"`
+	Object      ExprIncusStoragePoolWrapper `json:"object" expr:"object"`
+	LastUpdated time.Time                   `json:"last_updated"  db:"update_timestamp" expr:"last_updated"`
 }
 
 func ToExprApiStoragePool(s api.StoragePool) ExprApiStoragePool {
@@ -50,13 +54,19 @@ func ToExprApiStoragePoolPut(s api.StoragePoolPut) ExprApiStoragePoolPut {
 	}
 }
 
+func ToExprIncusStoragePoolWrapper(i IncusStoragePoolWrapper) ExprIncusStoragePoolWrapper {
+	return ExprIncusStoragePoolWrapper{
+		ExprApiStoragePool: ToExprApiStoragePool(i.StoragePool),
+	}
+}
+
 func ToExprStoragePool(s StoragePool) ExprStoragePool {
 	return ExprStoragePool{
 		ID:          s.ID,
 		UUID:        s.UUID,
 		Cluster:     s.Cluster,
 		Name:        s.Name,
-		Object:      ToExprApiStoragePool(s.Object),
+		Object:      ToExprIncusStoragePoolWrapper(s.Object),
 		LastUpdated: s.LastUpdated,
 	}
 }

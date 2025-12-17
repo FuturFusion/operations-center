@@ -22,14 +22,18 @@ type ExprApiProfilePut struct {
 	Devices     api.DevicesMap `json:"devices" yaml:"devices" expr:"devices"`
 }
 
+type ExprIncusProfileWrapper struct {
+	ExprApiProfile `json:"-" expr:"-"`
+}
+
 type ExprProfile struct {
-	ID          int            `json:"-" expr:"-"`
-	UUID        uuid.UUID      `json:"uuid" expr:"uuid"`
-	Cluster     string         `json:"cluster" expr:"cluster"`
-	ProjectName string         `json:"project" expr:"project"`
-	Name        string         `json:"name" expr:"name"`
-	Object      ExprApiProfile `json:"object" expr:"object"`
-	LastUpdated time.Time      `json:"last_updated" expr:"last_updated"`
+	ID          int                     `json:"-" expr:"-"`
+	UUID        uuid.UUID               `json:"uuid"          db:"primary=yes" expr:"uuid"`
+	Cluster     string                  `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
+	ProjectName string                  `json:"project" expr:"project"`
+	Name        string                  `json:"name" expr:"name"`
+	Object      ExprIncusProfileWrapper `json:"object" expr:"object"`
+	LastUpdated time.Time               `json:"last_updated"  db:"update_timestamp" expr:"last_updated"`
 }
 
 func ToExprApiProfile(p api.Profile) ExprApiProfile {
@@ -49,6 +53,12 @@ func ToExprApiProfilePut(p api.ProfilePut) ExprApiProfilePut {
 	}
 }
 
+func ToExprIncusProfileWrapper(i IncusProfileWrapper) ExprIncusProfileWrapper {
+	return ExprIncusProfileWrapper{
+		ExprApiProfile: ToExprApiProfile(i.Profile),
+	}
+}
+
 func ToExprProfile(p Profile) ExprProfile {
 	return ExprProfile{
 		ID:          p.ID,
@@ -56,7 +66,7 @@ func ToExprProfile(p Profile) ExprProfile {
 		Cluster:     p.Cluster,
 		ProjectName: p.ProjectName,
 		Name:        p.Name,
-		Object:      ToExprApiProfile(p.Object),
+		Object:      ToExprIncusProfileWrapper(p.Object),
 		LastUpdated: p.LastUpdated,
 	}
 }

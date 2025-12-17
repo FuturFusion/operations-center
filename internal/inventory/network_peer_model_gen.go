@@ -3,6 +3,9 @@
 package inventory
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -13,18 +16,41 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 )
 
+type IncusNetworkPeerWrapper struct {
+	incusapi.NetworkPeer `json:"-"`
+}
+
+func (w IncusNetworkPeerWrapper) Value() (driver.Value, error) {
+	return json.Marshal(w.NetworkPeer)
+}
+
+func (w *IncusNetworkPeerWrapper) Scan(value interface{}) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid network_peer")
+	}
+
+	switch v := value.(type) {
+	case string:
+		return json.Unmarshal([]byte(v), &w.NetworkPeer)
+	case []byte:
+		return json.Unmarshal(v, &w.NetworkPeer)
+	default:
+		return fmt.Errorf("type %T is not supported for network_peer", value)
+	}
+}
+
 //
 //generate-expr: NetworkPeer
 
 type NetworkPeer struct {
-	ID          int                  `json:"-"`
-	UUID        uuid.UUID            `json:"uuid"`
-	Cluster     string               `json:"cluster"`
-	ProjectName string               `json:"project"`
-	NetworkName string               `json:"network_name"`
-	Name        string               `json:"name"`
-	Object      incusapi.NetworkPeer `json:"object"`
-	LastUpdated time.Time            `json:"last_updated"`
+	ID          int                     `json:"-"`
+	UUID        uuid.UUID               `json:"uuid"          db:"primary=yes"`
+	Cluster     string                  `json:"cluster"       db:"leftjoin=clusters.name"`
+	ProjectName string                  `json:"project"       db:"leftjoin=networks.project_name&joinon=network_peers.network_name&jointo=name&omit=create,update"`
+	NetworkName string                  `json:"network_name" db:"joinon=networks.name"`
+	Name        string                  `json:"name"`
+	Object      IncusNetworkPeerWrapper `json:"object"`
+	LastUpdated time.Time               `json:"last_updated"  db:"update_timestamp"`
 }
 
 func (m *NetworkPeer) DeriveUUID() *NetworkPeer {
@@ -64,20 +90,25 @@ func (m NetworkPeer) Validate() error {
 type NetworkPeers []NetworkPeer
 
 type NetworkPeerFilter struct {
+	UUID        *uuid.UUID
 	Cluster     *string
-	Project     *string
+	ProjectName *string `db:"ignore"`
 	NetworkName *string
 	Name        *string
-	Expression  *string
+	Expression  *string `db:"ignore"`
 }
 
 func (f NetworkPeerFilter) AppendToURLValues(query url.Values) url.Values {
+	if f.UUID != nil {
+		query.Add("uuid", f.UUID.String())
+	}
+
 	if f.Cluster != nil {
 		query.Add("cluster", *f.Cluster)
 	}
 
-	if f.Project != nil {
-		query.Add("project", *f.Project)
+	if f.ProjectName != nil {
+		query.Add("project", *f.ProjectName)
 	}
 
 	if f.NetworkName != nil {

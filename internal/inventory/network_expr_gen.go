@@ -25,14 +25,18 @@ type ExprApiNetworkPut struct {
 	Description string        `json:"description" yaml:"description" expr:"description"`
 }
 
+type ExprIncusNetworkWrapper struct {
+	ExprApiNetwork `json:"-" expr:"-"`
+}
+
 type ExprNetwork struct {
-	ID          int            `json:"-" expr:"-"`
-	UUID        uuid.UUID      `json:"uuid" expr:"uuid"`
-	Cluster     string         `json:"cluster" expr:"cluster"`
-	ProjectName string         `json:"project" expr:"project"`
-	Name        string         `json:"name" expr:"name"`
-	Object      ExprApiNetwork `json:"object" expr:"object"`
-	LastUpdated time.Time      `json:"last_updated" expr:"last_updated"`
+	ID          int                     `json:"-" expr:"-"`
+	UUID        uuid.UUID               `json:"uuid"          db:"primary=yes" expr:"uuid"`
+	Cluster     string                  `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
+	ProjectName string                  `json:"project" expr:"project"`
+	Name        string                  `json:"name" expr:"name"`
+	Object      ExprIncusNetworkWrapper `json:"object" expr:"object"`
+	LastUpdated time.Time               `json:"last_updated"  db:"update_timestamp" expr:"last_updated"`
 }
 
 func ToExprApiNetwork(n api.Network) ExprApiNetwork {
@@ -55,6 +59,12 @@ func ToExprApiNetworkPut(n api.NetworkPut) ExprApiNetworkPut {
 	}
 }
 
+func ToExprIncusNetworkWrapper(i IncusNetworkWrapper) ExprIncusNetworkWrapper {
+	return ExprIncusNetworkWrapper{
+		ExprApiNetwork: ToExprApiNetwork(i.Network),
+	}
+}
+
 func ToExprNetwork(n Network) ExprNetwork {
 	return ExprNetwork{
 		ID:          n.ID,
@@ -62,7 +72,7 @@ func ToExprNetwork(n Network) ExprNetwork {
 		Cluster:     n.Cluster,
 		ProjectName: n.ProjectName,
 		Name:        n.Name,
-		Object:      ToExprApiNetwork(n.Object),
+		Object:      ToExprIncusNetworkWrapper(n.Object),
 		LastUpdated: n.LastUpdated,
 	}
 }

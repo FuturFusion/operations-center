@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -82,7 +81,7 @@ server-two
 		Server:      "one",
 		ProjectName: "one",
 		Name:        "one",
-		Object:      incusapi.InstanceFull{},
+		Object:      inventory.IncusInstanceFullWrapper{},
 		LastUpdated: time.Now(),
 	}
 
@@ -93,7 +92,7 @@ server-two
 		Server:      "two",
 		ProjectName: "two",
 		Name:        "two",
-		Object:      incusapi.InstanceFull{},
+		Object:      inventory.IncusInstanceFullWrapper{},
 		LastUpdated: time.Now(),
 	}
 
@@ -152,10 +151,10 @@ server-two
 
 	// Ensure we have one entry with filter for cluster, server, project and name.
 	instanceUUIDs, err = instance.GetAllUUIDsWithFilter(ctx, inventory.InstanceFilter{
-		Cluster: ptr.To("one"),
-		Server:  ptr.To("one"),
-		Project: ptr.To("one"),
-		Name:    ptr.To("one"),
+		Cluster:     ptr.To("one"),
+		Server:      ptr.To("one"),
+		ProjectName: ptr.To("one"),
+		Name:        ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, instanceUUIDs, 1)
@@ -163,10 +162,10 @@ server-two
 
 	// Ensure we have one entry with filter for cluster, server, project and name.
 	dbInstance, err = instance.GetAllWithFilter(ctx, inventory.InstanceFilter{
-		Cluster: ptr.To("one"),
-		Server:  ptr.To("one"),
-		Project: ptr.To("one"),
-		Name:    ptr.To("one"),
+		Cluster:     ptr.To("one"),
+		Server:      ptr.To("one"),
+		ProjectName: ptr.To("one"),
+		Name:        ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, dbInstance, 1)

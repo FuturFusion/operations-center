@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusapi "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/dbschema"
@@ -98,7 +97,7 @@ server-two
 {{- range .ExtraAttributes }}
 		{{ .Name | pascalcase }}: {{ .TestDummyValue }},
 {{- end}}
-		Object:      incusapi.{{ .ObjectType | pascalcase }}{},
+		Object:      inventory.Incus{{ .ObjectType | pascalcase }}Wrapper{},
 		LastUpdated: time.Now(),
 	}
 
@@ -119,7 +118,7 @@ server-two
 {{- range .ExtraAttributes }}
 		{{ .Name | pascalcase }}: {{ .TestDummyValue }},
 {{- end}}
-		Object:      incusapi.{{ .ObjectType | pascalcase }}{},
+		Object:      inventory.Incus{{ .ObjectType | pascalcase }}Wrapper{},
 		LastUpdated: time.Now(),
 	}
 
@@ -192,7 +191,7 @@ server-two
 		Server:  ptr.To("one"),
 {{- end }}
 {{- if .HasProject }}
-		Project: ptr.To("one"),
+		ProjectName: ptr.To("one"),
 {{- end }}
 {{- if .HasParent }}
 		{{ .ParentName | pascalcase }}Name: ptr.To("parent one"),
@@ -205,17 +204,17 @@ server-two
 
 	// Ensure we have one entry with filter for cluster, server{{ if .HasProject }}, project{{ end }}{{ if .HasParent }}, {{ .ParentName }}{{ end }} and name.
 	db{{ .Name | pascalcase }}, err = {{ .Name | camelcase }}.GetAllWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{
-		Cluster: ptr.To("one"),
+		Cluster:     ptr.To("one"),
 {{- if .ServerIDByLocation }}
-		Server:  ptr.To("one"),
+		Server:      ptr.To("one"),
 {{- end }}
 {{- if .HasProject }}
-		Project: ptr.To("one"),
+		ProjectName: ptr.To("one"),
 {{- end }}
 {{- if .HasParent }}
 		{{ .ParentName | pascalcase }}Name: ptr.To("parent one"),
 {{- end }}
-		Name:    ptr.To("one"),
+		Name:        ptr.To("one"),
 	})
 	require.NoError(t, err)
 	require.Len(t, db{{ .Name | pascalcase }}, 1)

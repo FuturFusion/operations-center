@@ -171,7 +171,7 @@ func (s profileService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 		}
 
 		profile.ProjectName = retrievedProfile.Project
-		profile.Object = retrievedProfile
+		profile.Object = IncusProfileWrapper{retrievedProfile}
 		profile.LastUpdated = s.now()
 		profile.DeriveUUID()
 
@@ -244,7 +244,7 @@ func (s profileService) handleCreateEvent(ctx context.Context, clusterName strin
 		Cluster:     clusterName,
 		ProjectName: retrievedProfile.Project,
 		Name:        retrievedProfile.Name,
-		Object:      retrievedProfile,
+		Object:      IncusProfileWrapper{retrievedProfile},
 		LastUpdated: s.now(),
 	}
 
@@ -269,9 +269,9 @@ func (s profileService) handleCreateEvent(ctx context.Context, clusterName strin
 
 func (s profileService) handleDeleteEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, ProfileFilter{
-		Cluster: &clusterName,
-		Project: &event.Source.ProjectName,
-		Name:    &event.Source.Name,
+		Cluster:     &clusterName,
+		ProjectName: &event.Source.ProjectName,
+		Name:        &event.Source.Name,
 	})
 	if err != nil {
 		return err
@@ -309,9 +309,9 @@ func (s profileService) handleRenameEvent(ctx context.Context, clusterName strin
 
 func (s profileService) handleUpdateEvent(ctx context.Context, clusterName string, event domain.LifecycleEvent) error {
 	UUIDs, err := s.repo.GetAllUUIDsWithFilter(ctx, ProfileFilter{
-		Cluster: &clusterName,
-		Project: &event.Source.ProjectName,
-		Name:    &event.Source.Name,
+		Cluster:     &clusterName,
+		ProjectName: &event.Source.ProjectName,
+		Name:        &event.Source.Name,
 	})
 	if err != nil {
 		return err
@@ -359,7 +359,7 @@ func (s profileService) SyncCluster(ctx context.Context, name string) error {
 				Cluster:     name,
 				ProjectName: retrievedProfile.Project,
 				Name:        retrievedProfile.Name,
-				Object:      retrievedProfile,
+				Object:      IncusProfileWrapper{retrievedProfile},
 				LastUpdated: s.now(),
 			}
 

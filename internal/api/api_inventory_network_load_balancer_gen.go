@@ -156,7 +156,7 @@ func (i *networkLoadBalancerHandler) networkLoadBalancersGet(r *http.Request) re
 	}
 
 	if r.URL.Query().Get("project") != "" {
-		filter.Project = ptr.To(r.URL.Query().Get("project"))
+		filter.ProjectName = ptr.To(r.URL.Query().Get("project"))
 	}
 
 	if r.URL.Query().Get("filter") != "" {
@@ -178,7 +178,7 @@ func (i *networkLoadBalancerHandler) networkLoadBalancersGet(r *http.Request) re
 				ProjectName: networkLoadBalancer.ProjectName,
 				NetworkName: networkLoadBalancer.NetworkName,
 				Name:        networkLoadBalancer.Name,
-				Object:      networkLoadBalancer.Object,
+				Object:      networkLoadBalancer.Object.NetworkLoadBalancer,
 				LastUpdated: networkLoadBalancer.LastUpdated,
 			})
 		}
@@ -252,7 +252,7 @@ func (i *networkLoadBalancerHandler) networkLoadBalancerGet(r *http.Request) res
 			ProjectName: networkLoadBalancer.ProjectName,
 			NetworkName: networkLoadBalancer.NetworkName,
 			Name:        networkLoadBalancer.Name,
-			Object:      networkLoadBalancer.Object,
+			Object:      networkLoadBalancer.Object.NetworkLoadBalancer,
 			LastUpdated: networkLoadBalancer.LastUpdated,
 		},
 	)

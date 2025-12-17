@@ -170,7 +170,7 @@ func (s storagePoolService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 			return err
 		}
 
-		storagePool.Object = retrievedStoragePool
+		storagePool.Object = IncusStoragePoolWrapper{retrievedStoragePool}
 		storagePool.LastUpdated = s.now()
 		storagePool.DeriveUUID()
 
@@ -242,7 +242,7 @@ func (s storagePoolService) handleCreateEvent(ctx context.Context, clusterName s
 	storagePool := StoragePool{
 		Cluster:     clusterName,
 		Name:        retrievedStoragePool.Name,
-		Object:      retrievedStoragePool,
+		Object:      IncusStoragePoolWrapper{retrievedStoragePool},
 		LastUpdated: s.now(),
 	}
 
@@ -354,7 +354,7 @@ func (s storagePoolService) SyncCluster(ctx context.Context, name string) error 
 			storagePool := StoragePool{
 				Cluster:     name,
 				Name:        retrievedStoragePool.Name,
-				Object:      retrievedStoragePool,
+				Object:      IncusStoragePoolWrapper{retrievedStoragePool},
 				LastUpdated: s.now(),
 			}
 
