@@ -1,20 +1,23 @@
 package config
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
+	"github.com/FuturFusion/operations-center/internal/testing/boom"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 func Test_validate(t *testing.T) {
 	tests := []struct {
-		name      string
-		oldCfg    *config
-		cfg       config
-		isIncusOS bool
+		name                            string
+		oldCfg                          *config
+		cfg                             config
+		isIncusOS                       bool
+		updateValidateSignalListenerErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -220,7 +223,7 @@ func Test_validate(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
-			name: "invalid updates.filter_expression",
+			name: "update validation signal error",
 			cfg: config{
 				Updates: api.SystemUpdates{
 					SystemUpdatesPut: api.SystemUpdatesPut{
@@ -229,21 +232,9 @@ func Test_validate(t *testing.T) {
 					},
 				},
 			},
+			updateValidateSignalListenerErr: boom.Error,
 
-			assertErr: require.Error,
-		},
-		{
-			name: "invalid updates.file_filter_expression",
-			cfg: config{
-				Updates: api.SystemUpdates{
-					SystemUpdatesPut: api.SystemUpdatesPut{
-						SignatureVerificationRootCA: signatureVerificationRootCA,
-						FileFilterExpression:        `invalid`, // invalid
-					},
-				},
-			},
-
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 
 		// Security
@@ -363,6 +354,10 @@ func Test_validate(t *testing.T) {
 			}
 
 			InitTest(t, env, nil)
+			UpdatesValidateSignal.AddListenerWithErr(func(ctx context.Context, su api.SystemUpdates) error {
+				return tc.updateValidateSignalListenerErr
+			}, tc.name)
+			defer UpdatesValidateSignal.RemoveListener(tc.name)
 
 			if tc.oldCfg != nil {
 				err := UpdateNetwork(t.Context(), tc.oldCfg.Network.SystemNetworkPut)
