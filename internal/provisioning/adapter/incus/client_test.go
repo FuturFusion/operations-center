@@ -288,9 +288,9 @@ func TestClient_Endpoint(t *testing.T) {
 			},
 		},
 		{
-			name: "FactoryReset",
+			name: "SystemFactoryReset",
 			clientCall: func(ctx context.Context, c clientPort, endpoint provisioning.Endpoint) (any, error) {
-				return nil, c.FactoryReset(ctx, endpoint)
+				return nil, c.SystemFactoryReset(ctx, endpoint, false, provisioning.TokenImageSeedConfigs{}, api.TokenProviderConfig{})
 			},
 			testCases: []methodTestCase{
 				{
