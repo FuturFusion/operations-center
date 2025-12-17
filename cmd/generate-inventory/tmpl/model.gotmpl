@@ -48,10 +48,10 @@ type {{ .Name | pascalcase }} struct {
 	Server      string `json:"server"        db:"leftjoin=servers.name"`
 {{- end }}
 {{- if .HasProject }}
-	ProjectName string `json:"project"       db:"sql={{ .PluralName }}.project_name"`
+	ProjectName string `json:"project"{{ if .HasProjectFromParent }}       db:"leftjoin={{ .ParentPluralName | snakecase }}.project_name&joinon={{ .PluralName | snakecase }}.{{ .ParentName | snakecase }}_name&jointo=name&omit=create,update"{{ end }}`
 {{- end }}
 {{- if .HasParent }}
-	{{ .ParentName | pascalcase }}Name string `json:"{{ .ParentName }}_name"`
+	{{ .ParentName | pascalcase }}Name string `json:"{{ .ParentName }}_name" db:"joinon=networks.name"`
 {{- end }}
 	Name        string `json:"name"`
 {{- range .ExtraAttributes }}
@@ -129,7 +129,7 @@ type {{ .Name | pascalcase }}Filter struct{
 	Server      *string
 {{- end }}
 {{- if .HasProject }}
-	ProjectName *string
+	ProjectName *string {{ if .HasProjectFromParent }}`db:"ignore"`{{ end }}
 {{- end }}
 {{- if .HasParent }}
 	{{ .ParentName | pascalcase }}Name *string
