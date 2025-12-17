@@ -22,17 +22,18 @@ type ExprOsapiSystemNetwork struct {
 }
 
 type ExprOsapiSystemNetworkBond struct {
-	Name              string                        `json:"name"                          yaml:"name" expr:"name"`
-	Mode              string                        `json:"mode"                          yaml:"mode" expr:"mode"`
-	MTU               int                           `json:"mtu,omitempty"                 yaml:"mtu,omitempty" expr:"mtu"`
-	VLANTags          []int                         `json:"vlan_tags,omitempty"           yaml:"vlan_tags,omitempty" expr:"vlan_tags"`
-	Addresses         []string                      `json:"addresses,omitempty"           yaml:"addresses,omitempty" expr:"addresses"`
-	RequiredForOnline string                        `json:"required_for_online,omitempty" yaml:"required_for_online,omitempty" expr:"required_for_online"`
-	Routes            []ExprOsapiSystemNetworkRoute `json:"routes,omitempty"              yaml:"routes,omitempty" expr:"routes"`
-	Hwaddr            string                        `json:"hwaddr,omitempty"              yaml:"hwaddr,omitempty" expr:"hwaddr"`
-	Members           []string                      `json:"members,omitempty"             yaml:"members,omitempty" expr:"members"`
-	Roles             []string                      `json:"roles,omitempty"               yaml:"roles,omitempty" expr:"roles"`
-	LLDP              bool                          `json:"lldp"                          yaml:"lldp" expr:"lldp"`
+	Addresses         []string                             `json:"addresses,omitempty"           yaml:"addresses,omitempty" expr:"addresses"`
+	FirewallRules     []ExprOsapiSystemNetworkFirewallRule `json:"firewall_rules,omitempty"      yaml:"firewall_rules,omitempty" expr:"firewall_rules"`
+	Hwaddr            string                               `json:"hwaddr,omitempty"              yaml:"hwaddr,omitempty" expr:"hwaddr"`
+	LLDP              bool                                 `json:"lldp,omitempty"                yaml:"lldp,omitempty" expr:"lldp"`
+	Members           []string                             `json:"members,omitempty"             yaml:"members,omitempty" expr:"members"`
+	Mode              string                               `json:"mode"                          yaml:"mode" expr:"mode"`
+	MTU               int                                  `json:"mtu,omitempty"                 yaml:"mtu,omitempty" expr:"mtu"`
+	Name              string                               `json:"name"                          yaml:"name" expr:"name"`
+	RequiredForOnline string                               `json:"required_for_online,omitempty" yaml:"required_for_online,omitempty" expr:"required_for_online"`
+	Roles             []string                             `json:"roles,omitempty"               yaml:"roles,omitempty" expr:"roles"`
+	Routes            []ExprOsapiSystemNetworkRoute        `json:"routes,omitempty"              yaml:"routes,omitempty" expr:"routes"`
+	VLANTags          []int                                `json:"vlan_tags,omitempty"           yaml:"vlan_tags,omitempty" expr:"vlan_tags"`
 }
 
 type ExprOsapiSystemNetworkConfig struct {
@@ -45,43 +46,52 @@ type ExprOsapiSystemNetworkConfig struct {
 }
 
 type ExprOsapiSystemNetworkDNS struct {
-	Hostname      string   `json:"hostname"                 yaml:"hostname" expr:"hostname"`
 	Domain        string   `json:"domain"                   yaml:"domain" expr:"domain"`
-	SearchDomains []string `json:"search_domains,omitempty" yaml:"search_domains,omitempty" expr:"search_domains"`
+	Hostname      string   `json:"hostname"                 yaml:"hostname" expr:"hostname"`
 	Nameservers   []string `json:"nameservers,omitempty"    yaml:"nameservers,omitempty" expr:"nameservers"`
+	SearchDomains []string `json:"search_domains,omitempty" yaml:"search_domains,omitempty" expr:"search_domains"`
+}
+
+type ExprOsapiSystemNetworkFirewallRule struct {
+	Action   string `json:"action"             yaml:"action" expr:"action"`
+	Source   string `json:"source,omitempty"   yaml:"source,omitempty" expr:"source"`
+	Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty" expr:"protocol"`
+	Port     int    `json:"port,omitempty"     yaml:"port,omitempty" expr:"port"`
 }
 
 type ExprOsapiSystemNetworkInterface struct {
-	Name              string                        `json:"name"                          yaml:"name" expr:"name"`
-	MTU               int                           `json:"mtu,omitempty"                 yaml:"mtu,omitempty" expr:"mtu"`
-	VLANTags          []int                         `json:"vlan_tags,omitempty"           yaml:"vlan_tags,omitempty" expr:"vlan_tags"`
-	Addresses         []string                      `json:"addresses,omitempty"           yaml:"addresses,omitempty" expr:"addresses"`
-	RequiredForOnline string                        `json:"required_for_online,omitempty" yaml:"required_for_online,omitempty" expr:"required_for_online"`
-	Routes            []ExprOsapiSystemNetworkRoute `json:"routes,omitempty"              yaml:"routes,omitempty" expr:"routes"`
-	Hwaddr            string                        `json:"hwaddr"                        yaml:"hwaddr" expr:"hwaddr"`
-	Roles             []string                      `json:"roles,omitempty"               yaml:"roles,omitempty" expr:"roles"`
-	LLDP              bool                          `json:"lldp"                          yaml:"lldp" expr:"lldp"`
+	Addresses         []string                             `json:"addresses,omitempty"           yaml:"addresses,omitempty" expr:"addresses"`
+	FirewallRules     []ExprOsapiSystemNetworkFirewallRule `json:"firewall_rules,omitempty"      yaml:"firewall_rules,omitempty" expr:"firewall_rules"`
+	Hwaddr            string                               `json:"hwaddr"                        yaml:"hwaddr" expr:"hwaddr"`
+	LLDP              bool                                 `json:"lldp,omitempty"                yaml:"lldp,omitempty" expr:"lldp"`
+	MTU               int                                  `json:"mtu,omitempty"                 yaml:"mtu,omitempty" expr:"mtu"`
+	Name              string                               `json:"name"                          yaml:"name" expr:"name"`
+	RequiredForOnline string                               `json:"required_for_online,omitempty" yaml:"required_for_online,omitempty" expr:"required_for_online"`
+	Roles             []string                             `json:"roles,omitempty"               yaml:"roles,omitempty" expr:"roles"`
+	Routes            []ExprOsapiSystemNetworkRoute        `json:"routes,omitempty"              yaml:"routes,omitempty" expr:"routes"`
+	StrictHwaddr      bool                                 `json:"strict_hwaddr,omitempty"       yaml:"strict_hwaddr,omitempty" expr:"strict_hwaddr"`
+	VLANTags          []int                                `json:"vlan_tags,omitempty"           yaml:"vlan_tags,omitempty" expr:"vlan_tags"`
 }
 
 type ExprOsapiSystemNetworkInterfaceState struct {
-	Type      string                                          `json:"type,omitempty"      yaml:"type,omitempty" expr:"type"`
 	Addresses []string                                        `json:"addresses,omitempty" yaml:"addresses,omitempty" expr:"addresses"`
 	Hwaddr    string                                          `json:"hwaddr"              yaml:"hwaddr" expr:"hwaddr"`
-	Routes    []ExprOsapiSystemNetworkRoute                   `json:"routes,omitempty"    yaml:"routes,omitempty" expr:"routes"`
+	LACP      *ExprOsapiSystemNetworkLACPState                `json:"lacp,omitempty"      yaml:"lacp,omitempty" expr:"lacp"`
+	LLDP      []ExprOsapiSystemNetworkLLDPState               `json:"lldp,omitempty"      yaml:"lldp,omitempty" expr:"lldp"`
+	Members   map[string]ExprOsapiSystemNetworkInterfaceState `json:"members,omitempty"   yaml:"members,omitempty" expr:"members"`
 	MTU       int                                             `json:"mtu,omitempty"       yaml:"mtu,omitempty" expr:"mtu"`
+	Roles     []string                                        `json:"roles,omitempty"     yaml:"roles,omitempty" expr:"roles"`
+	Routes    []ExprOsapiSystemNetworkRoute                   `json:"routes,omitempty"    yaml:"routes,omitempty" expr:"routes"`
 	Speed     string                                          `json:"speed,omitempty"     yaml:"speed,omitempty" expr:"speed"`
 	State     string                                          `json:"state"               yaml:"state" expr:"state"`
 	Stats     ExprOsapiSystemNetworkInterfaceStats            `json:"stats"               yaml:"stats" expr:"stats"`
-	LLDP      []ExprOsapiSystemNetworkLLDPState               `json:"lldp,omitempty"      yaml:"lldp,omitempty" expr:"lldp"`
-	LACP      *ExprOsapiSystemNetworkLACPState                `json:"lacp,omitempty"      yaml:"lacp,omitempty" expr:"lacp"`
-	Members   map[string]ExprOsapiSystemNetworkInterfaceState `json:"members,omitempty"   yaml:"members,omitempty" expr:"members"`
-	Roles     []string                                        `json:"roles,omitempty"     yaml:"roles,omitempty" expr:"roles"`
+	Type      string                                          `json:"type,omitempty"      yaml:"type,omitempty" expr:"type"`
 }
 
 type ExprOsapiSystemNetworkInterfaceStats struct {
 	RXBytes  int `json:"rx_bytes"  yaml:"rx_bytes" expr:"rx_bytes"`
-	TXBytes  int `json:"tx_bytes"  yaml:"tx_bytes" expr:"tx_bytes"`
 	RXErrors int `json:"rx_errors" yaml:"rx_errors" expr:"rx_errors"`
+	TXBytes  int `json:"tx_bytes"  yaml:"tx_bytes" expr:"tx_bytes"`
 	TXErrors int `json:"tx_errors" yaml:"tx_errors" expr:"tx_errors"`
 }
 
@@ -91,15 +101,15 @@ type ExprOsapiSystemNetworkLACPState struct {
 }
 
 type ExprOsapiSystemNetworkLLDPState struct {
-	Name      string `json:"name"           yaml:"name" expr:"name"`
 	ChassisID string `json:"chassis_id"     yaml:"chassis_id" expr:"chassis_id"`
+	Name      string `json:"name"           yaml:"name" expr:"name"`
 	PortID    string `json:"port_id"        yaml:"port_id" expr:"port_id"`
 	Port      string `json:"port,omitempty" yaml:"port,omitempty" expr:"port"`
 }
 
 type ExprOsapiSystemNetworkProxy struct {
-	Servers map[string]ExprOsapiSystemNetworkProxyServer `json:"servers,omitempty" yaml:"servers,omitempty" expr:"servers"`
 	Rules   []ExprOsapiSystemNetworkProxyRule            `json:"rules,omitempty"   yaml:"rules,omitempty" expr:"rules"`
+	Servers map[string]ExprOsapiSystemNetworkProxyServer `json:"servers,omitempty" yaml:"servers,omitempty" expr:"servers"`
 }
 
 type ExprOsapiSystemNetworkProxyRule struct {
@@ -108,12 +118,12 @@ type ExprOsapiSystemNetworkProxyRule struct {
 }
 
 type ExprOsapiSystemNetworkProxyServer struct {
-	Host     string `json:"host"               yaml:"host" expr:"host"`
-	UseTLS   bool   `json:"use_tls"            yaml:"use_tls" expr:"use_tls"`
 	Auth     string `json:"auth"               yaml:"auth" expr:"auth"`
-	Username string `json:"username,omitempty" yaml:"username,omitempty" expr:"username"`
+	Host     string `json:"host"               yaml:"host" expr:"host"`
 	Password string `json:"password,omitempty" yaml:"password,omitempty" expr:"password"`
 	Realm    string `json:"realm,omitempty"    yaml:"realm,omitempty" expr:"realm"`
+	Username string `json:"username,omitempty" yaml:"username,omitempty" expr:"username"`
+	UseTLS   bool   `json:"use_tls"            yaml:"use_tls" expr:"use_tls"`
 }
 
 type ExprOsapiSystemNetworkRoute struct {
@@ -131,14 +141,15 @@ type ExprOsapiSystemNetworkTime struct {
 }
 
 type ExprOsapiSystemNetworkVLAN struct {
-	Name              string                        `json:"name"                          yaml:"name" expr:"name"`
-	Parent            string                        `json:"parent"                        yaml:"parent" expr:"parent"`
-	ID                int                           `json:"id"                            yaml:"id" expr:"id"`
-	MTU               int                           `json:"mtu,omitempty"                 yaml:"mtu,omitempty" expr:"mtu"`
-	Addresses         []string                      `json:"addresses,omitempty"           yaml:"addresses,omitempty" expr:"addresses"`
-	RequiredForOnline string                        `json:"required_for_online,omitempty" yaml:"required_for_online,omitempty" expr:"required_for_online"`
-	Routes            []ExprOsapiSystemNetworkRoute `json:"routes,omitempty"              yaml:"routes,omitempty" expr:"routes"`
-	Roles             []string                      `json:"roles,omitempty"               yaml:"roles,omitempty" expr:"roles"`
+	Addresses         []string                             `json:"addresses,omitempty"           yaml:"addresses,omitempty" expr:"addresses"`
+	FirewallRules     []ExprOsapiSystemNetworkFirewallRule `json:"firewall_rules,omitempty"      yaml:"firewall_rules,omitempty" expr:"firewall_rules"`
+	ID                int                                  `json:"id"                            yaml:"id" expr:"id"`
+	MTU               int                                  `json:"mtu,omitempty"                 yaml:"mtu,omitempty" expr:"mtu"`
+	Name              string                               `json:"name"                          yaml:"name" expr:"name"`
+	Parent            string                               `json:"parent"                        yaml:"parent" expr:"parent"`
+	RequiredForOnline string                               `json:"required_for_online,omitempty" yaml:"required_for_online,omitempty" expr:"required_for_online"`
+	Roles             []string                             `json:"roles,omitempty"               yaml:"roles,omitempty" expr:"roles"`
+	Routes            []ExprOsapiSystemNetworkRoute        `json:"routes,omitempty"              yaml:"routes,omitempty" expr:"routes"`
 }
 
 type ExprOsapiSystemSecurity struct {
@@ -265,17 +276,18 @@ func ToExprOsapiSystemNetwork(s osapi.SystemNetwork) ExprOsapiSystemNetwork {
 
 func ToExprOsapiSystemNetworkBond(s osapi.SystemNetworkBond) ExprOsapiSystemNetworkBond {
 	return ExprOsapiSystemNetworkBond{
-		Name:              s.Name,
+		Addresses:         s.Addresses,
+		FirewallRules:     sliceConvert(s.FirewallRules, ToExprOsapiSystemNetworkFirewallRule),
+		Hwaddr:            s.Hwaddr,
+		LLDP:              s.LLDP,
+		Members:           s.Members,
 		Mode:              s.Mode,
 		MTU:               s.MTU,
-		VLANTags:          s.VLANTags,
-		Addresses:         s.Addresses,
+		Name:              s.Name,
 		RequiredForOnline: s.RequiredForOnline,
-		Routes:            sliceConvert(s.Routes, ToExprOsapiSystemNetworkRoute),
-		Hwaddr:            s.Hwaddr,
-		Members:           s.Members,
 		Roles:             s.Roles,
-		LLDP:              s.LLDP,
+		Routes:            sliceConvert(s.Routes, ToExprOsapiSystemNetworkRoute),
+		VLANTags:          s.VLANTags,
 	}
 }
 
@@ -292,49 +304,60 @@ func ToExprOsapiSystemNetworkConfig(s osapi.SystemNetworkConfig) ExprOsapiSystem
 
 func ToExprOsapiSystemNetworkDNS(s osapi.SystemNetworkDNS) ExprOsapiSystemNetworkDNS {
 	return ExprOsapiSystemNetworkDNS{
-		Hostname:      s.Hostname,
 		Domain:        s.Domain,
-		SearchDomains: s.SearchDomains,
+		Hostname:      s.Hostname,
 		Nameservers:   s.Nameservers,
+		SearchDomains: s.SearchDomains,
+	}
+}
+
+func ToExprOsapiSystemNetworkFirewallRule(s osapi.SystemNetworkFirewallRule) ExprOsapiSystemNetworkFirewallRule {
+	return ExprOsapiSystemNetworkFirewallRule{
+		Action:   s.Action,
+		Source:   s.Source,
+		Protocol: s.Protocol,
+		Port:     s.Port,
 	}
 }
 
 func ToExprOsapiSystemNetworkInterface(s osapi.SystemNetworkInterface) ExprOsapiSystemNetworkInterface {
 	return ExprOsapiSystemNetworkInterface{
-		Name:              s.Name,
-		MTU:               s.MTU,
-		VLANTags:          s.VLANTags,
 		Addresses:         s.Addresses,
-		RequiredForOnline: s.RequiredForOnline,
-		Routes:            sliceConvert(s.Routes, ToExprOsapiSystemNetworkRoute),
+		FirewallRules:     sliceConvert(s.FirewallRules, ToExprOsapiSystemNetworkFirewallRule),
 		Hwaddr:            s.Hwaddr,
-		Roles:             s.Roles,
 		LLDP:              s.LLDP,
+		MTU:               s.MTU,
+		Name:              s.Name,
+		RequiredForOnline: s.RequiredForOnline,
+		Roles:             s.Roles,
+		Routes:            sliceConvert(s.Routes, ToExprOsapiSystemNetworkRoute),
+		StrictHwaddr:      s.StrictHwaddr,
+		VLANTags:          s.VLANTags,
 	}
 }
 
 func ToExprOsapiSystemNetworkInterfaceState(s osapi.SystemNetworkInterfaceState) ExprOsapiSystemNetworkInterfaceState {
 	return ExprOsapiSystemNetworkInterfaceState{
-		Type:      s.Type,
 		Addresses: s.Addresses,
 		Hwaddr:    s.Hwaddr,
-		Routes:    sliceConvert(s.Routes, ToExprOsapiSystemNetworkRoute),
+		LACP:      toPtr(ToExprOsapiSystemNetworkLACPState(fromPtr(s.LACP))),
+		LLDP:      sliceConvert(s.LLDP, ToExprOsapiSystemNetworkLLDPState),
+		Members:   mapConvert(s.Members, ToExprOsapiSystemNetworkInterfaceState),
 		MTU:       s.MTU,
+		Roles:     s.Roles,
+		Routes:    sliceConvert(s.Routes, ToExprOsapiSystemNetworkRoute),
 		Speed:     s.Speed,
 		State:     s.State,
 		Stats:     ToExprOsapiSystemNetworkInterfaceStats(s.Stats),
-		LLDP:      sliceConvert(s.LLDP, ToExprOsapiSystemNetworkLLDPState),
-		LACP:      toPtr(ToExprOsapiSystemNetworkLACPState(fromPtr(s.LACP))),
-		Members:   mapConvert(s.Members, ToExprOsapiSystemNetworkInterfaceState),
-		Roles:     s.Roles,
+		Type:      s.Type,
 	}
 }
 
 func ToExprOsapiSystemNetworkInterfaceStats(s osapi.SystemNetworkInterfaceStats) ExprOsapiSystemNetworkInterfaceStats {
 	return ExprOsapiSystemNetworkInterfaceStats{
 		RXBytes:  s.RXBytes,
-		TXBytes:  s.TXBytes,
 		RXErrors: s.RXErrors,
+		TXBytes:  s.TXBytes,
 		TXErrors: s.TXErrors,
 	}
 }
@@ -348,8 +371,8 @@ func ToExprOsapiSystemNetworkLACPState(s osapi.SystemNetworkLACPState) ExprOsapi
 
 func ToExprOsapiSystemNetworkLLDPState(s osapi.SystemNetworkLLDPState) ExprOsapiSystemNetworkLLDPState {
 	return ExprOsapiSystemNetworkLLDPState{
-		Name:      s.Name,
 		ChassisID: s.ChassisID,
+		Name:      s.Name,
 		PortID:    s.PortID,
 		Port:      s.Port,
 	}
@@ -357,8 +380,8 @@ func ToExprOsapiSystemNetworkLLDPState(s osapi.SystemNetworkLLDPState) ExprOsapi
 
 func ToExprOsapiSystemNetworkProxy(s osapi.SystemNetworkProxy) ExprOsapiSystemNetworkProxy {
 	return ExprOsapiSystemNetworkProxy{
-		Servers: mapConvert(s.Servers, ToExprOsapiSystemNetworkProxyServer),
 		Rules:   sliceConvert(s.Rules, ToExprOsapiSystemNetworkProxyRule),
+		Servers: mapConvert(s.Servers, ToExprOsapiSystemNetworkProxyServer),
 	}
 }
 
@@ -371,12 +394,12 @@ func ToExprOsapiSystemNetworkProxyRule(s osapi.SystemNetworkProxyRule) ExprOsapi
 
 func ToExprOsapiSystemNetworkProxyServer(s osapi.SystemNetworkProxyServer) ExprOsapiSystemNetworkProxyServer {
 	return ExprOsapiSystemNetworkProxyServer{
-		Host:     s.Host,
-		UseTLS:   s.UseTLS,
 		Auth:     s.Auth,
-		Username: s.Username,
+		Host:     s.Host,
 		Password: s.Password,
 		Realm:    s.Realm,
+		Username: s.Username,
+		UseTLS:   s.UseTLS,
 	}
 }
 
@@ -402,14 +425,15 @@ func ToExprOsapiSystemNetworkTime(s osapi.SystemNetworkTime) ExprOsapiSystemNetw
 
 func ToExprOsapiSystemNetworkVLAN(s osapi.SystemNetworkVLAN) ExprOsapiSystemNetworkVLAN {
 	return ExprOsapiSystemNetworkVLAN{
-		Name:              s.Name,
-		Parent:            s.Parent,
+		Addresses:         s.Addresses,
+		FirewallRules:     sliceConvert(s.FirewallRules, ToExprOsapiSystemNetworkFirewallRule),
 		ID:                s.ID,
 		MTU:               s.MTU,
-		Addresses:         s.Addresses,
+		Name:              s.Name,
+		Parent:            s.Parent,
 		RequiredForOnline: s.RequiredForOnline,
-		Routes:            sliceConvert(s.Routes, ToExprOsapiSystemNetworkRoute),
 		Roles:             s.Roles,
+		Routes:            sliceConvert(s.Routes, ToExprOsapiSystemNetworkRoute),
 	}
 }
 
