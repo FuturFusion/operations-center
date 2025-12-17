@@ -44,7 +44,7 @@ func New(serverURL string, serverCertificate tls.Certificate) *Flasher {
 	return flasher
 }
 
-func (f *Flasher) GetProviderConfig(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
+func (f *Flasher) GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (*api.TokenProviderConfig, error) {
 	f.mu.Lock()
 	serverURL := f.serverURL
 	serverCertificate := f.serverCertificate
@@ -59,7 +59,7 @@ func (f *Flasher) GetProviderConfig(ctx context.Context, id uuid.UUID) (*api.Tok
 			Name: "operations-center",
 			Config: map[string]string{
 				"server_url":   serverURL,
-				"server_token": id.String(),
+				"server_token": tokenID.String(),
 			},
 		},
 		Version: "1",
