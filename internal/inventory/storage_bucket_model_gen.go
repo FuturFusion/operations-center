@@ -47,8 +47,8 @@ type StorageBucket struct {
 	UUID            uuid.UUID                     `json:"uuid"          db:"primary=yes"`
 	Cluster         string                        `json:"cluster"       db:"leftjoin=clusters.name"`
 	Server          string                        `json:"server"        db:"leftjoin=servers.name"`
-	ProjectName     string                        `json:"project"       db:"sql=storage_buckets.project_name"`
-	StoragePoolName string                        `json:"storage_pool_name"`
+	ProjectName     string                        `json:"project"`
+	StoragePoolName string                        `json:"storage_pool_name" db:"joinon=networks.name"`
 	Name            string                        `json:"name"`
 	Object          IncusStorageBucketFullWrapper `json:"object"`
 	LastUpdated     time.Time                     `json:"last_updated"  db:"update_timestamp"`

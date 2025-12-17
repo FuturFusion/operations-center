@@ -44,8 +44,8 @@ type ExprNetworkLoadBalancer struct {
 	ID          int                                 `json:"-" expr:"-"`
 	UUID        uuid.UUID                           `json:"uuid"          db:"primary=yes" expr:"uuid"`
 	Cluster     string                              `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
-	ProjectName string                              `json:"project"       db:"sql=network_load_balancers.project_name" expr:"project"`
-	NetworkName string                              `json:"network_name" expr:"network_name"`
+	ProjectName string                              `json:"project"       db:"leftjoin=networks.project_name&joinon=network_load_balancers.network_name&jointo=name&omit=create,update" expr:"project"`
+	NetworkName string                              `json:"network_name" db:"joinon=networks.name" expr:"network_name"`
 	Name        string                              `json:"name" expr:"name"`
 	Object      ExprIncusNetworkLoadBalancerWrapper `json:"object" expr:"object"`
 	LastUpdated time.Time                           `json:"last_updated"  db:"update_timestamp" expr:"last_updated"`

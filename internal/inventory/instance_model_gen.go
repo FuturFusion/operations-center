@@ -47,7 +47,7 @@ type Instance struct {
 	UUID        uuid.UUID                `json:"uuid"          db:"primary=yes"`
 	Cluster     string                   `json:"cluster"       db:"leftjoin=clusters.name"`
 	Server      string                   `json:"server"        db:"leftjoin=servers.name"`
-	ProjectName string                   `json:"project"       db:"sql=instances.project_name"`
+	ProjectName string                   `json:"project"`
 	Name        string                   `json:"name"`
 	Object      IncusInstanceFullWrapper `json:"object"`
 	LastUpdated time.Time                `json:"last_updated"  db:"update_timestamp"`

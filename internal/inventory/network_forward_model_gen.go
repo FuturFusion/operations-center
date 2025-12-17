@@ -46,8 +46,8 @@ type NetworkForward struct {
 	ID          int                        `json:"-"`
 	UUID        uuid.UUID                  `json:"uuid"          db:"primary=yes"`
 	Cluster     string                     `json:"cluster"       db:"leftjoin=clusters.name"`
-	ProjectName string                     `json:"project"       db:"sql=network_forwards.project_name"`
-	NetworkName string                     `json:"network_name"`
+	ProjectName string                     `json:"project"       db:"leftjoin=networks.project_name&joinon=network_forwards.network_name&jointo=name&omit=create,update"`
+	NetworkName string                     `json:"network_name" db:"joinon=networks.name"`
 	Name        string                     `json:"name"`
 	Object      IncusNetworkForwardWrapper `json:"object"`
 	LastUpdated time.Time                  `json:"last_updated"  db:"update_timestamp"`
@@ -92,7 +92,7 @@ type NetworkForwards []NetworkForward
 type NetworkForwardFilter struct {
 	UUID        *uuid.UUID
 	Cluster     *string
-	ProjectName *string
+	ProjectName *string `db:"ignore"`
 	NetworkName *string
 	Name        *string
 	Expression  *string `db:"ignore"`

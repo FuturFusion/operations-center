@@ -72,8 +72,8 @@ type ExprStorageVolume struct {
 	UUID            uuid.UUID                         `json:"uuid"          db:"primary=yes" expr:"uuid"`
 	Cluster         string                            `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
 	Server          string                            `json:"server"        db:"leftjoin=servers.name" expr:"server"`
-	ProjectName     string                            `json:"project"       db:"sql=storage_volumes.project_name" expr:"project"`
-	StoragePoolName string                            `json:"storage_pool_name" expr:"storage_pool_name"`
+	ProjectName     string                            `json:"project" expr:"project"`
+	StoragePoolName string                            `json:"storage_pool_name" db:"joinon=networks.name" expr:"storage_pool_name"`
 	Name            string                            `json:"name" expr:"name"`
 	Type            string                            `json:"type" expr:"type"`
 	Object          ExprIncusStorageVolumeFullWrapper `json:"object" expr:"object"`

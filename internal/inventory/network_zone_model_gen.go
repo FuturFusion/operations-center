@@ -46,7 +46,7 @@ type NetworkZone struct {
 	ID          int                     `json:"-"`
 	UUID        uuid.UUID               `json:"uuid"          db:"primary=yes"`
 	Cluster     string                  `json:"cluster"       db:"leftjoin=clusters.name"`
-	ProjectName string                  `json:"project"       db:"sql=network_zones.project_name"`
+	ProjectName string                  `json:"project"`
 	Name        string                  `json:"name"`
 	Object      IncusNetworkZoneWrapper `json:"object"`
 	LastUpdated time.Time               `json:"last_updated"  db:"update_timestamp"`
