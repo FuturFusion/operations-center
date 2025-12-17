@@ -82,12 +82,12 @@ func (_d FlasherPortWithSlog) GenerateSeededImage(ctx context.Context, id uuid.U
 }
 
 // GetProviderConfig implements provisioning.FlasherPort.
-func (_d FlasherPortWithSlog) GetProviderConfig(ctx context.Context, id uuid.UUID) (tokenProviderConfig *api.TokenProviderConfig, err error) {
+func (_d FlasherPortWithSlog) GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (tokenProviderConfig *api.TokenProviderConfig, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
-			slog.Any("id", id),
+			slog.Any("tokenID", tokenID),
 		)
 	}
 	log.DebugContext(ctx, "=> calling GetProviderConfig")
@@ -113,5 +113,5 @@ func (_d FlasherPortWithSlog) GetProviderConfig(ctx context.Context, id uuid.UUI
 			log.DebugContext(ctx, "<= method GetProviderConfig finished")
 		}
 	}()
-	return _d._base.GetProviderConfig(ctx, id)
+	return _d._base.GetProviderConfig(ctx, tokenID)
 }

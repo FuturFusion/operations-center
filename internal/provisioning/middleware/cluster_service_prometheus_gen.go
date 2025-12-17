@@ -10,7 +10,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -54,8 +54,22 @@ func (_d ClusterServiceWithPrometheus) Create(ctx context.Context, cluster provi
 	return _d.base.Create(ctx, cluster)
 }
 
+// DeleteAndFactoryResetByName implements provisioning.ClusterService.
+func (_d ClusterServiceWithPrometheus) DeleteAndFactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteAndFactoryResetByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteAndFactoryResetByName(ctx, name, tokenID, tokenSeedName)
+}
+
 // DeleteByName implements provisioning.ClusterService.
-func (_d ClusterServiceWithPrometheus) DeleteByName(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) (err error) {
+func (_d ClusterServiceWithPrometheus) DeleteByName(ctx context.Context, name string, force bool) (err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -65,7 +79,7 @@ func (_d ClusterServiceWithPrometheus) DeleteByName(ctx context.Context, name st
 
 		clusterServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteByName", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.DeleteByName(ctx, name, deleteMode)
+	return _d.base.DeleteByName(ctx, name, force)
 }
 
 // GetAll implements provisioning.ClusterService.

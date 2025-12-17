@@ -121,7 +121,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	server := sqlite.NewServer(tx)
 	serverSvc := provisioning.NewServerService(server, nil, nil, nil, "", tls.Certificate{})
 
-	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), localArtifactRepo, client, serverSvc, nil, terraformProvisioner)
+	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), localArtifactRepo, client, serverSvc, nil, nil, terraformProvisioner)
 
 	// Add server
 	_, err = server.Create(ctx, serverA)
@@ -220,6 +220,6 @@ func TestServerDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []string{"two-new"}, serverIDs)
 
 	// Ensure deletion of cluster fails if a linked server is present.
-	err = clusterSvc.DeleteByName(ctx, "one", api.ClusterDeleteModeNormal)
+	err = clusterSvc.DeleteByName(ctx, "one", false)
 	require.Error(t, err)
 }

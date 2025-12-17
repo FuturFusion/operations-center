@@ -29,9 +29,6 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			EnableOSServiceFunc: func(ctx context.Context, server provisioning.Server, name string, config map[string]any) error {
 //				panic("mock out the EnableOSService method")
 //			},
-//			FactoryResetFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
-//				panic("mock out the FactoryReset method")
-//			},
 //			GetClusterJoinTokenFunc: func(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (string, error) {
 //				panic("mock out the GetClusterJoinToken method")
 //			},
@@ -53,6 +50,9 @@ var _ provisioning.ClusterClientPort = &ClusterClientPortMock{}
 //			SubscribeLifecycleEventsFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (chan domain.LifecycleEvent, chan error, error) {
 //				panic("mock out the SubscribeLifecycleEvents method")
 //			},
+//			SystemFactoryResetFunc: func(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error {
+//				panic("mock out the SystemFactoryReset method")
+//			},
 //			UpdateClusterCertificateFunc: func(ctx context.Context, endpoint provisioning.Endpoint, certificatePEM string, keyPEM string) error {
 //				panic("mock out the UpdateClusterCertificate method")
 //			},
@@ -68,9 +68,6 @@ type ClusterClientPortMock struct {
 
 	// EnableOSServiceFunc mocks the EnableOSService method.
 	EnableOSServiceFunc func(ctx context.Context, server provisioning.Server, name string, config map[string]any) error
-
-	// FactoryResetFunc mocks the FactoryReset method.
-	FactoryResetFunc func(ctx context.Context, endpoint provisioning.Endpoint) error
 
 	// GetClusterJoinTokenFunc mocks the GetClusterJoinToken method.
 	GetClusterJoinTokenFunc func(ctx context.Context, endpoint provisioning.Endpoint, memberName string) (string, error)
@@ -92,6 +89,9 @@ type ClusterClientPortMock struct {
 
 	// SubscribeLifecycleEventsFunc mocks the SubscribeLifecycleEvents method.
 	SubscribeLifecycleEventsFunc func(ctx context.Context, endpoint provisioning.Endpoint) (chan domain.LifecycleEvent, chan error, error)
+
+	// SystemFactoryResetFunc mocks the SystemFactoryReset method.
+	SystemFactoryResetFunc func(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error
 
 	// UpdateClusterCertificateFunc mocks the UpdateClusterCertificate method.
 	UpdateClusterCertificateFunc func(ctx context.Context, endpoint provisioning.Endpoint, certificatePEM string, keyPEM string) error
@@ -115,13 +115,6 @@ type ClusterClientPortMock struct {
 			Name string
 			// Config is the config argument value.
 			Config map[string]any
-		}
-		// FactoryReset holds details about calls to the FactoryReset method.
-		FactoryReset []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Endpoint is the endpoint argument value.
-			Endpoint provisioning.Endpoint
 		}
 		// GetClusterJoinToken holds details about calls to the GetClusterJoinToken method.
 		GetClusterJoinToken []struct {
@@ -180,6 +173,19 @@ type ClusterClientPortMock struct {
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
 		}
+		// SystemFactoryReset holds details about calls to the SystemFactoryReset method.
+		SystemFactoryReset []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
+			// AllowTPMResetFailure is the allowTPMResetFailure argument value.
+			AllowTPMResetFailure bool
+			// Seeds is the seeds argument value.
+			Seeds provisioning.TokenImageSeedConfigs
+			// ProviderConfig is the providerConfig argument value.
+			ProviderConfig api.TokenProviderConfig
+		}
 		// UpdateClusterCertificate holds details about calls to the UpdateClusterCertificate method.
 		UpdateClusterCertificate []struct {
 			// Ctx is the ctx argument value.
@@ -194,7 +200,6 @@ type ClusterClientPortMock struct {
 	}
 	lockEnableCluster            sync.RWMutex
 	lockEnableOSService          sync.RWMutex
-	lockFactoryReset             sync.RWMutex
 	lockGetClusterJoinToken      sync.RWMutex
 	lockGetClusterNodeNames      sync.RWMutex
 	lockGetOSData                sync.RWMutex
@@ -202,6 +207,7 @@ type ClusterClientPortMock struct {
 	lockPing                     sync.RWMutex
 	lockSetServerConfig          sync.RWMutex
 	lockSubscribeLifecycleEvents sync.RWMutex
+	lockSystemFactoryReset       sync.RWMutex
 	lockUpdateClusterCertificate sync.RWMutex
 }
 
@@ -282,42 +288,6 @@ func (mock *ClusterClientPortMock) EnableOSServiceCalls() []struct {
 	mock.lockEnableOSService.RLock()
 	calls = mock.calls.EnableOSService
 	mock.lockEnableOSService.RUnlock()
-	return calls
-}
-
-// FactoryReset calls FactoryResetFunc.
-func (mock *ClusterClientPortMock) FactoryReset(ctx context.Context, endpoint provisioning.Endpoint) error {
-	if mock.FactoryResetFunc == nil {
-		panic("ClusterClientPortMock.FactoryResetFunc: method is nil but ClusterClientPort.FactoryReset was just called")
-	}
-	callInfo := struct {
-		Ctx      context.Context
-		Endpoint provisioning.Endpoint
-	}{
-		Ctx:      ctx,
-		Endpoint: endpoint,
-	}
-	mock.lockFactoryReset.Lock()
-	mock.calls.FactoryReset = append(mock.calls.FactoryReset, callInfo)
-	mock.lockFactoryReset.Unlock()
-	return mock.FactoryResetFunc(ctx, endpoint)
-}
-
-// FactoryResetCalls gets all the calls that were made to FactoryReset.
-// Check the length with:
-//
-//	len(mockedClusterClientPort.FactoryResetCalls())
-func (mock *ClusterClientPortMock) FactoryResetCalls() []struct {
-	Ctx      context.Context
-	Endpoint provisioning.Endpoint
-} {
-	var calls []struct {
-		Ctx      context.Context
-		Endpoint provisioning.Endpoint
-	}
-	mock.lockFactoryReset.RLock()
-	calls = mock.calls.FactoryReset
-	mock.lockFactoryReset.RUnlock()
 	return calls
 }
 
@@ -586,6 +556,54 @@ func (mock *ClusterClientPortMock) SubscribeLifecycleEventsCalls() []struct {
 	mock.lockSubscribeLifecycleEvents.RLock()
 	calls = mock.calls.SubscribeLifecycleEvents
 	mock.lockSubscribeLifecycleEvents.RUnlock()
+	return calls
+}
+
+// SystemFactoryReset calls SystemFactoryResetFunc.
+func (mock *ClusterClientPortMock) SystemFactoryReset(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seeds provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error {
+	if mock.SystemFactoryResetFunc == nil {
+		panic("ClusterClientPortMock.SystemFactoryResetFunc: method is nil but ClusterClientPort.SystemFactoryReset was just called")
+	}
+	callInfo := struct {
+		Ctx                  context.Context
+		Endpoint             provisioning.Endpoint
+		AllowTPMResetFailure bool
+		Seeds                provisioning.TokenImageSeedConfigs
+		ProviderConfig       api.TokenProviderConfig
+	}{
+		Ctx:                  ctx,
+		Endpoint:             endpoint,
+		AllowTPMResetFailure: allowTPMResetFailure,
+		Seeds:                seeds,
+		ProviderConfig:       providerConfig,
+	}
+	mock.lockSystemFactoryReset.Lock()
+	mock.calls.SystemFactoryReset = append(mock.calls.SystemFactoryReset, callInfo)
+	mock.lockSystemFactoryReset.Unlock()
+	return mock.SystemFactoryResetFunc(ctx, endpoint, allowTPMResetFailure, seeds, providerConfig)
+}
+
+// SystemFactoryResetCalls gets all the calls that were made to SystemFactoryReset.
+// Check the length with:
+//
+//	len(mockedClusterClientPort.SystemFactoryResetCalls())
+func (mock *ClusterClientPortMock) SystemFactoryResetCalls() []struct {
+	Ctx                  context.Context
+	Endpoint             provisioning.Endpoint
+	AllowTPMResetFailure bool
+	Seeds                provisioning.TokenImageSeedConfigs
+	ProviderConfig       api.TokenProviderConfig
+} {
+	var calls []struct {
+		Ctx                  context.Context
+		Endpoint             provisioning.Endpoint
+		AllowTPMResetFailure bool
+		Seeds                provisioning.TokenImageSeedConfigs
+		ProviderConfig       api.TokenProviderConfig
+	}
+	mock.lockSystemFactoryReset.RLock()
+	calls = mock.calls.SystemFactoryReset
+	mock.lockSystemFactoryReset.RUnlock()
 	return calls
 }
 

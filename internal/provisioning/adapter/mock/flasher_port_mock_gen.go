@@ -27,7 +27,7 @@ var _ provisioning.FlasherPort = &FlasherPortMock{}
 //			GenerateSeededImageFunc: func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error) {
 //				panic("mock out the GenerateSeededImage method")
 //			},
-//			GetProviderConfigFunc: func(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
+//			GetProviderConfigFunc: func(ctx context.Context, tokenID uuid.UUID) (*api.TokenProviderConfig, error) {
 //				panic("mock out the GetProviderConfig method")
 //			},
 //		}
@@ -41,7 +41,7 @@ type FlasherPortMock struct {
 	GenerateSeededImageFunc func(ctx context.Context, id uuid.UUID, seedConfig provisioning.TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error)
 
 	// GetProviderConfigFunc mocks the GetProviderConfig method.
-	GetProviderConfigFunc func(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error)
+	GetProviderConfigFunc func(ctx context.Context, tokenID uuid.UUID) (*api.TokenProviderConfig, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -60,8 +60,8 @@ type FlasherPortMock struct {
 		GetProviderConfig []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ID is the id argument value.
-			ID uuid.UUID
+			// TokenID is the tokenID argument value.
+			TokenID uuid.UUID
 		}
 	}
 	lockGenerateSeededImage sync.RWMutex
@@ -113,21 +113,21 @@ func (mock *FlasherPortMock) GenerateSeededImageCalls() []struct {
 }
 
 // GetProviderConfig calls GetProviderConfigFunc.
-func (mock *FlasherPortMock) GetProviderConfig(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
+func (mock *FlasherPortMock) GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (*api.TokenProviderConfig, error) {
 	if mock.GetProviderConfigFunc == nil {
 		panic("FlasherPortMock.GetProviderConfigFunc: method is nil but FlasherPort.GetProviderConfig was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
-		ID  uuid.UUID
+		Ctx     context.Context
+		TokenID uuid.UUID
 	}{
-		Ctx: ctx,
-		ID:  id,
+		Ctx:     ctx,
+		TokenID: tokenID,
 	}
 	mock.lockGetProviderConfig.Lock()
 	mock.calls.GetProviderConfig = append(mock.calls.GetProviderConfig, callInfo)
 	mock.lockGetProviderConfig.Unlock()
-	return mock.GetProviderConfigFunc(ctx, id)
+	return mock.GetProviderConfigFunc(ctx, tokenID)
 }
 
 // GetProviderConfigCalls gets all the calls that were made to GetProviderConfig.
@@ -135,12 +135,12 @@ func (mock *FlasherPortMock) GetProviderConfig(ctx context.Context, id uuid.UUID
 //
 //	len(mockedFlasherPort.GetProviderConfigCalls())
 func (mock *FlasherPortMock) GetProviderConfigCalls() []struct {
-	Ctx context.Context
-	ID  uuid.UUID
+	Ctx     context.Context
+	TokenID uuid.UUID
 } {
 	var calls []struct {
-		Ctx context.Context
-		ID  uuid.UUID
+		Ctx     context.Context
+		TokenID uuid.UUID
 	}
 	mock.lockGetProviderConfig.RLock()
 	calls = mock.calls.GetProviderConfig
