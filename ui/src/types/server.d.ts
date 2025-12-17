@@ -9,6 +9,7 @@ export interface Server {
   name: string;
   cluster: string;
   connection_url: string;
+  public_connection_url: string;
   server_type: string;
   server_status: string;
   certificate: string;
@@ -22,5 +23,6 @@ export interface Server {
 
 export interface ServerFormValues {
   name: string;
+  public_connection_url: string;
   network_configuration: string;
 }
