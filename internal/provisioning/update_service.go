@@ -17,6 +17,8 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/google/uuid"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
+	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -82,6 +84,12 @@ func NewUpdateService(repo UpdateRepo, filesRepo UpdateFilesRepo, source UpdateS
 	for _, opt := range opts {
 		opt(service)
 	}
+
+	// Register for the UpdatesValidateSignal to validate the updates filter
+	// expression and the updates file filter expression.
+	// The way through signals is chosen here to prevent a dependency cycle
+	// between the config and the provisioning package.
+	config.UpdatesValidateSignal.AddListenerWithErr(service.validateUpdatesConfig)
 
 	return service
 }
@@ -470,6 +478,24 @@ func (s updateService) Refresh(ctx context.Context) error {
 		err = s.repo.Upsert(ctx, update)
 		if err != nil {
 			return fmt.Errorf("Failed to persist the update in the repository: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (s updateService) validateUpdatesConfig(ctx context.Context, su api.SystemUpdates) error {
+	if su.FilterExpression != "" {
+		_, err := expr.Compile(su.FilterExpression, expr.Env(ToExprUpdate(Update{})))
+		if err != nil {
+			return domain.NewValidationErrf(`Invalid config, failed to compile filter expression: %v`, err)
+		}
+	}
+
+	if su.FileFilterExpression != "" {
+		_, err := expr.Compile(su.FileFilterExpression, UpdateFileExprEnvFrom(UpdateFile{}).ExprCompileOptions()...)
+		if err != nil {
+			return domain.NewValidationErrf(`Invalid config, failed to compile file filter expression: %v`, err)
 		}
 	}
 

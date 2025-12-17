@@ -14,6 +14,7 @@ import (
 	"github.com/lxc/incus-os/incus-osd/api/images"
 	"github.com/stretchr/testify/require"
 
+	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
@@ -24,6 +25,55 @@ import (
 	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
+
+func TestUpdateService_validateUpdatesConfig(t *testing.T) {
+	tests := []struct {
+		name                 string
+		filterExpression     string
+		fileFilterExpression string
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:                 "success",
+			filterExpression:     "",
+			fileFilterExpression: "",
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                 "success",
+			filterExpression:     `invalid`, // invalid,
+			fileFilterExpression: "",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid config, failed to compile filter expression`)
+			},
+		},
+		{
+			name:                 "success",
+			filterExpression:     "",
+			fileFilterExpression: `invalid`, // invalid,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorContains(tt, err, `Invalid config, failed to compile file filter expression`)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := config.UpdatesValidateSignal.TryEmit(t.Context(), api.SystemUpdates{
+				SystemUpdatesPut: api.SystemUpdatesPut{
+					FilterExpression:     tc.filterExpression,
+					FileFilterExpression: tc.fileFilterExpression,
+				},
+			})
+
+			tc.assertErr(t, err)
+		})
+	}
+}
 
 func TestUpdateFileExprEnv_ExprCompileOptions(t *testing.T) {
 	tests := []struct {
