@@ -1,10 +1,14 @@
 package provisioning_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"sync"
 	"testing"
 	"time"
@@ -16,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	adapterMock "github.com/FuturFusion/operations-center/internal/provisioning/adapter/mock"
 	svcMock "github.com/FuturFusion/operations-center/internal/provisioning/mock"
@@ -1820,6 +1825,43 @@ func TestServerService_DeleteByName(t *testing.T) {
 func TestServerService_PollPendingServers(t *testing.T) {
 	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
 
+	logEmpty := func(t *testing.T, logBuf *bytes.Buffer) {
+		t.Helper()
+
+		require.Empty(t, logBuf.String())
+	}
+
+	logMatch := func(expr string) func(t *testing.T, logBuf *bytes.Buffer) {
+		re, err := regexp.Compile(expr)
+		require.NoError(t, err)
+
+		return func(t *testing.T, logBuf *bytes.Buffer) {
+			t.Helper()
+
+			// Give logs a little bit of time to be processed.
+			for range 5 {
+				if re.Match(logBuf.Bytes()) {
+					break
+				}
+
+				time.Sleep(10 * time.Millisecond)
+			}
+
+			require.True(t, re.Match(logBuf.Bytes()), "logBuf did not match expression: %q, logBuf:\n%s", expr, logBuf.String())
+		}
+	}
+
+	httpsServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	httpsServer.StartTLS()
+	defer httpsServer.Close()
+
+	httpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
 	tests := []struct {
 		name                        string
 		repoGetAllWithFilterServers provisioning.Servers
@@ -1835,12 +1877,14 @@ func TestServerService_PollPendingServers(t *testing.T) {
 		clusterSvcUpdateErr         error
 
 		assertErr require.ErrorAssertionFunc
+		assertLog func(t *testing.T, logBuf *bytes.Buffer)
 	}{
 		{
 			name:                        "success - no pending servers",
 			repoGetAllWithFilterServers: provisioning.Servers{},
 
 			assertErr: require.NoError,
+			assertLog: logEmpty,
 		},
 		{
 			name: "success",
@@ -1859,12 +1903,14 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: logEmpty,
 		},
 		{
 			name:                    "error - GetAllWithFilter",
 			repoGetAllWithFilterErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: logEmpty,
 		},
 		{
 			name: "error - client Ping",
@@ -1881,6 +1927,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			},
 
 			assertErr: require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
+			assertLog: logMatch("Server connection test failed"),
 		},
 		{
 			name: "error - client Ping with tls.CertificateVerificationError but server is not part of cluster",
@@ -1899,6 +1946,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			},
 
 			assertErr: require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
+			assertLog: logMatch("Server connection test failed"),
 		},
 		{
 			name: "success - cluster now has publicly valid certificate",
@@ -1926,6 +1974,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			},
 
 			assertErr: require.NoError,
+			assertLog: logEmpty,
 		},
 		{
 			name: "error - client Ping with tls.CertificateVerificationError but second ping fails",
@@ -1955,6 +2004,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			},
 
 			assertErr: require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
+			assertLog: logMatch("Server connection test failed"),
 		},
 		{
 			name: "error - cluster now has publicly valid certificate - clusterSvc.GetByName",
@@ -1979,6 +2029,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			clusterSvcGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: logEmpty,
 		},
 		{
 			name: "error - cluster now has publicly valid certificate - clusterSvc.Update",
@@ -2007,6 +2058,103 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			clusterSvcUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: logEmpty,
+		},
+		{
+			name: "success - standalone server now has publicly valid certificate",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:                "ready",
+					Status:              api.ServerStatusReady,
+					Type:                api.ServerTypeMigrationManager,
+					ConnectionURL:       "https:/127.0.0.1:7443",
+					PublicConnectionURL: httpsServer.URL,
+				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				// Simulate failing connection with pinned certificate, because cluster
+				// now has a publicly valid certificate (e.g. ACME).
+				{
+					Err: &url.Error{
+						Err: &tls.CertificateVerificationError{},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: logEmpty,
+		},
+		{
+			name: "error - standalone server - invalid public connection URL",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:                "ready",
+					Status:              api.ServerStatusReady,
+					Type:                api.ServerTypeMigrationManager,
+					ConnectionURL:       "https:/127.0.0.1:7443",
+					PublicConnectionURL: ":|\\", // invalid
+				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				// Simulate failing connection with pinned certificate, because cluster
+				// now has a publicly valid certificate (e.g. ACME).
+				{
+					Err: &url.Error{
+						Err: &tls.CertificateVerificationError{},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: logMatch("Server connection test failed"),
+		},
+		{
+			name: "error - standalone server - connection error",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:                "ready",
+					Status:              api.ServerStatusReady,
+					Type:                api.ServerTypeMigrationManager,
+					ConnectionURL:       "https:/127.0.0.1:7443",
+					PublicConnectionURL: "https:/127.0.0.1:7443",
+				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				// Simulate failing connection with pinned certificate, because cluster
+				// now has a publicly valid certificate (e.g. ACME).
+				{
+					Err: &url.Error{
+						Err: &tls.CertificateVerificationError{},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: logMatch("(?ms)Refresh certificate connection attempt to public connection URL failed.*Server connection test failed"),
+		},
+		{
+			name: "error - standalone server - connection error",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:                "ready",
+					Status:              api.ServerStatusReady,
+					Type:                api.ServerTypeMigrationManager,
+					ConnectionURL:       "https:/127.0.0.1:7443",
+					PublicConnectionURL: httpServer.URL,
+				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				// Simulate failing connection with pinned certificate, because cluster
+				// now has a publicly valid certificate (e.g. ACME).
+				{
+					Err: &url.Error{
+						Err: &tls.CertificateVerificationError{},
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+			assertLog: logMatch("(?ms)Refresh certificate connection attempt did not return TLS connection or no peer certificates.*Server connection test failed"),
 		},
 		{
 			name: "error - client GetResources",
@@ -2022,6 +2170,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			clientGetResourcesErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: logEmpty,
 		},
 		{
 			name: "error - client GetOSData",
@@ -2037,6 +2186,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			clientGetOSDataErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: logEmpty,
 		},
 		{
 			name: "error - GetByName",
@@ -2052,12 +2202,17 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
+			assertLog: logEmpty,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
+			logBuf := &bytes.Buffer{}
+			err := logger.InitLogger(logBuf, "", false, true)
+			require.NoError(t, err)
+
 			repo := &repoMock.ServerRepoMock{
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
 					return tc.repoGetAllWithFilterServers, tc.repoGetAllWithFilterErr
@@ -2099,14 +2254,17 @@ func TestServerService_PollPendingServers(t *testing.T) {
 
 			serverSvc := provisioning.NewServerService(repo, client, nil, nil, "", tls.Certificate{},
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
+				provisioning.ServerServiceWithHTTPClient(httpsServer.Client()),
 			)
 			serverSvc.SetClusterService(clusterSvc)
 
 			// Run test
-			err := serverSvc.PollServers(context.Background(), api.ServerStatusPending, true)
+			err = serverSvc.PollServers(context.Background(), api.ServerStatusPending, true)
 
 			// Assert
 			tc.assertErr(t, err)
+			tc.assertLog(t, logBuf)
+			require.Empty(t, tc.clientPing)
 		})
 	}
 }
