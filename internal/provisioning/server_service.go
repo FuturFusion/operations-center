@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"sync"
 	"time"
@@ -29,6 +30,8 @@ type serverService struct {
 	client     ServerClientPort
 	tokenSvc   TokenService
 	clusterSvc ClusterService
+
+	httpClient *http.Client
 
 	mu                sync.Mutex
 	serverURL         string
@@ -79,10 +82,12 @@ func (s *serverService) UpdateServerCertificate(ctx context.Context, serverCerti
 
 func NewServerService(repo ServerRepo, client ServerClientPort, tokenSvc TokenService, clusterSvc ClusterService, serverConnectionURL string, serverCertificate tls.Certificate, opts ...ServerServiceOption) *serverService {
 	serverSvc := &serverService{
-		repo:              repo,
-		client:            client,
-		tokenSvc:          tokenSvc,
-		clusterSvc:        clusterSvc,
+		repo:       repo,
+		client:     client,
+		tokenSvc:   tokenSvc,
+		clusterSvc: clusterSvc,
+		httpClient: &http.Client{},
+
 		serverURL:         serverConnectionURL,
 		serverCertificate: serverCertificate,
 
@@ -564,6 +569,8 @@ func (s *serverService) PollServers(ctx context.Context, serverStatus api.Server
 }
 
 func (s *serverService) pollServer(ctx context.Context, server Server, updateServerConfiguration bool) error {
+	log := slog.With(slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
+
 	// Since we re-try frequently, we only grant a short timeout for the
 	// connection attept.
 	ctxWithTimeout, cancelFunc := context.WithTimeout(ctx, 1*time.Second)
@@ -572,58 +579,128 @@ func (s *serverService) pollServer(ctx context.Context, server Server, updateSer
 
 	var urlErr *url.Error
 	if errors.As(err, &urlErr) {
+	refreshAttempt:
 		switch urlErr.Unwrap().(type) {
 		case *tls.CertificateVerificationError:
 			// If the servers certificates authority can not be verified it might be,
 			// that the cluster now has a publicly valid certificate.
 			//
-			// This is only the case if:
+			// There are two main cases to distinguish:
 			//
-			//  - There is tls.CertificateVerificationError
-			//  - The server is part of a cluster
-			//  - The cluster has a pinned certificate set
+			//   1. Clustered Incus
+			//   2. Standalone non Incus server (currently only Migration Manager)
 			//
-			// Retry connection with cluster certificate empty to test the cluster's
-			// certificate against the system root certificates.
-			if server.Cluster == nil || server.ClusterCertificate == nil && *server.ClusterCertificate == "" {
-				break
-			}
-
-			server.ClusterCertificate = nil
+			// For the first case, clustered Incus, the following preconditions have
+			// to be met:
+			//
+			//   - There is tls.CertificateVerificationError
+			//   - The server is part of a cluster
+			//   - The cluster has a pinned certificate set
+			//
+			// If the preconditions hold, retry connection with cluster certificate
+			// empty to test the cluster's certificate against the system root
+			// certificates. If this is successful, reset the cluster's certificate
+			// in the DB to empty, causing subsequent connection attempts to rely
+			// on the system root certificates.
+			//
+			// For the second case, standalone non Incus server, the following
+			// preconditions have to be met:
+			//
+			//   - The server has a public connection URL configured
+			//
+			// If the preconditions hold, retry connection with server certificate
+			// empty and connect to the public connection URL to test the server's
+			// certificate against the system root certificates. If this is
+			// successful, update the servers certificate in the DB, causing
+			// subsequent connection attempts to verify against the new certificate.
 
 			// Since we re-try frequently, we only grant a short timeout for the
 			// connection attept.
-			ctxWithTimeout, cancelFunc = context.WithTimeout(ctx, 1*time.Second)
-			retryErr := s.client.Ping(ctxWithTimeout, server)
-			cancelFunc()
-			if retryErr != nil {
-				// Ping without pinned certificate failed, keep the original error.
-				break
-			}
+			ctxWithTimeout, cancelFunc = context.WithTimeout(ctx, 5*time.Second)
+			defer cancelFunc()
 
-			retryErr = transaction.Do(ctx, func(ctx context.Context) error {
-				cluster, err := s.clusterSvc.GetByName(ctx, *server.Cluster)
-				if err != nil {
-					return fmt.Errorf("Failed to get cluster for server %q: %w", server.Name, err)
+			isClusteredIncus := server.Cluster != nil && server.ClusterCertificate != nil && *server.ClusterCertificate != ""
+			isStandaloneNonIncusServerWithPublicConnectionURL := server.Cluster == nil && server.Type != api.ServerTypeIncus && server.PublicConnectionURL != ""
+
+			switch {
+			case isClusteredIncus: // case 1, clustered Incus with cluster certificate set
+				server.ClusterCertificate = nil
+
+				retryErr := s.client.Ping(ctxWithTimeout, server)
+				cancelFunc()
+				if retryErr != nil {
+					// Ping without pinned certificate failed, keep the original error.
+					break refreshAttempt
 				}
 
-				cluster.Certificate = ""
+				retryErr = transaction.Do(ctx, func(ctx context.Context) error {
+					cluster, retryErr := s.clusterSvc.GetByName(ctx, *server.Cluster)
+					if retryErr != nil {
+						return fmt.Errorf("Failed to get cluster for server %q: %w", server.Name, retryErr)
+					}
 
-				err = s.clusterSvc.Update(ctx, *cluster)
-				if err != nil {
-					return fmt.Errorf("Failed to update cluster's certificate for server %q: %w", server.Name, err)
+					cluster.Certificate = ""
+
+					retryErr = s.clusterSvc.Update(ctx, *cluster)
+					if retryErr != nil {
+						return fmt.Errorf("Failed to update cluster's certificate for server %q: %w", server.Name, retryErr)
+					}
+
+					return nil
+				})
+				if retryErr != nil {
+					// The clusters certificate has passed validation against system root
+					// certificates but we failed to update the cluster record in the DB.
+					return retryErr
 				}
 
-				return nil
-			})
-			if retryErr != nil {
-				// The clusters certificate has passed validation against system root
-				// certificates but we failed to update the cluster record in the DB.
-				return retryErr
+			case isStandaloneNonIncusServerWithPublicConnectionURL: // case 2, standalone non Incus server
+				req, retryErr := http.NewRequestWithContext(ctxWithTimeout, http.MethodGet, server.PublicConnectionURL, http.NoBody)
+				if retryErr != nil {
+					// Create request for certificate check failed, keep the original error.
+					break refreshAttempt
+				}
+
+				resp, retryErr := (s.httpClient).Do(req)
+				if resp != nil && resp.Body != nil {
+					_ = resp.Body.Close()
+				}
+
+				if retryErr != nil {
+					// Connection to public connection URL failed. This can be a network
+					// issue, an invalid or unreachable public connection URL or a
+					// certificate error. We don't care about the root cause in this
+					// case and break the refresh attempt and keep the original error.
+					log.DebugContext(ctx, "Refresh certificate connection attempt to public connection URL failed", logger.Err(retryErr))
+					break refreshAttempt
+				}
+
+				if resp.TLS == nil || len(resp.TLS.PeerCertificates) == 0 {
+					// Connection was successful, but we don't have a TLS connection
+					// or no peer certificates (should not happen, as long as
+					// public connection URL is https).  We don't care about the root
+					// cause in this case and break the refresh attempt and keep the
+					// original error.
+					log.DebugContext(ctx, "Refresh certificate connection attempt did not return TLS connection or no peer certificates")
+					break refreshAttempt
+				}
+
+				serverCert := pem.EncodeToMemory(&pem.Block{
+					Type:  "CERTIFICATE",
+					Bytes: resp.TLS.PeerCertificates[0].Raw,
+				})
+
+				// Only set the certificate here, the Update in the DB happens at the
+				// end of the function.
+				server.Certificate = string(serverCert)
+
+			default:
+				// neither case 1 nor case 2, don't attempt to refresh certificate
+				break refreshAttempt
 			}
 
-			// Successfully updated the cluster's certificate, the original error has
-			// been mitigated, so we can clear it.
+			// Successfully updated the servers's or the cluster's certificate, the
+			// original error has been mitigated, so we can clear it.
 			err = nil
 		}
 	}
@@ -631,7 +708,7 @@ func (s *serverService) pollServer(ctx context.Context, server Server, updateSer
 	if err != nil {
 		// Errors are expected if a system is not (yet) available. Therefore
 		// we ignore the errors.
-		slog.WarnContext(ctx, "Server connection test failed", logger.Err(err), slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
+		log.WarnContext(ctx, "Server connection test failed", logger.Err(err))
 		return nil
 	}
 
