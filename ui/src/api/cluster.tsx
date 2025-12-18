@@ -74,6 +74,36 @@ export const deleteCluster = (
   });
 };
 
+export const renameCluster = (
+  name: string,
+  body: string,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/clusters/${name}`, {
+      method: "POST",
+      body: body,
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
+export const updateCluster = (
+  name: string,
+  body: string,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/clusters/${name}`, {
+      method: "PUT",
+      body: body,
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
 export const resyncClusterInventory = (
   name: string,
 ): Promise<APIResponse<null>> => {
