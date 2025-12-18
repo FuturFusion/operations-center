@@ -8,6 +8,7 @@ import ModalWindow from "components/ModalWindow";
 import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
 import ClusterArtifacts from "pages/ClusterArtifacts";
+import ClusterConfiguration from "pages/ClusterConfiguration";
 import ClusterOverview from "pages/ClusterOverview";
 
 type DeleteMode = "normal" | "force" | "factory-reset";
@@ -62,6 +63,11 @@ const ClusterDetail = () => {
       key: "overview",
       title: "Overview",
       content: <ClusterOverview />,
+    },
+    {
+      key: "configuration",
+      title: "Configuration",
+      content: <ClusterConfiguration />,
     },
     {
       key: "artifacts",

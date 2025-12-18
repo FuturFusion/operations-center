@@ -18,6 +18,11 @@ export interface ClusterPost {
   cluster_template_variable_values: YamlValue;
 }
 
+export interface ClusterFormValues {
+  name: string;
+  connection_url: string;
+}
+
 export interface ClusterCertFormValues {
   cluster_certificate: string;
   cluster_certificate_key: string;
