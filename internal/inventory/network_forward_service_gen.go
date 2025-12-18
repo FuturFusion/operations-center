@@ -174,7 +174,7 @@ func (s networkForwardService) ResyncByUUID(ctx context.Context, id uuid.UUID) e
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkForward.UUID)
 			if err != nil {
-				return err
+				return fmt.Errorf(`Failed to delete network_forward %q from cluster %q, network %q: %w`, networkForward.UUID.String(), networkForward.Cluster, networkForward.NetworkName, err)
 			}
 
 			return nil
@@ -195,7 +195,7 @@ func (s networkForwardService) ResyncByUUID(ctx context.Context, id uuid.UUID) e
 
 		_, err = s.repo.UpdateByUUID(ctx, networkForward)
 		if err != nil {
-			return err
+			return fmt.Errorf(`Failed to update network_forward %q for cluster %q, network %q: %w`, networkForward.UUID.String(), networkForward.Cluster, networkForward.NetworkName, err)
 		}
 
 		return nil
@@ -274,7 +274,7 @@ func (s networkForwardService) handleCreateEvent(ctx context.Context, clusterNam
 
 	_, err = s.repo.Create(ctx, networkForward)
 	if err != nil {
-		return err
+		return fmt.Errorf(`Failed to create network_forward %q for cluster %q, network %q: %w`, networkForward.UUID.String(), networkForward.Cluster, networkForward.NetworkName, err)
 	}
 
 	return nil
@@ -293,8 +293,11 @@ func (s networkForwardService) handleDeleteEvent(ctx context.Context, clusterNam
 
 	var errs []error
 	for _, UUID := range UUIDs {
-		err := s.repo.DeleteByUUID(ctx, UUID)
-		errs = append(errs, err)
+		err = s.repo.DeleteByUUID(ctx, UUID)
+		if err != nil {
+			err = fmt.Errorf(`Failed to delete network_forward %q from cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -310,10 +313,21 @@ func (s networkForwardService) handleRenameEvent(ctx context.Context, clusterNam
 	deleteEvent.Source.Name = deleteEvent.Source.OldName
 
 	var errs []error
-	errs = append(errs, s.handleDeleteEvent(ctx, clusterName, deleteEvent))
-	errs = append(errs, s.handleCreateEvent(ctx, clusterName, event))
+	err := s.handleDeleteEvent(ctx, clusterName, deleteEvent)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to delete network_forward %q from cluster %q: %w`, deleteEvent.Source.Name, clusterName, err),
+		)
+	}
 
-	err := errors.Join(errs...)
+	err = s.handleCreateEvent(ctx, clusterName, event)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to create network_forward %q for cluster %q: %w`, event.Source.Name, clusterName, err),
+		)
+	}
+
+	err = errors.Join(errs...)
 	if err != nil {
 		return err
 	}
@@ -339,7 +353,10 @@ func (s networkForwardService) handleUpdateEvent(ctx context.Context, clusterNam
 	var errs []error
 	for _, UUID := range UUIDs {
 		err := s.ResyncByUUID(ctx, UUID)
-		errs = append(errs, err)
+		if err != nil {
+			err = fmt.Errorf(`Failed to resync network_forward %q for cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -377,7 +394,7 @@ func (s networkForwardService) SyncCluster(ctx context.Context, name string) err
 				NetworkName: &network.Name,
 			})
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
-				return err
+				return fmt.Errorf(`Failed to delete "network_forward" from cluster %q, network %q: %w`, name, network.Name, err)
 			}
 
 			for _, retrievedNetworkForward := range retrievedNetworkForwards {
@@ -402,7 +419,7 @@ func (s networkForwardService) SyncCluster(ctx context.Context, name string) err
 
 				_, err := s.repo.Create(ctx, networkForward)
 				if err != nil {
-					return err
+					return fmt.Errorf(`Failed to create network_forward %q for cluster %q, network %q: %w`, networkForward.UUID.String(), name, network.Name, err)
 				}
 			}
 

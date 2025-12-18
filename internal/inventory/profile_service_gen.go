@@ -160,7 +160,7 @@ func (s profileService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, profile.UUID)
 			if err != nil {
-				return err
+				return fmt.Errorf(`Failed to delete profile %q from cluster %q: %w`, profile.UUID.String(), profile.Cluster, err)
 			}
 
 			return nil
@@ -182,7 +182,7 @@ func (s profileService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 
 		_, err = s.repo.UpdateByUUID(ctx, profile)
 		if err != nil {
-			return err
+			return fmt.Errorf(`Failed to update profile %q for cluster %q: %w`, profile.UUID.String(), profile.Cluster, err)
 		}
 
 		return nil
@@ -261,7 +261,7 @@ func (s profileService) handleCreateEvent(ctx context.Context, clusterName strin
 
 	_, err = s.repo.Create(ctx, profile)
 	if err != nil {
-		return err
+		return fmt.Errorf(`Failed to create profile %q for cluster %q: %w`, profile.UUID.String(), profile.Cluster, err)
 	}
 
 	return nil
@@ -279,8 +279,11 @@ func (s profileService) handleDeleteEvent(ctx context.Context, clusterName strin
 
 	var errs []error
 	for _, UUID := range UUIDs {
-		err := s.repo.DeleteByUUID(ctx, UUID)
-		errs = append(errs, err)
+		err = s.repo.DeleteByUUID(ctx, UUID)
+		if err != nil {
+			err = fmt.Errorf(`Failed to delete profile %q from cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -296,10 +299,21 @@ func (s profileService) handleRenameEvent(ctx context.Context, clusterName strin
 	deleteEvent.Source.Name = deleteEvent.Source.OldName
 
 	var errs []error
-	errs = append(errs, s.handleDeleteEvent(ctx, clusterName, deleteEvent))
-	errs = append(errs, s.handleCreateEvent(ctx, clusterName, event))
+	err := s.handleDeleteEvent(ctx, clusterName, deleteEvent)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to delete profile %q from cluster %q: %w`, deleteEvent.Source.Name, clusterName, err),
+		)
+	}
 
-	err := errors.Join(errs...)
+	err = s.handleCreateEvent(ctx, clusterName, event)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to create profile %q for cluster %q: %w`, event.Source.Name, clusterName, err),
+		)
+	}
+
+	err = errors.Join(errs...)
 	if err != nil {
 		return err
 	}
@@ -324,7 +338,10 @@ func (s profileService) handleUpdateEvent(ctx context.Context, clusterName strin
 	var errs []error
 	for _, UUID := range UUIDs {
 		err := s.ResyncByUUID(ctx, UUID)
-		errs = append(errs, err)
+		if err != nil {
+			err = fmt.Errorf(`Failed to resync profile %q for cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -351,7 +368,7 @@ func (s profileService) SyncCluster(ctx context.Context, name string) error {
 			Cluster: &name,
 		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			return err
+			return fmt.Errorf(`Failed to delete "profile" from cluster %q: %w`, name, err)
 		}
 
 		for _, retrievedProfile := range retrievedProfiles {
@@ -376,7 +393,7 @@ func (s profileService) SyncCluster(ctx context.Context, name string) error {
 
 			_, err := s.repo.Create(ctx, profile)
 			if err != nil {
-				return err
+				return fmt.Errorf(`Failed to create profile %q for cluster %q: %w`, profile.UUID.String(), name, err)
 			}
 		}
 

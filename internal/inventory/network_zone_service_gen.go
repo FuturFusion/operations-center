@@ -160,7 +160,7 @@ func (s networkZoneService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkZone.UUID)
 			if err != nil {
-				return err
+				return fmt.Errorf(`Failed to delete network_zone %q from cluster %q: %w`, networkZone.UUID.String(), networkZone.Cluster, err)
 			}
 
 			return nil
@@ -182,7 +182,7 @@ func (s networkZoneService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 
 		_, err = s.repo.UpdateByUUID(ctx, networkZone)
 		if err != nil {
-			return err
+			return fmt.Errorf(`Failed to update network_zone %q for cluster %q: %w`, networkZone.UUID.String(), networkZone.Cluster, err)
 		}
 
 		return nil
@@ -261,7 +261,7 @@ func (s networkZoneService) handleCreateEvent(ctx context.Context, clusterName s
 
 	_, err = s.repo.Create(ctx, networkZone)
 	if err != nil {
-		return err
+		return fmt.Errorf(`Failed to create network_zone %q for cluster %q: %w`, networkZone.UUID.String(), networkZone.Cluster, err)
 	}
 
 	return nil
@@ -279,8 +279,11 @@ func (s networkZoneService) handleDeleteEvent(ctx context.Context, clusterName s
 
 	var errs []error
 	for _, UUID := range UUIDs {
-		err := s.repo.DeleteByUUID(ctx, UUID)
-		errs = append(errs, err)
+		err = s.repo.DeleteByUUID(ctx, UUID)
+		if err != nil {
+			err = fmt.Errorf(`Failed to delete network_zone %q from cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -296,10 +299,21 @@ func (s networkZoneService) handleRenameEvent(ctx context.Context, clusterName s
 	deleteEvent.Source.Name = deleteEvent.Source.OldName
 
 	var errs []error
-	errs = append(errs, s.handleDeleteEvent(ctx, clusterName, deleteEvent))
-	errs = append(errs, s.handleCreateEvent(ctx, clusterName, event))
+	err := s.handleDeleteEvent(ctx, clusterName, deleteEvent)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to delete network_zone %q from cluster %q: %w`, deleteEvent.Source.Name, clusterName, err),
+		)
+	}
 
-	err := errors.Join(errs...)
+	err = s.handleCreateEvent(ctx, clusterName, event)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to create network_zone %q for cluster %q: %w`, event.Source.Name, clusterName, err),
+		)
+	}
+
+	err = errors.Join(errs...)
 	if err != nil {
 		return err
 	}
@@ -324,7 +338,10 @@ func (s networkZoneService) handleUpdateEvent(ctx context.Context, clusterName s
 	var errs []error
 	for _, UUID := range UUIDs {
 		err := s.ResyncByUUID(ctx, UUID)
-		errs = append(errs, err)
+		if err != nil {
+			err = fmt.Errorf(`Failed to resync network_zone %q for cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -351,7 +368,7 @@ func (s networkZoneService) SyncCluster(ctx context.Context, name string) error 
 			Cluster: &name,
 		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			return err
+			return fmt.Errorf(`Failed to delete "network_zone" from cluster %q: %w`, name, err)
 		}
 
 		for _, retrievedNetworkZone := range retrievedNetworkZones {
@@ -376,7 +393,7 @@ func (s networkZoneService) SyncCluster(ctx context.Context, name string) error 
 
 			_, err := s.repo.Create(ctx, networkZone)
 			if err != nil {
-				return err
+				return fmt.Errorf(`Failed to create network_zone %q for cluster %q: %w`, networkZone.UUID.String(), name, err)
 			}
 		}
 

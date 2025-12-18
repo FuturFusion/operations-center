@@ -174,7 +174,7 @@ func (s storageBucketService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, storageBucket.UUID)
 			if err != nil {
-				return err
+				return fmt.Errorf(`Failed to delete storage_bucket %q from cluster %q, storage_pool %q: %w`, storageBucket.UUID.String(), storageBucket.Cluster, storageBucket.StoragePoolName, err)
 			}
 
 			return nil
@@ -197,7 +197,7 @@ func (s storageBucketService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 
 		_, err = s.repo.UpdateByUUID(ctx, storageBucket)
 		if err != nil {
-			return err
+			return fmt.Errorf(`Failed to update storage_bucket %q for cluster %q, storage_pool %q: %w`, storageBucket.UUID.String(), storageBucket.Cluster, storageBucket.StoragePoolName, err)
 		}
 
 		return nil
@@ -278,7 +278,7 @@ func (s storageBucketService) handleCreateEvent(ctx context.Context, clusterName
 
 	_, err = s.repo.Create(ctx, storageBucket)
 	if err != nil {
-		return err
+		return fmt.Errorf(`Failed to create storage_bucket %q for cluster %q, storage_pool %q: %w`, storageBucket.UUID.String(), storageBucket.Cluster, storageBucket.StoragePoolName, err)
 	}
 
 	return nil
@@ -297,8 +297,11 @@ func (s storageBucketService) handleDeleteEvent(ctx context.Context, clusterName
 
 	var errs []error
 	for _, UUID := range UUIDs {
-		err := s.repo.DeleteByUUID(ctx, UUID)
-		errs = append(errs, err)
+		err = s.repo.DeleteByUUID(ctx, UUID)
+		if err != nil {
+			err = fmt.Errorf(`Failed to delete storage_bucket %q from cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -314,10 +317,21 @@ func (s storageBucketService) handleRenameEvent(ctx context.Context, clusterName
 	deleteEvent.Source.Name = deleteEvent.Source.OldName
 
 	var errs []error
-	errs = append(errs, s.handleDeleteEvent(ctx, clusterName, deleteEvent))
-	errs = append(errs, s.handleCreateEvent(ctx, clusterName, event))
+	err := s.handleDeleteEvent(ctx, clusterName, deleteEvent)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to delete storage_bucket %q from cluster %q: %w`, deleteEvent.Source.Name, clusterName, err),
+		)
+	}
 
-	err := errors.Join(errs...)
+	err = s.handleCreateEvent(ctx, clusterName, event)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to create storage_bucket %q for cluster %q: %w`, event.Source.Name, clusterName, err),
+		)
+	}
+
+	err = errors.Join(errs...)
 	if err != nil {
 		return err
 	}
@@ -343,7 +357,10 @@ func (s storageBucketService) handleUpdateEvent(ctx context.Context, clusterName
 	var errs []error
 	for _, UUID := range UUIDs {
 		err := s.ResyncByUUID(ctx, UUID)
-		errs = append(errs, err)
+		if err != nil {
+			err = fmt.Errorf(`Failed to resync storage_bucket %q for cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -381,7 +398,7 @@ func (s storageBucketService) SyncCluster(ctx context.Context, name string) erro
 				StoragePoolName: &storagePool.Name,
 			})
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
-				return err
+				return fmt.Errorf(`Failed to delete "storage_bucket" from cluster %q, storage_pool %q: %w`, name, storagePool.Name, err)
 			}
 
 			for _, retrievedStorageBucket := range retrievedStorageBuckets {
@@ -408,7 +425,7 @@ func (s storageBucketService) SyncCluster(ctx context.Context, name string) erro
 
 				_, err := s.repo.Create(ctx, storageBucket)
 				if err != nil {
-					return err
+					return fmt.Errorf(`Failed to create storage_bucket %q for cluster %q, storage_pool %q: %w`, storageBucket.UUID.String(), name, storagePool.Name, err)
 				}
 			}
 

@@ -160,7 +160,7 @@ func (s projectService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, project.UUID)
 			if err != nil {
-				return err
+				return fmt.Errorf(`Failed to delete project %q from cluster %q: %w`, project.UUID.String(), project.Cluster, err)
 			}
 
 			return nil
@@ -181,7 +181,7 @@ func (s projectService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 
 		_, err = s.repo.UpdateByUUID(ctx, project)
 		if err != nil {
-			return err
+			return fmt.Errorf(`Failed to update project %q for cluster %q: %w`, project.UUID.String(), project.Cluster, err)
 		}
 
 		return nil
@@ -259,7 +259,7 @@ func (s projectService) handleCreateEvent(ctx context.Context, clusterName strin
 
 	_, err = s.repo.Create(ctx, project)
 	if err != nil {
-		return err
+		return fmt.Errorf(`Failed to create project %q for cluster %q: %w`, project.UUID.String(), project.Cluster, err)
 	}
 
 	return nil
@@ -276,8 +276,11 @@ func (s projectService) handleDeleteEvent(ctx context.Context, clusterName strin
 
 	var errs []error
 	for _, UUID := range UUIDs {
-		err := s.repo.DeleteByUUID(ctx, UUID)
-		errs = append(errs, err)
+		err = s.repo.DeleteByUUID(ctx, UUID)
+		if err != nil {
+			err = fmt.Errorf(`Failed to delete project %q from cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -293,10 +296,21 @@ func (s projectService) handleRenameEvent(ctx context.Context, clusterName strin
 	deleteEvent.Source.Name = deleteEvent.Source.OldName
 
 	var errs []error
-	errs = append(errs, s.handleDeleteEvent(ctx, clusterName, deleteEvent))
-	errs = append(errs, s.handleCreateEvent(ctx, clusterName, event))
+	err := s.handleDeleteEvent(ctx, clusterName, deleteEvent)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to delete project %q from cluster %q: %w`, deleteEvent.Source.Name, clusterName, err),
+		)
+	}
 
-	err := errors.Join(errs...)
+	err = s.handleCreateEvent(ctx, clusterName, event)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to create project %q for cluster %q: %w`, event.Source.Name, clusterName, err),
+		)
+	}
+
+	err = errors.Join(errs...)
 	if err != nil {
 		return err
 	}
@@ -320,7 +334,10 @@ func (s projectService) handleUpdateEvent(ctx context.Context, clusterName strin
 	var errs []error
 	for _, UUID := range UUIDs {
 		err := s.ResyncByUUID(ctx, UUID)
-		errs = append(errs, err)
+		if err != nil {
+			err = fmt.Errorf(`Failed to resync project %q for cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -347,7 +364,7 @@ func (s projectService) SyncCluster(ctx context.Context, name string) error {
 			Cluster: &name,
 		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			return err
+			return fmt.Errorf(`Failed to delete "project" from cluster %q: %w`, name, err)
 		}
 
 		for _, retrievedProject := range retrievedProjects {
@@ -371,7 +388,7 @@ func (s projectService) SyncCluster(ctx context.Context, name string) error {
 
 			_, err := s.repo.Create(ctx, project)
 			if err != nil {
-				return err
+				return fmt.Errorf(`Failed to create project %q for cluster %q: %w`, project.UUID.String(), name, err)
 			}
 		}
 

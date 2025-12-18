@@ -160,7 +160,7 @@ func (s networkIntegrationService) ResyncByUUID(ctx context.Context, id uuid.UUI
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkIntegration.UUID)
 			if err != nil {
-				return err
+				return fmt.Errorf(`Failed to delete network_integration %q from cluster %q: %w`, networkIntegration.UUID.String(), networkIntegration.Cluster, err)
 			}
 
 			return nil
@@ -181,7 +181,7 @@ func (s networkIntegrationService) ResyncByUUID(ctx context.Context, id uuid.UUI
 
 		_, err = s.repo.UpdateByUUID(ctx, networkIntegration)
 		if err != nil {
-			return err
+			return fmt.Errorf(`Failed to update network_integration %q for cluster %q: %w`, networkIntegration.UUID.String(), networkIntegration.Cluster, err)
 		}
 
 		return nil
@@ -259,7 +259,7 @@ func (s networkIntegrationService) handleCreateEvent(ctx context.Context, cluste
 
 	_, err = s.repo.Create(ctx, networkIntegration)
 	if err != nil {
-		return err
+		return fmt.Errorf(`Failed to create network_integration %q for cluster %q: %w`, networkIntegration.UUID.String(), networkIntegration.Cluster, err)
 	}
 
 	return nil
@@ -276,8 +276,11 @@ func (s networkIntegrationService) handleDeleteEvent(ctx context.Context, cluste
 
 	var errs []error
 	for _, UUID := range UUIDs {
-		err := s.repo.DeleteByUUID(ctx, UUID)
-		errs = append(errs, err)
+		err = s.repo.DeleteByUUID(ctx, UUID)
+		if err != nil {
+			err = fmt.Errorf(`Failed to delete network_integration %q from cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -293,10 +296,21 @@ func (s networkIntegrationService) handleRenameEvent(ctx context.Context, cluste
 	deleteEvent.Source.Name = deleteEvent.Source.OldName
 
 	var errs []error
-	errs = append(errs, s.handleDeleteEvent(ctx, clusterName, deleteEvent))
-	errs = append(errs, s.handleCreateEvent(ctx, clusterName, event))
+	err := s.handleDeleteEvent(ctx, clusterName, deleteEvent)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to delete network_integration %q from cluster %q: %w`, deleteEvent.Source.Name, clusterName, err),
+		)
+	}
 
-	err := errors.Join(errs...)
+	err = s.handleCreateEvent(ctx, clusterName, event)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to create network_integration %q for cluster %q: %w`, event.Source.Name, clusterName, err),
+		)
+	}
+
+	err = errors.Join(errs...)
 	if err != nil {
 		return err
 	}
@@ -320,7 +334,10 @@ func (s networkIntegrationService) handleUpdateEvent(ctx context.Context, cluste
 	var errs []error
 	for _, UUID := range UUIDs {
 		err := s.ResyncByUUID(ctx, UUID)
-		errs = append(errs, err)
+		if err != nil {
+			err = fmt.Errorf(`Failed to resync network_integration %q for cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -347,7 +364,7 @@ func (s networkIntegrationService) SyncCluster(ctx context.Context, name string)
 			Cluster: &name,
 		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			return err
+			return fmt.Errorf(`Failed to delete "network_integration" from cluster %q: %w`, name, err)
 		}
 
 		for _, retrievedNetworkIntegration := range retrievedNetworkIntegrations {
@@ -371,7 +388,7 @@ func (s networkIntegrationService) SyncCluster(ctx context.Context, name string)
 
 			_, err := s.repo.Create(ctx, networkIntegration)
 			if err != nil {
-				return err
+				return fmt.Errorf(`Failed to create network_integration %q for cluster %q: %w`, networkIntegration.UUID.String(), name, err)
 			}
 		}
 
