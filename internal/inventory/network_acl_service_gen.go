@@ -160,7 +160,7 @@ func (s networkACLService) ResyncByUUID(ctx context.Context, id uuid.UUID) error
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkACL.UUID)
 			if err != nil {
-				return err
+				return fmt.Errorf(`Failed to delete network_acl %q from cluster %q: %w`, networkACL.UUID.String(), networkACL.Cluster, err)
 			}
 
 			return nil
@@ -182,7 +182,7 @@ func (s networkACLService) ResyncByUUID(ctx context.Context, id uuid.UUID) error
 
 		_, err = s.repo.UpdateByUUID(ctx, networkACL)
 		if err != nil {
-			return err
+			return fmt.Errorf(`Failed to update network_acl %q for cluster %q: %w`, networkACL.UUID.String(), networkACL.Cluster, err)
 		}
 
 		return nil
@@ -261,7 +261,7 @@ func (s networkACLService) handleCreateEvent(ctx context.Context, clusterName st
 
 	_, err = s.repo.Create(ctx, networkACL)
 	if err != nil {
-		return err
+		return fmt.Errorf(`Failed to create network_acl %q for cluster %q: %w`, networkACL.UUID.String(), networkACL.Cluster, err)
 	}
 
 	return nil
@@ -279,8 +279,11 @@ func (s networkACLService) handleDeleteEvent(ctx context.Context, clusterName st
 
 	var errs []error
 	for _, UUID := range UUIDs {
-		err := s.repo.DeleteByUUID(ctx, UUID)
-		errs = append(errs, err)
+		err = s.repo.DeleteByUUID(ctx, UUID)
+		if err != nil {
+			err = fmt.Errorf(`Failed to delete network_acl %q from cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -296,10 +299,21 @@ func (s networkACLService) handleRenameEvent(ctx context.Context, clusterName st
 	deleteEvent.Source.Name = deleteEvent.Source.OldName
 
 	var errs []error
-	errs = append(errs, s.handleDeleteEvent(ctx, clusterName, deleteEvent))
-	errs = append(errs, s.handleCreateEvent(ctx, clusterName, event))
+	err := s.handleDeleteEvent(ctx, clusterName, deleteEvent)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to delete network_acl %q from cluster %q: %w`, deleteEvent.Source.Name, clusterName, err),
+		)
+	}
 
-	err := errors.Join(errs...)
+	err = s.handleCreateEvent(ctx, clusterName, event)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to create network_acl %q for cluster %q: %w`, event.Source.Name, clusterName, err),
+		)
+	}
+
+	err = errors.Join(errs...)
 	if err != nil {
 		return err
 	}
@@ -324,7 +338,10 @@ func (s networkACLService) handleUpdateEvent(ctx context.Context, clusterName st
 	var errs []error
 	for _, UUID := range UUIDs {
 		err := s.ResyncByUUID(ctx, UUID)
-		errs = append(errs, err)
+		if err != nil {
+			err = fmt.Errorf(`Failed to resync network_acl %q for cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -351,7 +368,7 @@ func (s networkACLService) SyncCluster(ctx context.Context, name string) error {
 			Cluster: &name,
 		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			return err
+			return fmt.Errorf(`Failed to delete "network_acl" from cluster %q: %w`, name, err)
 		}
 
 		for _, retrievedNetworkACL := range retrievedNetworkACLs {
@@ -376,7 +393,7 @@ func (s networkACLService) SyncCluster(ctx context.Context, name string) error {
 
 			_, err := s.repo.Create(ctx, networkACL)
 			if err != nil {
-				return err
+				return fmt.Errorf(`Failed to create network_acl %q for cluster %q: %w`, networkACL.UUID.String(), name, err)
 			}
 		}
 

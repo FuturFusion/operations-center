@@ -160,7 +160,7 @@ func (s networkAddressSetService) ResyncByUUID(ctx context.Context, id uuid.UUID
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkAddressSet.UUID)
 			if err != nil {
-				return err
+				return fmt.Errorf(`Failed to delete network_address_set %q from cluster %q: %w`, networkAddressSet.UUID.String(), networkAddressSet.Cluster, err)
 			}
 
 			return nil
@@ -182,7 +182,7 @@ func (s networkAddressSetService) ResyncByUUID(ctx context.Context, id uuid.UUID
 
 		_, err = s.repo.UpdateByUUID(ctx, networkAddressSet)
 		if err != nil {
-			return err
+			return fmt.Errorf(`Failed to update network_address_set %q for cluster %q: %w`, networkAddressSet.UUID.String(), networkAddressSet.Cluster, err)
 		}
 
 		return nil
@@ -261,7 +261,7 @@ func (s networkAddressSetService) handleCreateEvent(ctx context.Context, cluster
 
 	_, err = s.repo.Create(ctx, networkAddressSet)
 	if err != nil {
-		return err
+		return fmt.Errorf(`Failed to create network_address_set %q for cluster %q: %w`, networkAddressSet.UUID.String(), networkAddressSet.Cluster, err)
 	}
 
 	return nil
@@ -279,8 +279,11 @@ func (s networkAddressSetService) handleDeleteEvent(ctx context.Context, cluster
 
 	var errs []error
 	for _, UUID := range UUIDs {
-		err := s.repo.DeleteByUUID(ctx, UUID)
-		errs = append(errs, err)
+		err = s.repo.DeleteByUUID(ctx, UUID)
+		if err != nil {
+			err = fmt.Errorf(`Failed to delete network_address_set %q from cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -296,10 +299,21 @@ func (s networkAddressSetService) handleRenameEvent(ctx context.Context, cluster
 	deleteEvent.Source.Name = deleteEvent.Source.OldName
 
 	var errs []error
-	errs = append(errs, s.handleDeleteEvent(ctx, clusterName, deleteEvent))
-	errs = append(errs, s.handleCreateEvent(ctx, clusterName, event))
+	err := s.handleDeleteEvent(ctx, clusterName, deleteEvent)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to delete network_address_set %q from cluster %q: %w`, deleteEvent.Source.Name, clusterName, err),
+		)
+	}
 
-	err := errors.Join(errs...)
+	err = s.handleCreateEvent(ctx, clusterName, event)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to create network_address_set %q for cluster %q: %w`, event.Source.Name, clusterName, err),
+		)
+	}
+
+	err = errors.Join(errs...)
 	if err != nil {
 		return err
 	}
@@ -324,7 +338,10 @@ func (s networkAddressSetService) handleUpdateEvent(ctx context.Context, cluster
 	var errs []error
 	for _, UUID := range UUIDs {
 		err := s.ResyncByUUID(ctx, UUID)
-		errs = append(errs, err)
+		if err != nil {
+			err = fmt.Errorf(`Failed to resync network_address_set %q for cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -355,7 +372,7 @@ func (s networkAddressSetService) SyncCluster(ctx context.Context, name string) 
 			Cluster: &name,
 		})
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			return err
+			return fmt.Errorf(`Failed to delete "network_address_set" from cluster %q: %w`, name, err)
 		}
 
 		for _, retrievedNetworkAddressSet := range retrievedNetworkAddressSets {
@@ -380,7 +397,7 @@ func (s networkAddressSetService) SyncCluster(ctx context.Context, name string) 
 
 			_, err := s.repo.Create(ctx, networkAddressSet)
 			if err != nil {
-				return err
+				return fmt.Errorf(`Failed to create network_address_set %q for cluster %q: %w`, networkAddressSet.UUID.String(), name, err)
 			}
 		}
 

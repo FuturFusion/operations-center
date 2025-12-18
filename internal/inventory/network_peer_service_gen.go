@@ -174,7 +174,7 @@ func (s networkPeerService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, networkPeer.UUID)
 			if err != nil {
-				return err
+				return fmt.Errorf(`Failed to delete network_peer %q from cluster %q, network %q: %w`, networkPeer.UUID.String(), networkPeer.Cluster, networkPeer.NetworkName, err)
 			}
 
 			return nil
@@ -195,7 +195,7 @@ func (s networkPeerService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 
 		_, err = s.repo.UpdateByUUID(ctx, networkPeer)
 		if err != nil {
-			return err
+			return fmt.Errorf(`Failed to update network_peer %q for cluster %q, network %q: %w`, networkPeer.UUID.String(), networkPeer.Cluster, networkPeer.NetworkName, err)
 		}
 
 		return nil
@@ -274,7 +274,7 @@ func (s networkPeerService) handleCreateEvent(ctx context.Context, clusterName s
 
 	_, err = s.repo.Create(ctx, networkPeer)
 	if err != nil {
-		return err
+		return fmt.Errorf(`Failed to create network_peer %q for cluster %q, network %q: %w`, networkPeer.UUID.String(), networkPeer.Cluster, networkPeer.NetworkName, err)
 	}
 
 	return nil
@@ -293,8 +293,11 @@ func (s networkPeerService) handleDeleteEvent(ctx context.Context, clusterName s
 
 	var errs []error
 	for _, UUID := range UUIDs {
-		err := s.repo.DeleteByUUID(ctx, UUID)
-		errs = append(errs, err)
+		err = s.repo.DeleteByUUID(ctx, UUID)
+		if err != nil {
+			err = fmt.Errorf(`Failed to delete network_peer %q from cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -310,10 +313,21 @@ func (s networkPeerService) handleRenameEvent(ctx context.Context, clusterName s
 	deleteEvent.Source.Name = deleteEvent.Source.OldName
 
 	var errs []error
-	errs = append(errs, s.handleDeleteEvent(ctx, clusterName, deleteEvent))
-	errs = append(errs, s.handleCreateEvent(ctx, clusterName, event))
+	err := s.handleDeleteEvent(ctx, clusterName, deleteEvent)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to delete network_peer %q from cluster %q: %w`, deleteEvent.Source.Name, clusterName, err),
+		)
+	}
 
-	err := errors.Join(errs...)
+	err = s.handleCreateEvent(ctx, clusterName, event)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to create network_peer %q for cluster %q: %w`, event.Source.Name, clusterName, err),
+		)
+	}
+
+	err = errors.Join(errs...)
 	if err != nil {
 		return err
 	}
@@ -339,7 +353,10 @@ func (s networkPeerService) handleUpdateEvent(ctx context.Context, clusterName s
 	var errs []error
 	for _, UUID := range UUIDs {
 		err := s.ResyncByUUID(ctx, UUID)
-		errs = append(errs, err)
+		if err != nil {
+			err = fmt.Errorf(`Failed to resync network_peer %q for cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -377,7 +394,7 @@ func (s networkPeerService) SyncCluster(ctx context.Context, name string) error 
 				NetworkName: &network.Name,
 			})
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
-				return err
+				return fmt.Errorf(`Failed to delete "network_peer" from cluster %q, network %q: %w`, name, network.Name, err)
 			}
 
 			for _, retrievedNetworkPeer := range retrievedNetworkPeers {
@@ -402,7 +419,7 @@ func (s networkPeerService) SyncCluster(ctx context.Context, name string) error 
 
 				_, err := s.repo.Create(ctx, networkPeer)
 				if err != nil {
-					return err
+					return fmt.Errorf(`Failed to create network_peer %q for cluster %q, network %q: %w`, networkPeer.UUID.String(), name, network.Name, err)
 				}
 			}
 

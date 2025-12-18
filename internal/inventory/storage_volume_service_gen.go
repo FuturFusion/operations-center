@@ -174,7 +174,7 @@ func (s storageVolumeService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 		if errors.Is(err, domain.ErrNotFound) {
 			err = s.repo.DeleteByUUID(ctx, storageVolume.UUID)
 			if err != nil {
-				return err
+				return fmt.Errorf(`Failed to delete storage_volume %q from cluster %q, storage_pool %q: %w`, storageVolume.UUID.String(), storageVolume.Cluster, storageVolume.StoragePoolName, err)
 			}
 
 			return nil
@@ -198,7 +198,7 @@ func (s storageVolumeService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 
 		_, err = s.repo.UpdateByUUID(ctx, storageVolume)
 		if err != nil {
-			return err
+			return fmt.Errorf(`Failed to update storage_volume %q for cluster %q, storage_pool %q: %w`, storageVolume.UUID.String(), storageVolume.Cluster, storageVolume.StoragePoolName, err)
 		}
 
 		return nil
@@ -280,7 +280,7 @@ func (s storageVolumeService) handleCreateEvent(ctx context.Context, clusterName
 
 	_, err = s.repo.Create(ctx, storageVolume)
 	if err != nil {
-		return err
+		return fmt.Errorf(`Failed to create storage_volume %q for cluster %q, storage_pool %q: %w`, storageVolume.UUID.String(), storageVolume.Cluster, storageVolume.StoragePoolName, err)
 	}
 
 	return nil
@@ -299,8 +299,11 @@ func (s storageVolumeService) handleDeleteEvent(ctx context.Context, clusterName
 
 	var errs []error
 	for _, UUID := range UUIDs {
-		err := s.repo.DeleteByUUID(ctx, UUID)
-		errs = append(errs, err)
+		err = s.repo.DeleteByUUID(ctx, UUID)
+		if err != nil {
+			err = fmt.Errorf(`Failed to delete storage_volume %q from cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -316,10 +319,21 @@ func (s storageVolumeService) handleRenameEvent(ctx context.Context, clusterName
 	deleteEvent.Source.Name = deleteEvent.Source.OldName
 
 	var errs []error
-	errs = append(errs, s.handleDeleteEvent(ctx, clusterName, deleteEvent))
-	errs = append(errs, s.handleCreateEvent(ctx, clusterName, event))
+	err := s.handleDeleteEvent(ctx, clusterName, deleteEvent)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to delete storage_volume %q from cluster %q: %w`, deleteEvent.Source.Name, clusterName, err),
+		)
+	}
 
-	err := errors.Join(errs...)
+	err = s.handleCreateEvent(ctx, clusterName, event)
+	if err != nil {
+		errs = append(errs,
+			fmt.Errorf(`Failed to create storage_volume %q for cluster %q: %w`, event.Source.Name, clusterName, err),
+		)
+	}
+
+	err = errors.Join(errs...)
 	if err != nil {
 		return err
 	}
@@ -345,7 +359,10 @@ func (s storageVolumeService) handleUpdateEvent(ctx context.Context, clusterName
 	var errs []error
 	for _, UUID := range UUIDs {
 		err := s.ResyncByUUID(ctx, UUID)
-		errs = append(errs, err)
+		if err != nil {
+			err = fmt.Errorf(`Failed to resync storage_volume %q for cluster %q: %w`, UUID.String(), clusterName, err)
+			errs = append(errs, err)
+		}
 	}
 
 	err = errors.Join(errs...)
@@ -383,7 +400,7 @@ func (s storageVolumeService) SyncCluster(ctx context.Context, name string) erro
 				StoragePoolName: &storagePool.Name,
 			})
 			if err != nil && !errors.Is(err, domain.ErrNotFound) {
-				return err
+				return fmt.Errorf(`Failed to delete "storage_volume" from cluster %q, storage_pool %q: %w`, name, storagePool.Name, err)
 			}
 
 			for _, retrievedStorageVolume := range retrievedStorageVolumes {
@@ -411,7 +428,7 @@ func (s storageVolumeService) SyncCluster(ctx context.Context, name string) erro
 
 				_, err := s.repo.Create(ctx, storageVolume)
 				if err != nil {
-					return err
+					return fmt.Errorf(`Failed to create storage_volume %q for cluster %q, storage_pool %q: %w`, storageVolume.UUID.String(), name, storagePool.Name, err)
 				}
 			}
 
