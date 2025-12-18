@@ -298,7 +298,7 @@ func waitAgentRunningWithContext(ctx context.Context, t *testing.T, vm string, a
 
 		select {
 		case <-ctx.Done():
-			t.Fatalf("Context done: %v", t.Context().Err())
+			return fmt.Errorf("Context done: %v", t.Context().Err())
 
 		case <-time.After(1 * time.Second):
 		}
@@ -369,7 +369,7 @@ func waitExpectedLogWithContext(ctx context.Context, t *testing.T, vm string, un
 
 		select {
 		case <-ctx.Done():
-			t.Fatalf("Context done: %v", t.Context().Err())
+			return fmt.Errorf("Context done: %v", t.Context().Err())
 
 		case <-time.After(1 * time.Second):
 		}
@@ -477,6 +477,66 @@ func mustWaitIncusOSReady(t *testing.T, names []string) {
 			if err != nil {
 				return err
 			}
+
+			return nil
+		})
+	}
+
+	err := errgrp.Wait()
+	require.NoError(t, err, "Failed to create IncusOS VMs for e2e test")
+}
+
+func mustWaitInventoryReady(t *testing.T, names []string) {
+	t.Helper()
+
+	timeoutCtx, cancel := context.WithTimeout(t.Context(), strechedTimeout(3*time.Minute))
+	defer cancel()
+
+	errgrp, errgrpctx := errgroup.WithContext(timeoutCtx)
+	ok, _ := strconv.ParseBool(concurrentSetup)
+	if !ok {
+		errgrp.SetLimit(1)
+	}
+
+	for _, name := range names {
+		errgrp.Go(func() (err error) {
+			stop := timeTrack(t, fmt.Sprintf("mustWaitInventoryReady %s", name), "false")
+			defer stop()
+
+			defer func() {
+				if err != nil {
+					err = fmt.Errorf("%s: %w", name, err)
+				}
+			}()
+
+			t.Logf("Waiting for %s to be registered as ready in inventory", name)
+
+			count := 0
+			for {
+				resp, err := run(t, `../bin/operations-center.linux.%s provisioning server list -f json | jq -r -e '[ .[] | select(.name == "%s" and .server_status == "ready") ] | length == 1'`, cpuArch, name)
+				if err != nil {
+					return err
+				}
+
+				if resp.Success() {
+					break
+				}
+
+				if count%10 == 0 {
+					t.Logf("Waiting %ds for %s to be registered as ready in inventory", count, name)
+				}
+
+				count++
+
+				select {
+				case <-errgrpctx.Done():
+					return fmt.Errorf("Context done: %w", t.Context().Err())
+
+				case <-time.After(1 * time.Second):
+				}
+			}
+
+			t.Logf("%s registered as ready in inventory after %ds", name, count)
 
 			return nil
 		})

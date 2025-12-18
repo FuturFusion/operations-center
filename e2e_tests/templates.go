@@ -44,11 +44,11 @@ $OPERATIONS_CENTER_CERTIFICATE$
 
 	incusOSSeedFileYAMLTemplate = []byte(`---
 applications:
-  version: 1
+  version: "1"
   applications:
     - name: incus
 incus:
-  version: 1
+  version: "1"
   preseed:
     certificates:
       - name: admin
@@ -68,6 +68,17 @@ lvm:
 	incusOSClusterApplicationConfig = []byte(`---
 config:
   user.ui.title: E2E Test IncusOS Cluster
+`)
+
+	incusOSClusterApplicationConfigPostFactoryReset = []byte(`---
+config:
+  user.ui.title: E2E Test IncusOS Cluster
+certificates:
+  - type: client
+    name: my-client-cert
+    description: "Client certificate for accessing the cluster"
+    certificate: |-
+$CLIENT_CERTIFICATE$
 `)
 
 	// createClusterFromTemplate templates.

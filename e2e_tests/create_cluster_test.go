@@ -34,8 +34,8 @@ func createCluster(t *testing.T, tmpDir string) {
 	mustRun(t, `../bin/operations-center.linux.%s provisioning cluster add incus-os-cluster https://%s:8443 --server-names %s --services-config %s --application-seed-config %s`, cpuArch, instanceIPs[0], servers, filepath.Join(tmpDir, "services.yaml"), filepath.Join(tmpDir, "application.yaml"))
 
 	// Assertions
-	assertIncusRemote(t, instanceIPs[0])
-	assertInventory(t)
-	assertTerraformArtifact(t)
-	assertWebsocketEventsInventoryUpdate(t)
+	assertIncusRemote(t, "incus-os-cluster", instanceIPs[0])
+	assertInventory(t, "incus-os-cluster")
+	assertTerraformArtifact(t, "incus-os-cluster")
+	assertWebsocketEventsInventoryUpdate(t, "incus-os-cluster")
 }
