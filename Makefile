@@ -34,7 +34,7 @@ build-all-packages:
 test:
 	$(GO) test ./... -v
 
-.PHONY: test
+.PHONY: test-coverage
 test-coverage:
 	@rm -rf coverage.out covdata-coverage.out
 	@mkdir -p coverage.out
@@ -44,7 +44,7 @@ test-coverage:
 	@go tool covdata percent -pkg $$(go tool covdata pkglist -i ./coverage.out | grep -vE '(middleware|mock|version)$$' | paste -sd,) -i=./coverage.out -o covdata-coverage.out | sed 's/%//' | sort -k3,3nr -k1,1 | column -t
 	@cat covdata-coverage.out | awk 'BEGIN {cov=0; stat=0;} $$3!="" { cov+=($$3==1?$$2:0); stat+=$$2; } END {printf("Total coverage: %.2f%% of statements\n", (cov/stat)*100);}'
 
-.PHONY: test
+.PHONY: test-coverage-func
 test-coverage-func:
 	@rm -rf coverage.out covdata-coverage-func.out covdata-coverage-func-filtered.out
 	@mkdir -p coverage.out
