@@ -61,7 +61,6 @@ func TestE2E(t *testing.T) {
 		{
 			name:     "factory reset cluster",
 			testFunc: factoryResetCluster,
-			skip:     true, // FIXME: Does not yet work
 		},
 	}
 

@@ -14,6 +14,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/google/uuid"
 	"github.com/maniartech/signals"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
@@ -28,6 +29,7 @@ type clusterService struct {
 	localartifact    ClusterArtifactRepo
 	client           ClusterClientPort
 	serverSvc        ServerService
+	tokenSvc         TokenService
 	inventorySyncers map[domain.ResourceType]InventorySyncer
 	provisioner      ClusterProvisioningPort
 
@@ -60,6 +62,7 @@ func NewClusterService(
 	localartifact ClusterArtifactRepo,
 	client ClusterClientPort,
 	serverSvc ServerService,
+	tokenSvc TokenService,
 	inventorySyncers map[domain.ResourceType]InventorySyncer,
 	provisioner ClusterProvisioningPort,
 	opts ...ClusterServiceOption,
@@ -69,6 +72,7 @@ func NewClusterService(
 		localartifact:    localartifact,
 		client:           client,
 		serverSvc:        serverSvc,
+		tokenSvc:         tokenSvc,
 		inventorySyncers: inventorySyncers,
 		provisioner:      provisioner,
 
@@ -508,35 +512,13 @@ func (s clusterService) Rename(ctx context.Context, oldName string, newName stri
 	return nil
 }
 
-func (s clusterService) DeleteByName(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) error {
+func (s clusterService) DeleteByName(ctx context.Context, name string, force bool) error {
 	if name == "" {
 		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
 	}
 
-	if deleteMode == api.ClusterDeleteModeFactoryReset {
-		servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
-			Cluster: ptr.To(name),
-		})
-		if err != nil {
-			return fmt.Errorf("Get cluster servers for factory reset: %w", err)
-		}
-
-		for _, server := range servers {
-			err = s.client.Ping(ctx, server)
-			if err != nil {
-				return fmt.Errorf("Pre factory reset connection test to server %s: %w", server.Name, err)
-			}
-		}
-
-		for _, server := range servers {
-			err = s.client.FactoryReset(ctx, server)
-			if err != nil {
-				return fmt.Errorf("Factory reset on server %s: %w", server.Name, err)
-			}
-		}
-	}
-
-	if deleteMode == api.ClusterDeleteModeForce || deleteMode == api.ClusterDeleteModeFactoryReset {
+	// forceful delete
+	if force {
 		err := s.repo.DeleteByName(ctx, name)
 		if err != nil {
 			return fmt.Errorf("Failed to delete cluster: %w", err)
@@ -550,7 +532,7 @@ func (s clusterService) DeleteByName(ctx context.Context, name string, deleteMod
 		return nil
 	}
 
-	// deleteMode == normal
+	// normal delete
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		cluster, err := s.repo.GetByName(ctx, name)
 		if err != nil {
@@ -585,6 +567,94 @@ func (s clusterService) DeleteByName(ctx context.Context, name string, deleteMod
 
 		return nil
 	})
+	if err != nil {
+		return fmt.Errorf("Failed to delete cluster: %w", err)
+	}
+
+	s.clusterUpdateSignal.Emit(ctx, ClusterUpdateMessage{
+		Operation: ClusterUpdateOperationDelete,
+		Name:      name,
+	})
+
+	return nil
+}
+
+func (s clusterService) DeleteAndFactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error {
+	if name == "" {
+		return fmt.Errorf("Cluster name cannot be empty: %w", domain.ErrOperationNotPermitted)
+	}
+
+	servers, err := s.serverSvc.GetAllWithFilter(ctx, ServerFilter{
+		Cluster: ptr.To(name),
+	})
+	if err != nil {
+		return fmt.Errorf("Get cluster servers for factory reset: %w", err)
+	}
+
+	if len(servers) == 0 {
+		return fmt.Errorf("Cluster not found")
+	}
+
+	for _, server := range servers {
+		err = s.client.Ping(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Pre factory reset connection test to server %s: %w", server.Name, err)
+		}
+	}
+
+	var seed TokenImageSeedConfigs
+	if tokenID != nil && tokenSeedName != nil {
+		tokenSeed, err := s.tokenSvc.GetTokenSeedByName(ctx, *tokenID, *tokenSeedName)
+		if err != nil {
+			return fmt.Errorf("Pre factory reset failed to get token seed: %w", err)
+		}
+
+		seed = tokenSeed.Seeds
+	}
+
+	if tokenID == nil {
+		token, err := s.tokenSvc.Create(ctx, Token{
+			UsesRemaining: len(servers),
+			ExpireAt:      time.Now().Add(1 * time.Hour),
+		})
+		if err != nil {
+			return fmt.Errorf("Pre factory reset failed to get a provisioning token: %w", err)
+		}
+
+		tokenID = &token.UUID
+	}
+
+	if tokenSeedName == nil {
+		seed = TokenImageSeedConfigs{
+			Applications: map[string]any{
+				"version": "1",
+				"applications": []any{
+					map[string]any{
+						"name": "incus",
+					},
+				},
+			},
+			Incus: map[string]any{
+				"version":        "1",
+				"apply_defaults": false,
+			},
+		}
+	}
+
+	providerConfig, err := s.tokenSvc.GetTokenProviderConfig(ctx, *tokenID)
+	if err != nil {
+		return fmt.Errorf("Pre factory reset failed to get provider config: %w", err)
+	}
+
+	for _, server := range servers {
+		// TODO: First try with allowTPMResetFailure = false and later retry with true, if an error occurs. Print an warning in this case.
+		err = s.client.SystemFactoryReset(ctx, server, false, seed, *providerConfig)
+		if err != nil {
+			return fmt.Errorf("Factory reset on server %s: %w", server.Name, err)
+		}
+	}
+
+	err = s.repo.DeleteByName(ctx, name)
 	if err != nil {
 		return fmt.Errorf("Failed to delete cluster: %w", err)
 	}

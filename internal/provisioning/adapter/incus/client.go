@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
+	"github.com/lxc/incus-os/incus-osd/api/seed"
 	incus "github.com/lxc/incus/v6/client"
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
@@ -417,13 +418,38 @@ func (c client) UpdateClusterCertificate(ctx context.Context, endpoint provision
 	}, "")
 }
 
-func (c client) FactoryReset(ctx context.Context, endpoint provisioning.Endpoint) error {
+func (c client) SystemFactoryReset(ctx context.Context, endpoint provisioning.Endpoint, allowTPMResetFailure bool, seedConfig provisioning.TokenImageSeedConfigs, providerConfig api.TokenProviderConfig) error {
 	client, err := c.getClient(ctx, endpoint)
 	if err != nil {
 		return err
 	}
 
-	_, _, err = client.RawQuery(http.MethodPost, "/os/1.0/system/:factory-reset", map[string]any{}, "")
+	providerSeed := &seed.Provider{
+		SystemProviderConfig: providerConfig.SystemProviderConfig,
+		Version:              providerConfig.Version,
+	}
+
+	seedData := map[string]any{
+		"applications": seedConfig.Applications,
+		"incus":        seedConfig.Incus,
+		"provider":     providerSeed,
+	}
+
+	if len(seedConfig.Install) > 0 {
+		seedData["install"] = seedConfig.Install
+	}
+
+	if len(seedConfig.Network) > 0 {
+		seedData["network"] = seedConfig.Network
+	}
+
+	resetData := map[string]any{
+		"allow_tpm_reset_failure": allowTPMResetFailure,
+		"seeds":                   seedData,
+		"wipe_existing_seeds":     true,
+	}
+
+	_, _, err = client.RawQuery(http.MethodPost, "/os/1.0/system/:factory-reset", resetData, "")
 	if err != nil {
 		return fmt.Errorf("Factory reset on %q failed: %w", endpoint.GetConnectionURL(), err)
 	}

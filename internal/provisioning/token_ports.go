@@ -45,6 +45,6 @@ type TokenRepo interface {
 }
 
 type FlasherPort interface {
-	GetProviderConfig(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error)
+	GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (*api.TokenProviderConfig, error)
 	GenerateSeededImage(ctx context.Context, id uuid.UUID, seedConfig TokenImageSeedConfigs, rc io.ReadCloser) (io.ReadCloser, error)
 }

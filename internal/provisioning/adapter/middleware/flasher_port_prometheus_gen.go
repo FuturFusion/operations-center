@@ -55,7 +55,7 @@ func (_d FlasherPortWithPrometheus) GenerateSeededImage(ctx context.Context, id 
 }
 
 // GetProviderConfig implements provisioning.FlasherPort.
-func (_d FlasherPortWithPrometheus) GetProviderConfig(ctx context.Context, id uuid.UUID) (tokenProviderConfig *api.TokenProviderConfig, err error) {
+func (_d FlasherPortWithPrometheus) GetProviderConfig(ctx context.Context, tokenID uuid.UUID) (tokenProviderConfig *api.TokenProviderConfig, err error) {
 	_since := time.Now()
 	defer func() {
 		result := "ok"
@@ -65,5 +65,5 @@ func (_d FlasherPortWithPrometheus) GetProviderConfig(ctx context.Context, id uu
 
 		flasherPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetProviderConfig", result).Observe(time.Since(_since).Seconds())
 	}()
-	return _d.base.GetProviderConfig(ctx, id)
+	return _d.base.GetProviderConfig(ctx, tokenID)
 }

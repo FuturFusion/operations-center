@@ -186,7 +186,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	tokenSvc := d.setupTokenService(dbWithTransaction, updateSvc)
 	serverSvc := d.setupServerService(dbWithTransaction, tokenSvc, nil)
-	clusterSvc, err := d.setupClusterService(dbWithTransaction, serverSvc)
+	clusterSvc, err := d.setupClusterService(dbWithTransaction, serverSvc, tokenSvc)
 	if err != nil {
 		return err
 	}
@@ -548,7 +548,7 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 	)
 }
 
-func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.ServerService) (provisioning.ClusterService, error) {
+func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.ServerService, tokenSvc provisioning.TokenService) (provisioning.ClusterService, error) {
 	updateSignal := signals.NewSync[provisioning.ClusterUpdateMessage]()
 
 	localClusterArtifactRepo, err := provisioningClusterArtifactRepo.New(db, filepath.Join(d.env.VarDir(), "artifacts"), updateSignal)
@@ -582,6 +582,7 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.Se
 				slog.Default(),
 			),
 			serverSvc,
+			tokenSvc,
 			nil,
 			terraformProvisioner,
 			provisioning.ClusterServiceUpdateSignal(updateSignal),

@@ -377,14 +377,14 @@ func setupLocalOperationsCenterConfig(t *testing.T) {
 func createProvisioningToken(t *testing.T) string {
 	t.Helper()
 
-	tokenResp := mustRun(t, `../bin/operations-center.linux.%s provisioning token list -f json`, cpuArch)
+	tokenResp := mustRun(t, `../bin/operations-center.linux.%s provisioning token list -f json | jq -r '[ .[] | select(.uses_remaining > 20) ]'`, cpuArch)
 	token := gjson.Get(tokenResp.Output(), "0.uuid").String()
 	if token == "" {
 		stop := timeTrack(t)
 		defer stop()
 
 		mustRun(t, `../bin/operations-center.linux.%s provisioning token add --description "test" --uses 50`, cpuArch)
-		tokenResp := mustRun(t, `../bin/operations-center.linux.%s provisioning token list -f json`, cpuArch)
+		tokenResp := mustRun(t, `../bin/operations-center.linux.%s provisioning token list -f json | jq -r '[ .[] | select(.uses_remaining > 20) ]'`, cpuArch)
 		token = gjson.Get(tokenResp.Output(), "0.uuid").String()
 	}
 

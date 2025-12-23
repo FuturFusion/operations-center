@@ -11,7 +11,7 @@ import (
 
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/google/uuid"
 )
 
 // Ensure that ClusterServiceMock does implement provisioning.ClusterService.
@@ -27,7 +27,10 @@ var _ provisioning.ClusterService = &ClusterServiceMock{}
 //			CreateFunc: func(ctx context.Context, cluster provisioning.Cluster) (provisioning.Cluster, error) {
 //				panic("mock out the Create method")
 //			},
-//			DeleteByNameFunc: func(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) error {
+//			DeleteAndFactoryResetByNameFunc: func(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error {
+//				panic("mock out the DeleteAndFactoryResetByName method")
+//			},
+//			DeleteByNameFunc: func(ctx context.Context, name string, force bool) error {
 //				panic("mock out the DeleteByName method")
 //			},
 //			GetAllFunc: func(ctx context.Context) (provisioning.Clusters, error) {
@@ -94,8 +97,11 @@ type ClusterServiceMock struct {
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, cluster provisioning.Cluster) (provisioning.Cluster, error)
 
+	// DeleteAndFactoryResetByNameFunc mocks the DeleteAndFactoryResetByName method.
+	DeleteAndFactoryResetByNameFunc func(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error
+
 	// DeleteByNameFunc mocks the DeleteByName method.
-	DeleteByNameFunc func(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) error
+	DeleteByNameFunc func(ctx context.Context, name string, force bool) error
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Clusters, error)
@@ -160,14 +166,25 @@ type ClusterServiceMock struct {
 			// Cluster is the cluster argument value.
 			Cluster provisioning.Cluster
 		}
+		// DeleteAndFactoryResetByName holds details about calls to the DeleteAndFactoryResetByName method.
+		DeleteAndFactoryResetByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// TokenID is the tokenID argument value.
+			TokenID *uuid.UUID
+			// TokenSeedName is the tokenSeedName argument value.
+			TokenSeedName *string
+		}
 		// DeleteByName holds details about calls to the DeleteByName method.
 		DeleteByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
-			// DeleteMode is the deleteMode argument value.
-			DeleteMode api.ClusterDeleteMode
+			// Force is the force argument value.
+			Force bool
 		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
@@ -303,6 +320,7 @@ type ClusterServiceMock struct {
 		}
 	}
 	lockCreate                          sync.RWMutex
+	lockDeleteAndFactoryResetByName     sync.RWMutex
 	lockDeleteByName                    sync.RWMutex
 	lockGetAll                          sync.RWMutex
 	lockGetAllNames                     sync.RWMutex
@@ -360,24 +378,68 @@ func (mock *ClusterServiceMock) CreateCalls() []struct {
 	return calls
 }
 
+// DeleteAndFactoryResetByName calls DeleteAndFactoryResetByNameFunc.
+func (mock *ClusterServiceMock) DeleteAndFactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) error {
+	if mock.DeleteAndFactoryResetByNameFunc == nil {
+		panic("ClusterServiceMock.DeleteAndFactoryResetByNameFunc: method is nil but ClusterService.DeleteAndFactoryResetByName was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		Name          string
+		TokenID       *uuid.UUID
+		TokenSeedName *string
+	}{
+		Ctx:           ctx,
+		Name:          name,
+		TokenID:       tokenID,
+		TokenSeedName: tokenSeedName,
+	}
+	mock.lockDeleteAndFactoryResetByName.Lock()
+	mock.calls.DeleteAndFactoryResetByName = append(mock.calls.DeleteAndFactoryResetByName, callInfo)
+	mock.lockDeleteAndFactoryResetByName.Unlock()
+	return mock.DeleteAndFactoryResetByNameFunc(ctx, name, tokenID, tokenSeedName)
+}
+
+// DeleteAndFactoryResetByNameCalls gets all the calls that were made to DeleteAndFactoryResetByName.
+// Check the length with:
+//
+//	len(mockedClusterService.DeleteAndFactoryResetByNameCalls())
+func (mock *ClusterServiceMock) DeleteAndFactoryResetByNameCalls() []struct {
+	Ctx           context.Context
+	Name          string
+	TokenID       *uuid.UUID
+	TokenSeedName *string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		Name          string
+		TokenID       *uuid.UUID
+		TokenSeedName *string
+	}
+	mock.lockDeleteAndFactoryResetByName.RLock()
+	calls = mock.calls.DeleteAndFactoryResetByName
+	mock.lockDeleteAndFactoryResetByName.RUnlock()
+	return calls
+}
+
 // DeleteByName calls DeleteByNameFunc.
-func (mock *ClusterServiceMock) DeleteByName(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) error {
+func (mock *ClusterServiceMock) DeleteByName(ctx context.Context, name string, force bool) error {
 	if mock.DeleteByNameFunc == nil {
 		panic("ClusterServiceMock.DeleteByNameFunc: method is nil but ClusterService.DeleteByName was just called")
 	}
 	callInfo := struct {
-		Ctx        context.Context
-		Name       string
-		DeleteMode api.ClusterDeleteMode
+		Ctx   context.Context
+		Name  string
+		Force bool
 	}{
-		Ctx:        ctx,
-		Name:       name,
-		DeleteMode: deleteMode,
+		Ctx:   ctx,
+		Name:  name,
+		Force: force,
 	}
 	mock.lockDeleteByName.Lock()
 	mock.calls.DeleteByName = append(mock.calls.DeleteByName, callInfo)
 	mock.lockDeleteByName.Unlock()
-	return mock.DeleteByNameFunc(ctx, name, deleteMode)
+	return mock.DeleteByNameFunc(ctx, name, force)
 }
 
 // DeleteByNameCalls gets all the calls that were made to DeleteByName.
@@ -385,14 +447,14 @@ func (mock *ClusterServiceMock) DeleteByName(ctx context.Context, name string, d
 //
 //	len(mockedClusterService.DeleteByNameCalls())
 func (mock *ClusterServiceMock) DeleteByNameCalls() []struct {
-	Ctx        context.Context
-	Name       string
-	DeleteMode api.ClusterDeleteMode
+	Ctx   context.Context
+	Name  string
+	Force bool
 } {
 	var calls []struct {
-		Ctx        context.Context
-		Name       string
-		DeleteMode api.ClusterDeleteMode
+		Ctx   context.Context
+		Name  string
+		Force bool
 	}
 	mock.lockDeleteByName.RLock()
 	calls = mock.calls.DeleteByName

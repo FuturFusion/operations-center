@@ -74,14 +74,41 @@ func (c OperationsCenterClient) UpdateCluster(ctx context.Context, name string, 
 	return nil
 }
 
-func (c OperationsCenterClient) DeleteCluster(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) error {
-	_, ok := api.ClusterDeleteModes[deleteMode]
-	if !ok {
-		deleteMode = api.ClusterDeleteModeNormal
+func (c OperationsCenterClient) DeleteCluster(ctx context.Context, name string, force bool) error {
+	deleteMode := api.ClusterDeleteModeNormal
+	if force {
+		deleteMode = api.ClusterDeleteModeForce
 	}
 
 	query := url.Values{}
 	query.Add("mode", deleteMode.String())
+
+	_, err := c.doRequest(ctx, http.MethodDelete, path.Join("/provisioning/clusters", name), query, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// FactoryResetCluster triggers a factory reset of a cluster. This operations
+// removes the servers and the cluster form Operations Center inventory
+// and triggers a factory reset for all the IncusOS servers.
+// This operation takes up to 2 optional arguments:
+//
+//   - token - if present, this token will be used in the factory reset seed instead of a freshly generated token.
+//   - token seed name - if present, the seed information assigned to the given token seed is used instead of the default seed.
+func (c OperationsCenterClient) FactoryResetCluster(ctx context.Context, name string, args ...string) error {
+	query := url.Values{}
+	query.Add("mode", api.ClusterDeleteModeFactoryReset.String())
+
+	if len(args) > 0 {
+		query.Add("token", args[0])
+	}
+
+	if len(args) > 1 {
+		query.Add("tokenSeedName", args[1])
+	}
 
 	_, err := c.doRequest(ctx, http.MethodDelete, path.Join("/provisioning/clusters", name), query, nil)
 	if err != nil {

@@ -14,7 +14,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/expr-lang/expr"
 	"github.com/maniartech/signals"
 	"gopkg.in/yaml.v3"
 
@@ -22,7 +21,6 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/environment"
 	"github.com/FuturFusion/operations-center/internal/logger"
-	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -59,6 +57,7 @@ var (
 	NetworkUpdateSignal      = signals.NewSync[api.SystemNetwork]()
 	SecurityUpdateSignal     = signals.NewSync[api.SystemSecurity]()
 	SecurityACMEUpdateSignal = signals.NewSync[api.SystemSecurityACME]()
+	UpdatesValidateSignal    = signals.NewSync[api.SystemUpdates]()
 	UpdatesUpdateSignal      = signals.NewSync[api.SystemUpdates]()
 )
 
@@ -368,18 +367,11 @@ func validate(cfg config) error {
 		return domain.NewValidationErrf(`Invalid config, pem decode for "updates.signature_verification_root_ca" failed`)
 	}
 
-	if cfg.Updates.FilterExpression != "" {
-		_, err := expr.Compile(cfg.Updates.FilterExpression, expr.Env(provisioning.ToExprUpdate(provisioning.Update{})))
-		if err != nil {
-			return domain.NewValidationErrf(`Invalid config, failed to compile filter expression: %v`, err)
-		}
-	}
-
-	if cfg.Updates.FileFilterExpression != "" {
-		_, err := expr.Compile(cfg.Updates.FileFilterExpression, provisioning.UpdateFileExprEnvFrom(provisioning.UpdateFile{}).ExprCompileOptions()...)
-		if err != nil {
-			return domain.NewValidationErrf(`Invalid config, failed to compile file filter expression: %v`, err)
-		}
+	// This is not ideal, but we can not have a direct dependency from the config
+	// onto the provisioning package, because we get a dependency cycle otherwise.
+	err = UpdatesValidateSignal.TryEmit(context.Background(), cfg.Updates)
+	if err != nil {
+		return err
 	}
 
 	// Security configuration

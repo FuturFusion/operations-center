@@ -197,6 +197,9 @@ e2e-test: build
 clean-e2e-test:
 	rm -rf $(OPERATIONS_CENTER_E2E_TEST_TMP_DIR)
 	rm -rf $$HOME/.config/operations-center/
+	incus remote remove incus-os-cluster || true
+	incus remote remove incus-os-cluster-after-factory-reset-1 || true
+	incus remote remove incus-os-cluster-after-factory-reset-2 || true
 	incus remove --force OperationsCenter || true
 	incus remove --force IncusOS01 || true
 	incus remove --force IncusOS02 || true

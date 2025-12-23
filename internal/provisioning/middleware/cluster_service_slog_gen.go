@@ -11,7 +11,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/domain"
 	"github.com/FuturFusion/operations-center/internal/logger"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
-	"github.com/FuturFusion/operations-center/shared/api"
+	"github.com/google/uuid"
 )
 
 // ClusterServiceWithSlog implements provisioning.ClusterService that is instrumented with slog logger.
@@ -79,14 +79,50 @@ func (_d ClusterServiceWithSlog) Create(ctx context.Context, cluster provisionin
 	return _d._base.Create(ctx, cluster)
 }
 
-// DeleteByName implements provisioning.ClusterService.
-func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string, deleteMode api.ClusterDeleteMode) (err error) {
+// DeleteAndFactoryResetByName implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) DeleteAndFactoryResetByName(ctx context.Context, name string, tokenID *uuid.UUID, tokenSeedName *string) (err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.String("name", name),
-			slog.Any("deleteMode", deleteMode),
+			slog.Any("tokenID", tokenID),
+			slog.Any("tokenSeedName", tokenSeedName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling DeleteAndFactoryResetByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method DeleteAndFactoryResetByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method DeleteAndFactoryResetByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method DeleteAndFactoryResetByName finished")
+		}
+	}()
+	return _d._base.DeleteAndFactoryResetByName(ctx, name, tokenID, tokenSeedName)
+}
+
+// DeleteByName implements provisioning.ClusterService.
+func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string, force bool) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Bool("force", force),
 		)
 	}
 	log.DebugContext(ctx, "=> calling DeleteByName")
@@ -111,7 +147,7 @@ func (_d ClusterServiceWithSlog) DeleteByName(ctx context.Context, name string, 
 			log.DebugContext(ctx, "<= method DeleteByName finished")
 		}
 	}()
-	return _d._base.DeleteByName(ctx, name, deleteMode)
+	return _d._base.DeleteByName(ctx, name, force)
 }
 
 // GetAll implements provisioning.ClusterService.

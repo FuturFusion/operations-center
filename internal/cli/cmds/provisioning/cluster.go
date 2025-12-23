@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
@@ -58,6 +59,13 @@ func (c *CmdCluster) Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(clusterRemoveCmd.Command())
+
+	// Factory Reset
+	clusterFactoryResetCmd := cmdClusterFactoryReset{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(clusterFactoryResetCmd.Command())
 
 	// Update
 	clusterUpdateCmd := cmdClusterUpdate{
@@ -314,7 +322,7 @@ func (c *cmdClusterList) run(cmd *cobra.Command, args []string) error {
 type cmdClusterRemove struct {
 	ocClient *client.OperationsCenterClient
 
-	flagDeleteMode string
+	flagForce bool
 }
 
 func (c *cmdClusterRemove) Command() *cobra.Command {
@@ -325,14 +333,13 @@ func (c *cmdClusterRemove) Command() *cobra.Command {
   Remove a cluster
 
   Removes a cluster from the operations center. This operation supports the
-  following modes, controlled through the --mode flag:
+  following modes, controlled through the --force flag:
 
   - normal: cluster record is only removed from operations center if it is in state pending or unknown and there are no servers referencing the cluster.
   - force: cluster and server records including all associated inventory information is removed from operations center, does not do any change to the cluster it self.
-  - factory-reset: everything from "force" and additionally a factory reset is performed on every server, that is part of the cluster.
 `
 
-	cmd.Flags().StringVar(&c.flagDeleteMode, "mode", api.ClusterDeleteModeNormal.String(), "delete mode for removal of cluster, supported values: normal, force, factory-reset")
+	cmd.Flags().BoolVarP(&c.flagForce, "force", "f", false, "if this flag is provided, a forceful delete is performed")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -347,30 +354,84 @@ func (c *cmdClusterRemove) validateArgsAndFlags(cmd *cobra.Command, args []strin
 		return err
 	}
 
-	deleteMode := api.ClusterDeleteMode(c.flagDeleteMode)
-	_, ok := api.ClusterDeleteModes[deleteMode]
-	if !ok {
-		return fmt.Errorf("Provided delete mode %q is not supported", c.flagDeleteMode)
+	return nil
+}
+
+func (c *cmdClusterRemove) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	if c.flagForce {
+		cmd.Println(`WARNING: removal of a cluster with delete mode "force" does not do any change to the actual cluster, but the cluster and the server records including all accosiated inventory information is removed from operations center.`)
+	}
+
+	err := c.ocClient.DeleteCluster(cmd.Context(), name, c.flagForce)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (c *cmdClusterRemove) run(cmd *cobra.Command, args []string) error {
+// FactoryReset cluster.
+type cmdClusterFactoryReset struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdClusterFactoryReset) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "factory-reset <name> [<token> [<token-seed-name>]]"
+	cmd.Short = "Factory reset a cluster"
+	cmd.Long = `Description:
+  Factory reset a cluster
+
+  Factory resets a cluster from the operations center.
+  Cluster and server records including all associated inventory information is
+  removed from operations center. Additionally a factory reset is performed on
+  every server, that is part of the cluster.
+
+  For the factory reset an optional token and the name of a token seed can
+  be provided. If they are not provided, Operations Center will generate a
+  token and use default seed values.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdClusterFactoryReset) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
 	// Quick checks.
-	exit, err := validate.Args(cmd, args, 1, 1)
+	exit, err := validate.Args(cmd, args, 1, 3)
 	if exit {
 		return err
 	}
 
-	name := args[0]
-	deleteMode := api.ClusterDeleteMode(c.flagDeleteMode)
-
-	if deleteMode == api.ClusterDeleteModeForce {
-		cmd.Println(`WARNING: removal of a cluster with delete mode "force" does not do any change to the actual cluster, but the cluster and the server records including all accosiated inventory information is removed from operations center.`)
+	if len(args) > 1 {
+		_, err := uuid.Parse(args[1])
+		if err != nil {
+			return fmt.Errorf("Failed to parse token: %w", err)
+		}
 	}
 
-	err = c.ocClient.DeleteCluster(cmd.Context(), name, deleteMode)
+	if len(args) > 2 {
+		if args[2] == "" {
+			return fmt.Errorf("Invalid token seed name: empty string")
+		}
+	}
+
+	return nil
+}
+
+func (c *cmdClusterFactoryReset) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	tokenArgs := make([]string, 0, 2)
+	if len(args) > 1 {
+		tokenArgs = args[1:]
+	}
+
+	err := c.ocClient.FactoryResetCluster(cmd.Context(), name, tokenArgs...)
 	if err != nil {
 		return err
 	}
