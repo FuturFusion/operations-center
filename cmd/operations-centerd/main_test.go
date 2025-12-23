@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/operations-center/internal/environment/mock"
+	"github.com/FuturFusion/operations-center/internal/version"
 )
 
 func TestMain0Version(t *testing.T) {
@@ -30,7 +31,7 @@ func TestMain0Version(t *testing.T) {
 	err := main0([]string{"--version"}, &stdoutBuf, nil, env)
 	require.NoError(t, err)
 
-	require.Equal(t, "0.0.1\n", stdoutBuf.String())
+	require.Equal(t, version.Version+"\n", stdoutBuf.String())
 }
 
 func TestMain0RunDaemon(t *testing.T) {
