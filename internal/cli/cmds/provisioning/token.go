@@ -423,7 +423,12 @@ func (c *cmdTokenGetImage) run(cmd *cobra.Command, args []string) (err error) {
 		err = errors.Join(err, closeErr, removeErr)
 	}()
 
-	imageReader, err := c.ocClient.GetTokenImage(cmd.Context(), id, preseed)
+	imageID, err := c.ocClient.PreparePreSeededImage(cmd.Context(), id, preseed)
+	if err != nil {
+		return err
+	}
+
+	imageReader, err := c.ocClient.GetPreSeededImage(cmd.Context(), id, imageID)
 	if err != nil {
 		return err
 	}
