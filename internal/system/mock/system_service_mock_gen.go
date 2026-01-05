@@ -34,6 +34,9 @@ var _ system.SystemService = &SystemServiceMock{}
 //			GetUpdatesConfigFunc: func(ctx context.Context) api.SystemUpdates {
 //				panic("mock out the GetUpdatesConfig method")
 //			},
+//			TriggerCertificateRenewFunc: func(ctx context.Context, force bool) (bool, error) {
+//				panic("mock out the TriggerCertificateRenew method")
+//			},
 //			UpdateCertificateFunc: func(ctx context.Context, certificatePEM string, keyPEM string) error {
 //				panic("mock out the UpdateCertificate method")
 //			},
@@ -67,6 +70,9 @@ type SystemServiceMock struct {
 
 	// GetUpdatesConfigFunc mocks the GetUpdatesConfig method.
 	GetUpdatesConfigFunc func(ctx context.Context) api.SystemUpdates
+
+	// TriggerCertificateRenewFunc mocks the TriggerCertificateRenew method.
+	TriggerCertificateRenewFunc func(ctx context.Context, force bool) (bool, error)
 
 	// UpdateCertificateFunc mocks the UpdateCertificate method.
 	UpdateCertificateFunc func(ctx context.Context, certificatePEM string, keyPEM string) error
@@ -104,6 +110,13 @@ type SystemServiceMock struct {
 		GetUpdatesConfig []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+		}
+		// TriggerCertificateRenew holds details about calls to the TriggerCertificateRenew method.
+		TriggerCertificateRenew []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Force is the force argument value.
+			Force bool
 		}
 		// UpdateCertificate holds details about calls to the UpdateCertificate method.
 		UpdateCertificate []struct {
@@ -143,15 +156,16 @@ type SystemServiceMock struct {
 			Cfg api.SystemUpdatesPut
 		}
 	}
-	lockGetNetworkConfig     sync.RWMutex
-	lockGetSecurityConfig    sync.RWMutex
-	lockGetSettingsConfig    sync.RWMutex
-	lockGetUpdatesConfig     sync.RWMutex
-	lockUpdateCertificate    sync.RWMutex
-	lockUpdateNetworkConfig  sync.RWMutex
-	lockUpdateSecurityConfig sync.RWMutex
-	lockUpdateSettingsConfig sync.RWMutex
-	lockUpdateUpdatesConfig  sync.RWMutex
+	lockGetNetworkConfig        sync.RWMutex
+	lockGetSecurityConfig       sync.RWMutex
+	lockGetSettingsConfig       sync.RWMutex
+	lockGetUpdatesConfig        sync.RWMutex
+	lockTriggerCertificateRenew sync.RWMutex
+	lockUpdateCertificate       sync.RWMutex
+	lockUpdateNetworkConfig     sync.RWMutex
+	lockUpdateSecurityConfig    sync.RWMutex
+	lockUpdateSettingsConfig    sync.RWMutex
+	lockUpdateUpdatesConfig     sync.RWMutex
 }
 
 // GetNetworkConfig calls GetNetworkConfigFunc.
@@ -279,6 +293,42 @@ func (mock *SystemServiceMock) GetUpdatesConfigCalls() []struct {
 	mock.lockGetUpdatesConfig.RLock()
 	calls = mock.calls.GetUpdatesConfig
 	mock.lockGetUpdatesConfig.RUnlock()
+	return calls
+}
+
+// TriggerCertificateRenew calls TriggerCertificateRenewFunc.
+func (mock *SystemServiceMock) TriggerCertificateRenew(ctx context.Context, force bool) (bool, error) {
+	if mock.TriggerCertificateRenewFunc == nil {
+		panic("SystemServiceMock.TriggerCertificateRenewFunc: method is nil but SystemService.TriggerCertificateRenew was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Force bool
+	}{
+		Ctx:   ctx,
+		Force: force,
+	}
+	mock.lockTriggerCertificateRenew.Lock()
+	mock.calls.TriggerCertificateRenew = append(mock.calls.TriggerCertificateRenew, callInfo)
+	mock.lockTriggerCertificateRenew.Unlock()
+	return mock.TriggerCertificateRenewFunc(ctx, force)
+}
+
+// TriggerCertificateRenewCalls gets all the calls that were made to TriggerCertificateRenew.
+// Check the length with:
+//
+//	len(mockedSystemService.TriggerCertificateRenewCalls())
+func (mock *SystemServiceMock) TriggerCertificateRenewCalls() []struct {
+	Ctx   context.Context
+	Force bool
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Force bool
+	}
+	mock.lockTriggerCertificateRenew.RLock()
+	calls = mock.calls.TriggerCertificateRenew
+	mock.lockTriggerCertificateRenew.RUnlock()
 	return calls
 }
 

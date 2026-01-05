@@ -21,6 +21,7 @@ func registerSystemHandler(router Router, authorizer *authz.Authorizer, service 
 	}
 
 	router.HandleFunc("POST /certificate", response.With(handler.certificatePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /certificate/:renew", response.With(handler.certificateRenewPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /network", response.With(handler.networkGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /network", response.With(handler.networkPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /security", response.With(handler.securityGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -85,6 +86,49 @@ func (s *systemHandler) certificatePost(r *http.Request) response.Response {
 	err = s.service.UpdateCertificate(r.Context(), request.Certificate, request.Key)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to update system certificate: %w", err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/system/certificate/:renew system system_certificate_renew_post
+//
+//	Renew the system's ACME certificate
+//
+//	Renew the system's ACME certificate.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Empty response
+//	    schema:
+//	      type: object
+//	      description: System certificate renew response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *systemHandler) certificateRenewPost(r *http.Request) response.Response {
+	_, err := s.service.TriggerCertificateRenew(r.Context(), true)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to renew system certificate: %w", err))
 	}
 
 	return response.EmptySyncResponse

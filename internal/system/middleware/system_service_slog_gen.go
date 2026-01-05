@@ -130,6 +130,41 @@ func (_d SystemServiceWithSlog) GetUpdatesConfig(ctx context.Context) (systemUpd
 	return _d._base.GetUpdatesConfig(ctx)
 }
 
+// TriggerCertificateRenew implements system.SystemService.
+func (_d SystemServiceWithSlog) TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Bool("force", force),
+		)
+	}
+	log.DebugContext(ctx, "=> calling TriggerCertificateRenew")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Bool("changed", changed),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method TriggerCertificateRenew returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method TriggerCertificateRenew returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method TriggerCertificateRenew finished")
+		}
+	}()
+	return _d._base.TriggerCertificateRenew(ctx, force)
+}
+
 // UpdateCertificate implements system.SystemService.
 func (_d SystemServiceWithSlog) UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
 	log := _d._log.With()

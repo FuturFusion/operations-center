@@ -463,6 +463,122 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 	}
 }
 
+func TestSystemService_TriggerCertificateRenew(t *testing.T) {
+	currentCertPEM, currentKeyPEM, err := incustls.GenerateMemCert(true, false)
+	require.NoError(t, err)
+
+	certPEM, keyPEM, err := incustls.GenerateMemCert(true, false)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name                     string
+		certPEM                  string
+		keyPEM                   string
+		acmeUpdateCertificate    *api.SystemCertificatePost
+		acmeUpdateCertificateErr error
+		serverGetAllErr          error
+
+		assertErr   require.ErrorAssertionFunc
+		wantChanged bool
+	}{
+		{
+			name:    "success - no new certificate",
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+
+			assertErr: require.NoError,
+		},
+		{
+			name:    "success - new certificate",
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+			acmeUpdateCertificate: &api.SystemCertificatePost{
+				Certificate: string(certPEM),
+				Key:         string(keyPEM),
+			},
+
+			assertErr:   require.NoError,
+			wantChanged: true,
+		},
+		{
+			name:                     "error - acmeUpdateCertificate",
+			certPEM:                  string(certPEM),
+			keyPEM:                   string(keyPEM),
+			acmeUpdateCertificateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "error - update certificate",
+			certPEM: string(certPEM),
+			keyPEM:  string(keyPEM),
+			acmeUpdateCertificate: &api.SystemCertificatePost{
+				Certificate: string(certPEM),
+				Key:         string(keyPEM),
+			},
+			serverGetAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			tmpDir := t.TempDir()
+
+			err := os.WriteFile(filepath.Join(tmpDir, "server.crt"), currentCertPEM, 0o600)
+			require.NoError(t, err)
+
+			err = os.WriteFile(filepath.Join(tmpDir, "server.key"), currentKeyPEM, 0o600)
+			require.NoError(t, err)
+
+			env := &envMock.EnvironmentMock{
+				VarDirFunc: func() string {
+					return tmpDir
+				},
+				CacheDirFunc: func() string {
+					return tmpDir
+				},
+			}
+
+			serverCertificateUpdate := signals.NewSync[tls.Certificate]()
+
+			serverSvc := &mock.ProvisioningServerServiceMock{
+				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
+					return nil, tc.serverGetAllErr
+				},
+			}
+
+			systemSvc := system.NewSystemService(
+				env,
+				serverCertificateUpdate,
+				serverSvc,
+				system.WithACMEUpdateCertificateFunc(
+					func(
+						ctx context.Context,
+						fsEnv interface {
+							VarDir() string
+							CacheDir() string
+						},
+						cfg api.SystemSecurityACME,
+						force bool,
+					) (*api.SystemCertificatePost, error) {
+						return tc.acmeUpdateCertificate, tc.acmeUpdateCertificateErr
+					},
+				),
+			)
+
+			// Run test
+			changed, err := systemSvc.TriggerCertificateRenew(t.Context(), false)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.wantChanged, changed)
+		})
+	}
+}
+
 func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 	tests := []struct {
 		name                       string

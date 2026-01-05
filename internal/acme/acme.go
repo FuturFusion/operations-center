@@ -81,13 +81,16 @@ func ACMEConfigChanged(oldCfg, newCfg api.SystemSecurityACME) bool {
 	return false
 }
 
-type environment interface {
-	VarDir() string
-	CacheDir() string
-}
-
 // UpdateCertificate updates the certificate.
-func UpdateCertificate(ctx context.Context, fsEnv environment, cfg api.SystemSecurityACME, force bool) (*api.SystemCertificatePost, error) {
+func UpdateCertificate(
+	ctx context.Context,
+	fsEnv interface {
+		VarDir() string
+		CacheDir() string
+	},
+	cfg api.SystemSecurityACME,
+	force bool,
+) (*api.SystemCertificatePost, error) {
 	log := slog.With(slog.String("domain", cfg.Domain), slog.String("caURL", cfg.CAURL), slog.String("challenge", string(cfg.Challenge)))
 	if cfg.Domain == "" || cfg.Email == "" || cfg.CAURL == "" || !cfg.AgreeTOS {
 		return nil, nil
