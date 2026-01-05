@@ -9,6 +9,7 @@ import (
 
 type SystemService interface {
 	UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) error
+	TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, _ error)
 
 	GetNetworkConfig(ctx context.Context) api.SystemNetwork
 	UpdateNetworkConfig(ctx context.Context, cfg api.SystemNetworkPut) error

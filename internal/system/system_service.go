@@ -12,32 +12,55 @@ import (
 	incustls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/maniartech/signals"
 
+	"github.com/FuturFusion/operations-center/internal/acme"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
 type environment interface {
 	VarDir() string
+	CacheDir() string
 }
 
 type systemService struct {
 	env                     environment
 	serverCertificateUpdate signals.Signal[tls.Certificate]
 	serverSvc               ProvisioningServerService
+
+	acmeUpdateCertificateFunc func(
+		ctx context.Context,
+		fsEnv interface {
+			VarDir() string
+			CacheDir() string
+		},
+		cfg api.SystemSecurityACME,
+		force bool,
+	) (*api.SystemCertificatePost, error)
 }
 
 var _ SystemService = &systemService{}
+
+type SystemServiceOption func(s *systemService)
 
 func NewSystemService(
 	env environment,
 	serverCertificateUpdate signals.Signal[tls.Certificate],
 	serverSvc ProvisioningServerService,
+	opts ...SystemServiceOption,
 ) *systemService {
-	return &systemService{
+	systemSvc := &systemService{
 		env:                     env,
 		serverCertificateUpdate: serverCertificateUpdate,
 		serverSvc:               serverSvc,
+
+		acmeUpdateCertificateFunc: acme.UpdateCertificate,
 	}
+
+	for _, opt := range opts {
+		opt(systemSvc)
+	}
+
+	return systemSvc
 }
 
 func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) error {
@@ -101,6 +124,24 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 	reverter.Success()
 
 	return nil
+}
+
+func (s *systemService) TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, _ error) {
+	newCert, err := s.acmeUpdateCertificateFunc(ctx, s.env, config.GetSecurity().ACME, force)
+	if err != nil {
+		return false, fmt.Errorf("ACME server certificate renewal failed: %w", err)
+	}
+
+	if newCert == nil {
+		return false, nil
+	}
+
+	err = s.UpdateCertificate(ctx, newCert.Certificate, newCert.Key)
+	if err != nil {
+		return false, fmt.Errorf("Update server certificate with ACME certificate/key failed: %w", err)
+	}
+
+	return true, nil
 }
 
 func (s *systemService) GetNetworkConfig(_ context.Context) api.SystemNetwork {
