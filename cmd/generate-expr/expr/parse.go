@@ -210,12 +210,18 @@ func (p *Parser) parseType(t types.Type) ast.Expr {
 			}
 		}
 
+		pkgName := pkg.Name()
+		alias, ok := p.aliases[pkg.Path()]
+		if ok {
+			pkgName = alias
+		}
+
 		if pkg.Path() == p.localPkg {
 			return ast.NewIdent(typeName)
 		}
 
 		return &ast.SelectorExpr{
-			X:   &ast.Ident{Name: pkg.Name()},
+			X:   &ast.Ident{Name: pkgName},
 			Sel: &ast.Ident{Name: typeName},
 		}
 

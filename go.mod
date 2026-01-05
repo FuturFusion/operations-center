@@ -9,7 +9,7 @@ require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20240806141605-e8a1dd7889d6 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
-	github.com/FuturFusion/migration-manager v0.1.0 // indirect
+	github.com/FuturFusion/migration-manager v0.2.2 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
@@ -204,8 +204,8 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/lmittmann/tint v1.1.2
-	github.com/lxc/incus-os/incus-osd v0.0.0-20251214161835-4ccb835533a9
-	github.com/lxc/incus/v6 v6.19.2-0.20251216220025-d0cc7fc504bc
+	github.com/lxc/incus-os/incus-osd v0.0.0-20260105041318-6855744247d4
+	github.com/lxc/incus/v6 v6.20.0
 	github.com/maniartech/signals v1.3.1
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/mattn/go-sqlite3 v1.14.32
