@@ -197,7 +197,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/dsnet/golib/memfile v1.0.0
 	github.com/dustin/go-humanize v1.0.1
-	github.com/expr-lang/expr v1.17.6
+	github.com/expr-lang/expr v1.17.7
 	github.com/fvbommel/sortorder v1.1.0
 	github.com/gabriel-vasile/mimetype v1.4.12
 	github.com/google/uuid v1.6.0
