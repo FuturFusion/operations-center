@@ -23,6 +23,7 @@ type ExprOsapiSystemNetwork struct {
 
 type ExprOsapiSystemNetworkBond struct {
 	Addresses         []string                             `json:"addresses,omitempty"           yaml:"addresses,omitempty" expr:"addresses"`
+	Ethernet          *ExprOsapiSystemNetworkEthernet      `json:"ethernet,omitempty"            yaml:"ethernet,omitempty" expr:"ethernet"`
 	FirewallRules     []ExprOsapiSystemNetworkFirewallRule `json:"firewall_rules,omitempty"      yaml:"firewall_rules,omitempty" expr:"firewall_rules"`
 	Hwaddr            string                               `json:"hwaddr,omitempty"              yaml:"hwaddr,omitempty" expr:"hwaddr"`
 	LLDP              bool                                 `json:"lldp,omitempty"                yaml:"lldp,omitempty" expr:"lldp"`
@@ -43,6 +44,7 @@ type ExprOsapiSystemNetworkConfig struct {
 	Interfaces []ExprOsapiSystemNetworkInterface `json:"interfaces,omitempty" yaml:"interfaces,omitempty" expr:"interfaces"`
 	Bonds      []ExprOsapiSystemNetworkBond      `json:"bonds,omitempty"      yaml:"bonds,omitempty" expr:"bonds"`
 	VLANs      []ExprOsapiSystemNetworkVLAN      `json:"vlans,omitempty"      yaml:"vlans,omitempty" expr:"vlans"`
+	Wireguard  []ExprOsapiSystemNetworkWireguard `json:"wireguard,omitempty"  yaml:"wireguard,omitempty" expr:"wireguard"`
 }
 
 type ExprOsapiSystemNetworkDNS struct {
@@ -50,6 +52,17 @@ type ExprOsapiSystemNetworkDNS struct {
 	Hostname      string   `json:"hostname"                 yaml:"hostname" expr:"hostname"`
 	Nameservers   []string `json:"nameservers,omitempty"    yaml:"nameservers,omitempty" expr:"nameservers"`
 	SearchDomains []string `json:"search_domains,omitempty" yaml:"search_domains,omitempty" expr:"search_domains"`
+}
+
+type ExprOsapiSystemNetworkEthernet struct {
+	DisableEnergyEfficient bool     `json:"disable_energy_efficient,omitempty" yaml:"disable_energy_efficient,omitempty" expr:"disable_energy_efficient"`
+	DisableGRO             bool     `json:"disable_gro,omitempty"              yaml:"disable_gro,omitempty" expr:"disable_gro"`
+	DisableGSO             bool     `json:"disable_gso,omitempty"              yaml:"disable_gso,omitempty" expr:"disable_gso"`
+	DisableIPv4TSO         bool     `json:"disable_ipv4_tso,omitempty"         yaml:"disable_ipv4_tso,omitempty" expr:"disable_ipv4_tso"`
+	DisableIPv6TSO         bool     `json:"disable_ipv6_tso,omitempty"         yaml:"disable_ipv6_tso,omitempty" expr:"disable_ipv6_tso"`
+	WakeOnLAN              bool     `json:"wakeonlan,omitempty"                yaml:"wakeonlan,omitempty" expr:"wakeonlan"`
+	WakeOnLANModes         []string `json:"wakeonlan_modes,omitempty"          yaml:"wakeonlan_modes,omitempty" expr:"wakeonlan_modes"`
+	WakeOnLANPassword      string   `json:"wakeonlan_password,omitempty"       yaml:"wakeonlan_password,omitempty" expr:"wakeonlan_password"`
 }
 
 type ExprOsapiSystemNetworkFirewallRule struct {
@@ -61,6 +74,7 @@ type ExprOsapiSystemNetworkFirewallRule struct {
 
 type ExprOsapiSystemNetworkInterface struct {
 	Addresses         []string                             `json:"addresses,omitempty"           yaml:"addresses,omitempty" expr:"addresses"`
+	Ethernet          *ExprOsapiSystemNetworkEthernet      `json:"ethernet,omitempty"            yaml:"ethernet,omitempty" expr:"ethernet"`
 	FirewallRules     []ExprOsapiSystemNetworkFirewallRule `json:"firewall_rules,omitempty"      yaml:"firewall_rules,omitempty" expr:"firewall_rules"`
 	Hwaddr            string                               `json:"hwaddr"                        yaml:"hwaddr" expr:"hwaddr"`
 	LLDP              bool                                 `json:"lldp,omitempty"                yaml:"lldp,omitempty" expr:"lldp"`
@@ -75,7 +89,7 @@ type ExprOsapiSystemNetworkInterface struct {
 
 type ExprOsapiSystemNetworkInterfaceState struct {
 	Addresses []string                                        `json:"addresses,omitempty" yaml:"addresses,omitempty" expr:"addresses"`
-	Hwaddr    string                                          `json:"hwaddr"              yaml:"hwaddr" expr:"hwaddr"`
+	Hwaddr    string                                          `json:"hwaddr,omitempty"    yaml:"hwaddr,omitempty" expr:"hwaddr"`
 	LACP      *ExprOsapiSystemNetworkLACPState                `json:"lacp,omitempty"      yaml:"lacp,omitempty" expr:"lacp"`
 	LLDP      []ExprOsapiSystemNetworkLLDPState               `json:"lldp,omitempty"      yaml:"lldp,omitempty" expr:"lldp"`
 	Members   map[string]ExprOsapiSystemNetworkInterfaceState `json:"members,omitempty"   yaml:"members,omitempty" expr:"members"`
@@ -86,6 +100,7 @@ type ExprOsapiSystemNetworkInterfaceState struct {
 	State     string                                          `json:"state"               yaml:"state" expr:"state"`
 	Stats     ExprOsapiSystemNetworkInterfaceStats            `json:"stats"               yaml:"stats" expr:"stats"`
 	Type      string                                          `json:"type,omitempty"      yaml:"type,omitempty" expr:"type"`
+	Wireguard *ExprOsapiSystemNetworkWireguardState           `json:"wireguard,omitempty" yaml:"wireguard,omitempty" expr:"wireguard"`
 }
 
 type ExprOsapiSystemNetworkInterfaceStats struct {
@@ -152,13 +167,50 @@ type ExprOsapiSystemNetworkVLAN struct {
 	Routes            []ExprOsapiSystemNetworkRoute        `json:"routes,omitempty"              yaml:"routes,omitempty" expr:"routes"`
 }
 
+type ExprOsapiSystemNetworkWireguard struct {
+	Addresses         []string                              `json:"addresses,omitempty"           yaml:"addresses,omitempty" expr:"addresses"`
+	FirewallRules     []ExprOsapiSystemNetworkFirewallRule  `json:"firewall_rules,omitempty"      yaml:"firewall_rules,omitempty" expr:"firewall_rules"`
+	MTU               int                                   `json:"mtu,omitempty"                 yaml:"mtu,omitempty" expr:"mtu"`
+	Name              string                                `json:"name"                          yaml:"name" expr:"name"`
+	Peers             []ExprOsapiSystemNetworkWireguardPeer `json:"peers,omitempty"               yaml:"peers,omitempty" expr:"peers"`
+	Port              int                                   `json:"port,omitempty"                yaml:"port,omitempty" expr:"port"`
+	PrivateKey        string                                `json:"private_key,omitempty"         yaml:"private_key,omitempty" expr:"private_key"`
+	RequiredForOnline string                                `json:"required_for_online,omitempty" yaml:"required_for_online,omitempty" expr:"required_for_online"`
+	Roles             []string                              `json:"roles,omitempty"               yaml:"roles,omitempty" expr:"roles"`
+	Routes            []ExprOsapiSystemNetworkRoute         `json:"routes,omitempty"              yaml:"routes,omitempty" expr:"routes"`
+}
+
+type ExprOsapiSystemNetworkWireguardPeer struct {
+	AllowedIPs          []string `json:"allowed_ips"                    yaml:"allowed_ips" expr:"allowed_ips"`
+	Endpoint            string   `json:"endpoint,omitempty"             yaml:"endpoint,omitempty" expr:"endpoint"`
+	PersistentKeepalive int      `json:"persistent_keepalive,omitempty" yaml:"persistent_keepalive,omitempty" expr:"persistent_keepalive"`
+	PresharedKey        string   `json:"preshared_key,omitempty"        yaml:"preshared_key,omitempty" expr:"preshared_key"`
+	PublicKey           string   `json:"public_key"                     yaml:"public_key" expr:"public_key"`
+}
+
+type ExprOsapiSystemNetworkWireguardPeerState struct {
+	AllowedIPs          []string                             `json:"allowed_ips"                    yaml:"allowed_ips" expr:"allowed_ips"`
+	EndPoint            string                               `json:"endpoint"                       yaml:"endpoint" expr:"endpoint"`
+	LatestHandshake     string                               `json:"latest_handshake,omitempty"     yaml:"latest_handshake,omitempty" expr:"latest_handshake"`
+	PersistentKeepalive string                               `json:"persistent_keepalive,omitempty" yaml:"persistent_keepalive,omitempty" expr:"persistent_keepalive"`
+	PublicKey           string                               `json:"public_key"                     yaml:"public_key" expr:"public_key"`
+	Stats               ExprOsapiSystemNetworkInterfaceStats `json:"stats"                          yaml:"stats" expr:"stats"`
+}
+
+type ExprOsapiSystemNetworkWireguardState struct {
+	ListeningPort int                                        `json:"listening_port,omitempty" yaml:"listening_port,omitempty" expr:"listening_port"`
+	Peers         []ExprOsapiSystemNetworkWireguardPeerState `json:"peers,omitempty"          yaml:"peers,omitempty" expr:"peers"`
+	PublicKey     string                                     `json:"public_key"               yaml:"public_key" expr:"public_key"`
+}
+
 type ExprOsapiSystemSecurity struct {
 	Config ExprOsapiSystemSecurityConfig `json:"config" yaml:"config" expr:"config"`
 	State  ExprOsapiSystemSecurityState  `json:"state" yaml:"state" expr:"state"`
 }
 
 type ExprOsapiSystemSecurityConfig struct {
-	EncryptionRecoveryKeys []string `json:"encryption_recovery_keys" yaml:"encryption_recovery_keys" expr:"encryption_recovery_keys"`
+	CustomCACerts          []string `json:"custom_ca_certs,omitempty" yaml:"custom_ca_certs,omitempty" expr:"custom_ca_certs"`
+	EncryptionRecoveryKeys []string `json:"encryption_recovery_keys"  yaml:"encryption_recovery_keys" expr:"encryption_recovery_keys"`
 }
 
 type ExprOsapiSystemSecurityEncryptedVolume struct {
@@ -174,12 +226,13 @@ type ExprOsapiSystemSecuritySecureBootCertificate struct {
 }
 
 type ExprOsapiSystemSecurityState struct {
-	EncryptionRecoveryKeysRetrieved bool                                           `json:"encryption_recovery_keys_retrieved" yaml:"encryption_recovery_keys_retrieved" expr:"encryption_recovery_keys_retrieved"`
 	EncryptedVolumes                []ExprOsapiSystemSecurityEncryptedVolume       `incusos:"-"                               json:"encrypted_volumes"                  yaml:"encrypted_volumes" expr:"encrypted_volumes"`
-	SecureBootEnabled               bool                                           `incusos:"-"                               json:"secure_boot_enabled"                yaml:"secure_boot_enabled" expr:"secure_boot_enabled"`
-	SecureBootCertificates          []ExprOsapiSystemSecuritySecureBootCertificate `incusos:"-"                               json:"secure_boot_certificates"           yaml:"secure_boot_certificates" expr:"secure_boot_certificates"`
-	TPMStatus                       string                                         `incusos:"-"                               json:"tpm_status"                         yaml:"tpm_status" expr:"tpm_status"`
+	EncryptionRecoveryKeysRetrieved bool                                           `json:"encryption_recovery_keys_retrieved" yaml:"encryption_recovery_keys_retrieved" expr:"encryption_recovery_keys_retrieved"`
 	PoolRecoveryKeys                map[string]string                              `incusos:"-"                               json:"pool_recovery_keys"                 yaml:"pool_recovery_keys" expr:"pool_recovery_keys"`
+	SecureBootCertificates          []ExprOsapiSystemSecuritySecureBootCertificate `incusos:"-"                               json:"secure_boot_certificates"           yaml:"secure_boot_certificates" expr:"secure_boot_certificates"`
+	SecureBootEnabled               bool                                           `incusos:"-"                               json:"secure_boot_enabled"                yaml:"secure_boot_enabled" expr:"secure_boot_enabled"`
+	SystemStateIsTrusted            bool                                           `incusos:"-"                               json:"system_state_is_trusted"            yaml:"system_state_is_trusted" expr:"system_state_is_trusted"`
+	TPMStatus                       string                                         `incusos:"-"                               json:"tpm_status"                         yaml:"tpm_status" expr:"tpm_status"`
 }
 
 type ExprOsapiSystemStorage struct {
@@ -188,7 +241,8 @@ type ExprOsapiSystemStorage struct {
 }
 
 type ExprOsapiSystemStorageConfig struct {
-	Pools []ExprOsapiSystemStoragePool `json:"pools,omitempty" yaml:"pools,omitempty" expr:"pools"`
+	ScrubSchedule string                       `json:"scrub_schedule" yaml:"scrub_schedule" expr:"scrub_schedule"`
+	Pools         []ExprOsapiSystemStoragePool `incusos:"-"           json:"pools,omitempty" yaml:"pools,omitempty" expr:"pools"`
 }
 
 type ExprOsapiSystemStorageDrive struct {
@@ -207,25 +261,42 @@ type ExprOsapiSystemStorageDrive struct {
 }
 
 type ExprOsapiSystemStorageDriveSMART struct {
-	Enabled bool `json:"enabled" yaml:"enabled" expr:"enabled"`
-	Passed  bool `json:"passed"  yaml:"passed" expr:"passed"`
+	Enabled            bool `json:"enabled" yaml:"enabled" expr:"enabled"`
+	Passed             bool `json:"passed"  yaml:"passed" expr:"passed"`
+	PowerOnHours       int  `json:"power_on_hours,omitempty"      yaml:"power_on_hours,omitempty" expr:"power_on_hours"`
+	DataUnitsRead      int  `json:"data_units_read,omitempty"     yaml:"data_units_read,omitempty" expr:"data_units_read"`
+	DataUnitsWritten   int  `json:"data_units_written,omitempty"  yaml:"data_units_written,omitempty" expr:"data_units_written"`
+	AvailableSpare     int  `json:"available_spare,omitempty"     yaml:"available_spare,omitempty" expr:"available_spare"`
+	PercentageUsed     int  `json:"percentage_used,omitempty"     yaml:"percentage_used,omitempty" expr:"percentage_used"`
+	RawReadErrorRate   int  `json:"raw_read_error_rate,omitempty" yaml:"raw_read_error_rate,omitempty" expr:"raw_read_error_rate"`
+	SeekErrorRate      int  `json:"seek_error_rate,omitempty"     yaml:"seek_error_rate,omitempty" expr:"seek_error_rate"`
+	ReallocatedSectors int  `json:"reallocated_sectors,omitempty" yaml:"reallocated_sectors,omitempty" expr:"reallocated_sectors"`
 }
 
 type ExprOsapiSystemStoragePool struct {
-	Name                      string                             `json:"name" yaml:"name" expr:"name"`
-	Type                      string                             `json:"type" yaml:"type" expr:"type"`
-	Devices                   []string                           `json:"devices"         yaml:"devices" expr:"devices"`
-	Cache                     []string                           `json:"cache,omitempty" yaml:"cache,omitempty" expr:"cache"`
-	Log                       []string                           `json:"log,omitempty"   yaml:"log,omitempty" expr:"log"`
-	State                     string                             `json:"state"                         yaml:"state" expr:"state"`
-	EncryptionKeyStatus       string                             `json:"encryption_key_status"         yaml:"encryption_key_status" expr:"encryption_key_status"`
-	DevicesDegraded           []string                           `json:"devices_degraded,omitempty"    yaml:"devices_degraded,omitempty" expr:"devices_degraded"`
-	CacheDegraded             []string                           `json:"cache_degraded,omitempty"      yaml:"cache_degraded,omitempty" expr:"cache_degraded"`
-	LogDegraded               []string                           `json:"log_degraded,omitempty"        yaml:"log_degraded,omitempty" expr:"log_degraded"`
-	RawPoolSizeInBytes        int                                `json:"raw_pool_size_in_bytes"        yaml:"raw_pool_size_in_bytes" expr:"raw_pool_size_in_bytes"`
-	UsablePoolSizeInBytes     int                                `json:"usable_pool_size_in_bytes"     yaml:"usable_pool_size_in_bytes" expr:"usable_pool_size_in_bytes"`
-	PoolAllocatedSpaceInBytes int                                `json:"pool_allocated_space_in_bytes" yaml:"pool_allocated_space_in_bytes" expr:"pool_allocated_space_in_bytes"`
-	Volumes                   []ExprOsapiSystemStoragePoolVolume `json:"volumes"                       yaml:"volumes" expr:"volumes"`
+	Name                      string                                 `json:"name" yaml:"name" expr:"name"`
+	Type                      string                                 `json:"type" yaml:"type" expr:"type"`
+	Devices                   []string                               `json:"devices"         yaml:"devices" expr:"devices"`
+	Cache                     []string                               `json:"cache,omitempty" yaml:"cache,omitempty" expr:"cache"`
+	Log                       []string                               `json:"log,omitempty"   yaml:"log,omitempty" expr:"log"`
+	State                     string                                 `json:"state"                         yaml:"state" expr:"state"`
+	LastScrub                 *ExprOsapiSystemStoragePoolScrubStatus `json:"last_scrub,omitempty"          yaml:"last_scrub,omitempty,omitempty" expr:"last_scrub"`
+	EncryptionKeyStatus       string                                 `json:"encryption_key_status"         yaml:"encryption_key_status" expr:"encryption_key_status"`
+	DevicesDegraded           []string                               `json:"devices_degraded,omitempty"    yaml:"devices_degraded,omitempty" expr:"devices_degraded"`
+	CacheDegraded             []string                               `json:"cache_degraded,omitempty"      yaml:"cache_degraded,omitempty" expr:"cache_degraded"`
+	LogDegraded               []string                               `json:"log_degraded,omitempty"        yaml:"log_degraded,omitempty" expr:"log_degraded"`
+	RawPoolSizeInBytes        int                                    `json:"raw_pool_size_in_bytes"        yaml:"raw_pool_size_in_bytes" expr:"raw_pool_size_in_bytes"`
+	UsablePoolSizeInBytes     int                                    `json:"usable_pool_size_in_bytes"     yaml:"usable_pool_size_in_bytes" expr:"usable_pool_size_in_bytes"`
+	PoolAllocatedSpaceInBytes int                                    `json:"pool_allocated_space_in_bytes" yaml:"pool_allocated_space_in_bytes" expr:"pool_allocated_space_in_bytes"`
+	Volumes                   []ExprOsapiSystemStoragePoolVolume     `json:"volumes"                       yaml:"volumes" expr:"volumes"`
+}
+
+type ExprOsapiSystemStoragePoolScrubStatus struct {
+	State     osapi.SystemStoragePoolScrubState `json:"state" expr:"state"`
+	StartTime time.Time                         `json:"start_time" expr:"start_time"`
+	EndTime   time.Time                         `json:"end_time" expr:"end_time"`
+	Progress  string                            `json:"progress" expr:"progress"`
+	Errors    int                               `json:"errors" expr:"errors"`
 }
 
 type ExprOsapiSystemStoragePoolVolume struct {
@@ -277,6 +348,7 @@ func ToExprOsapiSystemNetwork(s osapi.SystemNetwork) ExprOsapiSystemNetwork {
 func ToExprOsapiSystemNetworkBond(s osapi.SystemNetworkBond) ExprOsapiSystemNetworkBond {
 	return ExprOsapiSystemNetworkBond{
 		Addresses:         s.Addresses,
+		Ethernet:          toPtr(ToExprOsapiSystemNetworkEthernet(fromPtr(s.Ethernet))),
 		FirewallRules:     sliceConvert(s.FirewallRules, ToExprOsapiSystemNetworkFirewallRule),
 		Hwaddr:            s.Hwaddr,
 		LLDP:              s.LLDP,
@@ -299,6 +371,7 @@ func ToExprOsapiSystemNetworkConfig(s osapi.SystemNetworkConfig) ExprOsapiSystem
 		Interfaces: sliceConvert(s.Interfaces, ToExprOsapiSystemNetworkInterface),
 		Bonds:      sliceConvert(s.Bonds, ToExprOsapiSystemNetworkBond),
 		VLANs:      sliceConvert(s.VLANs, ToExprOsapiSystemNetworkVLAN),
+		Wireguard:  sliceConvert(s.Wireguard, ToExprOsapiSystemNetworkWireguard),
 	}
 }
 
@@ -308,6 +381,19 @@ func ToExprOsapiSystemNetworkDNS(s osapi.SystemNetworkDNS) ExprOsapiSystemNetwor
 		Hostname:      s.Hostname,
 		Nameservers:   s.Nameservers,
 		SearchDomains: s.SearchDomains,
+	}
+}
+
+func ToExprOsapiSystemNetworkEthernet(s osapi.SystemNetworkEthernet) ExprOsapiSystemNetworkEthernet {
+	return ExprOsapiSystemNetworkEthernet{
+		DisableEnergyEfficient: s.DisableEnergyEfficient,
+		DisableGRO:             s.DisableGRO,
+		DisableGSO:             s.DisableGSO,
+		DisableIPv4TSO:         s.DisableIPv4TSO,
+		DisableIPv6TSO:         s.DisableIPv6TSO,
+		WakeOnLAN:              s.WakeOnLAN,
+		WakeOnLANModes:         s.WakeOnLANModes,
+		WakeOnLANPassword:      s.WakeOnLANPassword,
 	}
 }
 
@@ -323,6 +409,7 @@ func ToExprOsapiSystemNetworkFirewallRule(s osapi.SystemNetworkFirewallRule) Exp
 func ToExprOsapiSystemNetworkInterface(s osapi.SystemNetworkInterface) ExprOsapiSystemNetworkInterface {
 	return ExprOsapiSystemNetworkInterface{
 		Addresses:         s.Addresses,
+		Ethernet:          toPtr(ToExprOsapiSystemNetworkEthernet(fromPtr(s.Ethernet))),
 		FirewallRules:     sliceConvert(s.FirewallRules, ToExprOsapiSystemNetworkFirewallRule),
 		Hwaddr:            s.Hwaddr,
 		LLDP:              s.LLDP,
@@ -350,6 +437,7 @@ func ToExprOsapiSystemNetworkInterfaceState(s osapi.SystemNetworkInterfaceState)
 		State:     s.State,
 		Stats:     ToExprOsapiSystemNetworkInterfaceStats(s.Stats),
 		Type:      s.Type,
+		Wireguard: toPtr(ToExprOsapiSystemNetworkWireguardState(fromPtr(s.Wireguard))),
 	}
 }
 
@@ -437,6 +525,50 @@ func ToExprOsapiSystemNetworkVLAN(s osapi.SystemNetworkVLAN) ExprOsapiSystemNetw
 	}
 }
 
+func ToExprOsapiSystemNetworkWireguard(s osapi.SystemNetworkWireguard) ExprOsapiSystemNetworkWireguard {
+	return ExprOsapiSystemNetworkWireguard{
+		Addresses:         s.Addresses,
+		FirewallRules:     sliceConvert(s.FirewallRules, ToExprOsapiSystemNetworkFirewallRule),
+		MTU:               s.MTU,
+		Name:              s.Name,
+		Peers:             sliceConvert(s.Peers, ToExprOsapiSystemNetworkWireguardPeer),
+		Port:              s.Port,
+		PrivateKey:        s.PrivateKey,
+		RequiredForOnline: s.RequiredForOnline,
+		Roles:             s.Roles,
+		Routes:            sliceConvert(s.Routes, ToExprOsapiSystemNetworkRoute),
+	}
+}
+
+func ToExprOsapiSystemNetworkWireguardPeer(s osapi.SystemNetworkWireguardPeer) ExprOsapiSystemNetworkWireguardPeer {
+	return ExprOsapiSystemNetworkWireguardPeer{
+		AllowedIPs:          s.AllowedIPs,
+		Endpoint:            s.Endpoint,
+		PersistentKeepalive: s.PersistentKeepalive,
+		PresharedKey:        s.PresharedKey,
+		PublicKey:           s.PublicKey,
+	}
+}
+
+func ToExprOsapiSystemNetworkWireguardPeerState(s osapi.SystemNetworkWireguardPeerState) ExprOsapiSystemNetworkWireguardPeerState {
+	return ExprOsapiSystemNetworkWireguardPeerState{
+		AllowedIPs:          s.AllowedIPs,
+		EndPoint:            s.EndPoint,
+		LatestHandshake:     s.LatestHandshake,
+		PersistentKeepalive: s.PersistentKeepalive,
+		PublicKey:           s.PublicKey,
+		Stats:               ToExprOsapiSystemNetworkInterfaceStats(s.Stats),
+	}
+}
+
+func ToExprOsapiSystemNetworkWireguardState(s osapi.SystemNetworkWireguardState) ExprOsapiSystemNetworkWireguardState {
+	return ExprOsapiSystemNetworkWireguardState{
+		ListeningPort: s.ListeningPort,
+		Peers:         sliceConvert(s.Peers, ToExprOsapiSystemNetworkWireguardPeerState),
+		PublicKey:     s.PublicKey,
+	}
+}
+
 func ToExprOsapiSystemSecurity(s osapi.SystemSecurity) ExprOsapiSystemSecurity {
 	return ExprOsapiSystemSecurity{
 		Config: ToExprOsapiSystemSecurityConfig(s.Config),
@@ -446,6 +578,7 @@ func ToExprOsapiSystemSecurity(s osapi.SystemSecurity) ExprOsapiSystemSecurity {
 
 func ToExprOsapiSystemSecurityConfig(s osapi.SystemSecurityConfig) ExprOsapiSystemSecurityConfig {
 	return ExprOsapiSystemSecurityConfig{
+		CustomCACerts:          s.CustomCACerts,
 		EncryptionRecoveryKeys: s.EncryptionRecoveryKeys,
 	}
 }
@@ -468,12 +601,13 @@ func ToExprOsapiSystemSecuritySecureBootCertificate(s osapi.SystemSecuritySecure
 
 func ToExprOsapiSystemSecurityState(s osapi.SystemSecurityState) ExprOsapiSystemSecurityState {
 	return ExprOsapiSystemSecurityState{
-		EncryptionRecoveryKeysRetrieved: s.EncryptionRecoveryKeysRetrieved,
 		EncryptedVolumes:                sliceConvert(s.EncryptedVolumes, ToExprOsapiSystemSecurityEncryptedVolume),
-		SecureBootEnabled:               s.SecureBootEnabled,
-		SecureBootCertificates:          sliceConvert(s.SecureBootCertificates, ToExprOsapiSystemSecuritySecureBootCertificate),
-		TPMStatus:                       s.TPMStatus,
+		EncryptionRecoveryKeysRetrieved: s.EncryptionRecoveryKeysRetrieved,
 		PoolRecoveryKeys:                s.PoolRecoveryKeys,
+		SecureBootCertificates:          sliceConvert(s.SecureBootCertificates, ToExprOsapiSystemSecuritySecureBootCertificate),
+		SecureBootEnabled:               s.SecureBootEnabled,
+		SystemStateIsTrusted:            s.SystemStateIsTrusted,
+		TPMStatus:                       s.TPMStatus,
 	}
 }
 
@@ -486,7 +620,8 @@ func ToExprOsapiSystemStorage(s osapi.SystemStorage) ExprOsapiSystemStorage {
 
 func ToExprOsapiSystemStorageConfig(s osapi.SystemStorageConfig) ExprOsapiSystemStorageConfig {
 	return ExprOsapiSystemStorageConfig{
-		Pools: sliceConvert(s.Pools, ToExprOsapiSystemStoragePool),
+		ScrubSchedule: s.ScrubSchedule,
+		Pools:         sliceConvert(s.Pools, ToExprOsapiSystemStoragePool),
 	}
 }
 
@@ -509,8 +644,16 @@ func ToExprOsapiSystemStorageDrive(s osapi.SystemStorageDrive) ExprOsapiSystemSt
 
 func ToExprOsapiSystemStorageDriveSMART(s osapi.SystemStorageDriveSMART) ExprOsapiSystemStorageDriveSMART {
 	return ExprOsapiSystemStorageDriveSMART{
-		Enabled: s.Enabled,
-		Passed:  s.Passed,
+		Enabled:            s.Enabled,
+		Passed:             s.Passed,
+		PowerOnHours:       s.PowerOnHours,
+		DataUnitsRead:      s.DataUnitsRead,
+		DataUnitsWritten:   s.DataUnitsWritten,
+		AvailableSpare:     s.AvailableSpare,
+		PercentageUsed:     s.PercentageUsed,
+		RawReadErrorRate:   s.RawReadErrorRate,
+		SeekErrorRate:      s.SeekErrorRate,
+		ReallocatedSectors: s.ReallocatedSectors,
 	}
 }
 
@@ -522,6 +665,7 @@ func ToExprOsapiSystemStoragePool(s osapi.SystemStoragePool) ExprOsapiSystemStor
 		Cache:                     s.Cache,
 		Log:                       s.Log,
 		State:                     s.State,
+		LastScrub:                 toPtr(ToExprOsapiSystemStoragePoolScrubStatus(fromPtr(s.LastScrub))),
 		EncryptionKeyStatus:       s.EncryptionKeyStatus,
 		DevicesDegraded:           s.DevicesDegraded,
 		CacheDegraded:             s.CacheDegraded,
@@ -530,6 +674,16 @@ func ToExprOsapiSystemStoragePool(s osapi.SystemStoragePool) ExprOsapiSystemStor
 		UsablePoolSizeInBytes:     s.UsablePoolSizeInBytes,
 		PoolAllocatedSpaceInBytes: s.PoolAllocatedSpaceInBytes,
 		Volumes:                   sliceConvert(s.Volumes, ToExprOsapiSystemStoragePoolVolume),
+	}
+}
+
+func ToExprOsapiSystemStoragePoolScrubStatus(s osapi.SystemStoragePoolScrubStatus) ExprOsapiSystemStoragePoolScrubStatus {
+	return ExprOsapiSystemStoragePoolScrubStatus{
+		State:     s.State,
+		StartTime: s.StartTime,
+		EndTime:   s.EndTime,
+		Progress:  s.Progress,
+		Errors:    s.Errors,
 	}
 }
 
