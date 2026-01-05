@@ -23,7 +23,6 @@ import (
 	"github.com/maniartech/signals"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/FuturFusion/operations-center/internal/acme"
 	"github.com/FuturFusion/operations-center/internal/api/listener"
 	"github.com/FuturFusion/operations-center/internal/authn"
 	authnoidc "github.com/FuturFusion/operations-center/internal/authn/oidc"
@@ -169,7 +168,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 			// Use detached context to decouple async call from original request.
 			// For logging, we keep the original context, such that the original
 			// request ID is logged.
-			_, err := d.renewACMEServerCertificate(context.Background(), true)
+			_, err := d.systemSvc.TriggerCertificateRenew(context.Background(), true)
 			if err != nil {
 				slog.ErrorContext(ctx, "Failed to renew ACME server certificate", logger.Err(err))
 			}
@@ -387,24 +386,6 @@ func (d *Daemon) securityConfigReload(ctx context.Context, cfg api.SystemSecurit
 	*d.authorizer = authzchain.New(authorizers...)
 
 	return errors.Join(errs...)
-}
-
-func (d *Daemon) renewACMEServerCertificate(ctx context.Context, force bool) (changed bool, _ error) {
-	newCert, err := acme.UpdateCertificate(ctx, d.env, config.GetSecurity().ACME, force)
-	if err != nil {
-		return false, fmt.Errorf("ACME server certificate renewal failed: %w", err)
-	}
-
-	if newCert == nil {
-		return false, nil
-	}
-
-	err = d.systemSvc.UpdateCertificate(ctx, newCert.Certificate, newCert.Key)
-	if err != nil {
-		return false, fmt.Errorf("Update server certificate with ACME certificate/key failed: %w", err)
-	}
-
-	return true, nil
 }
 
 func (d *Daemon) setupUpdatesService(ctx context.Context, db dbdriver.DBTX) (provisioning.UpdateService, error) {
@@ -795,7 +776,7 @@ func (d *Daemon) setupBackgroundTasks(
 	// Start background task to renew ACME server certificate.
 	renewACMEServerCertificateTask := func(ctx context.Context) {
 		slog.InfoContext(ctx, "ACME server certificate renewal triggered")
-		changed, err := d.renewACMEServerCertificate(ctx, false)
+		changed, err := d.systemSvc.TriggerCertificateRenew(ctx, false)
 		if err != nil {
 			slog.ErrorContext(ctx, "ACME server certificate renewal task failed", logger.Err(err))
 			return
