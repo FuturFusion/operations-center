@@ -1839,6 +1839,16 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 			signalHandler: requireNoCallSignalHandler,
 		},
 		{
+			name:    "error - no servers",
+			nameArg: "one",
+
+			serverSvcGetAllWithFilter: provisioning.Servers{},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+			},
+			signalHandler: requireNoCallSignalHandler,
+		},
+		{
 			name:    "error - client.Ping",
 			nameArg: "one",
 
