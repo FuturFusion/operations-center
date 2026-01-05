@@ -78,6 +78,20 @@ func (_d SystemServiceWithPrometheus) GetUpdatesConfig(ctx context.Context) (sys
 	return _d.base.GetUpdatesConfig(ctx)
 }
 
+// TriggerCertificateRenew implements system.SystemService.
+func (_d SystemServiceWithPrometheus) TriggerCertificateRenew(ctx context.Context, force bool) (changed bool, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		systemServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "TriggerCertificateRenew", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.TriggerCertificateRenew(ctx, force)
+}
+
 // UpdateCertificate implements system.SystemService.
 func (_d SystemServiceWithPrometheus) UpdateCertificate(ctx context.Context, certificatePEM string, keyPEM string) (err error) {
 	_since := time.Now()
