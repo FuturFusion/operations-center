@@ -49,8 +49,8 @@ var _ provisioning.TokenService = &TokenServiceMock{}
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error) {
 //				panic("mock out the GetByUUID method")
 //			},
-//			GetPreSeedImageFunc: func(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (io.ReadCloser, error) {
-//				panic("mock out the GetPreSeedImage method")
+//			GetPreSeededImageFunc: func(ctx context.Context, id uuid.UUID, imageUUID uuid.UUID) (io.ReadCloser, string, error) {
+//				panic("mock out the GetPreSeededImage method")
 //			},
 //			GetTokenImageFromTokenSeedFunc: func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture) (io.ReadCloser, error) {
 //				panic("mock out the GetTokenImageFromTokenSeed method")
@@ -66,6 +66,9 @@ var _ provisioning.TokenService = &TokenServiceMock{}
 //			},
 //			GetTokenSeedByNameFunc: func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error) {
 //				panic("mock out the GetTokenSeedByName method")
+//			},
+//			PreparePreSeededImageFunc: func(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (uuid.UUID, error) {
+//				panic("mock out the PreparePreSeededImage method")
 //			},
 //			UpdateFunc: func(ctx context.Context, token provisioning.Token) error {
 //				panic("mock out the Update method")
@@ -104,8 +107,8 @@ type TokenServiceMock struct {
 	// GetByUUIDFunc mocks the GetByUUID method.
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*provisioning.Token, error)
 
-	// GetPreSeedImageFunc mocks the GetPreSeedImage method.
-	GetPreSeedImageFunc func(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (io.ReadCloser, error)
+	// GetPreSeededImageFunc mocks the GetPreSeededImage method.
+	GetPreSeededImageFunc func(ctx context.Context, id uuid.UUID, imageUUID uuid.UUID) (io.ReadCloser, string, error)
 
 	// GetTokenImageFromTokenSeedFunc mocks the GetTokenImageFromTokenSeed method.
 	GetTokenImageFromTokenSeedFunc func(ctx context.Context, id uuid.UUID, name string, imageType api.ImageType, architecture images.UpdateFileArchitecture) (io.ReadCloser, error)
@@ -121,6 +124,9 @@ type TokenServiceMock struct {
 
 	// GetTokenSeedByNameFunc mocks the GetTokenSeedByName method.
 	GetTokenSeedByNameFunc func(ctx context.Context, id uuid.UUID, name string) (*provisioning.TokenSeed, error)
+
+	// PreparePreSeededImageFunc mocks the PreparePreSeededImage method.
+	PreparePreSeededImageFunc func(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (uuid.UUID, error)
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, token provisioning.Token) error
@@ -184,18 +190,14 @@ type TokenServiceMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
-		// GetPreSeedImage holds details about calls to the GetPreSeedImage method.
-		GetPreSeedImage []struct {
+		// GetPreSeededImage holds details about calls to the GetPreSeededImage method.
+		GetPreSeededImage []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
 			ID uuid.UUID
-			// ImageType is the imageType argument value.
-			ImageType api.ImageType
-			// Architecture is the architecture argument value.
-			Architecture images.UpdateFileArchitecture
-			// SeedConfig is the seedConfig argument value.
-			SeedConfig provisioning.TokenImageSeedConfigs
+			// ImageUUID is the imageUUID argument value.
+			ImageUUID uuid.UUID
 		}
 		// GetTokenImageFromTokenSeed holds details about calls to the GetTokenImageFromTokenSeed method.
 		GetTokenImageFromTokenSeed []struct {
@@ -240,6 +242,19 @@ type TokenServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// PreparePreSeededImage holds details about calls to the PreparePreSeededImage method.
+		PreparePreSeededImage []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+			// ImageType is the imageType argument value.
+			ImageType api.ImageType
+			// Architecture is the architecture argument value.
+			Architecture images.UpdateFileArchitecture
+			// SeedConfig is the seedConfig argument value.
+			SeedConfig provisioning.TokenImageSeedConfigs
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -263,12 +278,13 @@ type TokenServiceMock struct {
 	lockGetAll                     sync.RWMutex
 	lockGetAllUUIDs                sync.RWMutex
 	lockGetByUUID                  sync.RWMutex
-	lockGetPreSeedImage            sync.RWMutex
+	lockGetPreSeededImage          sync.RWMutex
 	lockGetTokenImageFromTokenSeed sync.RWMutex
 	lockGetTokenProviderConfig     sync.RWMutex
 	lockGetTokenSeedAll            sync.RWMutex
 	lockGetTokenSeedAllNames       sync.RWMutex
 	lockGetTokenSeedByName         sync.RWMutex
+	lockPreparePreSeededImage      sync.RWMutex
 	lockUpdate                     sync.RWMutex
 	lockUpdateTokenSeed            sync.RWMutex
 }
@@ -557,51 +573,43 @@ func (mock *TokenServiceMock) GetByUUIDCalls() []struct {
 	return calls
 }
 
-// GetPreSeedImage calls GetPreSeedImageFunc.
-func (mock *TokenServiceMock) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (io.ReadCloser, error) {
-	if mock.GetPreSeedImageFunc == nil {
-		panic("TokenServiceMock.GetPreSeedImageFunc: method is nil but TokenService.GetPreSeedImage was just called")
+// GetPreSeededImage calls GetPreSeededImageFunc.
+func (mock *TokenServiceMock) GetPreSeededImage(ctx context.Context, id uuid.UUID, imageUUID uuid.UUID) (io.ReadCloser, string, error) {
+	if mock.GetPreSeededImageFunc == nil {
+		panic("TokenServiceMock.GetPreSeededImageFunc: method is nil but TokenService.GetPreSeededImage was just called")
 	}
 	callInfo := struct {
-		Ctx          context.Context
-		ID           uuid.UUID
-		ImageType    api.ImageType
-		Architecture images.UpdateFileArchitecture
-		SeedConfig   provisioning.TokenImageSeedConfigs
+		Ctx       context.Context
+		ID        uuid.UUID
+		ImageUUID uuid.UUID
 	}{
-		Ctx:          ctx,
-		ID:           id,
-		ImageType:    imageType,
-		Architecture: architecture,
-		SeedConfig:   seedConfig,
+		Ctx:       ctx,
+		ID:        id,
+		ImageUUID: imageUUID,
 	}
-	mock.lockGetPreSeedImage.Lock()
-	mock.calls.GetPreSeedImage = append(mock.calls.GetPreSeedImage, callInfo)
-	mock.lockGetPreSeedImage.Unlock()
-	return mock.GetPreSeedImageFunc(ctx, id, imageType, architecture, seedConfig)
+	mock.lockGetPreSeededImage.Lock()
+	mock.calls.GetPreSeededImage = append(mock.calls.GetPreSeededImage, callInfo)
+	mock.lockGetPreSeededImage.Unlock()
+	return mock.GetPreSeededImageFunc(ctx, id, imageUUID)
 }
 
-// GetPreSeedImageCalls gets all the calls that were made to GetPreSeedImage.
+// GetPreSeededImageCalls gets all the calls that were made to GetPreSeededImage.
 // Check the length with:
 //
-//	len(mockedTokenService.GetPreSeedImageCalls())
-func (mock *TokenServiceMock) GetPreSeedImageCalls() []struct {
-	Ctx          context.Context
-	ID           uuid.UUID
-	ImageType    api.ImageType
-	Architecture images.UpdateFileArchitecture
-	SeedConfig   provisioning.TokenImageSeedConfigs
+//	len(mockedTokenService.GetPreSeededImageCalls())
+func (mock *TokenServiceMock) GetPreSeededImageCalls() []struct {
+	Ctx       context.Context
+	ID        uuid.UUID
+	ImageUUID uuid.UUID
 } {
 	var calls []struct {
-		Ctx          context.Context
-		ID           uuid.UUID
-		ImageType    api.ImageType
-		Architecture images.UpdateFileArchitecture
-		SeedConfig   provisioning.TokenImageSeedConfigs
+		Ctx       context.Context
+		ID        uuid.UUID
+		ImageUUID uuid.UUID
 	}
-	mock.lockGetPreSeedImage.RLock()
-	calls = mock.calls.GetPreSeedImage
-	mock.lockGetPreSeedImage.RUnlock()
+	mock.lockGetPreSeededImage.RLock()
+	calls = mock.calls.GetPreSeededImage
+	mock.lockGetPreSeededImage.RUnlock()
 	return calls
 }
 
@@ -798,6 +806,54 @@ func (mock *TokenServiceMock) GetTokenSeedByNameCalls() []struct {
 	mock.lockGetTokenSeedByName.RLock()
 	calls = mock.calls.GetTokenSeedByName
 	mock.lockGetTokenSeedByName.RUnlock()
+	return calls
+}
+
+// PreparePreSeededImage calls PreparePreSeededImageFunc.
+func (mock *TokenServiceMock) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (uuid.UUID, error) {
+	if mock.PreparePreSeededImageFunc == nil {
+		panic("TokenServiceMock.PreparePreSeededImageFunc: method is nil but TokenService.PreparePreSeededImage was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		ID           uuid.UUID
+		ImageType    api.ImageType
+		Architecture images.UpdateFileArchitecture
+		SeedConfig   provisioning.TokenImageSeedConfigs
+	}{
+		Ctx:          ctx,
+		ID:           id,
+		ImageType:    imageType,
+		Architecture: architecture,
+		SeedConfig:   seedConfig,
+	}
+	mock.lockPreparePreSeededImage.Lock()
+	mock.calls.PreparePreSeededImage = append(mock.calls.PreparePreSeededImage, callInfo)
+	mock.lockPreparePreSeededImage.Unlock()
+	return mock.PreparePreSeededImageFunc(ctx, id, imageType, architecture, seedConfig)
+}
+
+// PreparePreSeededImageCalls gets all the calls that were made to PreparePreSeededImage.
+// Check the length with:
+//
+//	len(mockedTokenService.PreparePreSeededImageCalls())
+func (mock *TokenServiceMock) PreparePreSeededImageCalls() []struct {
+	Ctx          context.Context
+	ID           uuid.UUID
+	ImageType    api.ImageType
+	Architecture images.UpdateFileArchitecture
+	SeedConfig   provisioning.TokenImageSeedConfigs
+} {
+	var calls []struct {
+		Ctx          context.Context
+		ID           uuid.UUID
+		ImageType    api.ImageType
+		Architecture images.UpdateFileArchitecture
+		SeedConfig   provisioning.TokenImageSeedConfigs
+	}
+	mock.lockPreparePreSeededImage.RLock()
+	calls = mock.calls.PreparePreSeededImage
+	mock.lockPreparePreSeededImage.RUnlock()
 	return calls
 }
 

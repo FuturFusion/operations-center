@@ -321,24 +321,23 @@ func (_d TokenServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (tok
 	return _d._base.GetByUUID(ctx, id)
 }
 
-// GetPreSeedImage implements provisioning.TokenService.
-func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (readCloser io.ReadCloser, err error) {
+// GetPreSeededImage implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) GetPreSeededImage(ctx context.Context, id uuid.UUID, imageUUID uuid.UUID) (readCloser io.ReadCloser, filename string, err error) {
 	log := _d._log.With()
 	if _d._log.Enabled(ctx, logger.LevelTrace) {
 		log = log.With(
 			slog.Any("ctx", ctx),
 			slog.Any("id", id),
-			slog.Any("imageType", imageType),
-			slog.Any("architecture", architecture),
-			slog.Any("seedConfig", seedConfig),
+			slog.Any("imageUUID", imageUUID),
 		)
 	}
-	log.DebugContext(ctx, "=> calling GetPreSeedImage")
+	log.DebugContext(ctx, "=> calling GetPreSeededImage")
 	defer func() {
 		log := _d._log.With()
 		if _d._log.Enabled(ctx, logger.LevelTrace) {
 			log = _d._log.With(
 				slog.Any("readCloser", readCloser),
+				slog.String("filename", filename),
 				slog.Any("err", err),
 			)
 		} else {
@@ -348,15 +347,15 @@ func (_d TokenServiceWithSlog) GetPreSeedImage(ctx context.Context, id uuid.UUID
 		}
 		if err != nil {
 			if _d._isInformativeErrFunc(err) {
-				log.DebugContext(ctx, "<= method GetPreSeedImage returned an informative error")
+				log.DebugContext(ctx, "<= method GetPreSeededImage returned an informative error")
 			} else {
-				log.ErrorContext(ctx, "<= method GetPreSeedImage returned an error")
+				log.ErrorContext(ctx, "<= method GetPreSeededImage returned an error")
 			}
 		} else {
-			log.DebugContext(ctx, "<= method GetPreSeedImage finished")
+			log.DebugContext(ctx, "<= method GetPreSeededImage finished")
 		}
 	}()
-	return _d._base.GetPreSeedImage(ctx, id, imageType, architecture, seedConfig)
+	return _d._base.GetPreSeededImage(ctx, id, imageUUID)
 }
 
 // GetTokenImageFromTokenSeed implements provisioning.TokenService.
@@ -536,6 +535,44 @@ func (_d TokenServiceWithSlog) GetTokenSeedByName(ctx context.Context, id uuid.U
 		}
 	}()
 	return _d._base.GetTokenSeedByName(ctx, id, name)
+}
+
+// PreparePreSeededImage implements provisioning.TokenService.
+func (_d TokenServiceWithSlog) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig provisioning.TokenImageSeedConfigs) (uUID uuid.UUID, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("id", id),
+			slog.Any("imageType", imageType),
+			slog.Any("architecture", architecture),
+			slog.Any("seedConfig", seedConfig),
+		)
+	}
+	log.DebugContext(ctx, "=> calling PreparePreSeededImage")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("uUID", uUID),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method PreparePreSeededImage returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method PreparePreSeededImage returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method PreparePreSeededImage finished")
+		}
+	}()
+	return _d._base.PreparePreSeededImage(ctx, id, imageType, architecture, seedConfig)
 }
 
 // Update implements provisioning.TokenService.
