@@ -5,11 +5,13 @@ linters:
     - bodyclose
     - errcheck
     - forbidigo
+    - gocritic
     - godot
     - govet
     - ineffassign
     - misspell
     - nakedret
+    - noinlineerr
     - prealloc
     - revive
     - rowserrcheck
@@ -40,6 +42,13 @@ linters:
         # slog without context
         - pattern: ^slog\.(Debug|Info|Warn|Error)$
           msg: Do not use slog without context
+    gocritic:
+      disable-all: true
+      enabled-checks:
+        - ruleguard
+      settings:
+        ruleguard:
+          rules: ./scripts/lint/ruleguard/*.go
     misspell:
       ignore-rules:
         # Interface name formed from auth
