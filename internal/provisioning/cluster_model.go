@@ -210,6 +210,7 @@ func (c *ClusterArtifactFiles) Scan(value any) error {
 		}
 
 		return json.Unmarshal([]byte(v), c)
+
 	case []byte:
 		if len(v) == 0 {
 			*c = ClusterArtifactFiles{}
@@ -217,6 +218,7 @@ func (c *ClusterArtifactFiles) Scan(value any) error {
 		}
 
 		return json.Unmarshal(v, c)
+
 	default:
 		return fmt.Errorf("type %T is not supported for cluster artifact files", value)
 	}

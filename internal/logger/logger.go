@@ -142,12 +142,16 @@ func ParseLevel(levelStr string) slog.Level {
 	switch levelStr {
 	case LevelTraceString:
 		level = LevelTrace
+
 	case slog.LevelDebug.String():
 		level = slog.LevelDebug
+
 	case slog.LevelInfo.String():
 		level = slog.LevelInfo
+
 	case slog.LevelWarn.String():
 		level = slog.LevelWarn
+
 	case slog.LevelError.String():
 		level = slog.LevelError
 	}

@@ -63,8 +63,10 @@ func (s *UpdateStatus) Scan(value any) error {
 	switch v := value.(type) {
 	case string:
 		return s.UnmarshalText([]byte(v))
+
 	case []byte:
 		return s.UnmarshalText(v)
+
 	default:
 		return fmt.Errorf("type %T is not supported for update status", value)
 	}

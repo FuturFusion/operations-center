@@ -545,6 +545,7 @@ func (s clusterService) DeleteByName(ctx context.Context, name string, force boo
 			// delete is fine
 		case api.ClusterStatusReady:
 			return fmt.Errorf("Delete for cluster in state %q: %w", cluster.Status.String(), domain.ErrOperationNotPermitted)
+
 		default:
 			return fmt.Errorf("Delete for cluster with invalid state: %w", domain.ErrOperationNotPermitted)
 		}

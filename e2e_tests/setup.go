@@ -574,6 +574,7 @@ func createIncusOSInstances(t *testing.T, token string) {
 		select {
 		case <-instanceReadyTimeoutCtx.Done():
 			require.NoError(t, instanceReadyTimeoutCtx.Err())
+
 		case <-time.After(time.Second):
 		}
 	}

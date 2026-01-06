@@ -69,6 +69,7 @@ func (c *ClusterTemplateVariables) Scan(value any) error {
 		}
 
 		return json.Unmarshal([]byte(v), c)
+
 	case []byte:
 		if len(v) == 0 {
 			*c = ClusterTemplateVariables{}
@@ -76,6 +77,7 @@ func (c *ClusterTemplateVariables) Scan(value any) error {
 		}
 
 		return json.Unmarshal(v, c)
+
 	default:
 		return fmt.Errorf("type %T is not supported for cluster template variables", value)
 	}

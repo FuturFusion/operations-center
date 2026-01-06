@@ -66,6 +66,7 @@ func (t *TokenImageSeedConfigs) Scan(value any) error {
 		}
 
 		return json.Unmarshal([]byte(v), t)
+
 	case []byte:
 		if len(v) == 0 {
 			*t = TokenImageSeedConfigs{}
@@ -73,6 +74,7 @@ func (t *TokenImageSeedConfigs) Scan(value any) error {
 		}
 
 		return json.Unmarshal(v, t)
+
 	default:
 		return fmt.Errorf("type %T is not supported for token seeds", value)
 	}

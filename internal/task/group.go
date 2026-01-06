@@ -102,6 +102,7 @@ func (g *Group) Stop(timeout time.Duration) error {
 	// Wait for graceful termination, but abort if the context expires.
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+
 	select {
 	case <-ctx.Done():
 		g.mu.Lock()
@@ -115,6 +116,7 @@ func (g *Group) Stop(timeout time.Duration) error {
 		}
 
 		return fmt.Errorf("Task(s) still running: IDs %v", running)
+
 	case <-graceful:
 		return nil
 	}

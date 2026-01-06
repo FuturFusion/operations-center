@@ -127,6 +127,7 @@ func (p *Parser) CopyStruct(structName, targetFilePrefix string) error {
 					case *ast.TypeSpec:
 						// t2 is also a type decl, compare names.
 						return t1.Name.String() < t2.Name.String()
+
 					case *ast.ImportSpec:
 						// t2 is an import so it wins.
 						return false
@@ -148,6 +149,7 @@ func (p *Parser) CopyStruct(structName, targetFilePrefix string) error {
 			case *ast.GenDecl:
 				// t2 is a type or an import, so it wins.
 				return false
+
 			case *ast.FuncDecl:
 				// t2 is also a func, compare names.
 				return t1.Name.String() < t2.Name.String()
@@ -176,6 +178,7 @@ func (p *Parser) CopyStruct(structName, targetFilePrefix string) error {
 	}
 
 	defer outFile.Close()
+
 	_, err = outFile.Write(splitAssignmentLines(buf.Bytes()))
 	if err != nil {
 		return err
@@ -227,14 +230,19 @@ func (p *Parser) parseType(t types.Type) ast.Expr {
 
 	case *types.Pointer:
 		return &ast.StarExpr{X: p.parseType(t.Elem())}
+
 	case *types.Slice:
 		return &ast.ArrayType{Elt: p.parseType(t.Elem())}
+
 	case *types.Basic:
 		return ast.NewIdent(t.Name())
+
 	case *types.Map:
 		return &ast.MapType{Key: p.parseType(t.Key()), Value: p.parseType(t.Elem())}
+
 	case *types.Alias:
 		return ast.NewIdent(t.Obj().Name())
+
 	default:
 		panic(fmt.Sprintf("Unexpected types.Type: %#v", t))
 	}
@@ -323,10 +331,13 @@ func (p *Parser) generateConverter(exprName string, strct *Struct) *ast.FuncDecl
 		switch t := fType.(type) {
 		case *types.Map:
 			assignFields = append(assignFields, &ast.KeyValueExpr{Key: ast.NewIdent(fieldName), Value: ast.NewIdent(p.recurseCollections(arg, f, t))})
+
 		case *types.Slice:
 			assignFields = append(assignFields, &ast.KeyValueExpr{Key: ast.NewIdent(fieldName), Value: ast.NewIdent(p.recurseCollections(arg, f, t))})
+
 		case *types.Basic:
 			assignFields = append(assignFields, &ast.KeyValueExpr{Key: ast.NewIdent(fieldName), Value: ast.NewIdent(arg + "." + fieldName)})
+
 		case *types.Named:
 			key := fieldName
 			value := arg + "." + fieldName
@@ -381,18 +392,24 @@ func (p *Parser) recurseCollections(arg string, f *types.Var, t types.Type) stri
 	switch t := t.(type) {
 	case *types.Basic:
 		return arg + "." + f.Name()
+
 	case *types.Slice:
 		collection = "slice"
 		elem = t.Elem()
+
 	case *types.Map:
 		collection = "map"
 		elem = t.Elem()
+
 	case *types.Named:
 		return arg + "." + f.Name()
+
 	case *types.Pointer:
 		return p.recurseCollections(arg, f, t.Elem())
+
 	case *types.Alias:
 		return t.Obj().Name()
+
 	default:
 		panic(fmt.Sprintf("Unexpected types.Type: %#v", t))
 	}

@@ -14,6 +14,7 @@ func Test_teeReadCloserer(t *testing.T) {
 	wb := new(bytes.Buffer)
 	r := newTeeReadCloser(rb, wb)
 	defer func() { _ = r.Close() }()
+
 	n, err := io.ReadFull(r, dst)
 	if err != nil || n != len(src) {
 		t.Fatalf("ReadFull(r, dst) = %d, %v; want %d, nil", n, err, len(src))
@@ -37,6 +38,7 @@ func Test_teeReadCloserer(t *testing.T) {
 	_ = pr.Close()
 	r = newTeeReadCloser(rb, pw)
 	defer func() { _ = r.Close() }()
+
 	n, err = io.ReadFull(r, dst)
 	if n != 0 || err != io.ErrClosedPipe {
 		t.Errorf("closed tee: ReadFull(r, dst) = %d, %v; want 0, EPIPE", n, err)

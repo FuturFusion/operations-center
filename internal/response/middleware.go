@@ -21,8 +21,10 @@ func With(handler HandlerFunc, middlewares ...func(next HandlerFunc) HandlerFunc
 		switch {
 		case resp.Code() >= 400 && resp.Code() < 500:
 			log.WarnContext(r.Context(), "Client error response", slog.Int("status_code", resp.Code()), slog.String("response", resp.String()))
+
 		case resp.Code() >= 500 && resp.Code() < 600:
 			log.ErrorContext(r.Context(), "Server error response", slog.Int("status_code", resp.Code()), slog.String("response", resp.String()))
+
 		default:
 			// Response content is omitted, since it might be huge.
 			log.DebugContext(r.Context(), "Response", slog.Int("status_code", resp.Code()))

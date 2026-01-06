@@ -40,6 +40,7 @@ func (t *Task) loop(ctx context.Context) {
 			// because it's the first iteration or we got reset.
 			delay = schedule
 			fallthrough // Fall to case nil, to apply normal non-error logic
+
 		case nil:
 			// If the schedule is greater than zero, setup a timer
 			// that will expire after 'delay' seconds (or after the

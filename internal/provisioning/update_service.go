@@ -696,6 +696,7 @@ func (s updateService) determineToDeleteAndToDownloadUpdates(dbUpdates []Update,
 
 			toDownloadUpdates = append(toDownloadUpdates, update)
 			updateCount++
+
 		default:
 			// Unlikely to happen, this would be an update in state pending, younger than grace time
 			// so effectively an update the is fetched right now.

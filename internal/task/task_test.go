@@ -16,6 +16,7 @@ func TestTask_ExecuteImmediately(t *testing.T) {
 	f, wait := newFunc(t, 1)
 	stop := startTask(t, f, task.Every(time.Second))
 	defer stop()
+
 	wait(100 * time.Millisecond)
 }
 
@@ -25,6 +26,7 @@ func TestTask_ExecutePeriodically(t *testing.T) {
 	f, wait := newFunc(t, 2)
 	stop := startTask(t, f, task.Every(250*time.Millisecond))
 	defer stop()
+
 	wait(100 * time.Millisecond)
 	wait(400 * time.Millisecond)
 }
@@ -97,6 +99,7 @@ func TestTask_SkipFirst(t *testing.T) {
 
 	stop := startTask(t, f, task.Every(250*time.Millisecond, task.SkipFirst))
 	defer stop()
+
 	time.Sleep(400 * time.Millisecond)
 	assert.Equal(t, 1, i) // The function got executed only once, not twice.
 }
@@ -133,6 +136,7 @@ func newFunc(t *testing.T, n int) (task.Func, func(time.Duration)) {
 			t.Errorf("no notification received in %s", timeout)
 		}
 	}
+
 	return f, wait
 }
 

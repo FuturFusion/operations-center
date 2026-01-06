@@ -36,6 +36,7 @@ func (l *FancyTLSListener) Accept() (net.Conn, error) {
 
 	l.mu.RLock()
 	defer l.mu.RUnlock()
+
 	config := l.config
 
 	return tls.Server(c, config), nil

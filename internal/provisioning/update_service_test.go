@@ -913,6 +913,7 @@ func TestUpdateService_GetUpdateFileByFilename(t *testing.T) {
 			tc.assertErr(t, err)
 			if rc != nil {
 				defer rc.Close()
+
 				body, err := io.ReadAll(rc)
 
 				require.NoError(t, err)
@@ -1919,6 +1920,7 @@ func TestUpdateService_Refresh(t *testing.T) {
 					value, err := queue.Pop(t, &tc.repoUpdateFilesPut)
 
 					commitFunc := func() error { return value.commitErr }
+
 					cancelFunc := func() error { return value.cancelErr }
 
 					return commitFunc, cancelFunc, err

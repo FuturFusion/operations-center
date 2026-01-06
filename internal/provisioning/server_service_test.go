@@ -1401,6 +1401,7 @@ one
 			var err error
 			go func() {
 				defer wg.Done()
+
 				err = serverSvc.UpdateSystemNetwork(context.Background(), "one", provisioning.ServerSystemNetwork{})
 			}()
 

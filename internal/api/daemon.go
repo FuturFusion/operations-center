@@ -256,6 +256,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer shutdownCancel()
 		return d.Stop(shutdownCtx)
+
 	case <-time.After(50 * time.Millisecond):
 		// Grace period we wait for potential immediate errors from serving the http server.
 		// TODO: More clean way would be to check if the listeners are reachable (http, unix socket).

@@ -140,6 +140,7 @@ cluster_groups:
 					err := cleanup()
 					require.NoError(t, err)
 				}()
+
 				require.Contains(t, temporaryPath, tmpDir)
 				require.Contains(t, temporaryPath, tc.wantTemporaryPath)
 			}

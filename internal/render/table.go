@@ -116,6 +116,7 @@ func Table(w io.Writer, format string, header []string, data [][]string, raw any
 		}
 
 		_, _ = fmt.Fprintf(w, "%s", out)
+
 	default:
 		// TODO: should this go to stderr?
 		return fmt.Errorf("Invalid format %q", format)

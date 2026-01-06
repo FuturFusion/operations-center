@@ -145,10 +145,13 @@ func (c OperationsCenterClient) doRequestRawResponse(ctx context.Context, method
 	case io.Reader:
 		contentType = "application/octet-stream"
 		body = io.NopCloser(data)
+
 	case []byte:
 		body = io.NopCloser(bytes.NewBuffer(data))
+
 	case nil:
 		body = http.NoBody
+
 	default:
 		contentJSON, err := json.Marshal(data)
 		if err != nil {

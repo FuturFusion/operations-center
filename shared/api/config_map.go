@@ -111,6 +111,7 @@ func (m *ConfigMap) Scan(value any) error {
 		}
 
 		return json.Unmarshal([]byte(v), m)
+
 	case []byte:
 		if len(v) == 0 {
 			*m = ConfigMap{}
@@ -118,6 +119,7 @@ func (m *ConfigMap) Scan(value any) error {
 		}
 
 		return json.Unmarshal(v, m)
+
 	default:
 		return fmt.Errorf("type %T is not supported for ConfigMap", value)
 	}

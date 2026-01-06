@@ -2461,9 +2461,11 @@ func TestClusterService_StartLifecycleEventsMonitor(t *testing.T) {
 			select {
 			case <-done:
 				cancel()
+
 			case <-cancableCtx.Done():
 			case <-t.Context().Done():
 				t.Fatal("Test context cancelled before test ended")
+
 			case <-time.After(1000 * time.Millisecond):
 				cancel()
 				t.Error("Test timeout reached before test ended")
@@ -2587,6 +2589,7 @@ func TestClusterService_StartLifecycleEventsMonitor_AddListener(t *testing.T) {
 			case <-cancableCtx.Done():
 			case <-t.Context().Done():
 				t.Fatal("Test context cancelled before test ended")
+
 			case <-time.After(1000 * time.Millisecond):
 				cancel()
 				t.Error("Test timeout reached before test ended")

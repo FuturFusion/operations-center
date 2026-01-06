@@ -492,6 +492,7 @@ func TestTokenService_GetPreSeedImage(t *testing.T) {
 
 	f, err := os.Create(isoGzFilename)
 	defer func() { _ = f.Close() }()
+
 	require.NoError(t, err)
 
 	_, err = io.WriteString(f, `Foobar`)
@@ -1234,6 +1235,7 @@ func TestTokenService_GetTokenImageFromTokenSeed(t *testing.T) {
 
 	f, err := os.Create(isoGzFilename)
 	defer func() { _ = f.Close() }()
+
 	require.NoError(t, err)
 
 	_, err = io.WriteString(f, `Foobar`)
