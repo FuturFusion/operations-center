@@ -172,12 +172,12 @@ func (r *manualResponse) Render(w http.ResponseWriter) error {
 }
 
 func (r *manualResponse) String() string {
-	return "unknown"
+	return "unknown (manual response)"
 }
 
 // Code returns the HTTP code.
 func (r *manualResponse) Code() int {
-	return http.StatusNotImplemented
+	return -1
 }
 
 // Error response.

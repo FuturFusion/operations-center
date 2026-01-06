@@ -19,6 +19,9 @@ func With(handler HandlerFunc, middlewares ...func(next HandlerFunc) HandlerFunc
 
 		resp := next(r)
 		switch {
+		case resp.Code() == -1:
+			log.DebugContext(r.Context(), "Manual response, response code unknown")
+
 		case resp.Code() >= 400 && resp.Code() < 500:
 			log.WarnContext(r.Context(), "Client error response", slog.Int("status_code", resp.Code()), slog.String("response", resp.String()))
 
