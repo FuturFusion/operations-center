@@ -130,7 +130,7 @@ func (c OperationsCenterClient) RenameCluster(ctx context.Context, name string, 
 }
 
 func (c OperationsCenterClient) ResyncCluster(ctx context.Context, name string) error {
-	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, "resync-inventory"), nil, nil)
+	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/clusters", name, ":resync-inventory"), nil, nil)
 	if err != nil {
 		return err
 	}

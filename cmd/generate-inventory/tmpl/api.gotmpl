@@ -25,7 +25,7 @@ func registerInventory{{ .Name | pascalcase }}Handler(router Router, authorizer 
 
 	router.HandleFunc("GET /{$}", response.With(handler.{{ .PluralName | camelcase }}Get, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{uuid}", response.With(handler.{{ .Name | camelcase }}Get, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{uuid}/resync", response.With(handler.{{ .Name | camelcase }}ResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{uuid}/:resync", response.With(handler.{{ .Name | camelcase }}ResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/{{ .PluralName }} {{ .PluralName }} {{ .PluralName }}_get
@@ -302,7 +302,7 @@ func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}Get(r *http.Requ
 	)
 }
 
-// swagger:operation POST /1.0/inventory/{{ .PluralName }}/{uuid}/resync {{ .PluralName }} {{ .Name }}_get_resync_post
+// swagger:operation POST /1.0/inventory/{{ .PluralName }}/{uuid}/:resync {{ .PluralName }} {{ .Name }}_get_resync_post
 //
 //	Resync the {{ .Name | words}}
 //

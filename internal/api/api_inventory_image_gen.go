@@ -27,7 +27,7 @@ func registerInventoryImageHandler(router Router, authorizer *authz.Authorizer, 
 
 	router.HandleFunc("GET /{$}", response.With(handler.imagesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{uuid}", response.With(handler.imageGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{uuid}/resync", response.With(handler.imageResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{uuid}/:resync", response.With(handler.imageResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/images images images_get
@@ -256,7 +256,7 @@ func (i *imageHandler) imageGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation POST /1.0/inventory/images/{uuid}/resync images image_get_resync_post
+// swagger:operation POST /1.0/inventory/images/{uuid}/:resync images image_get_resync_post
 //
 //	Resync the image
 //

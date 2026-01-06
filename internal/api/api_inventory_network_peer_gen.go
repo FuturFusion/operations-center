@@ -27,7 +27,7 @@ func registerInventoryNetworkPeerHandler(router Router, authorizer *authz.Author
 
 	router.HandleFunc("GET /{$}", response.With(handler.networkPeersGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{uuid}", response.With(handler.networkPeerGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{uuid}/resync", response.With(handler.networkPeerResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{uuid}/:resync", response.With(handler.networkPeerResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/network_peers network_peers network_peers_get
@@ -258,7 +258,7 @@ func (i *networkPeerHandler) networkPeerGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation POST /1.0/inventory/network_peers/{uuid}/resync network_peers network_peer_get_resync_post
+// swagger:operation POST /1.0/inventory/network_peers/{uuid}/:resync network_peers network_peer_get_resync_post
 //
 //	Resync the network peer
 //

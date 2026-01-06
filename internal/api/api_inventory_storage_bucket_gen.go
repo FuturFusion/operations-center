@@ -27,7 +27,7 @@ func registerInventoryStorageBucketHandler(router Router, authorizer *authz.Auth
 
 	router.HandleFunc("GET /{$}", response.With(handler.storageBucketsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{uuid}", response.With(handler.storageBucketGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{uuid}/resync", response.With(handler.storageBucketResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{uuid}/:resync", response.With(handler.storageBucketResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/storage_buckets storage_buckets storage_buckets_get
@@ -274,7 +274,7 @@ func (i *storageBucketHandler) storageBucketGet(r *http.Request) response.Respon
 	)
 }
 
-// swagger:operation POST /1.0/inventory/storage_buckets/{uuid}/resync storage_buckets storage_bucket_get_resync_post
+// swagger:operation POST /1.0/inventory/storage_buckets/{uuid}/:resync storage_buckets storage_bucket_get_resync_post
 //
 //	Resync the storage bucket
 //

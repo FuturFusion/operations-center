@@ -33,7 +33,7 @@ func registerProvisioningClusterHandler(router Router, authorizer *authz.Authori
 	router.HandleFunc("PUT /{name}", response.With(handler.clusterPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}", response.With(handler.clusterDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{name}", response.With(handler.clusterPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
-	router.HandleFunc("POST /{name}/resync-inventory", response.With(handler.clusterResyncInventoryPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/:resync-inventory", response.With(handler.clusterResyncInventoryPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("PUT /{name}/certificate", response.With(handler.clusterCertificatePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{clusterName}/artifacts", response.With(handler.clusterArtifactsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{clusterName}/artifacts/{artifactName}", response.With(handler.clusterArtifactGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
@@ -524,7 +524,7 @@ func (c *clusterHandler) clusterPost(r *http.Request) response.Response {
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/clusters/"+cluster.Name)
 }
 
-// swagger:operation POST /1.0/provisioning/clusters/{name}/resync-inventory clusters cluster_resync_inventory_post
+// swagger:operation POST /1.0/provisioning/clusters/{name}/:resync-inventory clusters cluster_resync_inventory_post
 //
 //	Resync the cluster's inventory
 //

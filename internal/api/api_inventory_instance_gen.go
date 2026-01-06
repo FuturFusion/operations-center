@@ -27,7 +27,7 @@ func registerInventoryInstanceHandler(router Router, authorizer *authz.Authorize
 
 	router.HandleFunc("GET /{$}", response.With(handler.instancesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{uuid}", response.With(handler.instanceGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{uuid}/resync", response.With(handler.instanceResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{uuid}/:resync", response.With(handler.instanceResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/instances instances instances_get
@@ -272,7 +272,7 @@ func (i *instanceHandler) instanceGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation POST /1.0/inventory/instances/{uuid}/resync instances instance_get_resync_post
+// swagger:operation POST /1.0/inventory/instances/{uuid}/:resync instances instance_get_resync_post
 //
 //	Resync the instance
 //

@@ -108,7 +108,7 @@ export const resyncClusterInventory = (
   name: string,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/provisioning/clusters/${name}/resync-inventory`, {
+    fetch(`/1.0/provisioning/clusters/${name}/:resync-inventory`, {
       method: "POST",
     })
       .then((response) => response.json())
