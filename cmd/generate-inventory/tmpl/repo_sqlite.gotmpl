@@ -46,7 +46,7 @@ VALUES (:uuid, (SELECT cluster_id FROM _lookup), {{ if .ServerIDByLocation -}} (
 RETURNING id, :uuid, :cluster_name, {{ if .ServerIDByLocation -}} :server_name, {{ end -}} {{ if .HasProjectDirect }}project_name, {{ end -}}{{ if .HasProjectFromParent }}COALESCE((select project_name from _parent_lookup), '') AS project_name, {{ end }}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name {{- range .ExtraAttributes }}, {{ .Name }} {{- end}}, object, last_updated;
 `
 
-	marshaledObject, err := json.Marshal(in.Object)
+	marshaledObject, err := json.Marshal(in.Object.{{ .ObjectType | pascalcase }})
 	if err != nil {
 		return inventory.{{ .Name | pascalcase }}{}, err
 	}
@@ -325,7 +325,7 @@ WHERE uuid=:uuid
 RETURNING id, :uuid, :cluster_name, {{ if .ServerIDByLocation -}} :server_name, {{ end -}} {{ if .HasProjectDirect }}project_name, {{ end -}}{{ if .HasProjectFromParent }}COALESCE((select project_name from _parent_lookup), '') AS project_name, {{end -}}{{ if .HasParent }}{{ .ParentName }}_name, {{ end -}} name {{- range .ExtraAttributes }}, {{ .Name }} {{- end}}, object, last_updated;
 `
 
-	marshaledObject, err := json.Marshal(in.Object)
+	marshaledObject, err := json.Marshal(in.Object.{{ .ObjectType | pascalcase }})
 	if err != nil {
 		return inventory.{{ .Name | pascalcase }}{}, err
 	}
@@ -384,7 +384,7 @@ func scan{{ .Name | pascalcase }}(row interface{ Scan(dest ...any) error }) (inv
 		return inventory.{{ .Name | pascalcase }}{}, sqlite.MapErr(err)
 	}
 
-	err = json.Unmarshal(object, &{{ .Name | camelcase }}.Object)
+	err = json.Unmarshal(object, &{{ .Name | camelcase }}.Object.{{ .ObjectType | pascalcase }})
 	if err != nil {
 		return inventory.{{ .Name | pascalcase }}{}, err
 	}
