@@ -70,6 +70,13 @@ func (c *CmdServer) Command() *cobra.Command {
 
 	cmd.AddCommand(serverRenameCmd.Command())
 
+	// Resync
+	serverResyncCmd := cmdServerResync{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(serverResyncCmd.Command())
+
 	// Show
 	serverShowCmd := cmdServerShow{
 		ocClient: c.OCClient,
@@ -379,6 +386,48 @@ func (c *cmdServerRename) run(cmd *cobra.Command, args []string) error {
 	}
 
 	err := c.ocClient.RenameServer(cmd.Context(), name, newName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Resync server.
+type cmdServerResync struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdServerResync) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "resync <name>"
+	cmd.Short = "Resync a server"
+	cmd.Long = `Description:
+  Resync a server's state
+
+  Resyncs a server's state to the inventory.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerResync) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdServerResync) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.ResyncServer(cmd.Context(), name)
 	if err != nil {
 		return err
 	}
