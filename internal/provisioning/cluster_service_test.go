@@ -54,6 +54,7 @@ func TestClusterService_Create(t *testing.T) {
 		serverSvcUpdateErr                                error
 		provisionerApplyErr                               error
 		provisionerInitErr                                error
+		inventorySyncerSyncClusterErr                     error
 
 		assertErr     require.ErrorAssertionFunc
 		signalHandler func(t *testing.T, called *bool) func(ctx context.Context, cum provisioning.ClusterUpdateMessage)
@@ -877,6 +878,49 @@ func TestClusterService_Create(t *testing.T) {
 			assertErr:     boom.ErrorIs,
 			signalHandler: requireNoCallSignalHandler,
 		},
+		{
+			name: "error - inventory syncer error",
+			cluster: provisioning.Cluster{
+				Name:        "one",
+				ServerType:  api.ServerTypeIncus,
+				ServerNames: []string{"server1", "server2"},
+			},
+			serverSvcGetByName: []queue.Item[*provisioning.Server]{
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+						Type: api.ServerTypeIncus,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+						Type: api.ServerTypeIncus,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server1",
+						Type: api.ServerTypeIncus,
+					},
+				},
+				{
+					Value: &provisioning.Server{
+						Name: "server2",
+						Type: api.ServerTypeIncus,
+					},
+				},
+			},
+			clientSetServerConfig: []queue.Item[struct{}]{
+				{}, // Server 1
+				{}, // Server 2
+			},
+			clientEnableClusterCertificate: "certificate",
+			inventorySyncerSyncClusterErr:  boom.Error,
+
+			assertErr:     require.NoError, // inventory syncer error is just logged and does not fail cluster creation.
+			signalHandler: requireCallSignalHandler,
+		},
 	}
 
 	for _, tc := range tests {
@@ -947,7 +991,20 @@ func TestClusterService_Create(t *testing.T) {
 				},
 			}
 
-			clusterSvc := provisioning.NewClusterService(repo, localArtifactRepo, client, serverSvc, nil, nil, provisioner,
+			inventorySyncer := &serviceMock.InventorySyncerMock{
+				SyncClusterFunc: func(ctx context.Context, clusterName string) error {
+					return tc.inventorySyncerSyncClusterErr
+				},
+			}
+
+			clusterSvc := provisioning.NewClusterService(
+				repo,
+				localArtifactRepo,
+				client,
+				serverSvc,
+				nil,
+				map[domain.ResourceType]provisioning.InventorySyncer{domain.ResourceTypeImage: inventorySyncer},
+				provisioner,
 				provisioning.ClusterServiceCreateClusterRetryTimeout(0),
 				provisioning.ClusterServiceUpdateSignal(updateSignal),
 			)

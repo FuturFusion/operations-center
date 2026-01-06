@@ -372,6 +372,11 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 		return newCluster, err
 	}
 
+	err = s.ResyncInventoryByName(ctx, newCluster.Name)
+	if err != nil {
+		slog.WarnContext(ctx, "Post cluster creation inventory sync failed", logger.Err(err))
+	}
+
 	s.clusterUpdateSignal.Emit(ctx, ClusterUpdateMessage{
 		Operation: ClusterUpdateOperationCreate,
 		Name:      newCluster.Name,
