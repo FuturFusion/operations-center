@@ -1,6 +1,10 @@
+import { BootSecurity } from "util/token";
+
 type ImageType = "iso" | "raw";
 
 type Architecture = "" | "x86_64" | "aarch64";
+
+export type BootSecurityType = (typeof BootSecurity)[keyof typeof BootSecurity];
 
 type YamlValue =
   | string
@@ -30,6 +34,7 @@ export interface InstallTargetFormValues {
 export interface InstallFormValues {
   force_install: boolean;
   force_reboot: boolean;
+  boot_security: BootSecurity;
   target: InstallTargetFormValues;
 }
 
