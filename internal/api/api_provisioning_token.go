@@ -37,6 +37,7 @@ func registerProvisioningTokenHandler(router Router, authorizer *authz.Authorize
 	router.HandleFunc("PUT /{uuid}", response.With(handler.tokenPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{uuid}", response.With(handler.tokenDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{uuid}/image", response.With(handler.tokenImagePost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("GET /{uuid}/image/{imageUUID}", response.With(handler.tokenImageGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{uuid}/provider-config", response.With(handler.tokenProviderConfigGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{uuid}/seeds", response.With(handler.tokenSeedsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("POST /{uuid}/seeds", response.With(handler.tokenSeedsPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanCreate)))
@@ -391,17 +392,15 @@ func (t *tokenHandler) tokenDelete(r *http.Request) response.Response {
 
 // swagger:operation POST /1.0/provisioning/tokens/{uuid}/image tokens token_image_post
 //
-//	Generate pre-seed IncusOS ISO or raw image
+//	Prepare pre-seed IncusOS ISO or raw image download
 //
-//	Generate and retrieve pre-seed IncusOS ISO or raw image file.
+//	Prepare pre-seed IncusOS ISO or raw image download.
 //
 //	---
 //	consumes:
 //	  - application/json
 //	produces:
 //	  - application/json
-//	  - application/octet-stream
-//	  - application/gzip
 //	parameters:
 //	  - in: body
 //	    name: tokenImagePost
@@ -411,7 +410,31 @@ func (t *tokenHandler) tokenDelete(r *http.Request) response.Response {
 //	      $ref: "#/definitions/TokenImagePost"
 //	responses:
 //	  "200":
-//	    description: Raw file data
+//	    description: Image download location
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: object
+//	          description: Object containing the image dowload location
+//	          properties:
+//	            image:
+//	              type: string
+//	              description: Image download location
+//	              example: /1.0/provisioning/tokens/b32d0079-c48b-4957-b1cb-bef54125c861/image/9d73586d-2937-4e3a-8ed0-be999abe6387
 //	  "400":
 //	    $ref: "#/responses/BadRequest"
 //	  "403":
@@ -432,7 +455,7 @@ func (t *tokenHandler) tokenImagePost(r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	rc, err := t.service.GetPreSeedImage(r.Context(), UUID, tokenImagePost.Type, tokenImagePost.Architecture, provisioning.TokenImageSeedConfigs{
+	imageUUID, err := t.service.PreparePreSeededImage(r.Context(), UUID, tokenImagePost.Type, tokenImagePost.Architecture, provisioning.TokenImageSeedConfigs{
 		Applications:     tokenImagePost.Seeds.Applications,
 		Incus:            tokenImagePost.Seeds.Incus,
 		Install:          tokenImagePost.Seeds.Install,
@@ -444,7 +467,50 @@ func (t *tokenHandler) tokenImagePost(r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	return response.ReadCloserResponse(r, rc, true, fmt.Sprintf("pre-seed-%s%s", UUID.String(), tokenImagePost.Type.FileExt()), -1, nil)
+	return response.SyncResponseLocation(true, map[string]any{"image": "/" + api.APIVersion + "/provisioning/tokens/" + UUID.String() + "/image/" + imageUUID.String()}, "/"+api.APIVersion+"/provisioning/tokens/image/"+imageUUID.String())
+}
+
+// swagger:operation GET /1.0/provisioning/tokens/{uuid}/image/{imageUUID} tokens token_image_get
+//
+//	Get pre-seed IncusOS ISO or raw image
+//
+//	Retrieve pre-seed IncusOS ISO or raw image file.
+//
+//	---
+//	produces:
+//	  - application/json
+//	  - application/octet-stream
+//	  - application/gzip
+//	responses:
+//	  "200":
+//	    description: Raw file data
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (t *tokenHandler) tokenImageGet(r *http.Request) response.Response {
+	tokenUUIDString := r.PathValue("uuid")
+
+	tokenUUID, err := uuid.Parse(tokenUUIDString)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	imageUUIDString := r.PathValue("imageUUID")
+
+	imageUUID, err := uuid.Parse(imageUUIDString)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	rc, filename, err := t.service.GetPreSeededImage(r.Context(), tokenUUID, imageUUID)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.ReadCloserResponse(r, rc, true, filename, -1, nil)
 }
 
 // swagger:operation GET /1.0/provisioning/tokens/{uuid}/provider-config tokens tokens_provider_config_get

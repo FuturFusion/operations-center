@@ -70,8 +70,23 @@ func (c OperationsCenterClient) DeleteToken(ctx context.Context, id string) erro
 	return nil
 }
 
-func (c OperationsCenterClient) GetTokenImage(ctx context.Context, id string, preseed api.TokenImagePost) (io.ReadCloser, error) {
-	resp, err := c.doRequestRawResponse(ctx, http.MethodPost, path.Join("/provisioning/tokens", id, "image"), nil, preseed)
+func (c OperationsCenterClient) PreparePreSeededImage(ctx context.Context, id string, preseed api.TokenImagePost) (imageID string, _ error) {
+	response, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/tokens", id, "image"), nil, preseed)
+	if err != nil {
+		return "", err
+	}
+
+	imageURLResponse := map[string]string{}
+	err = json.Unmarshal(response.Metadata, &imageURLResponse)
+	if err != nil {
+		return "", err
+	}
+
+	return path.Base(imageURLResponse["image"]), nil
+}
+
+func (c OperationsCenterClient) GetPreSeededImage(ctx context.Context, id string, imageID string) (io.ReadCloser, error) {
+	resp, err := c.doRequestRawResponse(ctx, http.MethodGet, path.Join("/provisioning/tokens", id, "image", imageID), nil, nil)
 	if err != nil {
 		return nil, err
 	}

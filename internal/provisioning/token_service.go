@@ -22,22 +22,25 @@ type tokenService struct {
 	flasher   FlasherPort
 
 	randomUUID func() (uuid.UUID, error)
+
+	images map[uuid.UUID]imageRecord
 }
 
 var _ TokenService = &tokenService{}
 
 type TokenServiceOption func(s *tokenService)
 
-func NewTokenService(repo TokenRepo, updateSvc UpdateService, flasher FlasherPort, opts ...TokenServiceOption) tokenService {
-	tokenSvc := tokenService{
+func NewTokenService(repo TokenRepo, updateSvc UpdateService, flasher FlasherPort, opts ...TokenServiceOption) *tokenService {
+	tokenSvc := &tokenService{
 		repo:       repo,
 		updateSvc:  updateSvc,
 		flasher:    flasher,
 		randomUUID: uuid.NewRandom,
+		images:     map[uuid.UUID]imageRecord{},
 	}
 
 	for _, opt := range opts {
-		opt(&tokenSvc)
+		opt(tokenSvc)
 	}
 
 	return tokenSvc
@@ -114,22 +117,79 @@ func (s tokenService) Consume(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
-func (s tokenService) GetPreSeedImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seeds TokenImageSeedConfigs) (_ io.ReadCloser, err error) {
+type imageRecord struct {
+	TokenID      uuid.UUID
+	ImageType    api.ImageType
+	Architecture images.UpdateFileArchitecture
+	SeedConfig   TokenImageSeedConfigs
+	CreatedAt    time.Time
+}
+
+func (s *tokenService) PreparePreSeededImage(ctx context.Context, id uuid.UUID, imageType api.ImageType, architecture images.UpdateFileArchitecture, seedConfig TokenImageSeedConfigs) (uuid.UUID, error) {
+	// Remove image records older than 5 minutes.
+	for imageUUID, image := range s.images {
+		if time.Since(image.CreatedAt) > 5*time.Minute {
+			delete(s.images, imageUUID)
+		}
+	}
+
 	if !imageType.IsValid() {
-		return nil, domain.NewValidationErrf("Invalid image type")
+		return uuid.Nil, domain.NewValidationErrf("Invalid image type")
 	}
 
 	_, ok := images.UpdateFileArchitectures[architecture]
 	if !ok {
-		return nil, domain.NewValidationErrf("Invalid architecture")
+		return uuid.Nil, domain.NewValidationErrf("Invalid architecture")
 	}
 
-	_, err = s.repo.GetByUUID(ctx, id)
+	_, err := s.repo.GetByUUID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get token %s: %w", id.String(), err)
+		return uuid.Nil, fmt.Errorf("Unable to get token %s: %w", id.String(), err)
 	}
 
-	return s.getPreSeedImage(ctx, id, imageType, architecture, seeds)
+	imageUUID := uuid.New()
+
+	s.images[imageUUID] = imageRecord{
+		TokenID:      id,
+		ImageType:    imageType,
+		Architecture: architecture,
+		SeedConfig:   seedConfig,
+		CreatedAt:    time.Now(),
+	}
+
+	return imageUUID, nil
+}
+
+func (s *tokenService) GetPreSeededImage(ctx context.Context, id uuid.UUID, imageUUID uuid.UUID) (_ io.ReadCloser, filename string, _ error) {
+	// Remove image records older than 5 minutes.
+	for imageUUID, image := range s.images {
+		if time.Since(image.CreatedAt) > 5*time.Minute {
+			delete(s.images, imageUUID)
+		}
+	}
+
+	image, ok := s.images[imageUUID]
+	if !ok {
+		return nil, "", fmt.Errorf("Failed to find image configuration for uuid %q: %w", imageUUID.String(), domain.ErrNotFound)
+	}
+
+	if image.TokenID != id {
+		return nil, "", fmt.Errorf("Image configuration %q does not match token id %q: %w", imageUUID.String(), id.String(), domain.ErrConstraintViolation)
+	}
+
+	_, err := s.repo.GetByUUID(ctx, image.TokenID)
+	if err != nil {
+		return nil, "", fmt.Errorf("Unable to get token %s: %w", image.TokenID.String(), err)
+	}
+
+	rc, err := s.getPreSeedImage(ctx, image.TokenID, image.ImageType, image.Architecture, image.SeedConfig)
+	if err != nil {
+		return nil, "", fmt.Errorf("Failed to get pre seed image stream: %w", err)
+	}
+
+	delete(s.images, imageUUID)
+
+	return rc, fmt.Sprintf("pre-seed-%s%s", image.TokenID.String(), image.ImageType.FileExt()), nil
 }
 
 func (s tokenService) GetTokenProviderConfig(ctx context.Context, id uuid.UUID) (*api.TokenProviderConfig, error) {
