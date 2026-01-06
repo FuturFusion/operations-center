@@ -27,7 +27,7 @@ func registerInventoryProjectHandler(router Router, authorizer *authz.Authorizer
 
 	router.HandleFunc("GET /{$}", response.With(handler.projectsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{uuid}", response.With(handler.projectGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{uuid}/resync", response.With(handler.projectResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{uuid}/:resync", response.With(handler.projectResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/projects projects projects_get
@@ -240,7 +240,7 @@ func (i *projectHandler) projectGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation POST /1.0/inventory/projects/{uuid}/resync projects project_get_resync_post
+// swagger:operation POST /1.0/inventory/projects/{uuid}/:resync projects project_get_resync_post
 //
 //	Resync the project
 //

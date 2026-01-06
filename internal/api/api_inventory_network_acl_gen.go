@@ -27,7 +27,7 @@ func registerInventoryNetworkACLHandler(router Router, authorizer *authz.Authori
 
 	router.HandleFunc("GET /{$}", response.With(handler.networkACLsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{uuid}", response.With(handler.networkACLGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{uuid}/resync", response.With(handler.networkACLResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{uuid}/:resync", response.With(handler.networkACLResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/network_acls network_acls network_acls_get
@@ -256,7 +256,7 @@ func (i *networkACLHandler) networkACLGet(r *http.Request) response.Response {
 	)
 }
 
-// swagger:operation POST /1.0/inventory/network_acls/{uuid}/resync network_acls network_acl_get_resync_post
+// swagger:operation POST /1.0/inventory/network_acls/{uuid}/:resync network_acls network_acl_get_resync_post
 //
 //	Resync the network ACL
 //

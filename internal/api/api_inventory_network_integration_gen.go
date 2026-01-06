@@ -27,7 +27,7 @@ func registerInventoryNetworkIntegrationHandler(router Router, authorizer *authz
 
 	router.HandleFunc("GET /{$}", response.With(handler.networkIntegrationsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{uuid}", response.With(handler.networkIntegrationGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{uuid}/resync", response.With(handler.networkIntegrationResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{uuid}/:resync", response.With(handler.networkIntegrationResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/network_integrations network_integrations network_integrations_get
@@ -240,7 +240,7 @@ func (i *networkIntegrationHandler) networkIntegrationGet(r *http.Request) respo
 	)
 }
 
-// swagger:operation POST /1.0/inventory/network_integrations/{uuid}/resync network_integrations network_integration_get_resync_post
+// swagger:operation POST /1.0/inventory/network_integrations/{uuid}/:resync network_integrations network_integration_get_resync_post
 //
 //	Resync the network integration
 //

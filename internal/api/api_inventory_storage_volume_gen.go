@@ -27,7 +27,7 @@ func registerInventoryStorageVolumeHandler(router Router, authorizer *authz.Auth
 
 	router.HandleFunc("GET /{$}", response.With(handler.storageVolumesGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{uuid}", response.With(handler.storageVolumeGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{uuid}/resync", response.With(handler.storageVolumeResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{uuid}/:resync", response.With(handler.storageVolumeResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/storage_volumes storage_volumes storage_volumes_get
@@ -276,7 +276,7 @@ func (i *storageVolumeHandler) storageVolumeGet(r *http.Request) response.Respon
 	)
 }
 
-// swagger:operation POST /1.0/inventory/storage_volumes/{uuid}/resync storage_volumes storage_volume_get_resync_post
+// swagger:operation POST /1.0/inventory/storage_volumes/{uuid}/:resync storage_volumes storage_volume_get_resync_post
 //
 //	Resync the storage volume
 //

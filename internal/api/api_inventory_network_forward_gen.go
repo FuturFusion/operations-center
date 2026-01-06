@@ -27,7 +27,7 @@ func registerInventoryNetworkForwardHandler(router Router, authorizer *authz.Aut
 
 	router.HandleFunc("GET /{$}", response.With(handler.networkForwardsGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{uuid}", response.With(handler.networkForwardGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{uuid}/resync", response.With(handler.networkForwardResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{uuid}/:resync", response.With(handler.networkForwardResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/network_forwards network_forwards network_forwards_get
@@ -258,7 +258,7 @@ func (i *networkForwardHandler) networkForwardGet(r *http.Request) response.Resp
 	)
 }
 
-// swagger:operation POST /1.0/inventory/network_forwards/{uuid}/resync network_forwards network_forward_get_resync_post
+// swagger:operation POST /1.0/inventory/network_forwards/{uuid}/:resync network_forwards network_forward_get_resync_post
 //
 //	Resync the network forward
 //

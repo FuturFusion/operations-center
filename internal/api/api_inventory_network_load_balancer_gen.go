@@ -27,7 +27,7 @@ func registerInventoryNetworkLoadBalancerHandler(router Router, authorizer *auth
 
 	router.HandleFunc("GET /{$}", response.With(handler.networkLoadBalancersGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("GET /{uuid}", response.With(handler.networkLoadBalancerGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
-	router.HandleFunc("POST /{uuid}/resync", response.With(handler.networkLoadBalancerResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{uuid}/:resync", response.With(handler.networkLoadBalancerResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/inventory/network_load_balancers network_load_balancers network_load_balancers_get
@@ -258,7 +258,7 @@ func (i *networkLoadBalancerHandler) networkLoadBalancerGet(r *http.Request) res
 	)
 }
 
-// swagger:operation POST /1.0/inventory/network_load_balancers/{uuid}/resync network_load_balancers network_load_balancer_get_resync_post
+// swagger:operation POST /1.0/inventory/network_load_balancers/{uuid}/:resync network_load_balancers network_load_balancer_get_resync_post
 //
 //	Resync the network load balancer
 //
