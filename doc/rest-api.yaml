@@ -1910,6 +1910,13 @@ definitions:
                     type: string
                 type: array
                 x-go-name: Addresses
+            ethernet:
+                $ref: '#/definitions/SystemNetworkEthernet'
+            firewall_rules:
+                items:
+                    $ref: '#/definitions/SystemNetworkFirewallRule'
+                type: array
+                x-go-name: FirewallRules
             hwaddr:
                 type: string
                 x-go-name: Hwaddr
@@ -1976,6 +1983,11 @@ definitions:
                     $ref: '#/definitions/SystemNetworkVLAN'
                 type: array
                 x-go-name: VLANs
+            wireguard:
+                items:
+                    $ref: '#/definitions/SystemNetworkWireguard'
+                type: array
+                x-go-name: Wireguard
         title: SystemNetworkConfig represents the user modifiable network configuration.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
@@ -2000,6 +2012,55 @@ definitions:
         title: SystemNetworkDNS defines DNS configuration options.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemNetworkEthernet:
+        properties:
+            disable_energy_efficient:
+                type: boolean
+                x-go-name: DisableEnergyEfficient
+            disable_gro:
+                type: boolean
+                x-go-name: DisableGRO
+            disable_gso:
+                type: boolean
+                x-go-name: DisableGSO
+            disable_ipv4_tso:
+                type: boolean
+                x-go-name: DisableIPv4TSO
+            disable_ipv6_tso:
+                type: boolean
+                x-go-name: DisableIPv6TSO
+            wakeonlan:
+                type: boolean
+                x-go-name: WakeOnLAN
+            wakeonlan_modes:
+                items:
+                    type: string
+                type: array
+                x-go-name: WakeOnLANModes
+            wakeonlan_password:
+                type: string
+                x-go-name: WakeOnLANPassword
+        title: SystemNetworkEthernet contains Ethernet-specific configuration details (offloading and other features).
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemNetworkFirewallRule:
+        properties:
+            action:
+                type: string
+                x-go-name: Action
+            port:
+                format: int64
+                type: integer
+                x-go-name: Port
+            protocol:
+                type: string
+                x-go-name: Protocol
+            source:
+                type: string
+                x-go-name: Source
+        title: SystemNetworkFirewallRule defines a firewall rule.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemNetworkInterface:
         properties:
             addresses:
@@ -2007,6 +2068,13 @@ definitions:
                     type: string
                 type: array
                 x-go-name: Addresses
+            ethernet:
+                $ref: '#/definitions/SystemNetworkEthernet'
+            firewall_rules:
+                items:
+                    $ref: '#/definitions/SystemNetworkFirewallRule'
+                type: array
+                x-go-name: FirewallRules
             hwaddr:
                 type: string
                 x-go-name: Hwaddr
@@ -2033,6 +2101,9 @@ definitions:
                     $ref: '#/definitions/SystemNetworkRoute'
                 type: array
                 x-go-name: Routes
+            strict_hwaddr:
+                type: boolean
+                x-go-name: StrictHwaddr
             vlan_tags:
                 items:
                     format: int64
@@ -2089,6 +2160,8 @@ definitions:
             type:
                 type: string
                 x-go-name: Type
+            wireguard:
+                $ref: '#/definitions/SystemNetworkWireguardState'
         title: SystemNetworkInterfaceState holds state information about a specific network interface.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
@@ -2246,6 +2319,11 @@ definitions:
                     type: string
                 type: array
                 x-go-name: Addresses
+            firewall_rules:
+                items:
+                    $ref: '#/definitions/SystemNetworkFirewallRule'
+                type: array
+                x-go-name: FirewallRules
             id:
                 format: int64
                 type: integer
@@ -2274,6 +2352,117 @@ definitions:
                 type: array
                 x-go-name: Routes
         title: SystemNetworkVLAN contains information about a network vlan.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemNetworkWireguard:
+        properties:
+            addresses:
+                items:
+                    type: string
+                type: array
+                x-go-name: Addresses
+            firewall_rules:
+                items:
+                    $ref: '#/definitions/SystemNetworkFirewallRule'
+                type: array
+                x-go-name: FirewallRules
+            mtu:
+                format: int64
+                type: integer
+                x-go-name: MTU
+            name:
+                type: string
+                x-go-name: Name
+            peers:
+                items:
+                    $ref: '#/definitions/SystemNetworkWireguardPeer'
+                type: array
+                x-go-name: Peers
+            port:
+                format: int64
+                type: integer
+                x-go-name: Port
+            private_key:
+                type: string
+                x-go-name: PrivateKey
+            required_for_online:
+                type: string
+                x-go-name: RequiredForOnline
+            roles:
+                items:
+                    type: string
+                type: array
+                x-go-name: Roles
+            routes:
+                items:
+                    $ref: '#/definitions/SystemNetworkRoute'
+                type: array
+                x-go-name: Routes
+        title: SystemNetworkWireguard contains information about a wireguard interface.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemNetworkWireguardPeer:
+        properties:
+            allowed_ips:
+                items:
+                    type: string
+                type: array
+                x-go-name: AllowedIPs
+            endpoint:
+                type: string
+                x-go-name: Endpoint
+            persistent_keepalive:
+                format: int64
+                type: integer
+                x-go-name: PersistentKeepalive
+            preshared_key:
+                type: string
+                x-go-name: PresharedKey
+            public_key:
+                type: string
+                x-go-name: PublicKey
+        title: SystemNetworkWireguardPeer defines wireguard peer.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemNetworkWireguardPeerState:
+        properties:
+            allowed_ips:
+                items:
+                    type: string
+                type: array
+                x-go-name: AllowedIPs
+            endpoint:
+                type: string
+                x-go-name: EndPoint
+            latest_handshake:
+                type: string
+                x-go-name: LatestHandshake
+            persistent_keepalive:
+                type: string
+                x-go-name: PersistentKeepalive
+            public_key:
+                type: string
+                x-go-name: PublicKey
+            stats:
+                $ref: '#/definitions/SystemNetworkInterfaceStats'
+        title: SystemNetworkWireguardPeerState holds state information about a specific wireguard peer.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemNetworkWireguardState:
+        properties:
+            listening_port:
+                format: int64
+                type: integer
+                x-go-name: ListeningPort
+            peers:
+                items:
+                    $ref: '#/definitions/SystemNetworkWireguardPeerState'
+                type: array
+                x-go-name: Peers
+            public_key:
+                type: string
+                x-go-name: PublicKey
+        title: SystemNetworkWireguardState holds state information about a specific wireguard interface.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemProviderConfig:
@@ -2342,6 +2531,11 @@ definitions:
         x-go-package: github.com/FuturFusion/operations-center/shared/api
     SystemSecurityConfig:
         properties:
+            custom_ca_certs:
+                items:
+                    type: string
+                type: array
+                x-go-name: CustomCACerts
             encryption_recovery_keys:
                 items:
                     type: string
@@ -2466,6 +2660,9 @@ definitions:
             secure_boot_enabled:
                 type: boolean
                 x-go-name: SecureBootEnabled
+            system_state_is_trusted:
+                type: boolean
+                x-go-name: SystemStateIsTrusted
             tpm_status:
                 type: string
                 x-go-name: TPMStatus
@@ -2508,6 +2705,9 @@ definitions:
                     $ref: '#/definitions/SystemStoragePool'
                 type: array
                 x-go-name: Pools
+            scrub_schedule:
+                type: string
+                x-go-name: ScrubSchedule
         title: SystemStorageConfig represents additional configuration for the system's local storage.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
@@ -2554,12 +2754,44 @@ definitions:
         x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemStorageDriveSMART:
         properties:
+            available_spare:
+                format: int64
+                type: integer
+                x-go-name: AvailableSpare
+            data_units_read:
+                format: int64
+                type: integer
+                x-go-name: DataUnitsRead
+            data_units_written:
+                format: int64
+                type: integer
+                x-go-name: DataUnitsWritten
             enabled:
                 type: boolean
                 x-go-name: Enabled
             passed:
                 type: boolean
                 x-go-name: Passed
+            percentage_used:
+                format: int64
+                type: integer
+                x-go-name: PercentageUsed
+            power_on_hours:
+                format: int64
+                type: integer
+                x-go-name: PowerOnHours
+            raw_read_error_rate:
+                format: int64
+                type: integer
+                x-go-name: RawReadErrorRate
+            reallocated_sectors:
+                format: int64
+                type: integer
+                x-go-name: ReallocatedSectors
+            seek_error_rate:
+                format: int64
+                type: integer
+                x-go-name: SeekErrorRate
         title: SystemStorageDriveSMART defines a struct to return basic SMART information about a specific device.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
@@ -2589,6 +2821,8 @@ definitions:
             encryption_key_status:
                 type: string
                 x-go-name: EncryptionKeyStatus
+            last_scrub:
+                $ref: '#/definitions/SystemStoragePoolScrubStatus'
             log:
                 items:
                     type: string
@@ -2629,6 +2863,32 @@ definitions:
                 type: array
                 x-go-name: Volumes
         title: SystemStoragePool defines a struct that is used to create or update a storage pool and return its current state.
+        type: object
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemStoragePoolScrubState:
+        title: SystemStoragePoolScrubState represents the state of a scan in a pool.
+        type: string
+        x-go-package: github.com/lxc/incus-os/incus-osd/api
+    SystemStoragePoolScrubStatus:
+        properties:
+            end_time:
+                format: date-time
+                type: string
+                x-go-name: EndTime
+            errors:
+                format: int64
+                type: integer
+                x-go-name: Errors
+            progress:
+                type: string
+                x-go-name: Progress
+            start_time:
+                format: date-time
+                type: string
+                x-go-name: StartTime
+            state:
+                $ref: '#/definitions/SystemStoragePoolScrubState'
+        title: SystemStoragePoolScrubStatus represents the status of a scrub in a pool.
         type: object
         x-go-package: github.com/lxc/incus-os/incus-osd/api
     SystemStoragePoolVolume:
@@ -3236,7 +3496,7 @@ paths:
             summary: Get the image
             tags:
                 - images
-    /1.0/inventory/images/{uuid}/resync:
+    /1.0/inventory/images/{uuid}/:resync:
         post:
             description: Resync a specific image.
             operationId: image_get_resync_post
@@ -3418,7 +3678,7 @@ paths:
             summary: Get the instance
             tags:
                 - instances
-    /1.0/inventory/instances/{uuid}/resync:
+    /1.0/inventory/instances/{uuid}/:resync:
         post:
             description: Resync a specific instance.
             operationId: instance_get_resync_post
@@ -3600,7 +3860,7 @@ paths:
             summary: Get the network ACL
             tags:
                 - network_acls
-    /1.0/inventory/network_acls/{uuid}/resync:
+    /1.0/inventory/network_acls/{uuid}/:resync:
         post:
             description: Resync a specific network ACL.
             operationId: network_acl_get_resync_post
@@ -3777,7 +4037,7 @@ paths:
             summary: Get the network address set
             tags:
                 - network_address_sets
-    /1.0/inventory/network_address_sets/{uuid}/resync:
+    /1.0/inventory/network_address_sets/{uuid}/:resync:
         post:
             description: Resync a specific network address set.
             operationId: network_address_set_get_resync_post
@@ -3954,7 +4214,7 @@ paths:
             summary: Get the network forward
             tags:
                 - network_forwards
-    /1.0/inventory/network_forwards/{uuid}/resync:
+    /1.0/inventory/network_forwards/{uuid}/:resync:
         post:
             description: Resync a specific network forward.
             operationId: network_forward_get_resync_post
@@ -4126,7 +4386,7 @@ paths:
             summary: Get the network integration
             tags:
                 - network_integrations
-    /1.0/inventory/network_integrations/{uuid}/resync:
+    /1.0/inventory/network_integrations/{uuid}/:resync:
         post:
             description: Resync a specific network integration.
             operationId: network_integration_get_resync_post
@@ -4298,7 +4558,7 @@ paths:
             summary: Get the network load balancer
             tags:
                 - network_load_balancers
-    /1.0/inventory/network_load_balancers/{uuid}/resync:
+    /1.0/inventory/network_load_balancers/{uuid}/:resync:
         post:
             description: Resync a specific network load balancer.
             operationId: network_load_balancer_get_resync_post
@@ -4475,7 +4735,7 @@ paths:
             summary: Get the network peer
             tags:
                 - network_peers
-    /1.0/inventory/network_peers/{uuid}/resync:
+    /1.0/inventory/network_peers/{uuid}/:resync:
         post:
             description: Resync a specific network peer.
             operationId: network_peer_get_resync_post
@@ -4652,7 +4912,7 @@ paths:
             summary: Get the network zone
             tags:
                 - network_zones
-    /1.0/inventory/network_zones/{uuid}/resync:
+    /1.0/inventory/network_zones/{uuid}/:resync:
         post:
             description: Resync a specific network zone.
             operationId: network_zone_get_resync_post
@@ -4829,7 +5089,7 @@ paths:
             summary: Get the network
             tags:
                 - networks
-    /1.0/inventory/networks/{uuid}/resync:
+    /1.0/inventory/networks/{uuid}/:resync:
         post:
             description: Resync a specific network.
             operationId: network_get_resync_post
@@ -5006,7 +5266,7 @@ paths:
             summary: Get the profile
             tags:
                 - profiles
-    /1.0/inventory/profiles/{uuid}/resync:
+    /1.0/inventory/profiles/{uuid}/:resync:
         post:
             description: Resync a specific profile.
             operationId: profile_get_resync_post
@@ -5178,7 +5438,7 @@ paths:
             summary: Get the project
             tags:
                 - projects
-    /1.0/inventory/projects/{uuid}/resync:
+    /1.0/inventory/projects/{uuid}/:resync:
         post:
             description: Resync a specific project.
             operationId: project_get_resync_post
@@ -5420,7 +5680,7 @@ paths:
             summary: Get the storage bucket
             tags:
                 - storage_buckets
-    /1.0/inventory/storage_buckets/{uuid}/resync:
+    /1.0/inventory/storage_buckets/{uuid}/:resync:
         post:
             description: Resync a specific storage bucket.
             operationId: storage_bucket_get_resync_post
@@ -5597,7 +5857,7 @@ paths:
             summary: Get the storage pool
             tags:
                 - storage_pools
-    /1.0/inventory/storage_pools/{uuid}/resync:
+    /1.0/inventory/storage_pools/{uuid}/:resync:
         post:
             description: Resync a specific storage pool.
             operationId: storage_pool_get_resync_post
@@ -5774,7 +6034,7 @@ paths:
             summary: Get the storage volume
             tags:
                 - storage_volumes
-    /1.0/inventory/storage_volumes/{uuid}/resync:
+    /1.0/inventory/storage_volumes/{uuid}/:resync:
         post:
             description: Resync a specific storage volume.
             operationId: storage_volume_get_resync_post
@@ -6321,6 +6581,16 @@ paths:
                   in: query
                   name: mode
                   type: string
+                - description: Token UUID
+                  example: f1710b8e-cd77-4336-897a-96ff0e0ed529
+                  in: query
+                  name: token
+                  type: string
+                - description: Token seed name for the given token.
+                  example: token-seed-name
+                  in: query
+                  name: tokenSeedName
+                  type: string
             produces:
                 - application/json
             responses:
@@ -6424,6 +6694,38 @@ paths:
             summary: Update the cluster
             tags:
                 - clusters
+    /1.0/provisioning/clusters/{name}/:resync-inventory:
+        post:
+            description: Resync the inventory of a specific cluster.
+            operationId: cluster_resync_inventory_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Empty response
+                    schema:
+                        description: Sync response
+                        properties:
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Resync the cluster's inventory
+            tags:
+                - clusters
     /1.0/provisioning/clusters/{name}/certificate:
         put:
             consumes:
@@ -6463,38 +6765,6 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Update the cluster's certificate and key
-            tags:
-                - clusters
-    /1.0/provisioning/clusters/{name}/resync-inventory:
-        post:
-            description: Resync the inventory of a specific cluster.
-            operationId: cluster_resync_inventory_post
-            produces:
-                - application/json
-            responses:
-                "200":
-                    description: Empty response
-                    schema:
-                        description: Sync response
-                        properties:
-                            status:
-                                description: Status description
-                                example: Success
-                                type: string
-                            status_code:
-                                description: Status code
-                                example: 200
-                                type: integer
-                            type:
-                                description: Response type
-                                example: sync
-                                type: string
-                        type: object
-                "403":
-                    $ref: '#/responses/Forbidden'
-                "500":
-                    $ref: '#/responses/InternalServerError'
-            summary: Resync the cluster's inventory
             tags:
                 - clusters
     /1.0/provisioning/clusters?recursion=1:
@@ -6805,6 +7075,26 @@ paths:
             summary: Update the server
             tags:
                 - servers
+    /1.0/provisioning/servers/{name}/:resync:
+        post:
+            description: Trigger re-sync of the server's state.
+            operationId: server_resync_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Sync server state
+            tags:
+                - servers
     /1.0/provisioning/servers/{name}/system/network:
         get:
             description: Gets the network configuration of a specific server.
@@ -7071,7 +7361,7 @@ paths:
         post:
             consumes:
                 - application/json
-            description: Generate and retrieve pre-seed IncusOS ISO or raw image file.
+            description: Prepare pre-seed IncusOS ISO or raw image download.
             operationId: token_image_post
             parameters:
                 - description: Seed configuration for the generated ISO or raw image.
@@ -7080,6 +7370,48 @@ paths:
                   required: true
                   schema:
                     $ref: '#/definitions/TokenImagePost'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Image download location
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: Object containing the image dowload location
+                                properties:
+                                    image:
+                                        description: Image download location
+                                        example: /1.0/provisioning/tokens/b32d0079-c48b-4957-b1cb-bef54125c861/image/9d73586d-2937-4e3a-8ed0-be999abe6387
+                                        type: string
+                                type: object
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Prepare pre-seed IncusOS ISO or raw image download
+            tags:
+                - tokens
+    /1.0/provisioning/tokens/{uuid}/image/{imageUUID}:
+        get:
+            description: Retrieve pre-seed IncusOS ISO or raw image file.
+            operationId: token_image_get
             produces:
                 - application/json
                 - application/octet-stream
@@ -7093,7 +7425,7 @@ paths:
                     $ref: '#/responses/Forbidden'
                 "500":
                     $ref: '#/responses/InternalServerError'
-            summary: Generate pre-seed IncusOS ISO or raw image
+            summary: Get pre-seed IncusOS ISO or raw image
             tags:
                 - tokens
     /1.0/provisioning/tokens/{uuid}/provider-config:
@@ -7644,6 +7976,40 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Update the system's certificate and key
+            tags:
+                - system
+    /1.0/system/certificate/:renew:
+        post:
+            description: Renew the system's ACME certificate.
+            operationId: system_certificate_renew_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Empty response
+                    schema:
+                        description: System certificate renew response
+                        properties:
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Renew the system's ACME certificate
             tags:
                 - system
     /1.0/system/config:

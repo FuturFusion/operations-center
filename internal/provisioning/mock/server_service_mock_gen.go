@@ -53,6 +53,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
+//			ResyncByNameFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the ResyncByName method")
+//			},
 //			SelfRegisterOperationsCenterFunc: func(ctx context.Context) error {
 //				panic("mock out the SelfRegisterOperationsCenter method")
 //			},
@@ -107,6 +110,9 @@ type ServerServiceMock struct {
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
+
+	// ResyncByNameFunc mocks the ResyncByName method.
+	ResyncByNameFunc func(ctx context.Context, name string) error
 
 	// SelfRegisterOperationsCenterFunc mocks the SelfRegisterOperationsCenter method.
 	SelfRegisterOperationsCenterFunc func(ctx context.Context) error
@@ -200,6 +206,13 @@ type ServerServiceMock struct {
 			// NewName is the newName argument value.
 			NewName string
 		}
+		// ResyncByName holds details about calls to the ResyncByName method.
+		ResyncByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 		// SelfRegisterOperationsCenter holds details about calls to the SelfRegisterOperationsCenter method.
 		SelfRegisterOperationsCenter []struct {
 			// Ctx is the ctx argument value.
@@ -253,6 +266,7 @@ type ServerServiceMock struct {
 	lockGetSystemProvider            sync.RWMutex
 	lockPollServers                  sync.RWMutex
 	lockRename                       sync.RWMutex
+	lockResyncByName                 sync.RWMutex
 	lockSelfRegisterOperationsCenter sync.RWMutex
 	lockSelfUpdate                   sync.RWMutex
 	lockSetClusterService            sync.RWMutex
@@ -622,6 +636,42 @@ func (mock *ServerServiceMock) RenameCalls() []struct {
 	mock.lockRename.RLock()
 	calls = mock.calls.Rename
 	mock.lockRename.RUnlock()
+	return calls
+}
+
+// ResyncByName calls ResyncByNameFunc.
+func (mock *ServerServiceMock) ResyncByName(ctx context.Context, name string) error {
+	if mock.ResyncByNameFunc == nil {
+		panic("ServerServiceMock.ResyncByNameFunc: method is nil but ServerService.ResyncByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockResyncByName.Lock()
+	mock.calls.ResyncByName = append(mock.calls.ResyncByName, callInfo)
+	mock.lockResyncByName.Unlock()
+	return mock.ResyncByNameFunc(ctx, name)
+}
+
+// ResyncByNameCalls gets all the calls that were made to ResyncByName.
+// Check the length with:
+//
+//	len(mockedServerService.ResyncByNameCalls())
+func (mock *ServerServiceMock) ResyncByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockResyncByName.RLock()
+	calls = mock.calls.ResyncByName
+	mock.lockResyncByName.RUnlock()
 	return calls
 }
 

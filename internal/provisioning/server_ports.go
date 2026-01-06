@@ -24,6 +24,7 @@ type ServerService interface {
 	SelfRegisterOperationsCenter(ctx context.Context) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
+	ResyncByName(ctx context.Context, name string) error
 
 	PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error
 }
