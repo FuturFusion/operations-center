@@ -1122,7 +1122,7 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:           "error - rename",
+			name:           "error - rename - delete",
 			argClusterName: "cluster",
 			argLifecycleEvent: domain.LifecycleEvent{
 				ResourceType: "{{ .Name | kebabcase }}",
@@ -1175,6 +1175,63 @@ func Test{{ .Name | pascalcase }}Service_ResyncByName(t *testing.T) {
 {{- end }}
 			},
 			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - rename - create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "{{ .Name | kebabcase }}",
+				Operation: domain.LifecycleOperationRename,
+				Source: domain.LifecycleSource{
+{{- if .HasProject }}
+					ProjectName: "project",
+{{- end }}
+{{- if .HasParent }}
+					ParentName: "{{ .ParentName }}",
+{{- end }}
+					Name: "{{ .Name }}-new",
+{{- range .ExtraAttributes }}
+					{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+					OldName: "{{ .Name }}",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			{{ .Name | camelcase }}ClientGet{{ .Name | pascalcase }}ByName: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+				{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+					{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+						{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name }}-new",
+{{- if .UsesEmbeddedPostType }}
+					},
+{{- end }}
+{{- if .ServerIDByLocation }}
+					Location:  "server01",
+{{- end }}
+{{- if .HasProjectDirect }}
+					Project: "project",
+{{- end }}
+{{- if .ObjectEmbedded }}
+				},
+{{- end }}
+			},
+			repoCreateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
