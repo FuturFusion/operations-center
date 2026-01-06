@@ -391,6 +391,40 @@ func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newN
 	return _d._base.Rename(ctx, oldName, newName)
 }
 
+// ResyncByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) ResyncByName(ctx context.Context, name string) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling ResyncByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method ResyncByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method ResyncByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method ResyncByName finished")
+		}
+	}()
+	return _d._base.ResyncByName(ctx, name)
+}
+
 // SelfRegisterOperationsCenter implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) SelfRegisterOperationsCenter(ctx context.Context) (err error) {
 	log := _d._log.With()
