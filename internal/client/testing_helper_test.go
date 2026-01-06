@@ -108,6 +108,7 @@ func getFreeTCPPort(t *testing.T) string {
 	defer func() {
 		_ = l.Close()
 	}()
+
 	addr, ok := l.Addr().(*net.TCPAddr)
 	require.True(t, ok)
 

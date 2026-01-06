@@ -66,8 +66,10 @@ func (s *ServerType) Scan(value any) error {
 	switch v := value.(type) {
 	case string:
 		return s.UnmarshalText([]byte(v))
+
 	case []byte:
 		return s.UnmarshalText(v)
+
 	default:
 		return fmt.Errorf("type %T is not supported for server type", value)
 	}
@@ -127,8 +129,10 @@ func (s *ServerStatus) Scan(value any) error {
 	switch v := value.(type) {
 	case string:
 		return s.UnmarshalText([]byte(v))
+
 	case []byte:
 		return s.UnmarshalText(v)
+
 	default:
 		return fmt.Errorf("type %T is not supported for server status", value)
 	}
@@ -157,6 +161,7 @@ func (h *HardwareData) Scan(value any) error {
 		}
 
 		return json.Unmarshal([]byte(v), h)
+
 	case []byte:
 		if len(v) == 0 {
 			*h = HardwareData{}
@@ -164,6 +169,7 @@ func (h *HardwareData) Scan(value any) error {
 		}
 
 		return json.Unmarshal(v, h)
+
 	default:
 		return fmt.Errorf("type %T is not supported for hardware data", value)
 	}
@@ -199,6 +205,7 @@ func (h *OSData) Scan(value any) error {
 		}
 
 		return json.Unmarshal([]byte(v), h)
+
 	case []byte:
 		if len(v) == 0 {
 			*h = OSData{}
@@ -206,6 +213,7 @@ func (h *OSData) Scan(value any) error {
 		}
 
 		return json.Unmarshal(v, h)
+
 	default:
 		return fmt.Errorf("type %T is not supported for OS data", value)
 	}

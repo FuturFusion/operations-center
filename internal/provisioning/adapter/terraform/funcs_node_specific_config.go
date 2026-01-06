@@ -65,10 +65,13 @@ func splitConfig(m any, kind string) splitConfigs {
 	switch kind {
 	case "node":
 		lookup = nodeSpecificConfig
+
 	case "storage":
 		lookup = nodeSpecificStorageConfig
+
 	case "network":
 		lookup = nodeSpecificNetworkConfig
+
 	default:
 		panic("kind not supported, allowed values: node, storage, network")
 	}

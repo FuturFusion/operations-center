@@ -14,6 +14,7 @@ func TestGroup_Add(t *testing.T) {
 	group := &task.Group{}
 	ok := make(chan struct{})
 	f := func(context.Context) { close(ok) }
+
 	group.Add(f, task.Every(time.Second))
 	group.Start(context.Background())
 
@@ -28,6 +29,7 @@ func TestGroup_StopUngracefully(t *testing.T) {
 	// Create a task function that blocks.
 	ok := make(chan struct{})
 	defer close(ok)
+
 	f := func(context.Context) {
 		ok <- struct{}{}
 		<-ok

@@ -60,6 +60,7 @@ func storageBucketWithParentFilter(storagePool incusapi.StoragePool) bool {
 		// Only these drivers actually allow storage buckets.
 		// Therefore these must not be filtered.
 		return false
+
 	default:
 		return true
 	}

@@ -216,6 +216,7 @@ func ensureSchemaTableExists(ctx context.Context, tx *sql.Tx) error {
 			return fmt.Errorf("failed to create schema table: %w", err)
 		}
 	}
+
 	return nil
 }
 
@@ -262,6 +263,7 @@ func ensureUpdatesAreApplied(ctx context.Context, tx *sql.Tx, current int, updat
 					"failed to execute hook (version %d): %v", current, err)
 			}
 		}
+
 		err := update(ctx, tx)
 		if err != nil {
 			return fmt.Errorf("failed to apply update %d: %w", current, err)
@@ -287,5 +289,6 @@ func checkSchemaVersionsHaveNoHoles(versions []int) error {
 			return fmt.Errorf("Missing updates: %d to %d", versions[i], versions[i+1])
 		}
 	}
+
 	return nil
 }

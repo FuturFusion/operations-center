@@ -11,6 +11,7 @@ func Args(cmd *cobra.Command, args []string, minArgs int, maxArgs int) (exit boo
 		if exit {
 			// Disable normal run, if exit is requested.
 			cmd.Run = func(cmd *cobra.Command, args []string) {}
+
 			cmd.RunE = func(cmd *cobra.Command, args []string) error { return nil } //nolint:revive // https://github.com/mgechev/revive/issues/1528 hopefully fixed in one of the next golangci-lint versions.
 		}
 	}()

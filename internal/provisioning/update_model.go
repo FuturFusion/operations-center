@@ -147,8 +147,10 @@ func (u *UpdateFiles) Scan(value any) error {
 	switch v := value.(type) {
 	case string:
 		return u.UnmarshalText([]byte(v))
+
 	case []byte:
 		return u.UnmarshalText(v)
+
 	default:
 		return fmt.Errorf("type %T is not supported for update file", value)
 	}
@@ -177,9 +179,11 @@ func (c *UpdateChannels) Scan(value any) error {
 	case string:
 		*c = strings.Split(v, ",")
 		return nil
+
 	case []byte:
 		*c = strings.Split(string(v), ",")
 		return nil
+
 	default:
 		return fmt.Errorf("type %T is not supported for update channels", value)
 	}

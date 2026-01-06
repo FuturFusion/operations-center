@@ -28,6 +28,7 @@ func Spawn(inPath string, inContent []byte) ([]byte, error) {
 					break
 				}
 			}
+
 			if editor == "" {
 				return []byte{}, errors.New("No text editor found, please set the EDITOR environment variable")
 			}
