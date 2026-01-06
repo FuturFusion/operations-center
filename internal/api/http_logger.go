@@ -27,6 +27,7 @@ func (httpErrorLogger) Write(p []byte) (n int, err error) {
 	// "unknown certificate" errors are expected, if the client does not provide
 	// a client certificate, since authentication is using OIDC.
 	if badCertificateRe.Match(p) {
+		slog.DebugContext(context.Background(), "expected daemon http server error", logger.Err(errors.New(string(bytes.TrimSpace(p)))))
 		return len(p), nil
 	}
 
