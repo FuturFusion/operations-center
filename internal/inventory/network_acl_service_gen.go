@@ -170,7 +170,7 @@ func (s networkACLService) ResyncByUUID(ctx context.Context, id uuid.UUID) error
 			return err
 		}
 
-		networkACL.ProjectName = retrievedNetworkACL.Project
+		networkACL.ProjectName = firstNonEmpty(retrievedNetworkACL.Project, networkACL.ProjectName, "default")
 		networkACL.Object = IncusNetworkACLWrapper{retrievedNetworkACL}
 		networkACL.LastUpdated = s.now()
 		networkACL.DeriveUUID()
@@ -242,7 +242,7 @@ func (s networkACLService) handleCreateEvent(ctx context.Context, clusterName st
 
 	networkACL := NetworkACL{
 		Cluster:     clusterName,
-		ProjectName: retrievedNetworkACL.Project,
+		ProjectName: firstNonEmpty(retrievedNetworkACL.Project, event.Source.ProjectName, "default"),
 		Name:        retrievedNetworkACL.Name,
 		Object:      IncusNetworkACLWrapper{retrievedNetworkACL},
 		LastUpdated: s.now(),

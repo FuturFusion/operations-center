@@ -38,7 +38,7 @@ VALUES (:uuid, (SELECT cluster_id FROM _lookup), :name, :object, :last_updated)
 RETURNING id, :uuid, :cluster_name, name, object, last_updated;
 `
 
-	marshaledObject, err := json.Marshal(in.Object)
+	marshaledObject, err := json.Marshal(in.Object.StoragePool)
 	if err != nil {
 		return inventory.StoragePool{}, err
 	}
@@ -235,7 +235,7 @@ WHERE uuid=:uuid
 RETURNING id, :uuid, :cluster_name, name, object, last_updated;
 `
 
-	marshaledObject, err := json.Marshal(in.Object)
+	marshaledObject, err := json.Marshal(in.Object.StoragePool)
 	if err != nil {
 		return inventory.StoragePool{}, err
 	}
@@ -270,7 +270,7 @@ func scanStoragePool(row interface{ Scan(dest ...any) error }) (inventory.Storag
 		return inventory.StoragePool{}, sqlite.MapErr(err)
 	}
 
-	err = json.Unmarshal(object, &storagePool.Object)
+	err = json.Unmarshal(object, &storagePool.Object.StoragePool)
 	if err != nil {
 		return inventory.StoragePool{}, err
 	}

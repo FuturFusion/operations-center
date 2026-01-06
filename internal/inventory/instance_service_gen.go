@@ -171,7 +171,7 @@ func (s instanceService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 		}
 
 		instance.Server = retrievedInstance.Location
-		instance.ProjectName = retrievedInstance.Project
+		instance.ProjectName = firstNonEmpty(retrievedInstance.Project, instance.ProjectName, "default")
 		instance.Object = IncusInstanceFullWrapper{retrievedInstance}
 		instance.LastUpdated = s.now()
 		instance.DeriveUUID()
@@ -244,7 +244,7 @@ func (s instanceService) handleCreateEvent(ctx context.Context, clusterName stri
 	instance := Instance{
 		Cluster:     clusterName,
 		Server:      retrievedInstance.Location,
-		ProjectName: retrievedInstance.Project,
+		ProjectName: firstNonEmpty(retrievedInstance.Project, event.Source.ProjectName, "default"),
 		Name:        retrievedInstance.Name,
 		Object:      IncusInstanceFullWrapper{retrievedInstance},
 		LastUpdated: s.now(),

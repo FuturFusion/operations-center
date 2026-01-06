@@ -170,7 +170,7 @@ func (s networkAddressSetService) ResyncByUUID(ctx context.Context, id uuid.UUID
 			return err
 		}
 
-		networkAddressSet.ProjectName = retrievedNetworkAddressSet.Project
+		networkAddressSet.ProjectName = firstNonEmpty(retrievedNetworkAddressSet.Project, networkAddressSet.ProjectName, "default")
 		networkAddressSet.Object = IncusNetworkAddressSetWrapper{retrievedNetworkAddressSet}
 		networkAddressSet.LastUpdated = s.now()
 		networkAddressSet.DeriveUUID()
@@ -242,7 +242,7 @@ func (s networkAddressSetService) handleCreateEvent(ctx context.Context, cluster
 
 	networkAddressSet := NetworkAddressSet{
 		Cluster:     clusterName,
-		ProjectName: retrievedNetworkAddressSet.Project,
+		ProjectName: firstNonEmpty(retrievedNetworkAddressSet.Project, event.Source.ProjectName, "default"),
 		Name:        retrievedNetworkAddressSet.Name,
 		Object:      IncusNetworkAddressSetWrapper{retrievedNetworkAddressSet},
 		LastUpdated: s.now(),

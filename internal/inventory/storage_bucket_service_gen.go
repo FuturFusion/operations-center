@@ -185,7 +185,7 @@ func (s storageBucketService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 		}
 
 		storageBucket.Server = retrievedStorageBucket.Location
-		storageBucket.ProjectName = retrievedStorageBucket.Project
+		storageBucket.ProjectName = firstNonEmpty(retrievedStorageBucket.Project, storageBucket.ProjectName, "default")
 		storageBucket.Object = IncusStorageBucketFullWrapper{retrievedStorageBucket}
 		storageBucket.LastUpdated = s.now()
 		storageBucket.DeriveUUID()
@@ -258,7 +258,7 @@ func (s storageBucketService) handleCreateEvent(ctx context.Context, clusterName
 	storageBucket := StorageBucket{
 		Cluster:         clusterName,
 		Server:          retrievedStorageBucket.Location,
-		ProjectName:     retrievedStorageBucket.Project,
+		ProjectName:     firstNonEmpty(retrievedStorageBucket.Project, event.Source.ProjectName, "default"),
 		StoragePoolName: event.Source.ParentName,
 		Name:            retrievedStorageBucket.Name,
 		Object:          IncusStorageBucketFullWrapper{retrievedStorageBucket},

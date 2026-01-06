@@ -170,7 +170,7 @@ func (s networkService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		network.ProjectName = retrievedNetwork.Project
+		network.ProjectName = firstNonEmpty(retrievedNetwork.Project, network.ProjectName, "default")
 		network.Object = IncusNetworkWrapper{retrievedNetwork}
 		network.LastUpdated = s.now()
 		network.DeriveUUID()
@@ -242,7 +242,7 @@ func (s networkService) handleCreateEvent(ctx context.Context, clusterName strin
 
 	network := Network{
 		Cluster:     clusterName,
-		ProjectName: retrievedNetwork.Project,
+		ProjectName: firstNonEmpty(retrievedNetwork.Project, event.Source.ProjectName, "default"),
 		Name:        retrievedNetwork.Name,
 		Object:      IncusNetworkWrapper{retrievedNetwork},
 		LastUpdated: s.now(),

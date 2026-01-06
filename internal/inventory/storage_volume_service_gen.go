@@ -185,7 +185,7 @@ func (s storageVolumeService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 		}
 
 		storageVolume.Server = retrievedStorageVolume.Location
-		storageVolume.ProjectName = retrievedStorageVolume.Project
+		storageVolume.ProjectName = firstNonEmpty(retrievedStorageVolume.Project, storageVolume.ProjectName, "default")
 		storageVolume.Type = retrievedStorageVolume.Type
 		storageVolume.Object = IncusStorageVolumeFullWrapper{retrievedStorageVolume}
 		storageVolume.LastUpdated = s.now()
@@ -259,7 +259,7 @@ func (s storageVolumeService) handleCreateEvent(ctx context.Context, clusterName
 	storageVolume := StorageVolume{
 		Cluster:         clusterName,
 		Server:          retrievedStorageVolume.Location,
-		ProjectName:     retrievedStorageVolume.Project,
+		ProjectName:     firstNonEmpty(retrievedStorageVolume.Project, event.Source.ProjectName, "default"),
 		StoragePoolName: event.Source.ParentName,
 		Name:            retrievedStorageVolume.Name,
 		Type:            retrievedStorageVolume.Type,
