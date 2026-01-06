@@ -7,6 +7,7 @@ import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 import { Token } from "types/token";
 import { TokenImageFormValues } from "types/token";
+import { BootSecurity } from "util/token";
 import { downloadFile } from "util/util";
 import YAML from "yaml";
 
@@ -35,6 +36,7 @@ const TokenDownloadModal: FC<Props> = ({
       install: {
         force_install: true,
         force_reboot: false,
+        boot_security: BootSecurity.OPTIMAL,
         target: {
           id: "",
         },
@@ -83,11 +85,22 @@ const TokenDownloadModal: FC<Props> = ({
       }
 
       handleClose();
+
+      const bootSecurity = values.seeds.install.boot_security;
+
+      delete values.seeds.install.boot_security;
+
       download({
         ...values,
         seeds: {
           applications: { applications: applications },
-          install: values.seeds.install,
+          install: {
+            ...values.seeds.install,
+            security: {
+              missing_tpm: bootSecurity == BootSecurity.NO_TPM,
+              missing_secure_boot: bootSecurity == BootSecurity.NO_SECURE_BOOT,
+            },
+          },
           network: parsedNetwork,
           migration_manager: parsedMigrationManager,
           operations_center: parsedOperationsCenter,
@@ -118,6 +131,7 @@ const TokenDownloadModal: FC<Props> = ({
   return (
     <ModalWindow
       show={show}
+      scrollable
       handleClose={handleClose}
       title="Download image"
       footer={

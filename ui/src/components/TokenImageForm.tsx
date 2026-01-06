@@ -2,6 +2,7 @@ import { FC } from "react";
 import { Form } from "react-bootstrap";
 import { FormikProps } from "formik/dist/types";
 import ArchSelect from "components/ArchSelect";
+import BootSecuritySelect from "components/BootSecuritySelect";
 import ImageTypeSelect from "components/ImageTypeSelect";
 import SecondaryIncusSelect from "components/SecondaryIncusSelect";
 import { TokenImageFormValues } from "types/token";
@@ -138,6 +139,12 @@ const TokenImageForm: FC<Props> = ({ formik }) => {
             className="editor"
           />
         </Form.Group>
+        <BootSecuritySelect
+          value={formik.values.seeds.install.boot_security}
+          onChange={(val) =>
+            formik.setFieldValue("seeds.install.boot_security", val)
+          }
+        />
       </Form>
     </div>
   );
