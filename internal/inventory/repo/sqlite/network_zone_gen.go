@@ -38,7 +38,7 @@ VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :name, :object, 
 RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
 `
 
-	marshaledObject, err := json.Marshal(in.Object)
+	marshaledObject, err := json.Marshal(in.Object.NetworkZone)
 	if err != nil {
 		return inventory.NetworkZone{}, err
 	}
@@ -246,7 +246,7 @@ WHERE uuid=:uuid
 RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
 `
 
-	marshaledObject, err := json.Marshal(in.Object)
+	marshaledObject, err := json.Marshal(in.Object.NetworkZone)
 	if err != nil {
 		return inventory.NetworkZone{}, err
 	}
@@ -283,7 +283,7 @@ func scanNetworkZone(row interface{ Scan(dest ...any) error }) (inventory.Networ
 		return inventory.NetworkZone{}, sqlite.MapErr(err)
 	}
 
-	err = json.Unmarshal(object, &networkZone.Object)
+	err = json.Unmarshal(object, &networkZone.Object.NetworkZone)
 	if err != nil {
 		return inventory.NetworkZone{}, err
 	}

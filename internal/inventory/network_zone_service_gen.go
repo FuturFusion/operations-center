@@ -170,7 +170,7 @@ func (s networkZoneService) ResyncByUUID(ctx context.Context, id uuid.UUID) erro
 			return err
 		}
 
-		networkZone.ProjectName = retrievedNetworkZone.Project
+		networkZone.ProjectName = firstNonEmpty(retrievedNetworkZone.Project, networkZone.ProjectName, "default")
 		networkZone.Object = IncusNetworkZoneWrapper{retrievedNetworkZone}
 		networkZone.LastUpdated = s.now()
 		networkZone.DeriveUUID()
@@ -242,7 +242,7 @@ func (s networkZoneService) handleCreateEvent(ctx context.Context, clusterName s
 
 	networkZone := NetworkZone{
 		Cluster:     clusterName,
-		ProjectName: retrievedNetworkZone.Project,
+		ProjectName: firstNonEmpty(retrievedNetworkZone.Project, event.Source.ProjectName, "default"),
 		Name:        retrievedNetworkZone.Name,
 		Object:      IncusNetworkZoneWrapper{retrievedNetworkZone},
 		LastUpdated: s.now(),

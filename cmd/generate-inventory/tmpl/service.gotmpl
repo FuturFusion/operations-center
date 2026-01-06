@@ -200,7 +200,7 @@ func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uui
 		{{ .Name | camelcase }}.Server = retrieved{{ .Name | pascalcase }}.Location
 {{- end }}
 {{- if .HasProjectDirect }}
-		{{ .Name | camelcase }}.ProjectName = retrieved{{ .Name | pascalcase }}.Project
+		{{ .Name | camelcase }}.ProjectName = firstNonEmpty(retrieved{{ .Name | pascalcase }}.Project, {{ .Name | camelcase }}.ProjectName, "default")
 {{- end }}
 {{- range .ExtraAttributes }}
 		{{ $.Name | camelcase }}. {{ .Name | pascalcase }} = retrieved{{ $.Name | pascalcase }}.{{ .Name | pascalcase }}
@@ -280,7 +280,7 @@ func (s {{ .Name | camelcase }}Service) handleCreateEvent(ctx context.Context, c
 		Server:      retrieved{{ .Name | pascalcase }}.Location,
 {{- end }}
 {{- if .HasProjectDirect }}
-		ProjectName: retrieved{{ .Name | pascalcase }}.Project,
+		ProjectName: firstNonEmpty(retrieved{{ .Name | pascalcase }}.Project, event.Source.ProjectName, "default"),
 {{- end }}
 {{- if .HasParent }}
 		{{ .ParentName | pascalcase }}Name: event.Source.ParentName,

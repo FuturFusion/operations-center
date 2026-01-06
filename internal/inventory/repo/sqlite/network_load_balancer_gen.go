@@ -40,7 +40,7 @@ VALUES (:uuid, (SELECT cluster_id FROM _lookup), :network_name, :name, :object, 
 RETURNING id, :uuid, :cluster_name, COALESCE((select project_name from _parent_lookup), '') AS project_name, network_name, name, object, last_updated;
 `
 
-	marshaledObject, err := json.Marshal(in.Object)
+	marshaledObject, err := json.Marshal(in.Object.NetworkLoadBalancer)
 	if err != nil {
 		return inventory.NetworkLoadBalancer{}, err
 	}
@@ -263,7 +263,7 @@ WHERE uuid=:uuid
 RETURNING id, :uuid, :cluster_name, COALESCE((select project_name from _parent_lookup), '') AS project_name, network_name, name, object, last_updated;
 `
 
-	marshaledObject, err := json.Marshal(in.Object)
+	marshaledObject, err := json.Marshal(in.Object.NetworkLoadBalancer)
 	if err != nil {
 		return inventory.NetworkLoadBalancer{}, err
 	}
@@ -301,7 +301,7 @@ func scanNetworkLoadBalancer(row interface{ Scan(dest ...any) error }) (inventor
 		return inventory.NetworkLoadBalancer{}, sqlite.MapErr(err)
 	}
 
-	err = json.Unmarshal(object, &networkLoadBalancer.Object)
+	err = json.Unmarshal(object, &networkLoadBalancer.Object.NetworkLoadBalancer)
 	if err != nil {
 		return inventory.NetworkLoadBalancer{}, err
 	}

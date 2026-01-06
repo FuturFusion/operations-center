@@ -170,7 +170,7 @@ func (s profileService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		profile.ProjectName = retrievedProfile.Project
+		profile.ProjectName = firstNonEmpty(retrievedProfile.Project, profile.ProjectName, "default")
 		profile.Object = IncusProfileWrapper{retrievedProfile}
 		profile.LastUpdated = s.now()
 		profile.DeriveUUID()
@@ -242,7 +242,7 @@ func (s profileService) handleCreateEvent(ctx context.Context, clusterName strin
 
 	profile := Profile{
 		Cluster:     clusterName,
-		ProjectName: retrievedProfile.Project,
+		ProjectName: firstNonEmpty(retrievedProfile.Project, event.Source.ProjectName, "default"),
 		Name:        retrievedProfile.Name,
 		Object:      IncusProfileWrapper{retrievedProfile},
 		LastUpdated: s.now(),

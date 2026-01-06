@@ -170,7 +170,7 @@ func (s imageService) ResyncByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		image.ProjectName = retrievedImage.Project
+		image.ProjectName = firstNonEmpty(retrievedImage.Project, image.ProjectName, "default")
 		image.Object = IncusImageWrapper{retrievedImage}
 		image.LastUpdated = s.now()
 		image.DeriveUUID()
@@ -242,7 +242,7 @@ func (s imageService) handleCreateEvent(ctx context.Context, clusterName string,
 
 	image := Image{
 		Cluster:     clusterName,
-		ProjectName: retrievedImage.Project,
+		ProjectName: firstNonEmpty(retrievedImage.Project, event.Source.ProjectName, "default"),
 		Name:        retrievedImage.Fingerprint,
 		Object:      IncusImageWrapper{retrievedImage},
 		LastUpdated: s.now(),

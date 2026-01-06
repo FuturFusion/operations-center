@@ -38,7 +38,7 @@ VALUES (:uuid, (SELECT cluster_id FROM _lookup), :project_name, :name, :object, 
 RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
 `
 
-	marshaledObject, err := json.Marshal(in.Object)
+	marshaledObject, err := json.Marshal(in.Object.Image)
 	if err != nil {
 		return inventory.Image{}, err
 	}
@@ -246,7 +246,7 @@ WHERE uuid=:uuid
 RETURNING id, :uuid, :cluster_name, project_name, name, object, last_updated;
 `
 
-	marshaledObject, err := json.Marshal(in.Object)
+	marshaledObject, err := json.Marshal(in.Object.Image)
 	if err != nil {
 		return inventory.Image{}, err
 	}
@@ -283,7 +283,7 @@ func scanImage(row interface{ Scan(dest ...any) error }) (inventory.Image, error
 		return inventory.Image{}, sqlite.MapErr(err)
 	}
 
-	err = json.Unmarshal(object, &image.Object)
+	err = json.Unmarshal(object, &image.Object.Image)
 	if err != nil {
 		return inventory.Image{}, err
 	}
