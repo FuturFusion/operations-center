@@ -47,12 +47,13 @@ Visit [IncusOS image downloader](https://incusos-customizer.linuxcontainers.org/
 and configure your ISO as follows:
 
 * Image type: `ISO`
-* Image architecture: according to your system's architecture
 * Image usage: `Installation`
+* Image architecture: according to your system's architecture
 * Image application: `Operations Center`
 * Don't select `Wipe the target drive` and `Automatic reboot after installation`.
 * Select `Apply default configuration`
 * Insert your TLS client certificate
+* Optionally use OIDC authentication provided by https://sso.linuxcontainers.org
 * No _Advanced settings_ are necessary
 
 Hit **Download** to get the ISO and store it as `~/Downloads/IncusOS_OperationsCenter.iso`.
@@ -96,6 +97,30 @@ EOF
 IMAGES_RESP=$(curl -s -X POST -d @${OPERATIONS_CENTER_SEED_FILE} "https://incusos-customizer.linuxcontainers.org/1.0/images")
 DOWNLOAD_PATH=$(echo ${IMAGES_RESP} | jq -r '.metadata.image')
 curl -o ~/Downloads/IncusOS_OperationsCenter.iso --compressed "https://incusos-customizer.linuxcontainers.org${DOWNLOAD_PATH}"
+```
+
+Optionally add the OIDC client configuration in the `seeds.operations-center` section:
+
+```text
+{
+  "seeds": {
+    ...
+    "operations-center": {
+      ...
+      "preseed": {
+        "system_security": {
+          "oidc": {
+            "claim": "preferred_username",
+            "client_id": "<your_client_id>",
+            "issuer": "https://sso.linuxcontainers.org",
+            "scopes": "openid,offline_access"
+          }
+        }
+      }
+    }
+  },
+  ...
+}
 ```
 
 ````
@@ -202,6 +227,10 @@ operations-center remote switch tutorial-operations-center
 
 ````
 ````{group-tab} Web UI
+
+If you have setup OIDC authentication during the ISO creation, you can log in
+using your OIDC credentials. If not, you need to set up certificate-based
+authentication first.
 
 Follow the instructions in the
 [Setup Operations Center UI tutorial](./setup-operations-center-ui.md) to set up

@@ -25,6 +25,7 @@ JSON
 Keychain
 keypair
 lang
+linuxcontainers
 LVM
 MacOS
 nvme
@@ -41,6 +42,7 @@ resync
 Resync
 rollout
 SHA
+sso
 struct
 Terraform
 TLS
