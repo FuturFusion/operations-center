@@ -425,6 +425,9 @@ func (s *serverService) SelfUpdate(ctx context.Context, serverUpdate ServerSelfU
 }
 
 func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error {
+	var server Server
+	pollAfterCreate := false
+
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		servers, err := s.repo.GetAllWithFilter(ctx, ServerFilter{
 			Type: ptr.To(api.ServerTypeOperationsCenter),
@@ -446,7 +449,6 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 		serverURL := s.serverURL
 		s.mu.Unlock()
 
-		var server Server
 		var upsert func(context.Context, Server) error
 
 		if len(servers) == 0 {
@@ -465,6 +467,8 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 				_, err := s.repo.Create(ctx, server)
 				return err
 			}
+
+			pollAfterCreate = true
 		} else {
 			// Update existing server entry
 
@@ -493,6 +497,13 @@ func (s *serverService) SelfRegisterOperationsCenter(ctx context.Context) error 
 	})
 	if err != nil {
 		return err
+	}
+
+	if pollAfterCreate {
+		err = s.pollServer(ctx, server, true)
+		if err != nil {
+			return fmt.Errorf("Failed to update server configuration after self registration: %w", err)
+		}
 	}
 
 	return nil

@@ -45,6 +45,7 @@ func TestServerService_UpdateServerURL(t *testing.T) {
 		argServerURL            string
 		repoGetAllWithFilter    provisioning.Servers
 		repoGetAllWithFilterErr error
+		repoGetByName           provisioning.Server
 		repoUpdateErr           error
 		repoCreateErr           error
 
@@ -69,6 +70,10 @@ func TestServerService_UpdateServerURL(t *testing.T) {
 			name:                 "success - operations center self update - no server of type operations center - trigger self register",
 			argServerURL:         "https://new:8443",
 			repoGetAllWithFilter: provisioning.Servers{},
+			repoGetByName: provisioning.Server{
+				Name:   "operations-center",
+				Status: api.ServerStatusReady,
+			},
 
 			assertErr: require.NoError,
 		},
@@ -138,6 +143,9 @@ func TestServerService_UpdateServerURL(t *testing.T) {
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
 					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
 				},
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByName, nil
+				},
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
 					require.Equal(t, fixedDate, in.LastSeen)
 					return tc.repoUpdateErr
@@ -147,7 +155,22 @@ func TestServerService_UpdateServerURL(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, "https://one:8443", serverCertificate,
+			client := &adapterMock.ServerClientPortMock{
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return nil
+				},
+				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
+					return api.HardwareData{}, nil
+				},
+				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
+					return api.OSData{}, nil
+				},
+				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
+					return api.ServerTypeIncus, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, "https://one:8443", serverCertificate,
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -174,6 +197,7 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 		argCertificate          tls.Certificate
 		repoGetAllWithFilter    provisioning.Servers
 		repoGetAllWithFilterErr error
+		repoGetByName           provisioning.Server
 		repoUpdateErr           error
 		repoCreateErr           error
 
@@ -198,6 +222,10 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 			name:                 "success - operations center self update - no server of type operations center - trigger self register",
 			argCertificate:       serverCertificate,
 			repoGetAllWithFilter: provisioning.Servers{},
+			repoGetByName: provisioning.Server{
+				Name:   "operations-center",
+				Status: api.ServerStatusReady,
+			},
 
 			assertErr: require.NoError,
 		},
@@ -250,6 +278,9 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
 					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
 				},
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByName, nil
+				},
 				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
 					require.Equal(t, fixedDate, in.LastSeen)
 					return tc.repoUpdateErr
@@ -259,7 +290,22 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, "https://one:8443", serverCertificate,
+			client := &adapterMock.ServerClientPortMock{
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return nil
+				},
+				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
+					return api.HardwareData{}, nil
+				},
+				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
+					return api.OSData{}, nil
+				},
+				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
+					return api.ServerTypeIncus, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, "https://one:8443", serverCertificate,
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 			)
 
@@ -1587,6 +1633,8 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 		repoGetAllWithFilterErr error
 		repoCreateID            int64
 		repoCreateErr           error
+		repoGetByName           provisioning.Server
+		clientGetResourcesErr   error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -1595,6 +1643,10 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 			argServerURL:         "https://192.168.1.200:8443",
 			repoGetAllWithFilter: provisioning.Servers{},
 			repoCreateID:         1,
+			repoGetByName: provisioning.Server{
+				Name:   "operations-center",
+				Status: api.ServerStatusReady,
+			},
 
 			assertErr: require.NoError,
 		},
@@ -1636,6 +1688,19 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 		},
+		{
+			name:                 "success - Operations Center initial self update (registration)",
+			argServerURL:         "https://192.168.1.200:8443",
+			repoGetAllWithFilter: provisioning.Servers{},
+			repoCreateID:         1,
+			repoGetByName: provisioning.Server{
+				Name:   "operations-center",
+				Status: api.ServerStatusReady,
+			},
+			clientGetResourcesErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
 	}
 
 	for _, tc := range tests {
@@ -1645,12 +1710,35 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 				GetAllWithFilterFunc: func(ctx context.Context, filter provisioning.ServerFilter) (provisioning.Servers, error) {
 					return tc.repoGetAllWithFilter, tc.repoGetAllWithFilterErr
 				},
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByName, nil
+				},
 				CreateFunc: func(ctx context.Context, server provisioning.Server) (int64, error) {
 					return tc.repoCreateID, tc.repoCreateErr
 				},
+				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
+					require.Equal(t, api.ServerStatusReady, server.Status)
+					require.Equal(t, fixedDate, server.LastSeen)
+					return nil
+				},
 			}
 
-			serverSvc := provisioning.NewServerService(repo, nil, nil, nil, tc.argServerURL, serverCertificate,
+			client := &adapterMock.ServerClientPortMock{
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return nil
+				},
+				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
+					return api.HardwareData{}, tc.clientGetResourcesErr
+				},
+				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
+					return api.OSData{}, nil
+				},
+				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
+					return api.ServerTypeIncus, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, tc.argServerURL, serverCertificate,
 				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
 			)
 
