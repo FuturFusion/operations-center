@@ -53,6 +53,7 @@ func registerProvisioningServerHandler(router Router, authorizer *authz.Authoriz
 	router.HandleFunc("PUT /{name}", response.With(handler.serverPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("DELETE /{name}", response.With(handler.serverDelete, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanDelete)))
 	router.HandleFunc("POST /{name}", response.With(handler.serverPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("POST /{name}/:resync", response.With(handler.serverResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/system/network", response.With(handler.serverSystemNetworkGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /{name}/system/network", response.With(handler.serverSystemNetworkPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
@@ -686,6 +687,37 @@ func (s *serverHandler) serverPost(r *http.Request) response.Response {
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/provisioning/servers/"+server.Name)
+}
+
+// swagger:operation POST /1.0/provisioning/servers/{name}/:resync servers server_resync_post
+//
+//	Sync server state
+//
+//	Trigger re-sync of the server's state.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverResyncPost(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	err := s.service.ResyncByName(r.Context(), name)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get server %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
 }
 
 // swagger:operation GET /1.0/provisioning/servers/{name}/system/network servers_system_network server_system_network_get
