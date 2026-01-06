@@ -2357,3 +2357,84 @@ func TestServerService_PollPendingServers(t *testing.T) {
 		})
 	}
 }
+
+func TestServerService_ResyncByName(t *testing.T) {
+	serverCertPEM, serverKeyPEM, err := incustls.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	serverCertificate, err := tls.X509KeyPair(serverCertPEM, serverKeyPEM)
+	require.NoError(t, err)
+
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	tests := []struct {
+		name             string
+		repoGetByName    provisioning.Server
+		repoGetByNameErr error
+		repoUpdateErr    error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByName: provisioning.Server{
+				Name:   "operations-center",
+				Status: api.ServerStatusReady,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:          "error - pollServer",
+			repoUpdateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByName, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					require.Equal(t, fixedDate, in.LastSeen)
+					return tc.repoUpdateErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+					return nil
+				},
+				GetResourcesFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.HardwareData, error) {
+					return api.HardwareData{}, nil
+				},
+				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
+					return api.OSData{}, nil
+				},
+				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
+					return api.ServerTypeIncus, nil
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, "https://one:8443", serverCertificate,
+				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
+			)
+
+			// Run test
+			err := serverSvc.ResyncByName(t.Context(), "one")
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}

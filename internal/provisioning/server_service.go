@@ -579,6 +579,20 @@ func (s *serverService) PollServers(ctx context.Context, serverStatus api.Server
 	return errors.Join(errs...)
 }
 
+func (s *serverService) ResyncByName(ctx context.Context, name string) error {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	err = s.pollServer(ctx, *server, true)
+	if err != nil {
+		return fmt.Errorf("Failed to resync server %q by name: %w", name, err)
+	}
+
+	return nil
+}
+
 func (s *serverService) pollServer(ctx context.Context, server Server, updateServerConfiguration bool) error {
 	log := slog.With(slog.String("name", server.Name), slog.String("url", server.ConnectionURL))
 
