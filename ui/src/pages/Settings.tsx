@@ -3,6 +3,7 @@ import TabView from "components/TabView";
 import SystemCertConfiguration from "components/SystemCertConfiguration";
 import SystemNetworkConfiguration from "components/SystemNetworkConfiguration";
 import SystemSecurityConfiguration from "components/SystemSecurityConfiguration";
+import SystemSettingsConfiguration from "components/SystemSettingsConfiguration";
 import SystemUpdatesConfiguration from "components/SystemUpdatesConfiguration";
 
 const Settings = () => {
@@ -19,6 +20,11 @@ const Settings = () => {
       key: "security",
       title: "Security",
       content: <SystemSecurityConfiguration />,
+    },
+    {
+      key: "settings",
+      title: "Settings",
+      content: <SystemSettingsConfiguration />,
     },
     {
       key: "certificate",
