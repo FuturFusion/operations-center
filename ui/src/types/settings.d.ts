@@ -40,6 +40,10 @@ export interface SystemSecurityACME {
   provider_resolvers: string[];
 }
 
+export interface SystemSettings {
+  log_level: string;
+}
+
 export interface SystemCertificate {
   certificate: string;
   key: string;

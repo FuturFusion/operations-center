@@ -1,5 +1,10 @@
 import { APIResponse } from "types/response";
-import { SystemNetwork, SystemSecurity, SystemUpdates } from "types/settings";
+import {
+  SystemNetwork,
+  SystemSecurity,
+  SystemSettings,
+  SystemUpdates,
+} from "types/settings";
 
 export const fetchSystemNetwork = (): Promise<SystemNetwork> => {
   return new Promise((resolve, reject) => {
@@ -13,6 +18,15 @@ export const fetchSystemNetwork = (): Promise<SystemNetwork> => {
 export const fetchSystemSecurity = (): Promise<SystemSecurity> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/system/security`)
+      .then((response) => response.json())
+      .then((data) => resolve(data.metadata))
+      .catch(reject);
+  });
+};
+
+export const fetchSystemSettings = (): Promise<SystemSettings> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/system/settings`)
       .then((response) => response.json())
       .then((data) => resolve(data.metadata))
       .catch(reject);
@@ -61,6 +75,20 @@ export const updateSystemSecurity = (
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/system/security`, {
+      method: "PUT",
+      body: body,
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
+export const updateSystemSettings = (
+  body: string,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/system/settings`, {
       method: "PUT",
       body: body,
     })
