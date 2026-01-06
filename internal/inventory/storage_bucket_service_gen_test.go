@@ -871,7 +871,7 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:           "error - rename",
+			name:           "error - rename - delete",
 			argClusterName: "cluster",
 			argLifecycleEvent: domain.LifecycleEvent{
 				ResourceType: "storage-bucket",
@@ -903,6 +903,42 @@ func TestStorageBucketService_ResyncByName(t *testing.T) {
 				},
 			},
 			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - rename - create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "storage-bucket",
+				Operation:    domain.LifecycleOperationRename,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "storage_pool",
+					Name:        "storage_bucket-new",
+					OldName:     "storage_bucket",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			storageBucketClientGetStorageBucketByName: incusapi.StorageBucketFull{
+				StorageBucket: incusapi.StorageBucket{
+					Name:     "storage_bucket-new",
+					Location: "server01",
+					Project:  "project",
+				},
+			},
+			repoCreateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},

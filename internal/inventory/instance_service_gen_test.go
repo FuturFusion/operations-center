@@ -849,7 +849,7 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:           "error - rename",
+			name:           "error - rename - delete",
 			argClusterName: "cluster",
 			argLifecycleEvent: domain.LifecycleEvent{
 				ResourceType: "instance",
@@ -880,6 +880,41 @@ func TestInstanceService_ResyncByName(t *testing.T) {
 				},
 			},
 			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - rename - create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "instance",
+				Operation:    domain.LifecycleOperationRename,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					Name:        "instance-new",
+					OldName:     "instance",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			instanceClientGetInstanceByName: incusapi.InstanceFull{
+				Instance: incusapi.Instance{
+					Name:     "instance-new",
+					Location: "server01",
+					Project:  "project",
+				},
+			},
+			repoCreateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},

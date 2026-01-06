@@ -834,7 +834,7 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:           "error - rename",
+			name:           "error - rename - delete",
 			argClusterName: "cluster",
 			argLifecycleEvent: domain.LifecycleEvent{
 				ResourceType: "network-load-balancer",
@@ -862,6 +862,38 @@ func TestNetworkLoadBalancerService_ResyncByName(t *testing.T) {
 				ListenAddress: "network_load_balancer-new",
 			},
 			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - rename - create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-load-balancer",
+				Operation:    domain.LifecycleOperationRename,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					ParentName:  "network",
+					Name:        "network_load_balancer-new",
+					OldName:     "network_load_balancer",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkLoadBalancerClientGetNetworkLoadBalancerByName: incusapi.NetworkLoadBalancer{
+				ListenAddress: "network_load_balancer-new",
+			},
+			repoCreateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},

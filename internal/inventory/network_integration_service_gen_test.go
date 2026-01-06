@@ -791,7 +791,7 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:           "error - rename",
+			name:           "error - rename - delete",
 			argClusterName: "cluster",
 			argLifecycleEvent: domain.LifecycleEvent{
 				ResourceType: "network-integration",
@@ -817,6 +817,36 @@ func TestNetworkIntegrationService_ResyncByName(t *testing.T) {
 				Name: "network_integration-new",
 			},
 			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - rename - create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-integration",
+				Operation:    domain.LifecycleOperationRename,
+				Source: domain.LifecycleSource{
+					Name:    "network_integration-new",
+					OldName: "network_integration",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkIntegrationClientGetNetworkIntegrationByName: incusapi.NetworkIntegration{
+				Name: "network_integration-new",
+			},
+			repoCreateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},

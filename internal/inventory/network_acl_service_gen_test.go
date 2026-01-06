@@ -840,7 +840,7 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:           "error - rename",
+			name:           "error - rename - delete",
 			argClusterName: "cluster",
 			argLifecycleEvent: domain.LifecycleEvent{
 				ResourceType: "network-acl",
@@ -870,6 +870,40 @@ func TestNetworkACLService_ResyncByName(t *testing.T) {
 				Project: "project",
 			},
 			repoDeleteByUUIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:           "error - rename - create",
+			argClusterName: "cluster",
+			argLifecycleEvent: domain.LifecycleEvent{
+				ResourceType: "network-acl",
+				Operation:    domain.LifecycleOperationRename,
+				Source: domain.LifecycleSource{
+					ProjectName: "project",
+					Name:        "network_acl-new",
+					OldName:     "network_acl",
+				},
+			},
+			repoGetAllUUIDsWithFilterUUIDs: []uuid.UUID{
+				uuidgen.FromPattern(t, "1"),
+			},
+			clusterSvcGetEndpoint: provisioning.ClusterEndpoint{
+				{
+					ConnectionURL:        "https://server01/",
+					Certificate:          "cert",
+					Cluster:              ptr.To("cluster"),
+					ClusterConnectionURL: ptr.To("https://cluster/"),
+					ClusterCertificate:   ptr.To("cluster-cert"),
+				},
+			},
+			networkACLClientGetNetworkACLByName: incusapi.NetworkACL{
+				NetworkACLPost: incusapi.NetworkACLPost{
+					Name: "network_acl-new",
+				},
+				Project: "project",
+			},
+			repoCreateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
