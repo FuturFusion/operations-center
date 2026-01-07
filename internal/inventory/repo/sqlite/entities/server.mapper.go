@@ -10,7 +10,7 @@ import (
 )
 
 var serverObjects = RegisterStmt(`
-SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.status, servers.last_updated, servers.last_seen
+SELECT servers.id, clusters.name AS cluster, servers.name, servers.type, servers.connection_url, servers.public_connection_url, servers.certificate, clusters.certificate AS cluster_certificate, clusters.connection_url AS cluster_connection_url, servers.hardware_data, servers.os_data, servers.version_data, servers.status, servers.last_updated, servers.last_seen
   FROM servers
   LEFT JOIN clusters ON servers.cluster_id = clusters.id
   ORDER BY servers.name
