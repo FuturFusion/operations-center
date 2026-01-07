@@ -439,8 +439,9 @@ func (c *cmdServerResync) run(cmd *cobra.Command, args []string) error {
 type cmdServerShow struct {
 	ocClient *client.OperationsCenterClient
 
-	flagShowResources bool
-	flagShowOSData    bool
+	flagShowResources   bool
+	flagShowOSData      bool
+	flagShowVersionData bool
 }
 
 func (c *cmdServerShow) Command() *cobra.Command {
@@ -453,6 +454,7 @@ func (c *cmdServerShow) Command() *cobra.Command {
 
 	cmd.Flags().BoolVar(&c.flagShowResources, "resources", false, "show server resource details")
 	cmd.Flags().BoolVar(&c.flagShowOSData, "os-data", false, "show server OS data")
+	cmd.Flags().BoolVar(&c.flagShowVersionData, "version-data", false, "show server version data")
 
 	cmd.PreRunE = c.validateArgsAndFlags
 	cmd.RunE = c.run
@@ -505,6 +507,15 @@ func (c *cmdServerShow) run(cmd *cobra.Command, args []string) error {
 		}
 
 		fmt.Printf("OS Data:\n%s\n", render.Indent(4, string(osDataJSON)))
+	}
+
+	if c.flagShowVersionData {
+		versionDataJSON, err := json.MarshalIndent(server.VersionData, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Version Data:\n%s\n", render.Indent(4, string(versionDataJSON)))
 	}
 
 	return nil
