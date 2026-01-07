@@ -219,6 +219,64 @@ func (h *OSData) Scan(value any) error {
 	}
 }
 
+// ServerVersionData defines the version information for a server including
+// the OS and all its applications.
+//
+// swagger:model
+type ServerVersionData struct {
+	// OS holds the version information for the operating system.
+	OS VersionData `json:"os" yaml:"os"`
+
+	// Applications holds the version information for the installed applications.
+	Applications []VersionData `json:"applications" yaml:"applications"`
+}
+
+// VersionData defines a single version information for a software (OS or application).
+//
+// swagger:model
+type VersionData struct {
+	// Name of the software component.
+	// Example: IncusOS
+	Name string `json:"name" yaml:"name"`
+
+	// Version string.
+	// Example: 202512250102
+	Version string `json:"version" yaml:"version"`
+}
+
+// Value implements the sql driver.Valuer interface.
+func (s ServerVersionData) Value() (driver.Value, error) {
+	return json.Marshal(s)
+}
+
+// Scan implements the sql.Scanner interface.
+func (s *ServerVersionData) Scan(value any) error {
+	if value == nil {
+		return fmt.Errorf("null is not a valid server version data")
+	}
+
+	switch v := value.(type) {
+	case string:
+		if len(v) == 0 {
+			*s = ServerVersionData{}
+			return nil
+		}
+
+		return json.Unmarshal([]byte(v), s)
+
+	case []byte:
+		if len(v) == 0 {
+			*s = ServerVersionData{}
+			return nil
+		}
+
+		return json.Unmarshal(v, s)
+
+	default:
+		return fmt.Errorf("type %T is not supported for server version data", value)
+	}
+}
+
 // ServerPost defines a new server running Hypervisor OS.
 //
 // swagger:model
@@ -278,8 +336,7 @@ type Server struct {
 	OSData OSData `json:"os_data" yaml:"os_data"`
 
 	// VersionData contains information about the servers version.
-	// Example: ...
-	VersionData json.RawMessage `json:"version_data" yaml:"version_data"` // FIXME: it is not yet clear, how the structure of the version information will actually look like.
+	VersionData ServerVersionData `json:"version_data" yaml:"version_data"`
 
 	// Status contains the status the server is currently in from the point of view of Operations Center.
 	// Possible values for status are: pending, ready
