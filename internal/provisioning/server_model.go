@@ -2,7 +2,6 @@ package provisioning
 
 import (
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"time"
@@ -15,22 +14,22 @@ import (
 //generate-expr: Server
 
 type Server struct {
-	ID                   int64            `json:"-"`
-	Cluster              *string          `json:"cluster"                db:"leftjoin=clusters.name"`
-	Name                 string           `json:"name"                   db:"primary=yes"`
-	Type                 api.ServerType   `json:"type"`
-	ConnectionURL        string           `json:"connection_url"`
-	PublicConnectionURL  string           `json:"public_connection_url"`
-	Certificate          string           `json:"certificate"`
-	Fingerprint          string           `json:"fingerprint"            db:"ignore"`
-	ClusterCertificate   *string          `json:"cluster_certificate"    db:"omit=create,update&leftjoin=clusters.certificate"`
-	ClusterConnectionURL *string          `json:"cluster_connection_url" db:"omit=create,update&leftjoin=clusters.connection_url"`
-	HardwareData         api.HardwareData `json:"hardware_data"`
-	OSData               api.OSData       `json:"os_data"`
-	VersionData          json.RawMessage  `json:"version_data"           db:"ignore"` // FIXME: it is not yet clear, how the structure of the version information will actually look like.
-	Status               api.ServerStatus `json:"status"`
-	LastUpdated          time.Time        `json:"last_updated"           db:"update_timestamp"`
-	LastSeen             time.Time        `json:"last_seen"`
+	ID                   int64                 `json:"-"`
+	Cluster              *string               `json:"cluster"                db:"leftjoin=clusters.name"`
+	Name                 string                `json:"name"                   db:"primary=yes"`
+	Type                 api.ServerType        `json:"type"`
+	ConnectionURL        string                `json:"connection_url"`
+	PublicConnectionURL  string                `json:"public_connection_url"`
+	Certificate          string                `json:"certificate"`
+	Fingerprint          string                `json:"fingerprint"            db:"ignore"`
+	ClusterCertificate   *string               `json:"cluster_certificate"    db:"omit=create,update&leftjoin=clusters.certificate"`
+	ClusterConnectionURL *string               `json:"cluster_connection_url" db:"omit=create,update&leftjoin=clusters.connection_url"`
+	HardwareData         api.HardwareData      `json:"hardware_data"`
+	OSData               api.OSData            `json:"os_data"`
+	VersionData          api.ServerVersionData `json:"version_data"`
+	Status               api.ServerStatus      `json:"status"`
+	LastUpdated          time.Time             `json:"last_updated"           db:"update_timestamp"`
+	LastSeen             time.Time             `json:"last_seen"`
 }
 
 func (s Server) GetConnectionURL() string {

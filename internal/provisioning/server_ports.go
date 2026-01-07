@@ -46,6 +46,7 @@ type ServerClientPort interface {
 	Ping(ctx context.Context, endpoint Endpoint) error
 	GetResources(ctx context.Context, endpoint Endpoint) (api.HardwareData, error)
 	GetOSData(ctx context.Context, endpoint Endpoint) (api.OSData, error)
+	GetVersionData(ctx context.Context, endpoint Endpoint) (api.ServerVersionData, error)
 	GetServerType(ctx context.Context, endpoint Endpoint) (api.ServerType, error)
 	UpdateNetworkConfig(ctx context.Context, server Server) error
 	GetProviderConfig(ctx context.Context, server Server) (ServerSystemProvider, error)
