@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router";
 import { fetchServers } from "api/server";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
+import ServerActions from "components/ServerActions";
 import type { Server } from "types/server";
 import type { ServerTypeKey } from "util/server";
 import { ServerTypeString } from "util/server";
@@ -27,7 +28,14 @@ const Server = () => {
     retry: false,
   });
 
-  const headers = ["Name", "Cluster", "Connection URL", "Type", "Status"];
+  const headers = [
+    "Name",
+    "Cluster",
+    "Connection URL",
+    "Type",
+    "Status",
+    "Actions",
+  ];
   const rows = servers.map((item) => {
     const connectionURL = item.public_connection_url || item.connection_url;
 
@@ -66,6 +74,9 @@ const Server = () => {
       {
         content: item.server_status,
         sortKey: item.server_status,
+      },
+      {
+        content: <ServerActions server={item} />,
       },
     ];
   });

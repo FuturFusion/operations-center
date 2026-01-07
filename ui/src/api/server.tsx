@@ -73,6 +73,17 @@ export const updateServer = (
   });
 };
 
+export const resyncServer = (name: string): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/servers/${name}/:resync`, {
+      method: "POST",
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
 export const fetchSystemNetwork = (name: string): Promise<object> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/system/network`)
