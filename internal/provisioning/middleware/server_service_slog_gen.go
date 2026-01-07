@@ -612,3 +612,38 @@ func (_d ServerServiceWithSlog) UpdateSystemProvider(ctx context.Context, name s
 	}()
 	return _d._base.UpdateSystemProvider(ctx, name, providerConfig)
 }
+
+// UpdateSystemStorage implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) UpdateSystemStorage(ctx context.Context, name string, networkConfig provisioning.ServerSystemStorage) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Any("networkConfig", networkConfig),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateSystemStorage")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateSystemStorage returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateSystemStorage returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateSystemStorage finished")
+		}
+	}()
+	return _d._base.UpdateSystemStorage(ctx, name, networkConfig)
+}

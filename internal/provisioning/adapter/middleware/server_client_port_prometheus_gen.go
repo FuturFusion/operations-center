@@ -135,3 +135,17 @@ func (_d ServerClientPortWithPrometheus) UpdateProviderConfig(ctx context.Contex
 	}()
 	return _d.base.UpdateProviderConfig(ctx, server, providerConfig)
 }
+
+// UpdateStorageConfig implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) UpdateStorageConfig(ctx context.Context, server provisioning.Server) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateStorageConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateStorageConfig(ctx, server)
+}
