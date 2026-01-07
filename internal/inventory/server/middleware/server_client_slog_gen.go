@@ -1151,3 +1151,37 @@ func (_d ServerClientWithSlog) HasExtension(ctx context.Context, endpoint provis
 	}()
 	return _d._base.HasExtension(ctx, endpoint, extension)
 }
+
+// Ping implements inventory.ServerClient.
+func (_d ServerClientWithSlog) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("endpoint", endpoint),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Ping")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method Ping returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method Ping returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method Ping finished")
+		}
+	}()
+	return _d._base.Ping(ctx, endpoint)
+}

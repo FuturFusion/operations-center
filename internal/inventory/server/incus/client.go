@@ -2,6 +2,7 @@ package incus
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -14,6 +15,19 @@ import (
 type serverClient struct {
 	clientCert string
 	clientKey  string
+	clientCA   string
+}
+
+type transportWrapper struct {
+	transport *http.Transport
+}
+
+func (t *transportWrapper) Transport() *http.Transport {
+	return t.transport
+}
+
+func (t *transportWrapper) RoundTrip(req *http.Request) (*http.Response, error) {
+	return t.transport.RoundTrip(req)
 }
 
 func New(clientCert string, clientKey string) inventory.ServerClient {
@@ -24,16 +38,32 @@ func New(clientCert string, clientKey string) inventory.ServerClient {
 }
 
 func (s serverClient) getClient(ctx context.Context, endpoint provisioning.Endpoint) (incus.InstanceServer, error) {
-	return incus.ConnectIncusWithContext(ctx, endpoint.GetConnectionURL(), &incus.ConnectionArgs{
+	serverName, err := endpoint.GetServerName()
+	if err != nil {
+		return nil, err
+	}
+
+	args := &incus.ConnectionArgs{
 		TLSClientCert: s.clientCert,
 		TLSClientKey:  s.clientKey,
 		TLSServerCert: endpoint.GetCertificate(),
+		TLSCA:         s.clientCA,
+		SkipGetServer: true,
+		TransportWrapper: func(t *http.Transport) incus.HTTPTransporter {
+			if endpoint.GetCertificate() == "" {
+				t.TLSClientConfig.ServerName = serverName
+			}
+
+			return &transportWrapper{transport: t}
+		},
 
 		// Bypass system proxy for communication to IncusOS servers.
 		Proxy: func(r *http.Request) (*url.URL, error) {
 			return nil, nil
 		},
-	})
+	}
+
+	return incus.ConnectIncusWithContext(ctx, endpoint.GetConnectionURL(), args)
 }
 
 func (s serverClient) HasExtension(ctx context.Context, endpoint provisioning.Endpoint, extension string) (exists bool) {
@@ -43,4 +73,18 @@ func (s serverClient) HasExtension(ctx context.Context, endpoint provisioning.En
 	}
 
 	return client.HasExtension(extension)
+}
+
+func (s serverClient) Ping(ctx context.Context, endpoint provisioning.Endpoint) error {
+	client, err := s.getClient(ctx, endpoint)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = client.RawQuery(http.MethodGet, "/", http.NoBody, "")
+	if err != nil {
+		return fmt.Errorf("Failed to ping %q: %w", endpoint.GetConnectionURL(), err)
+	}
+
+	return nil
 }

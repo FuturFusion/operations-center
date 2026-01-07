@@ -18,6 +18,7 @@ type ProvisioningServerService interface {
 }
 
 type ServerClient interface {
+	Ping(ctx context.Context, endpoint provisioning.Endpoint) error
 	ImageServerClient
 	InstanceServerClient
 	NetworkServerClient

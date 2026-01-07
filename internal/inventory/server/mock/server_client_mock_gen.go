@@ -116,6 +116,9 @@ var _ inventory.ServerClient = &ServerClientMock{}
 //			HasExtensionFunc: func(ctx context.Context, endpoint provisioning.Endpoint, extension string) bool {
 //				panic("mock out the HasExtension method")
 //			},
+//			PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
+//				panic("mock out the Ping method")
+//			},
 //		}
 //
 //		// use mockedServerClient in code that requires inventory.ServerClient
@@ -215,6 +218,9 @@ type ServerClientMock struct {
 
 	// HasExtensionFunc mocks the HasExtension method.
 	HasExtensionFunc func(ctx context.Context, endpoint provisioning.Endpoint, extension string) bool
+
+	// PingFunc mocks the Ping method.
+	PingFunc func(ctx context.Context, endpoint provisioning.Endpoint) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -507,6 +513,13 @@ type ServerClientMock struct {
 			// Extension is the extension argument value.
 			Extension string
 		}
+		// Ping holds details about calls to the Ping method.
+		Ping []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Endpoint is the endpoint argument value.
+			Endpoint provisioning.Endpoint
+		}
 	}
 	lockGetImageByName               sync.RWMutex
 	lockGetImages                    sync.RWMutex
@@ -539,6 +552,7 @@ type ServerClientMock struct {
 	lockGetStorageVolumeByName       sync.RWMutex
 	lockGetStorageVolumes            sync.RWMutex
 	lockHasExtension                 sync.RWMutex
+	lockPing                         sync.RWMutex
 }
 
 // GetImageByName calls GetImageByNameFunc.
@@ -1798,5 +1812,41 @@ func (mock *ServerClientMock) HasExtensionCalls() []struct {
 	mock.lockHasExtension.RLock()
 	calls = mock.calls.HasExtension
 	mock.lockHasExtension.RUnlock()
+	return calls
+}
+
+// Ping calls PingFunc.
+func (mock *ServerClientMock) Ping(ctx context.Context, endpoint provisioning.Endpoint) error {
+	if mock.PingFunc == nil {
+		panic("ServerClientMock.PingFunc: method is nil but ServerClient.Ping was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
+	}{
+		Ctx:      ctx,
+		Endpoint: endpoint,
+	}
+	mock.lockPing.Lock()
+	mock.calls.Ping = append(mock.calls.Ping, callInfo)
+	mock.lockPing.Unlock()
+	return mock.PingFunc(ctx, endpoint)
+}
+
+// PingCalls gets all the calls that were made to Ping.
+// Check the length with:
+//
+//	len(mockedServerClient.PingCalls())
+func (mock *ServerClientMock) PingCalls() []struct {
+	Ctx      context.Context
+	Endpoint provisioning.Endpoint
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Endpoint provisioning.Endpoint
+	}
+	mock.lockPing.RLock()
+	calls = mock.calls.Ping
+	mock.lockPing.RUnlock()
 	return calls
 }
