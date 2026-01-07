@@ -272,3 +272,17 @@ func (_d ServerServiceWithPrometheus) UpdateSystemProvider(ctx context.Context, 
 	}()
 	return _d.base.UpdateSystemProvider(ctx, name, providerConfig)
 }
+
+// UpdateSystemStorage implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) UpdateSystemStorage(ctx context.Context, name string, networkConfig provisioning.ServerSystemStorage) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSystemStorage", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateSystemStorage(ctx, name, networkConfig)
+}

@@ -151,4 +151,6 @@ type ServerSelfUpdate struct {
 
 type ServerSystemNetwork = api.ServerSystemNetwork
 
+type ServerSystemStorage = api.ServerSystemStorage
+
 type ServerSystemProvider = api.ServerSystemProvider

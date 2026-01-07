@@ -74,6 +74,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			UpdateSystemProviderFunc: func(ctx context.Context, name string, providerConfig provisioning.ServerSystemProvider) error {
 //				panic("mock out the UpdateSystemProvider method")
 //			},
+//			UpdateSystemStorageFunc: func(ctx context.Context, name string, networkConfig provisioning.ServerSystemStorage) error {
+//				panic("mock out the UpdateSystemStorage method")
+//			},
 //		}
 //
 //		// use mockedServerService in code that requires provisioning.ServerService
@@ -131,6 +134,9 @@ type ServerServiceMock struct {
 
 	// UpdateSystemProviderFunc mocks the UpdateSystemProvider method.
 	UpdateSystemProviderFunc func(ctx context.Context, name string, providerConfig provisioning.ServerSystemProvider) error
+
+	// UpdateSystemStorageFunc mocks the UpdateSystemStorage method.
+	UpdateSystemStorageFunc func(ctx context.Context, name string, networkConfig provisioning.ServerSystemStorage) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -255,6 +261,15 @@ type ServerServiceMock struct {
 			// ProviderConfig is the providerConfig argument value.
 			ProviderConfig provisioning.ServerSystemProvider
 		}
+		// UpdateSystemStorage holds details about calls to the UpdateSystemStorage method.
+		UpdateSystemStorage []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// NetworkConfig is the networkConfig argument value.
+			NetworkConfig provisioning.ServerSystemStorage
+		}
 	}
 	lockCreate                       sync.RWMutex
 	lockDeleteByName                 sync.RWMutex
@@ -273,6 +288,7 @@ type ServerServiceMock struct {
 	lockUpdate                       sync.RWMutex
 	lockUpdateSystemNetwork          sync.RWMutex
 	lockUpdateSystemProvider         sync.RWMutex
+	lockUpdateSystemStorage          sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -888,5 +904,45 @@ func (mock *ServerServiceMock) UpdateSystemProviderCalls() []struct {
 	mock.lockUpdateSystemProvider.RLock()
 	calls = mock.calls.UpdateSystemProvider
 	mock.lockUpdateSystemProvider.RUnlock()
+	return calls
+}
+
+// UpdateSystemStorage calls UpdateSystemStorageFunc.
+func (mock *ServerServiceMock) UpdateSystemStorage(ctx context.Context, name string, networkConfig provisioning.ServerSystemStorage) error {
+	if mock.UpdateSystemStorageFunc == nil {
+		panic("ServerServiceMock.UpdateSystemStorageFunc: method is nil but ServerService.UpdateSystemStorage was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		Name          string
+		NetworkConfig provisioning.ServerSystemStorage
+	}{
+		Ctx:           ctx,
+		Name:          name,
+		NetworkConfig: networkConfig,
+	}
+	mock.lockUpdateSystemStorage.Lock()
+	mock.calls.UpdateSystemStorage = append(mock.calls.UpdateSystemStorage, callInfo)
+	mock.lockUpdateSystemStorage.Unlock()
+	return mock.UpdateSystemStorageFunc(ctx, name, networkConfig)
+}
+
+// UpdateSystemStorageCalls gets all the calls that were made to UpdateSystemStorage.
+// Check the length with:
+//
+//	len(mockedServerService.UpdateSystemStorageCalls())
+func (mock *ServerServiceMock) UpdateSystemStorageCalls() []struct {
+	Ctx           context.Context
+	Name          string
+	NetworkConfig provisioning.ServerSystemStorage
+} {
+	var calls []struct {
+		Ctx           context.Context
+		Name          string
+		NetworkConfig provisioning.ServerSystemStorage
+	}
+	mock.lockUpdateSystemStorage.RLock()
+	calls = mock.calls.UpdateSystemStorage
+	mock.lockUpdateSystemStorage.RUnlock()
 	return calls
 }

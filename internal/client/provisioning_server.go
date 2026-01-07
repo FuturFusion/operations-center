@@ -119,3 +119,27 @@ func (c OperationsCenterClient) UpdateServerSystemNetwork(ctx context.Context, n
 
 	return nil
 }
+
+func (c OperationsCenterClient) GetServerSystemStorage(ctx context.Context, name string) (api.ServerSystemStorage, error) {
+	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name, "system/storage"), nil, nil)
+	if err != nil {
+		return api.ServerSystemStorage{}, err
+	}
+
+	serverSystemStorage := api.ServerSystemStorage{}
+	err = json.Unmarshal(response.Metadata, &serverSystemStorage)
+	if err != nil {
+		return api.ServerSystemStorage{}, err
+	}
+
+	return serverSystemStorage, nil
+}
+
+func (c OperationsCenterClient) UpdateServerSystemStorage(ctx context.Context, name string, server api.ServerSystemStorage) error {
+	_, err := c.doRequest(ctx, http.MethodPut, path.Join("/provisioning/servers", name, "system/storage"), nil, server)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

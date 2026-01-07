@@ -219,6 +219,20 @@ func (c client) UpdateNetworkConfig(ctx context.Context, server provisioning.Ser
 	return nil
 }
 
+func (c client) UpdateStorageConfig(ctx context.Context, server provisioning.Server) error {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/system/storage", server.OSData.Storage, "")
+	if err != nil {
+		return fmt.Errorf("Put OS storage data to %q failed: %w", server.ConnectionURL, err)
+	}
+
+	return nil
+}
+
 func (c client) GetProviderConfig(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemProvider, error) {
 	client, err := c.getClient(ctx, server)
 	if err != nil {

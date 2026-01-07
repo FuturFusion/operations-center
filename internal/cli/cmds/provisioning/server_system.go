@@ -32,5 +32,12 @@ func (c *cmdServerSystem) Command() *cobra.Command {
 
 	cmd.AddCommand(serverSystemNetworkCmd.Command())
 
+	// System Storage
+	serverSystemStorageCmd := cmdServerSystemStorage{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverSystemStorageCmd.Command())
+
 	return cmd
 }

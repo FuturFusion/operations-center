@@ -43,6 +43,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			UpdateProviderConfigFunc: func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) error {
 //				panic("mock out the UpdateProviderConfig method")
 //			},
+//			UpdateStorageConfigFunc: func(ctx context.Context, server provisioning.Server) error {
+//				panic("mock out the UpdateStorageConfig method")
+//			},
 //		}
 //
 //		// use mockedServerClientPort in code that requires provisioning.ServerClientPort
@@ -70,6 +73,9 @@ type ServerClientPortMock struct {
 
 	// UpdateProviderConfigFunc mocks the UpdateProviderConfig method.
 	UpdateProviderConfigFunc func(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemProvider) error
+
+	// UpdateStorageConfigFunc mocks the UpdateStorageConfig method.
+	UpdateStorageConfigFunc func(ctx context.Context, server provisioning.Server) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -124,6 +130,13 @@ type ServerClientPortMock struct {
 			// ProviderConfig is the providerConfig argument value.
 			ProviderConfig provisioning.ServerSystemProvider
 		}
+		// UpdateStorageConfig holds details about calls to the UpdateStorageConfig method.
+		UpdateStorageConfig []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 	}
 	lockGetOSData            sync.RWMutex
 	lockGetProviderConfig    sync.RWMutex
@@ -132,6 +145,7 @@ type ServerClientPortMock struct {
 	lockPing                 sync.RWMutex
 	lockUpdateNetworkConfig  sync.RWMutex
 	lockUpdateProviderConfig sync.RWMutex
+	lockUpdateStorageConfig  sync.RWMutex
 }
 
 // GetOSData calls GetOSDataFunc.
@@ -387,5 +401,41 @@ func (mock *ServerClientPortMock) UpdateProviderConfigCalls() []struct {
 	mock.lockUpdateProviderConfig.RLock()
 	calls = mock.calls.UpdateProviderConfig
 	mock.lockUpdateProviderConfig.RUnlock()
+	return calls
+}
+
+// UpdateStorageConfig calls UpdateStorageConfigFunc.
+func (mock *ServerClientPortMock) UpdateStorageConfig(ctx context.Context, server provisioning.Server) error {
+	if mock.UpdateStorageConfigFunc == nil {
+		panic("ServerClientPortMock.UpdateStorageConfigFunc: method is nil but ServerClientPort.UpdateStorageConfig was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockUpdateStorageConfig.Lock()
+	mock.calls.UpdateStorageConfig = append(mock.calls.UpdateStorageConfig, callInfo)
+	mock.lockUpdateStorageConfig.Unlock()
+	return mock.UpdateStorageConfigFunc(ctx, server)
+}
+
+// UpdateStorageConfigCalls gets all the calls that were made to UpdateStorageConfig.
+// Check the length with:
+//
+//	len(mockedServerClientPort.UpdateStorageConfigCalls())
+func (mock *ServerClientPortMock) UpdateStorageConfigCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockUpdateStorageConfig.RLock()
+	calls = mock.calls.UpdateStorageConfig
+	mock.lockUpdateStorageConfig.RUnlock()
 	return calls
 }

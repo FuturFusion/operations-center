@@ -1234,7 +1234,41 @@ func TestClientServer(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "UpdateStorageConfig",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.UpdateStorageConfig(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{}`),
+							},
+						},
+					},
 
+					assertErr: require.NoError,
+					wantPaths: []string{"PUT /os/1.0/system/storage"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"PUT /os/1.0/system/storage"},
+				},
+			},
+		},
 		{
 			name: "GetProviderConfig",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
