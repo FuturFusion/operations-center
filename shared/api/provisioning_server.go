@@ -316,5 +316,8 @@ type ServerRegistrationResponse struct {
 // ServerSystemNetwork is a type alias to hold the system network configuration from IncusOS.
 type ServerSystemNetwork = incusosapi.SystemNetwork
 
+// ServerSystemStorage is a type alias to hold the system network configuration from IncusOS.
+type ServerSystemStorage = incusosapi.SystemStorage
+
 // ServerSystemProvider is a type alias to hold the system provider configuration from IncusOS.
 type ServerSystemProvider = incusosapi.SystemProvider
