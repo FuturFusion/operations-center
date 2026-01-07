@@ -1,7 +1,7 @@
 import { FC } from "react";
 import { Button } from "react-bootstrap";
 import { FormikErrors, useFormik } from "formik";
-import { downloadImage } from "api/token";
+import { tokenImageURL } from "api/token";
 import TokenImageForm from "components/TokenImageForm";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
@@ -114,13 +114,13 @@ const TokenDownloadModal: FC<Props> = ({
     downloadChanged(true);
 
     try {
-      const url = await downloadImage(
+      const imageURL = await tokenImageURL(
         token.uuid,
         JSON.stringify(values, null, 2),
       );
       const filename = `${token.uuid}.${(values as TokenImageFormValues).type}`;
 
-      downloadFile(url, filename);
+      downloadFile(imageURL.image, filename);
     } catch (error) {
       notify.error(`Error during image downloading: ${error}`);
     }

@@ -7,3 +7,7 @@ export interface APIResponse<T> {
   status_code: number;
   type: "sync" | "error";
 }
+
+export interface APIImageURL {
+  image: string;
+}

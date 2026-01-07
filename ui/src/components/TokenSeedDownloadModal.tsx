@@ -1,7 +1,6 @@
 import { FC } from "react";
 import { Button } from "react-bootstrap";
 import { useFormik } from "formik";
-import { downloadTokenSeedImage } from "api/token";
 import ModalWindow from "components/ModalWindow";
 import TokenSeedImageForm from "components/TokenSeedImageForm";
 import { useNotification } from "context/notificationContext";
@@ -41,12 +40,8 @@ const TokenSeedDownloadModal: FC<Props> = ({
     downloadChanged(true);
 
     try {
-      const url = await downloadTokenSeedImage(
-        seed.token_uuid || "",
-        seed.name,
-        values.type,
-        values.architecture,
-      );
+      const tokenUUID = seed.token_uuid || "";
+      const url = `/1.0/provisioning/tokens/${tokenUUID}/seeds/${seed.name}?type=${values.type}&architecture=${values.architecture}`;
       const filename = `${seed.name}.${(values as TokenSeedImageFormValues).type}`;
 
       downloadFile(url, filename);
