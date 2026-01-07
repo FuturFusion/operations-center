@@ -56,6 +56,8 @@ func registerProvisioningServerHandler(router Router, authorizer *authz.Authoriz
 	router.HandleFunc("POST /{name}/:resync", response.With(handler.serverResyncPost, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/system/network", response.With(handler.serverSystemNetworkGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /{name}/system/network", response.With(handler.serverSystemNetworkPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{name}/system/storage", response.With(handler.serverSystemStorageGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("PUT /{name}/system/storage", response.With(handler.serverSystemStoragePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/provisioning/servers servers servers_get
@@ -810,7 +812,103 @@ func (s *serverHandler) serverSystemNetworkPut(r *http.Request) response.Respons
 
 	err = s.service.UpdateSystemNetwork(r.Context(), name, systemNetwork)
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to get server %q: %w", name, err))
+		return response.SmartError(fmt.Errorf("Failed to update server network configuration for %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation GET /1.0/provisioning/servers/{name}/system/storage servers_system_storage server_system_storage_get
+//
+//	Get server storage configuration
+//
+//	Gets the storage configuration of a specific server.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Server storage
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          $ref: "#/definitions/ServerSystemStorageConfig"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverSystemStorageGet(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	server, err := s.service.GetByName(r.Context(), name)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponseETag(
+		true,
+		server.OSData.Storage,
+		server.OSData.Storage,
+	)
+}
+
+// swagger:operation PUT /1.0/provisioning/servers/{name}/system/storage servers_system_storage server_system_storage_put
+//
+//	Update server storage configuration
+//
+//	Updates the storage configuration of a specific server.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: server storage configuration
+//	    description: Server storage configuration
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/ServerSystemStorageConfig"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverSystemStoragePut(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	var systemStorage api.ServerSystemStorage
+
+	err := json.NewDecoder(r.Body).Decode(&systemStorage)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	err = s.service.UpdateSystemStorage(r.Context(), name, systemStorage)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to update server storage configuration for %q: %w", name, err))
 	}
 
 	return response.EmptySyncResponse
