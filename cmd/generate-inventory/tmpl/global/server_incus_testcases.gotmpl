@@ -1,0 +1,11 @@
+package incus_test
+
+import "testing"
+
+func appendTestCases(t *testing.T, methods []methodTestSet) []methodTestSet {
+{{- range . }}
+	methods = append(methods, {{ .Name | camelcase }}ClientTestCases(t)...)
+{{- end }}
+
+	return methods
+}

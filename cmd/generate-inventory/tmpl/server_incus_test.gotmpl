@@ -1,0 +1,188 @@
+package incus_test
+
+import (
+	"context"
+	"net/http"
+	"testing"
+
+	incusapi "github.com/lxc/incus/v6/shared/api"
+	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/provisioning"
+	"github.com/FuturFusion/operations-center/internal/testing/queue"
+	"github.com/FuturFusion/operations-center/shared/api"
+)
+
+func {{ .Name | camelcase }}ClientTestCases(t *testing.T) []methodTestSet {
+	return []methodTestSet{
+		{
+			name: "Get{{ .PluralName | pascalcase }}",
+			clientCall: func(ctx context.Context, client inventory.ServerClient, endpoint provisioning.Endpoint) (any, error) {
+				return client.Get{{ .PluralName | pascalcase }}(ctx, endpoint{{ if .HasParent }}, "{{ .ParentName }}"{{ end }})
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: mustJSONMarshal(t, api.ResponseRaw{
+									Metadata: []incusapi.{{ .ObjectType | pascalcase }}{
+										{
+{{- if .ObjectEmbedded }}
+											{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+												{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+													{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .UsesEmbeddedPostType }}
+												},
+{{- end }}
+{{- if .ServerIDByLocation }}
+												Location:  "one",
+{{- end }}
+{{- if .HasProjectDirect }}
+												Project: "project one",
+{{- end }}
+{{- if .ObjectEmbedded }}
+											},
+{{- end }}
+										},
+									},
+								}),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+						require.Len(t, res, 1)
+					},
+					wantPaths: []string{"GET /1.0/{{ if .HasParent }}{{ .ParentPluralName | kebabcase }}/{{ .ParentName }}/{{ trimPrefix "network-" (trimPrefix "storage-" (.PluralName | kebabcase) ) }}{{ else }}{{ .PluralName | kebabcase }}{{ end }}?{{ if .HasProjectDirect }}all-projects=true{{ end }}"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/{{ if .HasParent }}{{ .ParentPluralName | kebabcase }}/{{ .ParentName }}/{{ trimPrefix "network-" (trimPrefix "storage-" (.PluralName | kebabcase) ) }}{{ else }}{{ .PluralName | kebabcase }}{{ end }}?{{ if .HasProjectDirect }}all-projects=true{{ end }}"},
+				},
+			},
+		},
+
+		{
+			name: "Get{{ .Name | pascalcase }}ByName",
+			clientCall: func(ctx context.Context, client inventory.ServerClient, endpoint provisioning.Endpoint) (any, error) {
+				return client.Get{{ .Name | pascalcase }}ByName(ctx, endpoint, {{ if .HasProjectDirect }}"project", {{ end }}{{ if .HasParent }}"{{ .ParentName }}", {{ end }}"name"{{- range .ExtraAttributes }}, {{ .TestDummyValue }} {{- end}})
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: mustJSONMarshal(t, api.ResponseRaw{
+									Metadata: incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+										{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+											{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+												{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .UsesEmbeddedPostType }}
+											},
+{{- end }}
+{{- if .ServerIDByLocation }}
+											Location:  "one",
+{{- end }}
+{{- if .HasProjectDirect }}
+											Project: "project one",
+{{- end }}
+{{- if .ObjectEmbedded }}
+										},
+{{- end }}
+									},
+								}),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						want{{ .Name | pascalcase }} := incusapi.{{ .ObjectType | pascalcase }}{
+{{- if .ObjectEmbedded }}
+							{{ .Name | pascalcase }}: incusapi.{{ .Name | pascalcase }}{
+{{- end }}
+{{- if .UsesEmbeddedPostType }}
+								{{ .Name | pascalcase }}Post: incusapi.{{ .Name | pascalcase }}Post{
+{{- end }}
+									{{ .ObjectNamePropertyName | pascalcase }}: "{{ .Name | camelcase }} one",
+{{- if .UsesEmbeddedPostType }}
+								},
+{{- end }}
+{{- if .ServerIDByLocation }}
+								Location:  "one",
+{{- end }}
+{{- if .HasProjectDirect }}
+								Project: "project one",
+{{- end }}
+{{- if .ObjectEmbedded }}
+							},
+{{- end }}
+						}
+
+						require.Equal(t, want{{ .Name | pascalcase }}, res)
+					},
+					wantPaths: []string{"GET /1.0/{{ if .HasParent }}{{ .ParentPluralName | kebabcase }}/{{ .ParentName }}/{{ trimPrefix "network-" (trimPrefix "storage-" (.PluralName | kebabcase) ) }}{{ else }}{{ .PluralName | kebabcase }}{{ end }}{{ range .ExtraAttributes }}/{{ trimAll `"` .TestDummyValue }}{{ end }}/name{{ if .HasProjectDirect }}?project=project{{ end }}"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/{{ if .HasParent }}{{ .ParentPluralName | kebabcase }}/{{ .ParentName }}/{{ trimPrefix "network-" (trimPrefix "storage-" (.PluralName | kebabcase) ) }}{{ else }}{{ .PluralName | kebabcase }}{{ end }}{{ range .ExtraAttributes }}/{{ trimAll `"` .TestDummyValue }}{{ end }}/name{{ if .HasProjectDirect }}?project=project{{ end }}"},
+				},
+				{
+					name: "error - not found",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusNotFound,
+								responseBody: mustJSONMarshal(t, api.ResponseRaw{
+									Type:   api.ErrorResponse,
+									Status: http.StatusText(http.StatusNotFound),
+								}),
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					assertResult: noResult,
+					wantPaths:    []string{"GET /1.0/{{ if .HasParent }}{{ .ParentPluralName | kebabcase }}/{{ .ParentName }}/{{ trimPrefix "network-" (trimPrefix "storage-" (.PluralName | kebabcase) ) }}{{ else }}{{ .PluralName | kebabcase }}{{ end }}{{ range .ExtraAttributes }}/{{ trimAll `"` .TestDummyValue }}{{ end }}/name{{ if .HasProjectDirect }}?project=project{{ end }}"},
+				},
+			},
+		},
+	}
+}

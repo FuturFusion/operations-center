@@ -16,6 +16,7 @@ type ProvisioningServerService interface {
 }
 
 type ServerClient interface {
+	Ping(ctx context.Context, endpoint provisioning.Endpoint) error
 {{- range . }}
 	{{ .Name | pascalcase }}ServerClient
 {{- end }}
