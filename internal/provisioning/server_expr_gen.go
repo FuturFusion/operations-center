@@ -3,7 +3,6 @@
 package provisioning
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -14,6 +13,16 @@ type ExprApiOSData struct {
 	Network  ExprOsapiSystemNetwork  `json:"network" yaml:"network" expr:"network"`
 	Security ExprOsapiSystemSecurity `json:"security" yaml:"security" expr:"security"`
 	Storage  ExprOsapiSystemStorage  `json:"storage" yaml:"storage" expr:"storage"`
+}
+
+type ExprApiServerVersionData struct {
+	OS           ExprApiVersionData   `json:"os" yaml:"os" expr:"os"`
+	Applications []ExprApiVersionData `json:"applications" yaml:"applications" expr:"applications"`
+}
+
+type ExprApiVersionData struct {
+	Name    string `json:"name" yaml:"name" expr:"name"`
+	Version string `json:"version" yaml:"version" expr:"version"`
 }
 
 type ExprOsapiSystemNetwork struct {
@@ -312,22 +321,22 @@ type ExprOsapiSystemStorageState struct {
 }
 
 type ExprServer struct {
-	ID                   int64            `json:"-" expr:"-"`
-	Cluster              *string          `json:"cluster"                db:"leftjoin=clusters.name" expr:"cluster"`
-	Name                 string           `json:"name"                   db:"primary=yes" expr:"name"`
-	Type                 api.ServerType   `json:"type" expr:"type"`
-	ConnectionURL        string           `json:"connection_url" expr:"connection_url"`
-	PublicConnectionURL  string           `json:"public_connection_url" expr:"public_connection_url"`
-	Certificate          string           `json:"certificate" expr:"certificate"`
-	Fingerprint          string           `json:"fingerprint"            db:"ignore" expr:"fingerprint"`
-	ClusterCertificate   *string          `json:"cluster_certificate"    db:"omit=create,update&leftjoin=clusters.certificate" expr:"cluster_certificate"`
-	ClusterConnectionURL *string          `json:"cluster_connection_url" db:"omit=create,update&leftjoin=clusters.connection_url" expr:"cluster_connection_url"`
-	HardwareData         api.HardwareData `json:"hardware_data" expr:"hardware_data"`
-	OSData               ExprApiOSData    `json:"os_data" expr:"os_data"`
-	VersionData          json.RawMessage  `json:"version_data"           db:"ignore" expr:"version_data"`
-	Status               api.ServerStatus `json:"status" expr:"status"`
-	LastUpdated          time.Time        `json:"last_updated"           db:"update_timestamp" expr:"last_updated"`
-	LastSeen             time.Time        `json:"last_seen" expr:"last_seen"`
+	ID                   int64                    `json:"-" expr:"-"`
+	Cluster              *string                  `json:"cluster"                db:"leftjoin=clusters.name" expr:"cluster"`
+	Name                 string                   `json:"name"                   db:"primary=yes" expr:"name"`
+	Type                 api.ServerType           `json:"type" expr:"type"`
+	ConnectionURL        string                   `json:"connection_url" expr:"connection_url"`
+	PublicConnectionURL  string                   `json:"public_connection_url" expr:"public_connection_url"`
+	Certificate          string                   `json:"certificate" expr:"certificate"`
+	Fingerprint          string                   `json:"fingerprint"            db:"ignore" expr:"fingerprint"`
+	ClusterCertificate   *string                  `json:"cluster_certificate"    db:"omit=create,update&leftjoin=clusters.certificate" expr:"cluster_certificate"`
+	ClusterConnectionURL *string                  `json:"cluster_connection_url" db:"omit=create,update&leftjoin=clusters.connection_url" expr:"cluster_connection_url"`
+	HardwareData         api.HardwareData         `json:"hardware_data" expr:"hardware_data"`
+	OSData               ExprApiOSData            `json:"os_data" expr:"os_data"`
+	VersionData          ExprApiServerVersionData `json:"version_data" expr:"version_data"`
+	Status               api.ServerStatus         `json:"status" expr:"status"`
+	LastUpdated          time.Time                `json:"last_updated"           db:"update_timestamp" expr:"last_updated"`
+	LastSeen             time.Time                `json:"last_seen" expr:"last_seen"`
 }
 
 func ToExprApiOSData(o api.OSData) ExprApiOSData {
@@ -335,6 +344,20 @@ func ToExprApiOSData(o api.OSData) ExprApiOSData {
 		Network:  ToExprOsapiSystemNetwork(o.Network),
 		Security: ToExprOsapiSystemSecurity(o.Security),
 		Storage:  ToExprOsapiSystemStorage(o.Storage),
+	}
+}
+
+func ToExprApiServerVersionData(s api.ServerVersionData) ExprApiServerVersionData {
+	return ExprApiServerVersionData{
+		OS:           ToExprApiVersionData(s.OS),
+		Applications: sliceConvert(s.Applications, ToExprApiVersionData),
+	}
+}
+
+func ToExprApiVersionData(v api.VersionData) ExprApiVersionData {
+	return ExprApiVersionData{
+		Name:    v.Name,
+		Version: v.Version,
 	}
 }
 
@@ -717,7 +740,7 @@ func ToExprServer(s Server) ExprServer {
 		ClusterConnectionURL: s.ClusterConnectionURL,
 		HardwareData:         s.HardwareData,
 		OSData:               ToExprApiOSData(s.OSData),
-		VersionData:          s.VersionData,
+		VersionData:          ToExprApiServerVersionData(s.VersionData),
 		Status:               s.Status,
 		LastUpdated:          s.LastUpdated,
 		LastSeen:             s.LastSeen,

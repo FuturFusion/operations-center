@@ -94,6 +94,20 @@ func (_d ServerClientPortWithPrometheus) GetServerType(ctx context.Context, endp
 	return _d.base.GetServerType(ctx, endpoint)
 }
 
+// GetVersionData implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) GetVersionData(ctx context.Context, endpoint provisioning.Endpoint) (serverVersionData api.ServerVersionData, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetVersionData", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetVersionData(ctx, endpoint)
+}
+
 // Ping implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithPrometheus) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
 	_since := time.Now()
