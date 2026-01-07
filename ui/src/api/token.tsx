@@ -1,5 +1,5 @@
 import { Token, TokenSeed, YamlValue } from "types/token";
-import { APIResponse } from "types/response";
+import { APIImageURL, APIResponse } from "types/response";
 import { processResponse } from "util/response";
 
 export const fetchTokens = (): Promise<Token[]> => {
@@ -131,44 +131,17 @@ export const updateTokenSeed = (
   });
 };
 
-export const downloadTokenSeedImage = (
+export const tokenImageURL = (
   uuid: string,
-  name: string,
-  type: string,
-  arch: string,
-): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    fetch(
-      `/1.0/provisioning/tokens/${uuid}/seeds/${name}?type=${type}&architecture=${arch}`,
-    )
-      .then(async (response) => {
-        if (!response.ok) {
-          const r = await response.json();
-          throw Error(r.error);
-        }
-
-        return response.blob();
-      })
-      .then((data) => resolve(URL.createObjectURL(data)))
-      .catch(reject);
-  });
-};
-
-export const downloadImage = (uuid: string, body: string): Promise<string> => {
+  body: string,
+): Promise<APIImageURL> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/tokens/${uuid}/image`, {
       method: "POST",
       body: body,
     })
-      .then(async (response) => {
-        if (!response.ok) {
-          const r = await response.json();
-          throw Error(r.error);
-        }
-
-        return response.blob();
-      })
-      .then((data) => resolve(URL.createObjectURL(data)))
+      .then((response) => response.json())
+      .then((data) => resolve(data.metadata))
       .catch(reject);
   });
 };
