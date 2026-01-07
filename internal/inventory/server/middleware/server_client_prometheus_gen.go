@@ -468,3 +468,17 @@ func (_d ServerClientWithPrometheus) HasExtension(ctx context.Context, endpoint 
 	}()
 	return _d.base.HasExtension(ctx, endpoint, extension)
 }
+
+// Ping implements inventory.ServerClient.
+func (_d ServerClientWithPrometheus) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientDurationSummaryVec.WithLabelValues(_d.instanceName, "Ping", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Ping(ctx, endpoint)
+}
