@@ -1189,6 +1189,219 @@ one
 	}
 }
 
+func TestServerService_UpdateSystemStorage(t *testing.T) {
+	fixedDate := time.Date(2025, 3, 12, 10, 57, 43, 0, time.UTC)
+
+	type repoUpdateFuncItem struct {
+		lastSeen time.Time
+		status   api.ServerStatus
+	}
+
+	tests := []struct {
+		name                         string
+		ctx                          context.Context
+		repoGetByNameServer          provisioning.Server
+		repoGetByNameErr             error
+		repoUpdate                   []queue.Item[repoUpdateFuncItem]
+		clientUpdateStorageConfigErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			ctx:  context.Background(),
+			repoGetByNameServer: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+			repoUpdate: []queue.Item[repoUpdateFuncItem]{
+				{
+					Value: repoUpdateFuncItem{
+						lastSeen: fixedDate,
+						status:   api.ServerStatusPending,
+					},
+				},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			ctx:              context.Background(),
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - repo.UpdateByID",
+			ctx:  context.Background(),
+			repoGetByNameServer: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+		one
+		-----END CERTIFICATE-----
+		`,
+				Status: api.ServerStatusReady,
+			},
+			repoUpdate: []queue.Item[repoUpdateFuncItem]{
+				{
+					Value: repoUpdateFuncItem{
+						lastSeen: fixedDate,
+						status:   api.ServerStatusPending,
+					},
+					Err: boom.Error,
+				},
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.UpdateStorageConfig with cancelled context with cause",
+			ctx: func() context.Context {
+				ctx, cancel := context.WithCancelCause(context.Background())
+				cancel(nil)
+				return ctx
+			}(),
+			repoGetByNameServer: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+			repoUpdate: []queue.Item[repoUpdateFuncItem]{
+				{
+					Value: repoUpdateFuncItem{
+						lastSeen: fixedDate,
+						status:   api.ServerStatusPending,
+					},
+				},
+				{
+					Value: repoUpdateFuncItem{
+						status: api.ServerStatusReady,
+					},
+				},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, context.Canceled)
+			},
+		},
+		{
+			name: "error - client.UpdateStorageConfig",
+			ctx:  context.Background(),
+			repoGetByNameServer: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+			repoUpdate: []queue.Item[repoUpdateFuncItem]{
+				{
+					Value: repoUpdateFuncItem{
+						lastSeen: fixedDate,
+						status:   api.ServerStatusPending,
+					},
+				},
+				{
+					Value: repoUpdateFuncItem{
+						status: api.ServerStatusReady,
+					},
+				},
+			},
+			clientUpdateStorageConfigErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - client.UpdateStorageConfig - reverter error",
+			ctx:  context.Background(),
+			repoGetByNameServer: provisioning.Server{
+				Name:          "one",
+				Type:          api.ServerTypeIncus,
+				Cluster:       ptr.To("one"),
+				ConnectionURL: "http://one/",
+				Certificate: `-----BEGIN CERTIFICATE-----
+one
+-----END CERTIFICATE-----
+`,
+				Status: api.ServerStatusReady,
+			},
+			repoUpdate: []queue.Item[repoUpdateFuncItem]{
+				{
+					Value: repoUpdateFuncItem{
+						lastSeen: fixedDate,
+						status:   api.ServerStatusPending,
+					},
+				},
+				{
+					Value: repoUpdateFuncItem{
+						status: api.ServerStatusReady,
+					},
+					Err: errors.New("reverter"),
+				},
+			},
+			clientUpdateStorageConfigErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByNameServer, tc.repoGetByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, in provisioning.Server) error {
+					value, err := queue.Pop(t, &tc.repoUpdate)
+
+					require.Equal(t, value.lastSeen, in.LastSeen)
+					require.Equal(t, value.status, in.Status)
+					return err
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				UpdateStorageConfigFunc: func(ctx context.Context, server provisioning.Server) error {
+					return errors.Join(tc.clientUpdateStorageConfigErr, ctx.Err())
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, "", tls.Certificate{},
+				provisioning.ServerServiceWithNow(func() time.Time { return fixedDate }),
+			)
+
+			// Run test
+			err := serverSvc.UpdateSystemStorage(tc.ctx, "one", provisioning.ServerSystemStorage{})
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Empty(t, tc.repoUpdate)
+		})
+	}
+}
+
 func TestServerService_GetSystemProvider(t *testing.T) {
 	tests := []struct {
 		name                       string

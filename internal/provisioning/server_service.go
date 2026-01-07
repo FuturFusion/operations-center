@@ -347,6 +347,56 @@ func (s *serverService) UpdateSystemNetwork(ctx context.Context, name string, sy
 	return nil
 }
 
+func (s *serverService) UpdateSystemStorage(ctx context.Context, name string, systemStorage ServerSystemStorage) (err error) {
+	server := &Server{}
+	updatedServer := &Server{}
+
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+
+		server, err = s.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get server %q: %w", name, err)
+		}
+
+		updatedServer, _ = ptr.Clone(server)
+
+		updatedServer.OSData.Storage = systemStorage
+		updatedServer.Status = api.ServerStatusPending
+
+		updatedServer.LastSeen = s.now()
+
+		err = s.Update(ctx, *updatedServer)
+		if err != nil {
+			return fmt.Errorf("Failed to update system network: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	reverter.Add(func() {
+		revertErr := s.repo.Update(ctx, *server)
+		if revertErr != nil {
+			err = errors.Join(err, revertErr)
+		}
+	})
+
+	err = s.client.UpdateStorageConfig(ctx, *updatedServer)
+	if err != nil {
+		return err
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
 func (s *serverService) GetSystemProvider(ctx context.Context, name string) (ServerSystemProvider, error) {
 	server, err := s.GetByName(ctx, name)
 	if err != nil {
