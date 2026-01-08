@@ -146,7 +146,8 @@ func GetNetwork() api.SystemNetwork {
 
 func UpdateNetwork(ctx context.Context, cfg api.SystemNetworkPut) error {
 	globalConfigInstanceMu.Lock()
-	defer globalConfigInstanceMu.Unlock()
+	unlock := unlockOnce(&globalConfigInstanceMu)
+	defer unlock()
 
 	var err error
 
@@ -160,6 +161,8 @@ func UpdateNetwork(ctx context.Context, cfg api.SystemNetworkPut) error {
 	if err != nil {
 		return err
 	}
+
+	unlock()
 
 	NetworkUpdateSignal.Emit(ctx, api.SystemNetwork{
 		SystemNetworkPut: cfg,
@@ -292,7 +295,8 @@ func GetUpdates() api.SystemUpdates {
 
 func UpdateUpdates(ctx context.Context, cfg api.SystemUpdatesPut) error {
 	globalConfigInstanceMu.Lock()
-	defer globalConfigInstanceMu.Unlock()
+	unlock := unlockOnce(&globalConfigInstanceMu)
+	defer unlock()
 
 	newCfg := globalConfigInstance
 	newCfg.Updates.SystemUpdatesPut = cfg
@@ -301,6 +305,8 @@ func UpdateUpdates(ctx context.Context, cfg api.SystemUpdatesPut) error {
 	if err != nil {
 		return err
 	}
+
+	unlock()
 
 	UpdatesUpdateSignal.Emit(ctx, api.SystemUpdates{
 		SystemUpdatesPut: cfg,
@@ -455,4 +461,9 @@ func ValidateNetworkConfig(cfg api.SystemNetwork) error {
 	}
 
 	return nil
+}
+
+func unlockOnce(mu interface{ Unlock() }) func() {
+	once := sync.Once{}
+	return func() { once.Do(mu.Unlock) }
 }
