@@ -6,7 +6,6 @@ import ClusterActions from "components/ClusterActions";
 import ExtendedDataTable from "components/ExtendedDataTable";
 import InventorySearchBox from "components/InventorySearchBox";
 import type { Cluster } from "types/cluster";
-import { formatDate } from "util/date";
 
 const Cluster = () => {
   const navigate = useNavigate();
@@ -28,13 +27,7 @@ const Cluster = () => {
     retry: false,
   });
 
-  const headers = [
-    "Name",
-    "Connection URL",
-    "Status",
-    "Last updated",
-    "Actions",
-  ];
+  const headers = ["Name", "Connection URL", "Status", "Actions"];
   const rows = clusters.map((item) => {
     return [
       {
@@ -63,10 +56,6 @@ const Cluster = () => {
       {
         content: item.status,
         sortKey: item.status,
-      },
-      {
-        content: formatDate(item.last_updated || ""),
-        sortKey: item.last_updated,
       },
       {
         content: <ClusterActions cluster={item} />,
