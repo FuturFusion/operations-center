@@ -839,6 +839,7 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg api.SystemNetwork) er
 		}
 
 		config.ServerCertificateUpdateSignal.RemoveListener("fancyListener")
+		config.SecurityTrustedHTTPSProxiesUpdateSignal.RemoveListener("fancyListener")
 
 		if cfg.RestServerAddress == "" {
 			d.configReloadMu.Lock()
@@ -866,12 +867,26 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg api.SystemNetwork) er
 		d.listener = listener.NewFancyTLSListener(tcpListener, d.serverCertificate)
 		d.configReloadMu.Unlock()
 
+		err = d.listener.TrustedProxy(config.GetSecurity().TrustedHTTPSProxies)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to set trusted HTTPS proxies during server startup", logger.Err(err))
+		}
+
 		config.ServerCertificateUpdateSignal.AddListener(func(_ context.Context, cert tls.Certificate) {
 			d.configReloadMu.Lock()
 			defer d.configReloadMu.Unlock()
 
 			d.serverCertificate = cert
 			d.listener.Config(cert)
+		}, "fancyListener")
+
+		config.SecurityTrustedHTTPSProxiesUpdateSignal.AddListener(func(_ context.Context, trustedHTTPSProxies []string) {
+			d.configReloadMu.Lock()
+			defer d.configReloadMu.Unlock()
+
+			if err != nil {
+				slog.WarnContext(ctx, "Failed to set trusted HTTPS proxies", logger.Err(err))
+			}
 		}, "fancyListener")
 
 		// Unblock the channel here before we block for the server.
