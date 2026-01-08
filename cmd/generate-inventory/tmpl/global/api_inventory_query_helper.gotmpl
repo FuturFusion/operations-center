@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -18,7 +19,11 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 			resultItem.{{ .PluralName | pascalcase }} = append(resultItem.{{ .PluralName | pascalcase }}, api.{{ .Name | pascalcase }}{
 				Cluster:     {{ .Name | camelcase }}.Cluster,
 {{- if .ServerIDByLocation }}
+  {{- if .IsServerIDOptional }}
+				Server:      ptr.From({{ .Name | camelcase }}.Server),
+	{{- else }}
 				Server:      {{ .Name | camelcase }}.Server,
+	{{- end }}
 {{- end }}
 {{- if .HasProject }}
 				ProjectName: {{ .Name | camelcase }}.ProjectName,

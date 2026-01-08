@@ -71,7 +71,7 @@ type ExprStorageVolume struct {
 	ID              int                               `json:"-" expr:"-"`
 	UUID            uuid.UUID                         `json:"uuid"          db:"primary=yes" expr:"uuid"`
 	Cluster         string                            `json:"cluster"       db:"leftjoin=clusters.name" expr:"cluster"`
-	Server          string                            `json:"server"        db:"leftjoin=servers.name" expr:"server"`
+	Server          *string                           `json:"server"        db:"leftjoin=servers.name" expr:"server"`
 	ProjectName     string                            `json:"project" expr:"project"`
 	StoragePoolName string                            `json:"storage_pool_name" db:"joinon=networks.name" expr:"storage_pool_name"`
 	Name            string                            `json:"name" expr:"name"`

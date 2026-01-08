@@ -85,7 +85,11 @@ server-two
 	{{ .Name | camelcase }}A := inventory.{{ .Name | pascalcase }}{
 		Cluster:     "one",
 {{- if .ServerIDByLocation }}
+	{{- if .IsServerIDOptional }}
+		Server:      ptr.To("one"),
+	{{- else }}
 		Server:      "one",
+	{{- end }}
 {{- end }}
 {{- if .HasProjectDirect }}
 		ProjectName: "one",
@@ -106,7 +110,11 @@ server-two
 	{{ .Name | camelcase }}B := inventory.{{ .Name | pascalcase }}{
 		Cluster:     "two",
 {{- if .ServerIDByLocation }}
+	{{- if .IsServerIDOptional }}
+		Server:      ptr.To("two"),
+	{{- else }}
 		Server:      "two",
+	{{- end }}
 {{- end }}
 {{- if .HasProjectDirect }}
 		ProjectName: "two",
@@ -242,6 +250,35 @@ server-two
 	// Can't add a duplicate {{ .PluralName }}.
 	_, err = {{ .Name | camelcase }}.Create(ctx, {{ .Name | camelcase }}B)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+{{- if and .ServerIDByLocation .IsServerIDOptional }}
+
+	// Create {{ .Name }} without location / server
+	{{ .Name | camelcase }}C := inventory.{{ .Name | pascalcase }}{
+		Cluster:     "two",
+		Server:      nil, // no server set
+{{- if .HasProjectDirect }}
+		ProjectName: "two",
+{{- end }}
+{{- if .HasParent }}
+		{{ .ParentName | pascalcase }}Name:  "parent two",
+{{- end }}
+		Name:        "two",
+{{- range .ExtraAttributes }}
+		{{ .Name | pascalcase }}: {{ .TestDummyValue }},
+{{- end}}
+		Object:      inventory.Incus{{ .ObjectType | pascalcase }}Wrapper{},
+		LastUpdated: time.Now(),
+	}
+
+	{{ .Name | camelcase }}C.DeriveUUID()
+
+	_, err = {{ .Name | camelcase }}.Create(ctx, {{ .Name | camelcase }}C)
+	require.NoError(t, err)
+
+	{{ .Name | camelcase }}UUIDs, err = {{ .Name | camelcase }}.GetAllUUIDsWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{})
+	require.NoError(t, err)
+	require.Len(t, {{ .Name | camelcase }}UUIDs, 2)
+{{- end }}
 
 	// Delete {{ .PluralName }} by cluster Name.
 	err = {{ .Name | camelcase }}.DeleteWithFilter(ctx, inventory.{{ .Name | pascalcase }}Filter{

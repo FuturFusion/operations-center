@@ -101,7 +101,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 			storageVolume: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
-				Server:          "one",
+				Server:          ptr.To("one"),
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "one",
@@ -114,7 +114,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 			storageVolume: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "", // invalid
-				Server:          "one",
+				Server:          ptr.To("one"),
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "one",
@@ -130,7 +130,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 			storageVolume: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
-				Server:          "one",
+				Server:          ptr.To("one"),
 				ProjectName:     "", // invalid
 				StoragePoolName: "storagePool one",
 				Name:            "one",
@@ -146,7 +146,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 			storageVolume: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
-				Server:          "one",
+				Server:          ptr.To("one"),
 				ProjectName:     "project one",
 				StoragePoolName: "", // invalid
 				Name:            "one",
@@ -162,7 +162,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 			storageVolume: (&inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
-				Server:          "one",
+				Server:          ptr.To("one"),
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "", // invalid
@@ -178,7 +178,7 @@ func TestStorageVolume_Validate(t *testing.T) {
 			storageVolume: &inventory.StorageVolume{
 				ID:              1,
 				Cluster:         "one",
-				Server:          "one",
+				Server:          ptr.To("one"),
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "one",

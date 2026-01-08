@@ -189,7 +189,7 @@ func (i *storageVolumeHandler) storageVolumesGet(r *http.Request) response.Respo
 			result = append(result, api.StorageVolume{
 				UUID:            storageVolume.UUID,
 				Cluster:         storageVolume.Cluster,
-				Server:          storageVolume.Server,
+				Server:          ptr.From(storageVolume.Server),
 				ProjectName:     storageVolume.ProjectName,
 				StoragePoolName: storageVolume.StoragePoolName,
 				Name:            storageVolume.Name,
@@ -265,7 +265,7 @@ func (i *storageVolumeHandler) storageVolumeGet(r *http.Request) response.Respon
 		api.StorageVolume{
 			UUID:            storageVolume.UUID,
 			Cluster:         storageVolume.Cluster,
-			Server:          storageVolume.Server,
+			Server:          ptr.From(storageVolume.Server),
 			ProjectName:     storageVolume.ProjectName,
 			StoragePoolName: storageVolume.StoragePoolName,
 			Name:            storageVolume.Name,

@@ -14,6 +14,7 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 )
 
 type IncusStorageVolumeFullWrapper struct {
@@ -46,7 +47,7 @@ type StorageVolume struct {
 	ID              int                           `json:"-"`
 	UUID            uuid.UUID                     `json:"uuid"          db:"primary=yes"`
 	Cluster         string                        `json:"cluster"       db:"leftjoin=clusters.name"`
-	Server          string                        `json:"server"        db:"leftjoin=servers.name"`
+	Server          *string                       `json:"server"        db:"leftjoin=servers.name"`
 	ProjectName     string                        `json:"project"`
 	StoragePoolName string                        `json:"storage_pool_name" db:"joinon=networks.name"`
 	Name            string                        `json:"name"`
@@ -58,7 +59,7 @@ type StorageVolume struct {
 func (m *StorageVolume) DeriveUUID() *StorageVolume {
 	identifier := strings.Join([]string{
 		m.Cluster,
-		m.Server,
+		ptr.From(m.Server),
 		m.ProjectName,
 		m.StoragePoolName,
 		fmt.Sprintf("%v", m.Type),

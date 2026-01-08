@@ -70,7 +70,7 @@ SELECT
   storage_buckets.id, storage_buckets.uuid, clusters.name, servers.name, storage_buckets.project_name, storage_buckets.storage_pool_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
 FROM storage_buckets
   INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
-  INNER JOIN servers ON storage_buckets.server_id = servers.id
+  LEFT JOIN servers ON storage_buckets.server_id = servers.id
 WHERE true
 %s
 ORDER BY clusters.name, servers.name, storage_buckets.name
@@ -136,7 +136,7 @@ func (r storageBucket) selectStmtGetAllUUIDWithFilter(filter inventory.StorageBu
 SELECT storage_buckets.uuid
 FROM storage_buckets
   INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
-  INNER JOIN servers ON storage_buckets.server_id = servers.id
+  LEFT JOIN servers ON storage_buckets.server_id = servers.id
 WHERE true
 %s
 ORDER BY storage_buckets.id
@@ -207,7 +207,7 @@ SELECT
 FROM
   storage_buckets
   INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
-  INNER JOIN servers ON storage_buckets.server_id = servers.id
+  LEFT JOIN servers ON storage_buckets.server_id = servers.id
 WHERE storage_buckets.uuid=:uuid;
 `
 

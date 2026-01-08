@@ -78,7 +78,7 @@ server-two
 
 	storageBucketA := inventory.StorageBucket{
 		Cluster:         "one",
-		Server:          "one",
+		Server:          ptr.To("one"),
 		ProjectName:     "one",
 		StoragePoolName: "parent one",
 		Name:            "one",
@@ -90,7 +90,7 @@ server-two
 
 	storageBucketB := inventory.StorageBucket{
 		Cluster:         "two",
-		Server:          "two",
+		Server:          ptr.To("two"),
 		ProjectName:     "two",
 		StoragePoolName: "parent two",
 		Name:            "two",
@@ -197,6 +197,26 @@ server-two
 	// Can't add a duplicate storage_buckets.
 	_, err = storageBucket.Create(ctx, storageBucketB)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
+	// Create storage_bucket without location / server
+	storageBucketC := inventory.StorageBucket{
+		Cluster:         "two",
+		Server:          nil, // no server set
+		ProjectName:     "two",
+		StoragePoolName: "parent two",
+		Name:            "two",
+		Object:          inventory.IncusStorageBucketFullWrapper{},
+		LastUpdated:     time.Now(),
+	}
+
+	storageBucketC.DeriveUUID()
+
+	_, err = storageBucket.Create(ctx, storageBucketC)
+	require.NoError(t, err)
+
+	storageBucketUUIDs, err = storageBucket.GetAllUUIDsWithFilter(ctx, inventory.StorageBucketFilter{})
+	require.NoError(t, err)
+	require.Len(t, storageBucketUUIDs, 2)
 
 	// Delete storage_buckets by cluster Name.
 	err = storageBucket.DeleteWithFilter(ctx, inventory.StorageBucketFilter{

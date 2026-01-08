@@ -14,6 +14,7 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 )
 
 type IncusStorageBucketFullWrapper struct {
@@ -46,7 +47,7 @@ type StorageBucket struct {
 	ID              int                           `json:"-"`
 	UUID            uuid.UUID                     `json:"uuid"          db:"primary=yes"`
 	Cluster         string                        `json:"cluster"       db:"leftjoin=clusters.name"`
-	Server          string                        `json:"server"        db:"leftjoin=servers.name"`
+	Server          *string                       `json:"server"        db:"leftjoin=servers.name"`
 	ProjectName     string                        `json:"project"`
 	StoragePoolName string                        `json:"storage_pool_name" db:"joinon=networks.name"`
 	Name            string                        `json:"name"`
@@ -57,7 +58,7 @@ type StorageBucket struct {
 func (m *StorageBucket) DeriveUUID() *StorageBucket {
 	identifier := strings.Join([]string{
 		m.Cluster,
-		m.Server,
+		ptr.From(m.Server),
 		m.ProjectName,
 		m.StoragePoolName,
 		m.Name,
@@ -71,10 +72,6 @@ func (m *StorageBucket) DeriveUUID() *StorageBucket {
 func (m StorageBucket) Validate() error {
 	if m.Cluster == "" {
 		return domain.NewValidationErrf("Invalid StorageBucket, cluster can not be empty")
-	}
-
-	if m.Server == "" {
-		return domain.NewValidationErrf("Invalid StorageBucket, server can not be empty")
 	}
 
 	if m.Name == "" {

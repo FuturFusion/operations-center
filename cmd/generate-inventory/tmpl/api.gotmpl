@@ -200,7 +200,11 @@ func (i *{{ .Name | camelcase }}Handler) {{ .PluralName | camelcase }}Get(r *htt
 					UUID:        {{ .Name | camelcase }}.UUID,
 					Cluster:     {{ .Name | camelcase }}.Cluster,
 		{{- if .ServerIDByLocation }}
+			{{- if .IsServerIDOptional }}
+					Server:      ptr.From({{ .Name | camelcase }}.Server),
+			{{- else }}
 					Server:      {{ .Name | camelcase }}.Server,
+			{{- end }}
 		{{- end }}
 		{{- if .HasProject }}
 					ProjectName: {{ .Name | camelcase }}.ProjectName,
@@ -284,7 +288,11 @@ func (i *{{ .Name | camelcase }}Handler) {{ .Name | camelcase }}Get(r *http.Requ
 			UUID:        {{ .Name | camelcase }}.UUID,
 			Cluster:     {{ .Name | camelcase }}.Cluster,
 {{- if .ServerIDByLocation }}
+	{{- if .IsServerIDOptional }}
+			Server:      ptr.From({{ .Name | camelcase }}.Server),
+	{{- else }}
 			Server:      {{ .Name | camelcase }}.Server,
+	{{- end }}
 {{- end }}
 {{- if .HasProject }}
 			ProjectName: {{ .Name | camelcase }}.ProjectName,

@@ -11,6 +11,9 @@ import (
 	"github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite/entities"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	provisioningEntities "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+{{- if .IsServerIDOptional }}
+	"github.com/FuturFusion/operations-center/internal/ptr"
+{{- end }}
 	"github.com/FuturFusion/operations-center/internal/testing/uuidgen"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
@@ -62,7 +65,11 @@ func Test_GetWithFilter{{ .PluralName | pascalcase }}(t *testing.T) {
 					Name:    "one",
 					Cluster: "clusterOne",
 {{- if .ServerIDByLocation }}
-					Server:  "serverOne",
+	{{- if .IsServerIDOptional }}
+					Server:  ptr.To("serverOne"),
+	{{- else }}
+					Server:    "serverOne",
+	{{- end }}
 {{- end }}
 				})
 				require.NoError(t, err)
@@ -138,7 +145,11 @@ func Test_Get{{ .Name | pascalcase }}(t *testing.T) {
 					Name:    "foo",
 					Cluster: "clusterOne",
 {{- if .ServerIDByLocation }}
+	{{- if .IsServerIDOptional }}
+					Server:  ptr.To("serverOne"),
+	{{- else }}
 					Server:  "serverOne",
+	{{- end }}
 {{- end }}
 				})
 				require.NoError(t, err)

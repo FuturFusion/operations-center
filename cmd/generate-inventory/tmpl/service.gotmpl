@@ -14,6 +14,9 @@ import (
 {{- end }}
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+{{- if .IsServerIDOptional }}
+	"github.com/FuturFusion/operations-center/internal/ptr"
+{{- end }}
 	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
@@ -197,7 +200,11 @@ func (s {{ .Name | camelcase }}Service) ResyncByUUID(ctx context.Context, id uui
 		}
 
 {{ if .ServerIDByLocation }}
+	{{- if .IsServerIDOptional }}
+		{{ .Name | camelcase }}.Server = ptr.To(retrieved{{ .Name | pascalcase }}.Location)
+	{{- else }}
 		{{ .Name | camelcase }}.Server = retrieved{{ .Name | pascalcase }}.Location
+	{{- end }}
 {{- end }}
 {{- if .HasProjectDirect }}
 		{{ .Name | camelcase }}.ProjectName = firstNonEmpty(retrieved{{ .Name | pascalcase }}.Project, {{ .Name | camelcase }}.ProjectName, "default")
@@ -277,7 +284,11 @@ func (s {{ .Name | camelcase }}Service) handleCreateEvent(ctx context.Context, c
 	{{ .Name | camelcase }} := {{ .Name | pascalcase }}{
 		Cluster:   clusterName,
 {{- if .ServerIDByLocation }}
+	{{- if .IsServerIDOptional }}
+		Server:      ptr.To(retrieved{{ .Name | pascalcase }}.Location),
+	{{- else }}
 		Server:      retrieved{{ .Name | pascalcase }}.Location,
+	{{- end }}
 {{- end }}
 {{- if .HasProjectDirect }}
 		ProjectName: firstNonEmpty(retrieved{{ .Name | pascalcase }}.Project, event.Source.ProjectName, "default"),
@@ -459,7 +470,11 @@ func (s {{ .Name | camelcase }}Service) SyncCluster(ctx context.Context, name st
 			{{ .Name | camelcase }} := {{ .Name | pascalcase }}{
 				Cluster:   name,
 {{- if .ServerIDByLocation }}
+	{{- if .IsServerIDOptional }}
+				Server:      ptr.To(retrieved{{ .Name | pascalcase }}.Location),
+	{{- else }}
 				Server:      retrieved{{ .Name | pascalcase }}.Location,
+	{{- end }}
 {{- end }}
 {{- if .HasProjectDirect }}
 				ProjectName: retrieved{{ .Name | pascalcase }}.Project,

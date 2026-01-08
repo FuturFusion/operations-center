@@ -12,6 +12,9 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+{{- if .IsServerIDOptional }}
+	"github.com/FuturFusion/operations-center/internal/ptr"
+{{- end }}
 )
 
 type Incus{{ .ObjectType | pascalcase }}Wrapper struct {
@@ -45,7 +48,7 @@ type {{ .Name | pascalcase }} struct {
 	UUID        uuid.UUID `json:"uuid"          db:"primary=yes"`
 	Cluster     string `json:"cluster"       db:"leftjoin=clusters.name"`
 {{- if .ServerIDByLocation }}
-	Server      string `json:"server"        db:"leftjoin=servers.name"`
+	Server      {{ if .IsServerIDOptional }}*{{ end }}string `json:"server"        db:"leftjoin=servers.name"`
 {{- end }}
 {{- if .HasProject }}
 	ProjectName string `json:"project"{{ if .HasProjectFromParent }}       db:"leftjoin={{ .ParentPluralName | snakecase }}.project_name&joinon={{ .PluralName | snakecase }}.{{ .ParentName | snakecase }}_name&jointo=name&omit=create,update"{{ end }}`
@@ -65,7 +68,11 @@ func (m *{{ .Name | pascalcase }}) DeriveUUID() *{{ .Name | pascalcase }} {
 	identifier := strings.Join([]string{
 		m.Cluster,
 {{- if and .ServerIDByLocation .IsServerIDDefining }}
+	{{- if .IsServerIDOptional }}
+		ptr.From(m.Server),
+	{{- else }}
 		m.Server,
+	{{- end }}
 {{- end }}
 {{- if .HasProjectDirect }}
 		m.ProjectName,

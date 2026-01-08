@@ -14,6 +14,7 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
@@ -184,7 +185,7 @@ func (s storageBucketService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 			return err
 		}
 
-		storageBucket.Server = retrievedStorageBucket.Location
+		storageBucket.Server = ptr.To(retrievedStorageBucket.Location)
 		storageBucket.ProjectName = firstNonEmpty(retrievedStorageBucket.Project, storageBucket.ProjectName, "default")
 		storageBucket.Object = IncusStorageBucketFullWrapper{retrievedStorageBucket}
 		storageBucket.LastUpdated = s.now()
@@ -257,7 +258,7 @@ func (s storageBucketService) handleCreateEvent(ctx context.Context, clusterName
 
 	storageBucket := StorageBucket{
 		Cluster:         clusterName,
-		Server:          retrievedStorageBucket.Location,
+		Server:          ptr.To(retrievedStorageBucket.Location),
 		ProjectName:     firstNonEmpty(retrievedStorageBucket.Project, event.Source.ProjectName, "default"),
 		StoragePoolName: event.Source.ParentName,
 		Name:            retrievedStorageBucket.Name,
@@ -404,7 +405,7 @@ func (s storageBucketService) SyncCluster(ctx context.Context, name string) erro
 			for _, retrievedStorageBucket := range retrievedStorageBuckets {
 				storageBucket := StorageBucket{
 					Cluster:         name,
-					Server:          retrievedStorageBucket.Location,
+					Server:          ptr.To(retrievedStorageBucket.Location),
 					ProjectName:     retrievedStorageBucket.Project,
 					StoragePoolName: storagePool.Name,
 					Name:            retrievedStorageBucket.Name,
