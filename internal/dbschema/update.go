@@ -929,9 +929,6 @@ func updateFromV0(ctx context.Context, tx *sql.Tx) error {
 
 func withResourcesView(stmt string) string {
 	return fmt.Sprintf(`
--- Disable foreign key enforcing
-PRAGMA defer_foreign_keys = On;
-
 DROP VIEW resources;
 
 -- Update statement
@@ -1001,7 +998,5 @@ CREATE VIEW resources AS
     INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
-
-PRAGMA defer_foreign_keys = Off;
 `, stmt)
 }

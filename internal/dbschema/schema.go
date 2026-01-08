@@ -116,7 +116,7 @@ func (s *schema) fresh(statement string) {
 // transaction will be rolled back and the database will remain unchanged.
 //
 // A update will be applied only if it hasn't been before (currently applied
-// updates are tracked in the a 'shema' table, which gets automatically
+// updates are tracked in the a 'schema' table, which gets automatically
 // created).
 //
 // If no error occurs, the integer returned by this method is the
@@ -124,7 +124,13 @@ func (s *schema) fresh(statement string) {
 func (s *schema) ensure(ctx context.Context, db *sql.DB) (int, error) {
 	var current int
 
-	err := transaction(ctx, db, func(ctx context.Context, tx *sql.Tx) error {
+	// Disable foreign keys before performing a schema update so references aren't cascade deleted.
+	_, err := db.Exec("PRAGMA foreign_keys=OFF; PRAGMA legacy_alter_table=ON")
+	if err != nil {
+		return -1, err
+	}
+
+	err = transaction(ctx, db, func(ctx context.Context, tx *sql.Tx) error {
 		var err error
 
 		err = ensureSchemaTableExists(ctx, tx)
@@ -155,6 +161,12 @@ func (s *schema) ensure(ctx context.Context, db *sql.DB) (int, error) {
 
 		return nil
 	})
+	if err != nil {
+		return -1, err
+	}
+
+	// Re-enable foreign keys before completing.
+	_, err = db.Exec("PRAGMA foreign_keys=ON; PRAGMA legacy_alter_table=OFF")
 	if err != nil {
 		return -1, err
 	}
