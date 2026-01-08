@@ -1005,8 +1005,8 @@ func TestClusterService_Create(t *testing.T) {
 				nil,
 				map[domain.ResourceType]provisioning.InventorySyncer{domain.ResourceTypeImage: inventorySyncer},
 				provisioner,
-				provisioning.ClusterServiceCreateClusterRetryTimeout(0),
-				provisioning.ClusterServiceUpdateSignal(updateSignal),
+				provisioning.WithClusterServiceCreateClusterRetryTimeout(0),
+				provisioning.WithClusterServiceUpdateSignal(updateSignal),
 			)
 
 			var signalHandlerCalled bool
@@ -1599,7 +1599,7 @@ func TestClusterService_Rename(t *testing.T) {
 			}
 
 			clusterSvc := provisioning.NewClusterService(repo, nil, nil, nil, nil, nil, nil,
-				provisioning.ClusterServiceUpdateSignal(updateSignal),
+				provisioning.WithClusterServiceUpdateSignal(updateSignal),
 			)
 
 			var signalHandlerCalled bool
@@ -1759,7 +1759,7 @@ func TestClusterService_DeleteByName(t *testing.T) {
 			}
 
 			clusterSvc := provisioning.NewClusterService(repo, nil, nil, serverSvc, nil, nil, nil,
-				provisioning.ClusterServiceUpdateSignal(updateSignal),
+				provisioning.WithClusterServiceUpdateSignal(updateSignal),
 			)
 
 			var signalHandlerCalled bool
@@ -2053,7 +2053,7 @@ func TestDeleteAndFactoryResetByName(t *testing.T) {
 			}
 
 			clusterSvc := provisioning.NewClusterService(repo, nil, client, serverSvc, tokenSvc, nil, nil,
-				provisioning.ClusterServiceUpdateSignal(updateSignal),
+				provisioning.WithClusterServiceUpdateSignal(updateSignal),
 			)
 
 			var signalHandlerCalled bool

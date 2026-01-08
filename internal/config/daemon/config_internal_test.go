@@ -173,7 +173,7 @@ func Test_validate(t *testing.T) {
 				Network: api.SystemNetwork{
 					SystemNetworkPut: api.SystemNetworkPut{
 						RestServerAddress:       "127.0.0.1:7443",
-						OperationsCenterAddress: ":|\\", // invalid,
+						OperationsCenterAddress: ":|\\", // invalid
 					},
 				},
 				Updates: defaultUpdates,
@@ -190,7 +190,7 @@ func Test_validate(t *testing.T) {
 			cfg: config{
 				Updates: api.SystemUpdates{
 					SystemUpdatesPut: api.SystemUpdatesPut{
-						Source:                      ":|\\", // invalid,
+						Source:                      ":|\\", // invalid
 						SignatureVerificationRootCA: signatureVerificationRootCA,
 					},
 				},
@@ -244,7 +244,7 @@ func Test_validate(t *testing.T) {
 				Security: api.SystemSecurity{
 					SystemSecurityPut: api.SystemSecurityPut{
 						OIDC: api.SystemSecurityOIDC{
-							Issuer: ":|\\", // invalid,
+							Issuer: ":|\\", // invalid
 						},
 					},
 				},
@@ -259,7 +259,7 @@ func Test_validate(t *testing.T) {
 				Security: api.SystemSecurity{
 					SystemSecurityPut: api.SystemSecurityPut{
 						OpenFGA: api.SystemSecurityOpenFGA{
-							APIURL: ":|\\", // invalid,
+							APIURL: ":|\\", // invalid
 						},
 					},
 				},
@@ -274,7 +274,22 @@ func Test_validate(t *testing.T) {
 				Security: api.SystemSecurity{
 					SystemSecurityPut: api.SystemSecurityPut{
 						ACME: api.SystemSecurityACME{
-							CAURL: ":|\\", // invalid,,
+							CAURL: ":|\\", // invalid
+						},
+					},
+				},
+				Updates: defaultUpdates,
+			},
+
+			assertErr: require.Error,
+		},
+		{
+			name: "invalid security.trusted_https_proxies config",
+			cfg: config{
+				Security: api.SystemSecurity{
+					SystemSecurityPut: api.SystemSecurityPut{
+						TrustedHTTPSProxies: []string{
+							":|\\", // invalid
 						},
 					},
 				},

@@ -45,13 +45,13 @@ var _ ClusterService = &clusterService{}
 
 type ClusterServiceOption func(s *clusterService)
 
-func ClusterServiceCreateClusterRetryTimeout(timeout time.Duration) ClusterServiceOption {
+func WithClusterServiceCreateClusterRetryTimeout(timeout time.Duration) ClusterServiceOption {
 	return func(s *clusterService) {
 		s.createClusterRetryTimeout = timeout
 	}
 }
 
-func ClusterServiceUpdateSignal(updateSignal signals.Signal[ClusterUpdateMessage]) ClusterServiceOption {
+func WithClusterServiceUpdateSignal(updateSignal signals.Signal[ClusterUpdateMessage]) ClusterServiceOption {
 	return func(s *clusterService) {
 		s.clusterUpdateSignal = updateSignal
 	}

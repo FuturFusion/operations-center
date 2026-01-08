@@ -47,12 +47,20 @@ type SystemSecurity struct {
 //
 // swagger:model
 type SystemSecurityPut struct {
-	OIDC    SystemSecurityOIDC    `json:"oidc" yaml:"oidc"`
+	// OIDC configuration.
+	OIDC SystemSecurityOIDC `json:"oidc" yaml:"oidc"`
+
+	// OpenFGA configuration.
 	OpenFGA SystemSecurityOpenFGA `json:"openfga" yaml:"openfga"`
-	ACME    SystemSecurityACME    `json:"acme" yaml:"acme"`
+
+	// ACME configuration.
+	ACME SystemSecurityACME `json:"acme" yaml:"acme"`
 
 	// An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
 	TrustedTLSClientCertFingerprints []string `json:"trusted_tls_client_cert_fingerprints" yaml:"trusted_tls_client_cert_fingerprints"`
+
+	// An array of trusted HTTPS proxy addresses.
+	TrustedHTTPSProxies []string `json:"trusted_https_proxies" yaml:"trusted_https_proxies"`
 }
 
 // SystemSecurityOIDC is the OIDC related part of the system's security

@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -54,11 +55,13 @@ var (
 
 	env enver = environment.New(ApplicationName, ApplicationEnvPrefix)
 
-	NetworkUpdateSignal      = signals.NewSync[api.SystemNetwork]()
-	SecurityUpdateSignal     = signals.NewSync[api.SystemSecurity]()
-	SecurityACMEUpdateSignal = signals.NewSync[api.SystemSecurityACME]()
-	UpdatesValidateSignal    = signals.NewSync[api.SystemUpdates]()
-	UpdatesUpdateSignal      = signals.NewSync[api.SystemUpdates]()
+	ServerCertificateUpdateSignal           = signals.NewSync[tls.Certificate]()
+	NetworkUpdateSignal                     = signals.NewSync[api.SystemNetwork]()
+	SecurityUpdateSignal                    = signals.NewSync[api.SystemSecurity]()
+	SecurityTrustedHTTPSProxiesUpdateSignal = signals.NewSync[[]string]()
+	SecurityACMEUpdateSignal                = signals.NewSync[api.SystemSecurityACME]()
+	UpdatesValidateSignal                   = signals.NewSync[api.SystemUpdates]()
+	UpdatesUpdateSignal                     = signals.NewSync[api.SystemUpdates]()
 )
 
 func Init(vardir enver) error {
@@ -144,7 +147,8 @@ func GetNetwork() api.SystemNetwork {
 
 func UpdateNetwork(ctx context.Context, cfg api.SystemNetworkPut) error {
 	globalConfigInstanceMu.Lock()
-	defer globalConfigInstanceMu.Unlock()
+	unlock := unlockOnce(&globalConfigInstanceMu)
+	defer unlock()
 
 	var err error
 
@@ -158,6 +162,8 @@ func UpdateNetwork(ctx context.Context, cfg api.SystemNetworkPut) error {
 	if err != nil {
 		return err
 	}
+
+	unlock()
 
 	NetworkUpdateSignal.Emit(ctx, api.SystemNetwork{
 		SystemNetworkPut: cfg,
@@ -227,6 +233,7 @@ func UpdateSecurity(ctx context.Context, cfg api.SystemSecurityPut) error {
 
 	isTrustedTLSClientCertFingerprintsChanged := !slices.Equal(currentCfg.TrustedTLSClientCertFingerprints, newCfg.Security.TrustedTLSClientCertFingerprints)
 	isSecurityConfigChanged := isTrustedTLSClientCertFingerprintsChanged || currentCfg.OIDC != newCfg.Security.OIDC || currentCfg.OpenFGA != newCfg.Security.OpenFGA
+	isTrustedHTTPSProxiesChanged := !slices.Equal(currentCfg.TrustedHTTPSProxies, newCfg.Security.TrustedHTTPSProxies)
 	isACMEChanged := acme.ACMEConfigChanged(currentCfg.ACME, newCfg.Security.ACME)
 
 	globalConfigInstanceMu.Lock()
@@ -240,6 +247,10 @@ func UpdateSecurity(ctx context.Context, cfg api.SystemSecurityPut) error {
 		SecurityUpdateSignal.Emit(ctx, api.SystemSecurity{
 			SystemSecurityPut: cfg,
 		})
+	}
+
+	if isTrustedHTTPSProxiesChanged {
+		SecurityTrustedHTTPSProxiesUpdateSignal.Emit(ctx, cfg.TrustedHTTPSProxies)
 	}
 
 	if isACMEChanged {
@@ -290,7 +301,8 @@ func GetUpdates() api.SystemUpdates {
 
 func UpdateUpdates(ctx context.Context, cfg api.SystemUpdatesPut) error {
 	globalConfigInstanceMu.Lock()
-	defer globalConfigInstanceMu.Unlock()
+	unlock := unlockOnce(&globalConfigInstanceMu)
+	defer unlock()
 
 	newCfg := globalConfigInstance
 	newCfg.Updates.SystemUpdatesPut = cfg
@@ -299,6 +311,8 @@ func UpdateUpdates(ctx context.Context, cfg api.SystemUpdatesPut) error {
 	if err != nil {
 		return err
 	}
+
+	unlock()
 
 	UpdatesUpdateSignal.Emit(ctx, api.SystemUpdates{
 		SystemUpdatesPut: cfg,
@@ -394,6 +408,12 @@ func validate(cfg config) error {
 		return err
 	}
 
+	for _, p := range cfg.Security.TrustedHTTPSProxies {
+		if net.ParseIP(p) == nil {
+			return fmt.Errorf("HTTPS Proxy address %q is not a valid IP", p)
+		}
+	}
+
 	// Updating the configuration requires at least one certificate fingerprint to be present in order to have a fallback authentication method.
 	isTrustedTLSClientCertFingerprintsUpdated := !slices.Equal(globalConfigInstance.Security.TrustedTLSClientCertFingerprints, cfg.Security.TrustedTLSClientCertFingerprints)
 	if env.IsIncusOS() && isTrustedTLSClientCertFingerprintsUpdated && len(cfg.Security.TrustedTLSClientCertFingerprints) == 0 {
@@ -453,4 +473,9 @@ func ValidateNetworkConfig(cfg api.SystemNetwork) error {
 	}
 
 	return nil
+}
+
+func unlockOnce(mu interface{ Unlock() }) func() {
+	once := sync.Once{}
+	return func() { once.Do(mu.Unlock) }
 }
