@@ -23,7 +23,7 @@ type Cluster struct {
 	ID                    int64             `json:"-"`
 	Name                  string            `json:"name"                    db:"primary=yes"`
 	ConnectionURL         string            `json:"connection_url"`
-	Certificate           string            `json:"certificate"`
+	Certificate           *string           `json:"certificate"`
 	Fingerprint           string            `json:"fingerprint"             db:"ignore"`
 	Status                api.ClusterStatus `json:"status"`
 	ServerNames           []string          `json:"server_names"            db:"ignore"`

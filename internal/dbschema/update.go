@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
+	"fmt"
 )
 
 //go:embed schema/000001_freshschema.sql
@@ -44,6 +45,32 @@ var updates = map[int]update{
 	15: updateFromV14,
 	16: updateFromV15,
 	17: updateFromV16,
+	18: updateFromV17,
+}
+
+func updateFromV17(ctx context.Context, tx *sql.Tx) error {
+	// v17..v18 allow NULL for clusters.certificate to make the absence of a
+	// certificate not breaking the UNIQUE constraint:
+	// https://www.sqlite.org/lang_createindex.html#unique_indexes
+	// Replace all empty string certificates with NULL.
+	stmt := withResourcesView(`
+CREATE TABLE clusters_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  connection_url TEXT NOT NULL,
+  certificate TEXT,
+  status TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (name),
+  UNIQUE (certificate),
+  CHECK (name <> '')
+);
+INSERT INTO clusters_new SELECT id, name, connection_url, CASE WHEN certificate == '' THEN NULL ELSE certificate END, status, last_updated FROM clusters;
+DROP TABLE clusters;
+ALTER TABLE clusters_new RENAME TO clusters;
+`)
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV16(ctx context.Context, tx *sql.Tx) error {
@@ -68,13 +95,7 @@ CREATE TABLE cluster_artifacts (
 
 func updateFromV15(ctx context.Context, tx *sql.Tx) error {
 	// v15..v16 remove server_id from unique key constraint on instances
-	stmt := `
-PRAGMA defer_foreign_keys = On;
-
-DROP VIEW resources;
-
--- Update tables
-
+	stmt := withResourcesView(`
 CREATE TABLE instances_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
@@ -92,75 +113,7 @@ CREATE TABLE instances_new (
 INSERT INTO instances_new SELECT id, uuid, cluster_id, server_id, project_name, name, object, last_updated FROM instances;
 DROP TABLE instances;
 ALTER TABLE instances_new RENAME TO instances;
-
--- Restore view and enable foreign keys
-
-CREATE VIEW resources AS
-    SELECT 'image' AS kind, images.id, clusters.name AS cluster_name, NULL AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
-    FROM images
-    INNER JOIN clusters ON images.cluster_id = clusters.id
-  UNION
-    SELECT 'instance' AS kind, instances.id, clusters.name AS cluster_name, servers.name AS server_name, instances.project_name, NULL AS parent_name, instances.name, instances.object, instances.last_updated
-    FROM instances
-    INNER JOIN clusters ON instances.cluster_id = clusters.id
-    LEFT JOIN servers ON instances.server_id = servers.id
-  UNION
-    SELECT 'network' AS kind, networks.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, NULL AS parent_name, networks.name, networks.object, networks.last_updated
-    FROM networks
-    INNER JOIN clusters ON networks.cluster_id = clusters.id
-  UNION
-    SELECT 'network_acl' AS kind, network_acls.id, clusters.name AS cluster_name, NULL AS server_name, network_acls.project_name, NULL AS parent_name, network_acls.name, network_acls.object, network_acls.last_updated
-    FROM network_acls
-    INNER JOIN clusters ON network_acls.cluster_id = clusters.id
-  UNION
-    SELECT 'network_forward' AS kind, network_forwards.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_forwards.network_name AS parent_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
-    FROM network_forwards
-    INNER JOIN clusters ON network_forwards.cluster_id = clusters.id
-    LEFT JOIN networks ON network_forwards.network_name = networks.name
-  UNION
-    SELECT 'network_integration' AS kind, network_integrations.id, clusters.name AS cluster_name, NULL AS server_name, NULL AS project_name, NULL AS parent_name, network_integrations.name, network_integrations.object, network_integrations.last_updated
-    FROM network_integrations
-    INNER JOIN clusters ON network_integrations.cluster_id = clusters.id
-  UNION
-    SELECT 'network_load_balancer' AS kind, network_load_balancers.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_load_balancers.network_name AS parent_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
-    FROM network_load_balancers
-    INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
-    LEFT JOIN networks ON network_load_balancers.network_name = networks.name
-  UNION
-    SELECT 'network_peer' AS kind, network_peers.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_peers.network_name AS parent_name, network_peers.name, network_peers.object, network_peers.last_updated
-    FROM network_peers
-    INNER JOIN clusters ON network_peers.cluster_id = clusters.id
-    LEFT JOIN networks ON network_peers.network_name = networks.name
-  UNION
-    SELECT 'network_zone' AS kind, network_zones.id, clusters.name AS cluster_name, NULL AS server_name, network_zones.project_name, NULL AS parent_name, network_zones.name, network_zones.object, network_zones.last_updated
-    FROM network_zones
-    INNER JOIN clusters ON network_zones.cluster_id = clusters.id
-  UNION
-    SELECT 'profile' AS kind, profiles.id, clusters.name AS cluster_name, NULL AS server_name, profiles.project_name, NULL AS parent_name, profiles.name, profiles.object, profiles.last_updated
-    FROM profiles
-    INNER JOIN clusters ON profiles.cluster_id = clusters.id
-  UNION
-    SELECT 'project' AS kind, projects.id, clusters.name AS cluster_name, NULL AS server_name, projects.name AS project_name, NULL AS parent_name, projects.name, projects.object, projects.last_updated
-    FROM projects
-    INNER JOIN clusters ON projects.cluster_id = clusters.id
-  UNION
-    SELECT 'storage_bucket' AS kind, storage_buckets.id, clusters.name AS cluster_name, servers.name AS server_name, storage_buckets.project_name, storage_buckets.storage_pool_name AS parent_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
-    FROM storage_buckets
-    INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
-    LEFT JOIN servers ON storage_buckets.server_id = servers.id
-  UNION
-    SELECT 'storage_pool' AS kind, storage_pools.id, clusters.name AS cluster_name, NULL AS server_name, NULL AS project_name, NULL AS parent_name, storage_pools.name, storage_pools.object, storage_pools.last_updated
-    FROM storage_pools
-    INNER JOIN clusters ON storage_pools.cluster_id = clusters.id
-  UNION
-    SELECT 'storage_volume' AS kind, storage_volumes.id, clusters.name AS cluster_name, servers.name AS server_name, storage_volumes.project_name, storage_volumes.storage_pool_name AS parent_name, storage_volumes.type || "/" || storage_volumes.name AS name, storage_volumes.object, storage_volumes.last_updated
-    FROM storage_volumes
-    INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
-    LEFT JOIN servers ON storage_volumes.server_id = servers.id
-;
-
-PRAGMA defer_foreign_keys = Off;
-`
+`)
 	_, err := tx.Exec(stmt)
 	return MapDBError(err)
 }
@@ -186,13 +139,7 @@ CREATE TABLE cluster_templates (
 
 func updateFromV13(ctx context.Context, tx *sql.Tx) error {
 	// v13..v14 add check constraint on name for servers and clusters
-	stmt := `
-PRAGMA defer_foreign_keys = On;
-
-DROP VIEW resources;
-
--- Update tables
-
+	stmt := withResourcesView(`
 CREATE TABLE servers_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER,
@@ -229,75 +176,7 @@ CREATE TABLE clusters_new (
 INSERT INTO clusters_new SELECT id, name, connection_url, certificate, status, last_updated FROM clusters;
 DROP TABLE clusters;
 ALTER TABLE clusters_new RENAME TO clusters;
-
--- Restore view and enable foreign keys
-
-CREATE VIEW resources AS
-    SELECT 'image' AS kind, images.id, clusters.name AS cluster_name, NULL AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
-    FROM images
-    INNER JOIN clusters ON images.cluster_id = clusters.id
-  UNION
-    SELECT 'instance' AS kind, instances.id, clusters.name AS cluster_name, servers.name AS server_name, instances.project_name, NULL AS parent_name, instances.name, instances.object, instances.last_updated
-    FROM instances
-    INNER JOIN clusters ON instances.cluster_id = clusters.id
-    LEFT JOIN servers ON instances.server_id = servers.id
-  UNION
-    SELECT 'network' AS kind, networks.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, NULL AS parent_name, networks.name, networks.object, networks.last_updated
-    FROM networks
-    INNER JOIN clusters ON networks.cluster_id = clusters.id
-  UNION
-    SELECT 'network_acl' AS kind, network_acls.id, clusters.name AS cluster_name, NULL AS server_name, network_acls.project_name, NULL AS parent_name, network_acls.name, network_acls.object, network_acls.last_updated
-    FROM network_acls
-    INNER JOIN clusters ON network_acls.cluster_id = clusters.id
-  UNION
-    SELECT 'network_forward' AS kind, network_forwards.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_forwards.network_name AS parent_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
-    FROM network_forwards
-    INNER JOIN clusters ON network_forwards.cluster_id = clusters.id
-    LEFT JOIN networks ON network_forwards.network_name = networks.name
-  UNION
-    SELECT 'network_integration' AS kind, network_integrations.id, clusters.name AS cluster_name, NULL AS server_name, NULL AS project_name, NULL AS parent_name, network_integrations.name, network_integrations.object, network_integrations.last_updated
-    FROM network_integrations
-    INNER JOIN clusters ON network_integrations.cluster_id = clusters.id
-  UNION
-    SELECT 'network_load_balancer' AS kind, network_load_balancers.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_load_balancers.network_name AS parent_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
-    FROM network_load_balancers
-    INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
-    LEFT JOIN networks ON network_load_balancers.network_name = networks.name
-  UNION
-    SELECT 'network_peer' AS kind, network_peers.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_peers.network_name AS parent_name, network_peers.name, network_peers.object, network_peers.last_updated
-    FROM network_peers
-    INNER JOIN clusters ON network_peers.cluster_id = clusters.id
-    LEFT JOIN networks ON network_peers.network_name = networks.name
-  UNION
-    SELECT 'network_zone' AS kind, network_zones.id, clusters.name AS cluster_name, NULL AS server_name, network_zones.project_name, NULL AS parent_name, network_zones.name, network_zones.object, network_zones.last_updated
-    FROM network_zones
-    INNER JOIN clusters ON network_zones.cluster_id = clusters.id
-  UNION
-    SELECT 'profile' AS kind, profiles.id, clusters.name AS cluster_name, NULL AS server_name, profiles.project_name, NULL AS parent_name, profiles.name, profiles.object, profiles.last_updated
-    FROM profiles
-    INNER JOIN clusters ON profiles.cluster_id = clusters.id
-  UNION
-    SELECT 'project' AS kind, projects.id, clusters.name AS cluster_name, NULL AS server_name, projects.name AS project_name, NULL AS parent_name, projects.name, projects.object, projects.last_updated
-    FROM projects
-    INNER JOIN clusters ON projects.cluster_id = clusters.id
-  UNION
-    SELECT 'storage_bucket' AS kind, storage_buckets.id, clusters.name AS cluster_name, servers.name AS server_name, storage_buckets.project_name, storage_buckets.storage_pool_name AS parent_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
-    FROM storage_buckets
-    INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
-    LEFT JOIN servers ON storage_buckets.server_id = servers.id
-  UNION
-    SELECT 'storage_pool' AS kind, storage_pools.id, clusters.name AS cluster_name, NULL AS server_name, NULL AS project_name, NULL AS parent_name, storage_pools.name, storage_pools.object, storage_pools.last_updated
-    FROM storage_pools
-    INNER JOIN clusters ON storage_pools.cluster_id = clusters.id
-  UNION
-    SELECT 'storage_volume' AS kind, storage_volumes.id, clusters.name AS cluster_name, servers.name AS server_name, storage_volumes.project_name, storage_volumes.storage_pool_name AS parent_name, storage_volumes.type || "/" || storage_volumes.name AS name, storage_volumes.object, storage_volumes.last_updated
-    FROM storage_volumes
-    INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
-    LEFT JOIN servers ON storage_volumes.server_id = servers.id
-;
-
-PRAGMA defer_foreign_keys = Off;
-`
+`)
 	_, err := tx.Exec(stmt)
 	return MapDBError(err)
 }
@@ -369,14 +248,7 @@ ALTER TABLE updates ADD COLUMN "status" NOT NULL DEFAULT 'ready';
 
 func updateFromV6(ctx context.Context, tx *sql.Tx) error {
 	// v6..v7 add `DELETE CASCADE` to foreign keys
-	stmt := `
--- Prepare for update
-PRAGMA defer_foreign_keys = On;
-
-DROP VIEW resources;
-
--- Update tables
-
+	stmt := withResourcesView(`
 CREATE TABLE servers_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   cluster_id INTEGER,
@@ -446,7 +318,6 @@ CREATE TABLE networks_new (
 INSERT INTO networks_new SELECT id, uuid, cluster_id, project_name, name, object, last_updated FROM networks;
 DROP TABLE networks;
 ALTER TABLE networks_new RENAME TO networks;
-
 
 CREATE TABLE network_acls_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -643,75 +514,7 @@ CREATE TABLE storage_volumes_new (
 INSERT INTO storage_volumes_new SELECT id, uuid, cluster_id, server_id, project_name, storage_pool_name, name, type, object, last_updated FROM storage_volumes;
 DROP TABLE storage_volumes;
 ALTER TABLE storage_volumes_new RENAME TO storage_volumes;
-
--- Restore view and enable foreign keys
-
-CREATE VIEW resources AS
-    SELECT 'image' AS kind, images.id, clusters.name AS cluster_name, NULL AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
-    FROM images
-    INNER JOIN clusters ON images.cluster_id = clusters.id
-  UNION
-    SELECT 'instance' AS kind, instances.id, clusters.name AS cluster_name, servers.name AS server_name, instances.project_name, NULL AS parent_name, instances.name, instances.object, instances.last_updated
-    FROM instances
-    INNER JOIN clusters ON instances.cluster_id = clusters.id
-    LEFT JOIN servers ON instances.server_id = servers.id
-  UNION
-    SELECT 'network' AS kind, networks.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, NULL AS parent_name, networks.name, networks.object, networks.last_updated
-    FROM networks
-    INNER JOIN clusters ON networks.cluster_id = clusters.id
-  UNION
-    SELECT 'network_acl' AS kind, network_acls.id, clusters.name AS cluster_name, NULL AS server_name, network_acls.project_name, NULL AS parent_name, network_acls.name, network_acls.object, network_acls.last_updated
-    FROM network_acls
-    INNER JOIN clusters ON network_acls.cluster_id = clusters.id
-  UNION
-    SELECT 'network_forward' AS kind, network_forwards.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_forwards.network_name AS parent_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
-    FROM network_forwards
-    INNER JOIN clusters ON network_forwards.cluster_id = clusters.id
-    LEFT JOIN networks ON network_forwards.network_name = networks.name
-  UNION
-    SELECT 'network_integration' AS kind, network_integrations.id, clusters.name AS cluster_name, NULL AS server_name, NULL AS project_name, NULL AS parent_name, network_integrations.name, network_integrations.object, network_integrations.last_updated
-    FROM network_integrations
-    INNER JOIN clusters ON network_integrations.cluster_id = clusters.id
-  UNION
-    SELECT 'network_load_balancer' AS kind, network_load_balancers.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_load_balancers.network_name AS parent_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
-    FROM network_load_balancers
-    INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
-    LEFT JOIN networks ON network_load_balancers.network_name = networks.name
-  UNION
-    SELECT 'network_peer' AS kind, network_peers.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_peers.network_name AS parent_name, network_peers.name, network_peers.object, network_peers.last_updated
-    FROM network_peers
-    INNER JOIN clusters ON network_peers.cluster_id = clusters.id
-    LEFT JOIN networks ON network_peers.network_name = networks.name
-  UNION
-    SELECT 'network_zone' AS kind, network_zones.id, clusters.name AS cluster_name, NULL AS server_name, network_zones.project_name, NULL AS parent_name, network_zones.name, network_zones.object, network_zones.last_updated
-    FROM network_zones
-    INNER JOIN clusters ON network_zones.cluster_id = clusters.id
-  UNION
-    SELECT 'profile' AS kind, profiles.id, clusters.name AS cluster_name, NULL AS server_name, profiles.project_name, NULL AS parent_name, profiles.name, profiles.object, profiles.last_updated
-    FROM profiles
-    INNER JOIN clusters ON profiles.cluster_id = clusters.id
-  UNION
-    SELECT 'project' AS kind, projects.id, clusters.name AS cluster_name, NULL AS server_name, projects.name AS project_name, NULL AS parent_name, projects.name, projects.object, projects.last_updated
-    FROM projects
-    INNER JOIN clusters ON projects.cluster_id = clusters.id
-  UNION
-    SELECT 'storage_bucket' AS kind, storage_buckets.id, clusters.name AS cluster_name, servers.name AS server_name, storage_buckets.project_name, storage_buckets.storage_pool_name AS parent_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
-    FROM storage_buckets
-    INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
-    LEFT JOIN servers ON storage_buckets.server_id = servers.id
-  UNION
-    SELECT 'storage_pool' AS kind, storage_pools.id, clusters.name AS cluster_name, NULL AS server_name, NULL AS project_name, NULL AS parent_name, storage_pools.name, storage_pools.object, storage_pools.last_updated
-    FROM storage_pools
-    INNER JOIN clusters ON storage_pools.cluster_id = clusters.id
-  UNION
-    SELECT 'storage_volume' AS kind, storage_volumes.id, clusters.name AS cluster_name, servers.name AS server_name, storage_volumes.project_name, storage_volumes.storage_pool_name AS parent_name, storage_volumes.type || "/" || storage_volumes.name AS name, storage_volumes.object, storage_volumes.last_updated
-    FROM storage_volumes
-    INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
-    LEFT JOIN servers ON storage_volumes.server_id = servers.id
-;
-
-PRAGMA defer_foreign_keys = Off;
-`
+`)
 	_, err := tx.Exec(stmt)
 	return MapDBError(err)
 }
@@ -745,11 +548,7 @@ ALTER TABLE servers ADD COLUMN last_seen DATETIME NOT NULL DEFAULT '0000-01-01 0
 
 func updateFromV2(ctx context.Context, tx *sql.Tx) error {
 	// v2..v3 add columns certificate and status for clusters; add column cluster_certificate for servers
-	stmt := `
-PRAGMA defer_foreign_keys = On;
-
-DROP VIEW resources;
-
+	stmt := withResourcesView(`
 CREATE TABLE clusters_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   name TEXT NOT NULL,
@@ -769,74 +568,8 @@ DROP TABLE clusters;
 
 ALTER TABLE clusters_new RENAME TO clusters;
 
-CREATE VIEW resources AS
-    SELECT 'image' AS kind, images.id, clusters.name AS cluster_name, NULL AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
-    FROM images
-    INNER JOIN clusters ON images.cluster_id = clusters.id
-  UNION
-    SELECT 'instance' AS kind, instances.id, clusters.name AS cluster_name, servers.name AS server_name, instances.project_name, NULL AS parent_name, instances.name, instances.object, instances.last_updated
-    FROM instances
-    INNER JOIN clusters ON instances.cluster_id = clusters.id
-    LEFT JOIN servers ON instances.server_id = servers.id
-  UNION
-    SELECT 'network' AS kind, networks.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, NULL AS parent_name, networks.name, networks.object, networks.last_updated
-    FROM networks
-    INNER JOIN clusters ON networks.cluster_id = clusters.id
-  UNION
-    SELECT 'network_acl' AS kind, network_acls.id, clusters.name AS cluster_name, NULL AS server_name, network_acls.project_name, NULL AS parent_name, network_acls.name, network_acls.object, network_acls.last_updated
-    FROM network_acls
-    INNER JOIN clusters ON network_acls.cluster_id = clusters.id
-  UNION
-    SELECT 'network_forward' AS kind, network_forwards.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_forwards.network_name AS parent_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
-    FROM network_forwards
-    INNER JOIN clusters ON network_forwards.cluster_id = clusters.id
-    LEFT JOIN networks ON network_forwards.network_name = networks.name
-  UNION
-    SELECT 'network_integration' AS kind, network_integrations.id, clusters.name AS cluster_name, NULL AS server_name, NULL AS project_name, NULL AS parent_name, network_integrations.name, network_integrations.object, network_integrations.last_updated
-    FROM network_integrations
-    INNER JOIN clusters ON network_integrations.cluster_id = clusters.id
-  UNION
-    SELECT 'network_load_balancer' AS kind, network_load_balancers.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_load_balancers.network_name AS parent_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
-    FROM network_load_balancers
-    INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
-    LEFT JOIN networks ON network_load_balancers.network_name = networks.name
-  UNION
-    SELECT 'network_peer' AS kind, network_peers.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_peers.network_name AS parent_name, network_peers.name, network_peers.object, network_peers.last_updated
-    FROM network_peers
-    INNER JOIN clusters ON network_peers.cluster_id = clusters.id
-    LEFT JOIN networks ON network_peers.network_name = networks.name
-  UNION
-    SELECT 'network_zone' AS kind, network_zones.id, clusters.name AS cluster_name, NULL AS server_name, network_zones.project_name, NULL AS parent_name, network_zones.name, network_zones.object, network_zones.last_updated
-    FROM network_zones
-    INNER JOIN clusters ON network_zones.cluster_id = clusters.id
-  UNION
-    SELECT 'profile' AS kind, profiles.id, clusters.name AS cluster_name, NULL AS server_name, profiles.project_name, NULL AS parent_name, profiles.name, profiles.object, profiles.last_updated
-    FROM profiles
-    INNER JOIN clusters ON profiles.cluster_id = clusters.id
-  UNION
-    SELECT 'project' AS kind, projects.id, clusters.name AS cluster_name, NULL AS server_name, projects.name AS project_name, NULL AS parent_name, projects.name, projects.object, projects.last_updated
-    FROM projects
-    INNER JOIN clusters ON projects.cluster_id = clusters.id
-  UNION
-    SELECT 'storage_bucket' AS kind, storage_buckets.id, clusters.name AS cluster_name, servers.name AS server_name, storage_buckets.project_name, storage_buckets.storage_pool_name AS parent_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
-    FROM storage_buckets
-    INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
-    LEFT JOIN servers ON storage_buckets.server_id = servers.id
-  UNION
-    SELECT 'storage_pool' AS kind, storage_pools.id, clusters.name AS cluster_name, NULL AS server_name, NULL AS project_name, NULL AS parent_name, storage_pools.name, storage_pools.object, storage_pools.last_updated
-    FROM storage_pools
-    INNER JOIN clusters ON storage_pools.cluster_id = clusters.id
-  UNION
-    SELECT 'storage_volume' AS kind, storage_volumes.id, clusters.name AS cluster_name, servers.name AS server_name, storage_volumes.project_name, storage_volumes.storage_pool_name AS parent_name, storage_volumes.type || "/" || storage_volumes.name AS name, storage_volumes.object, storage_volumes.last_updated
-    FROM storage_volumes
-    INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
-    LEFT JOIN servers ON storage_volumes.server_id = servers.id
-;
-
 ALTER TABLE servers ADD COLUMN cluster_certificate TEXT NOT NULL DEFAULT '';
-
-PRAGMA defer_foreign_keys = Off;
-`
+`)
 	_, err := tx.Exec(stmt)
 	return MapDBError(err)
 }
@@ -1155,7 +888,6 @@ CREATE VIEW resources AS
     INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
-
 `
 	_, err := tx.Exec(stmt)
 	return MapDBError(err)
@@ -1166,4 +898,83 @@ func updateFromV0(ctx context.Context, tx *sql.Tx) error {
 	stmt := ``
 	_, err := tx.Exec(stmt)
 	return MapDBError(err)
+}
+
+func withResourcesView(stmt string) string {
+	return fmt.Sprintf(`
+-- Disable foreign key enforcing
+PRAGMA defer_foreign_keys = On;
+
+DROP VIEW resources;
+
+-- Update statement
+%s
+
+-- Restore resources view and re-enable foreign key enforcing
+CREATE VIEW resources AS
+    SELECT 'image' AS kind, images.id, clusters.name AS cluster_name, NULL AS server_name, images.project_name, NULL AS parent_name, images.name, images.object, images.last_updated
+    FROM images
+    INNER JOIN clusters ON images.cluster_id = clusters.id
+  UNION
+    SELECT 'instance' AS kind, instances.id, clusters.name AS cluster_name, servers.name AS server_name, instances.project_name, NULL AS parent_name, instances.name, instances.object, instances.last_updated
+    FROM instances
+    INNER JOIN clusters ON instances.cluster_id = clusters.id
+    LEFT JOIN servers ON instances.server_id = servers.id
+  UNION
+    SELECT 'network' AS kind, networks.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, NULL AS parent_name, networks.name, networks.object, networks.last_updated
+    FROM networks
+    INNER JOIN clusters ON networks.cluster_id = clusters.id
+  UNION
+    SELECT 'network_acl' AS kind, network_acls.id, clusters.name AS cluster_name, NULL AS server_name, network_acls.project_name, NULL AS parent_name, network_acls.name, network_acls.object, network_acls.last_updated
+    FROM network_acls
+    INNER JOIN clusters ON network_acls.cluster_id = clusters.id
+  UNION
+    SELECT 'network_forward' AS kind, network_forwards.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_forwards.network_name AS parent_name, network_forwards.name, network_forwards.object, network_forwards.last_updated
+    FROM network_forwards
+    INNER JOIN clusters ON network_forwards.cluster_id = clusters.id
+    LEFT JOIN networks ON network_forwards.network_name = networks.name
+  UNION
+    SELECT 'network_integration' AS kind, network_integrations.id, clusters.name AS cluster_name, NULL AS server_name, NULL AS project_name, NULL AS parent_name, network_integrations.name, network_integrations.object, network_integrations.last_updated
+    FROM network_integrations
+    INNER JOIN clusters ON network_integrations.cluster_id = clusters.id
+  UNION
+    SELECT 'network_load_balancer' AS kind, network_load_balancers.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_load_balancers.network_name AS parent_name, network_load_balancers.name, network_load_balancers.object, network_load_balancers.last_updated
+    FROM network_load_balancers
+    INNER JOIN clusters ON network_load_balancers.cluster_id = clusters.id
+    LEFT JOIN networks ON network_load_balancers.network_name = networks.name
+  UNION
+    SELECT 'network_peer' AS kind, network_peers.id, clusters.name AS cluster_name, NULL AS server_name, networks.project_name, network_peers.network_name AS parent_name, network_peers.name, network_peers.object, network_peers.last_updated
+    FROM network_peers
+    INNER JOIN clusters ON network_peers.cluster_id = clusters.id
+    LEFT JOIN networks ON network_peers.network_name = networks.name
+  UNION
+    SELECT 'network_zone' AS kind, network_zones.id, clusters.name AS cluster_name, NULL AS server_name, network_zones.project_name, NULL AS parent_name, network_zones.name, network_zones.object, network_zones.last_updated
+    FROM network_zones
+    INNER JOIN clusters ON network_zones.cluster_id = clusters.id
+  UNION
+    SELECT 'profile' AS kind, profiles.id, clusters.name AS cluster_name, NULL AS server_name, profiles.project_name, NULL AS parent_name, profiles.name, profiles.object, profiles.last_updated
+    FROM profiles
+    INNER JOIN clusters ON profiles.cluster_id = clusters.id
+  UNION
+    SELECT 'project' AS kind, projects.id, clusters.name AS cluster_name, NULL AS server_name, projects.name AS project_name, NULL AS parent_name, projects.name, projects.object, projects.last_updated
+    FROM projects
+    INNER JOIN clusters ON projects.cluster_id = clusters.id
+  UNION
+    SELECT 'storage_bucket' AS kind, storage_buckets.id, clusters.name AS cluster_name, servers.name AS server_name, storage_buckets.project_name, storage_buckets.storage_pool_name AS parent_name, storage_buckets.name, storage_buckets.object, storage_buckets.last_updated
+    FROM storage_buckets
+    INNER JOIN clusters ON storage_buckets.cluster_id = clusters.id
+    LEFT JOIN servers ON storage_buckets.server_id = servers.id
+  UNION
+    SELECT 'storage_pool' AS kind, storage_pools.id, clusters.name AS cluster_name, NULL AS server_name, NULL AS project_name, NULL AS parent_name, storage_pools.name, storage_pools.object, storage_pools.last_updated
+    FROM storage_pools
+    INNER JOIN clusters ON storage_pools.cluster_id = clusters.id
+  UNION
+    SELECT 'storage_volume' AS kind, storage_volumes.id, clusters.name AS cluster_name, servers.name AS server_name, storage_volumes.project_name, storage_volumes.storage_pool_name AS parent_name, storage_volumes.type || "/" || storage_volumes.name AS name, storage_volumes.object, storage_volumes.last_updated
+    FROM storage_volumes
+    INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
+    LEFT JOIN servers ON storage_volumes.server_id = servers.id
+;
+
+PRAGMA defer_foreign_keys = Off;
+`, stmt)
 }

@@ -2289,7 +2289,7 @@ foobar
 			},
 			clusterSvcGetByName: &provisioning.Cluster{
 				Name:        "cluster",
-				Certificate: "certificate",
+				Certificate: ptr.To("certificate"),
 			},
 
 			assertErr: require.NoError,
@@ -2322,7 +2322,7 @@ foobar
 			},
 			clusterSvcGetByName: &provisioning.Cluster{
 				Name:        "cluster",
-				Certificate: "certificate",
+				Certificate: ptr.To("certificate"),
 			},
 
 			assertErr: require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
@@ -2375,7 +2375,7 @@ foobar
 			},
 			clusterSvcGetByName: &provisioning.Cluster{
 				Name:        "cluster",
-				Certificate: "certificate",
+				Certificate: ptr.To("certificate"),
 			},
 			clusterSvcUpdateErr: boom.Error,
 

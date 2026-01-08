@@ -12,6 +12,7 @@ import (
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite/entities"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	dbdriver "github.com/FuturFusion/operations-center/internal/sqlite"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 	"github.com/FuturFusion/operations-center/shared/api"
@@ -33,7 +34,7 @@ func TestClusterDatabaseActions(t *testing.T) {
 	clusterA := provisioning.Cluster{
 		Name:          "one",
 		ConnectionURL: "https://cluster-one/",
-		Certificate:   string(certPEMA),
+		Certificate:   ptr.To(string(certPEMA)),
 		Fingerprint:   fingerprintA,
 		Status:        api.ClusterStatusReady,
 		ServerNames:   []string{"server1", "server2"},
@@ -42,7 +43,7 @@ func TestClusterDatabaseActions(t *testing.T) {
 	clusterB := provisioning.Cluster{
 		Name:          "two",
 		ConnectionURL: "https://cluster-one/",
-		Certificate:   string(certPEMB),
+		Certificate:   ptr.To(string(certPEMB)),
 		Fingerprint:   fingerprintB,
 		Status:        api.ClusterStatusReady,
 		ServerNames:   []string{"server10", "server11"},
@@ -137,4 +138,54 @@ func TestClusterDatabaseActions(t *testing.T) {
 	// Can't add a duplicate cluster.
 	_, err = cluster.Create(ctx, clusterB)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+}
+
+func TestClusterNullCert(t *testing.T) {
+	clusterCertNull1 := provisioning.Cluster{
+		Name:          "one",
+		ConnectionURL: "https://cluster-one/",
+		Certificate:   nil,
+		Status:        api.ClusterStatusReady,
+		ServerNames:   []string{"server1", "server2"},
+	}
+
+	clusterCertNull2 := provisioning.Cluster{
+		Name:          "two",
+		ConnectionURL: "https://cluster-one/",
+		Certificate:   nil,
+		Status:        api.ClusterStatusReady,
+		ServerNames:   []string{"server10", "server11"},
+	}
+
+	ctx := context.Background()
+
+	// Create a new temporary database.
+	tmpDir := t.TempDir()
+	db, err := dbdriver.Open(tmpDir)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		err = db.Close()
+		require.NoError(t, err)
+	})
+
+	_, err = dbschema.Ensure(ctx, db, tmpDir)
+	require.NoError(t, err)
+
+	tx := transaction.Enable(db)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	require.NoError(t, err)
+
+	cluster := sqlite.NewCluster(tx)
+
+	// Add cluster
+	_, err = cluster.Create(ctx, clusterCertNull1)
+	require.NoError(t, err)
+	_, err = cluster.Create(ctx, clusterCertNull2)
+	require.NoError(t, err)
+
+	// Ensure we have two entries
+	clusters, err := cluster.GetAll(ctx)
+	require.NoError(t, err)
+	require.Len(t, clusters, 2)
 }

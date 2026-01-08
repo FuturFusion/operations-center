@@ -18,7 +18,7 @@ CREATE TABLE clusters (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   name TEXT NOT NULL,
   connection_url TEXT NOT NULL,
-  certificate TEXT NOT NULL,
+  certificate TEXT,
   status TEXT NOT NULL,
   last_updated DATETIME NOT NULL,
   UNIQUE (name),

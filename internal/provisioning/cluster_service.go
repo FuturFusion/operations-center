@@ -312,7 +312,7 @@ func (s clusterService) Create(ctx context.Context, newCluster Cluster) (_ Clust
 
 		// Update cluster entry in the repo, set state to ready and certificate.
 		newCluster.Status = api.ClusterStatusReady
-		newCluster.Certificate = clusterCertificate
+		newCluster.Certificate = &clusterCertificate
 
 		err = s.repo.Update(ctx, newCluster)
 		if err != nil {
@@ -865,7 +865,7 @@ func (s clusterService) UpdateCertificate(ctx context.Context, name string, cert
 			return fmt.Errorf("Failed to get cluster for certificate update: %w", err)
 		}
 
-		cluster.Certificate = certificatePEM
+		cluster.Certificate = &certificatePEM
 
 		err = s.repo.Update(ctx, *cluster)
 		if err != nil {

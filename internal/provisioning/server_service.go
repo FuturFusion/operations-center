@@ -716,7 +716,7 @@ func (s *serverService) pollServer(ctx context.Context, server Server, updateSer
 						return fmt.Errorf("Failed to get cluster for server %q: %w", server.Name, retryErr)
 					}
 
-					cluster.Certificate = ""
+					cluster.Certificate = nil
 
 					retryErr = s.clusterSvc.Update(ctx, *cluster)
 					if retryErr != nil {

@@ -158,7 +158,7 @@ func (c *clusterHandler) clustersGet(r *http.Request) response.Response {
 				ClusterPut: api.ClusterPut{
 					ConnectionURL: cluster.ConnectionURL,
 				},
-				Certificate: cluster.Certificate,
+				Certificate: ptr.From(cluster.Certificate),
 				Fingerprint: cluster.Fingerprint,
 				Status:      cluster.Status,
 				LastUpdated: cluster.LastUpdated,
@@ -288,7 +288,7 @@ func (c *clusterHandler) clusterGet(r *http.Request) response.Response {
 			ClusterPut: api.ClusterPut{
 				ConnectionURL: cluster.ConnectionURL,
 			},
-			Certificate: cluster.Certificate,
+			Certificate: ptr.From(cluster.Certificate),
 			Fingerprint: cluster.Fingerprint,
 			Status:      cluster.Status,
 			LastUpdated: cluster.LastUpdated,

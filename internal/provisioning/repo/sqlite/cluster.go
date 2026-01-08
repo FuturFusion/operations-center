@@ -37,11 +37,11 @@ func (c cluster) GetAll(ctx context.Context) (provisioning.Clusters, error) {
 
 	var errs []error
 	for i := range clusters {
-		if clusters[i].Certificate == "" {
+		if clusters[i].Certificate == nil {
 			continue
 		}
 
-		clusters[i].Fingerprint, err = incustls.CertFingerprintStr(clusters[i].Certificate)
+		clusters[i].Fingerprint, err = incustls.CertFingerprintStr(*clusters[i].Certificate)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -60,11 +60,11 @@ func (c cluster) GetByName(ctx context.Context, name string) (*provisioning.Clus
 		return nil, err
 	}
 
-	if cluster.Certificate == "" {
+	if cluster.Certificate == nil {
 		return cluster, nil
 	}
 
-	cluster.Fingerprint, err = incustls.CertFingerprintStr(cluster.Certificate)
+	cluster.Fingerprint, err = incustls.CertFingerprintStr(*cluster.Certificate)
 	if err != nil {
 		return nil, err
 	}

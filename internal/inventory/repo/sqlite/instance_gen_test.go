@@ -27,10 +27,10 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	testClusterA := provisioning.Cluster{
 		Name:          "one",
 		ConnectionURL: "https://cluster-one/",
-		Certificate: `-----BEGIN CERTIFICATE-----
+		Certificate: ptr.To(`-----BEGIN CERTIFICATE-----
 cluster A
 -----END CERTIFICATE-----
-`,
+`),
 		ServerNames: []string{"one"},
 		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
@@ -38,10 +38,10 @@ cluster A
 	testClusterB := provisioning.Cluster{
 		Name:          "two",
 		ConnectionURL: "https://cluster-two/",
-		Certificate: `-----BEGIN CERTIFICATE-----
+		Certificate: ptr.To(`-----BEGIN CERTIFICATE-----
 cluster B
 -----END CERTIFICATE-----
-`,
+`),
 		ServerNames: []string{"two"},
 		LastUpdated: time.Now().UTC().Truncate(0), // Truncate to remove the monotonic clock.
 	}
