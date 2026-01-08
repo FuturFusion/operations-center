@@ -189,7 +189,7 @@ func (i *storageBucketHandler) storageBucketsGet(r *http.Request) response.Respo
 			result = append(result, api.StorageBucket{
 				UUID:            storageBucket.UUID,
 				Cluster:         storageBucket.Cluster,
-				Server:          storageBucket.Server,
+				Server:          ptr.From(storageBucket.Server),
 				ProjectName:     storageBucket.ProjectName,
 				StoragePoolName: storageBucket.StoragePoolName,
 				Name:            storageBucket.Name,
@@ -264,7 +264,7 @@ func (i *storageBucketHandler) storageBucketGet(r *http.Request) response.Respon
 		api.StorageBucket{
 			UUID:            storageBucket.UUID,
 			Cluster:         storageBucket.Cluster,
-			Server:          storageBucket.Server,
+			Server:          ptr.From(storageBucket.Server),
 			ProjectName:     storageBucket.ProjectName,
 			StoragePoolName: storageBucket.StoragePoolName,
 			Name:            storageBucket.Name,

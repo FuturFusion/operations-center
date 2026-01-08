@@ -129,7 +129,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 		for _, storageBucket := range inventoryAggregate.StorageBuckets {
 			resultItem.StorageBuckets = append(resultItem.StorageBuckets, api.StorageBucket{
 				Cluster:         storageBucket.Cluster,
-				Server:          storageBucket.Server,
+				Server:          ptr.From(storageBucket.Server),
 				ProjectName:     storageBucket.ProjectName,
 				StoragePoolName: storageBucket.StoragePoolName,
 				Name:            storageBucket.Name,

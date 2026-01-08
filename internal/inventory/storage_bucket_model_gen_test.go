@@ -101,7 +101,7 @@ func TestStorageBucket_Validate(t *testing.T) {
 			storageBucket: (&inventory.StorageBucket{
 				ID:              1,
 				Cluster:         "one",
-				Server:          "one",
+				Server:          ptr.To("one"),
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "one",
@@ -114,7 +114,7 @@ func TestStorageBucket_Validate(t *testing.T) {
 			storageBucket: (&inventory.StorageBucket{
 				ID:              1,
 				Cluster:         "", // invalid
-				Server:          "one",
+				Server:          ptr.To("one"),
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "one",
@@ -130,23 +130,7 @@ func TestStorageBucket_Validate(t *testing.T) {
 			storageBucket: (&inventory.StorageBucket{
 				ID:              1,
 				Cluster:         "one",
-				Server:          "", // invalid
-				ProjectName:     "project one",
-				StoragePoolName: "storagePool one",
-				Name:            "one",
-			}).DeriveUUID(),
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr domain.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
-		},
-		{
-			name: "error - invalid project name",
-			storageBucket: (&inventory.StorageBucket{
-				ID:              1,
-				Cluster:         "one",
-				Server:          "one",
+				Server:          ptr.To("one"),
 				ProjectName:     "", // invalid
 				StoragePoolName: "storagePool one",
 				Name:            "one",
@@ -162,7 +146,7 @@ func TestStorageBucket_Validate(t *testing.T) {
 			storageBucket: (&inventory.StorageBucket{
 				ID:              1,
 				Cluster:         "one",
-				Server:          "one",
+				Server:          ptr.To("one"),
 				ProjectName:     "project one",
 				StoragePoolName: "", // invalid
 				Name:            "one",
@@ -178,7 +162,7 @@ func TestStorageBucket_Validate(t *testing.T) {
 			storageBucket: (&inventory.StorageBucket{
 				ID:              1,
 				Cluster:         "one",
-				Server:          "one",
+				Server:          ptr.To("one"),
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "", // invalid
@@ -194,7 +178,7 @@ func TestStorageBucket_Validate(t *testing.T) {
 			storageBucket: &inventory.StorageBucket{
 				ID:              1,
 				Cluster:         "one",
-				Server:          "one",
+				Server:          ptr.To("one"),
 				ProjectName:     "project one",
 				StoragePoolName: "storagePool one",
 				Name:            "one",
