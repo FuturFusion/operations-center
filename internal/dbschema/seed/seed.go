@@ -609,7 +609,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 			projectName := faker.RandomString(projects)
 			storageBucket := inventory.StorageBucket{
 				Cluster:         clusterName,
-				Server:          faker.RandomString(servers),
+				Server:          ptr.To(faker.RandomString(servers)),
 				Name:            storageBucketName,
 				StoragePoolName: faker.RandomString(storagePools),
 				ProjectName:     projectName,
