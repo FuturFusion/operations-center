@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/pem"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -2178,8 +2179,9 @@ func TestServerService_PollPendingServers(t *testing.T) {
 		clusterSvcGetByNameErr      error
 		clusterSvcUpdateErr         error
 
-		assertErr require.ErrorAssertionFunc
-		assertLog func(t *testing.T, logBuf *bytes.Buffer)
+		assertErr               require.ErrorAssertionFunc
+		assertLog               func(t *testing.T, logBuf *bytes.Buffer)
+		assertServerCertificate string
 	}{
 		{
 			name:                        "success - no pending servers",
@@ -2199,6 +2201,9 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			repoGetByNameServer: provisioning.Server{
 				Name:   "pending",
 				Status: api.ServerStatusPending,
+				Certificate: `-----BEGIN CERTIFICATE-----
+foobar
+-----END CERTIFICATE-----`,
 			},
 			clientPing: []queue.Item[struct{}]{
 				{},
@@ -2206,6 +2211,9 @@ func TestServerService_PollPendingServers(t *testing.T) {
 
 			assertErr: require.NoError,
 			assertLog: logEmpty,
+			assertServerCertificate: `-----BEGIN CERTIFICATE-----
+foobar
+-----END CERTIFICATE-----`,
 		},
 		{
 			name:                    "error - GetAllWithFilter",
@@ -2254,11 +2262,20 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			name: "success - cluster now has publicly valid certificate",
 			repoGetAllWithFilterServers: provisioning.Servers{
 				provisioning.Server{
-					Name:               "ready",
-					Status:             api.ServerStatusReady,
+					Name:   "ready",
+					Status: api.ServerStatusReady,
+					Certificate: `-----BEGIN CERTIFICATE-----
+foobar
+-----END CERTIFICATE-----`,
 					Cluster:            ptr.To("cluster"),
 					ClusterCertificate: ptr.To("certificate"),
 				},
+			},
+			repoGetByNameServer: provisioning.Server{
+				Name: "ready",
+				Certificate: `-----BEGIN CERTIFICATE-----
+foobar
+-----END CERTIFICATE-----`,
 			},
 			clientPing: []queue.Item[struct{}]{
 				// Simulate failing connection with pinned certificate, because cluster
@@ -2277,6 +2294,9 @@ func TestServerService_PollPendingServers(t *testing.T) {
 
 			assertErr: require.NoError,
 			assertLog: logEmpty,
+			assertServerCertificate: `-----BEGIN CERTIFICATE-----
+foobar
+-----END CERTIFICATE-----`,
 		},
 		{
 			name: "error - client Ping with tls.CertificateVerificationError but second ping fails",
@@ -2366,7 +2386,10 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			name: "success - standalone server now has publicly valid certificate",
 			repoGetAllWithFilterServers: provisioning.Servers{
 				provisioning.Server{
-					Name:                "ready",
+					Name: "ready",
+					Certificate: `-----BEGIN CERTIFICATE-----
+foobar
+-----END CERTIFICATE-----`,
 					Status:              api.ServerStatusReady,
 					Type:                api.ServerTypeMigrationManager,
 					ConnectionURL:       "https:/127.0.0.1:7443",
@@ -2385,6 +2408,16 @@ func TestServerService_PollPendingServers(t *testing.T) {
 
 			assertErr: require.NoError,
 			assertLog: logEmpty,
+			assertServerCertificate: func() string {
+				return string(
+					pem.EncodeToMemory(
+						&pem.Block{
+							Type:  "CERTIFICATE",
+							Bytes: httpsServer.TLS.Certificates[0].Leaf.Raw,
+						},
+					),
+				)
+			}(),
 		},
 		{
 			name: "error - standalone server - invalid public connection URL",
@@ -2525,6 +2558,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 				UpdateFunc: func(ctx context.Context, server provisioning.Server) error {
 					require.Equal(t, api.ServerStatusReady, server.Status)
 					require.Equal(t, fixedDate, server.LastSeen)
+					require.Equal(t, tc.assertServerCertificate, server.Certificate)
 					return tc.repoUpdateErr
 				},
 			}
