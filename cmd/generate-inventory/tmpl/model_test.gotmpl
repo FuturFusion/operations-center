@@ -100,7 +100,11 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				ID:          1,
 				Cluster:     "one",
 {{- if .ServerIDByLocation }}
+	{{- if .IsServerIDOptional }}
+				Server:      ptr.To("one"),
+	{{- else }}
 				Server:      "one",
+	{{- end }}
 {{- end }}
 {{- if .HasProjectDirect }}
 				ProjectName: "project one",
@@ -119,7 +123,11 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				ID:          1,
 				Cluster:     "", // invalid
 {{- if .ServerIDByLocation }}
+	{{- if .IsServerIDOptional }}
+				Server:      ptr.To("one"),
+	{{- else }}
 				Server:      "one",
+	{{- end }}
 {{- end }}
 {{- if .HasProjectDirect }}
 				ProjectName: "project one",
@@ -164,7 +172,11 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				ID:          1,
 				Cluster:     "one",
 {{- if .ServerIDByLocation }}
+	{{- if .IsServerIDOptional }}
+				Server:      ptr.To("one"),
+	{{- else }}
 				Server:      "one",
+	{{- end }}
 {{- end }}
 				ProjectName: "", // invalid
 {{- if .HasParent }}
@@ -186,7 +198,11 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				ID:          1,
 				Cluster:     "one",
 {{- if .ServerIDByLocation }}
+	{{- if .IsServerIDOptional }}
+				Server:      ptr.To("one"),
+	{{- else }}
 				Server:      "one",
+	{{- end }}
 {{- end }}
 {{- if .HasProjectDirect }}
 				ProjectName: "project one",
@@ -207,7 +223,11 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				ID:          1,
 				Cluster:     "one",
 {{- if .ServerIDByLocation }}
+	{{- if .IsServerIDOptional }}
+				Server:      ptr.To("one"),
+	{{- else }}
 				Server:      "one",
+	{{- end }}
 {{- end }}
 {{- if .HasProjectDirect }}
 				ProjectName: "project one",
@@ -229,7 +249,11 @@ func Test{{ .Name | pascalcase }}_Validate(t *testing.T) {
 				ID:          1,
 				Cluster:     "one",
 {{- if .ServerIDByLocation }}
+	{{- if .IsServerIDOptional }}
+				Server:      ptr.To("one"),
+	{{- else }}
 				Server:      "one",
+	{{- end }}
 {{- end }}
 {{- if .HasProjectDirect }}
 				ProjectName: "project one",
