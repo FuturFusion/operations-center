@@ -438,7 +438,7 @@ ORDER BY cluster_name, project_name, parent_name, name, server_name
 				Cluster:         inventoryResource.ClusterName,
 				ProjectName:     ptr.From(inventoryResource.ProjectName),
 				StoragePoolName: ptr.From(inventoryResource.ParentName),
-				Server:          ptr.From(inventoryResource.ServerName),
+				Server:          inventoryResource.ServerName,
 				Name:            inventoryResource.Name,
 				Object: inventory.IncusStorageVolumeFullWrapper{
 					StorageVolumeFull: object,
