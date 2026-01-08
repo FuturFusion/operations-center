@@ -55,12 +55,13 @@ var (
 
 	env enver = environment.New(ApplicationName, ApplicationEnvPrefix)
 
-	ServerCertificateUpdateSignal = signals.NewSync[tls.Certificate]()
-	NetworkUpdateSignal           = signals.NewSync[api.SystemNetwork]()
-	SecurityUpdateSignal          = signals.NewSync[api.SystemSecurity]()
-	SecurityACMEUpdateSignal      = signals.NewSync[api.SystemSecurityACME]()
-	UpdatesValidateSignal         = signals.NewSync[api.SystemUpdates]()
-	UpdatesUpdateSignal           = signals.NewSync[api.SystemUpdates]()
+	ServerCertificateUpdateSignal           = signals.NewSync[tls.Certificate]()
+	NetworkUpdateSignal                     = signals.NewSync[api.SystemNetwork]()
+	SecurityUpdateSignal                    = signals.NewSync[api.SystemSecurity]()
+	SecurityTrustedHTTPSProxiesUpdateSignal = signals.NewSync[[]string]()
+	SecurityACMEUpdateSignal                = signals.NewSync[api.SystemSecurityACME]()
+	UpdatesValidateSignal                   = signals.NewSync[api.SystemUpdates]()
+	UpdatesUpdateSignal                     = signals.NewSync[api.SystemUpdates]()
 )
 
 func Init(vardir enver) error {
@@ -232,6 +233,7 @@ func UpdateSecurity(ctx context.Context, cfg api.SystemSecurityPut) error {
 
 	isTrustedTLSClientCertFingerprintsChanged := !slices.Equal(currentCfg.TrustedTLSClientCertFingerprints, newCfg.Security.TrustedTLSClientCertFingerprints)
 	isSecurityConfigChanged := isTrustedTLSClientCertFingerprintsChanged || currentCfg.OIDC != newCfg.Security.OIDC || currentCfg.OpenFGA != newCfg.Security.OpenFGA
+	isTrustedHTTPSProxiesChanged := !slices.Equal(currentCfg.TrustedHTTPSProxies, newCfg.Security.TrustedHTTPSProxies)
 	isACMEChanged := acme.ACMEConfigChanged(currentCfg.ACME, newCfg.Security.ACME)
 
 	globalConfigInstanceMu.Lock()
@@ -245,6 +247,10 @@ func UpdateSecurity(ctx context.Context, cfg api.SystemSecurityPut) error {
 		SecurityUpdateSignal.Emit(ctx, api.SystemSecurity{
 			SystemSecurityPut: cfg,
 		})
+	}
+
+	if isTrustedHTTPSProxiesChanged {
+		SecurityTrustedHTTPSProxiesUpdateSignal.Emit(ctx, cfg.TrustedHTTPSProxies)
 	}
 
 	if isACMEChanged {
@@ -400,6 +406,12 @@ func validate(cfg config) error {
 	err = acme.ValidateACMEConfig(cfg.Security.ACME)
 	if err != nil {
 		return err
+	}
+
+	for _, p := range cfg.Security.TrustedHTTPSProxies {
+		if net.ParseIP(p) == nil {
+			return fmt.Errorf("HTTPS Proxy address %q is not a valid IP", p)
+		}
 	}
 
 	// Updating the configuration requires at least one certificate fingerprint to be present in order to have a fallback authentication method.
