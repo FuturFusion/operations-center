@@ -10,7 +10,6 @@ import (
 
 	"github.com/lxc/incus/v6/shared/revert"
 	incustls "github.com/lxc/incus/v6/shared/tls"
-	"github.com/maniartech/signals"
 
 	"github.com/FuturFusion/operations-center/internal/acme"
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -23,9 +22,8 @@ type environment interface {
 }
 
 type systemService struct {
-	env                     environment
-	serverCertificateUpdate signals.Signal[tls.Certificate]
-	serverSvc               ProvisioningServerService
+	env       environment
+	serverSvc ProvisioningServerService
 
 	acmeUpdateCertificateFunc func(
 		ctx context.Context,
@@ -44,14 +42,12 @@ type SystemServiceOption func(s *systemService)
 
 func NewSystemService(
 	env environment,
-	serverCertificateUpdate signals.Signal[tls.Certificate],
 	serverSvc ProvisioningServerService,
 	opts ...SystemServiceOption,
 ) *systemService {
 	systemSvc := &systemService{
-		env:                     env,
-		serverCertificateUpdate: serverCertificateUpdate,
-		serverSvc:               serverSvc,
+		env:       env,
+		serverSvc: serverSvc,
 
 		acmeUpdateCertificateFunc: acme.UpdateCertificate,
 	}
@@ -111,9 +107,9 @@ func (s *systemService) UpdateCertificate(ctx context.Context, certificatePEM st
 	// Notify services about new certificate, which also causes the http listener
 	// to switch to the new certificate, which is necessary for the the provider
 	// updates to be successful.
-	s.serverCertificateUpdate.Emit(ctx, serverCertificate)
+	config.ServerCertificateUpdateSignal.Emit(ctx, serverCertificate)
 	reverter.Add(func() {
-		s.serverCertificateUpdate.Emit(ctx, currentCertificate)
+		config.ServerCertificateUpdateSignal.Emit(ctx, currentCertificate)
 	})
 
 	err = s.updateProviderConfigAll(ctx, map[string]string{"server_certificate": certificatePEM})

@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
 	incusosapi "github.com/lxc/incus-os/incus-osd/api"
 	incustls "github.com/lxc/incus/v6/shared/tls"
-	"github.com/maniartech/signals"
 	"github.com/stretchr/testify/require"
 
 	config "github.com/FuturFusion/operations-center/internal/config/daemon"
@@ -426,12 +426,15 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 
 			tc.setupEnv(t, env.VarDir())
 
-			serverCertificateUpdate := signals.NewSync[tls.Certificate]()
-			serverCertificateUpdate.AddListener(func(ctx context.Context, cert tls.Certificate) {
+			listenerID := uuid.New()
+			config.ServerCertificateUpdateSignal.AddListener(func(ctx context.Context, cert tls.Certificate) {
 				wantCertificateFingerprint, _ := queue.Pop(t, &tc.wantServerCertificateUpdateEmit)
 
 				certFingerprint := incustls.CertFingerprint(cert.Leaf)
 				require.Equal(t, wantCertificateFingerprint, certFingerprint)
+			}, listenerID.String())
+			t.Cleanup(func() {
+				config.ServerCertificateUpdateSignal.RemoveListener(listenerID.String())
 			})
 
 			serverSvc := &mock.ProvisioningServerServiceMock{
@@ -448,7 +451,7 @@ func TestSystemService_UpdateCertificate(t *testing.T) {
 				},
 			}
 
-			systemSvc := system.NewSystemService(env, serverCertificateUpdate, serverSvc)
+			systemSvc := system.NewSystemService(env, serverSvc)
 
 			// Run test
 			err = systemSvc.UpdateCertificate(context.Background(), tc.certPEM, tc.keyPEM)
@@ -542,8 +545,6 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 				},
 			}
 
-			serverCertificateUpdate := signals.NewSync[tls.Certificate]()
-
 			serverSvc := &mock.ProvisioningServerServiceMock{
 				GetAllFunc: func(ctx context.Context) (provisioning.Servers, error) {
 					return nil, tc.serverGetAllErr
@@ -552,7 +553,6 @@ func TestSystemService_TriggerCertificateRenew(t *testing.T) {
 
 			systemSvc := system.NewSystemService(
 				env,
-				serverCertificateUpdate,
 				serverSvc,
 				system.WithACMEUpdateCertificateFunc(
 					func(
@@ -899,7 +899,7 @@ func TestSystemService_UpdateNetworkConfig(t *testing.T) {
 
 			config.InitTest(t, env, tc.configSaveErr)
 			// config.UpdateNetwork(t.Context(), tc.networkConfig)
-			systemSvc := system.NewSystemService(nil, nil, serverSvc)
+			systemSvc := system.NewSystemService(nil, serverSvc)
 
 			// Run test
 			err := systemSvc.UpdateNetworkConfig(t.Context(), tc.networkConfig.SystemNetworkPut)
@@ -943,7 +943,7 @@ func TestSystemService_GetNetworkConfig(t *testing.T) {
 			err := config.UpdateNetwork(t.Context(), networkConfig.SystemNetworkPut)
 			require.NoError(t, err)
 
-			systemSvc := system.NewSystemService(nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil)
 
 			// Run test
 			gotNetworkConfig := systemSvc.GetNetworkConfig(t.Context())
@@ -1013,7 +1013,7 @@ func TestSystemService_UpdateSecurityConfig(t *testing.T) {
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateSecurityConfig(t.Context(), tc.securityConfig.SystemSecurityPut)
@@ -1076,7 +1076,7 @@ func TestSystemService_UpdateSettingsConfig(t *testing.T) {
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateSettingsConfig(t.Context(), tc.securityConfig.SystemSettingsPut)
@@ -1152,7 +1152,7 @@ dzfuFuN/tMIqY355bBYk3m6/UAIK5Pum/Q==
 			}
 
 			config.InitTest(t, env, nil)
-			systemSvc := system.NewSystemService(nil, nil, nil)
+			systemSvc := system.NewSystemService(nil, nil)
 
 			// Run test
 			err := systemSvc.UpdateUpdatesConfig(t.Context(), tc.updatesConfig.SystemUpdatesPut)
