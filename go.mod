@@ -214,6 +214,7 @@ require (
 	github.com/olekukonko/tablewriter v1.1.2
 	github.com/openfga/cli v0.7.8
 	github.com/openfga/go-sdk v0.7.3
+	github.com/pires/go-proxyproto v0.8.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/quasilyte/go-ruleguard/dsl v0.3.23
 	github.com/spf13/cobra v1.10.2
