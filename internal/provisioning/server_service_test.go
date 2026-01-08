@@ -2272,7 +2272,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			},
 			clusterSvcGetByName: &provisioning.Cluster{
 				Name:        "cluster",
-				Certificate: "certificate",
+				Certificate: ptr.To("certificate"),
 			},
 
 			assertErr: require.NoError,
@@ -2302,7 +2302,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			},
 			clusterSvcGetByName: &provisioning.Cluster{
 				Name:        "cluster",
-				Certificate: "certificate",
+				Certificate: ptr.To("certificate"),
 			},
 
 			assertErr: require.NoError, // Failing of ping is expected and not reported as error but only logged as warning.
@@ -2355,7 +2355,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			},
 			clusterSvcGetByName: &provisioning.Cluster{
 				Name:        "cluster",
-				Certificate: "certificate",
+				Certificate: ptr.To("certificate"),
 			},
 			clusterSvcUpdateErr: boom.Error,
 
