@@ -4,6 +4,7 @@ package api
 
 import (
 	"github.com/FuturFusion/operations-center/internal/inventory"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -147,7 +148,7 @@ func mapInventoryAggregateToAPITypes(inventoryAggregates inventory.InventoryAggr
 		for _, storageVolume := range inventoryAggregate.StorageVolumes {
 			resultItem.StorageVolumes = append(resultItem.StorageVolumes, api.StorageVolume{
 				Cluster:         storageVolume.Cluster,
-				Server:          storageVolume.Server,
+				Server:          ptr.From(storageVolume.Server),
 				ProjectName:     storageVolume.ProjectName,
 				StoragePoolName: storageVolume.StoragePoolName,
 				Name:            storageVolume.Name,

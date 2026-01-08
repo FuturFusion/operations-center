@@ -14,6 +14,7 @@ import (
 	incusapi "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/operations-center/internal/domain"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/internal/transaction"
 )
 
@@ -184,7 +185,7 @@ func (s storageVolumeService) ResyncByUUID(ctx context.Context, id uuid.UUID) er
 			return err
 		}
 
-		storageVolume.Server = retrievedStorageVolume.Location
+		storageVolume.Server = ptr.To(retrievedStorageVolume.Location)
 		storageVolume.ProjectName = firstNonEmpty(retrievedStorageVolume.Project, storageVolume.ProjectName, "default")
 		storageVolume.Type = retrievedStorageVolume.Type
 		storageVolume.Object = IncusStorageVolumeFullWrapper{retrievedStorageVolume}
@@ -258,7 +259,7 @@ func (s storageVolumeService) handleCreateEvent(ctx context.Context, clusterName
 
 	storageVolume := StorageVolume{
 		Cluster:         clusterName,
-		Server:          retrievedStorageVolume.Location,
+		Server:          ptr.To(retrievedStorageVolume.Location),
 		ProjectName:     firstNonEmpty(retrievedStorageVolume.Project, event.Source.ProjectName, "default"),
 		StoragePoolName: event.Source.ParentName,
 		Name:            retrievedStorageVolume.Name,
@@ -406,7 +407,7 @@ func (s storageVolumeService) SyncCluster(ctx context.Context, name string) erro
 			for _, retrievedStorageVolume := range retrievedStorageVolumes {
 				storageVolume := StorageVolume{
 					Cluster:         name,
-					Server:          retrievedStorageVolume.Location,
+					Server:          ptr.To(retrievedStorageVolume.Location),
 					ProjectName:     retrievedStorageVolume.Project,
 					StoragePoolName: storagePool.Name,
 					Name:            retrievedStorageVolume.Name,

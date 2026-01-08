@@ -78,7 +78,7 @@ server-two
 
 	storageVolumeA := inventory.StorageVolume{
 		Cluster:         "one",
-		Server:          "one",
+		Server:          ptr.To("one"),
 		ProjectName:     "one",
 		StoragePoolName: "parent one",
 		Name:            "one",
@@ -91,7 +91,7 @@ server-two
 
 	storageVolumeB := inventory.StorageVolume{
 		Cluster:         "two",
-		Server:          "two",
+		Server:          ptr.To("two"),
 		ProjectName:     "two",
 		StoragePoolName: "parent two",
 		Name:            "two",
@@ -199,6 +199,27 @@ server-two
 	// Can't add a duplicate storage_volumes.
 	_, err = storageVolume.Create(ctx, storageVolumeB)
 	require.ErrorIs(t, err, domain.ErrConstraintViolation)
+
+	// Create storage_volume without location / server
+	storageVolumeC := inventory.StorageVolume{
+		Cluster:         "two",
+		Server:          nil, // no server set
+		ProjectName:     "two",
+		StoragePoolName: "parent two",
+		Name:            "two",
+		Type:            "custom",
+		Object:          inventory.IncusStorageVolumeFullWrapper{},
+		LastUpdated:     time.Now(),
+	}
+
+	storageVolumeC.DeriveUUID()
+
+	_, err = storageVolume.Create(ctx, storageVolumeC)
+	require.NoError(t, err)
+
+	storageVolumeUUIDs, err = storageVolume.GetAllUUIDsWithFilter(ctx, inventory.StorageVolumeFilter{})
+	require.NoError(t, err)
+	require.Len(t, storageVolumeUUIDs, 2)
 
 	// Delete storage_volumes by cluster Name.
 	err = storageVolume.DeleteWithFilter(ctx, inventory.StorageVolumeFilter{

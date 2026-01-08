@@ -71,7 +71,7 @@ SELECT
   storage_volumes.id, storage_volumes.uuid, clusters.name, servers.name, storage_volumes.project_name, storage_volumes.storage_pool_name, storage_volumes.name, storage_volumes.type, storage_volumes.object, storage_volumes.last_updated
 FROM storage_volumes
   INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
-  INNER JOIN servers ON storage_volumes.server_id = servers.id
+  LEFT JOIN servers ON storage_volumes.server_id = servers.id
 WHERE true
 %s
 ORDER BY clusters.name, servers.name, storage_volumes.name
@@ -137,7 +137,7 @@ func (r storageVolume) selectStmtGetAllUUIDWithFilter(filter inventory.StorageVo
 SELECT storage_volumes.uuid
 FROM storage_volumes
   INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
-  INNER JOIN servers ON storage_volumes.server_id = servers.id
+  LEFT JOIN servers ON storage_volumes.server_id = servers.id
 WHERE true
 %s
 ORDER BY storage_volumes.id
@@ -208,7 +208,7 @@ SELECT
 FROM
   storage_volumes
   INNER JOIN clusters ON storage_volumes.cluster_id = clusters.id
-  INNER JOIN servers ON storage_volumes.server_id = servers.id
+  LEFT JOIN servers ON storage_volumes.server_id = servers.id
 WHERE storage_volumes.uuid=:uuid;
 `
 
