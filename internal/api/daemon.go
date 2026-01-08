@@ -92,8 +92,7 @@ type Daemon struct {
 
 	systemSvc system.SystemService
 
-	serverCertificateUpdate signals.Signal[tls.Certificate]
-	serverCertificate       tls.Certificate
+	serverCertificate tls.Certificate
 
 	shutdownFuncs []func(context.Context) error
 	errgroup      *errgroup.Group
@@ -124,8 +123,6 @@ func NewDaemon(ctx context.Context, env environment) *Daemon {
 			var authorizer authz.Authorizer = authzchain.New()
 			return &authorizer
 		}(),
-
-		serverCertificateUpdate: signals.NewSync[tls.Certificate](),
 	}
 
 	return d
@@ -459,7 +456,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 		d.serverCertificate,
 	)
 	// Image flasher needs to learn about updates to the server certificate.
-	d.serverCertificateUpdate.AddListener(func(_ context.Context, cert tls.Certificate) {
+	config.ServerCertificateUpdateSignal.AddListener(func(_ context.Context, cert tls.Certificate) {
 		imageFlasher.UpdateCertificate(cert)
 	})
 	// Image flasher needs to learn about updates the public Operations Center address.
@@ -517,7 +514,7 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 	})
 
 	// Server service needs to learn about updates of the server certificate.
-	d.serverCertificateUpdate.AddListener(func(ctx context.Context, c tls.Certificate) {
+	config.ServerCertificateUpdateSignal.AddListener(func(ctx context.Context, c tls.Certificate) {
 		err := serverSvc.UpdateServerCertificate(ctx, c)
 		if err != nil {
 			slog.WarnContext(ctx, "failed to update server URL", logger.Err(err))
@@ -567,7 +564,7 @@ func (d *Daemon) setupClusterService(db dbdriver.DBTX, serverSvc provisioning.Se
 			tokenSvc,
 			nil,
 			terraformProvisioner,
-			provisioning.ClusterServiceUpdateSignal(updateSignal),
+			provisioning.WithClusterServiceUpdateSignal(updateSignal),
 		),
 		slog.Default(),
 	), nil
@@ -587,7 +584,7 @@ func (d *Daemon) setupClusterTemplateService(db dbdriver.DBTX) provisioning.Clus
 
 func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) system.SystemService {
 	return systemServiceMiddleware.NewSystemServiceWithSlog(
-		system.NewSystemService(d.env, d.serverCertificateUpdate, serverSvc),
+		system.NewSystemService(d.env, serverSvc),
 		slog.Default(),
 	)
 }
@@ -841,7 +838,7 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg api.SystemNetwork) er
 			}
 		}
 
-		d.serverCertificateUpdate.RemoveListener("fancyListener")
+		config.ServerCertificateUpdateSignal.RemoveListener("fancyListener")
 
 		if cfg.RestServerAddress == "" {
 			d.configReloadMu.Lock()
@@ -869,7 +866,7 @@ func (d *Daemon) setupTCPListener(ctx context.Context, cfg api.SystemNetwork) er
 		d.listener = listener.NewFancyTLSListener(tcpListener, d.serverCertificate)
 		d.configReloadMu.Unlock()
 
-		d.serverCertificateUpdate.AddListener(func(_ context.Context, cert tls.Certificate) {
+		config.ServerCertificateUpdateSignal.AddListener(func(_ context.Context, cert tls.Certificate) {
 			d.configReloadMu.Lock()
 			defer d.configReloadMu.Unlock()
 
