@@ -652,6 +652,8 @@ func (s *serverService) pollServer(ctx context.Context, server Server, updateSer
 	err := s.client.Ping(ctxWithTimeout, server)
 	cancelFunc()
 
+	var updatedServerCertificate string
+
 	var urlErr *url.Error
 	if errors.As(err, &urlErr) {
 	refreshAttempt:
@@ -767,7 +769,7 @@ func (s *serverService) pollServer(ctx context.Context, server Server, updateSer
 
 				// Only set the certificate here, the Update in the DB happens at the
 				// end of the function.
-				server.Certificate = string(serverCert)
+				updatedServerCertificate = string(serverCert)
 
 			default:
 				// neither case 1 nor case 2, don't attempt to refresh certificate
@@ -816,6 +818,10 @@ func (s *serverService) pollServer(ctx context.Context, server Server, updateSer
 		}
 
 		server.LastSeen = s.now()
+
+		if updatedServerCertificate != "" {
+			server.Certificate = updatedServerCertificate
+		}
 
 		if updateServerConfiguration {
 			server.Status = api.ServerStatusReady
