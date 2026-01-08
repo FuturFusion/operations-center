@@ -165,6 +165,9 @@ func TestServerService_UpdateServerURL(t *testing.T) {
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
 				},
+				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+					return api.ServerVersionData{}, nil
+				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 					return api.ServerTypeIncus, nil
 				},
@@ -299,6 +302,9 @@ func TestServerService_UpdateCertificate(t *testing.T) {
 				},
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
+				},
+				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+					return api.ServerVersionData{}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 					return api.ServerTypeIncus, nil
@@ -447,6 +453,9 @@ one
 				},
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
+				},
+				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+					return api.ServerVersionData{}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 					return api.ServerTypeIncus, nil
@@ -1946,6 +1955,9 @@ func TestServerService_SelfRegisterOperationsCenter(t *testing.T) {
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
 				},
+				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+					return api.ServerVersionData{}, nil
+				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 					return api.ServerTypeIncus, nil
 				},
@@ -2171,6 +2183,7 @@ func TestServerService_PollPendingServers(t *testing.T) {
 		clientPing                  []queue.Item[struct{}]
 		clientGetResourcesErr       error
 		clientGetOSDataErr          error
+		clientGetVersionDataErr     error
 		repoGetByNameServer         provisioning.Server
 		repoGetByNameErr            error
 		repoUpdateErr               error
@@ -2491,6 +2504,22 @@ func TestServerService_PollPendingServers(t *testing.T) {
 			assertLog: logEmpty,
 		},
 		{
+			name: "error - client GetOSData",
+			repoGetAllWithFilterServers: provisioning.Servers{
+				provisioning.Server{
+					Name:   "pending",
+					Status: api.ServerStatusPending,
+				},
+			},
+			clientPing: []queue.Item[struct{}]{
+				{},
+			},
+			clientGetVersionDataErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			assertLog: logEmpty,
+		},
+		{
 			name: "error - GetByName",
 			repoGetAllWithFilterServers: provisioning.Servers{
 				provisioning.Server{
@@ -2539,6 +2568,9 @@ func TestServerService_PollPendingServers(t *testing.T) {
 				},
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, tc.clientGetOSDataErr
+				},
+				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+					return api.ServerVersionData{}, tc.clientGetVersionDataErr
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 					return api.ServerTypeIncus, nil
@@ -2633,6 +2665,9 @@ func TestServerService_ResyncByName(t *testing.T) {
 				},
 				GetOSDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.OSData, error) {
 					return api.OSData{}, nil
+				},
+				GetVersionDataFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerVersionData, error) {
+					return api.ServerVersionData{}, nil
 				},
 				GetServerTypeFunc: func(ctx context.Context, endpoint provisioning.Endpoint) (api.ServerType, error) {
 					return api.ServerTypeIncus, nil

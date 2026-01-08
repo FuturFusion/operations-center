@@ -44,6 +44,16 @@ var updates = map[int]update{
 	15: updateFromV14,
 	16: updateFromV15,
 	17: updateFromV16,
+	18: updateFromV17,
+}
+
+func updateFromV17(ctx context.Context, tx *sql.Tx) error {
+	// v17..v18 add version_data to servers table
+	stmt := `
+ALTER TABLE servers ADD COLUMN version_data TEXT NOT NULL DEFAULT '';
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV16(ctx context.Context, tx *sql.Tx) error {
