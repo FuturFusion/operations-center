@@ -15,6 +15,7 @@ import (
 	inventorySqlite "github.com/FuturFusion/operations-center/internal/inventory/repo/sqlite"
 	"github.com/FuturFusion/operations-center/internal/provisioning"
 	provisioningSqlite "github.com/FuturFusion/operations-center/internal/provisioning/repo/sqlite"
+	"github.com/FuturFusion/operations-center/internal/ptr"
 	"github.com/FuturFusion/operations-center/shared/api"
 )
 
@@ -56,7 +57,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 		_, err = clusterRepo.Create(ctx, provisioning.Cluster{
 			Name:          clusterName,
 			ConnectionURL: fmt.Sprintf("https://%s.domain.tdl", clusterName),
-			Certificate:   string(clusterCertPEM),
+			Certificate:   ptr.To(string(clusterCertPEM)),
 			LastUpdated:   faker.Date(),
 		})
 		if err != nil {
