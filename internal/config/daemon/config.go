@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -54,11 +55,12 @@ var (
 
 	env enver = environment.New(ApplicationName, ApplicationEnvPrefix)
 
-	NetworkUpdateSignal      = signals.NewSync[api.SystemNetwork]()
-	SecurityUpdateSignal     = signals.NewSync[api.SystemSecurity]()
-	SecurityACMEUpdateSignal = signals.NewSync[api.SystemSecurityACME]()
-	UpdatesValidateSignal    = signals.NewSync[api.SystemUpdates]()
-	UpdatesUpdateSignal      = signals.NewSync[api.SystemUpdates]()
+	ServerCertificateUpdateSignal = signals.NewSync[tls.Certificate]()
+	NetworkUpdateSignal           = signals.NewSync[api.SystemNetwork]()
+	SecurityUpdateSignal          = signals.NewSync[api.SystemSecurity]()
+	SecurityACMEUpdateSignal      = signals.NewSync[api.SystemSecurityACME]()
+	UpdatesValidateSignal         = signals.NewSync[api.SystemUpdates]()
+	UpdatesUpdateSignal           = signals.NewSync[api.SystemUpdates]()
 )
 
 func Init(vardir enver) error {
