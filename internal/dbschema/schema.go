@@ -68,7 +68,7 @@ type hook func(context.Context, int, *sql.Tx) error
 // (i.e. there are no missing versions).
 func newFromMap(versionsToUpdates map[int]update) *schema {
 	// Collect all version keys.
-	versions := []int{}
+	versions := make([]int, 0, len(versionsToUpdates))
 	for version := range versionsToUpdates {
 		versions = append(versions, version)
 	}
@@ -77,7 +77,7 @@ func newFromMap(versionsToUpdates map[int]update) *schema {
 	sort.Ints(versions)
 
 	// Build the updates slice.
-	updates := []update{}
+	updates := make([]update, 0, len(versions))
 	for i, version := range versions {
 		// Assert that we start from 1 and there are no gaps.
 		if version != i+1 {
