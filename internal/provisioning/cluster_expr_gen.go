@@ -12,7 +12,7 @@ type ExprCluster struct {
 	ID                    int64             `json:"-" expr:"-"`
 	Name                  string            `json:"name"                    db:"primary=yes" expr:"name"`
 	ConnectionURL         string            `json:"connection_url" expr:"connection_url"`
-	Certificate           string            `json:"certificate" expr:"certificate"`
+	Certificate           *string           `json:"certificate" expr:"certificate"`
 	Fingerprint           string            `json:"fingerprint"             db:"ignore" expr:"fingerprint"`
 	Status                api.ClusterStatus `json:"status" expr:"status"`
 	ServerNames           []string          `json:"server_names"            db:"ignore" expr:"server_names"`
