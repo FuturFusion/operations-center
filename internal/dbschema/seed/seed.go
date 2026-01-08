@@ -643,7 +643,7 @@ func DB(ctx context.Context, db *sql.DB, config Config) error {
 			projectName := faker.RandomString(projects)
 			storageVolume := inventory.StorageVolume{
 				Cluster:         clusterName,
-				Server:          faker.RandomString(servers),
+				Server:          ptr.To(faker.RandomString(servers)),
 				Name:            storageVolumeName,
 				StoragePoolName: faker.RandomString(storagePools),
 				ProjectName:     projectName,
