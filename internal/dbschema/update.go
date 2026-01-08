@@ -45,6 +45,32 @@ var updates = map[int]update{
 	15: updateFromV14,
 	16: updateFromV15,
 	17: updateFromV16,
+	18: updateFromV17,
+}
+
+func updateFromV17(ctx context.Context, tx *sql.Tx) error {
+	// v17..v18 allow NULL for clusters.certificate to make the absence of a
+	// certificate not breaking the UNIQUE constraint:
+	// https://www.sqlite.org/lang_createindex.html#unique_indexes
+	// Replace all empty string certificates with NULL.
+	stmt := withResourcesView(`
+CREATE TABLE clusters_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  connection_url TEXT NOT NULL,
+  certificate TEXT,
+  status TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (name),
+  UNIQUE (certificate),
+  CHECK (name <> '')
+);
+INSERT INTO clusters_new SELECT id, name, connection_url, CASE WHEN certificate == '' THEN NULL ELSE certificate END, status, last_updated FROM clusters;
+DROP TABLE clusters;
+ALTER TABLE clusters_new RENAME TO clusters;
+`)
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV16(ctx context.Context, tx *sql.Tx) error {
