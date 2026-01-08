@@ -221,7 +221,7 @@ CREATE TABLE storage_buckets (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
   cluster_id INTEGER NOT NULL,
-  server_id INTEGER NOT NULL,
+  server_id INTEGER,
   project_name TEXT NOT NULL,
   storage_pool_name TEXT NOT NULL,
   name TEXT NOT NULL,

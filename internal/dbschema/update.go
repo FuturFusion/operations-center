@@ -46,6 +46,33 @@ var updates = map[int]update{
 	16: updateFromV15,
 	17: updateFromV16,
 	18: updateFromV17,
+	19: updateFromV18,
+}
+
+func updateFromV18(ctx context.Context, tx *sql.Tx) error {
+	// v18..v19 make server relation for storage buckets optional
+	stmt := withResourcesView(`
+CREATE TABLE storage_buckets_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  uuid TEXT NOT NULL,
+  cluster_id INTEGER NOT NULL,
+  server_id INTEGER,
+  project_name TEXT NOT NULL,
+  storage_pool_name TEXT NOT NULL,
+  name TEXT NOT NULL,
+  object TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  UNIQUE (uuid),
+  UNIQUE (cluster_id, server_id, project_name, storage_pool_name, name),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE,
+  FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
+);
+INSERT INTO storage_buckets_new SELECT id, uuid, cluster_id, server_id, project_name, storage_pool_name, name, object, last_updated FROM storage_buckets;
+DROP TABLE storage_buckets;
+ALTER TABLE storage_buckets_new RENAME TO storage_buckets;
+`)
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV17(ctx context.Context, tx *sql.Tx) error {
