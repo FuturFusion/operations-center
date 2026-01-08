@@ -166,6 +166,7 @@ storage_bucket:
   project-source: direct
   object-type: StorageBucketFull
   server-id-by-location: true
+  is-server-id-optional: true
   parent: storage_pool
   incus-get-all-method: GetStoragePoolBucketsFullAllProjects
   incus-get-method: GetStoragePoolBucketFull
