@@ -16,9 +16,9 @@ const Network = () => {
 
   const sortData = (a: Network, b: Network) => {
     return (
-      a.name.localeCompare(b.name) ||
+      a.cluster.localeCompare(b.cluster) ||
       a.project_name.localeCompare(b.project_name) ||
-      a.cluster.localeCompare(b.cluster)
+      a.name.localeCompare(b.name)
     );
   };
 

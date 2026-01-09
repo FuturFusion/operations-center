@@ -14,7 +14,7 @@ const StoragePool = () => {
   const filter = searchParams.get("filter");
 
   const sortData = (a: StoragePool, b: StoragePool) => {
-    return a.name.localeCompare(b.name) || a.cluster.localeCompare(b.cluster);
+    return a.cluster.localeCompare(b.cluster) || a.name.localeCompare(b.name);
   };
 
   const {

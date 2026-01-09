@@ -14,7 +14,7 @@ const Project = () => {
   const filter = searchParams.get("filter");
 
   const sortData = (a: Project, b: Project) => {
-    return a.name.localeCompare(b.name) || a.cluster.localeCompare(b.cluster);
+    return a.cluster.localeCompare(b.cluster) || a.name.localeCompare(b.name);
   };
 
   const {

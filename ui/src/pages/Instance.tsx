@@ -17,9 +17,9 @@ const Instance = () => {
 
   const sortData = (a: Instance, b: Instance) => {
     return (
-      a.name.localeCompare(b.name) ||
-      a.project_name.localeCompare(b.project_name) ||
       a.cluster.localeCompare(b.cluster) ||
+      a.project_name.localeCompare(b.project_name) ||
+      a.name.localeCompare(b.name) ||
       a.server.localeCompare(b.server)
     );
   };
