@@ -14,10 +14,10 @@ const NetworkPeer = () => {
 
   const sortData = (a: NetworkPeer, b: NetworkPeer) => {
     return (
-      a.name.localeCompare(b.name) ||
-      a.parent_name.localeCompare(b.parent_name) ||
+      a.cluster.localeCompare(b.cluster) ||
       a.project_name.localeCompare(b.project_name) ||
-      a.cluster.localeCompare(b.cluster)
+      a.parent_name.localeCompare(b.parent_name) ||
+      a.name.localeCompare(b.name)
     );
   };
 
