@@ -107,3 +107,27 @@ export const updateSystemNetwork = (
       .catch(reject);
   });
 };
+
+export const fetchSystemStorage = (name: string): Promise<object> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/servers/${name}/system/storage`)
+      .then((response) => response.json())
+      .then((data) => resolve(data.metadata))
+      .catch(reject);
+  });
+};
+
+export const updateSystemStorage = (
+  name: string,
+  body: string,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/servers/${name}/system/storage`, {
+      method: "PUT",
+      body: body,
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
