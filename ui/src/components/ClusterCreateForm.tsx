@@ -1,4 +1,4 @@
-import { FC, KeyboardEvent } from "react";
+import { FC, KeyboardEvent, useMemo } from "react";
 import { Form } from "react-bootstrap";
 import { FormikErrors, useFormik } from "formik";
 import { useNotification } from "context/notificationContext";
@@ -23,6 +23,11 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
   const { data: servers } = useServers("cluster==nil");
   const { data: templates } = useClusterTemplates();
   const { notify } = useNotification();
+
+  const filteredServers = useMemo(
+    () => servers?.filter((s) => s.server_type === ServerType.Incus),
+    [servers],
+  );
 
   const validateForm = (values: ClusterPost): FormikErrors<ClusterPost> => {
     const errors: FormikErrors<ClusterPost> = {};
@@ -98,7 +103,10 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
   const handleServersKeyDown = (e: KeyboardEvent<HTMLSelectElement>) => {
     if (e.ctrlKey && e.key === "a") {
       e.preventDefault();
-      formik.setFieldValue("server_names", servers?.map((s) => s.name) ?? []);
+      formik.setFieldValue(
+        "server_names",
+        filteredServers?.map((s) => s.name) ?? [],
+      );
     }
   };
 
@@ -156,7 +164,7 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
               }
               disabled={formik.isSubmitting}
             >
-              {servers?.map((server) => (
+              {filteredServers?.map((server) => (
                 <option key={server.name} value={server.name}>
                   {server.name}
                 </option>
@@ -165,22 +173,6 @@ const ClusterCreateForm: FC<Props> = ({ mode, onSubmit }) => {
             <Form.Control.Feedback type="invalid">
               {formik.errors.server_names}
             </Form.Control.Feedback>
-          </Form.Group>
-          <Form.Group className="mb-4" controlId="serverType">
-            <Form.Label>Server type</Form.Label>
-            <Form.Select
-              value={formik.values.server_type}
-              onChange={(e) => {
-                formik.setFieldValue("server_type", e.target.value);
-              }}
-              disabled={formik.isSubmitting}
-            >
-              {Object.values(ServerType).map((type) => (
-                <option key={status} value={type}>
-                  {type}
-                </option>
-              ))}
-            </Form.Select>
           </Form.Group>
           {mode == CreateType.Manual && (
             <>
