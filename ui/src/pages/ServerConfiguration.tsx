@@ -3,9 +3,11 @@ import { useNavigate, useParams } from "react-router";
 import {
   fetchServer,
   fetchSystemNetwork,
+  fetchSystemStorage,
   renameServer,
   updateServer,
   updateSystemNetwork,
+  updateSystemStorage,
 } from "api/server";
 import ServerForm from "components/ServerForm";
 import { useNotification } from "context/notificationContext";
@@ -22,7 +24,15 @@ const ServerConfiguration = () => {
     try {
       networkConfig = YAML.parse(values.network_configuration);
     } catch (error) {
-      notify.error(`Error during YAML value parsing: ${error}`);
+      notify.error(`Error during YAML network value parsing: ${error}`);
+      return;
+    }
+
+    let storageConfig = {};
+    try {
+      storageConfig = YAML.parse(values.storage_configuration);
+    } catch (error) {
+      notify.error(`Error during YAML storage value parsing: ${error}`);
       return;
     }
 
@@ -41,11 +51,34 @@ const ServerConfiguration = () => {
         return false;
       })
       .catch((e) => {
-        notify.error(`Error during server update: ${e}`);
+        notify.error(`Error during server network update: ${e}`);
         return false;
       });
 
     if (!networkUpdateSuccess) {
+      return;
+    }
+
+    const storageUpdateSuccess = await updateSystemStorage(
+      values.name,
+      JSON.stringify(storageConfig, null, 2),
+    )
+      .then((response) => {
+        if (response.error_code == 0) {
+          return true;
+        }
+
+        notify.error(
+          `Error during storage configuration update: ${response.error}`,
+        );
+        return false;
+      })
+      .catch((e) => {
+        notify.error(`Error during server storage update: ${e}`);
+        return false;
+      });
+
+    if (!storageUpdateSuccess) {
       return;
     }
 
@@ -104,11 +137,20 @@ const ServerConfiguration = () => {
     queryFn: () => fetchSystemNetwork(name),
   });
 
-  if (isServerLoading || isSystemNetworkLoading) {
+  const {
+    data: systemStorage = undefined,
+    error: systemStorageError,
+    isLoading: isSystemStorageLoading,
+  } = useQuery({
+    queryKey: ["servers", name, "system-storage"],
+    queryFn: () => fetchSystemStorage(name),
+  });
+
+  if (isServerLoading || isSystemNetworkLoading || isSystemStorageLoading) {
     return <div>Loading...</div>;
   }
 
-  if (serverError || systemNetworkError) {
+  if (serverError || systemNetworkError || systemStorageError) {
     return <div>Error while loading servers</div>;
   }
 
@@ -116,6 +158,7 @@ const ServerConfiguration = () => {
     <ServerForm
       server={server}
       systemNetwork={systemNetwork}
+      systemStorage={systemStorage}
       onRename={onRename}
       onSubmit={onSubmit}
     />

@@ -7,6 +7,7 @@ import YAML from "yaml";
 interface Props {
   server?: Server;
   systemNetwork?: object;
+  systemStorage?: object;
   onRename: (newName: string) => void;
   onSubmit: (values: ServerFormValues) => void;
 }
@@ -14,6 +15,7 @@ interface Props {
 const ServerForm: FC<Props> = ({
   server,
   systemNetwork,
+  systemStorage,
   onRename,
   onSubmit,
 }) => {
@@ -21,6 +23,7 @@ const ServerForm: FC<Props> = ({
     name: server?.name || "",
     public_connection_url: server?.public_connection_url || "",
     network_configuration: YAML.stringify(systemNetwork, null, 2),
+    storage_configuration: YAML.stringify(systemStorage, null, 2),
   };
 
   const formik = useFormik({
@@ -76,6 +79,19 @@ const ServerForm: FC<Props> = ({
               as="textarea"
               rows={10}
               value={formik.values.network_configuration}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              className="editor"
+            />
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="storage_configuration">
+            <Form.Label>Storage configuration</Form.Label>
+            <Form.Control
+              type="text"
+              name="storage_configuration"
+              as="textarea"
+              rows={10}
+              value={formik.values.storage_configuration}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               className="editor"
