@@ -1344,7 +1344,6 @@ func TestClientServer(t *testing.T) {
 				},
 			},
 		},
-
 		{
 			name: "UpdateProviderConfig",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
@@ -1383,6 +1382,41 @@ func TestClientServer(t *testing.T) {
 
 					assertErr: require.Error,
 					wantPaths: []string{"PUT /os/1.0/system/provider"},
+				},
+			},
+		},
+		{
+			name: "Reboot",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.Reboot(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"POST /os/1.0/system/:reboot"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"POST /os/1.0/system/:reboot"},
 				},
 			},
 		},

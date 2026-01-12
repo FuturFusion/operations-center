@@ -267,6 +267,20 @@ func (c client) UpdateProviderConfig(ctx context.Context, server provisioning.Se
 	return nil
 }
 
+func (c client) Reboot(ctx context.Context, server provisioning.Server) error {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = client.RawQuery(http.MethodPost, "/os/1.0/system/:reboot", http.NoBody, "")
+	if err != nil {
+		return fmt.Errorf("Failed to reboot %q: %w", server.GetConnectionURL(), err)
+	}
+
+	return nil
+}
+
 func (c client) EnableOSService(ctx context.Context, server provisioning.Server, name string, config map[string]any) error {
 	client, err := c.getClient(ctx, server)
 	if err != nil {
