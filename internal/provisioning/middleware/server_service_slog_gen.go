@@ -356,6 +356,40 @@ func (_d ServerServiceWithSlog) PollServers(ctx context.Context, serverStatus ap
 	return _d._base.PollServers(ctx, serverStatus, updateServerConfiguration)
 }
 
+// PoweroffSystemByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) PoweroffSystemByName(ctx context.Context, name string) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling PoweroffSystemByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method PoweroffSystemByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method PoweroffSystemByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method PoweroffSystemByName finished")
+		}
+	}()
+	return _d._base.PoweroffSystemByName(ctx, name)
+}
+
 // RebootSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) RebootSystemByName(ctx context.Context, name string) (err error) {
 	log := _d._log.With()

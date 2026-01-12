@@ -165,6 +165,20 @@ func (_d ServerServiceWithPrometheus) PollServers(ctx context.Context, serverSta
 	return _d.base.PollServers(ctx, serverStatus, updateServerConfiguration)
 }
 
+// PoweroffSystemByName implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) PoweroffSystemByName(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "PoweroffSystemByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.PoweroffSystemByName(ctx, name)
+}
+
 // RebootSystemByName implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) RebootSystemByName(ctx context.Context, name string) (err error) {
 	_since := time.Now()

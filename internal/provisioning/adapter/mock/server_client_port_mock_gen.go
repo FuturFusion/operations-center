@@ -40,6 +40,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 //				panic("mock out the Ping method")
 //			},
+//			PoweroffFunc: func(ctx context.Context, server provisioning.Server) error {
+//				panic("mock out the Poweroff method")
+//			},
 //			RebootFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the Reboot method")
 //			},
@@ -76,6 +79,9 @@ type ServerClientPortMock struct {
 
 	// PingFunc mocks the Ping method.
 	PingFunc func(ctx context.Context, endpoint provisioning.Endpoint) error
+
+	// PoweroffFunc mocks the Poweroff method.
+	PoweroffFunc func(ctx context.Context, server provisioning.Server) error
 
 	// RebootFunc mocks the Reboot method.
 	RebootFunc func(ctx context.Context, server provisioning.Server) error
@@ -133,6 +139,13 @@ type ServerClientPortMock struct {
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
 		}
+		// Poweroff holds details about calls to the Poweroff method.
+		Poweroff []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// Reboot holds details about calls to the Reboot method.
 		Reboot []struct {
 			// Ctx is the ctx argument value.
@@ -170,6 +183,7 @@ type ServerClientPortMock struct {
 	lockGetServerType        sync.RWMutex
 	lockGetVersionData       sync.RWMutex
 	lockPing                 sync.RWMutex
+	lockPoweroff             sync.RWMutex
 	lockReboot               sync.RWMutex
 	lockUpdateNetworkConfig  sync.RWMutex
 	lockUpdateProviderConfig sync.RWMutex
@@ -389,6 +403,42 @@ func (mock *ServerClientPortMock) PingCalls() []struct {
 	mock.lockPing.RLock()
 	calls = mock.calls.Ping
 	mock.lockPing.RUnlock()
+	return calls
+}
+
+// Poweroff calls PoweroffFunc.
+func (mock *ServerClientPortMock) Poweroff(ctx context.Context, server provisioning.Server) error {
+	if mock.PoweroffFunc == nil {
+		panic("ServerClientPortMock.PoweroffFunc: method is nil but ServerClientPort.Poweroff was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockPoweroff.Lock()
+	mock.calls.Poweroff = append(mock.calls.Poweroff, callInfo)
+	mock.lockPoweroff.Unlock()
+	return mock.PoweroffFunc(ctx, server)
+}
+
+// PoweroffCalls gets all the calls that were made to Poweroff.
+// Check the length with:
+//
+//	len(mockedServerClientPort.PoweroffCalls())
+func (mock *ServerClientPortMock) PoweroffCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockPoweroff.RLock()
+	calls = mock.calls.Poweroff
+	mock.lockPoweroff.RUnlock()
 	return calls
 }
 

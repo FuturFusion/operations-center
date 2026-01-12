@@ -50,6 +50,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			PollServersFunc: func(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error {
 //				panic("mock out the PollServers method")
 //			},
+//			PoweroffSystemByNameFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the PoweroffSystemByName method")
+//			},
 //			RebootSystemByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the RebootSystemByName method")
 //			},
@@ -113,6 +116,9 @@ type ServerServiceMock struct {
 
 	// PollServersFunc mocks the PollServers method.
 	PollServersFunc func(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error
+
+	// PoweroffSystemByNameFunc mocks the PoweroffSystemByName method.
+	PoweroffSystemByNameFunc func(ctx context.Context, name string) error
 
 	// RebootSystemByNameFunc mocks the RebootSystemByName method.
 	RebootSystemByNameFunc func(ctx context.Context, name string) error
@@ -209,6 +215,13 @@ type ServerServiceMock struct {
 			// UpdateServerConfiguration is the updateServerConfiguration argument value.
 			UpdateServerConfiguration bool
 		}
+		// PoweroffSystemByName holds details about calls to the PoweroffSystemByName method.
+		PoweroffSystemByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 		// RebootSystemByName holds details about calls to the RebootSystemByName method.
 		RebootSystemByName []struct {
 			// Ctx is the ctx argument value.
@@ -293,6 +306,7 @@ type ServerServiceMock struct {
 	lockGetByName                    sync.RWMutex
 	lockGetSystemProvider            sync.RWMutex
 	lockPollServers                  sync.RWMutex
+	lockPoweroffSystemByName         sync.RWMutex
 	lockRebootSystemByName           sync.RWMutex
 	lockRename                       sync.RWMutex
 	lockResyncByName                 sync.RWMutex
@@ -626,6 +640,42 @@ func (mock *ServerServiceMock) PollServersCalls() []struct {
 	mock.lockPollServers.RLock()
 	calls = mock.calls.PollServers
 	mock.lockPollServers.RUnlock()
+	return calls
+}
+
+// PoweroffSystemByName calls PoweroffSystemByNameFunc.
+func (mock *ServerServiceMock) PoweroffSystemByName(ctx context.Context, name string) error {
+	if mock.PoweroffSystemByNameFunc == nil {
+		panic("ServerServiceMock.PoweroffSystemByNameFunc: method is nil but ServerService.PoweroffSystemByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockPoweroffSystemByName.Lock()
+	mock.calls.PoweroffSystemByName = append(mock.calls.PoweroffSystemByName, callInfo)
+	mock.lockPoweroffSystemByName.Unlock()
+	return mock.PoweroffSystemByNameFunc(ctx, name)
+}
+
+// PoweroffSystemByNameCalls gets all the calls that were made to PoweroffSystemByName.
+// Check the length with:
+//
+//	len(mockedServerService.PoweroffSystemByNameCalls())
+func (mock *ServerServiceMock) PoweroffSystemByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockPoweroffSystemByName.RLock()
+	calls = mock.calls.PoweroffSystemByName
+	mock.lockPoweroffSystemByName.RUnlock()
 	return calls
 }
 

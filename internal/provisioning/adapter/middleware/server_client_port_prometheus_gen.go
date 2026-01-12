@@ -122,6 +122,20 @@ func (_d ServerClientPortWithPrometheus) Ping(ctx context.Context, endpoint prov
 	return _d.base.Ping(ctx, endpoint)
 }
 
+// Poweroff implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) Poweroff(ctx context.Context, server provisioning.Server) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "Poweroff", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.Poweroff(ctx, server)
+}
+
 // Reboot implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithPrometheus) Reboot(ctx context.Context, server provisioning.Server) (err error) {
 	_since := time.Now()
