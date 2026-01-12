@@ -50,6 +50,9 @@ var _ provisioning.ServerService = &ServerServiceMock{}
 //			PollServersFunc: func(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error {
 //				panic("mock out the PollServers method")
 //			},
+//			RebootSystemByNameFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the RebootSystemByName method")
+//			},
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
@@ -110,6 +113,9 @@ type ServerServiceMock struct {
 
 	// PollServersFunc mocks the PollServers method.
 	PollServersFunc func(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error
+
+	// RebootSystemByNameFunc mocks the RebootSystemByName method.
+	RebootSystemByNameFunc func(ctx context.Context, name string) error
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
@@ -203,6 +209,13 @@ type ServerServiceMock struct {
 			// UpdateServerConfiguration is the updateServerConfiguration argument value.
 			UpdateServerConfiguration bool
 		}
+		// RebootSystemByName holds details about calls to the RebootSystemByName method.
+		RebootSystemByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 		// Rename holds details about calls to the Rename method.
 		Rename []struct {
 			// Ctx is the ctx argument value.
@@ -280,6 +293,7 @@ type ServerServiceMock struct {
 	lockGetByName                    sync.RWMutex
 	lockGetSystemProvider            sync.RWMutex
 	lockPollServers                  sync.RWMutex
+	lockRebootSystemByName           sync.RWMutex
 	lockRename                       sync.RWMutex
 	lockResyncByName                 sync.RWMutex
 	lockSelfRegisterOperationsCenter sync.RWMutex
@@ -612,6 +626,42 @@ func (mock *ServerServiceMock) PollServersCalls() []struct {
 	mock.lockPollServers.RLock()
 	calls = mock.calls.PollServers
 	mock.lockPollServers.RUnlock()
+	return calls
+}
+
+// RebootSystemByName calls RebootSystemByNameFunc.
+func (mock *ServerServiceMock) RebootSystemByName(ctx context.Context, name string) error {
+	if mock.RebootSystemByNameFunc == nil {
+		panic("ServerServiceMock.RebootSystemByNameFunc: method is nil but ServerService.RebootSystemByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockRebootSystemByName.Lock()
+	mock.calls.RebootSystemByName = append(mock.calls.RebootSystemByName, callInfo)
+	mock.lockRebootSystemByName.Unlock()
+	return mock.RebootSystemByNameFunc(ctx, name)
+}
+
+// RebootSystemByNameCalls gets all the calls that were made to RebootSystemByName.
+// Check the length with:
+//
+//	len(mockedServerService.RebootSystemByNameCalls())
+func (mock *ServerServiceMock) RebootSystemByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockRebootSystemByName.RLock()
+	calls = mock.calls.RebootSystemByName
+	mock.lockRebootSystemByName.RUnlock()
 	return calls
 }
 

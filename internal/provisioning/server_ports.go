@@ -28,6 +28,8 @@ type ServerService interface {
 	ResyncByName(ctx context.Context, name string) error
 
 	PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error
+
+	RebootSystemByName(ctx context.Context, name string) error
 }
 
 type ServerRepo interface {
@@ -53,4 +55,5 @@ type ServerClientPort interface {
 	UpdateStorageConfig(ctx context.Context, server Server) error
 	GetProviderConfig(ctx context.Context, server Server) (ServerSystemProvider, error)
 	UpdateProviderConfig(ctx context.Context, server Server, providerConfig ServerSystemProvider) error
+	Reboot(ctx context.Context, server Server) error
 }

@@ -356,6 +356,40 @@ func (_d ServerServiceWithSlog) PollServers(ctx context.Context, serverStatus ap
 	return _d._base.PollServers(ctx, serverStatus, updateServerConfiguration)
 }
 
+// RebootSystemByName implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) RebootSystemByName(ctx context.Context, name string) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RebootSystemByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method RebootSystemByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method RebootSystemByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method RebootSystemByName finished")
+		}
+	}()
+	return _d._base.RebootSystemByName(ctx, name)
+}
+
 // Rename implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	log := _d._log.With()

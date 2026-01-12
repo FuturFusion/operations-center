@@ -40,6 +40,9 @@ var _ provisioning.ServerClientPort = &ServerClientPortMock{}
 //			PingFunc: func(ctx context.Context, endpoint provisioning.Endpoint) error {
 //				panic("mock out the Ping method")
 //			},
+//			RebootFunc: func(ctx context.Context, server provisioning.Server) error {
+//				panic("mock out the Reboot method")
+//			},
 //			UpdateNetworkConfigFunc: func(ctx context.Context, server provisioning.Server) error {
 //				panic("mock out the UpdateNetworkConfig method")
 //			},
@@ -73,6 +76,9 @@ type ServerClientPortMock struct {
 
 	// PingFunc mocks the Ping method.
 	PingFunc func(ctx context.Context, endpoint provisioning.Endpoint) error
+
+	// RebootFunc mocks the Reboot method.
+	RebootFunc func(ctx context.Context, server provisioning.Server) error
 
 	// UpdateNetworkConfigFunc mocks the UpdateNetworkConfig method.
 	UpdateNetworkConfigFunc func(ctx context.Context, server provisioning.Server) error
@@ -127,6 +133,13 @@ type ServerClientPortMock struct {
 			// Endpoint is the endpoint argument value.
 			Endpoint provisioning.Endpoint
 		}
+		// Reboot holds details about calls to the Reboot method.
+		Reboot []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Server is the server argument value.
+			Server provisioning.Server
+		}
 		// UpdateNetworkConfig holds details about calls to the UpdateNetworkConfig method.
 		UpdateNetworkConfig []struct {
 			// Ctx is the ctx argument value.
@@ -157,6 +170,7 @@ type ServerClientPortMock struct {
 	lockGetServerType        sync.RWMutex
 	lockGetVersionData       sync.RWMutex
 	lockPing                 sync.RWMutex
+	lockReboot               sync.RWMutex
 	lockUpdateNetworkConfig  sync.RWMutex
 	lockUpdateProviderConfig sync.RWMutex
 	lockUpdateStorageConfig  sync.RWMutex
@@ -375,6 +389,42 @@ func (mock *ServerClientPortMock) PingCalls() []struct {
 	mock.lockPing.RLock()
 	calls = mock.calls.Ping
 	mock.lockPing.RUnlock()
+	return calls
+}
+
+// Reboot calls RebootFunc.
+func (mock *ServerClientPortMock) Reboot(ctx context.Context, server provisioning.Server) error {
+	if mock.RebootFunc == nil {
+		panic("ServerClientPortMock.RebootFunc: method is nil but ServerClientPort.Reboot was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}{
+		Ctx:    ctx,
+		Server: server,
+	}
+	mock.lockReboot.Lock()
+	mock.calls.Reboot = append(mock.calls.Reboot, callInfo)
+	mock.lockReboot.Unlock()
+	return mock.RebootFunc(ctx, server)
+}
+
+// RebootCalls gets all the calls that were made to Reboot.
+// Check the length with:
+//
+//	len(mockedServerClientPort.RebootCalls())
+func (mock *ServerClientPortMock) RebootCalls() []struct {
+	Ctx    context.Context
+	Server provisioning.Server
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Server provisioning.Server
+	}
+	mock.lockReboot.RLock()
+	calls = mock.calls.Reboot
+	mock.lockReboot.RUnlock()
 	return calls
 }
 
