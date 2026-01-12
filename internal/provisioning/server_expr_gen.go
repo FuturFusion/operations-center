@@ -9,20 +9,28 @@ import (
 	osapi "github.com/lxc/incus-os/incus-osd/api"
 )
 
+type ExprApiApplicationVersionData struct {
+	Name    string `json:"name" yaml:"name" expr:"name"`
+	Version string `json:"version" yaml:"version" expr:"version"`
+}
+
 type ExprApiOSData struct {
 	Network  ExprOsapiSystemNetwork  `json:"network" yaml:"network" expr:"network"`
 	Security ExprOsapiSystemSecurity `json:"security" yaml:"security" expr:"security"`
 	Storage  ExprOsapiSystemStorage  `json:"storage" yaml:"storage" expr:"storage"`
 }
 
-type ExprApiServerVersionData struct {
-	OS           ExprApiVersionData   `json:"os" yaml:"os" expr:"os"`
-	Applications []ExprApiVersionData `json:"applications" yaml:"applications" expr:"applications"`
+type ExprApiOSVersionData struct {
+	Name        string `json:"name" yaml:"name" expr:"name"`
+	Version     string `json:"version" yaml:"version" expr:"version"`
+	VersionNext string `json:"version_next" expr:"version_next"`
+	NeedsReboot bool   `json:"needs_reboot" expr:"needs_reboot"`
 }
 
-type ExprApiVersionData struct {
-	Name    string `json:"name" yaml:"name" expr:"name"`
-	Version string `json:"version" yaml:"version" expr:"version"`
+type ExprApiServerVersionData struct {
+	OS            ExprApiOSVersionData            `json:"os" yaml:"os" expr:"os"`
+	Applications  []ExprApiApplicationVersionData `json:"applications" yaml:"applications" expr:"applications"`
+	UpdateChannel string                          `json:"update_channel" yaml:"update_channel" expr:"update_channel"`
 }
 
 type ExprOsapiSystemNetwork struct {
@@ -339,6 +347,13 @@ type ExprServer struct {
 	LastSeen             time.Time                `json:"last_seen" expr:"last_seen"`
 }
 
+func ToExprApiApplicationVersionData(a api.ApplicationVersionData) ExprApiApplicationVersionData {
+	return ExprApiApplicationVersionData{
+		Name:    a.Name,
+		Version: a.Version,
+	}
+}
+
 func ToExprApiOSData(o api.OSData) ExprApiOSData {
 	return ExprApiOSData{
 		Network:  ToExprOsapiSystemNetwork(o.Network),
@@ -347,17 +362,20 @@ func ToExprApiOSData(o api.OSData) ExprApiOSData {
 	}
 }
 
-func ToExprApiServerVersionData(s api.ServerVersionData) ExprApiServerVersionData {
-	return ExprApiServerVersionData{
-		OS:           ToExprApiVersionData(s.OS),
-		Applications: sliceConvert(s.Applications, ToExprApiVersionData),
+func ToExprApiOSVersionData(o api.OSVersionData) ExprApiOSVersionData {
+	return ExprApiOSVersionData{
+		Name:        o.Name,
+		Version:     o.Version,
+		VersionNext: o.VersionNext,
+		NeedsReboot: o.NeedsReboot,
 	}
 }
 
-func ToExprApiVersionData(v api.VersionData) ExprApiVersionData {
-	return ExprApiVersionData{
-		Name:    v.Name,
-		Version: v.Version,
+func ToExprApiServerVersionData(s api.ServerVersionData) ExprApiServerVersionData {
+	return ExprApiServerVersionData{
+		OS:            ToExprApiOSVersionData(s.OS),
+		Applications:  sliceConvert(s.Applications, ToExprApiApplicationVersionData),
+		UpdateChannel: s.UpdateChannel,
 	}
 }
 
