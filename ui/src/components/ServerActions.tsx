@@ -1,6 +1,7 @@
 import { FC } from "react";
 import { MdOutlineSync } from "react-icons/md";
 import { resyncServer } from "api/server";
+import ServerRebootBtn from "components/ServerRebootBtn";
 import { useNotification } from "context/notificationContext";
 import { Server } from "types/server";
 
@@ -39,6 +40,7 @@ const ServerActions: FC<Props> = ({ server }) => {
           onResyncServer();
         }}
       />
+      <ServerRebootBtn server={server} />
     </div>
   );
 };
