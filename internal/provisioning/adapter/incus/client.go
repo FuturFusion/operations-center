@@ -182,8 +182,9 @@ func (c client) GetVersionData(ctx context.Context, endpoint provisioning.Endpoi
 
 	var osVersionData struct {
 		Environment struct {
-			OSName    string `json:"os_name"`
-			OSVersion string `json:"os_version"`
+			OSName        string `json:"os_name"`
+			OSVersion     string `json:"os_version"`
+			OSVersionNext string `json:"os_version_next"`
 		} `json:"environment"`
 	}
 	err = json.Unmarshal(resp.Metadata, &osVersionData)
@@ -204,7 +205,7 @@ func (c client) GetVersionData(ctx context.Context, endpoint provisioning.Endpoi
 		return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching applications from %q: %w", endpoint.GetConnectionURL(), err)
 	}
 
-	applicationVersions := make([]api.VersionData, 0, len(applications))
+	applicationVersions := make([]api.ApplicationVersionData, 0, len(applications))
 	for _, applicationURL := range applications {
 		applicationName := path.Base(applicationURL)
 
@@ -221,18 +222,34 @@ func (c client) GetVersionData(ctx context.Context, endpoint provisioning.Endpoi
 			return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching application %q from %q: %w", applicationName, endpoint.GetConnectionURL(), err)
 		}
 
-		applicationVersions = append(applicationVersions, api.VersionData{
+		applicationVersions = append(applicationVersions, api.ApplicationVersionData{
 			Name:    applicationName,
 			Version: application.State.Version,
 		})
 	}
 
+	resp, _, err = client.RawQuery(http.MethodGet, "/os/1.0/system/update", http.NoBody, "")
+	if err != nil {
+		err = api.AsNotIncusOSError(err)
+
+		return api.ServerVersionData{}, fmt.Errorf("Get OS version data from %q failed: %w", endpoint.GetConnectionURL(), err)
+	}
+
+	var systemUpdate incusosapi.SystemUpdate
+	err = json.Unmarshal(resp.Metadata, &systemUpdate)
+	if err != nil {
+		return api.ServerVersionData{}, fmt.Errorf("Unexpected response metadata while fetching system update information from %q: %w", endpoint.GetConnectionURL(), err)
+	}
+
 	return api.ServerVersionData{
-		OS: api.VersionData{
-			Name:    osVersionData.Environment.OSName,
-			Version: osVersionData.Environment.OSVersion,
+		OS: api.OSVersionData{
+			Name:        osVersionData.Environment.OSName,
+			Version:     osVersionData.Environment.OSVersion,
+			VersionNext: osVersionData.Environment.OSVersionNext,
+			NeedsReboot: systemUpdate.State.NeedsReboot,
 		},
-		Applications: applicationVersions,
+		Applications:  applicationVersions,
+		UpdateChannel: systemUpdate.Config.Channel,
 	}, nil
 }
 

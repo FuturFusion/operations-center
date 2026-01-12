@@ -809,7 +809,8 @@ func TestClientServer(t *testing.T) {
     "environment": {
       "hostname": "af94e64e-1993-41b6-8f10-a8eebb828fce",
       "os_name": "IncusOS",
-      "os_version": "202511041601"
+      "os_version": "202511041601",
+      "os_version_next": "202512210545"
     }
   }
 }`),
@@ -841,23 +842,42 @@ func TestClientServer(t *testing.T) {
 }`),
 							},
 						},
+						// GET /os/1.0/system/update
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": {
+    "config": {
+      "channel": "stable"
+    },
+    "state": {
+      "needs_reboot": true
+    }
+  }
+}`),
+							},
+						},
 					},
 
 					assertErr: require.NoError,
-					wantPaths: []string{"GET /os/1.0", "GET /os/1.0/applications", "GET /os/1.0/applications/incus"},
+					wantPaths: []string{"GET /os/1.0", "GET /os/1.0/applications", "GET /os/1.0/applications/incus", "GET /os/1.0/system/update"},
 					assertResult: func(t *testing.T, res any) {
 						t.Helper()
 						wantResources := api.ServerVersionData{
-							OS: api.VersionData{
-								Name:    "IncusOS",
-								Version: "202511041601",
+							OS: api.OSVersionData{
+								Name:        "IncusOS",
+								Version:     "202511041601",
+								VersionNext: "202512210545",
+								NeedsReboot: true,
 							},
-							Applications: []api.VersionData{
+							Applications: []api.ApplicationVersionData{
 								{
 									Name:    "incus",
 									Version: "202511041601",
 								},
 							},
+							UpdateChannel: "stable",
 						}
 
 						require.Equal(t, wantResources, res)
