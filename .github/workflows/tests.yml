@@ -78,6 +78,8 @@ jobs:
         run: |
           make build
 
+      - uses: opentofu/setup-opentofu@v1
+
       - name: Run static analysis
         env:
           GITHUB_BEFORE: ${{ github.event.before }}
