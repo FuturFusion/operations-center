@@ -96,6 +96,15 @@ func (c OperationsCenterClient) ResyncServer(ctx context.Context, name string) e
 	return nil
 }
 
+func (c OperationsCenterClient) RebootServerSystem(ctx context.Context, name string) error {
+	_, err := c.doRequest(ctx, http.MethodPost, path.Join("/provisioning/servers", name, "system/:reboot"), nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c OperationsCenterClient) GetServerSystemNetwork(ctx context.Context, name string) (api.ServerSystemNetwork, error) {
 	response, err := c.doRequest(ctx, http.MethodGet, path.Join("/provisioning/servers", name, "system/network"), nil, nil)
 	if err != nil {
