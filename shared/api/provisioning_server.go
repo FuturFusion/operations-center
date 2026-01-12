@@ -225,16 +225,44 @@ func (h *OSData) Scan(value any) error {
 // swagger:model
 type ServerVersionData struct {
 	// OS holds the version information for the operating system.
-	OS VersionData `json:"os" yaml:"os"`
+	OS OSVersionData `json:"os" yaml:"os"`
 
 	// Applications holds the version information for the installed applications.
-	Applications []VersionData `json:"applications" yaml:"applications"`
+	Applications []ApplicationVersionData `json:"applications" yaml:"applications"`
+
+	// The channel the system is following for updates.
+	UpdateChannel string `json:"update_channel" yaml:"update_channel"`
 }
 
-// VersionData defines a single version information for a software (OS or application).
+// OSVersionData defines a single version information for the OS.
 //
 // swagger:model
-type VersionData struct {
+type OSVersionData struct {
+	// Name of the software component.
+	// Example: IncusOS
+	Name string `json:"name" yaml:"name"`
+
+	// Version string.
+	// Example: 202512250102
+	Version string `json:"version" yaml:"version"`
+
+	// Next Version string. If this version is different from "version",
+	// an update is available and applied on the system, but the system has
+	// not yet been rebooted, so the new update is not yet active.
+	// Example: 202512250102
+	VersionNext string `json:"version_next"`
+
+	// NeedsReboot is the "needs_reboot" state reported by the server. Currently
+	// this is only expected to be "true", if "version_next" is different than
+	// "version", but in the future, there might be other reasons for a server
+	// to report, that a reboot is required.
+	NeedsReboot bool `json:"needs_reboot"`
+}
+
+// ApplicationVersionData defines a single version information for an application.
+//
+// swagger:model
+type ApplicationVersionData struct {
 	// Name of the software component.
 	// Example: IncusOS
 	Name string `json:"name" yaml:"name"`
