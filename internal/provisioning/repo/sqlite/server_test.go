@@ -3,7 +3,6 @@ package sqlite_test
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"testing"
 
 	incustls "github.com/lxc/incus/v6/shared/tls"
@@ -42,7 +41,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		Certificate:   string(certPEMA),
 		Fingerprint:   fingerprintA,
 		HardwareData:  api.HardwareData{},
-		VersionData:   json.RawMessage(nil),
+		VersionData:   api.ServerVersionData{},
 		Status:        api.ServerStatusReady,
 	}
 
@@ -53,7 +52,7 @@ func TestServerDatabaseActions(t *testing.T) {
 		Certificate:   string(certPEMB),
 		Fingerprint:   fingerprintB,
 		HardwareData:  api.HardwareData{},
-		VersionData:   json.RawMessage(nil),
+		VersionData:   api.ServerVersionData{},
 		Status:        api.ServerStatusReady,
 	}
 

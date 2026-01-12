@@ -182,6 +182,41 @@ func (_d ServerClientPortWithSlog) GetServerType(ctx context.Context, endpoint p
 	return _d._base.GetServerType(ctx, endpoint)
 }
 
+// GetVersionData implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) GetVersionData(ctx context.Context, endpoint provisioning.Endpoint) (serverVersionData api.ServerVersionData, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("endpoint", endpoint),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetVersionData")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("serverVersionData", serverVersionData),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetVersionData returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetVersionData returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetVersionData finished")
+		}
+	}()
+	return _d._base.GetVersionData(ctx, endpoint)
+}
+
 // Ping implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) Ping(ctx context.Context, endpoint provisioning.Endpoint) (err error) {
 	log := _d._log.With()

@@ -791,6 +791,7 @@ func (s *serverService) pollServer(ctx context.Context, server Server, updateSer
 
 	var hardwareData api.HardwareData
 	var osData api.OSData
+	var versionData api.ServerVersionData
 	var serverType api.ServerType
 	if updateServerConfiguration {
 		hardwareData, err = s.client.GetResources(ctx, server)
@@ -801,6 +802,11 @@ func (s *serverService) pollServer(ctx context.Context, server Server, updateSer
 		osData, err = s.client.GetOSData(ctx, server)
 		if err != nil {
 			return fmt.Errorf("Failed to get os data from server %q: %w", server.Name, err)
+		}
+
+		versionData, err = s.client.GetVersionData(ctx, server)
+		if err != nil {
+			return fmt.Errorf("Failed to get version data from server %q: %w", server.Name, err)
 		}
 
 		// For now, we ignore the error and we are fine to persist type "unknown",
@@ -827,6 +833,7 @@ func (s *serverService) pollServer(ctx context.Context, server Server, updateSer
 			server.Status = api.ServerStatusReady
 			server.HardwareData = hardwareData
 			server.OSData = osData
+			server.VersionData = versionData
 			server.Type = serverType
 		}
 
