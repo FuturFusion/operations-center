@@ -50,6 +50,39 @@ var updates = map[int]update{
 	20: updateFromV19,
 	21: updateFromV20,
 	22: updateFromV21,
+	23: updateFromV22,
+}
+
+func updateFromV22(ctx context.Context, tx *sql.Tx) error {
+	// v22..v23 add update_channels
+	stmt := `
+CREATE TABLE channels (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  last_updated DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00',
+  UNIQUE(name),
+  CHECK (name <> '')
+);
+
+INSERT INTO channels (name, description, last_updated) VALUES ('stable', 'Stable updates channel', strftime('%Y-%m-%d %H:%M:%f+00:00'));
+
+CREATE TABLE channels_updates (
+    channel_id INTEGER NOT NULL,
+    update_id INTEGER NOT NULL,
+    FOREIGN KEY (channel_id) REFERENCES channels (id) ON DELETE CASCADE,
+    FOREIGN KEY (update_id) REFERENCES updates (id) ON DELETE CASCADE,
+    UNIQUE (channel_id, update_id)
+);
+
+WITH stable_channel AS (
+  SELECT id FROM channels WHERE name = 'stable'
+)
+INSERT INTO channels_updates
+SELECT (SELECT id FROM stable_channel), id FROM updates;
+`
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV21(ctx context.Context, tx *sql.Tx) error {
