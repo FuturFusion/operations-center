@@ -62,6 +62,25 @@ CREATE TABLE updates (
   UNIQUE(uuid)
 );
 
+CREATE TABLE exposedchannels (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  last_updated DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00',
+  UNIQUE(name),
+  CHECK (name <> '')
+);
+
+INSERT INTO exposedchannels (name, description, last_updated) VALUES ('stable', 'Stable updates channel', strftime('%Y-%m-%d %H:%M:%f+00:00'));
+
+CREATE TABLE exposedchannels_updates (
+    exposedchannel_id INTEGER NOT NULL,
+    update_id INTEGER NOT NULL,
+    FOREIGN KEY (exposedchannel_id) REFERENCES exposedchannels (id) ON DELETE CASCADE,
+    FOREIGN KEY (update_id) REFERENCES updates (id) ON DELETE CASCADE,
+    UNIQUE (exposedchannel_id, update_id)
+);
+
 CREATE TABLE images (
   id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   uuid TEXT NOT NULL,
@@ -365,4 +384,4 @@ CREATE VIEW resources AS
     LEFT JOIN servers ON storage_volumes.server_id = servers.id
 ;
 
-INSERT INTO schema (version, updated_at) VALUES (20, strftime("%s"))
+INSERT INTO schema (version, updated_at) VALUES (21, strftime("%s"))
