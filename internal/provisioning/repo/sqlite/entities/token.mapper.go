@@ -9,8 +9,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/google/uuid"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 var tokenObjects = RegisterStmt(`
