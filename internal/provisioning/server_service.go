@@ -629,6 +629,20 @@ func (s *serverService) PollServers(ctx context.Context, serverStatus api.Server
 	return errors.Join(errs...)
 }
 
+func (s *serverService) PoweroffSystemByName(ctx context.Context, name string) error {
+	server, err := s.GetByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("Failed to get server %q by name: %w", name, err)
+	}
+
+	err = s.client.Poweroff(ctx, *server)
+	if err != nil {
+		return fmt.Errorf("Failed to poweroff server %q by name: %w", name, err)
+	}
+
+	return nil
+}
+
 func (s *serverService) RebootSystemByName(ctx context.Context, name string) error {
 	server, err := s.GetByName(ctx, name)
 	if err != nil {

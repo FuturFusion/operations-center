@@ -2721,6 +2721,64 @@ func TestServerService_ResyncByName(t *testing.T) {
 	}
 }
 
+func TestServerService_PoweroffSystemByName(t *testing.T) {
+	tests := []struct {
+		name              string
+		repoGetByName     provisioning.Server
+		repoGetByNameErr  error
+		clientPoweroffErr error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "success",
+			repoGetByName: provisioning.Server{
+				Name:   "operations-center",
+				Status: api.ServerStatusReady,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:             "error - repo.GetByName",
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:              "error - client.Poweroff",
+			clientPoweroffErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.ServerRepoMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*provisioning.Server, error) {
+					return &tc.repoGetByName, tc.repoGetByNameErr
+				},
+			}
+
+			client := &adapterMock.ServerClientPortMock{
+				PoweroffFunc: func(ctx context.Context, server provisioning.Server) error {
+					return tc.clientPoweroffErr
+				},
+			}
+
+			serverSvc := provisioning.NewServerService(repo, client, nil, nil, "https://one:8443", tls.Certificate{})
+
+			// Run test
+			err := serverSvc.PoweroffSystemByName(t.Context(), "one")
+
+			// Assert
+			tc.assertErr(t, err)
+		})
+	}
+}
+
 func TestServerService_RebootSystemByName(t *testing.T) {
 	tests := []struct {
 		name             string

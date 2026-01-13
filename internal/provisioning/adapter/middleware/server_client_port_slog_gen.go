@@ -251,6 +251,40 @@ func (_d ServerClientPortWithSlog) Ping(ctx context.Context, endpoint provisioni
 	return _d._base.Ping(ctx, endpoint)
 }
 
+// Poweroff implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithSlog) Poweroff(ctx context.Context, server provisioning.Server) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("server", server),
+		)
+	}
+	log.DebugContext(ctx, "=> calling Poweroff")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method Poweroff returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method Poweroff returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method Poweroff finished")
+		}
+	}()
+	return _d._base.Poweroff(ctx, server)
+}
+
 // Reboot implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithSlog) Reboot(ctx context.Context, server provisioning.Server) (err error) {
 	log := _d._log.With()

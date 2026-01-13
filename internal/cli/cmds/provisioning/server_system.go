@@ -33,6 +33,13 @@ func (c *cmdServerSystem) Command() *cobra.Command {
 
 	cmd.AddCommand(serverSystemNetworkCmd.Command())
 
+	// Poweroff
+	serverPoweroffCmd := cmdServerPoweroff{
+		ocClient: c.ocClient,
+	}
+
+	cmd.AddCommand(serverPoweroffCmd.Command())
+
 	// System Reboot
 	serverRebootCmd := cmdServerReboot{
 		ocClient: c.ocClient,
@@ -48,6 +55,48 @@ func (c *cmdServerSystem) Command() *cobra.Command {
 	cmd.AddCommand(serverSystemStorageCmd.Command())
 
 	return cmd
+}
+
+// Poweroff server.
+type cmdServerPoweroff struct {
+	ocClient *client.OperationsCenterClient
+}
+
+func (c *cmdServerPoweroff) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "poweroff <name>"
+	cmd.Short = "Poweroff a server"
+	cmd.Long = `Description:
+  Poweroff a server
+
+  Powers off a server.
+`
+
+	cmd.PreRunE = c.validateArgsAndFlags
+	cmd.RunE = c.run
+
+	return cmd
+}
+
+func (c *cmdServerPoweroff) validateArgsAndFlags(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := validate.Args(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	return nil
+}
+
+func (c *cmdServerPoweroff) run(cmd *cobra.Command, args []string) error {
+	name := args[0]
+
+	err := c.ocClient.PoweroffServerSystem(cmd.Context(), name)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Reboot server.

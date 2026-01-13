@@ -29,6 +29,7 @@ type ServerService interface {
 
 	PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) error
 
+	PoweroffSystemByName(ctx context.Context, name string) error
 	RebootSystemByName(ctx context.Context, name string) error
 }
 
@@ -55,5 +56,6 @@ type ServerClientPort interface {
 	UpdateStorageConfig(ctx context.Context, server Server) error
 	GetProviderConfig(ctx context.Context, server Server) (ServerSystemProvider, error)
 	UpdateProviderConfig(ctx context.Context, server Server, providerConfig ServerSystemProvider) error
+	Poweroff(ctx context.Context, server Server) error
 	Reboot(ctx context.Context, server Server) error
 }
