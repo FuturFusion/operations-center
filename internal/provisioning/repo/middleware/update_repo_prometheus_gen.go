@@ -38,6 +38,20 @@ func NewUpdateRepoWithPrometheus(base provisioning.UpdateRepo, instanceName stri
 	}
 }
 
+// CreateExposedchannel implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithPrometheus) CreateExposedchannel(ctx context.Context, newExposedchannel provisioning.Exposedchannel) (n int64, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "CreateExposedchannel", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.CreateExposedchannel(ctx, newExposedchannel)
+}
+
 // DeleteByUUID implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_since := time.Now()
@@ -52,6 +66,20 @@ func (_d UpdateRepoWithPrometheus) DeleteByUUID(ctx context.Context, id uuid.UUI
 	return _d.base.DeleteByUUID(ctx, id)
 }
 
+// DeleteExposedchannelByName implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithPrometheus) DeleteExposedchannelByName(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteExposedchannelByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteExposedchannelByName(ctx, name)
+}
+
 // GetAll implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithPrometheus) GetAll(ctx context.Context) (updates provisioning.Updates, err error) {
 	_since := time.Now()
@@ -64,6 +92,34 @@ func (_d UpdateRepoWithPrometheus) GetAll(ctx context.Context) (updates provisio
 		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAll", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetAll(ctx)
+}
+
+// GetAllExposedchannelNames implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithPrometheus) GetAllExposedchannelNames(ctx context.Context) (strings []string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllExposedchannelNames", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllExposedchannelNames(ctx)
+}
+
+// GetAllExposedchannels implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithPrometheus) GetAllExposedchannels(ctx context.Context) (exposedchannels provisioning.Exposedchannels, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllExposedchannels", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllExposedchannels(ctx)
 }
 
 // GetAllUUIDs implements provisioning.UpdateRepo.
@@ -120,6 +176,62 @@ func (_d UpdateRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) 
 		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetByUUID", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetByUUID(ctx, id)
+}
+
+// GetExposedchannelByName implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithPrometheus) GetExposedchannelByName(ctx context.Context, name string) (exposedchannel *provisioning.Exposedchannel, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetExposedchannelByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetExposedchannelByName(ctx, name)
+}
+
+// GetUpdatesByAssignedExposedchannelName implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithPrometheus) GetUpdatesByAssignedExposedchannelName(ctx context.Context, name string) (updates provisioning.Updates, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdatesByAssignedExposedchannelName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetUpdatesByAssignedExposedchannelName(ctx, name)
+}
+
+// RenameExposedchannel implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithPrometheus) RenameExposedchannel(ctx context.Context, oldName string, newName string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "RenameExposedchannel", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RenameExposedchannel(ctx, oldName, newName)
+}
+
+// UpdateExposedchannel implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithPrometheus) UpdateExposedchannel(ctx context.Context, newExposedchannel provisioning.Exposedchannel) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateExposedchannel", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateExposedchannel(ctx, newExposedchannel)
 }
 
 // Upsert implements provisioning.UpdateRepo.

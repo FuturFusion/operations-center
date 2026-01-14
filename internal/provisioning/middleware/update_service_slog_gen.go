@@ -77,6 +77,41 @@ func (_d UpdateServiceWithSlog) CleanupAll(ctx context.Context) (err error) {
 	return _d._base.CleanupAll(ctx)
 }
 
+// CreateExposedchannel implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) CreateExposedchannel(ctx context.Context, newExposedchannel provisioning.Exposedchannel) (exposedchannel provisioning.Exposedchannel, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("newExposedchannel", newExposedchannel),
+		)
+	}
+	log.DebugContext(ctx, "=> calling CreateExposedchannel")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("exposedchannel", exposedchannel),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method CreateExposedchannel returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method CreateExposedchannel returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method CreateExposedchannel finished")
+		}
+	}()
+	return _d._base.CreateExposedchannel(ctx, newExposedchannel)
+}
+
 // CreateFromArchive implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uUID uuid.UUID, err error) {
 	log := _d._log.With()
@@ -112,6 +147,40 @@ func (_d UpdateServiceWithSlog) CreateFromArchive(ctx context.Context, tarReader
 	return _d._base.CreateFromArchive(ctx, tarReader)
 }
 
+// DeleteExposedchannelByName implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) DeleteExposedchannelByName(ctx context.Context, name string) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling DeleteExposedchannelByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method DeleteExposedchannelByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method DeleteExposedchannelByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method DeleteExposedchannelByName finished")
+		}
+	}()
+	return _d._base.DeleteExposedchannelByName(ctx, name)
+}
+
 // GetAll implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisioning.Updates, err error) {
 	log := _d._log.With()
@@ -144,6 +213,74 @@ func (_d UpdateServiceWithSlog) GetAll(ctx context.Context) (updates provisionin
 		}
 	}()
 	return _d._base.GetAll(ctx)
+}
+
+// GetAllExposedchannelNames implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) GetAllExposedchannelNames(ctx context.Context) (strings []string, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetAllExposedchannelNames")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("strings", strings),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetAllExposedchannelNames returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetAllExposedchannelNames returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetAllExposedchannelNames finished")
+		}
+	}()
+	return _d._base.GetAllExposedchannelNames(ctx)
+}
+
+// GetAllExposedchannels implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) GetAllExposedchannels(ctx context.Context) (exposedchannels provisioning.Exposedchannels, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetAllExposedchannels")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("exposedchannels", exposedchannels),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetAllExposedchannels returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetAllExposedchannels returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetAllExposedchannels finished")
+		}
+	}()
+	return _d._base.GetAllExposedchannels(ctx)
 }
 
 // GetAllUUIDs implements provisioning.UpdateService.
@@ -285,6 +422,41 @@ func (_d UpdateServiceWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (up
 	return _d._base.GetByUUID(ctx, id)
 }
 
+// GetExposedchannelByName implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) GetExposedchannelByName(ctx context.Context, name string) (exposedchannel *provisioning.Exposedchannel, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetExposedchannelByName")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("exposedchannel", exposedchannel),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetExposedchannelByName returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetExposedchannelByName returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetExposedchannelByName finished")
+		}
+	}()
+	return _d._base.GetExposedchannelByName(ctx, name)
+}
+
 // GetUpdateAllFiles implements provisioning.UpdateService.
 func (_d UpdateServiceWithSlog) GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (updateFiles provisioning.UpdateFiles, err error) {
 	log := _d._log.With()
@@ -421,4 +593,90 @@ func (_d UpdateServiceWithSlog) Refresh(ctx context.Context) (err error) {
 		}
 	}()
 	return _d._base.Refresh(ctx)
+}
+
+// RenameExposedchannel implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) RenameExposedchannel(ctx context.Context, oldName string, newName string) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("oldName", oldName),
+			slog.String("newName", newName),
+		)
+	}
+	log.DebugContext(ctx, "=> calling RenameExposedchannel")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method RenameExposedchannel returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method RenameExposedchannel returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method RenameExposedchannel finished")
+		}
+	}()
+	return _d._base.RenameExposedchannel(ctx, oldName, newName)
+}
+
+// SetServerService implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) SetServerService(serverSvc provisioning.ServerService) {
+	ctx := context.Background()
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("serverSvc", serverSvc),
+		)
+	}
+	log.DebugContext(ctx, "=> calling SetServerService")
+	defer func() {
+		log := _d._log.With()
+		log.DebugContext(ctx, "<= method SetServerService finished")
+	}()
+	_d._base.SetServerService(serverSvc)
+}
+
+// UpdateExposedchannel implements provisioning.UpdateService.
+func (_d UpdateServiceWithSlog) UpdateExposedchannel(ctx context.Context, newExposedchannel provisioning.Exposedchannel) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.Any("newExposedchannel", newExposedchannel),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateExposedchannel")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateExposedchannel returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateExposedchannel returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateExposedchannel finished")
+		}
+	}()
+	return _d._base.UpdateExposedchannel(ctx, newExposedchannel)
 }

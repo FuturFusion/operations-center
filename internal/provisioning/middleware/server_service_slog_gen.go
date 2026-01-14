@@ -321,6 +321,41 @@ func (_d ServerServiceWithSlog) GetSystemProvider(ctx context.Context, name stri
 	return _d._base.GetSystemProvider(ctx, name)
 }
 
+// GetSystemUpdate implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) GetSystemUpdate(ctx context.Context, name string) (v provisioning.ServerSystemUpdate, err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+		)
+	}
+	log.DebugContext(ctx, "=> calling GetSystemUpdate")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("v", v),
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method GetSystemUpdate returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method GetSystemUpdate returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method GetSystemUpdate finished")
+		}
+	}()
+	return _d._base.GetSystemUpdate(ctx, name)
+}
+
 // PollServers implements provisioning.ServerService.
 func (_d ServerServiceWithSlog) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) (err error) {
 	log := _d._log.With()
@@ -714,4 +749,39 @@ func (_d ServerServiceWithSlog) UpdateSystemStorage(ctx context.Context, name st
 		}
 	}()
 	return _d._base.UpdateSystemStorage(ctx, name, networkConfig)
+}
+
+// UpdateSystemUpdate implements provisioning.ServerService.
+func (_d ServerServiceWithSlog) UpdateSystemUpdate(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) (err error) {
+	log := _d._log.With()
+	if _d._log.Enabled(ctx, logger.LevelTrace) {
+		log = log.With(
+			slog.Any("ctx", ctx),
+			slog.String("name", name),
+			slog.Any("updateConfig", updateConfig),
+		)
+	}
+	log.DebugContext(ctx, "=> calling UpdateSystemUpdate")
+	defer func() {
+		log := _d._log.With()
+		if _d._log.Enabled(ctx, logger.LevelTrace) {
+			log = _d._log.With(
+				slog.Any("err", err),
+			)
+		} else {
+			if err != nil {
+				log = _d._log.With("err", err)
+			}
+		}
+		if err != nil {
+			if _d._isInformativeErrFunc(err) {
+				log.DebugContext(ctx, "<= method UpdateSystemUpdate returned an informative error")
+			} else {
+				log.ErrorContext(ctx, "<= method UpdateSystemUpdate returned an error")
+			}
+		} else {
+			log.DebugContext(ctx, "<= method UpdateSystemUpdate finished")
+		}
+	}()
+	return _d._base.UpdateSystemUpdate(ctx, name, updateConfig)
 }

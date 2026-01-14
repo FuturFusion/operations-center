@@ -22,11 +22,23 @@ var _ provisioning.UpdateRepo = &UpdateRepoMock{}
 //
 //		// make and configure a mocked provisioning.UpdateRepo
 //		mockedUpdateRepo := &UpdateRepoMock{
+//			CreateExposedchannelFunc: func(ctx context.Context, newExposedchannel provisioning.Exposedchannel) (int64, error) {
+//				panic("mock out the CreateExposedchannel method")
+//			},
 //			DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
 //				panic("mock out the DeleteByUUID method")
 //			},
+//			DeleteExposedchannelByNameFunc: func(ctx context.Context, name string) error {
+//				panic("mock out the DeleteExposedchannelByName method")
+//			},
 //			GetAllFunc: func(ctx context.Context) (provisioning.Updates, error) {
 //				panic("mock out the GetAll method")
+//			},
+//			GetAllExposedchannelNamesFunc: func(ctx context.Context) ([]string, error) {
+//				panic("mock out the GetAllExposedchannelNames method")
+//			},
+//			GetAllExposedchannelsFunc: func(ctx context.Context) (provisioning.Exposedchannels, error) {
+//				panic("mock out the GetAllExposedchannels method")
 //			},
 //			GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
 //				panic("mock out the GetAllUUIDs method")
@@ -40,6 +52,18 @@ var _ provisioning.UpdateRepo = &UpdateRepoMock{}
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error) {
 //				panic("mock out the GetByUUID method")
 //			},
+//			GetExposedchannelByNameFunc: func(ctx context.Context, name string) (*provisioning.Exposedchannel, error) {
+//				panic("mock out the GetExposedchannelByName method")
+//			},
+//			GetUpdatesByAssignedExposedchannelNameFunc: func(ctx context.Context, name string) (provisioning.Updates, error) {
+//				panic("mock out the GetUpdatesByAssignedExposedchannelName method")
+//			},
+//			RenameExposedchannelFunc: func(ctx context.Context, oldName string, newName string) error {
+//				panic("mock out the RenameExposedchannel method")
+//			},
+//			UpdateExposedchannelFunc: func(ctx context.Context, newExposedchannel provisioning.Exposedchannel) error {
+//				panic("mock out the UpdateExposedchannel method")
+//			},
 //			UpsertFunc: func(ctx context.Context, update provisioning.Update) error {
 //				panic("mock out the Upsert method")
 //			},
@@ -50,11 +74,23 @@ var _ provisioning.UpdateRepo = &UpdateRepoMock{}
 //
 //	}
 type UpdateRepoMock struct {
+	// CreateExposedchannelFunc mocks the CreateExposedchannel method.
+	CreateExposedchannelFunc func(ctx context.Context, newExposedchannel provisioning.Exposedchannel) (int64, error)
+
 	// DeleteByUUIDFunc mocks the DeleteByUUID method.
 	DeleteByUUIDFunc func(ctx context.Context, id uuid.UUID) error
 
+	// DeleteExposedchannelByNameFunc mocks the DeleteExposedchannelByName method.
+	DeleteExposedchannelByNameFunc func(ctx context.Context, name string) error
+
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (provisioning.Updates, error)
+
+	// GetAllExposedchannelNamesFunc mocks the GetAllExposedchannelNames method.
+	GetAllExposedchannelNamesFunc func(ctx context.Context) ([]string, error)
+
+	// GetAllExposedchannelsFunc mocks the GetAllExposedchannels method.
+	GetAllExposedchannelsFunc func(ctx context.Context) (provisioning.Exposedchannels, error)
 
 	// GetAllUUIDsFunc mocks the GetAllUUIDs method.
 	GetAllUUIDsFunc func(ctx context.Context) ([]uuid.UUID, error)
@@ -68,11 +104,30 @@ type UpdateRepoMock struct {
 	// GetByUUIDFunc mocks the GetByUUID method.
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*provisioning.Update, error)
 
+	// GetExposedchannelByNameFunc mocks the GetExposedchannelByName method.
+	GetExposedchannelByNameFunc func(ctx context.Context, name string) (*provisioning.Exposedchannel, error)
+
+	// GetUpdatesByAssignedExposedchannelNameFunc mocks the GetUpdatesByAssignedExposedchannelName method.
+	GetUpdatesByAssignedExposedchannelNameFunc func(ctx context.Context, name string) (provisioning.Updates, error)
+
+	// RenameExposedchannelFunc mocks the RenameExposedchannel method.
+	RenameExposedchannelFunc func(ctx context.Context, oldName string, newName string) error
+
+	// UpdateExposedchannelFunc mocks the UpdateExposedchannel method.
+	UpdateExposedchannelFunc func(ctx context.Context, newExposedchannel provisioning.Exposedchannel) error
+
 	// UpsertFunc mocks the Upsert method.
 	UpsertFunc func(ctx context.Context, update provisioning.Update) error
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// CreateExposedchannel holds details about calls to the CreateExposedchannel method.
+		CreateExposedchannel []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// NewExposedchannel is the newExposedchannel argument value.
+			NewExposedchannel provisioning.Exposedchannel
+		}
 		// DeleteByUUID holds details about calls to the DeleteByUUID method.
 		DeleteByUUID []struct {
 			// Ctx is the ctx argument value.
@@ -80,8 +135,25 @@ type UpdateRepoMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
+		// DeleteExposedchannelByName holds details about calls to the DeleteExposedchannelByName method.
+		DeleteExposedchannelByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// GetAllExposedchannelNames holds details about calls to the GetAllExposedchannelNames method.
+		GetAllExposedchannelNames []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// GetAllExposedchannels holds details about calls to the GetAllExposedchannels method.
+		GetAllExposedchannels []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
@@ -111,6 +183,36 @@ type UpdateRepoMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
+		// GetExposedchannelByName holds details about calls to the GetExposedchannelByName method.
+		GetExposedchannelByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
+		// GetUpdatesByAssignedExposedchannelName holds details about calls to the GetUpdatesByAssignedExposedchannelName method.
+		GetUpdatesByAssignedExposedchannelName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
+		// RenameExposedchannel holds details about calls to the RenameExposedchannel method.
+		RenameExposedchannel []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// OldName is the oldName argument value.
+			OldName string
+			// NewName is the newName argument value.
+			NewName string
+		}
+		// UpdateExposedchannel holds details about calls to the UpdateExposedchannel method.
+		UpdateExposedchannel []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// NewExposedchannel is the newExposedchannel argument value.
+			NewExposedchannel provisioning.Exposedchannel
+		}
 		// Upsert holds details about calls to the Upsert method.
 		Upsert []struct {
 			// Ctx is the ctx argument value.
@@ -119,13 +221,57 @@ type UpdateRepoMock struct {
 			Update provisioning.Update
 		}
 	}
-	lockDeleteByUUID          sync.RWMutex
-	lockGetAll                sync.RWMutex
-	lockGetAllUUIDs           sync.RWMutex
-	lockGetAllUUIDsWithFilter sync.RWMutex
-	lockGetAllWithFilter      sync.RWMutex
-	lockGetByUUID             sync.RWMutex
-	lockUpsert                sync.RWMutex
+	lockCreateExposedchannel                   sync.RWMutex
+	lockDeleteByUUID                           sync.RWMutex
+	lockDeleteExposedchannelByName             sync.RWMutex
+	lockGetAll                                 sync.RWMutex
+	lockGetAllExposedchannelNames              sync.RWMutex
+	lockGetAllExposedchannels                  sync.RWMutex
+	lockGetAllUUIDs                            sync.RWMutex
+	lockGetAllUUIDsWithFilter                  sync.RWMutex
+	lockGetAllWithFilter                       sync.RWMutex
+	lockGetByUUID                              sync.RWMutex
+	lockGetExposedchannelByName                sync.RWMutex
+	lockGetUpdatesByAssignedExposedchannelName sync.RWMutex
+	lockRenameExposedchannel                   sync.RWMutex
+	lockUpdateExposedchannel                   sync.RWMutex
+	lockUpsert                                 sync.RWMutex
+}
+
+// CreateExposedchannel calls CreateExposedchannelFunc.
+func (mock *UpdateRepoMock) CreateExposedchannel(ctx context.Context, newExposedchannel provisioning.Exposedchannel) (int64, error) {
+	if mock.CreateExposedchannelFunc == nil {
+		panic("UpdateRepoMock.CreateExposedchannelFunc: method is nil but UpdateRepo.CreateExposedchannel was just called")
+	}
+	callInfo := struct {
+		Ctx               context.Context
+		NewExposedchannel provisioning.Exposedchannel
+	}{
+		Ctx:               ctx,
+		NewExposedchannel: newExposedchannel,
+	}
+	mock.lockCreateExposedchannel.Lock()
+	mock.calls.CreateExposedchannel = append(mock.calls.CreateExposedchannel, callInfo)
+	mock.lockCreateExposedchannel.Unlock()
+	return mock.CreateExposedchannelFunc(ctx, newExposedchannel)
+}
+
+// CreateExposedchannelCalls gets all the calls that were made to CreateExposedchannel.
+// Check the length with:
+//
+//	len(mockedUpdateRepo.CreateExposedchannelCalls())
+func (mock *UpdateRepoMock) CreateExposedchannelCalls() []struct {
+	Ctx               context.Context
+	NewExposedchannel provisioning.Exposedchannel
+} {
+	var calls []struct {
+		Ctx               context.Context
+		NewExposedchannel provisioning.Exposedchannel
+	}
+	mock.lockCreateExposedchannel.RLock()
+	calls = mock.calls.CreateExposedchannel
+	mock.lockCreateExposedchannel.RUnlock()
+	return calls
 }
 
 // DeleteByUUID calls DeleteByUUIDFunc.
@@ -164,6 +310,42 @@ func (mock *UpdateRepoMock) DeleteByUUIDCalls() []struct {
 	return calls
 }
 
+// DeleteExposedchannelByName calls DeleteExposedchannelByNameFunc.
+func (mock *UpdateRepoMock) DeleteExposedchannelByName(ctx context.Context, name string) error {
+	if mock.DeleteExposedchannelByNameFunc == nil {
+		panic("UpdateRepoMock.DeleteExposedchannelByNameFunc: method is nil but UpdateRepo.DeleteExposedchannelByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockDeleteExposedchannelByName.Lock()
+	mock.calls.DeleteExposedchannelByName = append(mock.calls.DeleteExposedchannelByName, callInfo)
+	mock.lockDeleteExposedchannelByName.Unlock()
+	return mock.DeleteExposedchannelByNameFunc(ctx, name)
+}
+
+// DeleteExposedchannelByNameCalls gets all the calls that were made to DeleteExposedchannelByName.
+// Check the length with:
+//
+//	len(mockedUpdateRepo.DeleteExposedchannelByNameCalls())
+func (mock *UpdateRepoMock) DeleteExposedchannelByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockDeleteExposedchannelByName.RLock()
+	calls = mock.calls.DeleteExposedchannelByName
+	mock.lockDeleteExposedchannelByName.RUnlock()
+	return calls
+}
+
 // GetAll calls GetAllFunc.
 func (mock *UpdateRepoMock) GetAll(ctx context.Context) (provisioning.Updates, error) {
 	if mock.GetAllFunc == nil {
@@ -193,6 +375,70 @@ func (mock *UpdateRepoMock) GetAllCalls() []struct {
 	mock.lockGetAll.RLock()
 	calls = mock.calls.GetAll
 	mock.lockGetAll.RUnlock()
+	return calls
+}
+
+// GetAllExposedchannelNames calls GetAllExposedchannelNamesFunc.
+func (mock *UpdateRepoMock) GetAllExposedchannelNames(ctx context.Context) ([]string, error) {
+	if mock.GetAllExposedchannelNamesFunc == nil {
+		panic("UpdateRepoMock.GetAllExposedchannelNamesFunc: method is nil but UpdateRepo.GetAllExposedchannelNames was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetAllExposedchannelNames.Lock()
+	mock.calls.GetAllExposedchannelNames = append(mock.calls.GetAllExposedchannelNames, callInfo)
+	mock.lockGetAllExposedchannelNames.Unlock()
+	return mock.GetAllExposedchannelNamesFunc(ctx)
+}
+
+// GetAllExposedchannelNamesCalls gets all the calls that were made to GetAllExposedchannelNames.
+// Check the length with:
+//
+//	len(mockedUpdateRepo.GetAllExposedchannelNamesCalls())
+func (mock *UpdateRepoMock) GetAllExposedchannelNamesCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetAllExposedchannelNames.RLock()
+	calls = mock.calls.GetAllExposedchannelNames
+	mock.lockGetAllExposedchannelNames.RUnlock()
+	return calls
+}
+
+// GetAllExposedchannels calls GetAllExposedchannelsFunc.
+func (mock *UpdateRepoMock) GetAllExposedchannels(ctx context.Context) (provisioning.Exposedchannels, error) {
+	if mock.GetAllExposedchannelsFunc == nil {
+		panic("UpdateRepoMock.GetAllExposedchannelsFunc: method is nil but UpdateRepo.GetAllExposedchannels was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetAllExposedchannels.Lock()
+	mock.calls.GetAllExposedchannels = append(mock.calls.GetAllExposedchannels, callInfo)
+	mock.lockGetAllExposedchannels.Unlock()
+	return mock.GetAllExposedchannelsFunc(ctx)
+}
+
+// GetAllExposedchannelsCalls gets all the calls that were made to GetAllExposedchannels.
+// Check the length with:
+//
+//	len(mockedUpdateRepo.GetAllExposedchannelsCalls())
+func (mock *UpdateRepoMock) GetAllExposedchannelsCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetAllExposedchannels.RLock()
+	calls = mock.calls.GetAllExposedchannels
+	mock.lockGetAllExposedchannels.RUnlock()
 	return calls
 }
 
@@ -333,6 +579,154 @@ func (mock *UpdateRepoMock) GetByUUIDCalls() []struct {
 	mock.lockGetByUUID.RLock()
 	calls = mock.calls.GetByUUID
 	mock.lockGetByUUID.RUnlock()
+	return calls
+}
+
+// GetExposedchannelByName calls GetExposedchannelByNameFunc.
+func (mock *UpdateRepoMock) GetExposedchannelByName(ctx context.Context, name string) (*provisioning.Exposedchannel, error) {
+	if mock.GetExposedchannelByNameFunc == nil {
+		panic("UpdateRepoMock.GetExposedchannelByNameFunc: method is nil but UpdateRepo.GetExposedchannelByName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockGetExposedchannelByName.Lock()
+	mock.calls.GetExposedchannelByName = append(mock.calls.GetExposedchannelByName, callInfo)
+	mock.lockGetExposedchannelByName.Unlock()
+	return mock.GetExposedchannelByNameFunc(ctx, name)
+}
+
+// GetExposedchannelByNameCalls gets all the calls that were made to GetExposedchannelByName.
+// Check the length with:
+//
+//	len(mockedUpdateRepo.GetExposedchannelByNameCalls())
+func (mock *UpdateRepoMock) GetExposedchannelByNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockGetExposedchannelByName.RLock()
+	calls = mock.calls.GetExposedchannelByName
+	mock.lockGetExposedchannelByName.RUnlock()
+	return calls
+}
+
+// GetUpdatesByAssignedExposedchannelName calls GetUpdatesByAssignedExposedchannelNameFunc.
+func (mock *UpdateRepoMock) GetUpdatesByAssignedExposedchannelName(ctx context.Context, name string) (provisioning.Updates, error) {
+	if mock.GetUpdatesByAssignedExposedchannelNameFunc == nil {
+		panic("UpdateRepoMock.GetUpdatesByAssignedExposedchannelNameFunc: method is nil but UpdateRepo.GetUpdatesByAssignedExposedchannelName was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockGetUpdatesByAssignedExposedchannelName.Lock()
+	mock.calls.GetUpdatesByAssignedExposedchannelName = append(mock.calls.GetUpdatesByAssignedExposedchannelName, callInfo)
+	mock.lockGetUpdatesByAssignedExposedchannelName.Unlock()
+	return mock.GetUpdatesByAssignedExposedchannelNameFunc(ctx, name)
+}
+
+// GetUpdatesByAssignedExposedchannelNameCalls gets all the calls that were made to GetUpdatesByAssignedExposedchannelName.
+// Check the length with:
+//
+//	len(mockedUpdateRepo.GetUpdatesByAssignedExposedchannelNameCalls())
+func (mock *UpdateRepoMock) GetUpdatesByAssignedExposedchannelNameCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockGetUpdatesByAssignedExposedchannelName.RLock()
+	calls = mock.calls.GetUpdatesByAssignedExposedchannelName
+	mock.lockGetUpdatesByAssignedExposedchannelName.RUnlock()
+	return calls
+}
+
+// RenameExposedchannel calls RenameExposedchannelFunc.
+func (mock *UpdateRepoMock) RenameExposedchannel(ctx context.Context, oldName string, newName string) error {
+	if mock.RenameExposedchannelFunc == nil {
+		panic("UpdateRepoMock.RenameExposedchannelFunc: method is nil but UpdateRepo.RenameExposedchannel was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		OldName string
+		NewName string
+	}{
+		Ctx:     ctx,
+		OldName: oldName,
+		NewName: newName,
+	}
+	mock.lockRenameExposedchannel.Lock()
+	mock.calls.RenameExposedchannel = append(mock.calls.RenameExposedchannel, callInfo)
+	mock.lockRenameExposedchannel.Unlock()
+	return mock.RenameExposedchannelFunc(ctx, oldName, newName)
+}
+
+// RenameExposedchannelCalls gets all the calls that were made to RenameExposedchannel.
+// Check the length with:
+//
+//	len(mockedUpdateRepo.RenameExposedchannelCalls())
+func (mock *UpdateRepoMock) RenameExposedchannelCalls() []struct {
+	Ctx     context.Context
+	OldName string
+	NewName string
+} {
+	var calls []struct {
+		Ctx     context.Context
+		OldName string
+		NewName string
+	}
+	mock.lockRenameExposedchannel.RLock()
+	calls = mock.calls.RenameExposedchannel
+	mock.lockRenameExposedchannel.RUnlock()
+	return calls
+}
+
+// UpdateExposedchannel calls UpdateExposedchannelFunc.
+func (mock *UpdateRepoMock) UpdateExposedchannel(ctx context.Context, newExposedchannel provisioning.Exposedchannel) error {
+	if mock.UpdateExposedchannelFunc == nil {
+		panic("UpdateRepoMock.UpdateExposedchannelFunc: method is nil but UpdateRepo.UpdateExposedchannel was just called")
+	}
+	callInfo := struct {
+		Ctx               context.Context
+		NewExposedchannel provisioning.Exposedchannel
+	}{
+		Ctx:               ctx,
+		NewExposedchannel: newExposedchannel,
+	}
+	mock.lockUpdateExposedchannel.Lock()
+	mock.calls.UpdateExposedchannel = append(mock.calls.UpdateExposedchannel, callInfo)
+	mock.lockUpdateExposedchannel.Unlock()
+	return mock.UpdateExposedchannelFunc(ctx, newExposedchannel)
+}
+
+// UpdateExposedchannelCalls gets all the calls that were made to UpdateExposedchannel.
+// Check the length with:
+//
+//	len(mockedUpdateRepo.UpdateExposedchannelCalls())
+func (mock *UpdateRepoMock) UpdateExposedchannelCalls() []struct {
+	Ctx               context.Context
+	NewExposedchannel provisioning.Exposedchannel
+} {
+	var calls []struct {
+		Ctx               context.Context
+		NewExposedchannel provisioning.Exposedchannel
+	}
+	mock.lockUpdateExposedchannel.RLock()
+	calls = mock.calls.UpdateExposedchannel
+	mock.lockUpdateExposedchannel.RUnlock()
 	return calls
 }
 

@@ -54,6 +54,20 @@ func (_d UpdateServiceWithPrometheus) CleanupAll(ctx context.Context) (err error
 	return _d.base.CleanupAll(ctx)
 }
 
+// CreateExposedchannel implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) CreateExposedchannel(ctx context.Context, newExposedchannel provisioning.Exposedchannel) (exposedchannel provisioning.Exposedchannel, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "CreateExposedchannel", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.CreateExposedchannel(ctx, newExposedchannel)
+}
+
 // CreateFromArchive implements provisioning.UpdateService.
 func (_d UpdateServiceWithPrometheus) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uUID uuid.UUID, err error) {
 	_since := time.Now()
@@ -68,6 +82,20 @@ func (_d UpdateServiceWithPrometheus) CreateFromArchive(ctx context.Context, tar
 	return _d.base.CreateFromArchive(ctx, tarReader)
 }
 
+// DeleteExposedchannelByName implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) DeleteExposedchannelByName(ctx context.Context, name string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "DeleteExposedchannelByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.DeleteExposedchannelByName(ctx, name)
+}
+
 // GetAll implements provisioning.UpdateService.
 func (_d UpdateServiceWithPrometheus) GetAll(ctx context.Context) (updates provisioning.Updates, err error) {
 	_since := time.Now()
@@ -80,6 +108,34 @@ func (_d UpdateServiceWithPrometheus) GetAll(ctx context.Context) (updates provi
 		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAll", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.GetAll(ctx)
+}
+
+// GetAllExposedchannelNames implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) GetAllExposedchannelNames(ctx context.Context) (strings []string, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllExposedchannelNames", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllExposedchannelNames(ctx)
+}
+
+// GetAllExposedchannels implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) GetAllExposedchannels(ctx context.Context) (exposedchannels provisioning.Exposedchannels, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetAllExposedchannels", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetAllExposedchannels(ctx)
 }
 
 // GetAllUUIDs implements provisioning.UpdateService.
@@ -138,6 +194,20 @@ func (_d UpdateServiceWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUI
 	return _d.base.GetByUUID(ctx, id)
 }
 
+// GetExposedchannelByName implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) GetExposedchannelByName(ctx context.Context, name string) (exposedchannel *provisioning.Exposedchannel, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetExposedchannelByName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetExposedchannelByName(ctx, name)
+}
+
 // GetUpdateAllFiles implements provisioning.UpdateService.
 func (_d UpdateServiceWithPrometheus) GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (updateFiles provisioning.UpdateFiles, err error) {
 	_since := time.Now()
@@ -192,4 +262,42 @@ func (_d UpdateServiceWithPrometheus) Refresh(ctx context.Context) (err error) {
 		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "Refresh", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.Refresh(ctx)
+}
+
+// RenameExposedchannel implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) RenameExposedchannel(ctx context.Context, oldName string, newName string) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "RenameExposedchannel", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.RenameExposedchannel(ctx, oldName, newName)
+}
+
+// SetServerService implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) SetServerService(serverSvc provisioning.ServerService) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "SetServerService", result).Observe(time.Since(_since).Seconds())
+	}()
+	_d.base.SetServerService(serverSvc)
+}
+
+// UpdateExposedchannel implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) UpdateExposedchannel(ctx context.Context, newExposedchannel provisioning.Exposedchannel) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateExposedchannel", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateExposedchannel(ctx, newExposedchannel)
 }

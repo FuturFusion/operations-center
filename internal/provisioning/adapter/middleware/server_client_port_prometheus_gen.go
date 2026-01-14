@@ -94,6 +94,20 @@ func (_d ServerClientPortWithPrometheus) GetServerType(ctx context.Context, endp
 	return _d.base.GetServerType(ctx, endpoint)
 }
 
+// GetUpdateConfig implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) GetUpdateConfig(ctx context.Context, server provisioning.Server) (v provisioning.ServerSystemUpdate, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdateConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetUpdateConfig(ctx, server)
+}
+
 // GetVersionData implements provisioning.ServerClientPort.
 func (_d ServerClientPortWithPrometheus) GetVersionData(ctx context.Context, endpoint provisioning.Endpoint) (serverVersionData api.ServerVersionData, err error) {
 	_since := time.Now()
@@ -190,4 +204,18 @@ func (_d ServerClientPortWithPrometheus) UpdateStorageConfig(ctx context.Context
 		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateStorageConfig", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.UpdateStorageConfig(ctx, server)
+}
+
+// UpdateUpdateConfig implements provisioning.ServerClientPort.
+func (_d ServerClientPortWithPrometheus) UpdateUpdateConfig(ctx context.Context, server provisioning.Server, providerConfig provisioning.ServerSystemUpdate) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverClientPortDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateUpdateConfig", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateUpdateConfig(ctx, server, providerConfig)
 }
