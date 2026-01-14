@@ -80,6 +80,13 @@ func (c *CmdUpdate) Command() *cobra.Command {
 
 	cmd.AddCommand(updateRefreshCmd.Command())
 
+	// Exposed channel
+	updateExposedchannelCmd := cmdUpdateExposedchannel{
+		ocClient: c.OCClient,
+	}
+
+	cmd.AddCommand(updateExposedchannelCmd.Command())
+
 	return cmd
 }
 
