@@ -262,7 +262,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 	}
 
 	for i, filter := range filters {
-		if filter.Cluster != nil && filter.Status != nil && filter.Name == nil && filter.Certificate == nil && filter.Type == nil {
+		if filter.Cluster != nil && filter.Status != nil && filter.ID == nil && filter.Name == nil && filter.Certificate == nil && filter.Type == nil {
 			args = append(args, []any{filter.Cluster, filter.Status}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, serverObjectsByClusterAndStatus)
@@ -286,7 +286,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Type != nil && filter.Name == nil && filter.Cluster == nil && filter.Status == nil && filter.Certificate == nil {
+		} else if filter.Type != nil && filter.ID == nil && filter.Name == nil && filter.Cluster == nil && filter.Status == nil && filter.Certificate == nil {
 			args = append(args, []any{filter.Type}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, serverObjectsByType)
@@ -310,7 +310,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Status != nil && filter.Name == nil && filter.Cluster == nil && filter.Certificate == nil && filter.Type == nil {
+		} else if filter.Status != nil && filter.ID == nil && filter.Name == nil && filter.Cluster == nil && filter.Certificate == nil && filter.Type == nil {
 			args = append(args, []any{filter.Status}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, serverObjectsByStatus)
@@ -334,7 +334,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Name != nil && filter.Cluster == nil && filter.Status == nil && filter.Certificate == nil && filter.Type == nil {
+		} else if filter.Name != nil && filter.ID == nil && filter.Cluster == nil && filter.Status == nil && filter.Certificate == nil && filter.Type == nil {
 			args = append(args, []any{filter.Name}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, serverObjectsByName)
@@ -358,7 +358,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Cluster != nil && filter.Name == nil && filter.Status == nil && filter.Certificate == nil && filter.Type == nil {
+		} else if filter.Cluster != nil && filter.ID == nil && filter.Name == nil && filter.Status == nil && filter.Certificate == nil && filter.Type == nil {
 			args = append(args, []any{filter.Cluster}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, serverObjectsByCluster)
@@ -382,7 +382,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Certificate != nil && filter.Name == nil && filter.Cluster == nil && filter.Status == nil && filter.Type == nil {
+		} else if filter.Certificate != nil && filter.ID == nil && filter.Name == nil && filter.Cluster == nil && filter.Status == nil && filter.Type == nil {
 			args = append(args, []any{filter.Certificate}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, serverObjectsByCertificate)
@@ -406,7 +406,7 @@ func GetServers(ctx context.Context, db dbtx, filters ...provisioning.ServerFilt
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Name == nil && filter.Cluster == nil && filter.Status == nil && filter.Certificate == nil && filter.Type == nil {
+		} else if filter.ID == nil && filter.Name == nil && filter.Cluster == nil && filter.Status == nil && filter.Certificate == nil && filter.Type == nil {
 			return nil, fmt.Errorf("Cannot filter on empty ServerFilter")
 		} else {
 			return nil, errors.New("No statement exists for the given Filter")
@@ -453,7 +453,7 @@ func GetServerNames(ctx context.Context, db dbtx, filters ...provisioning.Server
 	}
 
 	for i, filter := range filters {
-		if filter.Cluster != nil && filter.Name == nil && filter.Status == nil && filter.Certificate == nil && filter.Type == nil {
+		if filter.Cluster != nil && filter.ID == nil && filter.Name == nil && filter.Status == nil && filter.Certificate == nil && filter.Type == nil {
 			args = append(args, []any{filter.Cluster}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, serverNamesByCluster)
@@ -477,7 +477,7 @@ func GetServerNames(ctx context.Context, db dbtx, filters ...provisioning.Server
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Name == nil && filter.Cluster == nil && filter.Status == nil && filter.Certificate == nil && filter.Type == nil {
+		} else if filter.ID == nil && filter.Name == nil && filter.Cluster == nil && filter.Status == nil && filter.Certificate == nil && filter.Type == nil {
 			return nil, fmt.Errorf("Cannot filter on empty ServerFilter")
 		} else {
 			return nil, errors.New("No statement exists for the given Filter")

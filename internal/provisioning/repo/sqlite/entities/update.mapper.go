@@ -10,8 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/FuturFusion/operations-center/internal/provisioning"
 	"github.com/google/uuid"
+
+	"github.com/FuturFusion/operations-center/internal/provisioning"
 )
 
 var updateObjects = RegisterStmt(`
@@ -251,7 +252,7 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...provisioning.UpdateFilt
 	}
 
 	for i, filter := range filters {
-		if filter.Origin != nil && filter.Status != nil && filter.UUID == nil {
+		if filter.Origin != nil && filter.Status != nil && filter.ID == nil && filter.UUID == nil {
 			args = append(args, []any{filter.Origin, filter.Status}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, updateObjectsByOriginAndStatus)
@@ -275,7 +276,7 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...provisioning.UpdateFilt
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.UUID != nil && filter.Origin == nil && filter.Status == nil {
+		} else if filter.UUID != nil && filter.ID == nil && filter.Origin == nil && filter.Status == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, updateObjectsByUUID)
@@ -299,7 +300,7 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...provisioning.UpdateFilt
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Status != nil && filter.UUID == nil && filter.Origin == nil {
+		} else if filter.Status != nil && filter.ID == nil && filter.UUID == nil && filter.Origin == nil {
 			args = append(args, []any{filter.Status}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, updateObjectsByStatus)
@@ -323,7 +324,7 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...provisioning.UpdateFilt
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Origin != nil && filter.UUID == nil && filter.Status == nil {
+		} else if filter.Origin != nil && filter.ID == nil && filter.UUID == nil && filter.Status == nil {
 			args = append(args, []any{filter.Origin}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, updateObjectsByOrigin)
@@ -347,7 +348,7 @@ func GetUpdates(ctx context.Context, db dbtx, filters ...provisioning.UpdateFilt
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.UUID == nil && filter.Origin == nil && filter.Status == nil {
+		} else if filter.ID == nil && filter.UUID == nil && filter.Origin == nil && filter.Status == nil {
 			return nil, fmt.Errorf("Cannot filter on empty UpdateFilter")
 		} else {
 			return nil, errors.New("No statement exists for the given Filter")
@@ -394,7 +395,7 @@ func GetUpdateNames(ctx context.Context, db dbtx, filters ...provisioning.Update
 	}
 
 	for i, filter := range filters {
-		if filter.Origin != nil && filter.Status != nil && filter.UUID == nil {
+		if filter.Origin != nil && filter.Status != nil && filter.ID == nil && filter.UUID == nil {
 			args = append(args, []any{filter.Origin, filter.Status}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, updateNamesByOriginAndStatus)
@@ -418,7 +419,7 @@ func GetUpdateNames(ctx context.Context, db dbtx, filters ...provisioning.Update
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Status != nil && filter.UUID == nil && filter.Origin == nil {
+		} else if filter.Status != nil && filter.ID == nil && filter.UUID == nil && filter.Origin == nil {
 			args = append(args, []any{filter.Status}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, updateNamesByStatus)
@@ -442,7 +443,7 @@ func GetUpdateNames(ctx context.Context, db dbtx, filters ...provisioning.Update
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Origin != nil && filter.UUID == nil && filter.Status == nil {
+		} else if filter.Origin != nil && filter.ID == nil && filter.UUID == nil && filter.Status == nil {
 			args = append(args, []any{filter.Origin}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, updateNamesByOrigin)
@@ -466,7 +467,7 @@ func GetUpdateNames(ctx context.Context, db dbtx, filters ...provisioning.Update
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.UUID == nil && filter.Origin == nil && filter.Status == nil {
+		} else if filter.ID == nil && filter.UUID == nil && filter.Origin == nil && filter.Status == nil {
 			return nil, fmt.Errorf("Cannot filter on empty UpdateFilter")
 		} else {
 			return nil, errors.New("No statement exists for the given Filter")
