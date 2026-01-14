@@ -60,6 +60,8 @@ func registerProvisioningServerHandler(router Router, authorizer *authz.Authoriz
 	router.HandleFunc("PUT /{name}/system/network", response.With(handler.serverSystemNetworkPut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 	router.HandleFunc("GET /{name}/system/storage", response.With(handler.serverSystemStorageGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
 	router.HandleFunc("PUT /{name}/system/storage", response.With(handler.serverSystemStoragePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
+	router.HandleFunc("GET /{name}/system/update", response.With(handler.serverSystemUpdateGet, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanView)))
+	router.HandleFunc("PUT /{name}/system/update", response.With(handler.serverSystemUpdatePut, assertPermission(authorizer, authz.ObjectTypeServer, authz.EntitlementCanEdit)))
 }
 
 // swagger:operation GET /1.0/provisioning/servers servers servers_get
@@ -973,6 +975,104 @@ func (s *serverHandler) serverSystemStoragePut(r *http.Request) response.Respons
 	err = s.service.UpdateSystemStorage(r.Context(), name, systemStorage)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to update server storage configuration for %q: %w", name, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation GET /1.0/provisioning/servers/{name}/system/update servers_system_update server_system_update_get
+//
+//	Get server update configuration
+//
+//	Gets the update configuration of a specific server.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Server update
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          $ref: "#/definitions/ServerSystemUpdateConfig"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverSystemUpdateGet(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	server, err := s.service.GetByName(r.Context(), name)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	// FIXME: What should we return here? What should we use for the ETag?
+
+	return response.SyncResponseETag(
+		true,
+		server.VersionData,
+		server.VersionData,
+	)
+}
+
+// swagger:operation PUT /1.0/provisioning/servers/{name}/system/update servers_system_update server_system_update_put
+//
+//	Update server update configuration
+//
+//	Updates the update configuration of a specific server.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: server update configuration
+//	    description: Server update configuration
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/ServerSystemUpdateConfig"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func (s *serverHandler) serverSystemUpdatePut(r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	var systemUpdate api.ServerSystemUpdate
+
+	err := json.NewDecoder(r.Body).Decode(&systemUpdate)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	err = s.service.UpdateSystemUpdate(r.Context(), name, systemUpdate)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to update server update configuration for %q: %w", name, err))
 	}
 
 	return response.EmptySyncResponse
