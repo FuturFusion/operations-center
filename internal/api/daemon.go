@@ -181,12 +181,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	tokenSvc := d.setupTokenService(dbWithTransaction, updateSvc)
-	serverSvc := d.setupServerService(dbWithTransaction, tokenSvc, nil)
+	serverSvc := d.setupServerService(dbWithTransaction, tokenSvc, nil, updateSvc)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, serverSvc, tokenSvc)
 	if err != nil {
 		return err
 	}
 
+	updateSvc.SetServerService(serverSvc)
 	serverSvc.SetClusterService(clusterSvc)
 	clusterTemplateSvc := d.setupClusterTemplateService(dbWithTransaction)
 	d.systemSvc = d.setupSystemService(serverSvc)
@@ -477,7 +478,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 	)
 }
 
-func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.TokenService, clusterSvc provisioning.ClusterService) provisioning.ServerService {
+func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.TokenService, clusterSvc provisioning.ClusterService, updateSvc provisioning.UpdateService) provisioning.ServerService {
 	serverSvc := provisioning.NewServerService(
 		provisioningRepoMiddleware.NewServerRepoWithSlog(
 			provisioningSqlite.NewServer(db),
@@ -500,6 +501,7 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 		),
 		tokenSvc,
 		clusterSvc,
+		updateSvc,
 		config.GetNetwork().OperationsCenterAddress,
 		d.serverCertificate,
 	)
@@ -674,6 +676,9 @@ func (d *Daemon) setupAPIRoutes(
 
 	provisioningUpdateRouter := provisioningRouter.SubGroup("/updates")
 	registerUpdateHandler(provisioningUpdateRouter, d.authorizer, updateSvc)
+
+	provisioningUpdateExposedchannelRouter := provisioningRouter.SubGroup("/update-exposedchannels")
+	registerUpdateExposedchannelsHandler(provisioningUpdateExposedchannelRouter, d.authorizer, updateSvc)
 
 	systemRouter := api10router.SubGroup("/system")
 	registerSystemHandler(systemRouter, d.authorizer, d.systemSvc)
