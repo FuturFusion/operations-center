@@ -187,19 +187,23 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return err
 	}
 
+	channelSvc := d.setupChannelService(dbWithTransaction, updateSvc)
+
 	tokenSvc := d.setupTokenService(dbWithTransaction, updateSvc)
-	serverSvc := d.setupServerService(dbWithTransaction, tokenSvc, nil)
+	serverSvc := d.setupServerService(dbWithTransaction, tokenSvc, nil, channelSvc)
 	clusterSvc, err := d.setupClusterService(dbWithTransaction, serverSvc, tokenSvc)
 	if err != nil {
 		return err
 	}
 
+	channelSvc.SetServerService(serverSvc)
 	serverSvc.SetClusterService(clusterSvc)
 	clusterTemplateSvc := d.setupClusterTemplateService(dbWithTransaction)
+
 	d.systemSvc = d.setupSystemService(serverSvc)
 
 	// Setup API routes
-	serveMux, inventorySyncers := d.setupAPIRoutes(updateSvc, tokenSvc, serverSvc, clusterSvc, clusterTemplateSvc, dbWithTransaction)
+	serveMux, inventorySyncers := d.setupAPIRoutes(updateSvc, tokenSvc, serverSvc, clusterSvc, clusterTemplateSvc, channelSvc, dbWithTransaction)
 
 	clusterSvc.SetInventorySyncers(inventorySyncers)
 
@@ -488,7 +492,7 @@ func (d *Daemon) setupTokenService(db dbdriver.DBTX, updateSvc provisioning.Upda
 	)
 }
 
-func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.TokenService, clusterSvc provisioning.ClusterService) provisioning.ServerService {
+func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.TokenService, clusterSvc provisioning.ClusterService, channelSvc provisioning.ChannelService) provisioning.ServerService {
 	serverSvc := provisioning.NewServerService(
 		provisioningRepoMiddleware.NewServerRepoWithSlog(
 			provisioningSqlite.NewServer(db),
@@ -511,6 +515,7 @@ func (d *Daemon) setupServerService(db dbdriver.DBTX, tokenSvc provisioning.Toke
 		),
 		tokenSvc,
 		clusterSvc,
+		channelSvc,
 		config.GetNetwork().OperationsCenterAddress,
 		d.serverCertificate,
 	)
@@ -593,6 +598,19 @@ func (d *Daemon) setupClusterTemplateService(db dbdriver.DBTX) provisioning.Clus
 	)
 }
 
+func (d *Daemon) setupChannelService(db dbdriver.DBTX, updateSvc provisioning.UpdateService) provisioning.ChannelService {
+	return provisioningServiceMiddleware.NewChannelServiceWithSlog(
+		provisioning.NewChannelService(
+			provisioningRepoMiddleware.NewChannelRepoWithSlog(
+				provisioningSqlite.NewChannel(db),
+				slog.Default(),
+			),
+			updateSvc,
+		),
+		slog.Default(),
+	)
+}
+
 func (d *Daemon) setupSystemService(serverSvc provisioning.ServerService) system.SystemService {
 	return systemServiceMiddleware.NewSystemServiceWithSlog(
 		system.NewSystemService(d.env, serverSvc),
@@ -606,6 +624,7 @@ func (d *Daemon) setupAPIRoutes(
 	serverSvc provisioning.ServerService,
 	clusterSvc provisioning.ClusterService,
 	clusterTemplateSvc provisioning.ClusterTemplateService,
+	channelSvc provisioning.ChannelService,
 	db dbdriver.DBTX,
 ) (*http.ServeMux, map[domain.ResourceType]provisioning.InventorySyncer) {
 	// serverClientProvider is a provider of a client to access (Incus) servers
@@ -685,6 +704,9 @@ func (d *Daemon) setupAPIRoutes(
 
 	provisioningUpdateRouter := provisioningRouter.SubGroup("/updates")
 	registerUpdateHandler(provisioningUpdateRouter, d.authorizer, updateSvc)
+
+	provisioningChannelRouter := provisioningRouter.SubGroup("/channels")
+	registerChannelsHandler(provisioningChannelRouter, d.authorizer, channelSvc)
 
 	systemRouter := api10router.SubGroup("/system")
 	registerSystemHandler(systemRouter, d.authorizer, d.systemSvc)
