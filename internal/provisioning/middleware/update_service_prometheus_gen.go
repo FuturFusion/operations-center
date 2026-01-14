@@ -166,6 +166,20 @@ func (_d UpdateServiceWithPrometheus) GetUpdateFileByFilename(ctx context.Contex
 	return _d.base.GetUpdateFileByFilename(ctx, id, filename)
 }
 
+// GetUpdatesByAssignedChannelName implements provisioning.UpdateService.
+func (_d UpdateServiceWithPrometheus) GetUpdatesByAssignedChannelName(ctx context.Context, channelName string) (updates provisioning.Updates, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdatesByAssignedChannelName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetUpdatesByAssignedChannelName(ctx, channelName)
+}
+
 // Prune implements provisioning.UpdateService.
 func (_d UpdateServiceWithPrometheus) Prune(ctx context.Context) (err error) {
 	_since := time.Now()

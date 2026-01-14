@@ -122,6 +122,20 @@ func (_d UpdateRepoWithPrometheus) GetByUUID(ctx context.Context, id uuid.UUID) 
 	return _d.base.GetByUUID(ctx, id)
 }
 
+// GetUpdatesByAssignedChannelName implements provisioning.UpdateRepo.
+func (_d UpdateRepoWithPrometheus) GetUpdatesByAssignedChannelName(ctx context.Context, name string) (updates provisioning.Updates, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		updateRepoDurationSummaryVec.WithLabelValues(_d.instanceName, "GetUpdatesByAssignedChannelName", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetUpdatesByAssignedChannelName(ctx, name)
+}
+
 // Upsert implements provisioning.UpdateRepo.
 func (_d UpdateRepoWithPrometheus) Upsert(ctx context.Context, update provisioning.Update) (err error) {
 	_since := time.Now()
