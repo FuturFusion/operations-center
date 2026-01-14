@@ -148,7 +148,12 @@ func generate(pkgPaths []string) error {
 						return errors.New("struct name missing")
 					}
 
-					err = p.CopyStruct(args[0], lex.SnakeCase(args[0]))
+					targetFilename := lex.SnakeCase(args[0])
+					if len(args) > 1 {
+						targetFilename = args[1]
+					}
+
+					err = p.CopyStruct(args[0], targetFilename)
 					if err != nil {
 						return err
 					}
