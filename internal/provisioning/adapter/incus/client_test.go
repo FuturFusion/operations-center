@@ -1794,6 +1794,119 @@ func TestClientServer(t *testing.T) {
 			},
 		},
 		{
+			name: "GetUpdateConfig",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return client.GetUpdateConfig(ctx, target)
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/update
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{"type":"sync","status":"Success","status_code":200,"operation":"","error_code":0,"error":"","metadata":{"config":{"auto_reboot": false,"channel": "stable","check_frequency": "6h"},"state":{"last_check": "2025-11-04T16:21:34.929524792Z","needs_reboot": false,"status": "Update check completed"}}}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"GET /os/1.0/system/update"},
+					assertResult: func(t *testing.T, res any) {
+						t.Helper()
+
+						wantUpdateConfig := provisioning.ServerSystemUpdate{
+							Config: incusosapi.SystemUpdateConfig{
+								AutoReboot:     false,
+								Channel:        "stable",
+								CheckFrequency: "6h",
+							},
+							State: incusosapi.SystemUpdateState{
+								LastCheck:   time.Date(2025, 11, 4, 16, 21, 34, 929524792, time.UTC),
+								NeedsReboot: false,
+								Status:      "Update check completed",
+							},
+						}
+
+						require.Equal(t, wantUpdateConfig, res)
+					},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/update
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/update"},
+					assertResult: noResult,
+				},
+				{
+					name: "error - update config invalid JSON",
+					response: []queue.Item[response]{
+						// GET /os/1.0/system/update
+						{
+							Value: response{
+								statusCode: http.StatusOK,
+								responseBody: []byte(`{
+  "metadata": []
+}`), // array for metadata is invalid.
+							},
+						},
+					},
+
+					assertErr:    require.Error,
+					wantPaths:    []string{"GET /os/1.0/system/update"},
+					assertResult: noResult,
+				},
+			},
+		},
+		{
+			name: "UpdateUpdateConfig",
+			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
+				return nil, client.UpdateUpdateConfig(ctx, target, incusosapi.SystemUpdate{
+					Config: incusosapi.SystemUpdateConfig{
+						Channel: "stable",
+					},
+				})
+			},
+			testCases: []methodTestCase{
+				{
+					name: "success",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode:   http.StatusOK,
+								responseBody: []byte(`{}`),
+							},
+						},
+					},
+
+					assertErr: require.NoError,
+					wantPaths: []string{"PUT /os/1.0/system/update"},
+				},
+				{
+					name: "error - unexpected http status code",
+					response: []queue.Item[response]{
+						{
+							Value: response{
+								statusCode: http.StatusInternalServerError,
+							},
+						},
+					},
+
+					assertErr: require.Error,
+					wantPaths: []string{"PUT /os/1.0/system/update"},
+				},
+			},
+		},
+		{
 			name: "Poweroff",
 			clientCall: func(ctx context.Context, client clientPort, target provisioning.Server) (any, error) {
 				return nil, client.Poweroff(ctx, target)
