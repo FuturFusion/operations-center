@@ -89,6 +89,7 @@ type UpdateFile struct {
 }
 
 type UpdateFilter struct {
+	ID      *int
 	UUID    *uuid.UUID
 	Channel *string `db:"ignore"`
 	Origin  *string

@@ -663,7 +663,7 @@ func TestUpdateService_GetAllUUIDsWithFilter(t *testing.T) {
 			count:     2,
 		},
 		{
-			name: "success - with channel",
+			name: "success - with upstream channel",
 			filter: provisioning.UpdateFilter{
 				Channel: ptr.To("stable"),
 			},
@@ -716,6 +716,60 @@ func TestUpdateService_GetAllUUIDsWithFilter(t *testing.T) {
 
 			// Run test
 			serverIDs, err := serverSvc.GetAllUUIDsWithFilter(context.Background(), tc.filter)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, serverIDs, tc.count)
+		})
+	}
+}
+
+func TestUpdateService_GetUpdatesByAssignedChannelName(t *testing.T) {
+	tests := []struct {
+		name                                   string
+		filter                                 provisioning.UpdateFilter
+		repoGetUpdatesByAssignedChannelName    provisioning.Updates
+		repoGetUpdatesByAssignedChannelNameErr error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name:   "success",
+			filter: provisioning.UpdateFilter{},
+			repoGetUpdatesByAssignedChannelName: []provisioning.Update{
+				{
+					ID: "1",
+				},
+				{
+					ID: "2",
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:                                   "error - repo.GetUpdatesByAssignedChannelName",
+			repoGetUpdatesByAssignedChannelNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &repoMock.UpdateRepoMock{
+				GetUpdatesByAssignedChannelNameFunc: func(ctx context.Context, name string) (provisioning.Updates, error) {
+					return tc.repoGetUpdatesByAssignedChannelName, tc.repoGetUpdatesByAssignedChannelNameErr
+				},
+			}
+
+			serverSvc := provisioning.NewUpdateService(repo, nil, nil)
+
+			// Run test
+			serverIDs, err := serverSvc.GetUpdatesByAssignedChannelName(context.Background(), "stable")
 
 			// Assert
 			tc.assertErr(t, err)

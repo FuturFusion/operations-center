@@ -21,6 +21,8 @@ type ServerService interface {
 	UpdateSystemStorage(ctx context.Context, name string, networkConfig ServerSystemStorage) error
 	GetSystemProvider(ctx context.Context, name string) (ServerSystemProvider, error)
 	UpdateSystemProvider(ctx context.Context, name string, providerConfig ServerSystemProvider) error
+	GetSystemUpdate(ctx context.Context, name string) (ServerSystemUpdate, error)
+	UpdateSystemUpdate(ctx context.Context, name string, updateConfig ServerSystemUpdate) error
 	SelfUpdate(ctx context.Context, serverUpdate ServerSelfUpdate) error
 	SelfRegisterOperationsCenter(ctx context.Context) error
 	Rename(ctx context.Context, oldName string, newName string) error
@@ -56,6 +58,8 @@ type ServerClientPort interface {
 	UpdateStorageConfig(ctx context.Context, server Server) error
 	GetProviderConfig(ctx context.Context, server Server) (ServerSystemProvider, error)
 	UpdateProviderConfig(ctx context.Context, server Server, providerConfig ServerSystemProvider) error
+	GetUpdateConfig(ctx context.Context, server Server) (ServerSystemUpdate, error)
+	UpdateUpdateConfig(ctx context.Context, server Server, providerConfig ServerSystemUpdate) error
 	Poweroff(ctx context.Context, server Server) error
 	Reboot(ctx context.Context, server Server) error
 }

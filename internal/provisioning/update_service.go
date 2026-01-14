@@ -278,6 +278,15 @@ func (s updateService) GetAllUUIDsWithFilter(ctx context.Context, filter UpdateF
 	return updateIDs, nil
 }
 
+func (s updateService) GetUpdatesByAssignedChannelName(ctx context.Context, channelName string) (Updates, error) {
+	updates, err := s.repo.GetUpdatesByAssignedChannelName(ctx, channelName)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get updates by channel %q: %w", channelName, err)
+	}
+
+	return updates, err
+}
+
 func (s updateService) GetUpdateAllFiles(ctx context.Context, id uuid.UUID) (UpdateFiles, error) {
 	update, err := s.repo.GetByUUID(ctx, id)
 	if err != nil {
