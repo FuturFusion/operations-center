@@ -9,6 +9,8 @@ import (
 )
 
 type UpdateService interface {
+	SetServerService(serverSvc ServerService)
+
 	GetAll(ctx context.Context) (Updates, error)
 	GetAllWithFilter(ctx context.Context, filter UpdateFilter) (Updates, error)
 	GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error)
@@ -23,6 +25,15 @@ type UpdateService interface {
 	CleanupAll(ctx context.Context) error
 	Prune(ctx context.Context) error
 	Refresh(ctx context.Context) error
+
+	// Exposedchannels
+	CreateExposedchannel(ctx context.Context, newExposedchannel Exposedchannel) (Exposedchannel, error)
+	GetAllExposedchannels(ctx context.Context) (Exposedchannels, error)
+	GetAllExposedchannelNames(ctx context.Context) ([]string, error)
+	GetExposedchannelByName(ctx context.Context, name string) (*Exposedchannel, error)
+	UpdateExposedchannel(ctx context.Context, newExposedchannel Exposedchannel) error
+	RenameExposedchannel(ctx context.Context, oldName string, newName string) error
+	DeleteExposedchannelByName(ctx context.Context, name string) error
 }
 
 type UpdateRepo interface {
@@ -33,6 +44,15 @@ type UpdateRepo interface {
 	GetAllUUIDsWithFilter(ctx context.Context, filter UpdateFilter) ([]uuid.UUID, error)
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Update, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
+	GetUpdatesByAssignedExposedchannelName(ctx context.Context, name string) (Updates, error)
+
+	CreateExposedchannel(ctx context.Context, newExposedchannel Exposedchannel) (int64, error)
+	GetAllExposedchannels(ctx context.Context) (Exposedchannels, error)
+	GetAllExposedchannelNames(ctx context.Context) ([]string, error)
+	GetExposedchannelByName(ctx context.Context, name string) (*Exposedchannel, error)
+	UpdateExposedchannel(ctx context.Context, newExposedchannel Exposedchannel) error
+	RenameExposedchannel(ctx context.Context, oldName string, newName string) error
+	DeleteExposedchannelByName(ctx context.Context, name string) error
 }
 
 type (

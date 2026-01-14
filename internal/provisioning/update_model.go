@@ -89,6 +89,7 @@ type UpdateFile struct {
 }
 
 type UpdateFilter struct {
+	ID      *int
 	UUID    *uuid.UUID
 	Channel *string `db:"ignore"`
 	Origin  *string
@@ -188,3 +189,38 @@ func (c *UpdateChannels) Scan(value any) error {
 		return fmt.Errorf("type %T is not supported for update channels", value)
 	}
 }
+
+//
+//generate-expr: Exposedchannel update_exposedchannel
+
+type Exposedchannel struct {
+	ID          int64     `json:"-"`
+	Name        string    `json:"name" db:"primary=yes"`
+	Description string    `json:"description"`
+	LastUpdated time.Time `json:"-" expr:"last_updated" db:"update_timestamp"`
+}
+
+type ExposedchannelFilter struct {
+	ID   *int
+	Name *string
+}
+
+type ExposedchannelUpdate struct {
+	ExposedchannelID int `db:"primary=yes"`
+	UpdateID         int `db:"primary=yes"`
+}
+
+type ExposedchannelUpdateFilter struct {
+	ExposedchannelID *int
+	UpdateID         *int
+}
+
+func (u Exposedchannel) Validate() error {
+	if u.Name == "" {
+		return domain.NewValidationErrf("Invalid exposedchannel, validation of name failed: name must not be empty")
+	}
+
+	return nil
+}
+
+type Exposedchannels []Exposedchannel

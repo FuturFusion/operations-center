@@ -484,3 +484,40 @@ func TestUpdateChannels_Scan(t *testing.T) {
 		})
 	}
 }
+
+func TestExposedchannel_Validate(t *testing.T) {
+	tests := []struct {
+		name           string
+		exposedchannel provisioning.Exposedchannel
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "valid",
+			exposedchannel: provisioning.Exposedchannel{
+				Name: "one",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "error - empty name",
+			exposedchannel: provisioning.Exposedchannel{
+				Name: "", // empty name is invalid
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr domain.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.exposedchannel.Validate()
+
+			tc.assertErr(t, err)
+		})
+	}
+}

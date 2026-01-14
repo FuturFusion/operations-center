@@ -36,6 +36,7 @@ type updateService struct {
 	repo                       UpdateRepo
 	filesRepo                  UpdateFilesRepo
 	source                     UpdateSourcePort
+	serverSvc                  ServerService
 	latestLimit                int
 	updateFilterExpression     string
 	updateFileFilterExpression string
@@ -92,6 +93,10 @@ func NewUpdateService(repo UpdateRepo, filesRepo UpdateFilesRepo, source UpdateS
 	config.UpdatesValidateSignal.AddListenerWithErr(service.validateUpdatesConfig)
 
 	return service
+}
+
+func (s *updateService) SetServerService(serverSvc ServerService) {
+	s.serverSvc = serverSvc
 }
 
 func (s updateService) CreateFromArchive(ctx context.Context, tarReader *tar.Reader) (uuid.UUID, error) {
