@@ -327,7 +327,7 @@ func (c client) GetProviderConfig(ctx context.Context, server provisioning.Serve
 
 	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0/system/provider", nil, "")
 	if err != nil {
-		return incusosapi.SystemProvider{}, fmt.Errorf("Put OS provider config to %q failed: %w", server.ConnectionURL, err)
+		return incusosapi.SystemProvider{}, fmt.Errorf("Get OS provider config from %q failed: %w", server.ConnectionURL, err)
 	}
 
 	var providerConfig incusosapi.SystemProvider
@@ -348,6 +348,40 @@ func (c client) UpdateProviderConfig(ctx context.Context, server provisioning.Se
 	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/system/provider", providerConfig, "")
 	if err != nil {
 		return fmt.Errorf("Put OS provider config to %q failed: %w", server.ConnectionURL, err)
+	}
+
+	return nil
+}
+
+func (c client) GetUpdateConfig(ctx context.Context, server provisioning.Server) (provisioning.ServerSystemUpdate, error) {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return incusosapi.SystemUpdate{}, err
+	}
+
+	resp, _, err := client.RawQuery(http.MethodGet, "/os/1.0/system/update", nil, "")
+	if err != nil {
+		return incusosapi.SystemUpdate{}, fmt.Errorf("Get OS update config from %q failed: %w", server.ConnectionURL, err)
+	}
+
+	var updateConfig incusosapi.SystemUpdate
+	err = json.Unmarshal(resp.Metadata, &updateConfig)
+	if err != nil {
+		return incusosapi.SystemUpdate{}, fmt.Errorf("Unexpected response metadata while getting update information from %q: %w", server.GetConnectionURL(), err)
+	}
+
+	return updateConfig, nil
+}
+
+func (c client) UpdateUpdateConfig(ctx context.Context, server provisioning.Server, updateConfig provisioning.ServerSystemUpdate) error {
+	client, err := c.getClient(ctx, server)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = client.RawQuery(http.MethodPut, "/os/1.0/system/update", updateConfig, "")
+	if err != nil {
+		return fmt.Errorf("Put OS update config to %q failed: %w", server.ConnectionURL, err)
 	}
 
 	return nil
