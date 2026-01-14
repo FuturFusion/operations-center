@@ -84,6 +84,17 @@ export const resyncServer = (name: string): Promise<APIResponse<null>> => {
   });
 };
 
+export const poweroffServer = (name: string): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/provisioning/servers/${name}/system/:poweroff`, {
+      method: "POST",
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
 export const rebootServer = (name: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/provisioning/servers/${name}/system/:reboot`, {
