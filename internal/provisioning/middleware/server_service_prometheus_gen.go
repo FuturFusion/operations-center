@@ -151,6 +151,20 @@ func (_d ServerServiceWithPrometheus) GetSystemProvider(ctx context.Context, nam
 	return _d.base.GetSystemProvider(ctx, name)
 }
 
+// GetSystemUpdate implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) GetSystemUpdate(ctx context.Context, name string) (v provisioning.ServerSystemUpdate, err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "GetSystemUpdate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.GetSystemUpdate(ctx, name)
+}
+
 // PollServers implements provisioning.ServerService.
 func (_d ServerServiceWithPrometheus) PollServers(ctx context.Context, serverStatus api.ServerStatus, updateServerConfiguration bool) (err error) {
 	_since := time.Now()
@@ -313,4 +327,18 @@ func (_d ServerServiceWithPrometheus) UpdateSystemStorage(ctx context.Context, n
 		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSystemStorage", result).Observe(time.Since(_since).Seconds())
 	}()
 	return _d.base.UpdateSystemStorage(ctx, name, networkConfig)
+}
+
+// UpdateSystemUpdate implements provisioning.ServerService.
+func (_d ServerServiceWithPrometheus) UpdateSystemUpdate(ctx context.Context, name string, updateConfig provisioning.ServerSystemUpdate) (err error) {
+	_since := time.Now()
+	defer func() {
+		result := "ok"
+		if err != nil {
+			result = "error"
+		}
+
+		serverServiceDurationSummaryVec.WithLabelValues(_d.instanceName, "UpdateSystemUpdate", result).Observe(time.Since(_since).Seconds())
+	}()
+	return _d.base.UpdateSystemUpdate(ctx, name, updateConfig)
 }

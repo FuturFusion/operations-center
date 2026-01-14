@@ -51,6 +51,9 @@ var _ provisioning.UpdateService = &UpdateServiceMock{}
 //			GetUpdateFileByFilenameFunc: func(ctx context.Context, id uuid.UUID, filename string) (io.ReadCloser, int, error) {
 //				panic("mock out the GetUpdateFileByFilename method")
 //			},
+//			GetUpdatesByAssignedChannelNameFunc: func(ctx context.Context, channelName string) (provisioning.Updates, error) {
+//				panic("mock out the GetUpdatesByAssignedChannelName method")
+//			},
 //			PruneFunc: func(ctx context.Context) error {
 //				panic("mock out the Prune method")
 //			},
@@ -90,6 +93,9 @@ type UpdateServiceMock struct {
 
 	// GetUpdateFileByFilenameFunc mocks the GetUpdateFileByFilename method.
 	GetUpdateFileByFilenameFunc func(ctx context.Context, id uuid.UUID, filename string) (io.ReadCloser, int, error)
+
+	// GetUpdatesByAssignedChannelNameFunc mocks the GetUpdatesByAssignedChannelName method.
+	GetUpdatesByAssignedChannelNameFunc func(ctx context.Context, channelName string) (provisioning.Updates, error)
 
 	// PruneFunc mocks the Prune method.
 	PruneFunc func(ctx context.Context) error
@@ -158,6 +164,13 @@ type UpdateServiceMock struct {
 			// Filename is the filename argument value.
 			Filename string
 		}
+		// GetUpdatesByAssignedChannelName holds details about calls to the GetUpdatesByAssignedChannelName method.
+		GetUpdatesByAssignedChannelName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ChannelName is the channelName argument value.
+			ChannelName string
+		}
 		// Prune holds details about calls to the Prune method.
 		Prune []struct {
 			// Ctx is the ctx argument value.
@@ -169,17 +182,18 @@ type UpdateServiceMock struct {
 			Ctx context.Context
 		}
 	}
-	lockCleanupAll              sync.RWMutex
-	lockCreateFromArchive       sync.RWMutex
-	lockGetAll                  sync.RWMutex
-	lockGetAllUUIDs             sync.RWMutex
-	lockGetAllUUIDsWithFilter   sync.RWMutex
-	lockGetAllWithFilter        sync.RWMutex
-	lockGetByUUID               sync.RWMutex
-	lockGetUpdateAllFiles       sync.RWMutex
-	lockGetUpdateFileByFilename sync.RWMutex
-	lockPrune                   sync.RWMutex
-	lockRefresh                 sync.RWMutex
+	lockCleanupAll                      sync.RWMutex
+	lockCreateFromArchive               sync.RWMutex
+	lockGetAll                          sync.RWMutex
+	lockGetAllUUIDs                     sync.RWMutex
+	lockGetAllUUIDsWithFilter           sync.RWMutex
+	lockGetAllWithFilter                sync.RWMutex
+	lockGetByUUID                       sync.RWMutex
+	lockGetUpdateAllFiles               sync.RWMutex
+	lockGetUpdateFileByFilename         sync.RWMutex
+	lockGetUpdatesByAssignedChannelName sync.RWMutex
+	lockPrune                           sync.RWMutex
+	lockRefresh                         sync.RWMutex
 }
 
 // CleanupAll calls CleanupAllFunc.
@@ -495,6 +509,42 @@ func (mock *UpdateServiceMock) GetUpdateFileByFilenameCalls() []struct {
 	mock.lockGetUpdateFileByFilename.RLock()
 	calls = mock.calls.GetUpdateFileByFilename
 	mock.lockGetUpdateFileByFilename.RUnlock()
+	return calls
+}
+
+// GetUpdatesByAssignedChannelName calls GetUpdatesByAssignedChannelNameFunc.
+func (mock *UpdateServiceMock) GetUpdatesByAssignedChannelName(ctx context.Context, channelName string) (provisioning.Updates, error) {
+	if mock.GetUpdatesByAssignedChannelNameFunc == nil {
+		panic("UpdateServiceMock.GetUpdatesByAssignedChannelNameFunc: method is nil but UpdateService.GetUpdatesByAssignedChannelName was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ChannelName string
+	}{
+		Ctx:         ctx,
+		ChannelName: channelName,
+	}
+	mock.lockGetUpdatesByAssignedChannelName.Lock()
+	mock.calls.GetUpdatesByAssignedChannelName = append(mock.calls.GetUpdatesByAssignedChannelName, callInfo)
+	mock.lockGetUpdatesByAssignedChannelName.Unlock()
+	return mock.GetUpdatesByAssignedChannelNameFunc(ctx, channelName)
+}
+
+// GetUpdatesByAssignedChannelNameCalls gets all the calls that were made to GetUpdatesByAssignedChannelName.
+// Check the length with:
+//
+//	len(mockedUpdateService.GetUpdatesByAssignedChannelNameCalls())
+func (mock *UpdateServiceMock) GetUpdatesByAssignedChannelNameCalls() []struct {
+	Ctx         context.Context
+	ChannelName string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ChannelName string
+	}
+	mock.lockGetUpdatesByAssignedChannelName.RLock()
+	calls = mock.calls.GetUpdatesByAssignedChannelName
+	mock.lockGetUpdatesByAssignedChannelName.RUnlock()
 	return calls
 }
 
