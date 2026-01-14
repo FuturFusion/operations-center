@@ -102,6 +102,7 @@ func (s Server) Validate() error {
 type Servers []Server
 
 type ServerFilter struct {
+	ID          *int
 	Name        *string
 	Cluster     *string
 	Status      *api.ServerStatus
@@ -153,3 +154,5 @@ type ServerSystemNetwork = api.ServerSystemNetwork
 type ServerSystemStorage = api.ServerSystemStorage
 
 type ServerSystemProvider = api.ServerSystemProvider
+
+type ServerSystemUpdate = api.ServerSystemUpdate
