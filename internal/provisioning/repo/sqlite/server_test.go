@@ -118,7 +118,7 @@ func TestServerDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	server := sqlite.NewServer(tx)
-	serverSvc := provisioning.NewServerService(server, nil, nil, nil, "", tls.Certificate{})
+	serverSvc := provisioning.NewServerService(server, nil, nil, nil, nil, "", tls.Certificate{})
 
 	clusterSvc := provisioning.NewClusterService(sqlite.NewCluster(db), localArtifactRepo, client, serverSvc, nil, nil, terraformProvisioner)
 

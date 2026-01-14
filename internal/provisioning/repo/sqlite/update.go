@@ -71,3 +71,28 @@ func (u update) GetByUUID(ctx context.Context, id uuid.UUID) (*provisioning.Upda
 func (u update) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return entities.DeleteUpdate(ctx, transaction.GetDBTX(ctx, u.db), id)
 }
+
+func (u update) AssignExposedchannel(ctx context.Context, UUID uuid.UUID, exposedchannel string) error {
+	return transaction.ForceTx(ctx, u.db, func(ctx context.Context, tx transaction.TX) error {
+		updateID, err := entities.GetUpdateID(ctx, tx, UUID)
+		if err != nil {
+			return err
+		}
+
+		exposedchannelID, err := entities.GetExposedchannelID(ctx, tx, exposedchannel)
+		if err != nil {
+			return err
+		}
+
+		return entities.CreateUpdateExposedchannels(ctx, tx, []provisioning.ExposedchannelUpdate{
+			{
+				UpdateID:         int(updateID),
+				ExposedchannelID: int(exposedchannelID),
+			},
+		})
+	})
+}
+
+func (u update) GetUpdatesByAssignedExposedchannelName(ctx context.Context, name string) (provisioning.Updates, error) {
+	return entities.GetUpdatesByAssignedExposedchannelName(ctx, transaction.GetDBTX(ctx, u.db), name)
+}
