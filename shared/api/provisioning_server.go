@@ -406,3 +406,6 @@ type ServerSystemStorage = incusosapi.SystemStorage
 
 // ServerSystemProvider is a type alias to hold the system provider configuration from IncusOS.
 type ServerSystemProvider = incusosapi.SystemProvider
+
+// ServerSystemUpdate is a type alias to hold the system update configuration from IncusOS.
+type ServerSystemUpdate = incusosapi.SystemUpdate
