@@ -51,6 +51,64 @@ var updates = map[int]update{
 	21: updateFromV20,
 	22: updateFromV21,
 	23: updateFromV22,
+	24: updateFromV23,
+}
+
+func updateFromV23(ctx context.Context, tx *sql.Tx) error {
+	// v23..v24 add channel_id foreign key to servers and clusters
+	stmt := withResourcesView(`
+CREATE TABLE servers_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  cluster_id INTEGER,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  connection_url TEXT NOT NULL,
+  certificate TEXT NOT NULL,
+  status TEXT NOT NULL,
+  hardware_data TEXT NOT NULL,
+  os_data TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  last_seen DATETIME NOT NULL DEFAULT '0000-01-01 00:00:00.0+00:00',
+  public_connection_url TEXT NOT NULL DEFAULT '',
+  version_data TEXT NOT NULL DEFAULT '',
+  channel_id INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (name),
+  UNIQUE (certificate),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id) ON DELETE CASCADE,
+  FOREIGN KEY (channel_id) REFERENCES channels(id),
+  CHECK (name <> '')
+);
+WITH stable_channel AS (
+  -- Find the id for the channel 'stable', if not found, fall back to the channel with the lowest id.
+  SELECT id FROM (SELECT id, 1 AS prio FROM channels WHERE name = 'stable' UNION SELECT * FROM (SELECT id, 2 AS prio FROM channels ORDER BY id LIMIT 1)) ORDER BY prio LIMIT 1
+)
+INSERT INTO servers_new SELECT id, cluster_id, name, type, connection_url, certificate, status, hardware_data, os_data, last_updated, last_seen, public_connection_url, version_data, (SELECT id FROM stable_channel) FROM servers;
+DROP TABLE servers;
+ALTER TABLE servers_new RENAME TO servers;
+
+CREATE TABLE clusters_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  connection_url TEXT NOT NULL,
+  certificate TEXT,
+  status TEXT NOT NULL,
+  last_updated DATETIME NOT NULL,
+  channel_id INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (name),
+  UNIQUE (certificate),
+  CHECK (name <> ''),
+  FOREIGN KEY (channel_id) REFERENCES channels(id)
+);
+WITH stable_channel AS (
+  -- Find the id for the channel 'stable', if not found, fall back to the channel with the lowest id.
+  SELECT id FROM (SELECT id, 1 AS prio FROM channels WHERE name = 'stable' UNION SELECT * FROM (SELECT id, 2 AS prio FROM channels ORDER BY id LIMIT 1)) ORDER BY prio LIMIT 1
+)
+INSERT INTO clusters_new SELECT id, name, connection_url, certificate, status, last_updated, (SELECT id FROM stable_channel) FROM clusters;
+DROP TABLE clusters;
+ALTER TABLE clusters_new RENAME TO clusters;
+`)
+	_, err := tx.Exec(stmt)
+	return MapDBError(err)
 }
 
 func updateFromV22(ctx context.Context, tx *sql.Tx) error {
