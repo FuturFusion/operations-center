@@ -27,6 +27,7 @@ type Server struct {
 	HardwareData         api.HardwareData      `json:"hardware_data"`
 	OSData               api.OSData            `json:"os_data"`
 	VersionData          api.ServerVersionData `json:"version_data"`
+	Channel              string                `json:"channel"                db:"join=channels.name"`
 	Status               api.ServerStatus      `json:"status"`
 	LastUpdated          time.Time             `json:"last_updated"           db:"update_timestamp"`
 	LastSeen             time.Time             `json:"last_seen"`
